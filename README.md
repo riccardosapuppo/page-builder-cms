@@ -14,6 +14,9 @@ A personal project of the author's, not work for a client.
 - [`schema/tokens.json`](schema/tokens.json): the design tokens (colours and
   their contrast pairs, spacing, type, radii, breakpoints), taken from the
   mock. It is the copy the code will read.
+- [`cms/`](cms/): the Rails 8.1 application, generated and adjusted to run
+  the same way on Windows and Linux. It has no models, routes or API yet;
+  its README has the commands to install, run and test it.
 
 ## The plan, stage by stage
 
