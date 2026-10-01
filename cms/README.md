@@ -146,10 +146,17 @@ ruby bin/rails db:test:prepare
 ruby bin/rails test
 ```
 
-The single form `ruby bin/rails db:test:prepare test` exits 1 without
-printing anything on a machine where no `rails` launcher is on the PATH,
-which is the state the install above leaves: railties 8.1.4 runs the second
-task by spawning `rails` (`test_unit/runner.rb`), and that fails.
+The single form `ruby bin/rails db:test:prepare test` works as well, with
+one condition. railties 8.1.4 runs the second task by spawning `rails`
+(`test_unit/runner.rb`), found on the PATH, and Bundler puts
+`vendor/bundle/ruby/3.4.0/bin`, where the install above writes the gems'
+launchers, `rails.bat` among them, first on it, so it is found even with
+no `rails` on the machine's own PATH. On 2 October 2026, with no `rails`
+on that PATH, a Ruby process that loaded `config/boot` found
+`vendor/bundle/ruby/3.4.0/bin` first on its PATH and ran `rails
+--version`; with that folder's `rails` and `rails.bat` moved away, the
+single form exited 1 without printing anything, after preparing the
+database. The two commands above do not depend on the launcher.
 
 The run of 1 October 2026 (Windows 11, Ruby 3.4.10), the same with `CI=1`,
 which loads the whole app first as production does:
