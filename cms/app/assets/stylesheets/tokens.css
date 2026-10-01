@@ -192,13 +192,20 @@
 .space-below-xxl { padding-bottom: var(--space-xxl); }
 .space-below-section-s { padding-bottom: var(--section-s); }
 .space-below-section-l { padding-bottom: var(--section-l); }
-.bg-none { background-color: transparent; }
+.bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
 .bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-.bg-background { background-color: var(--sw-background); }
+.bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
 .bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-.bg-accent { background-color: var(--sw-accent); }
-.bg-soft { background-color: var(--sw-soft); }
+.bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+.bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
 .bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+.bg-none > * { --ring-color: inherit; }
+.bg-text > * { --ring-color: var(--sw-background); }
+.bg-background > * { --ring-color: var(--sw-text); }
+.bg-primary > * { --ring-color: var(--sw-background); }
+.bg-accent > * { --ring-color: var(--sw-text); }
+.bg-soft > * { --ring-color: var(--sw-text); }
+.bg-muted > * { --ring-color: var(--sw-background); }
 .fg-text { color: var(--sw-text); }
 .fg-background { color: var(--sw-background); }
 .fg-primary { color: var(--sw-primary); }
@@ -271,13 +278,20 @@
   .tablet-space-below-xxl { padding-bottom: var(--space-xxl); }
   .tablet-space-below-section-s { padding-bottom: var(--section-s); }
   .tablet-space-below-section-l { padding-bottom: var(--section-l); }
-  .tablet-bg-none { background-color: transparent; }
+  .tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
   .tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .tablet-bg-background { background-color: var(--sw-background); }
+  .tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
   .tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .tablet-bg-accent { background-color: var(--sw-accent); }
-  .tablet-bg-soft { background-color: var(--sw-soft); }
+  .tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
   .tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .tablet-bg-none > * { --ring-color: inherit; }
+  .tablet-bg-text > * { --ring-color: var(--sw-background); }
+  .tablet-bg-background > * { --ring-color: var(--sw-text); }
+  .tablet-bg-primary > * { --ring-color: var(--sw-background); }
+  .tablet-bg-accent > * { --ring-color: var(--sw-text); }
+  .tablet-bg-soft > * { --ring-color: var(--sw-text); }
+  .tablet-bg-muted > * { --ring-color: var(--sw-background); }
   .tablet-fg-text { color: var(--sw-text); }
   .tablet-fg-background { color: var(--sw-background); }
   .tablet-fg-primary { color: var(--sw-primary); }
@@ -352,13 +366,20 @@
   .phone-space-below-xxl { padding-bottom: var(--space-xxl); }
   .phone-space-below-section-s { padding-bottom: var(--section-s); }
   .phone-space-below-section-l { padding-bottom: var(--section-l); }
-  .phone-bg-none { background-color: transparent; }
+  .phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
   .phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .phone-bg-background { background-color: var(--sw-background); }
+  .phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
   .phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .phone-bg-accent { background-color: var(--sw-accent); }
-  .phone-bg-soft { background-color: var(--sw-soft); }
+  .phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
   .phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .phone-bg-none > * { --ring-color: inherit; }
+  .phone-bg-text > * { --ring-color: var(--sw-background); }
+  .phone-bg-background > * { --ring-color: var(--sw-text); }
+  .phone-bg-primary > * { --ring-color: var(--sw-background); }
+  .phone-bg-accent > * { --ring-color: var(--sw-text); }
+  .phone-bg-soft > * { --ring-color: var(--sw-text); }
+  .phone-bg-muted > * { --ring-color: var(--sw-background); }
   .phone-fg-text { color: var(--sw-text); }
   .phone-fg-background { color: var(--sw-background); }
   .phone-fg-primary { color: var(--sw-primary); }

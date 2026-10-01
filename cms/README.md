@@ -250,6 +250,16 @@ Also run, from this folder: `ruby bin/rubocop` (99 files, no offenses on
   (`aspect: "16:9"` is `aspect-16-9`) and a section's `spaceAbove` and
   `spaceBelow` (`space-above-section-s`, `phone-space-below-xxl`) are
   classes of the same file.
+- **Colours that read on every band.** A background class also sets the
+  colours of what sits on it: paper text, headings, links and icons on the
+  dark slots (Text, Primary, Muted), ink on Accent, the theme's own on the
+  other light slots, and those of the band behind for `none`, so a light
+  column inside a dark band, or a phone override to `none`, never keeps
+  paper text on paper. The focus ring, 3 px and 3 px outside what has
+  focus, is ink on light bands and paper on dark ones: the background
+  class sets `--ring-color` for the elements inside it, not for itself,
+  because a button with a dark background of its own draws its ring on
+  the band around it.
 - **No script, no inline style.** The pages carry a static
   Content-Security-Policy, `script-src 'none'`, frames only from the video
   and map providers, and no nonce: Rails' nonce reads the session, and a

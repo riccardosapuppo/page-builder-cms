@@ -56,7 +56,10 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
   color: var(--sw-text);
   overflow-wrap: break-word;
 }
-.sw :focus-visible { outline: 3px solid var(--sw-text); outline-offset: 3px; }
+/* The ring sits 3 px outside what has focus, on the band around it: ink on
+   light bands, paper on the dark ones, whose background classes set
+   --ring-color for what they hold (tokens.css). */
+.sw :focus-visible { outline: 3px solid var(--ring-color, var(--sw-text)); outline-offset: 3px; }
 :where(.sw) a { color: inherit; }
 :where(.sw) p { max-width: 36em; }
 

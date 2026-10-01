@@ -212,13 +212,38 @@ module SiteTheme
           rules << ".#{prefix}space-#{side}-#{s} { padding-#{edge}: var(#{property}); }\n"
         end
       end
-      # background, with the text colour that reads on it: on the three dark
-      # slots, text, headings, links and icons take the background colour.
-      rules << ".#{prefix}bg-none { background-color: transparent; }\n"
+      # background, with the colours that read on it. On the three dark
+      # slots, text, headings, links and icons take the background colour;
+      # on Accent, the text colour (INK_SLOTS); on the other light ones,
+      # the theme's own (the Text slot, and Primary through the fallbacks
+      # of site.css), so that a light column inside a dark band, or a light
+      # tablet or phone override of a dark background, does not keep the
+      # dark band's paper-coloured text. none shows the band behind, and
+      # takes its colours back (inherit).
+      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }\n"
       slots.each do |slot|
-        dark = DARK_SLOTS.include?(slot)
-        paired = dark ? " color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor;" : ""
-        rules << ".#{prefix}bg-#{slot} { background-color: var(--sw-#{slot});#{paired} }\n"
+        paired =
+          if DARK_SLOTS.include?(slot)
+            "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor;"
+          elsif INK_SLOTS.include?(slot)
+            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor;"
+          else
+            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial;"
+          end
+        rules << ".#{prefix}bg-#{slot} { background-color: var(--sw-#{slot}); #{paired} }\n"
+      end
+      # The focus ring (site.css) of what sits on a background, in the
+      # colour that reads on it: the Background slot on the three dark
+      # slots, the Text slot on the others, which undoes a dark band's for
+      # a light column inside it. It is set for the elements inside the
+      # one with the background, never for that element itself: a button
+      # with a background of its own draws its ring outside itself, on the
+      # band around it, so its ring follows the band. none hands on the
+      # ring of the band behind, as it does the colours.
+      rules << ".#{prefix}bg-none > * { --ring-color: inherit; }\n"
+      slots.each do |slot|
+        ring = DARK_SLOTS.include?(slot) ? "background" : "text"
+        rules << ".#{prefix}bg-#{slot} > * { --ring-color: var(--sw-#{ring}); }\n"
       end
       # color: of the text, or of the lines for a divider and an accordion.
       slots.each { |slot| rules << ".#{prefix}fg-#{slot} { color: var(--sw-#{slot}); }\n" }
@@ -261,6 +286,11 @@ module SiteTheme
 
     # Slots dark enough that text in the Text slot does not read on them.
     DARK_SLOTS = %w[text primary muted].freeze
+    # A light slot on which Primary, the colour of headings, links and
+    # icons, does not read as text: a link in Sea on Buoy measured 3.85:1
+    # in tools/check-production.ts, under the 4.5:1 of body text. The
+    # design pairs Accent with ink only (its buttons), so all four take it.
+    INK_SLOTS = %w[accent].freeze
     VALIGN = { "top" => "flex-start", "middle" => "center", "bottom" => "flex-end" }.freeze
 
     # The schema's enums and tokens.json must name the same things: a class
