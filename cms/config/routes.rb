@@ -31,4 +31,12 @@ Rails.application.routes.draw do
     get "site-style", to: "site_styles#show"
     put "site-style", to: "site_styles#update"
   end
+
+  # The pages a visitor sees. The draft preview first, then / for the home
+  # page and /<slug> for the others: a slug is lowercase ASCII words joined
+  # by single hyphens (Slug::FORMAT), so it never takes a format suffix and
+  # never shadows /up, /api, /assets or /rails, which Slug reserves.
+  get "preview/:page_id", to: "previews#show", constraints: { page_id: /[0-9]+/ }, format: false
+  root "pages#home"
+  get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page
 end

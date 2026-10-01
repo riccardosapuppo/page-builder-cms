@@ -1,0 +1,33 @@
+<%#
+  The layout of every page a visitor sees: published pages, the 404 page
+  and the draft preview. No csrf_meta_tags and no csp_meta_tag: either
+  would read the session, and a session writes a cookie onto a page meant
+  to be cached and shared. No script either; the Content-Security-Policy
+  (PublicPage) says script-src 'none'. The header and footer are the
+  theme's (config/site.yml), the same on every page.
+-%>
+<%- site = Rails.configuration.x.site -%>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= @title %></title>
+<%= tag.meta(name: "description", content: @description) if @description.present? %>
+<%= tag.meta(name: "robots", content: "noindex") if @noindex %>
+<%= tag.link(rel: "icon", href: image_path("site-mark.svg"), type: "image/svg+xml") %>
+<%= preload_link_tag("archivo-variable.woff2") %>
+<%= preload_link_tag("source-serif-4-variable.woff2") %>
+<%= stylesheet_link_tag("site", "tokens") %>
+</head>
+<body>
+<%= tag.div(class: "site", data: site_style_data) do %><div class="sw">
+<a class="sw-skip" href="#main">Skip to content</a>
+<header class="sw-header"><div class="sw-inner sw-header-row"><a class="sw-brand" href="/"><%= theme_svg("mark", css_class: "sw-brand-mark") %><span><%= site[:name] %></span></a><nav class="sw-nav" aria-label="Main"><div class="sw-nav-links"><%= safe_join(site_links(site[:menu])) %></div><%= site_link(site[:action], class: "sw-btn sw-btn-small") %><details class="sw-menu"><summary class="sw-menu-button"><%= theme_svg("menu", css_class: "sw-menu-icon") %>Menu</summary><div class="sw-menu-sheet"><%= safe_join(site_links(site[:menu])) %></div></details></nav></div></header>
+<main id="main">
+<%= yield %>
+</main>
+<footer class="sw-footer"><div class="sw-inner sw-footer-row"><%= theme_svg("mark", css_class: "sw-brand-mark sw-brand-mark-inv") %><p><strong><%= site.dig(:footer, :lead) %></strong> <%= site.dig(:footer, :text) %></p></div></footer>
+</div><% end %>
+</body>
+</html>

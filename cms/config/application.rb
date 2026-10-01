@@ -50,5 +50,8 @@ module Cms
     # The page document's schema and the design tokens, shared with the
     # editor: they live beside this app in the repository, never copied in.
     config.x.schema_dir = Rails.root.join("..", "schema").expand_path
+
+    # The site's name, menu and footer line (config/site.yml).
+    config.x.site = config_for(:site)
   end
 end
