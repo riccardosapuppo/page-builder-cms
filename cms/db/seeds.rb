@@ -1,9 +1,10 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
+# The example site of the approved design: three published pages and the
+# images they show, uploaded into the media library (db/seeds/example_site.rb).
 #
-# Example:
+#   ruby bin/rails db:seed
 #
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# It can run again at any time: what is already there is left as it is.
+require_relative "seeds/example_site"
+
+puts "Seeding the example site, Slack Water:"
+ExampleSite.run
