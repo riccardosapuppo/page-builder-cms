@@ -46,5 +46,9 @@ module Cms
     # the 8.1 default, :vips, every boot logs a warning that libvips is
     # missing.
     config.active_storage.variant_processor = :disabled
+
+    # The page document's schema and the design tokens, shared with the
+    # editor: they live beside this app in the repository, never copied in.
+    config.x.schema_dir = Rails.root.join("..", "schema").expand_path
   end
 end
