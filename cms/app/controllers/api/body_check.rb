@@ -49,12 +49,18 @@ module Api
       end
     end
 
+    # A string member. U+0000 is refused in every one, whatever else the
+    # member allows: SQLite stops reading a statement's text at it, so a
+    # value that reaches a query as a literal (a uniqueness check, a lookup,
+    # Active Storage's insert) would fail there with a 500 instead of a 422.
     def string(name, required: false, pattern: nil, max_length: nil)
       return unless present?(name, required)
 
       value = body[name]
       if !value.is_a?(String)
         fail_at("/#{name}", "type", "must be a string")
+      elsif value.include?("\u0000")
+        fail_at("/#{name}", "pattern", "must not hold the character U+0000")
       elsif max_length && value.length > max_length
         fail_at("/#{name}", "maxLength", "must be at most #{max_length} characters")
       elsif pattern && !value.match?(pattern)

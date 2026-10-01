@@ -30,6 +30,10 @@ Rails.application.routes.draw do
 
     get "site-style", to: "site_styles#show"
     put "site-style", to: "site_styles#update"
+
+    # Any other address or method under /api/: the API's JSON 404, not the
+    # site's HTML 404 page.
+    match "*path", to: "missing#show", via: :all
   end
 
   # The pages a visitor sees. The draft preview first, then / for the home

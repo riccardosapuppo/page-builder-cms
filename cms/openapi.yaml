@@ -19,7 +19,11 @@ info:
     value inside a block of the document, the `blockPointer` of that block.
     A request body with a member name repeated in one object is refused with
     422 `duplicate_key`; a body that is not JSON at all, with 400
-    `malformed_json`.
+    `malformed_json`. No string member of a request body may hold the
+    character U+0000: 422, keyword `pattern`. A path whose id is not in the
+    form its parameter describes is 404. A failure the server did not
+    foresee is answered 500 `internal_error`, in the same shape, never as
+    an HTML page.
 
     The API has no authentication: the server listens on 127.0.0.1 only.
   license:
@@ -61,6 +65,8 @@ paths:
                       $ref: '#/components/schemas/PageSummary'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
     post:
       operationId: createPage
       summary: Create a page
@@ -91,6 +97,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}:
     parameters:
@@ -111,6 +119,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     patch:
       operationId: updatePage
       summary: Set the page's next address, or make it the home page
@@ -147,6 +157,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}/draft:
     parameters:
@@ -166,6 +178,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     put:
       operationId: saveDraft
       summary: Save the draft
@@ -214,6 +228,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}/publish:
     parameters:
@@ -264,6 +280,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}/versions:
     parameters:
@@ -290,6 +308,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     post:
       operationId: saveVersion
       summary: Save a version
@@ -320,6 +340,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}/versions/{number}:
     parameters:
@@ -340,6 +362,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/pages/{id}/versions/{number}/restore:
     parameters:
@@ -382,6 +406,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidDocument'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/media/direct_uploads:
     post:
@@ -433,6 +459,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/media:
     get:
@@ -455,6 +483,8 @@ paths:
                       $ref: '#/components/schemas/MediaItem'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
     post:
       operationId: createMedia
       summary: Add an uploaded image to the library
@@ -492,6 +522,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/media/{id}:
     parameters:
@@ -525,6 +557,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       operationId: deleteMedia
       summary: Delete an image
@@ -542,6 +576,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MediaInUseError'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/site-style:
     get:
@@ -557,6 +593,8 @@ paths:
                 $ref: '#/components/schemas/SiteStyle'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
     put:
       operationId: setSiteStyle
       summary: Change the site style
@@ -586,6 +624,8 @@ paths:
           $ref: '#/components/responses/MalformedJson'
         '422':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
   parameters:
@@ -655,6 +695,12 @@ components:
               - $ref: '#/components/schemas/InvalidRequestError'
               - $ref: '#/components/schemas/DuplicateKeyError'
               - $ref: '#/components/schemas/InvalidDocumentError'
+    InternalError:
+      description: The server failed in a way it did not foresee. The failure is in the server's log; the answer says nothing about it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InternalErrorError'
 
   schemas:
     Slug:
@@ -966,6 +1012,15 @@ components:
       properties:
         error:
           const: not_found
+        message:
+          type: string
+    InternalErrorError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: internal_error
         message:
           type: string
     ConflictError:

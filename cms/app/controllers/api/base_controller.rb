@@ -18,6 +18,15 @@ module Api
     # parse it a second time for nothing.
     wrap_parameters false
 
+    # Anything no handler below names: logged with its backtrace, and
+    # answered in the error shape, never as Rails' HTML error page. It is
+    # declared first because rescue_from tries the handlers declared last
+    # first, so every particular one below wins over it.
+    rescue_from StandardError do |e|
+      logger&.error("#{e.class}: #{e.message}\n  #{Array(e.backtrace).first(20).join("\n  ")}")
+      render_error :internal_server_error, "internal_error", "The server failed to answer this request."
+    end
+
     # A body Rails itself failed to parse, in an action that reads params.
     rescue_from ActionDispatch::Http::Parameters::ParseError do
       render_error :bad_request, "malformed_json", "The body is not valid JSON."
@@ -85,8 +94,14 @@ module Api
       value.to_i
     end
 
-    def path_string(name)
-      request.path_parameters[name].to_s
+    # A string id from the path, in the form its parameter has in
+    # openapi.yaml, or not found: anything else (a %00, a space) never
+    # reaches a query.
+    def path_string(name, pattern)
+      value = request.path_parameters[name]
+      raise ActiveRecord::RecordNotFound unless value.is_a?(String) && value.match?(pattern)
+
+      value
     end
 
     # Attributes a controller's body names differently from the model, as

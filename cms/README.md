@@ -306,7 +306,23 @@ the schema file) each failed it.
 `keyword` of the rule broken, and the `blockPointer` of the block that
 holds the value, so the editor can mark it. A body with a member name
 repeated in one object gets 422 `duplicate_key` with its `pointer`; a body
-that is not JSON or not UTF-8 gets 400 `malformed_json`.
+that is not JSON or not UTF-8 gets 400 `malformed_json`. A string member
+holding U+0000 gets 422 with keyword `pattern` at its pointer, a media id
+in the path that is not in the form of one gets 404, and so does any other
+address or method under `/api/`. A failure nothing foresaw is logged and
+answered 500 `internal_error`, in the same shape: the API never answers
+with an HTML page.
+
+U+0000 is refused before any query because SQLite stops reading a
+statement's text at it. Development turns prepared statements off for its
+query log tags, so values travel inside the SQL text, and a slug, a file
+name, a checksum or a media id holding one failed there with an HTML 500.
+[test/integration/api/unexpected_input_test.rb](test/integration/api/unexpected_input_test.rb)
+sends each of them the way development does; with the refusal taken out,
+the slug of a new page, the next address and the upload got a 500, the
+media id a 500 instead of a 404, and an alt text was refused by the model
+under another keyword. With the catch-all handler taken out, a planted
+failure reached the test as an exception instead of the JSON 500.
 
 **Saving.** The revision check is one statement,
 `UPDATE drafts SET ..., revision = revision + 1 WHERE page_id = ? AND revision = ?`,

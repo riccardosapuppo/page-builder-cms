@@ -58,7 +58,7 @@ module Api
     private
 
     def find_item
-      MediaItem.find_by!(public_id: path_string(:id))
+      MediaItem.find_by!(public_id: path_string(:id, MediaItem::PUBLIC_ID))
     end
 
     def record_error_pointers
