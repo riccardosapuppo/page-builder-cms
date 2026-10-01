@@ -25,6 +25,11 @@ gem "bootsnap", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+# Validates page documents against schema/block-document.schema.json, the
+# same file the editor validates with. Pinned exactly: the two validators
+# are compared on a shared corpus, and a new version is a new comparison.
+gem "json_schemer", "2.5.0"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
