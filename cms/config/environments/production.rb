@@ -3,6 +3,15 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
+  # Secrets. No credentials file and no master key are committed (see
+  # cms/.gitignore), so production takes secret_key_base from the
+  # SECRET_KEY_BASE environment variable, which Rails reads before any
+  # credentials. Without it, production does not boot ("Missing
+  # `secret_key_base`"). For a local production run with nothing to protect,
+  # such as measurements and CI, SECRET_KEY_BASE_DUMMY=1 makes Rails use a
+  # throwaway secret from tmp/local_secret.txt instead. Development and test
+  # fall back to that file on their own.
+
   # Code is not reloaded between requests.
   config.enable_reloading = false
 
