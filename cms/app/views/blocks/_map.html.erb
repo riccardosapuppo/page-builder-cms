@@ -1,0 +1,5 @@
+<%# A map of a point, loaded from OpenStreetMap only when the visitor opens it: the same details and lazy iframe as the video. The closed card is the theme's drawing of a shore, with a pin in the middle, and the block's label. -%>
+<%- props = block_props(block) -%>
+<%- src = RenderPolicy.map_src(props["latitude"], props["longitude"], props["zoom"]) -%>
+<%- label = prop_text(props, "label") -%>
+<%= tag.div(**block_root(block, [ "w", "w-map", BlockStyle.visibility_classes(block_style(block)) ])) do %><% if src %><%= tag.details(class: "sw-embed sw-map") do %><%= tag.summary(class: "sw-embed-load") do %><%= tag.span(tag.span(class: "sw-map-pin"), class: "sw-embed-media sw-map-poster") %><%= tag.span(safe_join([ tag.span(label, class: "sw-embed-label"), tag.span(safe_join([ tag.span("Load map", class: "sw-when-closed"), tag.span("Hide map", class: "sw-when-open") ]), class: "sw-btn sw-btn-small") ]), class: "sw-embed-bar sw-embed-bar-row") %><% end %><%= tag.div(tag.iframe(src: src, title: "Map: #{label}", loading: "lazy", referrerpolicy: "strict-origin-when-cross-origin"), class: "sw-embed-frame sw-embed-frame-map") %><% end %><% end %><% end %>

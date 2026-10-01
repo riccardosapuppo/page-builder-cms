@@ -1,0 +1,4 @@
+<%# A grid of images, three across on desktop and two below; spaceBetween is the gap between them. An item with nothing to show is left out. -%>
+<%- style = block_style(block) -%>
+<%- images = Array(block_props(block)["items"]).filter_map { |item| block_img(item, media) } -%>
+<%= tag.div(**block_root(block, [ "w", "w-gallery", BlockStyle.visibility_classes(style) ])) do %><%= tag.ul(class: [ "sw-gallery", BlockStyle.classes(style, "spaceBetween") ].flatten) do %><%= safe_join(images.map { |image| tag.li(image) }) %><% end %><% end %>

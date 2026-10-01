@@ -1,0 +1,3 @@
+<%# A horizontal line; its colour is the colour of the line. -%>
+<%- style = block_style(block) -%>
+<%= tag.div(**block_root(block, [ "w", "w-divider", BlockStyle.classes(style, "color", family: "line"), BlockStyle.visibility_classes(style) ])) do %><%= tag.hr(class: "sw-divider") %><% end %>

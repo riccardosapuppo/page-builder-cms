@@ -1,0 +1,4 @@
+<%# A band across the page: its columns side by side on desktop, stacked below. The column count is the number of children; spaceBetween is the gap between the columns. -%>
+<%- style = block_style(block) -%>
+<%- columns = Array(block["children"]).select { |child| child.is_a?(Hash) && child["type"] == "column" } -%>
+<%= tag.section(**block_root(block, [ "sec", BlockStyle.classes(style, "background"), BlockStyle.classes(style, "sectionSpace"), BlockStyle.visibility_classes(style) ], id: RenderPolicy.anchor(block_props(block)["anchor"]), data: { columns: columns.size })) do %><%= tag.div(class: [ "sw-inner", "cols", "cols-#{columns.size.clamp(1, 4)}", BlockStyle.classes(style, "spaceBetween", family: "cols-gap") ]) do %><%= render_blocks(columns, allow: %w[column], media: media) %><% end %><% end %>

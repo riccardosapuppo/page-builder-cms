@@ -1,0 +1,5 @@
+<%# An icon from schema/icons.svg, a title and a short text, side by side below the desktop layout. -%>
+<%- props = block_props(block) -%>
+<%- style = block_style(block) -%>
+<%- icon = props["icon"].is_a?(String) && SiteIcons[props["icon"]] ? props["icon"] : nil -%>
+<%= tag.div(**block_root(block, [ "w", "w-iconbox", "sw-iconbox", %w[color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: { icon: icon })) do %><%= site_icon(icon, css_class: "sw-icon") if icon %><%= tag.div(safe_join([ tag.h3(prop_text(props, "title")), tag.p(text_with_breaks(prop_text(props, "text"))) ])) %><% end %>

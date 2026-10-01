@@ -1,0 +1,3 @@
+<%# Empty space of one spacing step; screen readers skip it. -%>
+<%- size = BlockStyle::ALLOWED.fetch("spaceInside").include?(block_props(block)["size"]) ? block_props(block)["size"] : nil -%>
+<%= tag.div(**block_root(block, [ "w", "w-spacer", ("spacer-#{size}" if size), BlockStyle.visibility_classes(block_style(block)) ], aria: { hidden: true }, data: { size: size })) %>
