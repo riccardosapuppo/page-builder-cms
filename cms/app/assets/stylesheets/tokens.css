@@ -246,3 +246,12 @@
 @container site (width >= 800px) { .hide-desktop { display: none; } }
 @container site (560px <= width < 800px) { .hide-tablet { display: none; } }
 @container site (width < 560px) { .hide-phone { display: none; } }
+
+/* ---------- Spacer heights ---------- */
+.spacer-none { height: var(--space-none); }
+.spacer-xs { height: var(--space-xs); }
+.spacer-s { height: var(--space-s); }
+.spacer-m { height: var(--space-m); }
+.spacer-l { height: var(--space-l); }
+.spacer-xl { height: var(--space-xl); }
+.spacer-xxl { height: var(--space-xxl); }

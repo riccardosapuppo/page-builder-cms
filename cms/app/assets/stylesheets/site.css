@@ -1,0 +1,268 @@
+/* ==========================================================================
+   Slack Water, the site theme of the published pages: design/theme.css,
+   the approved mock's theme, carried over to the markup the block partials
+   write (app/views/blocks/). Same class names where the mock and the
+   renderer mean the same thing (.site, .sw, .sec, .cols, .col, .w, .sw-btn,
+   .sw-iconbox, .sw-gallery, .sw-embed, .sw-quote, .sw-accordion, the header
+   and footer), and the same container queries on the page root: layout
+   changes with the width of .site, never with the viewport.
+
+   The values come from tokens.css, generated from schema/tokens.json:
+   palette (--sw-<slot>), spacing (--space-<step>, --section-<step>) and type
+   (--fs-<step>, --lh-<step>), plus one class per token a block's style may
+   name. tokens.css comes after this file in the page, so a block's own
+   setting wins over the theme's default for the same property.
+
+   Where the mock styled one section of its example page by name (the hero,
+   the icon-box band, the quote band), the page now gets the same look from
+   the blocks' own settings, which the seed's home page sets
+   (db/seeds.rb).
+   ========================================================================== */
+
+@font-face { font-family: "Archivo"; src: url("archivo-variable.woff2") format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; font-display: block; }
+@font-face { font-family: "Source Serif 4"; src: url("source-serif-4-variable.woff2") format("woff2"); font-weight: 200 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Source Serif 4"; src: url("source-serif-4-variable-italic.woff2") format("woff2"); font-weight: 200 900; font-style: italic; font-display: block; }
+
+/* ---------- What the mock's page took from its editor stylesheet ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
+.sw :is(h1, h2, h3, h4, p, ul, ol, figure, blockquote) { margin: 0; }
+.sw :is(h1, h2, h3, h4) { font: inherit; letter-spacing: inherit; }
+
+/* ---------- The page root: palette and type, from tokens.css ---------- */
+.site {
+  container: site / inline-size;
+  position: relative;
+  min-height: 100vh;
+  background: var(--sw-background);
+  color: var(--sw-text);
+}
+.sw {
+  --pad-x: var(--section-s);
+  --sec-y: var(--section-l);
+  --col-gap: var(--space-l);
+  --cols-gap: var(--space-xxl);
+
+  font-family: "Source Serif 4", Georgia, serif;
+  font-optical-sizing: auto;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-variant-numeric: normal;
+  color: var(--sw-text);
+  overflow-wrap: break-word;
+}
+.sw :focus-visible { outline: 3px solid var(--sw-text); outline-offset: 3px; }
+.sw a { color: inherit; }
+.sw p { max-width: 36em; }
+
+.sw-skip {
+  position: absolute; left: 12px; top: -80px; z-index: 3;
+  padding: 10px 16px; border-radius: 999px;
+  background: var(--sw-text); color: var(--sw-background);
+  font: 600 15px/1.2 "Archivo", sans-serif; text-decoration: none;
+}
+.sw-skip:focus { top: 12px; }
+
+/* ---------- Structure: section > columns > widgets ---------- */
+.sw-inner { max-width: calc(1120px + 2 * var(--pad-x)); margin-inline: auto; padding-inline: var(--pad-x); }
+.sec { padding-block: var(--sec-y); }
+.cols { display: grid; gap: var(--space-xxl) var(--cols-gap); }
+.cols-1 { grid-template-columns: minmax(0, 1fr); }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* A column's "Space inside" (pad-*) and vertical alignment (valign-*) come from tokens.css. */
+.col { display: flex; flex-direction: column; gap: var(--col-gap); min-width: 0; }
+.w { min-width: 0; }
+
+/* ---------- Heading ---------- */
+.w-heading {
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+  font-weight: 700; font-stretch: 125%; letter-spacing: -.015em;
+  color: var(--heading-color, var(--sw-primary));
+  text-wrap: balance;
+}
+.w-heading.size-display { letter-spacing: -.022em; text-wrap: pretty; }
+.w-heading a { text-decoration: none; }
+.w-heading a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .12em; }
+
+/* ---------- Rich text ---------- */
+/* The editor shows every space the author typed (ProseMirror's pre-wrap), so the page does too. */
+.w-text p { white-space: pre-wrap; }
+.w-text > * + * { margin-top: .75em; }
+.w-text :is(ul, ol) { padding-left: 1.4em; }
+.w-text li + li, .w-text li > * + * { margin-top: .3em; }
+.w-text a { color: var(--link-color, var(--sw-primary)); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
+.w-text.size-large p { max-width: 31em; }
+
+/* ---------- Image ---------- */
+.sw-figure img { display: block; width: 100%; height: auto; border-radius: 12px; }
+
+/* ---------- Button ---------- */
+.w-button .sw-btn { vertical-align: top; }
+.sw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 54px; padding: 6px 30px; border: 0; border-radius: 999px;
+  background-color: var(--sw-accent); color: var(--sw-text);
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+  font-size: 17px; line-height: 1.25; font-weight: 650; font-stretch: 115%; letter-spacing: .005em;
+  text-align: center; text-decoration: none; cursor: pointer;
+}
+a.sw-btn:not([href]) { cursor: default; }
+.sw-btn-small { min-height: 40px; padding: 0 20px; font-size: 15px; }
+
+/* ---------- Divider and spacer ---------- */
+.sw-divider { margin: 0; border: 0; border-top: 1px solid var(--line-color, var(--sw-muted)); }
+
+/* ---------- Header and footer: part of the theme, on every page ---------- */
+.sw-header { position: relative; z-index: 2; }
+.sw-header-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 80px; }
+.sw-brand, .sw-nav, .sw-menu-button, .sw-accordion summary, .sw-quote figcaption {
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+}
+.sw-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
+.sw-brand-mark { width: 30px; height: 30px; flex: none; }
+.sw-brand-mark circle { fill: var(--sw-primary); }
+.sw-brand-mark .sun { fill: var(--sw-accent); }
+.sw-brand-mark .line { stroke: var(--sw-background); stroke-width: 2; }
+.sw-brand-mark-inv circle { fill: var(--sw-background); }
+.sw-brand-mark-inv .line { stroke: var(--sw-text); }
+.sw-nav { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 500; font-stretch: 110%; }
+.sw-nav-links { display: flex; align-items: center; gap: 28px; margin-right: 16px; }
+.sw-nav-links a { text-decoration: none; }
+.sw-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+/* Below the desktop layout the links fold into a Menu, which opens as a sheet: a details element, so it needs no script. */
+.sw-menu { display: none; }
+.sw-menu-button {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px;
+  border-radius: 999px; background: var(--sw-background); color: var(--sw-text);
+  box-shadow: inset 0 0 0 1.5px var(--sw-text);
+  font-size: 15px; font-weight: 650; font-stretch: 110%; cursor: pointer; list-style: none;
+}
+.sw-menu-button::-webkit-details-marker { display: none; }
+.sw-menu-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.sw-menu-sheet {
+  position: absolute; right: var(--pad-x); top: calc(100% - 8px); z-index: 2;
+  display: grid; min-width: 220px; padding: 8px;
+  border-radius: 12px; background: var(--sw-background);
+  box-shadow: 0 0 0 1.5px var(--sw-text), 0 16px 32px -12px rgb(20 48 42 / .35);
+}
+.sw-menu-sheet a { display: block; padding: 12px 14px; border-radius: 8px; font-size: 17px; font-weight: 600; text-decoration: none; }
+.sw-menu-sheet a:hover { background: var(--sw-soft); }
+.sw-footer { background: var(--sw-text); color: var(--sw-background); }
+.sw-footer-row { display: flex; align-items: center; gap: 14px; padding-block: var(--space-xxl); font-size: 16px; }
+.sw-footer strong { font-weight: 600; }
+
+/* ---------- Icon box ---------- */
+.sw-iconbox { display: grid; gap: var(--space-m); align-content: start; }
+.sw-icon { width: 48px; height: 48px; fill: none; stroke: var(--icon-color, var(--sw-primary)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sw-icon .fill { fill: var(--sw-accent); }
+.sw-iconbox h3 { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); font-weight: 600; font-stretch: 125%; letter-spacing: -.012em; margin-bottom: var(--space-s); }
+
+/* ---------- Gallery ---------- */
+.sw-gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-m); }
+.sw-gallery img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
+
+/* ---------- Video and map: nothing loads until the visitor opens them ----------
+   A closed details holds a lazy iframe; the closed card shows the theme's own
+   picture, drawn here in CSS, so the page asks nothing of the provider. */
+.sw-embed { border-radius: 12px; overflow: hidden; background: var(--sw-text); color: var(--sw-background); }
+.sw-embed :focus-visible { outline-color: var(--sw-background); }
+.sw-embed-load { position: relative; display: block; cursor: pointer; list-style: none; }
+.sw-embed-load::-webkit-details-marker { display: none; }
+/* The card clips its overflow, so the focus ring is drawn inside it. */
+.sw-embed-load:focus-visible { outline: none; }
+.sw-embed-load:focus-visible::after { content: ""; position: absolute; inset: 6px; z-index: 2; border: 3px solid var(--sw-background); border-radius: 8px; pointer-events: none; }
+.sw-embed-media { position: relative; display: block; aspect-ratio: 16 / 9; }
+.sw-embed-bar { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px 16px; }
+.sw-embed-bar strong { font: 650 18px/1.25 "Archivo", sans-serif; font-stretch: 115%; }
+.sw-embed-bar small { font-size: 15px; line-height: 1.4; }
+.sw-embed-bar-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+.sw-embed-label { font-size: 16px; line-height: 1.4; }
+.sw-embed-bar-row .sw-btn { flex: none; }
+.sw-when-open { display: none; }
+.sw-embed[open] .sw-when-open { display: inline; }
+.sw-embed[open] .sw-when-closed, .sw-embed[open] .sw-embed-media { display: none; }
+.sw-embed-frame { aspect-ratio: 16 / 9; background: var(--sw-text); }
+.sw-embed-frame-map { aspect-ratio: 8 / 5; }
+.sw-embed-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* The video card: the bay at dawn, flat bands of sea, sky and sun on the water. */
+.sw-video-poster {
+  background:
+    linear-gradient(#F7C97A, #F7C97A) 71.25% 51.6% / 10% .7% no-repeat,
+    linear-gradient(#F7C97A, #F7C97A) 71.25% 54.1% / 6.25% .7% no-repeat,
+    linear-gradient(#F7C97A, #F7C97A) 72.5% 57.2% / 12.5% .9% no-repeat,
+    linear-gradient(#F7C97A, #F7C97A) 71.25% 61% / 5% .9% no-repeat,
+    linear-gradient(#F7C97A, #F7C97A) 71.25% 65.4% / 8.75% 1.1% no-repeat,
+    linear-gradient(to bottom, var(--sw-primary) 0 27.8%, #3F7A68 27.8% 45.6%, #E8B4A0 45.6% 48%, #F7C97A 48% 49.1%, var(--sw-text) 49.1%);
+}
+.sw-play-dot { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 60px; height: 60px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--sw-accent); color: var(--sw-text); }
+.sw-play-icon { width: 24px; height: 24px; margin-left: 3px; fill: currentColor; }
+/* The map card: a shore seen from above, land, sand and two depths of sea, with the pin in the middle. */
+.sw-map-poster {
+  aspect-ratio: 8 / 5;
+  background:
+    radial-gradient(circle at 128% 38%, #8FB3A4 0 52%, #B7CFC5 52% 60%, #D5DAD7 60% 64%, transparent 64%),
+    linear-gradient(170deg, transparent 0 30%, #FFFFFF 30% 32.5%, transparent 32.5%),
+    var(--sw-soft);
+}
+.sw-map-pin { position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; transform: translate(-50%, calc(-100% - 7px)); }
+.sw-map-pin::before { content: ""; position: absolute; inset: 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); transform-origin: 50% 50%; background: var(--sw-accent); box-shadow: 0 0 0 2.5px var(--sw-text); }
+.sw-map-pin::after { content: ""; position: absolute; left: 50%; top: 42%; width: 10px; height: 10px; border-radius: 50%; background: var(--sw-text); transform: translate(-50%, -50%); }
+
+/* ---------- Quote ---------- */
+.sw-quote { display: grid; gap: var(--space-m); max-width: 24em; }
+.sw-quote-mark { width: 44px; height: 33px; fill: var(--icon-color, var(--sw-primary)); }
+/* The quote uses its step of the type scale (Heading 3 unless set), in the serif italic. */
+.sw-quote blockquote p { font-style: italic; font-weight: 400; max-width: 20em; }
+.sw-quote figcaption { font-size: 16px; line-height: 1.5; font-weight: 500; font-stretch: 110%; font-style: normal; color: var(--sw-muted); }
+
+/* ---------- Accordion ---------- */
+.sw-accordion details { border-top: 1px solid var(--line-color, var(--sw-muted)); }
+.sw-accordion details:last-child { border-bottom: 1px solid var(--line-color, var(--sw-muted)); }
+.sw-accordion summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 19px; line-height: 1.3; font-weight: 600; font-stretch: 115%; list-style: none; cursor: pointer; }
+.sw-accordion summary::-webkit-details-marker { display: none; }
+.sw-accordion summary::after { content: ""; width: 14px; height: 14px; flex: none; background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat, linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 2px 14px no-repeat; }
+.sw-accordion details[open] summary::after { background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat; }
+.sw-accordion details p { padding-bottom: 20px; }
+
+/* ---------- Tablet layout: the page root is narrower than 800 ---------- */
+@container site (width < 800px) {
+  .sw {
+    --pad-x: var(--space-xl);
+    --sec-y: var(--section-s);
+    --cols-gap: var(--space-xl);
+  }
+  .cols { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
+  .sw-nav-links { display: none; }
+  .sw-menu { display: block; }
+  .sw-iconbox { grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-l); align-items: start; }
+  .sw-iconbox h3 { margin-bottom: var(--space-xs); }
+  .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- Phone layout: narrower than 560 ---------- */
+@container site (width < 560px) {
+  .sw {
+    --pad-x: var(--space-l);
+    --sec-y: var(--space-xxl);
+  }
+  .sw-header-row { height: 64px; gap: 12px; }
+  .sw-brand { font-size: 17px; gap: 8px; }
+  .sw-brand .sw-brand-mark { width: 26px; height: 26px; }
+  .sw-nav { gap: 8px; }
+  .sw-nav .sw-btn-small { padding: 0 16px; }
+  .sw-menu-button { padding: 0 14px 0 10px; }
+  .w-button .sw-btn { display: flex; width: 100%; }
+  .sw-figure img { border-radius: 8px; }
+  .sw-iconbox { grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-m); }
+  .sw-icon { width: 40px; height: 40px; }
+  .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
+  .sw-gallery img { border-radius: 8px; }
+  .sw-embed-bar { padding: 12px 14px 14px; }
+  .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .sw-embed-bar small { font-size: 14px; }
+  .sw-play-dot { width: 52px; height: 52px; }
+  .sw-footer-row { align-items: flex-start; font-size: 15px; }
+}

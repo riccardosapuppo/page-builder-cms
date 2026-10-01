@@ -62,7 +62,15 @@ module SiteTheme
         out << "}\n"
       end
       out << visibility(tablet_below: tablet_below, phone_below: phone_below)
+      out << spacers(schema)
       out.join
+    end
+
+    # A spacer's size is a prop, not a style: one height for every device.
+    def spacers(schema)
+      sizes = schema.fetch("$defs").fetch("spaceToken").fetch("enum")
+      "\n/* ---------- Spacer heights ---------- */\n" +
+        sizes.map { |s| ".spacer-#{s} { height: var(--space-#{s}); }\n" }.join
     end
 
     def header
