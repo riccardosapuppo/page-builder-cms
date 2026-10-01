@@ -1,0 +1,17 @@
+{
+  "name": "page-builder-cms",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages; a React and TypeScript editor builds them.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint:openapi": "node tools/lint-openapi.ts"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.57.0"
+  }
+}
