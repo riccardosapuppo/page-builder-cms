@@ -1,14 +1,34 @@
 Rails.application.routes.draw do
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+  # The JSON API of the editor, described by cms/openapi.yaml. Every route
+  # is written out, so this list and the document can be read side by side.
+  # No format suffix: /api/pages/1.json is not an address.
+  scope "api", module: "api", as: "api", format: false do
+    get "pages", to: "pages#index"
+    post "pages", to: "pages#create"
+    get "pages/:id", to: "pages#show"
+    patch "pages/:id", to: "pages#update"
 
-  # Defines the root path route ("/")
-  # root "posts#index"
+    get "pages/:id/draft", to: "drafts#show"
+    put "pages/:id/draft", to: "drafts#update"
+
+    post "pages/:id/publish", to: "publications#create"
+
+    get "pages/:id/versions", to: "versions#index"
+    post "pages/:id/versions", to: "versions#create"
+    get "pages/:id/versions/:number", to: "versions#show"
+    post "pages/:id/versions/:number/restore", to: "versions#restore"
+
+    post "media/direct_uploads", to: "direct_uploads#create"
+    get "media", to: "media#index"
+    post "media", to: "media#create"
+    patch "media/:id", to: "media#update"
+    delete "media/:id", to: "media#destroy"
+
+    get "site-style", to: "site_styles#show"
+    put "site-style", to: "site_styles#update"
+  end
 end

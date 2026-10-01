@@ -17,6 +17,14 @@ class SiteStyle < ApplicationRecord
     find_by(id: ID) || new(id: ID, palette: SiteTokens.default_palette, type_scale: SiteTokens.default_type_scale)
   end
 
+  # Errors on one slot are recorded as "palette/<slot>"; this is the value
+  # such an error is about.
+  def read_attribute_for_validation(name)
+    return super unless name.start_with?("palette/")
+
+    palette.is_a?(Hash) ? palette[name.to_s.delete_prefix("palette/")] : nil
+  end
+
   private
 
   # The palette must name every slot, each with one of that slot's tones,
