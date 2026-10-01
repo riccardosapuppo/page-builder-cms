@@ -6,6 +6,17 @@ written. It is the reference the Rails templates and the React editor are
 built against. Nothing here is the product: there is no build, no server and
 no behaviour beyond switching between still states.
 
+**This folder is frozen.** It stays as it was approved on 1 October 2026,
+so it can always be compared with what the code draws; it is not edited to
+follow the code. In particular `design/tokens.json` is the mock's own copy
+and no longer the project's tokens: [`../schema/tokens.json`](../schema/tokens.json)
+is the canonical file, and it has moved on (the palette slots and their
+curated tones, the type scales, the image crops and other additions the
+code needed). Nothing in `cms/`, `schema/` or `tools/` reads
+`design/tokens.json`; only this folder's own `tools/contrast.mjs` does by
+default, and `node design/tools/contrast.mjs schema` runs the same check
+on the canonical file.
+
 **Accent:** Tool yellow `#EDC200`, always with graphite edges and graphite
 text on it, chosen on 1 October 2026 from three candidates shown in the same
 editor (`shots-extra/accent-choice.png`).
@@ -50,7 +61,9 @@ the accent comparison).
 - `styles.css`: the editor's chrome. `theme.css`: the example site's theme,
   shared by the canvas and the published page.
 - `tokens.json`: colours, contrast pairs, spacing, type, radii and
-  breakpoints. The project's canonical copy is `schema/tokens.json`.
+  breakpoints, as approved. The project's canonical file is
+  `schema/tokens.json`, which has diverged from this one (see the top of
+  this README).
 - `mark.svg`: the mark, also the favicon.
 - `img/`: the example site's illustrations, drawn for the mock.
 - `fonts/`: Instrument Sans for the editor, Archivo and Source Serif 4 for
