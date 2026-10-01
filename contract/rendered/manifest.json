@@ -10,10 +10,10 @@
     "traps-text.json": "b8b5471b574ea86a163aa865a8079654886a529cc539caf79d7cec161d221a56"
   },
   "rendered": {
-    "edge.html": "7313c1c48b197808816d65c4ac8ae2337253be300135f9593d46e78291566c83",
+    "edge.html": "b14ac0d018c2da05105d05728056443bda40ef88732a8c078224c5032968a837",
     "empty.html": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "large-500.html": "10a3cf20798f2c816bb85187a4372f0700dc5ed08f9ab5506ad3580865d5249e",
-    "traps-media.html": "225918e5f54354addaf58ae24d7dfdd582e1e4d151efb4657d3f7a6ce1f494be",
+    "large-500.html": "35cf074a83c4fbf6638e9106d292f3eefae79c7b9ff5a8b2a39afcef95b7c3bc",
+    "traps-media.html": "6db9387e1bb472e41fc3752eccda601a5c4cfbcdd9ec2c7f00aa688acf283dd4",
     "traps-structure.html": "303e92413747c3ab5c75c4447235edaaaea7cba0860b06ae5fd23d0c02973599",
     "traps-text.html": "e3ba952de547c0b3be38efe47980b33e9639f04e74ea82ff8b3c16ebc36224b6"
   },
@@ -21,7 +21,7 @@
     "cms/app/helpers/blocks_helper.rb": "758966b74e3a776d25ac861d5b5069041b5f74c0db3cfd1a20980ef64c2907da",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
     "cms/app/models/block_style.rb": "6303098b270a78c92af2de21d659d75a47d91e6aafab6985ec20a1b42f70a6db",
-    "cms/app/models/render_policy.rb": "f8ed39d79eb303877487932e50c85719cd67f4e3b7750989fd0919315362bb71",
+    "cms/app/models/render_policy.rb": "7f97f23b2d7176ba9bd8ae150d1eea8b82d408cf62b6ef8d26504c3157b60f22",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "b6d1c422b758c7ff3c6d60910c3c8b9d0cf454274eae4cc811630f55bff9f940",
     "cms/app/views/blocks/_button.html.erb": "e7b8cb1172d829cdb8b58ef98315dc89fb7719b1fd1ff65bc4b78f9ecf566a15",

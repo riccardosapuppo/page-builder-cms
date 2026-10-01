@@ -74,15 +74,16 @@ module RenderPolicy
   end
 
   # The map address for a point and a zoom level, or nil. The frame shows
-  # an area about 800 by 500 pixels at that zoom, centred on the point,
-  # with a marker on it. Numbers are written with six decimals, about
-  # 10 cm, so the address is the same on every machine.
+  # an area about 800 by 450 pixels at that zoom, the 16:9 of the card the
+  # approved design draws, centred on the point, with a marker on it.
+  # Numbers are written with six decimals, about 10 cm, so the address is
+  # the same on every machine.
   def map_src(latitude, longitude, zoom)
     return nil unless finite?(latitude) && finite?(longitude) && zoom.is_a?(Integer)
     return nil unless latitude.between?(-90, 90) && longitude.between?(-180, 180) && zoom.between?(1, 19)
 
     half_width = 360.0 / (2**zoom) * 400 / 256
-    half_height = half_width * 500 / 800 * Math.cos([ latitude.abs, 85 ].min * Math::PI / 180)
+    half_height = half_width * 450 / 800 * Math.cos([ latitude.abs, 85 ].min * Math::PI / 180)
     # Zoomed far out, the area would run past the edges of the map: it is
     # cut at the meridian 180 and at 85 degrees, where the map itself ends.
     box = [

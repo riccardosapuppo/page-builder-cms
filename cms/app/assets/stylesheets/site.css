@@ -189,8 +189,8 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-when-open { display: none; }
 .sw-embed[open] .sw-when-open { display: inline; }
 .sw-embed[open] .sw-when-closed, .sw-embed[open] .sw-embed-media { display: none; }
+/* Closed or open, the video and the map are 16:9, as the design draws both cards. */
 .sw-embed-frame { aspect-ratio: 16 / 9; background: var(--sw-text); }
-.sw-embed-frame-map { aspect-ratio: 8 / 5; }
 .sw-embed-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
 /* The video card: the bay at dawn, flat bands of sea, sky and sun on the water. */
 .sw-video-poster {
@@ -206,7 +206,6 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-play-icon { width: 24px; height: 24px; margin-left: 3px; fill: currentColor; }
 /* The map card: a shore seen from above, land, sand and two depths of sea, with the pin in the middle. */
 .sw-map-poster {
-  aspect-ratio: 8 / 5;
   background:
     radial-gradient(circle at 128% 38%, #8FB3A4 0 52%, #B7CFC5 52% 60%, #D5DAD7 60% 64%, transparent 64%),
     linear-gradient(170deg, transparent 0 30%, #FFFFFF 30% 32.5%, transparent 32.5%),
@@ -222,7 +221,8 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-quote-mark { width: 44px; height: 33px; fill: var(--icon-color, var(--sw-primary)); }
 /* The quote uses its step of the type scale (Heading 3 unless set), in the serif italic. */
 .sw-quote blockquote p { font-style: italic; font-weight: 400; max-width: 20em; }
-.sw-quote figcaption { font-size: 16px; line-height: 1.5; font-weight: 500; font-stretch: 110%; font-style: normal; color: var(--sw-muted); }
+/* The caption takes the body's line height, as in the mock, not the quote's step's. */
+.sw-quote figcaption { font-size: 16px; line-height: var(--lh-body); font-weight: 500; font-stretch: 110%; font-style: normal; color: var(--sw-muted); }
 
 /* ---------- Accordion ---------- */
 .sw-accordion details { border-top: 1px solid var(--line-color, var(--sw-muted)); }
