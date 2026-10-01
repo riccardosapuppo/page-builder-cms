@@ -421,10 +421,36 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
     ["sectionSpaceToken", enumOf(defs.sectionSpaceToken) ?? [], Object.keys((space["site-section"] ?? {}) as Obj)],
     ["typeStep", enumOf(defs.typeStep) ?? [], steps],
   ];
+  // The palette slots: the schema's names are the keys of site-tones, and a
+  // background is "none" or a slot. Each slot's tones are colours tokens.json
+  // defines, and its default is one of its tones: the server reads the same
+  // list to accept or refuse a site style.
+  const siteTones = (tokens["site-tones"] ?? {}) as Obj;
+  const slots = Object.keys(siteTones).filter((k) => !k.startsWith("$"));
+  checks.push(["paletteSlot", enumOf(defs.paletteSlot) ?? [], slots]);
+  checks.push(["backgroundToken", enumOf(defs.backgroundToken) ?? [], ["none", ...slots]]);
+  const colors = (tokens.color ?? {}) as Obj;
+  let tones = 0;
+  for (const slot of slots) {
+    const entry = siteTones[slot];
+    const list = isObject(entry) && Array.isArray(entry.tones) ? entry.tones : [];
+    if (list.length === 0) problem("tokens", `site-tones/${slot} has no tones`);
+    const names = list.map((t) => (isObject(t) ? t.color : undefined));
+    for (const name of names) {
+      tones++;
+      if (typeof name !== "string" || typeof colors[name] !== "string") problem("tokens", `site-tones/${slot} names the tone ${JSON.stringify(name)}, which is not a colour of tokens.json`);
+    }
+    if (!isObject(entry) || !names.includes(entry.default)) problem("tokens", `site-tones/${slot} has a default that is not one of its tones`);
+  }
+  const scale = (tokens["site-type-scale"] ?? {}) as Obj;
+  const choices = Array.isArray(scale.choices) ? scale.choices.map((c) => (isObject(c) ? c.name : undefined)) : [];
+  if (choices.length === 0) problem("tokens", "site-type-scale has no choices");
+  if (!choices.includes(scale.default)) problem("tokens", "site-type-scale has a default that is not one of its choices");
   for (const [name, values, names] of checks) {
+    if (names.length === 0) problem("tokens", `tokens.json has no names for $defs/${name}`);
     if (!sameList(values, names)) problem("tokens", `$defs/${name} is ${JSON.stringify(values)}, tokens.json has ${JSON.stringify(names)}`);
   }
-  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json (palette slots are not in tokens.json; see README)`);
+  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json; ${tones} tones over ${slots.length} slots, ${choices.length} type-scale choices`);
 }
 
 // --- 6. the schema in both engines, and the README example -------------------------------

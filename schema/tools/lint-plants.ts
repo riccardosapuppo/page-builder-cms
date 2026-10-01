@@ -93,6 +93,11 @@ const plants: Plant[] = [
     plant: (s) => { s.$defs.spaceToken.enum.push("xxxl"); },
   },
   {
+    name: "a palette slot that tokens.json does not have",
+    expect: "$defs/paletteSlot is",
+    plant: (s) => { s.$defs.paletteSlot.enum.push("brand"); },
+  },
+  {
     name: "a README example that drifted from the corpus",
     expect: "is not valid/readme-example.json",
     readme: (text) => {

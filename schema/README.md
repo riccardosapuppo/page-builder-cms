@@ -70,7 +70,7 @@ The page document's one schema, and the design tokens it names.
 | `spaceInside`, `spaceBetween`; spacer `size` | `none` `xs` `s` `m` `l` `xl` `xxl` (None to XXL in the editor) | `space.site` in `tokens.json` |
 | `sectionSpace` | `section-s` `section-l` | `space.site-section` |
 | `textSize` | `display` `heading-1` `heading-2` `heading-3` `large` `body` `small` | `type.site` |
-| `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots of the site style (see below) |
+| `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots, `site-tones` in `tokens.json` (see below) |
 | `background` | `none` or a palette slot | as above |
 | `align` | `left` `center` `right` | |
 | `verticalAlign` | `top` `middle` `bottom` | |
@@ -78,10 +78,12 @@ The page document's one schema, and the design tokens it names.
 
 A block names a palette **slot**, never a tone: the site owner chooses the
 tone of each slot (Sea, Harbour, Kelp...), and every block that uses the
-slot follows. `tokens.json` lists the tones of the default site as
-`site-*` colours but has no list of slot names; the slots are the six of
-the approved mock (Text, Background, Primary, Accent, Soft, Muted, in
-`design/NOTES.md` and as `--sw-*` variables in `design/theme.css`).
+slot follows. `site-tones` in `tokens.json` lists the six slots of the
+approved mock, each with the tones the site owner may choose from (curated,
+never a free colour) and the tone a new site starts with; `site-type-scale`
+lists the other choice of the site style, Gentle, Balanced or Strong. The
+server reads the same two lists to accept or refuse a site style, so there
+is one list of slots and tones, not one per program.
 
 ## What the schema cannot say, and where it is said
 
@@ -270,8 +272,10 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
 - **Hierarchy,** read from the schema: the page holds sections, a section one
   to four columns, a column the widget types, and no widget holds children.
 - **Tokens:** the spacing, section-spacing and type-step enums are the names
-  in `tokens.json`. The palette slots are not in `tokens.json`, so they are
-  not checked.
+  in `tokens.json`; the palette-slot enum is the slots of `site-tones`, and
+  the background enum is `none` and those slots. Every tone is a colour of
+  `tokens.json`, every slot's default is one of its tones, and the type
+  scale's default is one of its choices.
 - **The schema** is valid draft 2020-12 to both engines, and the example at
   the top of this README is the corpus file `valid/readme-example.json`.
 
@@ -284,22 +288,29 @@ pattern probes: 23245 probes over 11 patterns, 9133 matched by both, 0 patterns 
 keywords: 341 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
 dispatch: #/$defs/block on type: 14 values, 14 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
 hierarchy: page > section (1-4 columns) > column > 12 widget types, 12 of them with no children
-tokens: spaceToken = 7 names, sectionSpaceToken = 2 names, typeStep = 7 names from tokens.json (palette slots are not in tokens.json; see README)
+tokens: spaceToken = 7 names, sectionSpaceToken = 2 names, typeStep = 7 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices
 schema: compiled by ajv, 0 meta-schema error(s) from json_schemer; README example compared with the corpus
 RESULT: PASS
 ```
 
 `npm run lint:plants` shows it can fail: it runs the lint on the schema as
-it is (it must pass), then on 13 copies with one fault planted in each, in
+it is (it must pass), then on 14 copies with one fault planted in each, in
 a temporary folder it removes afterwards. Each must fail for the reason
 planted: `\s`, a dot and a lone `{` in a pattern; with the subset check
 off, an inline modifier json_schemer refuses, a `\-` ajv refuses, and `\S`
 and a dot, which both compile but answer differently (`\S` on U+2028, the
 dot on a carriage return and the two Unicode line breaks); a `oneOf`; a
 widget type with no branch and one with two; an `if` without `required`;
-a section of five columns; a spacing step `tokens.json` lacks; and a README
-example that no longer matches the corpus. The last run: `planted 13,
-caught 13`.
+a section of five columns; a spacing step and a palette slot `tokens.json`
+lacks; and a README example that no longer matches the corpus. The last
+run: `planted 14, caught 14`.
+
+The checks on `tokens.json` itself were shown failing by hand once, on
+1 October 2026: with Kelp replaced by a `site-teal` tone that `color` does
+not define, and Soft's default set to `site-sea`, `node lint.ts` exited 1
+with `site-tones/primary names the tone "site-teal", which is not a colour
+of tokens.json` and `site-tones/soft has a default that is not one of its
+tones`. The file was then put back.
 
 ## Versions
 
