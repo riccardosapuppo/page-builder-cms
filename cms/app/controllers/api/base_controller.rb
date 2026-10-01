@@ -5,7 +5,8 @@ module Api
   #
   # ActionController::API, not the HTML application's base: no session, no
   # cookies, no CSRF token to fetch first. The API has no authentication, so
-  # the server listens on 127.0.0.1 only.
+  # the server listens on 127.0.0.1 only, and writes are refused from other
+  # sites (refuse_writes_from_other_sites).
   #
   # Every error has one shape:
   #   {"error": <code>, "message": <sentence>, ...}
@@ -65,6 +66,18 @@ module Api
       render_error :not_found, "not_found", "There is nothing at this address."
     end
 
+    # Listening on 127.0.0.1 keeps other machines out, not other sites: a
+    # page from anywhere, open in a browser on this machine, can send the
+    # API requests that need no CORS preflight (a form POST, a fetch with
+    # mode "no-cors" and a text/plain body), and the browser delivers them.
+    # So every write must say it is JSON, which no such request can do
+    # without a preflight the API never grants, and must not come from
+    # another site.
+    before_action :refuse_writes_from_other_sites
+
+    WRITES = %w[POST PUT PATCH DELETE].freeze
+    WRITES_WITH_A_BODY = %w[POST PUT PATCH].freeze
+
     # Rails reads the request's parameters for its log before the action
     # starts, outside the reach of rescue_from. A body whose strings are not
     # UTF-8 fails there with BadRequest, and would get an HTML error page.
@@ -75,6 +88,25 @@ module Api
     end
 
     private
+
+    # 403 when the browser says the request comes from another site
+    # (Sec-Fetch-Site), or when it names an origin other than the CMS's own
+    # (Origin): a browser sends Origin with every write. A client that is
+    # not a browser, such as curl or the repository's tools, sends neither,
+    # and is let through. Then 415 unless the body is declared JSON, even
+    # an empty one. The CMS's own origin is the one the request is
+    # addressed to; in production, config.hosts limits which names that can
+    # be, so a rebound domain cannot pass for it.
+    def refuse_writes_from_other_sites
+      return unless WRITES.include?(request.request_method)
+
+      origin = request.headers["Origin"]
+      if %w[cross-site same-site].include?(request.headers["Sec-Fetch-Site"]) || (origin && origin != request.base_url)
+        render_error :forbidden, "forbidden_origin", "The API takes writes only from the CMS's own origin."
+      elsif WRITES_WITH_A_BODY.include?(request.request_method) && request.media_type != "application/json"
+        render_error :unsupported_media_type, "unsupported_media_type", "Send the request as application/json, even with no body."
+      end
+    end
 
     def render_error(status, code, message, **extra)
       render json: { "error" => code, "message" => message, **extra.transform_keys(&:to_s) }, status: status

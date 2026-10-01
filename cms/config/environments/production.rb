@@ -87,12 +87,10 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # The server listens on 127.0.0.1 only, so the only names it is reached
+  # by are this machine's. Any other Host is refused with 403: a page on
+  # another site whose name was made to resolve to 127.0.0.1 (DNS
+  # rebinding) would otherwise be the API's "own origin" in the browser's
+  # eyes and in Api::BaseController's. Any port.
+  config.hosts = [ "127.0.0.1", "localhost", "[::1]" ]
 end

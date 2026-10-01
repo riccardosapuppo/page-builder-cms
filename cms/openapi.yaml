@@ -26,6 +26,15 @@ info:
     an HTML page.
 
     The API has no authentication: the server listens on 127.0.0.1 only.
+    Listening there keeps other machines out but not other sites open in a
+    browser on the same machine, so every write (POST, PUT, PATCH, DELETE)
+    from a browser must come from the CMS's own origin: a write whose
+    `Sec-Fetch-Site` is `cross-site` or `same-site`, or whose `Origin` is
+    another origin, gets 403 `forbidden_origin`. A client that is not a
+    browser sends neither header. And every POST, PUT and PATCH must be
+    sent as `application/json`, even with an empty body, or gets 415
+    `unsupported_media_type`: a browser cannot send that type to another
+    origin without a CORS preflight, which this API never grants.
   license:
     name: MIT
     identifier: MIT
@@ -95,6 +104,10 @@ paths:
                 $ref: '#/components/schemas/Page'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -153,8 +166,12 @@ paths:
                 $ref: '#/components/schemas/Page'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -222,10 +239,14 @@ paths:
                 $ref: '#/components/schemas/DraftSaved'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
         '500':
@@ -274,10 +295,14 @@ paths:
                     $ref: '#/components/schemas/PageLinks'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
         '500':
@@ -336,8 +361,12 @@ paths:
                 $ref: '#/components/schemas/Version'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequestOrDocument'
         '500':
@@ -402,8 +431,12 @@ paths:
                       - type: 'null'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidDocument'
         '500':
@@ -457,6 +490,10 @@ paths:
                 $ref: '#/components/schemas/DirectUpload'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -520,6 +557,10 @@ paths:
                 $ref: '#/components/schemas/MediaItem'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -553,8 +594,12 @@ paths:
                 $ref: '#/components/schemas/MediaItem'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -568,6 +613,8 @@ paths:
           description: Deleted, with its file.
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -622,6 +669,10 @@ paths:
                 $ref: '#/components/schemas/SiteStyle'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -695,6 +746,18 @@ components:
               - $ref: '#/components/schemas/InvalidRequestError'
               - $ref: '#/components/schemas/DuplicateKeyError'
               - $ref: '#/components/schemas/InvalidDocumentError'
+    Forbidden:
+      description: A browser sent this write from another site or another origin.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ForbiddenOriginError'
+    UnsupportedMediaType:
+      description: The request was not sent as application/json.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnsupportedMediaTypeError'
     InternalError:
       description: The server failed in a way it did not foresee. The failure is in the server's log; the answer says nothing about it.
       content:
@@ -1012,6 +1075,24 @@ components:
       properties:
         error:
           const: not_found
+        message:
+          type: string
+    ForbiddenOriginError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: forbidden_origin
+        message:
+          type: string
+    UnsupportedMediaTypeError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: unsupported_media_type
         message:
           type: string
     InternalErrorError:

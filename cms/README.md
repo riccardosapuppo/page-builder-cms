@@ -117,9 +117,13 @@ A first look at the API with curl:
 ```
 curl -s -X POST http://127.0.0.1:3900/api/pages -H "Content-Type: application/json" -d '{"title":"Winter series","slug":"winter"}'
 curl -s http://127.0.0.1:3900/api/pages
-curl -s -X POST http://127.0.0.1:3900/api/pages/1/publish
+curl -s -X POST http://127.0.0.1:3900/api/pages/1/publish -H "Content-Type: application/json"
 curl -s http://127.0.0.1:3900/api/site-style
 ```
+
+Every POST, PUT and PATCH says `Content-Type: application/json`, even
+with no body, as the publish above does; without it the answer is 415
+(see "Writes from other sites" below).
 
 ## Testing it
 
@@ -323,6 +327,27 @@ the slug of a new page, the next address and the upload got a 500, the
 media id a 500 instead of a 404, and an alt text was refused by the model
 under another keyword. With the catch-all handler taken out, a planted
 failure reached the test as an exception instead of the JSON 500.
+
+**Writes from other sites.** Listening on 127.0.0.1 keeps other machines
+out, but not other sites: a page from anywhere, open in a browser on this
+machine, can send requests that need no CORS preflight (a form POST, or a
+fetch with mode `no-cors` and a `text/plain` body), and the browser
+delivers them. Before this rule such a page could create pages, publish a
+draft nobody had reviewed, save and restore versions and start uploads.
+So every write is refused with 403 `forbidden_origin` when the browser
+says it comes from another site (`Sec-Fetch-Site: cross-site` or
+`same-site`) or names another origin (`Origin`), and every POST, PUT and
+PATCH with 415 `unsupported_media_type` unless it is sent as
+`application/json`, which a browser cannot do towards another origin
+without a preflight the API never grants. curl and the repository's tools
+send no `Origin`, and pass. In production `config.hosts` lets only
+`127.0.0.1`, `localhost` and `[::1]` in, so a domain made to resolve to
+127.0.0.1 (DNS rebinding) cannot pass for the CMS's own origin; development
+has Rails' own list, which refuses such a name too.
+[test/integration/api/other_sites_test.rb](test/integration/api/other_sites_test.rb)
+sends the text/plain create, the empty form post that publishes, and JSON
+from a foreign origin: with the rule taken out, five of its seven tests
+failed, the page created and the draft published.
 
 **Saving.** The revision check is one statement,
 `UPDATE drafts SET ..., revision = revision + 1 WHERE page_id = ? AND revision = ?`,
