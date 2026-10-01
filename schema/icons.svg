@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!--
+    The icons of the icon box widget: the eight names of the schema's
+    iconboxBlock enum, one symbol each, with the name as its id. The server
+    draws them inline on the published page and the editor reuses this file,
+    so a name the schema allows always has a drawing.
+
+    The drawing language is the design's site icons (sunrise, buoys and cup
+    come from design/index.html): a 40-unit grid with a 3-unit margin,
+    strokes with round caps and joins, and one shape in class "fill". The
+    page sets the rest: no fill, the Primary colour as stroke, 2 units of
+    stroke on the 40 grid (2.4 px at the 48 px desktop size), and the Accent
+    colour for the "fill" shape, which keeps its outline. Nothing else is
+    allowed here: no style, no colour, no script, no link; a test holds the
+    file to that.
+  -->
+  <symbol id="sunrise" viewBox="0 0 40 40"><path class="fill" d="M9 25a11 11 0 0 1 22 0z"/><path d="M4 25h32M8 30h24M13 35h14M20 7v5M8.5 12.5l3 3M31.5 12.5l-3 3"/></symbol>
+  <symbol id="buoys" viewBox="0 0 40 40"><path d="M3 31c9-7 21-11 34-13M4 36h32"/><circle class="fill" cx="10" cy="27.5" r="4"/><circle class="fill" cx="21.5" cy="23" r="3.2"/><circle class="fill" cx="31.5" cy="20" r="2.4"/></symbol>
+  <symbol id="cup" viewBox="0 0 40 40"><path class="fill" d="M9 17h19v11a6 6 0 0 1-6 6h-7a6 6 0 0 1-6-6z"/><path d="M28 20h2.5a3.5 3.5 0 0 1 0 7H28M14 12c-1.5-2 1.5-3 0-5.5M19 12c-1.5-2 1.5-3 0-5.5M24 12c-1.5-2 1.5-3 0-5.5"/></symbol>
+  <!-- A wall calendar: the header band is the filled shape, two rings above it, two rows of days. -->
+  <symbol id="calendar" viewBox="0 0 40 40"><path class="fill" d="M9 10h22a2 2 0 0 1 2 2v5H7v-5a2 2 0 0 1 2-2z"/><rect x="7" y="10" width="26" height="25" rx="2"/><path d="M14 6v7M26 6v7M13 23h3M19 23h3M25 23h2M13 29h3M19 29h3"/></symbol>
+  <!-- A clock face with the hour gone by filled in, from twelve to two. -->
+  <symbol id="clock" viewBox="0 0 40 40"><path class="fill" d="M20 21V8a13 13 0 0 1 11.26 6.5z"/><circle cx="20" cy="21" r="13"/><path d="M20 13v8l5 3M17 4h6"/></symbol>
+  <!-- A drop pin on a short line of ground, the meeting point. -->
+  <symbol id="pin" viewBox="0 0 40 40"><path class="fill" d="M20 34s10-9.2 10-16.5a10 10 0 0 0-20 0C10 24.8 20 34 20 34z"/><circle cx="20" cy="17.5" r="3.5"/><path d="M11 37h18"/></symbol>
+  <!-- A globe: the central meridian is the filled shape, with the equator and two parallels. -->
+  <symbol id="globe" viewBox="0 0 40 40"><ellipse class="fill" cx="20" cy="20" rx="6" ry="14"/><circle cx="20" cy="20" r="14"/><path d="M6 20h28M8.5 13h23M8.5 27h23"/></symbol>
+  <!-- The information sign: a filled disc, the stem and its dot. -->
+  <symbol id="info" viewBox="0 0 40 40"><circle class="fill" cx="20" cy="20" r="12"/><path d="M20 18v8"/><circle cx="20" cy="13.5" r="1"/></symbol>
+</svg>
