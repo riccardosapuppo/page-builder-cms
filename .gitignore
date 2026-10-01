@@ -1,0 +1,26 @@
+# Node: packages are installed per folder and never committed.
+node_modules/
+
+# Ruby and Rails, inside cms/.
+#
+# Gems are installed into the app's own vendor/bundle, never globally.
+# cms/.bundle/ holds Bundler's local settings, which the install routine
+# writes on each machine (install path, launcher folder): they are not
+# shared through the repository.
+cms/vendor/bundle/
+cms/.bundle/
+cms/log/
+cms/tmp/
+cms/storage/
+
+# Operating system files.
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# design/: what its scripts regenerate and the repository does not keep.
+# accent-choice.mjs photographs every accent candidate before laying them
+# side by side; only the side-by-side sheet, accent-choice.png, is the
+# record of the choice. The single-candidate shots are rebuilt on demand.
+design/shots-extra/accent-*-editor.png
+design/shots-extra/accent-*-drag.png
