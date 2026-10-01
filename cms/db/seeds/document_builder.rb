@@ -19,8 +19,9 @@ module DocumentBuilder
     { "id" => id, "type" => type, "props" => props.compact.transform_keys(&:to_s), "children" => children, "style" => style(base, tablet: tablet, phone: phone) }
   end
 
-  def section(id, columns, anchor: nil, label: nil, **style)
-    block(id, "section", { anchor: anchor, label: label }, children: columns, **style)
+  # widths: the columnWidths preset, such as "3:2"; none means equal.
+  def section(id, columns, anchor: nil, label: nil, widths: nil, **style)
+    block(id, "section", { anchor: anchor, label: label, columnWidths: widths }, children: columns, **style)
   end
 
   def column(id, widgets, **style)

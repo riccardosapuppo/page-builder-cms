@@ -92,9 +92,13 @@ module ExampleSite
             button("hero-button", "Join a trial swim", "#join")
           ], base: { verticalAlign: "middle" }, tablet: { spaceInside: "l" }),
           column("hero-2", [
-            image("hero-image", m[:hero], alt: "The bay at dawn at slack water, with a line of buoys and three swimmers")
+            # Square beside the text on desktop, wide above it on tablets, 5:4 on phones.
+            image("hero-image", m[:hero], alt: "The bay at dawn at slack water, with a line of buoys and three swimmers",
+                  base: { aspect: "1:1" }, tablet: { aspect: "16:9" }, phone: { aspect: "5:4" })
           ])
-        ], anchor: "top", label: "Hero", base: { spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
+          # The design's hero splits 1.45 to 1: 3:2 is the nearest preset.
+        ], anchor: "top", label: "Hero", widths: "3:2",
+           base: { spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }, phone: { spaceAbove: "l", spaceBelow: "xxl" }),
 
         section("swims", [
           column("swims-1", [ iconbox("swims-dawn", "sunrise", "Dawn swims", "Twice a week, at first light, when the bay is flat.") ]),
@@ -114,7 +118,7 @@ module ExampleSite
               [ m[:wake], "A swimmer’s wake on still water" ]
             ])
           ])
-        ], anchor: "gallery", label: "Gallery"),
+        ], anchor: "gallery", label: "Gallery", base: { spaceBelow: "section-s" }),
 
         section("meet", [
           column("meet-1", [
@@ -125,13 +129,13 @@ module ExampleSite
             text("meet-text", "We meet twenty minutes before slack water, whatever the clock says. Bring a bright cap, goggles and something warm for afterwards."),
             map("meet-map", *MAP_POINT, "Meeting point: the slipway at the north end of the beach")
           ], base: { verticalAlign: "bottom" })
-        ], anchor: "meet", label: "See the bay", base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
+        ], anchor: "meet", label: "See the bay", base: { spaceAbove: "section-s" }),
 
         section("quote", [
           column("quote-1", [
             quote("quote-text", "I came for the cold water and stayed for the tea.", attribution: "A member since last winter")
           ], base: { verticalAlign: "middle" }),
-          column("quote-2", [ image("quote-image", m[:tea], alt: "A flask and two cups of tea on a rock after a swim") ])
+          column("quote-2", [ image("quote-image", m[:tea], alt: "A flask and two cups of tea on a rock after a swim", base: { aspect: "4:3" }) ])
         ], label: "Quote", base: { background: "soft" }),
 
         section("questions", [
@@ -154,7 +158,7 @@ module ExampleSite
             text("join-text", "Tell us a little about your swimming. We reply within two days with the next trial date and what to bring."),
             button("join-button", "Write to the club", "mailto:join@slackwater.example", base: { background: "primary", color: "background" })
           ])
-        ], anchor: "join", label: "Join", base: { spaceAbove: "section-l", spaceBelow: "section-l" })
+        ], anchor: "join", label: "Join", base: { spaceBelow: "section-l" })
       ]
     )
   end

@@ -242,6 +242,21 @@ checks that no request leaves the site before a click and that opening the
 video and the map asks each provider for exactly one frame (answered
 inside the browser).
 
+Laid beside `design/shots/page.png` and `page-phone.png` on 1 October
+2026, the seeded home page has the design's bands at the design's
+heights: at 390 wide every band edge falls on the same row down to the
+end of the quote band; at 1280 wide every edge from the hero down is
+9 px higher, because the hero's columns are 3:2, the preset nearest the
+design's 1.45 to 1, so its square image is 434 px instead of 444. What
+still differs:
+- the join band holds the design's form there, and a button here until
+  forms arrive (stage 5);
+- the video card's still frame has no swimmers, and the map card is a
+  plain shore with the pin in the middle, not the design's slipway: both
+  are the theme's own drawings in CSS, coloured from the site style, for
+  any video and any map rather than this one;
+- "Meeting point:" is not bold: a map's label is plain text.
+
 ## The API
 
 [`openapi.yaml`](openapi.yaml) describes every route, request and answer

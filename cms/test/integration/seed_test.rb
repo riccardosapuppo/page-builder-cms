@@ -27,6 +27,26 @@ class SeedTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the home page is laid out as design/shots/page.png draws it: widths, crops and the space of each band" do
+    capture_io { ExampleSite.run }
+
+    get "/"
+
+    classes = ->(selector) { css_select(selector).first["class"].split }
+    assert_includes classes.call("[data-block-id=hero] > .cols"), "widths-3-2"
+    assert_equal %w[aspect-1-1 tablet-aspect-16-9 phone-aspect-5-4], classes.call("[data-block-id=hero-image]").grep(/aspect/)
+    assert_equal %w[aspect-4-3], classes.call("[data-block-id=quote-image]").grep(/aspect/)
+    spaces = %w[hero swims gallery meet quote questions join].to_h { |id| [ id, classes.call("[data-block-id=#{id}]").grep(/space-/) ] }
+    assert_equal({
+      "hero" => %w[space-above-section-s phone-space-above-l space-below-section-s phone-space-below-xxl],
+      "swims" => %w[space-above-section-s space-below-section-s],
+      "gallery" => %w[space-below-section-s],
+      "meet" => %w[space-above-section-s],
+      "quote" => [], "questions" => [],
+      "join" => %w[space-below-section-l]
+    }, spaces)
+  end
+
   test "no page of the example site, nor its 404 page, shows a visitor the name of a provider or another brand" do
     capture_io { ExampleSite.run }
 
