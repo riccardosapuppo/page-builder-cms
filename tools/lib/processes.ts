@@ -21,25 +21,33 @@ const windows = process.platform === "win32";
 // Throws when none of them can be run: a check that cannot see listeners
 // must not report a free port.
 export function listeners(port: number): Listener[] {
-  if (windows) {
-    const out = run("netstat", ["-a", "-n", "-o"]);
-    return out.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).filter((cols) =>
-      cols[0] === "TCP" && portOf(cols[1]) === port && /^(0\.0\.0\.0:0|\[::\]:0)$/.test(cols[2] ?? ""),
-    ).map((cols) => ({ address: cols[1]!, pid: cols.at(-1) ?? "?" }));
-  }
-  if (process.platform === "linux" && has("ss")) {
-    const out = run("ss", ["-H", "-l", "-t", "-n", "-p"]);
-    return out.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).filter((cols) =>
-      cols[0] === "LISTEN" && portOf(cols[3]) === port,
-    ).map((cols) => ({ address: cols[3]!, pid: /pid=(\d+)/.exec(cols.slice(5).join(" "))?.[1] ?? "?" }));
-  }
+  if (windows) return fromNetstat(run("netstat", ["-a", "-n", "-o"]), port);
+  if (process.platform === "linux" && has("ss")) return fromSs(run("ss", ["-H", "-l", "-t", "-n", "-p"]), port);
   const result = spawnSync("lsof", ["-n", "-P", `-iTCP:${port}`, "-sTCP:LISTEN", "-F", "pn"], { encoding: "utf8" });
   if (result.error) throw new Error(`cannot tell who listens on ${port}: neither ss nor lsof could be run (${result.error.message})`);
-  // lsof exits 1 when nothing listens; its output is one p line per
-  // process followed by its n lines.
+  // lsof exits 1 when nothing listens.
+  return fromLsof(result.stdout ?? "", port);
+}
+
+// "  TCP    127.0.0.1:3902    0.0.0.0:0    LISTENING    896"
+export function fromNetstat(out: string, port: number): Listener[] {
+  return out.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).filter((cols) =>
+    cols[0] === "TCP" && portOf(cols[1]) === port && /^(0\.0\.0\.0:0|\[::\]:0)$/.test(cols[2] ?? ""),
+  ).map((cols) => ({ address: cols[1]!, pid: cols.at(-1) ?? "?" }));
+}
+
+// "LISTEN 0 1024 127.0.0.1:3902 0.0.0.0:* users:(("ruby",pid=4242,fd=7))"
+export function fromSs(out: string, port: number): Listener[] {
+  return out.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).filter((cols) =>
+    cols[0] === "LISTEN" && portOf(cols[3]) === port,
+  ).map((cols) => ({ address: cols[3]!, pid: /pid=(\d+)/.exec(cols.slice(5).join(" "))?.[1] ?? "?" }));
+}
+
+// One "p<pid>" line per process, then its "n<address>" lines.
+export function fromLsof(out: string, port: number): Listener[] {
   const found: Listener[] = [];
   let pid = "?";
-  for (const line of (result.stdout ?? "").split(/\r?\n/)) {
+  for (const line of out.split(/\r?\n/)) {
     if (line.startsWith("p")) pid = line.slice(1);
     if (line.startsWith("n") && portOf(line.slice(1)) === port) found.push({ address: line.slice(1), pid });
   }
