@@ -499,11 +499,53 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
   const choices = Array.isArray(scale.choices) ? scale.choices.map((c) => (isObject(c) ? c.name : undefined)) : [];
   if (choices.length === 0) problem("tokens", "site-type-scale has no choices");
   if (!choices.includes(scale.default)) problem("tokens", "site-type-scale has a default that is not one of its choices");
+  // Each choice draws a scale of its own under type: every step of
+  // typeStep, on every device, each size smaller than the one above it,
+  // and no two choices with the same size for a heading on any device:
+  // a choice that changed nothing would be a name without sizes.
+  const allTypes = (tokens.type ?? {}) as Obj;
+  const stepOrder = (enumOf(defs.typeStep) ?? []) as string[];
+  const drawn = new Map<string, Obj>();
+  for (const choice of Array.isArray(scale.choices) ? scale.choices : []) {
+    const name = isObject(choice) ? String(choice.name) : "?";
+    const key = isObject(choice) ? choice.steps : undefined;
+    const drawing = typeof key === "string" ? allTypes[key] : undefined;
+    if (!isObject(drawing)) {
+      problem("tokens", `site-type-scale/${name} names the scale ${JSON.stringify(key)}, which type does not have`);
+      continue;
+    }
+    drawn.set(name, drawing);
+    for (const device of ["desktop", "tablet", "phone"]) {
+      const sizes = stepOrder.map((step) => {
+        const entry = drawing[step];
+        const pair = isObject(entry) ? entry[device] : undefined;
+        return Array.isArray(pair) && typeof pair[0] === "number" && typeof pair[1] === "number" ? pair[0] : undefined;
+      });
+      stepOrder.forEach((step, k) => {
+        if (sizes[k] === undefined) problem("tokens", `type.${String(key)} has no [size, line height] for ${step} on ${device}`);
+        else if (k > 0 && sizes[k - 1] !== undefined && !((sizes[k - 1] as number) > (sizes[k] as number))) {
+          problem("tokens", `type.${String(key)} on ${device}: ${step} (${sizes[k]}) is not smaller than ${stepOrder[k - 1]} (${sizes[k - 1]})`);
+        }
+      });
+    }
+  }
+  for (const step of stepOrder.filter((s) => s.startsWith("heading") || s === "display")) {
+    for (const device of ["desktop", "tablet", "phone"]) {
+      const seen = new Map<number, string>();
+      for (const [name, drawing] of drawn) {
+        const pair = isObject(drawing[step]) ? (drawing[step] as Obj)[device] : undefined;
+        const size = Array.isArray(pair) ? pair[0] : undefined;
+        if (typeof size !== "number") continue;
+        if (seen.has(size)) problem("tokens", `${name} and ${seen.get(size)} give ${step} the same size on ${device} (${size})`);
+        seen.set(size, name);
+      }
+    }
+  }
   for (const [name, values, names] of checks) {
     if (names.length === 0) problem("tokens", `tokens.json has no names for $defs/${name}`);
     if (!sameList(values, names)) problem("tokens", `$defs/${name} is ${JSON.stringify(values)}, tokens.json has ${JSON.stringify(names)}`);
   }
-  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json; ${tones} tones over ${slots.length} slots, ${choices.length} type-scale choices`);
+  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json; ${tones} tones over ${slots.length} slots, ${choices.length} type-scale choices, ${drawn.size} of them drawn`);
 }
 
 // --- 6. the schema in both engines, and the README example -------------------------------

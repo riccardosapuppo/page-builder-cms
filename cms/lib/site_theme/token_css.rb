@@ -19,7 +19,9 @@ module SiteTheme
   #   from the site style (.site[data-primary="site-harbour"]): no inline
   #   style, which the pages' Content-Security-Policy would block. .sw holds
   #   the spacing steps (--space-<step>, --section-<step>) and the type
-  #   scale (--fs-<step>, --lh-<step>) for desktop, tablet and phone.
+  #   scale (--fs-<step>, --lh-<step>) for desktop, tablet and phone, for
+  #   the default type-scale choice; the others are keyed on
+  #   .site[data-type-scale] the same way.
   #
   # - Block settings. A block's style names tokens ({"spaceInside": "l"});
   #   the renderer turns each into a class (pad-l), and an override for
@@ -127,19 +129,42 @@ module SiteTheme
         ".sw {\n  #{steps.join(' ')}\n  #{sections.join(' ')}\n}\n\n"
     end
 
-    # Desktop sizes as the base; between a page 800 and 1280 wide every step
-    # grows in a straight line from its tablet size to its desktop size
-    # (type.site.desktop-fluid); tablet and phone sizes below. The type-scale
-    # choice of the site style (Gentle, Balanced, Strong) is written on
-    # .site as data-type-scale, but tokens.json draws only Balanced, so
-    # every choice gets these sizes for now.
+    # The sizes of every type-scale choice of the site style (Gentle,
+    # Balanced, Strong; site-type-scale names the scale under type each one
+    # draws). Desktop sizes as the base; between a page 800 and 1280 wide
+    # every step grows in a straight line from its tablet size to its
+    # desktop size (type.site.desktop-fluid); tablet and phone sizes below.
+    # The default choice is written on .sw, every other one on
+    # .site[data-type-scale="<name>"] .sw: the layout writes the choice on
+    # .site, so a page takes its sizes without an inline style. Each of
+    # those writes all four blocks, so it never mixes with the default's.
     def type_scale(tokens, tablet_below:, phone_below:)
-      site = tokens.fetch("type").fetch("site")
-      fluid = site.fetch("desktop-fluid")
+      type = tokens.fetch("type")
+      fluid = type.fetch("site").fetch("desktop-fluid")
       from = fluid.fetch("from-page")
       to = fluid.fetch("to-page")
-      steps = site.select { |_, value| value.is_a?(Hash) && value.key?("desktop") && value["desktop"].is_a?(Array) }
+      scale = tokens.fetch("site-type-scale")
+      default = scale.fetch("default")
+      choices = scale.fetch("choices").sort_by { |choice| choice.fetch("name") == default ? 0 : 1 }
 
+      out = +"/* ---------- Type scale: desktop, growing from #{from} to #{to}, tablet, phone ---------- */\n"
+      choices.each do |choice|
+        name = choice.fetch("name")
+        selector = name == default ? ".sw" : %(.site[data-type-scale="#{name}"] .sw)
+        out << "/* #{choice.fetch('label')}#{', the default' if name == default} */\n"
+        out << scale_rules(type_steps(type.fetch(choice.fetch("steps"))), selector,
+                           from: from, to: to, tablet_below: tablet_below, phone_below: phone_below)
+      end
+      out << "\n"
+    end
+
+    # The steps of one scale under type: the entries with a [size, line
+    # height] for each device.
+    def type_steps(scale)
+      scale.select { |_, value| value.is_a?(Hash) && value.key?("desktop") && value["desktop"].is_a?(Array) }
+    end
+
+    def scale_rules(steps, selector, from:, to:, tablet_below:, phone_below:)
       size_lines = ->(device) { steps.map { |name, sizes| "--fs-#{name}: #{px(sizes.fetch(device)[0])}; --lh-#{name}: #{number(sizes.fetch(device)[1])};" } }
       grow = steps.filter_map do |name, sizes|
         low = sizes.fetch("tablet")[0]
@@ -150,13 +175,11 @@ module SiteTheme
         "--fs-#{name}: clamp(#{px(low)}, #{px(low - slope * from)} + #{number(slope * 100, 4)}cqi, #{px(high)});"
       end
 
-      block = ->(query, lines) { "@container site (#{query}) {\n  .sw {\n#{lines.map { |l| "    #{l}\n" }.join}  }\n}\n" }
-      "/* ---------- Type scale: desktop, growing from #{from} to #{to}, tablet, phone ---------- */\n" \
-        ".sw {\n#{size_lines.call('desktop').map { |l| "  #{l}\n" }.join}}\n" +
+      block = ->(query, lines) { "@container site (#{query}) {\n  #{selector} {\n#{lines.map { |l| "    #{l}\n" }.join}  }\n}\n" }
+      "#{selector} {\n#{size_lines.call('desktop').map { |l| "  #{l}\n" }.join}}\n" +
         block.call("width >= #{from}px", grow) +
         block.call("width < #{tablet_below}px", size_lines.call("tablet")) +
-        block.call("width < #{phone_below}px", size_lines.call("phone")) +
-        "\n"
+        block.call("width < #{phone_below}px", size_lines.call("phone"))
     end
 
     # One rule per style token, in a fixed order: later families win over
@@ -256,6 +279,14 @@ module SiteTheme
         next if schema_names.sort == token_names.sort
 
         raise ArgumentError, "the schema's #{name} (#{schema_names.join(', ')}) and tokens.json (#{token_names.join(', ')}) differ"
+      end
+      # Every type-scale choice sizes every step, or a heading would fall
+      # back to another choice's size.
+      tokens.fetch("site-type-scale").fetch("choices").each do |choice|
+        names = type_steps(tokens.fetch("type").fetch(choice.fetch("steps"))).keys
+        next if names.sort == steps.sort
+
+        raise ArgumentError, "the type scale #{choice.fetch('name')} (#{names.join(', ')}) and the schema's typeStep (#{steps.join(', ')}) differ"
       end
     end
 

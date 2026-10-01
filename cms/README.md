@@ -321,7 +321,23 @@ uses, so a delete can answer 409 with them.
 
 **Site style.** The tone of each palette slot and the type-scale choice,
 only from `site-tones` and `site-type-scale` in
-[`../schema/tokens.json`](../schema/tokens.json).
+[`../schema/tokens.json`](../schema/tokens.json). The choice reaches the
+page as `data-type-scale` on `.site`, and `tokens.css` sizes every step of
+Gentle and Strong under that attribute (Balanced, the default, is the
+plain `.sw`). From the repository root, with the server running,
+`node tools/type-scales.ts http://127.0.0.1:3900` sets each choice
+through the API in turn, reads the computed font sizes of the home
+page's headings in headless Chromium at 1280, 768 and 390 wide, and puts
+the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
+
+```
+1280 wide: display 45.0 / 76.0 / 102.0;  heading-2 31.0 / 42.0 / 51.0;  heading-3 26.0 / 32.0 / 36.0
+ 768 wide: display 34.0 / 52.0 / 66.0;  heading-2 26.0 / 33.0 / 38.0;  heading-3 22.0 / 27.0 / 29.0
+ 390 wide: display 28.0 / 40.0 / 48.0;  heading-2 22.0 / 28.0 / 31.0;  heading-3 20.0 / 23.0 / 25.0
+```
+
+With Gentle's rules renamed away in `tokens.css`, it failed on every
+step and width, Gentle drawing Balanced's sizes.
 
 ## Where things are
 

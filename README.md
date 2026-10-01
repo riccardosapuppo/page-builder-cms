@@ -31,7 +31,9 @@ A personal project of the author's, not work for a client.
   TypeScript run by Node 24. `npm run lint:openapi` lints the API
   description; `tools/seed-images.ts` renders the seed's pictures,
   `tools/gen-contract-500.ts` writes the 500-block fixture,
-  `tools/site-shots.ts` photographs a running site, and
+  `tools/site-shots.ts` photographs a running site,
+  `tools/type-scales.ts` measures its headings under each type-scale
+  choice, and
   `tools/check-production.ts` checks a production boot on 127.0.0.1:3902.
   `tools/probes/` holds the probe of a risky assumption, run before the
   code that relies on it. Playwright 1.62.1 drives Chromium headless for

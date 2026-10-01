@@ -174,6 +174,17 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_includes response.body, %(.site[data-primary="site-harbour"] { --sw-primary: #1D4E6F; })
   end
 
+  test "the type scale the site style chose reaches the page, and the stylesheet sizes it" do
+    SiteStyle.create!(id: SiteStyle::ID, palette: SiteTokens.default_palette, type_scale: "strong")
+    publish(title: "Slack Water", slug: "home", home: true)
+
+    get "/"
+
+    assert_select ".site[data-type-scale=strong]"
+    get css_path("tokens")
+    assert_includes response.body, %(.site[data-type-scale="strong"] .sw {\n  --fs-display: 102px;)
+  end
+
   test "a library image is served from this site, with its size and alt text" do
     blob = uploaded_blob(png_bytes(width: 4, height: 3))
     item = MediaItem.create_from_upload!(signed_blob_id: blob.signed_id, width: 4, height: 3, alt: "")

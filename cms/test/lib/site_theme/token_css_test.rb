@@ -41,6 +41,40 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     { 800 => 52, 1280 => 76 }.each { |width, size| assert_in_delta size, 12 + 5 * width / 100.0, 0.001 }
   end
 
+  test "Gentle, Balanced and Strong give the headings three different sizes on every device" do
+    css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
+    # The value a scale's rules set for a step: on desktop its first rule,
+    # on tablets and phones the rule inside that device's container query.
+    size = lambda do |selector, step, query|
+      blocks = if query
+        css.scan(/@container site \(#{Regexp.escape(query)}\) \{\n  #{Regexp.escape(selector)} \{\n(.*?)\n  \}/m)
+      else
+        css.scan(/^#{Regexp.escape(selector)} \{\n(.*?)\n\}/m)
+      end
+      blocks.flatten.filter_map { |block| block[/--fs-#{step}: (\d+)px;/, 1]&.to_i }.first
+    end
+    selectors = { "gentle" => %(.site[data-type-scale="gentle"] .sw), "balanced" => ".sw", "strong" => %(.site[data-type-scale="strong"] .sw) }
+
+    { "desktop" => nil, "tablet" => "width < 800px", "phone" => "width < 560px" }.each do |device, query|
+      %w[display heading-1 heading-2 heading-3].each do |step|
+        gentle, balanced, strong = selectors.values.map { |selector| size.call(selector, step, query) }
+        assert_operator gentle, :<, balanced, "#{step} on #{device}"
+        assert_operator balanced, :<, strong, "#{step} on #{device}"
+      end
+    end
+    assert_equal [ 37, 56, 72 ], selectors.values.map { |selector| size.call(selector, "heading-1", nil) }
+    assert_equal [ 25, 33, 39 ], selectors.values.map { |selector| size.call(selector, "heading-1", "width < 560px") }
+  end
+
+  test "a type-scale choice that does not size every step is refused" do
+    changed = tokens
+    changed["type"]["site-strong"].delete("small")
+
+    error = assert_raises(ArgumentError) { SiteTheme::TokenCss.generate(tokens: changed, schema: schema) }
+
+    assert_match(/type scale strong/, error.message)
+  end
+
   test "a step the schema names and tokens.json lacks is refused, not written as a dead class" do
     changed = schema
     changed["$defs"]["spaceToken"]["enum"] += [ "xxxl" ]

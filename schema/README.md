@@ -96,9 +96,17 @@ tone of each slot (Sea, Harbour, Kelp...), and every block that uses the
 slot follows. `site-tones` in `tokens.json` lists the six slots of the
 approved mock, each with the tones the site owner may choose from (curated,
 never a free colour) and the tone a new site starts with; `site-type-scale`
-lists the other choice of the site style, Gentle, Balanced or Strong. The
-server reads the same two lists to accept or refuse a site style, so there
-is one list of slots and tones, not one per program.
+lists the other choice of the site style, Gentle, Balanced or Strong, each
+naming the sizes it draws under `type`. Balanced is the mock's scale
+(`type.site`, each step about a third above the next in a wide window).
+The mock names Gentle and Strong without drawing them; their sizes
+(`type.site-gentle`, `type.site-strong`) follow the panel's hint, a step
+of about a fifth (1.2) and about 1.414 in a wide window, and fall on
+tablets and phones as Balanced's does (three quarters and three fifths of
+the step's excess over 1), from the same body sizes, rounded to whole
+pixels. Display is 45, 76 and 102 px in a wide window, 28, 40 and 48 on a
+phone. The server reads the same two lists to accept or refuse a site
+style, so there is one list of slots and tones, not one per program.
 
 ## What the schema cannot say, and where it is said
 
@@ -296,7 +304,12 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
   (`16:9` is `16 / 9`); the palette-slot enum is the slots of `site-tones`, and
   the background enum is `none` and those slots. Every tone is a colour of
   `tokens.json`, every slot's default is one of its tones, and the type
-  scale's default is one of its choices.
+  scale's default is one of its choices. Every type-scale choice draws a
+  scale of its own under `type`, with a size and line height for every
+  step on every device, each size smaller than the one above it, and no
+  two choices give a heading step the same size on the same device: with
+  Gentle pointed back at Balanced's sizes, as the choice stood before it
+  had any, the lint failed twelve times.
 - **The schema** is valid draft 2020-12 to both engines, and the example at
   the top of this README is the corpus file `valid/readme-example.json`.
 
