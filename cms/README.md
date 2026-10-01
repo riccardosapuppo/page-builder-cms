@@ -392,7 +392,12 @@ has Rails' own list, which refuses such a name too.
 [test/integration/api/other_sites_test.rb](test/integration/api/other_sites_test.rb)
 sends the text/plain create, the empty form post that publishes, and JSON
 from a foreign origin: with the rule taken out, five of its seven tests
-failed, the page created and the draft published.
+failed, the page created and the draft published. The editor (stage 2)
+will reach the API through its development server's proxy, which keeps
+the Host the browser asked for, so its origin is the one addressed: a
+test saves a draft and starts an upload with `Host: 127.0.0.1:4900` and
+that origin, and gets the upload address on that host. With the Host
+planted as the CMS's own, 127.0.0.1:3900, the save got 403.
 
 **Saving.** The revision check is one statement,
 `UPDATE drafts SET ..., revision = revision + 1 WHERE page_id = ? AND revision = ?`,

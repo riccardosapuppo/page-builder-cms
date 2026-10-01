@@ -96,7 +96,9 @@ module Api
     # and is let through. Then 415 unless the body is declared JSON, even
     # an empty one. The CMS's own origin is the one the request is
     # addressed to; in production, config.hosts limits which names that can
-    # be, so a rebound domain cannot pass for it.
+    # be, so a rebound domain cannot pass for it. The editor's development
+    # server forwards /api keeping the Host, so through it the editor's
+    # origin is the one addressed (test/integration/api/other_sites_test.rb).
     def refuse_writes_from_other_sites
       return unless WRITES.include?(request.request_method)
 

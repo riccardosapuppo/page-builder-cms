@@ -76,6 +76,26 @@ class Api::OtherSitesTest < ActionDispatch::IntegrationTest
     assert_equal 3, @page.versions.count
   end
 
+  # The editor's development server (stage 2) passes /api and
+  # /rails/active_storage through a proxy that keeps the Host the browser
+  # asked for, so the CMS's own origin is then the editor's. The browser
+  # probe on that origin waits for the editor; this is what it relies on.
+  test "a write through a proxy that keeps the editor's Host passes, and the upload goes to that host" do
+    host! "127.0.0.1:4900"
+    editor = { "Origin" => "http://127.0.0.1:4900", "Sec-Fetch-Site" => "same-origin" }
+    bytes = png_bytes
+
+    put "/api/pages/#{@page.id}/draft", params: { "revision" => 1, "document" => page_document(title: "Saved through the proxy"), "saveId" => "proxy-1" }.to_json,
+                                         headers: ApiRequests::JSON_HEADERS.merge(editor)
+    assert_response :ok
+    post "/api/media/direct_uploads", params: { "blob" => { "filename" => "a.png", "byte_size" => bytes.bytesize, "checksum" => Digest::MD5.base64digest(bytes), "content_type" => "image/png" } }.to_json,
+                                      headers: ApiRequests::JSON_HEADERS.merge(editor)
+
+    assert_response :ok
+    assert_match %r{\Ahttp://127\.0\.0\.1:4900/rails/active_storage/disk/}, json["direct_upload"]["url"]
+    assert_equal "Saved through the proxy", @page.draft.reload.document["title"]
+  end
+
   test "reading needs neither" do
     get "/api/pages", headers: { "Origin" => ELSEWHERE, "Sec-Fetch-Site" => "cross-site" }
 
