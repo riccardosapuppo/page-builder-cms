@@ -1,0 +1,18 @@
+{
+  "name": "page-builder-cms-schema-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Checks for the page document schema: application rules, corpus, and the comparison of the two validators.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "typescript": "6.0.3"
+  }
+}
