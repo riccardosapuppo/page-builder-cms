@@ -40,6 +40,12 @@ A personal project of the author's, not work for a client.
   `tools/probes/` holds the probe of a risky assumption, run before the
   code that relies on it. Playwright 1.62.1 drives Chromium headless for
   the ones that need a browser.
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml): the same checks
+  on Linux, each job with a time limit: the Rails tests on Ruby 3.3 and
+  3.4, the schema's two validators and its lint, the contract fixture and
+  the API description, RuboCop, Brakeman and bundler-audit, and the
+  production check. It has not run yet: the repository is not on GitHub
+  yet.
 
 ## The plan, stage by stage
 

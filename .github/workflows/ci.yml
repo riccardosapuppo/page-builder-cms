@@ -1,0 +1,113 @@
+# The checks of stage 1 (domain, API and server rendering), on Linux, at
+# every push to main and on every pull request. Each job has a time limit:
+# a job that hangs is a failure, not a wait.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rails:
+    name: Rails tests on Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lowest Ruby the project supports, and the one it is built on.
+        ruby: ["3.3", "3.4"]
+    defaults:
+      run:
+        working-directory: cms
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: cms
+      # Two commands, as cms/README.md gives them.
+      - run: bin/rails db:test:prepare
+      - run: bin/rails test
+
+  schema:
+    name: Schema, corpus, contract fixture and API description
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # The Ruby validator runs through the app's bundle.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: cms
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install the schema tools
+        run: npm ci
+        working-directory: schema/tools
+      - name: The two validators agree on the corpus
+        run: npm run compare
+        working-directory: schema/tools
+      - name: The corpus is what its generator writes
+        run: npm run corpus:check
+        working-directory: schema/tools
+      - name: Lint the schema, and show the lint failing on planted faults
+        run: |
+          npm run lint
+          npm run lint:plants
+        working-directory: schema/tools
+      - name: Type-check the schema tools
+        run: npm run typecheck
+        working-directory: schema/tools
+      - name: Install the repository's tools
+        run: npm ci
+      - name: The 500-block contract fixture is what its generator writes
+        run: node tools/gen-contract-500.ts --check
+      - name: Lint the API description
+        run: npm run lint:openapi
+
+  ruby-lint:
+    name: RuboCop, Brakeman and bundler-audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cms
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: cms
+      - run: bin/rubocop
+      - run: bin/brakeman --no-pager
+      - run: bin/bundler-audit
+
+  production:
+    name: Rails in production, checked over HTTP and in a browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: cms
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      # Chromium for the browser half of the check, with the libraries it
+      # needs on Ubuntu, at the version the pinned Playwright expects.
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/check-production.ts
