@@ -27,7 +27,11 @@ class SeedTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the home page is laid out as design/shots/page.png draws it: widths, crops and the space of each band" do
+  # The classes only: what they draw (column widths, a palette colour, a
+  # type size, reflow, focus rings) is measured in a browser by
+  # tools/check-production.ts, since a theme rule that outweighs a token
+  # class would leave these classes in place and the layout wrong.
+  test "the home page carries the classes of design/shots/page.png's layout: widths, crops and the space of each band" do
     capture_io { ExampleSite.run }
 
     get "/"

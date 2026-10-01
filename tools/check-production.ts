@@ -11,15 +11,18 @@
 // - the fingerprinted stylesheets and fonts under /assets come with
 //   "public, max-age=31536000, immutable", and a file that does not exist
 //   there is a 404 without that header;
-// - the draft preview is never stored.
+// - the draft preview is never stored;
+// - in headless Chromium, the page as drawn: column widths, a palette
+//   colour, a type size, no sideways scroll down to 320 wide, and a focus
+//   ring that reads on every band (tools/lib/visitor-checks.ts).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
 // through the API on that empty database, the precompiled assets are
 // removed with assets:clobber, the server tree is stopped (taskkill on
 // Windows, its process group elsewhere), and the port is shown closed
-// before the folder is deleted. Ruby must be on the PATH and the gems of
-// cms/ installed.
+// before the folder is deleted. Ruby must be on the PATH, the gems of
+// cms/ installed, and Playwright's Chromium in its cache.
 //
 // Runs on Windows, Linux and macOS. Exits 0 when every check passes, 1
 // when one fails, 2 when the check could not run (the port taken, the
@@ -29,6 +32,7 @@ import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
+import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cms = join(root, "cms");
@@ -148,14 +152,7 @@ try {
     const title = "Served in production";
     const created = await api("POST", "/api/pages", { title, slug: "check" });
     const id = created.page.id;
-    const document = {
-      schemaVersion: 1,
-      title,
-      sections: [{ id: "s1", type: "section", props: {}, style: { base: {} }, children: [{ id: "c1", type: "column", props: {}, style: { base: {} }, children: [
-        { id: "h1", type: "heading", props: { level: 1, text: title }, style: { base: {} }, children: [] },
-      ] }] }],
-    };
-    await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document, saveId: "check-1" });
+    await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document: fixture(title), saveId: "check-1" });
     await api("POST", `/api/pages/${id}/publish`, {});
     await api("PATCH", `/api/pages/${id}`, { home: true });
 
@@ -200,6 +197,8 @@ try {
     const robots = await get("/robots.txt");
     await robots.text();
     check(robots.status === 200 && robots.headers.get("cache-control") !== IMMUTABLE, "robots.txt, outside /assets, is not marked immutable", `${robots.status} ${robots.headers.get("cache-control")}`);
+
+    await visitorChecks(BASE, `/preview/${id}`, root, check);
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);

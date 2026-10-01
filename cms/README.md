@@ -484,10 +484,30 @@ asks the system who listens: 127.0.0.1:3902 only, the process it started.
 It publishes a page through the API and checks the page, its policy, the
 absence of cookies and HSTS, the 301 and 404, the preview's `no-store`,
 the stylesheets and fonts as immutable and a missing asset without the
-header. It then stops the server tree, shows the port closed, removes the
-precompiled assets with `assets:clobber` and deletes its databases. It
-runs on Windows (netstat, taskkill) and on Linux and macOS (ss or lsof,
-and the server's own process group, signalled); it was run on Windows
-only. The run of 2 October 2026: `RESULT: 23 checks passed`. With
-`cascade: false` planted (1 October), it failed on the missing asset,
-which came back 404 with the year-long immutable header.
+header. Then, in headless Chromium
+([../tools/lib/visitor-checks.ts](../tools/lib/visitor-checks.ts)), it
+measures what the page draws, which the Rails tests, reading classes and
+rule text, cannot see: the published page has a 3:2 section, a band on
+every background slot each holding a link and a button, a light column
+in a dark band, a dark button on a light band and a dark band that
+phones show on no band. The 3:2 columns must come out 3 to 2 at 1280
+wide, the Primary band in the slot's tone and the Display heading at its
+size from `schema/tokens.json`; no page may scroll sideways at 320, 340,
+360 or 390 wide; and Tab, walked through the page, its preview and the
+404 at 1280 and 390 wide, must reach every band's link and button and
+find each ring drawn, 2 px or more, at 3:1 against its band, and each
+text link at 4.5:1. It then stops the server tree, shows the port
+closed, removes the precompiled assets with `assets:clobber` and deletes
+its databases. It runs on Windows (netstat, taskkill) and on Linux and
+macOS (ss or lsof, and the server's own process group, signalled); it was
+run on Windows only. The run of 2 October 2026: `RESULT: 35 checks
+passed`. With seven faults planted at once in the stylesheets (`.cols-2`
+outweighed as `.sw .cols-2`, the Primary band painted Muted, Display
+capped at 70 px, the header's wrap moved to 300 px, the ring back to ink
+everywhere, the colours of a phone's `none` and of Accent undone), 8 of
+the 35 failed, each fault named in its line: columns 536 and 536 px, the
+band `rgb(78, 98, 91)`, `70px`, `scrollWidth 359, clientWidth 320`, rings
+of 2.17:1 and 1:1 on the dark bands, paper text on paper, and a link at
+3.85:1 on Accent. With `cascade: false` planted (1 October), it failed on
+the missing asset, which came back 404 with the year-long immutable
+header.

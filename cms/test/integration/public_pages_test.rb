@@ -163,6 +163,9 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # This test and the next read the attribute and the rule's text; the
+  # colour and the size a browser draws from them are measured by
+  # tools/check-production.ts and tools/type-scales.ts.
   test "the palette the site style chose reaches the page, by data attribute, not inline style" do
     SiteStyle.create!(id: SiteStyle::ID, palette: SiteTokens.default_palette.merge("primary" => "site-harbour"), type_scale: "balanced")
     publish(title: "Slack Water", slug: "home", home: true)
@@ -174,7 +177,7 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_includes response.body, %(.site[data-primary="site-harbour"] { --sw-primary: #1D4E6F; })
   end
 
-  test "the type scale the site style chose reaches the page, and the stylesheet sizes it" do
+  test "the type scale the site style chose reaches the page, and the stylesheet has a rule for it" do
     SiteStyle.create!(id: SiteStyle::ID, palette: SiteTokens.default_palette, type_scale: "strong")
     publish(title: "Slack Water", slug: "home", home: true)
 

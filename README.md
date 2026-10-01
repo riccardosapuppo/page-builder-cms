@@ -34,7 +34,9 @@ A personal project of the author's, not work for a client.
   `tools/site-shots.ts` photographs a running site,
   `tools/type-scales.ts` measures its headings under each type-scale
   choice, and
-  `tools/check-production.ts` checks a production boot on 127.0.0.1:3902.
+  `tools/check-production.ts` checks a production boot on 127.0.0.1:3902,
+  and in a browser the published page's layout, colours, reflow and
+  focus rings.
   `tools/probes/` holds the probe of a risky assumption, run before the
   code that relies on it. Playwright 1.62.1 drives Chromium headless for
   the ones that need a browser.
