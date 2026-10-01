@@ -73,6 +73,17 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     assert_match(/aspectToken/, error.message)
   end
 
+  test "column widths apply on desktop only, one track per part of the preset" do
+    css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
+
+    desktop = css[/@container site \(width >= 800px\) \{\n(?:  \.widths-.*\n)+\}/]
+    assert desktop, "no desktop block of column widths"
+    assert_includes desktop, ".widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }"
+    assert_includes desktop, ".widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }"
+    assert_equal 7, desktop.scan(/\.widths-/).size
+    assert_equal 7, css.scan(/\.widths-/).size
+  end
+
   test "a tablet override applies only between the phone and desktop layouts" do
     css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
 

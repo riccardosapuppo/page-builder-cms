@@ -50,6 +50,14 @@ The page document's one schema, and the design tokens it names.
   always `[]`).
 - **Every block has the same five keys**, `{id, type, props, children,
   style}`, and no others.
+- **Column widths** are a property of the section, `columnWidths`: a
+  preset of parts in column order, `3:2`, `2:3`, `2:1` or `1:2` for two
+  columns and `2:1:1`, `1:2:1` or `1:1:2` for three. It applies on desktop
+  only; on tablets and phones the columns stack. Absent means equal, and
+  `equal` is never written; one and four columns take no preset. The
+  schema checks the preset against the number of columns, with one
+  if/then branch per count, so adding or removing a column is also the
+  moment the editor resets the widths.
 - **Widgets:** heading, text (rich text), image, button, divider, spacer,
   gallery, video, map, icon box, quote, accordion.
 - **Style is by token name.** `style.base` applies on every device;
@@ -278,6 +286,10 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
   video providers, the rich-text nodes and the marks.
 - **Hierarchy,** read from the schema: the page holds sections, a section one
   to four columns, a column the widget types, and no widget holds children.
+- **Column widths:** every count of columns from one to four has exactly
+  one branch of the section saying which presets it takes, every preset
+  has one part per column of its branch, and the branches offer the whole
+  of `columnWidthsToken` between them.
 - **Tokens:** the spacing, type-step and crop enums are the names in
   `tokens.json`, the section-spacing enum is the spacing steps followed by
   the section steps, and every crop's value is the ratio its name says

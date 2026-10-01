@@ -9,7 +9,8 @@
         "type": "section",
         "props": {
           "label": "Hero",
-          "anchor": "top"
+          "anchor": "top",
+          "columnWidths": "3:2"
         },
         "children": [
           {

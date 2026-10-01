@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "title": "Column widths",
+  "sections": [
+    {
+      "id": "widths-0",
+      "type": "section",
+      "props": {
+        "columnWidths": "3:2"
+      },
+      "children": [
+        {
+          "id": "widths-0-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-0-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-1",
+      "type": "section",
+      "props": {
+        "columnWidths": "2:3"
+      },
+      "children": [
+        {
+          "id": "widths-1-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-1-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-2",
+      "type": "section",
+      "props": {
+        "columnWidths": "2:1"
+      },
+      "children": [
+        {
+          "id": "widths-2-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-2-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-3",
+      "type": "section",
+      "props": {
+        "columnWidths": "1:2"
+      },
+      "children": [
+        {
+          "id": "widths-3-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-3-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-4",
+      "type": "section",
+      "props": {
+        "columnWidths": "2:1:1"
+      },
+      "children": [
+        {
+          "id": "widths-4-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-4-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-4-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-5",
+      "type": "section",
+      "props": {
+        "columnWidths": "1:2:1"
+      },
+      "children": [
+        {
+          "id": "widths-5-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-5-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-5-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "widths-6",
+      "type": "section",
+      "props": {
+        "columnWidths": "1:1:2"
+      },
+      "children": [
+        {
+          "id": "widths-6-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-6-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "widths-6-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

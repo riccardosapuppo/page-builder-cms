@@ -8,7 +8,8 @@
       "type": "section",
       "props": {
         "label": "Hero",
-        "anchor": "Join Us"
+        "anchor": "Join Us",
+        "columnWidths": "3:2"
       },
       "children": [
         {

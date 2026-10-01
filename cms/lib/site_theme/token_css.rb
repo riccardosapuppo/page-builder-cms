@@ -62,8 +62,22 @@ module SiteTheme
         out << "}\n"
       end
       out << visibility(tablet_below: tablet_below, phone_below: phone_below)
+      out << column_widths(schema, tablet_below: tablet_below)
       out << spacers(schema)
       out.join
+    end
+
+    # A section's columnWidths is a prop, not a style: the preset's parts as
+    # the grid's tracks, on desktop only. Below it the columns stack, as
+    # site.css lays them out on tablets and phones.
+    def column_widths(schema, tablet_below:)
+      presets = schema.fetch("$defs").fetch("columnWidthsToken").fetch("enum")
+      rules = presets.map do |preset|
+        tracks = preset.split(":").map { |part| "minmax(0, #{Integer(part, 10)}fr)" }.join(" ")
+        "  .widths-#{class_value(preset)} { grid-template-columns: #{tracks}; }\n"
+      end
+      "\n/* ---------- Column widths, on desktop only: below it the columns stack ---------- */\n" \
+        "@container site (width >= #{tablet_below}px) {\n#{rules.join}}\n"
     end
 
     # A spacer's size is a prop, not a style: one height for every device.

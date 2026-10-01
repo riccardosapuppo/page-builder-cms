@@ -81,7 +81,7 @@
     },
 
     "sectionBlock": {
-      "description": "A band of the page. Its column count is the number of its children, one to four; there is no separate count to keep in step.",
+      "description": "A band of the page. Its column count is the number of its children, one to four; there is no separate count to keep in step. Side by side on desktop, the columns share the width equally unless columnWidths names a preset for that many columns; on tablets and phones they stack.",
       "type": "object",
       "properties": {
         "props": {
@@ -98,7 +98,8 @@
               "description": "In-page link target: #anchor scrolls to the section.",
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]{0,63}$"
-            }
+            },
+            "columnWidths": { "$ref": "#/$defs/columnWidthsToken" }
           }
         },
         "children": {
@@ -112,7 +113,26 @@
           }
         },
         "style": { "$ref": "#/$defs/sectionStyle" }
-      }
+      },
+      "$comment": "Which presets a section may name depends on how many columns it holds: one branch per count, keyed on the length of children (the lint checks that every count has one, and that each preset has as many parts as its branch has columns). The 'properties: {columnWidths: true}' beside the 'required' under 'not' only declares the key for ajv's strictRequired.",
+      "allOf": [
+        {
+          "if": { "required": ["children"], "properties": { "children": { "type": "array", "maxItems": 1 } } },
+          "then": { "properties": { "props": { "type": "object", "not": { "type": "object", "properties": { "columnWidths": true }, "required": ["columnWidths"] } } } }
+        },
+        {
+          "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 2, "maxItems": 2 } } },
+          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["3:2", "2:3", "2:1", "1:2"] } } } } }
+        },
+        {
+          "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 3, "maxItems": 3 } } },
+          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["2:1:1", "1:2:1", "1:1:2"] } } } } }
+        },
+        {
+          "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 4 } } },
+          "then": { "properties": { "props": { "type": "object", "not": { "type": "object", "properties": { "columnWidths": true }, "required": ["columnWidths"] } } } }
+        }
+      ]
     },
     "columnBlock": {
       "description": "One column of a section. It holds widgets only, never another section or column.",
@@ -439,6 +459,10 @@
     "sectionSpaceToken": {
       "description": "The space above or below a section's content: a spacing step (the keys of space.site in tokens.json) or a section step (the keys of space.site-section). Absent, a section takes the theme's rhythm for the device.",
       "enum": ["none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l"]
+    },
+    "columnWidthsToken": {
+      "description": "How a section's columns share the width on desktop, as parts in column order: 3:2 gives the first column three fifths. Absent, they share it equally; equal is never written. Which presets a section may name depends on its column count (sectionBlock): two columns 3:2, 2:3, 2:1 or 1:2, three columns 2:1:1, 1:2:1 or 1:1:2, one and four columns none.",
+      "enum": ["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"]
     },
     "aspectToken": {
       "description": "The shape an image is cropped to, the keys of aspect.site in tokens.json: width to height, or original for the image's own shape.",

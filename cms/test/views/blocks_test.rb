@@ -68,6 +68,22 @@ class BlocksTest < ActionView::TestCase
     assert_nil html.at_css("[data-block-id=a]")["data-style"]
   end
 
+  test "a section's columns take their preset widths only when it has one part per column" do
+    column = ->(id) { block(id, "column") }
+    document = { "schemaVersion" => 1, "title" => "Widths", "sections" => [
+      block("two", "section", { "columnWidths" => "3:2" }, children: [ column.call("two-1"), column.call("two-2") ]),
+      block("three", "section", { "columnWidths" => "1:2:1" }, children: [ column.call("three-1"), column.call("three-2"), column.call("three-3") ]),
+      block("misfit", "section", { "columnWidths" => "2:1:1" }, children: [ column.call("misfit-1"), column.call("misfit-2") ]),
+      block("one", "section", { "columnWidths" => "3:2" }, children: [ column.call("one-1") ])
+    ] }
+
+    html = html_of(document)
+
+    grids = %w[two three misfit one].map { |id| html.at_css("[data-block-id=#{id}] > .cols")["class"].split }
+    assert_equal [ %w[sw-inner cols cols-2 widths-3-2], %w[sw-inner cols cols-3 widths-1-2-1], %w[sw-inner cols cols-2], %w[sw-inner cols cols-1] ], grids
+    assert_equal [ "3:2", "1:2:1", nil, nil ], %w[two three misfit one].map { |id| html.at_css("[data-block-id=#{id}]")["data-column-widths"] }
+  end
+
   test "an image is cropped per device by class, and a crop the schema does not list gives none" do
     html = html_of(page(
       block("a", "image", { "mediaId" => "hero", "alt" => "Bay" }, style: { "base" => { "aspect" => "1:1" }, "tablet" => { "aspect" => "16:9" }, "phone" => { "aspect" => "5:4" } }),

@@ -966,7 +966,7 @@
     "layer": "schema"
   },
   "invalid/tree-column-props.json": {
-    "rule": "a column has no properties: its width follows from the count",
+    "rule": "a column has no properties: its width comes from the section's columnWidths",
     "pointer": "/sections/0/children/0/props/width",
     "keyword": "additionalProperties",
     "layer": "schema"
@@ -1017,6 +1017,30 @@
     "rule": "section props are closed",
     "pointer": "/sections/0/props/columns",
     "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-equal-written.json": {
+    "rule": "equal widths are the absence of a preset, never written",
+    "pointer": "/sections/0/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-for-three-on-two.json": {
+    "rule": "a preset of three parts on a section of two columns",
+    "pointer": "/sections/0/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-free-ratio.json": {
+    "rule": "column widths are presets, not any ratio",
+    "pointer": "/sections/0/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-one-column.json": {
+    "rule": "a section of one column takes no preset",
+    "pointer": "/sections/2/props",
+    "keyword": "not",
     "layer": "schema"
   },
   "invalid/tree-widget-in-section.json": {
@@ -1087,6 +1111,9 @@
   },
   "valid/columns-one-to-four.json": {
     "rule": "sections with one, two, three and four columns, and an empty column"
+  },
+  "valid/columns-widths-every-preset.json": {
+    "rule": "every column-width preset, each on a section with as many columns as it has parts"
   },
   "valid/every-icon-and-provider.json": {
     "rule": "every icon name, both video providers, map extremes"

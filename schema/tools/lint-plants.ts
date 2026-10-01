@@ -88,6 +88,16 @@ const plants: Plant[] = [
     plant: (s) => { s.$defs.sectionBlock.properties.children.maxItems = 5; },
   },
   {
+    name: "a two-part column preset offered to three columns",
+    expect: "is offered to 3 column(s) and has 2 parts",
+    plant: (s) => { s.$defs.sectionBlock.allOf[2].then.properties.props.properties.columnWidths.enum.push("3:2"); },
+  },
+  {
+    name: "a column count with no branch for its presets",
+    expect: "no branch says which presets 4 column(s) take",
+    plant: (s) => { s.$defs.sectionBlock.allOf.pop(); },
+  },
+  {
     name: "a spacing step that tokens.json does not have",
     expect: "$defs/spaceToken is",
     plant: (s) => { s.$defs.spaceToken.enum.push("xxxl"); },

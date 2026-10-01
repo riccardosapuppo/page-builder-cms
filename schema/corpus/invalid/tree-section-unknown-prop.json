@@ -9,6 +9,7 @@
       "props": {
         "label": "Hero",
         "anchor": "top",
+        "columnWidths": "3:2",
         "columns": 2
       },
       "children": [

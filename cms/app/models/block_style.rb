@@ -46,12 +46,22 @@ module BlockStyle
     "aspect" => "aspectToken"
   }.freeze
 
-  ALLOWED = ENUM_OF.transform_values do |name|
-    JSON.parse(File.read(Rails.application.config.x.schema_dir.join("block-document.schema.json"), encoding: "UTF-8"))
-        .fetch("$defs").fetch(name).fetch("enum").freeze
-  end.freeze
+  DEFS = JSON.parse(File.read(Rails.application.config.x.schema_dir.join("block-document.schema.json"), encoding: "UTF-8")).fetch("$defs")
+
+  ALLOWED = ENUM_OF.transform_values { |name| DEFS.fetch(name).fetch("enum").freeze }.freeze
+
+  # The column-width presets a section may name ("3:2", "2:1:1"...).
+  COLUMN_WIDTHS = DEFS.fetch("columnWidthsToken").fetch("enum").freeze
 
   module_function
+
+  # A section's columnWidths when the schema lists it and it has one part
+  # per column the section holds; nil otherwise, and the columns share the
+  # width equally. A preset for another count is never stretched to fit.
+  def column_widths(props, count)
+    value = props.is_a?(Hash) ? props["columnWidths"] : nil
+    COLUMN_WIDTHS.include?(value) && value.split(":").size == count ? value : nil
+  end
 
   # The classes for one key: the base value (or default, when the style has
   # none), then the tablet and phone overrides with their prefix. family

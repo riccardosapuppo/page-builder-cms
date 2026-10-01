@@ -25,7 +25,9 @@ stale, renders each fixture with React, and compares the two trees.
     way out, out of range, and with coordinates written as strings.
   - `traps-structure.json`: every style key on every device, values the
     schema does not list (and `sectionSpace`, the key `spaceAbove` and
-    `spaceBelow` replaced), blocks hidden per device, one to five columns,
+    `spaceBelow` replaced), image crops, column-width presets that fit
+    their section and presets that do not, blocks hidden per device, one
+    to five columns,
     and blocks out of place (a section in a column, a widget where a section
     goes, an unknown type, a string where a block goes).
   - `edge.json`: the smallest values, every icon, an empty section, a block
@@ -48,7 +50,9 @@ valid, and a test says so.
 ## The rules both renderers follow
 
 - Every block's root element carries `data-block-id` and `data-block-type`;
-  a section also `data-columns`, a spacer `data-size`, an icon box
+  a section also `data-columns`, and `data-column-widths` when it names a
+  preset with one part per column it holds (`3:2` on two columns; a preset
+  for another count is ignored, never stretched), a spacer `data-size`, an icon box
   `data-icon`, a library image `data-media-id`, a video `data-provider`.
 - `data-style` repeats the block's stored style, canonically:
   `base.textSize=display;phone.textSize=heading-1`, devices in the order

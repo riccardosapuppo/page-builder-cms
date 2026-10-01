@@ -89,7 +89,7 @@ function landing(): J {
         image("hero-image", { mediaId: "hero-dawn", alt: "The bay at dawn at slack water, with a line of buoys and three swimmers" },
           { base: { aspect: "1:1" }, tablet: { aspect: "16:9" }, phone: { aspect: "5:4" } }),
       ]),
-    ], { label: "Hero", anchor: "top" }, { base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-l" }, phone: { spaceAbove: "l", spaceBelow: "xxl" } }),
+    ], { label: "Hero", anchor: "top", columnWidths: "3:2" }, { base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-l" }, phone: { spaceAbove: "l", spaceBelow: "xxl" } }),
     section("swims", [
       column("swims-1", [iconbox("swims-dawn", "sunrise", "Dawn swims", "Twice a week, at first light, when the bay is flat.")]),
       column("swims-2", [iconbox("swims-course", "buoys", "Beginners’ course", "Four sessions from the shallows to the buoy line.")]),
@@ -254,6 +254,10 @@ valid("columns-one-to-four", "sections with one, two, three and four columns, an
   section("two", [column("two-1", []), column("two-2", [spacer("two-s", "xxl")])]),
   section("three", [column("three-1", []), column("three-2", []), column("three-3", [divider("three-d")])]),
   section("four", [column("four-1", []), column("four-2", []), column("four-3", []), column("four-4", [heading("four-h", 4, "Four")])]),
+]));
+valid("columns-widths-every-preset", "every column-width preset, each on a section with as many columns as it has parts", doc("Column widths", [
+  ...["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"].map((widths, k) =>
+    section(`widths-${k}`, widths.split(":").map((_, c) => column(`widths-${k}-${c + 1}`, [])), { columnWidths: widths })),
 ]));
 valid("image-sources", "library image, external https image, site path, decorative image without alt", doc("Images", [
   section("imgs", [column("imgs-1", [
@@ -489,7 +493,11 @@ invalid("tree-section-five-columns", "a section has at most four columns", `${HE
   at(d, HERO).children.push(column("c3", []), column("c4", []), column("c5", []));
 });
 invalid("tree-heading-with-children", "widgets hold no blocks", `${H}/children`, "maxItems", (d) => { at(d, H).children.push(text("child", rich(p(t("x"))))); });
-invalid("tree-column-props", "a column has no properties: its width follows from the count", `${COL}/props/width`, "additionalProperties", (d) => { at(d, COL).props.width = 50; });
+invalid("tree-column-props", "a column has no properties: its width comes from the section's columnWidths", `${COL}/props/width`, "additionalProperties", (d) => { at(d, COL).props.width = 50; });
+invalid("tree-section-widths-for-three-on-two", "a preset of three parts on a section of two columns", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "2:1:1"; });
+invalid("tree-section-widths-free-ratio", "column widths are presets, not any ratio", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "60:40"; });
+invalid("tree-section-widths-equal-written", "equal widths are the absence of a preset, never written", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "equal"; });
+invalid("tree-section-widths-one-column", "a section of one column takes no preset", `${P("gallery")}/props`, "not", (d) => { at(d, P("gallery")).props.columnWidths = "3:2"; });
 invalid("tree-section-anchor", "anchors are lowercase letters, digits and hyphens", `${HERO}/props/anchor`, "pattern", (d) => { at(d, HERO).props.anchor = "Join Us"; });
 invalid("tree-section-label-too-long", "a section label has at most 60 characters", `${HERO}/props/label`, "maxLength", (d) => { at(d, HERO).props.label = "x".repeat(61); });
 invalid("tree-section-unknown-prop", "section props are closed", `${HERO}/props/columns`, "additionalProperties", (d) => { at(d, HERO).props.columns = 2; });

@@ -312,6 +312,17 @@
 @container site (560px <= width < 800px) { .hide-tablet { display: none; } }
 @container site (width < 560px) { .hide-phone { display: none; } }
 
+/* ---------- Column widths, on desktop only: below it the columns stack ---------- */
+@container site (width >= 800px) {
+  .widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .widths-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .widths-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .widths-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .widths-2-1-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }
+  .widths-1-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+}
+
 /* ---------- Spacer heights ---------- */
 .spacer-none { height: var(--space-none); }
 .spacer-xs { height: var(--space-xs); }

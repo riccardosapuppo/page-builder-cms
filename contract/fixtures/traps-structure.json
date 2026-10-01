@@ -83,7 +83,36 @@
       ]
     },
     {
-      "id": "s-strict-tree", "type": "section", "props": {}, "style": { "base": {} },
+      "id": "s-widths-two", "type": "section", "props": { "columnWidths": "1:2" }, "style": { "base": {} },
+      "children": [
+        { "id": "s-widths-two-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-widths-two-2", "type": "column", "props": {}, "style": { "base": {} }, "children": [] }
+      ]
+    },
+    {
+      "id": "s-widths-three", "type": "section", "props": { "columnWidths": "2:1:1" }, "style": { "base": {} },
+      "children": [
+        { "id": "s-widths-three-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-widths-three-2", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-widths-three-3", "type": "column", "props": {}, "style": { "base": {} }, "children": [] }
+      ]
+    },
+    {
+      "id": "s-widths-wrong-count", "type": "section", "props": { "columnWidths": "1:2:1" }, "style": { "base": {} },
+      "children": [
+        { "id": "s-widths-wrong-count-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-widths-wrong-count-2", "type": "column", "props": {}, "style": { "base": {} }, "children": [] }
+      ]
+    },
+    {
+      "id": "s-widths-unknown", "type": "section", "props": { "columnWidths": "60:40 onclick" }, "style": { "base": {} },
+      "children": [
+        { "id": "s-widths-unknown-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-widths-unknown-2", "type": "column", "props": {}, "style": { "base": {} }, "children": [] }
+      ]
+    },
+    {
+      "id": "s-strict-tree", "type": "section", "props": { "columnWidths": "1:2" }, "style": { "base": {} },
       "children": [
         {
           "id": "s-strict-1", "type": "column", "props": {}, "style": { "base": {} },
