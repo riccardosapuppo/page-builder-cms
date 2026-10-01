@@ -1,0 +1,24 @@
+# frozen_string_literal: true
+
+# The address of a page: /<slug>. Lowercase ASCII letters and digits in
+# words joined by single hyphens, so it never needs escaping and never holds
+# a dot that a server could read as a file extension.
+module Slug
+  FORMAT = /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/
+  MAX_LENGTH = 64
+
+  # Paths the application answers itself: the API, the health check, the
+  # stylesheets and fonts, Active Storage, and the draft preview.
+  RESERVED = %w[api up assets rails preview].freeze
+
+  module_function
+
+  # Reserved too: any name a file in public/ already answers, such as 404
+  # for public/404.html, because the static file server answers before the
+  # router and the page would never be seen.
+  def reserved?(slug)
+    RESERVED.include?(slug) ||
+      Rails.public_path.join("#{slug}.html").file? ||
+      Rails.public_path.join(slug, "index.html").file?
+  end
+end
