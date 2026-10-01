@@ -477,11 +477,17 @@ The fingerprinted files under `/assets` are served with
 404 without that header.
 
 From the repository root, `node tools/check-production.ts` boots production
-on 127.0.0.1:3902 with throwaway databases under `tmp/`, publishes a page
-through the API and checks the page, its policy, the absence of cookies and
-HSTS, the 301 and 404, the preview's `no-store`, the stylesheets and fonts
-as immutable and a missing asset without the header. It then stops the
-server tree, shows the port closed, removes the precompiled assets with
-`assets:clobber` and deletes its databases. The run of 1 October 2026:
-`RESULT: 21 checks passed`. With `cascade: false` planted, it failed on the
-missing asset, which came back 404 with the year-long immutable header.
+on port 3902 with throwaway databases under `tmp/`. It first asks the
+server to listen on 192.0.2.1, an address no machine has, and checks the
+refusal and that nothing listened; then starts it with no address and
+asks the system who listens: 127.0.0.1:3902 only, the process it started.
+It publishes a page through the API and checks the page, its policy, the
+absence of cookies and HSTS, the 301 and 404, the preview's `no-store`,
+the stylesheets and fonts as immutable and a missing asset without the
+header. It then stops the server tree, shows the port closed, removes the
+precompiled assets with `assets:clobber` and deletes its databases. It
+runs on Windows (netstat, taskkill) and on Linux and macOS (ss or lsof,
+and the server's own process group, signalled); it was run on Windows
+only. The run of 2 October 2026: `RESULT: 23 checks passed`. With
+`cascade: false` planted (1 October), it failed on the missing asset,
+which came back 404 with the year-long immutable header.

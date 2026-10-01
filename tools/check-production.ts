@@ -2,6 +2,9 @@
 //
 // Boots the CMS in production mode on 127.0.0.1:3902 and checks, over
 // plain HTTP, what a visitor's browser gets from it:
+// - the server refuses to listen outside this machine, and with no
+//   address given listens on 127.0.0.1 only (production's own default
+//   would be 0.0.0.0);
 // - a published page and the 404 page carry the static
 //   Content-Security-Policy and no cookie, and nothing pins the address to
 //   HTTPS (CMS_FORCE_SSL=0 turns forced SSL off for this local run);
@@ -13,22 +16,28 @@
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
 // through the API on that empty database, the precompiled assets are
-// removed with assets:clobber, the server is stopped with taskkill (its
-// whole tree), and the port is shown closed before the folder is deleted.
-// Ruby must be on the PATH and the gems of cms/ installed.
+// removed with assets:clobber, the server tree is stopped (taskkill on
+// Windows, its process group elsewhere), and the port is shown closed
+// before the folder is deleted. Ruby must be on the PATH and the gems of
+// cms/ installed.
 //
-// Exits 0 when every check passes, 1 when one fails, 2 when the check
-// could not run (the port taken, the server not starting).
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+// Runs on Windows, Linux and macOS. Exits 0 when every check passes, 1
+// when one fails, 2 when the check could not run (the port taken, the
+// server not starting, no way to see who listens).
+import { spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cms = join(root, "cms");
 const PORT = 3902;
 const BASE = `http://127.0.0.1:${PORT}`;
 const IMMUTABLE = "public, max-age=31536000, immutable";
+// An address of TEST-NET-1 (RFC 5737), which no machine has: asked to
+// listen there, a server that failed to refuse could not open it either.
+const OUTSIDE = "192.0.2.1";
 const run = `production-check-${process.pid}`;
 const tmp = join(cms, "tmp", run);
 const env = {
@@ -42,22 +51,15 @@ const env = {
   CACHE_DATABASE_URL: `sqlite3:tmp/${run}/production_cache.sqlite3`,
   QUEUE_DATABASE_URL: `sqlite3:tmp/${run}/production_queue.sqlite3`,
 };
+// What bin/rails would otherwise take from this shell.
+delete env.BINDING;
+delete env.PORT;
 
 const results: string[] = [];
 let failed = 0;
 function check(ok: boolean, what: string, detail = ""): void {
   if (!ok) failed += 1;
   results.push(`${ok ? "ok  " : "FAIL"} ${what}${detail ? `: ${detail}` : ""}`);
-}
-
-// Who listens on the port, read from netstat: a listening line has a remote
-// address of 0.0.0.0:0 or [::]:0 (the state word is in Windows' language).
-function listeners(port: number): string[] {
-  const out = spawnSync("netstat", ["-a", "-n", "-o"], { encoding: "utf8" }).stdout ?? "";
-  return out.split(/\r?\n/).filter((line) => {
-    const cols = line.trim().split(/\s+/);
-    return cols[0] === "TCP" && cols[1]?.endsWith(`:${port}`) && /^(0\.0\.0\.0:0|\[::\]:0)$/.test(cols[2] ?? "");
-  }).map((line) => line.trim().split(/\s+/).at(-1) ?? "?");
 }
 
 function rails(args: string[], label: string): void {
@@ -69,6 +71,19 @@ function rails(args: string[], label: string): void {
   console.log(`${label}: done`);
 }
 
+function server(args: string[], log: string): ChildProcess {
+  const fd = openSync(log, "w");
+  const child = startTree("ruby", ["bin/rails", "server", ...args], { cwd: cms, env, stdio: ["ignore", fd, fd] });
+  closeSync(fd);
+  return child;
+}
+
+const exited = (child: ChildProcess, ms: number) => new Promise<number | null>((done) => {
+  if (child.exitCode !== null) return done(child.exitCode);
+  const timer = setTimeout(() => done(null), ms);
+  child.once("exit", (code) => { clearTimeout(timer); done(code ?? -1); });
+});
+
 async function get(path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(BASE + path, { redirect: "manual", ...init });
 }
@@ -79,27 +94,43 @@ async function api(method: string, path: string, body: unknown): Promise<any> {
   return response.json();
 }
 
-const taken = listeners(PORT);
+let taken: Listener[];
+try {
+  taken = listeners(PORT);
+} catch (error) {
+  console.log((error as Error).message);
+  process.exit(2);
+}
 if (taken.length) {
-  console.log(`port ${PORT} is already taken (process ${taken.join(", ")}): nothing was started`);
+  console.log(`port ${PORT} is already taken (${taken.map((l) => `${l.address}, process ${l.pid}`).join("; ")}): nothing was started`);
   process.exit(2);
 }
 
 mkdirSync(tmp, { recursive: true });
-let server: ChildProcess | undefined;
+let main: ChildProcess | undefined;
+let refused: ChildProcess | undefined;
 let exitCode = 0;
 try {
   rails(["assets:precompile"], "assets:precompile");
   rails(["db:create", "db:schema:load"], "databases in " + `cms/tmp/${run}`);
 
+  // Asked for an address outside this machine, the server must stop before
+  // listening anywhere (config/puma.rb).
+  const refusedLog = join(tmp, "refused.log");
+  refused = server(["-b", OUTSIDE, "-p", String(PORT), "-P", join(tmp, "refused.pid")], refusedLog);
+  const code = await exited(refused, 120_000);
+  const said = readFileSync(refusedLog, "utf8");
+  check(code !== null && code !== 0 && said.includes(`Refusing to listen on tcp://${OUTSIDE}:${PORT}`), `asked to listen on ${OUTSIDE}, the server refuses and stops`,
+    code === null ? "still running after 120 s" : `exit ${code}: ${said.split(/\r?\n/).find((l) => l.includes("Refusing")) ?? said.trim().split(/\r?\n/).slice(-3).join(" | ")}`);
+  check(listeners(PORT).length === 0, `nothing listens on ${PORT} after the refusal`);
+
+  // No -b: the address comes from bin/rails, never production's 0.0.0.0.
   const log = join(tmp, "server.log");
-  const fd = openSync(log, "w");
-  server = spawn("ruby", ["bin/rails", "server", "-p", String(PORT), "-b", "127.0.0.1", "-P", join(tmp, "server.pid")], { cwd: cms, env, stdio: ["ignore", fd, fd] });
-  closeSync(fd);
+  main = server(["-p", String(PORT), "-P", join(tmp, "server.pid")], log);
 
   let up = false;
   for (let i = 0; i < 240 && !up; i++) {
-    if (server.exitCode !== null) break;
+    if (main.exitCode !== null) break;
     up = await fetch(`${BASE}/up`).then((r) => r.status === 200, () => false);
     if (!up) await new Promise((done) => setTimeout(done, 500));
   }
@@ -110,15 +141,18 @@ try {
     exitCode = 2;
   } else {
     const owners = listeners(PORT);
-    check(owners.length === 1 && owners[0] === String(server.pid), `port ${PORT} is held by the server this check started`, `listening: ${owners.join(", ")}, started: ${server.pid}`);
+    check(owners.length === 1 && owners[0]!.pid === String(main.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
+      `started with no address, the server listens on 127.0.0.1:${PORT} only`,
+      `listening: ${owners.map((l) => `${l.address} (process ${l.pid})`).join(", ")}; started: process ${main.pid}`);
 
-    const created = await api("POST", "/api/pages", { title: "Production check", slug: "check" });
+    const title = "Served in production";
+    const created = await api("POST", "/api/pages", { title, slug: "check" });
     const id = created.page.id;
     const document = {
       schemaVersion: 1,
-      title: "Production check",
+      title,
       sections: [{ id: "s1", type: "section", props: {}, style: { base: {} }, children: [{ id: "c1", type: "column", props: {}, style: { base: {} }, children: [
-        { id: "h1", type: "heading", props: { level: 1, text: "Served in production" }, style: { base: {} }, children: [] },
+        { id: "h1", type: "heading", props: { level: 1, text: title }, style: { base: {} }, children: [] },
       ] }] }],
     };
     await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document, saveId: "check-1" });
@@ -127,7 +161,7 @@ try {
 
     const home = await get("/");
     const html = await home.text();
-    check(home.status === 200 && html.includes("Served in production"), "/ serves the published home page", `status ${home.status}`);
+    check(home.status === 200 && html.includes(title), "/ serves the published home page", `status ${home.status}`);
     check((home.headers.get("content-security-policy") ?? "").includes("script-src 'none'"), "/ carries the static Content-Security-Policy", home.headers.get("content-security-policy") ?? "none");
     check(home.headers.get("set-cookie") === null, "/ sets no cookie", home.headers.get("set-cookie") ?? "");
     check(home.headers.get("strict-transport-security") === null, "/ sends no Strict-Transport-Security over plain HTTP", home.headers.get("strict-transport-security") ?? "");
@@ -171,13 +205,16 @@ try {
   console.log(`the check stopped: ${(error as Error).message}`);
   exitCode = 2;
 } finally {
-  if (server?.pid) {
-    const kill = spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { encoding: "utf8" });
-    console.log(`taskkill /PID ${server.pid} /T /F: exit ${kill.status}`);
-    await new Promise((done) => setTimeout(done, 1000));
+  for (const child of [refused, main]) {
+    if (child) console.log(await stopTree(child));
   }
-  const still = listeners(PORT);
-  check(still.length === 0, `port ${PORT} is closed after the stop`, still.length ? `still listening: ${still.join(", ")}` : "");
+  let still: string[] = [];
+  try {
+    still = listeners(PORT).map((l) => `${l.address}, process ${l.pid}`);
+  } catch (error) {
+    still = [(error as Error).message];
+  }
+  check(still.length === 0, `port ${PORT} is closed after the stop`, still.length ? `still listening: ${still.join("; ")}` : "");
   try {
     rails(["assets:clobber"], "assets:clobber");
   } catch {
