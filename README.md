@@ -13,10 +13,17 @@ A personal project of the author's, not work for a client.
   says how to open it.
 - [`schema/tokens.json`](schema/tokens.json): the design tokens (colours and
   their contrast pairs, spacing, type, radii, breakpoints), taken from the
-  mock. It is the copy the code will read.
-- [`cms/`](cms/): the Rails 8.1 application, generated and adjusted to run
-  the same way on Windows and Linux. It has no models, routes or API yet;
-  its README has the commands to install, run and test it.
+  mock, with the palette slots of the site style and their curated tones.
+  It is the copy the code reads.
+- [`schema/`](schema/): the one schema of the page document, the corpus
+  both validators are held to, and the tools that compare them.
+- [`cms/`](cms/): the Rails 8.1 application. It stores pages, their draft
+  and versions, publishes them, keeps the media library and the site
+  style, and answers the editor through a JSON API described in
+  [`cms/openapi.yaml`](cms/openapi.yaml). Published pages are not served
+  yet. Its README has the commands to install, run and test it.
+- `package.json`: the repository's own Node tools; for now
+  `npm run lint:openapi`, which lints the API description.
 
 ## The plan, stage by stage
 
