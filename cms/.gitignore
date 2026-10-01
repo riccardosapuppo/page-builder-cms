@@ -1,0 +1,30 @@
+# What the Rails app writes while it runs. The .keep files stay tracked so
+# the folders exist in a fresh clone.
+
+# Logs and temporary files.
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+
+# SQLite databases and Active Storage files.
+/storage/*
+!/storage/.keep
+
+# Assets precompiled by a local production run.
+/public/assets
+
+# Credentials. No credentials file is committed: production takes its
+# secret_key_base from the SECRET_KEY_BASE environment variable, and
+# development and test generate their own in tmp/. A key or an encrypted
+# credentials file made on one machine is useless anywhere else, and a key
+# must never be tracked.
+/config/master.key
+/config/credentials.yml.enc
+/config/credentials/

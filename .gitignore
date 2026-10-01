@@ -1,17 +1,16 @@
 # Node: packages are installed per folder and never committed.
 node_modules/
 
-# Ruby and Rails, inside cms/.
+# Ruby, inside cms/.
 #
 # Gems are installed into the app's own vendor/bundle, never globally.
 # cms/.bundle/ holds Bundler's local settings, which the install routine
 # writes on each machine (install path, launcher folder): they are not
 # shared through the repository.
+# What the running app writes (logs, tmp, databases, the master key) is
+# ignored by cms/.gitignore, which keeps the empty folders Rails expects.
 cms/vendor/bundle/
 cms/.bundle/
-cms/log/
-cms/tmp/
-cms/storage/
 
 # Operating system files.
 .DS_Store
