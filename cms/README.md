@@ -80,6 +80,31 @@ Running it again changes nothing (`test/integration/seed_test.rb` runs it
 twice). Version 1 of each page is the automatic version the first save
 makes; version 2 is the publish.
 
+To start again from an empty site, with the server stopped:
+
+```
+ruby bin/rails db:drop
+ruby bin/rails db:prepare
+```
+
+`db:drop` deletes the development and test databases; `db:prepare`
+creates the development one, loads the schema and, on a database it has
+just created, runs the seed (`ruby bin/rails db:reset` does both in one).
+The images the old database pointed at stay in `storage/`, in its
+two-character folders, as files no row names any more (the nine seed
+images, 182 KB, per seed run); delete those folders too for a clean disk.
+
+On Windows `db:drop` used to fail with `Permission denied @ apply2files -
+.../storage/development.sqlite3` even with nothing else running: its
+environment check opens the database and keeps the connection, and
+Windows does not delete an open file. [lib/tasks/release_connections.rake](lib/tasks/release_connections.rake)
+closes every connection first. `test/lib/tasks/db_drop_test.rb` runs
+`db:create db:schema:load`, then `db:drop`, in processes of their own on a
+database of their own; with the rake file moved away it failed with that
+error, and with it in place it passed, as did `db:drop` and `db:reset` on
+the development database (1 October 2026). A server still running holds
+the file the same way: stop it first.
+
 A first look at the API with curl:
 
 ```
