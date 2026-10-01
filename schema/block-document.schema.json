@@ -1,0 +1,773 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://page-builder-cms.example/schema/block-document.schema.json",
+  "title": "Page document",
+  "description": "One page: its title and search description, and a tree of blocks. The tree is strict: the page holds sections, a section holds one to four columns, a column holds widgets, a widget holds nothing. Every block has the same five keys {id, type, props, children, style}. The editor (ajv) and the server (json_schemer) validate against this same file; schema/README.md lists what it cannot express and where that lives instead.",
+  "$comment": "Dispatch is if/then on the type const, never oneOf. Patterns use only explicit ASCII classes and \\u escapes, so ECMA-262 and json_schemer's ECMA translation read them the same way. Engines: ajv Ajv2020 {strict:true, strictTuples:false, allErrors:true, validateFormats:false, unicodeRegExp:true}; json_schemer {regexp_resolver:'ecma', format:false}.",
+  "type": "object",
+  "required": ["schemaVersion", "title", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "Raised on every change of shape; older documents are upgraded when read.",
+      "const": 1
+    },
+    "title": {
+      "description": "Shown in the browser tab and in search results.",
+      "$ref": "#/$defs/line",
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "description": "Shown under the title in search results. Absent when the page has none.",
+      "$ref": "#/$defs/line",
+      "type": "string",
+      "maxLength": 160
+    },
+    "sections": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/block",
+        "type": "object",
+        "properties": { "type": { "const": "section" } }
+      }
+    }
+  },
+  "$defs": {
+    "blockType": {
+      "description": "Every block type. A new widget is added here, to widgetType, and as one if/then branch of block.",
+      "enum": [
+        "section", "column",
+        "heading", "text", "image", "button", "divider", "spacer",
+        "gallery", "video", "map", "iconbox", "quote", "accordion"
+      ]
+    },
+    "widgetType": {
+      "description": "The block types a column may hold: every block type except section and column.",
+      "enum": [
+        "heading", "text", "image", "button", "divider", "spacer",
+        "gallery", "video", "map", "iconbox", "quote", "accordion"
+      ]
+    },
+    "block": {
+      "$comment": "The dispatcher. The five keys are declared here, so additionalProperties sees them whichever branch runs. The enum on type is what stops an unknown type: it would match no 'if' and pass unchecked. 'required: [\"type\"]' inside each 'if' stops a block without a type from matching every branch.",
+      "type": "object",
+      "required": ["id", "type", "props", "children", "style"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "$ref": "#/$defs/blockType" },
+        "props": { "type": "object" },
+        "children": { "type": "array" },
+        "style": { "$ref": "#/$defs/style" }
+      },
+      "allOf": [
+        { "if": { "required": ["type"], "properties": { "type": { "const": "section" } } }, "then": { "$ref": "#/$defs/sectionBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "column" } } }, "then": { "$ref": "#/$defs/columnBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "heading" } } }, "then": { "$ref": "#/$defs/headingBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "text" } } }, "then": { "$ref": "#/$defs/textBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "image" } } }, "then": { "$ref": "#/$defs/imageBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "button" } } }, "then": { "$ref": "#/$defs/buttonBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "divider" } } }, "then": { "$ref": "#/$defs/dividerBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "spacer" } } }, "then": { "$ref": "#/$defs/spacerBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "gallery" } } }, "then": { "$ref": "#/$defs/galleryBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "video" } } }, "then": { "$ref": "#/$defs/videoBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "map" } } }, "then": { "$ref": "#/$defs/mapBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "iconbox" } } }, "then": { "$ref": "#/$defs/iconboxBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "quote" } } }, "then": { "$ref": "#/$defs/quoteBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } }
+      ]
+    },
+
+    "sectionBlock": {
+      "description": "A band of the page. Its column count is the number of its children, one to four; there is no separate count to keep in step.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "description": "Shown only in the editor, in the navigator and in history.",
+              "$ref": "#/$defs/line",
+              "type": "string",
+              "maxLength": 60
+            },
+            "anchor": {
+              "description": "In-page link target: #anchor scrolls to the section.",
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            }
+          }
+        },
+        "children": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/block",
+            "type": "object",
+            "properties": { "type": { "const": "column" } }
+          }
+        },
+        "style": { "$ref": "#/$defs/sectionStyle" }
+      }
+    },
+    "columnBlock": {
+      "description": "One column of a section. It holds widgets only, never another section or column.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/block",
+            "type": "object",
+            "properties": { "type": { "$ref": "#/$defs/widgetType" } }
+          }
+        },
+        "style": { "$ref": "#/$defs/columnStyle" }
+      }
+    },
+    "headingBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["level", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "level": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "text": { "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
+            "href": { "$ref": "#/$defs/href" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/textStyle" }
+      }
+    },
+    "textBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["doc"],
+          "additionalProperties": false,
+          "properties": {
+            "doc": { "$ref": "#/$defs/pmDoc" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/textStyle" }
+      }
+    },
+    "imageBlock": {
+      "type": "object",
+      "properties": {
+        "props": { "$ref": "#/$defs/imageRef" },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/plainStyle" }
+      }
+    },
+    "buttonBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["label", "href"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+            "href": { "$ref": "#/$defs/href" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/buttonStyle" }
+      }
+    },
+    "dividerBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/lineStyle" }
+      }
+    },
+    "spacerBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["size"],
+          "additionalProperties": false,
+          "properties": {
+            "size": { "$ref": "#/$defs/spaceToken" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/plainStyle" }
+      }
+    },
+    "galleryBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["items"],
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 24,
+              "items": { "$ref": "#/$defs/imageRef" }
+            }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/galleryStyle" }
+      }
+    },
+    "videoBlock": {
+      "description": "Stored as provider and video id, never as a URL: the renderer builds the player address from the provider's fixed pattern, so no stored string is parsed as a URL on the way out.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["provider", "videoId", "title"],
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "enum": ["youtube", "vimeo"] },
+            "videoId": { "type": "string", "maxLength": 32 },
+            "title": {
+              "description": "The player's accessible name, and the caption of the click-to-load card.",
+              "$ref": "#/$defs/line",
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          "allOf": [
+            {
+              "if": { "required": ["provider"], "properties": { "provider": { "const": "youtube" } } },
+              "then": { "properties": { "videoId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11}$" } } }
+            },
+            {
+              "if": { "required": ["provider"], "properties": { "provider": { "const": "vimeo" } } },
+              "then": { "properties": { "videoId": { "type": "string", "pattern": "^[0-9]{1,12}$" } } }
+            }
+          ]
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/plainStyle" }
+      }
+    },
+    "mapBlock": {
+      "description": "Stored as coordinates; the renderer builds the map address.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["latitude", "longitude", "zoom", "label"],
+          "additionalProperties": false,
+          "properties": {
+            "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+            "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+            "zoom": { "type": "integer", "minimum": 1, "maximum": 19 },
+            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/plainStyle" }
+      }
+    },
+    "iconboxBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["icon", "title", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "icon": {
+              "description": "A name from the project's own icon set; both renderers draw it from that set. Never markup or a URL.",
+              "enum": ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"]
+            },
+            "title": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+            "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 300 }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/iconboxStyle" }
+      }
+    },
+    "quoteBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 500 },
+            "attribution": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/textStyle" }
+      }
+    },
+    "accordionBlock": {
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["items"],
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 30,
+              "items": {
+                "type": "object",
+                "required": ["question", "answer"],
+                "additionalProperties": false,
+                "properties": {
+                  "question": { "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
+                  "answer": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 2000 }
+                }
+              }
+            }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/lineStyle" }
+      }
+    },
+
+    "imageRef": {
+      "description": "One image: from the media library ({mediaId}) or from another site ({url}), never both. It has alt text, or is marked decorative and has none. The image widget's props and each gallery item have this shape.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mediaId": { "$ref": "#/$defs/mediaId" },
+        "url": { "$ref": "#/$defs/imageUrl" },
+        "alt": { "$ref": "#/$defs/line", "type": "string", "maxLength": 300 },
+        "decorative": {
+          "description": "Only true is stored: an image that adds nothing for a screen reader. Absent means the image needs alt text.",
+          "const": true
+        }
+      },
+      "$comment": "Exactly one source and exactly one of alt or decorative, written with if/then/else rather than oneOf. The 'properties: {x: true}' beside each 'required' only declares the key for ajv's strictRequired; it checks nothing.",
+      "allOf": [
+        {
+          "if": { "type": "object", "properties": { "mediaId": true }, "required": ["mediaId"] },
+          "then": { "not": { "type": "object", "properties": { "url": true }, "required": ["url"] } },
+          "else": { "type": "object", "properties": { "url": true }, "required": ["url"] }
+        },
+        {
+          "if": { "type": "object", "properties": { "decorative": true }, "required": ["decorative"] },
+          "then": { "not": { "type": "object", "properties": { "alt": true }, "required": ["alt"] } },
+          "else": { "type": "object", "properties": { "alt": true }, "required": ["alt"] }
+        }
+      ]
+    },
+    "noChildren": {
+      "description": "Widgets hold no blocks: children is always the empty array.",
+      "type": "array",
+      "maxItems": 0
+    },
+
+    "blockId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "mediaId": {
+      "description": "The public id of a media library item. The renderers resolve it to a file address.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "line": {
+      "description": "A single line of plain text with at least one visible character.",
+      "type": "string",
+      "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u00ad\\u1680\\u180e\\u2000-\\u200f\\u2028\\u2029\\u202f\\u205f\\u2060\\u3000\\ufeff]",
+      "not": { "$ref": "#/$defs/lineControls" }
+    },
+    "paragraph": {
+      "description": "Plain text that may hold line breaks (\\n only), with at least one visible character.",
+      "type": "string",
+      "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u00ad\\u1680\\u180e\\u2000-\\u200f\\u2028\\u2029\\u202f\\u205f\\u2060\\u3000\\ufeff]",
+      "not": { "$ref": "#/$defs/paragraphControls" }
+    },
+    "lineControls": {
+      "$comment": "Used under 'not'. Unanchored on purpose: it finds a control character anywhere, so a field stays closed even if json_schemer is set back to its Ruby resolver, where ^ and $ match at every line break.",
+      "type": "string",
+      "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"
+    },
+    "paragraphControls": {
+      "$comment": "Used under 'not': like lineControls, but a line feed is allowed.",
+      "type": "string",
+      "pattern": "[\\u0000-\\u0009\\u000b-\\u001f\\u007f-\\u009f\\u2028\\u2029]"
+    },
+    "href": {
+      "description": "A link target: https or http with a host (no user info), mailto:, tel:, a site path (/..., never //host), a ?query or a #fragment. ASCII only: the editor percent-encodes anything else.",
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^(?:https?://[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:[.][A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*(?::[0-9]{1,5})?(?:[/?#](?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})*)?|mailto:(?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})+|tel:[+]?[0-9][0-9().-]{0,31}|/(?:(?:[A-Za-z0-9._~!$&'()*+,;=:@?#-]|%[0-9A-Fa-f]{2})(?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})*)?|[?#](?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})*)$",
+      "not": { "$ref": "#/$defs/lineControls" }
+    },
+    "imageUrl": {
+      "description": "An image from another site: https with a host (no user info), or a site path. No http (mixed content), no data:, no //host.",
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^(?:https://[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:[.][A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*(?::[0-9]{1,5})?(?:[/?#](?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})*)?|/(?:[A-Za-z0-9._~!$&'()*+,;=:@?#-]|%[0-9A-Fa-f]{2})(?:[A-Za-z0-9._~!$&'()*+,;=:@/?#-]|%[0-9A-Fa-f]{2})*)$",
+      "not": { "$ref": "#/$defs/lineControls" }
+    },
+
+    "spaceToken": {
+      "description": "Spacing steps, the keys of space.site in tokens.json (None to XXL in the editor).",
+      "enum": ["none", "xs", "s", "m", "l", "xl", "xxl"]
+    },
+    "sectionSpaceToken": {
+      "description": "Vertical space of a section, the keys of space.site-section in tokens.json.",
+      "enum": ["section-s", "section-l"]
+    },
+    "paletteSlot": {
+      "description": "The six palette slots of the site style. A block names a slot, never a tone: the site owner picks the tone of each slot, and every block follows.",
+      "enum": ["text", "background", "primary", "accent", "soft", "muted"]
+    },
+    "backgroundToken": {
+      "description": "A palette slot, or none for no background.",
+      "enum": ["none", "text", "background", "primary", "accent", "soft", "muted"]
+    },
+    "typeStep": {
+      "description": "Steps of the site type scale, from type.site in tokens.json.",
+      "enum": ["display", "heading-1", "heading-2", "heading-3", "large", "body", "small"]
+    },
+    "alignToken": { "enum": ["left", "center", "right"] },
+    "verticalAlignToken": { "enum": ["top", "middle", "bottom"] },
+    "visibilityToken": { "enum": ["visible", "hidden"] },
+
+    "styleTokens": {
+      "description": "Every style setting, by token name. In tablet and phone an absent key means 'as on desktop' (base); there is no null.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spaceInside": { "$ref": "#/$defs/spaceToken" },
+        "spaceBetween": { "$ref": "#/$defs/spaceToken" },
+        "sectionSpace": { "$ref": "#/$defs/sectionSpaceToken" },
+        "background": { "$ref": "#/$defs/backgroundToken" },
+        "color": { "$ref": "#/$defs/paletteSlot" },
+        "textSize": { "$ref": "#/$defs/typeStep" },
+        "align": { "$ref": "#/$defs/alignToken" },
+        "verticalAlign": { "$ref": "#/$defs/verticalAlignToken" },
+        "visibility": { "$ref": "#/$defs/visibilityToken" }
+      }
+    },
+    "style": {
+      "description": "base applies everywhere; tablet and phone hold only what differs there. An override that is removed is a key that disappears, and an empty override object is not stored.",
+      "type": "object",
+      "required": ["base"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "$ref": "#/$defs/styleTokens" },
+        "tablet": { "$ref": "#/$defs/styleTokens", "type": "object", "minProperties": 1 },
+        "phone": { "$ref": "#/$defs/styleTokens", "type": "object", "minProperties": 1 }
+      }
+    },
+
+    "sectionStyle": {
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/sectionStyleKeys" },
+        "tablet": { "$ref": "#/$defs/sectionStyleKeys" },
+        "phone": { "$ref": "#/$defs/sectionStyleKeys" }
+      }
+    },
+    "sectionStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "background": true, "sectionSpace": true, "spaceBetween": true, "visibility": true }
+    },
+    "columnStyle": {
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/columnStyleKeys" },
+        "tablet": { "$ref": "#/$defs/columnStyleKeys" },
+        "phone": { "$ref": "#/$defs/columnStyleKeys" }
+      }
+    },
+    "columnStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": true, "spaceInside": true, "spaceBetween": true, "textSize": true,
+        "color": true, "align": true, "verticalAlign": true, "visibility": true
+      }
+    },
+    "textStyle": {
+      "description": "Heading, text and quote.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/textStyleKeys" },
+        "tablet": { "$ref": "#/$defs/textStyleKeys" },
+        "phone": { "$ref": "#/$defs/textStyleKeys" }
+      }
+    },
+    "textStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "textSize": true, "color": true, "align": true, "visibility": true }
+    },
+    "buttonStyle": {
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/buttonStyleKeys" },
+        "tablet": { "$ref": "#/$defs/buttonStyleKeys" },
+        "phone": { "$ref": "#/$defs/buttonStyleKeys" }
+      }
+    },
+    "buttonStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "background": true, "color": true, "align": true, "visibility": true }
+    },
+    "iconboxStyle": {
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/iconboxStyleKeys" },
+        "tablet": { "$ref": "#/$defs/iconboxStyleKeys" },
+        "phone": { "$ref": "#/$defs/iconboxStyleKeys" }
+      }
+    },
+    "iconboxStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "align": true, "visibility": true }
+    },
+    "lineStyle": {
+      "description": "Divider and accordion: the colour of their lines.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/lineStyleKeys" },
+        "tablet": { "$ref": "#/$defs/lineStyleKeys" },
+        "phone": { "$ref": "#/$defs/lineStyleKeys" }
+      }
+    },
+    "lineStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "visibility": true }
+    },
+    "galleryStyle": {
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/galleryStyleKeys" },
+        "tablet": { "$ref": "#/$defs/galleryStyleKeys" },
+        "phone": { "$ref": "#/$defs/galleryStyleKeys" }
+      }
+    },
+    "galleryStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "spaceBetween": true, "visibility": true }
+    },
+    "plainStyle": {
+      "description": "Image, spacer, video and map: they can only be hidden per device.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/plainStyleKeys" },
+        "tablet": { "$ref": "#/$defs/plainStyleKeys" },
+        "phone": { "$ref": "#/$defs/plainStyleKeys" }
+      }
+    },
+    "plainStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "visibility": true }
+    },
+
+    "pmDoc": {
+      "description": "Rich text as the editor's getJSON() gives it, cut down to paragraphs, line breaks, bullet and numbered lists, and bold, italic and link marks.",
+      "type": "object",
+      "required": ["type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "doc" },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/pmBlockNode" }
+        }
+      }
+    },
+    "pmBlockNode": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["paragraph", "bulletList", "orderedList"] }
+      },
+      "allOf": [
+        { "if": { "required": ["type"], "properties": { "type": { "const": "paragraph" } } }, "then": { "$ref": "#/$defs/pmParagraph" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "bulletList" } } }, "then": { "$ref": "#/$defs/pmBulletList" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "orderedList" } } }, "then": { "$ref": "#/$defs/pmOrderedList" } }
+      ]
+    },
+    "pmParagraph": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "paragraph" },
+        "content": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": { "$ref": "#/$defs/pmInlineNode" }
+        }
+      }
+    },
+    "pmBulletList": {
+      "type": "object",
+      "required": ["type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "bulletList" },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/pmListItem" }
+        }
+      }
+    },
+    "pmOrderedList": {
+      "type": "object",
+      "required": ["type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "orderedList" },
+        "attrs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": { "type": "integer", "minimum": 1, "maximum": 100000 },
+            "type": { "enum": [null, "1", "a", "A", "i", "I"] }
+          }
+        },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/pmListItem" }
+        }
+      }
+    },
+    "pmListItem": {
+      "description": "A list item starts with a paragraph; nested lists and further paragraphs follow.",
+      "type": "object",
+      "required": ["type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "listItem" },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "prefixItems": [{ "$ref": "#/$defs/pmParagraph" }],
+          "items": { "$ref": "#/$defs/pmBlockNode" }
+        }
+      }
+    },
+    "pmInlineNode": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["text", "hardBreak"] }
+      },
+      "allOf": [
+        { "if": { "required": ["type"], "properties": { "type": { "const": "text" } } }, "then": { "$ref": "#/$defs/pmText" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "hardBreak" } } }, "then": { "$ref": "#/$defs/pmHardBreak" } }
+      ]
+    },
+    "pmText": {
+      "type": "object",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "text" },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000,
+          "not": { "$ref": "#/$defs/lineControls" }
+        },
+        "marks": { "$ref": "#/$defs/pmMarks" }
+      }
+    },
+    "pmHardBreak": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "hardBreak" },
+        "marks": { "$ref": "#/$defs/pmMarks" }
+      }
+    },
+    "pmMarks": {
+      "type": "array",
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/pmMark" }
+    },
+    "pmMark": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["bold", "italic", "link"] }
+      },
+      "allOf": [
+        { "if": { "required": ["type"], "properties": { "type": { "const": "bold" } } }, "then": { "$ref": "#/$defs/pmMarkBold" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "italic" } } }, "then": { "$ref": "#/$defs/pmMarkItalic" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "link" } } }, "then": { "$ref": "#/$defs/pmMarkLink" } }
+      ]
+    },
+    "pmMarkBold": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "type": { "const": "bold" } }
+    },
+    "pmMarkItalic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "type": { "const": "italic" } }
+    },
+    "pmMarkLink": {
+      "description": "The attrs the editor's link mark writes. Only href carries meaning: the renderers set target and rel themselves.",
+      "type": "object",
+      "required": ["attrs"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "link" },
+        "attrs": {
+          "type": "object",
+          "required": ["href"],
+          "additionalProperties": false,
+          "properties": {
+            "href": { "$ref": "#/$defs/href" },
+            "target": { "enum": [null, "_blank"] },
+            "rel": { "enum": [null, "noopener noreferrer nofollow"] },
+            "class": { "type": "null" }
+          }
+        }
+      }
+    }
+  }
+}
