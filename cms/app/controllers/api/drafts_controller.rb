@@ -12,9 +12,10 @@ module Api
     # PUT /api/pages/:id/draft {revision, document, saveId}
     #
     # 200 when saved, or when this is a retry of the save that was accepted
-    # last (same saveId). 409 when the draft has moved past the revision
-    # sent, with the current revision and the saveId of the save that moved
-    # it, so the editor can tell its own lost save from someone else's.
+    # last (same saveId, revision and document). 409 when the draft has
+    # moved past the revision sent, with the current revision and the saveId
+    # of the save that moved it, so the editor can tell its own lost save
+    # from someone else's.
     # 422 with pointers into the body when the document is not valid.
     def update
       check = BodyCheck.new(body, allowed: %w[revision document saveId])

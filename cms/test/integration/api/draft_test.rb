@@ -37,6 +37,27 @@ class Api::DraftTest < ActionDispatch::IntegrationTest
     assert_equal 1, @page.draft.reload.revision
   end
 
+  test "a second tab that reuses the last save id with its own text is a 409, not a false success" do
+    save_draft @page, revision: 0, document: page_document(title: "Text of tab A"), save_id: "tab-1"
+
+    save_draft @page, revision: 0, document: page_document(title: "Text of tab B"), save_id: "tab-1"
+
+    assert_response :conflict
+    assert_equal({ "error" => "conflict", "currentRevision" => 1, "lastSaveId" => "tab-1" }, json.except("message"))
+    api :get, "/api/pages/#{@page.id}/draft"
+    assert_equal "Text of tab A", json["document"]["title"]
+  end
+
+  test "the last save id with a revision that never was is a 409" do
+    save_draft @page, revision: 0, document: page_document(title: "Text of tab A"), save_id: "tab-1"
+
+    save_draft @page, revision: 7, document: page_document(title: "Text of tab A"), save_id: "tab-1"
+
+    assert_response :conflict
+    assert_equal 1, json["currentRevision"]
+    assert_equal 1, @page.draft.reload.revision
+  end
+
   test "an invalid document is a 422 that points at the value and at its block" do
     document = page_document
     document["sections"][0]["children"][0]["children"][0]["props"]["level"] = 7

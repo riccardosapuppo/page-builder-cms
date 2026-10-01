@@ -43,9 +43,13 @@ class Draft < ApplicationRecord
   # the statements one after the other, and the second finds the revision
   # already moved.
   #
-  # When no row changed and the draft's last accepted save carries this
-  # save_id, this is a retry of a save that went through (its answer was
-  # lost on the way back): it is answered as saved, not as a conflict.
+  # When no row changed, the save is answered as saved only if it is a
+  # retry of the save that went through last (its answer was lost on the
+  # way back): the same save_id, from the revision that save started from,
+  # with the same document once normalised. Anything else is a conflict,
+  # the same save_id included: a second tab that numbers its saves the same
+  # way, or a retry carrying edited content, must not be told that a
+  # document the server never stored was saved.
   #
   # Returns the draft as saved. Raises BlockDocument::Invalid, Conflict, or
   # ActiveRecord::RecordNotFound when there is no such page.
@@ -59,7 +63,7 @@ class Draft < ApplicationRecord
         .update_all([ "document = ?, revision = revision + 1, last_save_id = ?, updated_at = ?", json, save_id, at ])
       draft = find_by!(page_id: page_id)
       if changed.zero?
-        unless draft.last_save_id == save_id
+        unless draft.replay_of?(save_id: save_id, revision: revision, json: json)
           raise Conflict.new(current_revision: draft.revision, last_save_id: draft.last_save_id)
         end
       else
@@ -68,6 +72,14 @@ class Draft < ApplicationRecord
       end
       draft
     end
+  end
+
+  # Whether a save that changed no row is the last accepted save sent again:
+  # that save carried save_id, moved the draft from revision to
+  # revision + 1, and stored exactly json (compared as parsed JSON, the way
+  # the column reads it back).
+  def replay_of?(save_id:, revision:, json:)
+    last_save_id == save_id && self.revision == revision + 1 && document == JSON.parse(json)
   end
 
   # The document upgraded to the current schemaVersion and checked again:

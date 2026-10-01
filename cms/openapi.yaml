@@ -172,8 +172,12 @@ paths:
       description: |
         Saves the document if the draft is still at `revision`, and raises
         the revision by one. Give each save its own `saveId`, and send the
-        same one again when retrying a save whose answer never came: if that
-        save was accepted, the retry is answered 200, not 409.
+        same request again when retrying a save whose answer never came: if
+        that save was the last one accepted, the retry is answered 200, not
+        409. Only an exact retry is: the same `saveId`, the same `revision`
+        and the same document (once normalised). The same `saveId` with
+        another document or revision is a 409, since nothing it carries was
+        stored.
 
         While someone keeps saving, a version of kind `auto` is kept at most
         every ten minutes.

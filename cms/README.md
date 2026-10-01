@@ -311,9 +311,12 @@ that is not JSON or not UTF-8 gets 400 `malformed_json`.
 **Saving.** The revision check is one statement,
 `UPDATE drafts SET ..., revision = revision + 1 WHERE page_id = ? AND revision = ?`,
 and the rows it changed decide. A 409 gives `currentRevision` and
-`lastSaveId`, the id of the save that got there; a retry with the same
-`saveId` as the last accepted save is answered 200, so a save whose answer
-was lost never comes back as a false conflict.
+`lastSaveId`, the id of the save that got there. A retry of the last
+accepted save, the same `saveId`, `revision` and document, is answered
+200, so a save whose answer was lost never comes back as a false
+conflict; the same `saveId` with another document or another revision is
+a 409, so a second tab that numbers its saves the same way is never told
+that text the server dropped was saved.
 
 **Versions** are kept on publish, on restore, on "Save version", and at
 most every ten minutes while someone saves. A restore first keeps the

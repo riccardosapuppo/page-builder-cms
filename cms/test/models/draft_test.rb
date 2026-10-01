@@ -36,6 +36,44 @@ class DraftTest < ActiveSupport::TestCase
     assert_equal "First", draft.document["title"]
   end
 
+  test "a retry is recognised on the normalised document: 2.0 is the 2 that was stored" do
+    Draft.save_document!(page_id: @page.id, revision: 0, document: page_document(title: "First"), save_id: "s1")
+    sent_again = page_document(title: "First")
+    sent_again["sections"][0]["children"][0]["children"][0]["props"]["level"] = 1.0
+
+    draft = Draft.save_document!(page_id: @page.id, revision: 0, document: sent_again, save_id: "s1")
+
+    assert_equal 1, draft.revision
+  end
+
+  test "the last save id with another document is a conflict, and the draft keeps what was stored" do
+    Draft.save_document!(page_id: @page.id, revision: 0, document: page_document(title: "Text of tab A"), save_id: "tab-1")
+
+    error = assert_raises(Draft::Conflict) do
+      Draft.save_document!(page_id: @page.id, revision: 0, document: page_document(title: "Text of tab B"), save_id: "tab-1")
+    end
+
+    assert_equal 1, error.current_revision
+    assert_equal "tab-1", error.last_save_id
+    assert_equal "Text of tab A", @page.draft.reload.document["title"]
+    assert_equal 1, @page.draft.revision
+  end
+
+  test "the last save id from a revision that save did not start from is a conflict" do
+    Draft.save_document!(page_id: @page.id, revision: 0, document: page_document(title: "First"), save_id: "s1")
+    Draft.save_document!(page_id: @page.id, revision: 1, document: page_document(title: "Second"), save_id: "s2")
+
+    [ 0, 7 ].each do |revision|
+      error = assert_raises(Draft::Conflict, "revision #{revision}") do
+        Draft.save_document!(page_id: @page.id, revision: revision, document: page_document(title: "Second"), save_id: "s2")
+      end
+      assert_equal 2, error.current_revision
+    end
+    # From 1, where it did start, it is the retry it claims to be.
+    assert_equal 2, Draft.save_document!(page_id: @page.id, revision: 1, document: page_document(title: "Second"), save_id: "s2").revision
+    assert_equal 2, @page.draft.reload.revision
+  end
+
   test "a save of a missing page is not found" do
     assert_raises(ActiveRecord::RecordNotFound) do
       Draft.save_document!(page_id: 0, revision: 0, document: page_document, save_id: "s1")
