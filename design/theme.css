@@ -1,0 +1,268 @@
+/* ==========================================================================
+   Slack Water: the default site theme.
+   Loaded by the editor canvas and by the published page alike, and by
+   nothing else: no editor chrome lives here. Every color, size and space on
+   the page comes from the custom properties below, which are the tokens a
+   site owner edits in Site style. Layout changes happen through container
+   queries on the page root (.site), never through viewport media queries.
+   ========================================================================== */
+
+@font-face { font-family: "Archivo"; src: url("fonts/archivo-variable.woff2") format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; font-display: block; }
+@font-face { font-family: "Source Serif 4"; src: url("fonts/source-serif-4-variable.woff2") format("woff2"); font-weight: 200 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Source Serif 4"; src: url("fonts/source-serif-4-variable-italic.woff2") format("woff2"); font-weight: 200 900; font-style: italic; font-display: block; }
+
+/* ---------- Palette slots (Site style > Palette) ---------- */
+.site {
+  container: site / inline-size;
+  --sw-text: #14302A;     /* Text: Ink */
+  --sw-bg: #FFFFFF;       /* Background: Paper */
+  --sw-primary: #1E5B4C;  /* Primary: Sea */
+  --sw-accent: #F2A541;   /* Accent: Buoy */
+  --sw-soft: #E6EFEA;     /* Soft: Shallows */
+  --sw-muted: #4E625B;    /* Muted: Slate */
+  background: var(--sw-bg);
+  color: var(--sw-text);
+}
+
+/* ---------- Spacing steps and type scale ---------- */
+.sw {
+  /* the steps a site owner picks in the Style tab */
+  --space-xs: 4px; --space-s: 8px; --space-m: 16px; --space-l: 24px; --space-xl: 32px; --space-xxl: 48px;
+  /* section rhythm, set by the theme and not per block */
+  --section-s: 64px; --section-l: 96px;
+
+  /* Balanced scale: each step about a third larger (1.333) from an 18 px body */
+  --fs-display: 76px; --lh-display: 1;
+  --fs-h1: 56px;      --lh-h1: 1.05;
+  --fs-h2: 42px;      --lh-h2: 1.1;
+  --fs-h3: 32px;      --lh-h3: 1.25;
+  --fs-large: 24px;   --lh-large: 1.45;
+  --fs-body: 18px;    --lh-body: 1.6;
+  --fs-small: 14px;   --lh-small: 1.5;
+
+  --pad-x: var(--section-s);
+  --sec-y: var(--section-l);
+  --col-gap: var(--space-l);
+  --cols-gap: var(--space-xxl);
+
+  font-family: "Source Serif 4", Georgia, serif;
+  font-optical-sizing: auto;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-variant-numeric: normal;
+  color: var(--sw-text);
+}
+.sw :focus-visible { outline: 3px solid var(--sw-text); outline-offset: 3px; }
+/* Inside the ink-coloured embed bar an ink ring would be invisible: paper there. */
+.sw .sw-embed :focus-visible { outline-color: var(--sw-bg); }
+/* The video card is one big button and the card clips its overflow, and its
+   positioned poster would paint over an outline: the ring is a layer above it. */
+.sw .sw-embed-load { position: relative; }
+.sw .sw-embed-load:focus-visible { outline: none; }
+.sw .sw-embed-load:focus-visible::after { content: ""; position: absolute; inset: 6px; z-index: 2; border: 3px solid var(--sw-bg); border-radius: 8px; pointer-events: none; }
+.sw a { color: inherit; }
+.sw p a { color: var(--sw-primary); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
+
+/* ---------- Structure: section > columns > widgets ---------- */
+.sw-inner { max-width: calc(1120px + 2 * var(--pad-x)); margin-inline: auto; padding-inline: var(--pad-x); }
+.sec { padding-block: var(--sec-y); background: var(--sec-bg, transparent); }
+.cols { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: var(--space-xxl) var(--cols-gap); }
+/* "Space inside" of a column, on all four sides, is written per column in the page stylesheet (#page-css) */
+.col { display: flex; flex-direction: column; gap: var(--col-gap); min-width: 0; padding: var(--col-pad, 0px); }
+/* The Style tab's "Vertical alignment" control writes this attribute. */
+.col[data-valign="center"] { justify-content: center; }
+.col[data-valign="end"] { justify-content: flex-end; }
+
+.sw-display, .sw-h2, .sw-iconbox h3, .sw-brand, .sw-nav, .sw-btn, .sw-menu, .sw-accordion summary, .sw-field label, .sw-quote figcaption {
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+}
+.sw-display { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 700; font-stretch: 125%; letter-spacing: -.022em; color: var(--sw-primary); max-width: 7.4em; text-wrap: pretty; }
+.sw-h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 700; font-stretch: 125%; letter-spacing: -.015em; color: var(--sw-primary); text-wrap: balance; }
+.sw-lead { max-width: 31em; font-size: var(--fs-large); line-height: var(--lh-large); }
+.sw p { max-width: 36em; }
+
+.sw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 54px; padding: 0 30px; border: 0; border-radius: 999px;
+  background: var(--sw-accent); color: var(--sw-text);
+  font-size: 17px; font-weight: 650; font-stretch: 115%; letter-spacing: .005em; text-decoration: none; cursor: pointer;
+}
+.sw-btn-primary { background: var(--sw-primary); color: var(--sw-bg); }
+.sw-btn-small { height: 40px; padding: 0 20px; font-size: 15px; }
+.col > .w:has(> .sw-btn) { align-self: flex-start; }
+
+/* ---------- Header and footer: part of the theme, on every page ---------- */
+.sw-header-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 80px; }
+.sw-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
+.sw-brand-mark { width: 30px; height: 30px; flex: none; }
+.sw-brand-mark circle { fill: var(--sw-primary); }
+.sw-brand-mark .sun { fill: var(--sw-accent); }
+.sw-brand-mark .line { stroke: var(--sw-bg); stroke-width: 2; }
+.sw-brand-mark-inv circle { fill: var(--sw-bg); }
+.sw-brand-mark-inv .line { stroke: var(--sw-text); }
+.sw-nav { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 500; font-stretch: 110%; }
+.sw-nav-links { display: flex; align-items: center; gap: 28px; margin-right: 16px; }
+.sw-nav-links a { text-decoration: none; }
+.sw-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+/* below the desktop layout the links fold into a Menu button; the menu itself opens as a sheet */
+.sw-menu {
+  display: none; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px;
+  border: 0; border-radius: 999px; background: var(--sw-bg); color: var(--sw-text);
+  box-shadow: inset 0 0 0 1.5px var(--sw-text);
+  font-size: 15px; font-weight: 650; font-stretch: 110%; cursor: pointer;
+}
+.sw-menu svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.sw-footer { background: var(--sw-text); color: var(--sw-bg); }
+.sw-footer-row { display: flex; align-items: center; gap: 14px; padding-block: var(--space-xxl); font-size: 16px; }
+.sw-footer strong { font-weight: 600; }
+
+/* ---------- Hero: two columns on desktop, stacked below it ---------- */
+.sec-hero { padding-block: var(--section-s); }
+.cols-hero { --cols-gap: var(--space-xl); grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: center; }
+.sw-figure img { display: block; width: 100%; height: auto; border-radius: 12px; }
+/* the hero image keeps one shape on desktop (square), whatever the text beside it */
+.sw-hero-img img { aspect-ratio: 1 / 1; object-fit: cover; object-position: 50% 50%; }
+
+/* ---------- Desktop type grows with the page ----------
+   From a page 800 wide (where the desktop layout starts) to 1280, every step
+   grows in a straight line from its tablet size to its desktop size, all
+   together. So the steps never meet: on the 832 canvas they are 54, 43, 34,
+   27, 21, 17 and 14, and from 1280 up 76, 56, 42, 32, 24, 18 and 14. Display
+   stays one step above Heading 1 at every width (a quarter above it at 800,
+   a third above it from 1280). Formula per step: tablet size at 800 plus
+   (desktop - tablet) x (width - 800) / 480. */
+@container site (width >= 800px) {
+  .sw {
+    --fs-display: clamp(52px, 12px + 5cqi, 76px);
+    --fs-h1: clamp(42px, 18.667px + 2.9167cqi, 56px);
+    --fs-h2: clamp(33px, 18px + 1.875cqi, 42px);
+    --fs-h3: clamp(27px, 18.667px + 1.0417cqi, 32px);
+    --fs-large: clamp(21px, 16px + .625cqi, 24px);
+    --fs-body: clamp(17px, 15.333px + .2083cqi, 18px);
+  }
+}
+
+/* ---------- Icon boxes ---------- */
+.sec-what { --sec-bg: var(--sw-soft); padding-block: var(--section-s); }
+.sec-what .cols { --cols-gap: var(--space-xl); }
+.sw-iconbox { display: grid; gap: var(--space-m); }
+.sw-icon { width: 48px; height: 48px; fill: none; stroke: var(--sw-primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sw-icon .fill { fill: var(--sw-accent); }
+.sw-iconbox h3 { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; font-stretch: 125%; letter-spacing: -.012em; margin-bottom: var(--space-s); }
+
+/* ---------- Gallery ---------- */
+.sw-gallery { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-m); }
+.sw-gallery img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
+.sec-gallery { padding-bottom: var(--section-s); }
+
+/* ---------- Video and map: nothing loads until clicked ---------- */
+.sec-meet { padding-top: var(--section-s); }
+.sw-embed { border-radius: 12px; overflow: hidden; background: var(--sw-text); color: var(--sw-bg); }
+.sw-embed-load { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.sw-embed-media { position: relative; display: block; }
+.sw-embed-media > img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.sw-embed-bar { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px 16px; }
+.sw-embed-bar strong { font: 650 18px/1.25 "Archivo", sans-serif; font-stretch: 115%; }
+.sw-embed-bar small { font-size: 15px; line-height: 1.4; }
+.sw-embed-bar-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+.sw-embed-bar-row p { max-width: none; font-size: 16px; line-height: 1.4; }
+.sw-embed-bar-row strong { font: inherit; font-weight: 700; }
+.sw-embed-bar-row .sw-btn { flex: none; }
+.sw-play-dot { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 60px; height: 60px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--sw-accent); color: var(--sw-text); }
+.sw-play-dot svg { width: 24px; height: 24px; margin-left: 3px; fill: currentColor; }
+/* the meeting point: a drop pin whose tip sits on the head of the slipway */
+.sw-map-pin { position: absolute; left: 64.25%; top: 33.8%; width: 32px; height: 32px; transform: translate(-50%, calc(-100% - 7px)); }
+.sw-map-pin::before { content: ""; position: absolute; inset: 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); transform-origin: 50% 50%; background: var(--sw-accent); box-shadow: 0 0 0 2.5px var(--sw-text); }
+.sw-map-pin::after { content: ""; position: absolute; left: 50%; top: 42%; width: 10px; height: 10px; border-radius: 50%; background: var(--sw-text); transform: translate(-50%, -50%); }
+
+/* ---------- Quote ---------- */
+.sec-quote { --sec-bg: var(--sw-soft); }
+.cols-quote { align-items: center; }
+.col-quote { justify-content: center; }
+.sw-quote { display: grid; gap: var(--space-m); max-width: 24em; }
+.sw-quote-img img { aspect-ratio: 4 / 3; object-fit: cover; }
+.sw-quote-mark { width: 44px; height: 33px; fill: var(--sw-primary); }
+.sw-quote blockquote { margin: 0; }
+/* the quote uses the Heading 3 step, in the serif italic */
+.sw-quote blockquote p { font-size: var(--fs-h3); line-height: var(--lh-h3); font-style: italic; font-weight: 400; max-width: 20em; }
+.sw-quote figcaption { font-size: 16px; font-weight: 500; font-stretch: 110%; color: var(--sw-muted); }
+
+/* ---------- Accordion ---------- */
+.sw-accordion details { border-top: 1px solid var(--sw-muted); }
+.sw-accordion details:last-child { border-bottom: 1px solid var(--sw-muted); }
+.sw-accordion summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 19px; font-weight: 600; font-stretch: 115%; list-style: none; cursor: pointer; }
+.sw-accordion summary::-webkit-details-marker { display: none; }
+.sw-accordion summary::after { content: ""; width: 14px; height: 14px; flex: none; background: linear-gradient(var(--sw-primary), var(--sw-primary)) center / 14px 2px no-repeat, linear-gradient(var(--sw-primary), var(--sw-primary)) center / 2px 14px no-repeat; }
+.sw-accordion details[open] summary::after { background: linear-gradient(var(--sw-primary), var(--sw-primary)) center / 14px 2px no-repeat; }
+.sw-accordion details p { padding-bottom: 20px; }
+
+/* ---------- Form ---------- */
+.sec-join { padding-bottom: var(--section-l); }
+.sw-form { display: grid; gap: var(--space-m); }
+.sw-field label { display: block; margin-bottom: 6px; font-size: 15px; font-weight: 600; font-stretch: 110%; }
+.sw-field input, .sw-field textarea { display: block; width: 100%; padding: 12px 14px; border: 1.5px solid var(--sw-muted); border-radius: 4px; background: var(--sw-bg); color: var(--sw-text); font: inherit; font-size: 17px; }
+.sw-field textarea { resize: vertical; }
+.sw-check { display: flex; align-items: flex-start; gap: 10px; font-size: 16px; line-height: 1.45; }
+.sw-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--sw-primary); flex: none; }
+.sw-check em { font-style: normal; color: var(--sw-muted); }
+.sw-form .sw-btn { justify-self: start; margin-top: var(--space-s); }
+
+/* ---------- Tablet layout: the page root is narrower than 800 ---------- */
+@container site (width < 800px) {
+  .sw {
+    /* 1.25 from a 17 px body */
+    --fs-display: 52px; --lh-display: 1.02;
+    --fs-h1: 42px; --lh-h1: 1.08;
+    --fs-h2: 33px; --lh-h2: 1.12;
+    --fs-h3: 27px;
+    --fs-large: 21px;
+    --fs-body: 17px;
+    --pad-x: var(--space-xl);
+    --sec-y: var(--section-s);
+    --cols-gap: var(--space-xl);
+  }
+  .cols { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
+  .sec-what .cols { gap: var(--space-l); }
+  .sw-nav-links { display: none; }
+  .sw-menu { display: inline-flex; }
+  .sw-hero-img img { aspect-ratio: 16 / 9; }
+  .sw-iconbox { grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-l); align-items: start; }
+  .sw-iconbox h3 { margin-bottom: var(--space-xs); }
+  .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- Phone layout: narrower than 560 ---------- */
+@container site (width < 560px) {
+  .sw {
+    /* 1.2 from a 16 px body */
+    --fs-display: 40px; --lh-display: 1.05;
+    --fs-h1: 33px; --lh-h1: 1.1;
+    --fs-h2: 28px; --lh-h2: 1.15;
+    --fs-h3: 23px; --lh-h3: 1.3;
+    --fs-large: 19px; --lh-large: 1.5;
+    --fs-body: 16px; --fs-small: 13px;
+    --pad-x: var(--space-l);
+    --sec-y: var(--space-xxl);
+  }
+  .sw-header-row { height: 64px; gap: 12px; }
+  .sw-brand { font-size: 17px; gap: 8px; }
+  .sw-brand-mark { width: 26px; height: 26px; }
+  .sw-nav { gap: 8px; }
+  .sw-nav .sw-btn-small { padding: 0 16px; }
+  .sw-menu { padding: 0 14px 0 10px; }
+  .sec-hero { padding-block: var(--space-l) var(--space-xxl); }
+  .col-hero .sw-btn { width: 100%; }
+  .col > .w:has(> .sw-btn) { align-self: stretch; }
+  .sw-figure img { border-radius: 8px; }
+  .sw-hero-img img { aspect-ratio: 5 / 4; }
+  .sw-iconbox { grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-m); }
+  .sw-icon { width: 40px; height: 40px; }
+  .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
+  .sw-gallery img { border-radius: 8px; }
+  .sw-embed-bar { padding: 12px 14px 14px; }
+  .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .sw-embed-bar small { font-size: 14px; }
+  .sw-play-dot { width: 52px; height: 52px; }
+  .sw-footer-row { align-items: flex-start; font-size: 15px; }
+  .sw-form .sw-btn { justify-self: stretch; }
+}

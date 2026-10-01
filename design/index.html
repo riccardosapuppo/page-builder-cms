@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="en" data-state="editor">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Builder CMS</title>
+<link rel="icon" href="mark.svg" type="image/svg+xml">
+<!-- The site theme: the same file styles the canvas and the published page. -->
+<link rel="stylesheet" href="theme.css">
+<!-- The page stylesheet: this page's own block settings, written by the editor.
+     Not part of the theme. The tablet override lives only here, inside a
+     container query, so the canvas and the published page apply it the same way. -->
+<style id="page-css">
+  /* Hero, Column 1: Space inside None on desktop and phone (the theme's
+     default, so its text keeps the reading edge of the logo and every
+     section below); L on tablet only. */
+  @container site (560px <= width < 800px) {
+    #hero-c1 { --col-pad: var(--space-l); }
+  }
+</style>
+<!-- An unsaved Site style edit: the editor previews the edited slot here while it saves. -->
+<style id="site-style-edit">
+  [data-state="site-style"] .site { --sw-primary: #1D4E6F; }
+</style>
+<!-- The editor chrome. In the product the published page does not load it; in
+     this one-file mock its page states only hide the chrome. -->
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Icons: one 20-unit grid, 1.5 px stroke on screen, butt caps, mitred joins. Drawn for this product. -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <!-- The mark, the same drawing as mark.svg, inline so its dot reads --mark: switching the accent in styles.css switches the mark too -->
+  <symbol id="mark" viewBox="0 0 16 16"><path d="M3 10V3h7M13 6v7H6" fill="none" stroke="#FFFFFF" stroke-width="4"/><path d="M3 9V3h6M13 7v6H7" fill="none" stroke="#1B1F24" stroke-width="2"/><rect x="7" y="7" width="2" height="2" style="fill: var(--mark)"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 20 20"><path d="M8 6l4 4-4 4"/></symbol>
+  <symbol id="i-desktop" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="10" rx="1"/><path d="M7 16.75h6M10 13.75v3"/></symbol>
+  <symbol id="i-tablet" viewBox="0 0 20 20"><rect x="4.75" y="2.75" width="10.5" height="14.5" rx="1.5"/><path d="M9 14.5h2"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 20 20"><rect x="6.25" y="3.25" width="7.5" height="13.5" rx="1.5"/><path d="M9.25 14.25h1.5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 20 20"><path d="M7 4.5L3.5 8 7 11.5"/><path d="M3.5 8h8.25a4.25 4.25 0 0 1 0 8.5H9"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 20 20"><path d="M13 4.5L16.5 8 13 11.5"/><path d="M16.5 8H8.25a4.25 4.25 0 0 0 0 8.5H11"/></symbol>
+  <symbol id="i-history" viewBox="0 0 20 20"><path d="M3.75 10a6.25 6.25 0 1 0 1.83-4.42"/><path d="M3.75 3v3.25H7"/><path d="M10 6.5V10l2.5 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 20 20"><path d="M2.5 10S5.25 5 10 5s7.5 5 7.5 5-2.75 5-7.5 5-7.5-5-7.5-5z"/><circle cx="10" cy="10" r="2.25"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 20 20"><path d="M2.5 10S5.25 5 10 5s7.5 5 7.5 5-2.75 5-7.5 5-7.5-5-7.5-5z"/><circle cx="10" cy="10" r="2.25"/><path d="M4 3.5l12 13"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 20 20"><g fill="currentColor" stroke="none"><circle cx="7.5" cy="5" r="1.25"/><circle cx="12.5" cy="5" r="1.25"/><circle cx="7.5" cy="10" r="1.25"/><circle cx="12.5" cy="10" r="1.25"/><circle cx="7.5" cy="15" r="1.25"/><circle cx="12.5" cy="15" r="1.25"/></g></symbol>
+  <symbol id="i-copy" viewBox="0 0 20 20"><rect x="7.25" y="7.25" width="9.5" height="9.5" rx="1"/><path d="M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-duplicate" viewBox="0 0 20 20"><rect x="7.25" y="7.25" width="9.5" height="9.5" rx="1"/><path d="M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3M12 9.75v4.5M9.75 12h4.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 20 20"><path d="M3.5 5.5h13M8 5.5v-2h4v2M5.25 5.5l.75 11h8l.75-11M8.5 8.5v5M11.5 8.5v5"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 20 20"><path d="M7 4.25H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-2"/><rect x="7" y="2.75" width="6" height="3" rx=".75"/></symbol>
+  <symbol id="i-close" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></symbol>
+  <symbol id="i-search" viewBox="0 0 20 20"><circle cx="8.75" cy="8.75" r="5.25"/><path d="M12.5 12.5L17 17"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></symbol>
+  <symbol id="i-style" viewBox="0 0 20 20"><rect x="3.25" y="3.25" width="5.5" height="5.5" rx=".75"/><rect x="11.25" y="3.25" width="5.5" height="5.5" rx=".75"/><rect x="3.25" y="11.25" width="5.5" height="5.5" rx=".75"/><circle cx="14" cy="14" r="2.75"/></symbol>
+  <symbol id="i-align-left" viewBox="0 0 20 20"><path d="M3.5 5h13M3.5 8.5h8M3.5 12h13M3.5 15.5h8"/></symbol>
+  <symbol id="i-align-center" viewBox="0 0 20 20"><path d="M3.5 5h13M6 8.5h8M3.5 12h13M6 15.5h8"/></symbol>
+  <symbol id="i-align-right" viewBox="0 0 20 20"><path d="M3.5 5h13M8.5 8.5h8M3.5 12h13M8.5 15.5h8"/></symbol>
+  <symbol id="i-valign-top" viewBox="0 0 20 20"><path d="M3.5 3.75h13"/><rect x="6.25" y="6.25" width="7.5" height="7" rx=".75"/></symbol>
+  <symbol id="i-valign-middle" viewBox="0 0 20 20"><path d="M3 10h3.25M13.75 10H17"/><rect x="6.25" y="6.25" width="7.5" height="7.5" rx=".75"/></symbol>
+  <symbol id="i-valign-bottom" viewBox="0 0 20 20"><path d="M3.5 16.25h13"/><rect x="6.25" y="6.75" width="7.5" height="7" rx=".75"/></symbol>
+  <symbol id="i-link" viewBox="0 0 20 20"><path d="M8.5 11.5l3-3"/><path d="M9.25 5.75l1.5-1.5a3 3 0 0 1 4.25 4.25l-1.5 1.5"/><path d="M10.75 14.25l-1.5 1.5A3 3 0 0 1 5 11.5l1.5-1.5"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 20 20"><rect x="3.25" y="4.25" width="13.5" height="12.5" rx="1"/><path d="M3.25 8.25h13.5M7 2.5V6M13 2.5V6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 6.25V10l2.5 2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><ellipse cx="10" cy="10" rx="2.75" ry="6.75"/><path d="M3.25 10h13.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 20 20"><path d="M11.5 3.5h5v5M16.5 3.5l-7 7"/><path d="M14 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 20 20"><path d="M10 3.25l7.25 13.25H2.75z"/><path d="M10 8v4"/><circle cx="10" cy="14.25" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-error" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 6.25v4.5"/><circle cx="10" cy="13.4" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 9v4.75"/><circle cx="10" cy="6.6" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 20 20"><path d="M10 13V3.75M6.5 7.25L10 3.75l3.5 3.5"/><path d="M3.5 12.5v3a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 20 20"><path d="M3.75 10a6.25 6.25 0 1 0 1.83-4.42"/><path d="M3.75 3v3.25H7"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 20 20"><path d="M16.25 10a6.25 6.25 0 1 1-1.83-4.42"/><path d="M16.25 3v3.25H13"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20"><rect x="4.25" y="8.75" width="11.5" height="8" rx="1"/><path d="M7 8.75V6.5a3 3 0 0 1 6 0v2.25"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 20 20"><rect x="2.25" y="5.25" width="15.5" height="9.5" rx="1"/><path d="M5 8.25h1.5M8.5 8.25H10M12 8.25h1.5M6.5 11.75h7"/></symbol>
+  <symbol id="i-anchor" viewBox="0 0 20 20"><path d="M8 3.5L6.5 16.5M13.5 3.5L12 16.5M4.25 7.5h12.5M3.25 12.5h12.5"/></symbol>
+  <symbol id="i-panel-right" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="1"/><path d="M12.25 3.75v12.5"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="6" height="4" rx=".75"/><path d="M5.75 6.75v8.5h5M5.75 10.25h5"/><rect x="10.75" y="8.25" width="6.5" height="4" rx=".75"/><rect x="10.75" y="13.25" width="6.5" height="4" rx=".75"/></symbol>
+  <symbol id="i-section" viewBox="0 0 20 20"><rect x="2.75" y="5.25" width="14.5" height="9.5" rx="1"/></symbol>
+  <symbol id="i-column" viewBox="0 0 20 20"><rect x="6.25" y="2.75" width="7.5" height="14.5" rx="1"/></symbol>
+  <symbol id="i-question" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M8 8.25a2 2 0 1 1 2.75 1.85c-.45.2-.75.6-.75 1.1v.55"/><circle cx="10" cy="13.6" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-page" viewBox="0 0 20 20"><path d="M5 2.75h6.5L15 6.25v11H5z"/><path d="M11.5 2.75v3.5H15"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 20 20"><path d="M5.5 3h9v14l-4.5-3.5L5.5 17z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 20 20"><path d="M7 5v10l8-5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 20 20"><path d="M10 17.5s5.25-5 5.25-9.25a5.25 5.25 0 0 0-10.5 0C4.75 12.5 10 17.5 10 17.5z"/><circle cx="10" cy="8.25" r="2"/></symbol>
+  <symbol id="i-more" viewBox="0 0 20 20"><g fill="currentColor" stroke="none"><circle cx="5" cy="10" r="1.25"/><circle cx="10" cy="10" r="1.25"/><circle cx="15" cy="10" r="1.25"/></g></symbol>
+  <symbol id="i-spinner" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.25" stroke-opacity=".3"/><path d="M10 3.75A6.25 6.25 0 0 1 16.25 10"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 20 20"><path d="M10 16V4.5M5.5 9L10 4.5 14.5 9"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 20 20"><path d="M10 4v11.5M5.5 11l4.5 4.5 4.5-4.5"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 20 20"><path d="M16 10H4.5M9 5.5L4.5 10 9 14.5"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 20 20"><path d="M4 10h11.5M11 5.5l4.5 4.5-4.5 4.5"/></symbol>
+  <symbol id="i-block" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M5.25 14.75l9.5-9.5"/></symbol>
+  <symbol id="w-section" viewBox="0 0 20 20"><rect x="2.75" y="4.75" width="14.5" height="10.5" rx="1"/><path d="M7.75 4.75v10.5M12.25 4.75v10.5" stroke-dasharray="1.5 1.5"/></symbol>
+  <symbol id="w-col-1" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="14.5" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-2" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="6.625" height="8.5" rx=".75"/><rect x="10.625" y="5.75" width="6.625" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-3" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="4" height="8.5" rx=".75"/><rect x="8" y="5.75" width="4" height="8.5" rx=".75"/><rect x="13.25" y="5.75" width="4" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-4" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="6.625" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="10.5" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="14.375" y="5.75" width="2.875" height="8.5" rx=".5"/></symbol>
+  <symbol id="w-heading" viewBox="0 0 20 20"><path d="M5 3.75v12.5M15 3.75v12.5M5 10h10"/></symbol>
+  <symbol id="w-text" viewBox="0 0 20 20"><path d="M3.5 4.75h13M3.5 8.25h13M3.5 11.75h13M3.5 15.25H11"/></symbol>
+  <symbol id="w-image" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="1"/><circle cx="7.25" cy="8" r="1.5"/><path d="M2.75 14l4.5-3.75 3.5 3 2.5-2 4 3.25"/></symbol>
+  <symbol id="w-button" viewBox="0 0 20 20"><rect x="2.75" y="6.25" width="14.5" height="7.5" rx="3.75"/><path d="M7 10h6"/></symbol>
+  <symbol id="w-divider" viewBox="0 0 20 20"><rect x="4.75" y="3.25" width="10.5" height="3.5" rx=".75"/><path d="M2.75 10h14.5"/><rect x="4.75" y="13.25" width="10.5" height="3.5" rx=".75"/></symbol>
+  <symbol id="w-spacer" viewBox="0 0 20 20"><path d="M2.75 3.25h14.5M2.75 16.75h14.5M10 6v8M7.75 8.25L10 6l2.25 2.25M7.75 11.75L10 14l2.25-2.25"/></symbol>
+  <symbol id="w-gallery" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="6.5" height="6.5" rx=".75"/><rect x="10.75" y="2.75" width="6.5" height="6.5" rx=".75"/><rect x="2.75" y="10.75" width="6.5" height="6.5" rx=".75"/><rect x="10.75" y="10.75" width="6.5" height="6.5" rx=".75"/></symbol>
+  <symbol id="w-video" viewBox="0 0 20 20"><rect x="2.75" y="4.25" width="14.5" height="11.5" rx="1"/><path d="M8.25 7.5v5l4.25-2.5z"/></symbol>
+  <symbol id="w-map" viewBox="0 0 20 20"><path d="M2.75 5.25l4.75-2 5 2 4.75-2v11.5l-4.75 2-5-2-4.75 2z"/><path d="M7.5 3.25v11.5M12.5 5.25v11.5"/></symbol>
+  <symbol id="w-iconbox" viewBox="0 0 20 20"><circle cx="10" cy="6.75" r="3"/><path d="M4.75 12.75h10.5M6.5 16h7"/></symbol>
+  <!-- Quote: two opening marks drawn in outline at the shared stroke: a block below, a tail that tapers as it rises (its outline narrows to the tip), so it reads as quotation marks and not as "99" -->
+  <symbol id="w-quote" viewBox="0 0 20 20"><path d="M3.75 15.75H8a.75 .75 0 0 0 .75-.75V10.75H6c.1-2 .95-3.2 2.75-3.6V4.25C5.25 4.75 3 7.25 3 11.25V15a.75 .75 0 0 0 .75.75z"/><path d="M12 15.75h4.25a.75 .75 0 0 0 .75-.75V10.75h-2.75c.1-2 .95-3.2 2.75-3.6V4.25c-3.5.5-5.75 3-5.75 7V15a.75 .75 0 0 0 .75.75z"/></symbol>
+  <symbol id="s-menu" viewBox="0 0 20 20"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></symbol>
+  <symbol id="w-accordion" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="14.5" height="4" rx=".75"/><rect x="2.75" y="8.75" width="14.5" height="8.5" rx=".75"/><path d="M5.25 12h6M5.25 14.5h4M12.75 4.25l1.25 1 1.25-1"/></symbol>
+  <symbol id="w-form" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="14.5" height="4" rx=".75"/><rect x="2.75" y="8.25" width="14.5" height="4" rx=".75"/><rect x="2.75" y="13.75" width="7" height="3.5" rx="1.75"/></symbol>
+</svg>
+
+<div class="app" data-states="editor style drag save-states media publish history site-style shortcuts empty page page-phone about context advanced">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="tb-left">
+      <button class="tb-mark" type="button" popovertarget="app-menu" aria-label="Page Builder CMS menu">
+        <svg class="logo" width="24" height="24" aria-hidden="true"><use href="#mark"/></svg>
+        <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+      </button>
+      <button class="tb-page" type="button" aria-label="Switch page">
+        <svg class="i" aria-hidden="true"><use href="#i-page"/></svg>
+        <span class="tb-page-title" data-states="editor style drag save-states media publish history site-style shortcuts about context advanced">Home</span>
+        <span class="tb-page-title" data-states="empty">Winter series</span>
+        <span class="tb-page-path" data-states="empty">/winter-series</span>
+        <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+      </button>
+      <span class="chip chip-draft" data-states="editor style drag save-states media publish history site-style shortcuts about context advanced" title="Published Sep 28 at 7:02 AM. Your 6 changes since then are saved but not live yet: Publish sends them."><span class="dot-part" aria-hidden="true"></span>Published, 6 changes not live</span>
+      <span class="chip chip-draft" data-states="empty"><span class="dot-draft" aria-hidden="true"></span>Not published yet</span>
+      <button class="btn btn-quiet" type="button" data-go="site-style" data-sel="site-style" aria-pressed="false">
+        <svg class="i" aria-hidden="true"><use href="#i-style"/></svg>Site style
+      </button>
+    </div>
+
+    <div class="tb-center">
+      <div class="seg seg-devices" role="group" aria-label="Device">
+        <button type="button" aria-pressed="true" title="Desktop: the canvas at its full width" data-sel="editor drag save-states media publish history site-style shortcuts empty about context advanced" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-desktop"/></svg>Desktop</button>
+        <button type="button" aria-pressed="false" title="Tablet: the canvas at 768 wide" data-sel="style" data-go="style"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>Tablet</button>
+        <button type="button" aria-pressed="false" title="Phone: the canvas at 390 wide"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg>Phone</button>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <button class="ibtn" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" data-off="empty"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg></button>
+      <button class="ibtn" type="button" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-off="empty"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg></button>
+      <button class="btn btn-quiet" type="button" data-go="history" data-sel="history" data-focus="history" aria-pressed="false">
+        <svg class="i" aria-hidden="true"><use href="#i-history"/></svg>History
+      </button>
+      <span class="save-state" role="status" title="All changes saved at 10:46 AM" data-states="editor style drag media publish history shortcuts empty about context advanced">
+        <svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved
+      </span>
+      <span class="save-state" role="status" data-states="site-style">
+        <svg class="i spin" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…
+      </span>
+      <span class="save-state save-warn" role="status" data-states="save-states">
+        <svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Changed in another tab
+      </span>
+      <button class="btn btn-secondary" type="button" title="Preview (Ctrl+Alt+P)">
+        <svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview
+      </button>
+      <div class="split" data-states="editor style drag media publish history site-style shortcuts about context advanced">
+        <button class="btn btn-primary split-main" type="button" title="Publish now (Ctrl+Shift+Enter)">Publish</button>
+        <button class="btn btn-primary split-more" type="button" aria-label="More publish options" aria-haspopup="menu" aria-expanded="false" data-open="publish" data-go="publish">
+          <svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+        </button>
+      </div>
+      <div class="split split-off" data-states="save-states">
+        <button class="btn split-main" type="button" aria-disabled="true" title="Publish is paused until you choose Reload or Keep mine">Publish</button>
+        <button class="btn split-more" type="button" aria-label="More publish options" aria-disabled="true">
+          <svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+        </button>
+      </div>
+      <div class="split split-off" data-states="empty">
+        <button class="btn split-main" type="button" aria-disabled="true" aria-describedby="publish-why" title="Add a section first. An empty page has nothing to publish.">Publish</button>
+        <button class="btn split-more" type="button" aria-label="More publish options" aria-disabled="true">
+          <svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ LEFT TRAY ============ -->
+  <aside class="tray tray-left" aria-label="Widgets and properties" data-states="editor style drag media publish history site-style shortcuts empty about context advanced">
+
+    <!-- Add: widget tiles -->
+    <section class="view" data-states="drag history">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="true" class="is-on"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="false" title="Edit the selection, or the page when nothing is selected">Edit</button>
+        </div>
+      </div>
+      <div class="tray-body">
+        <label class="search">
+          <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+          <input type="search" placeholder="Search widgets" aria-label="Search widgets">
+        </label>
+
+        <div class="group">
+          <h3 class="group-title">Layout</h3>
+          <div class="tile-section">
+            <button class="tile tile-row" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-section"/></svg><span>Section</span></button>
+            <div class="colpick" role="group" aria-label="Add a section with">
+              <button type="button" aria-label="1 column" title="1 column"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-1"/></svg><span>1</span></button>
+              <button type="button" aria-label="2 columns" title="2 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-2"/></svg><span>2</span></button>
+              <button type="button" aria-label="3 columns" title="3 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-3"/></svg><span>3</span></button>
+              <button type="button" aria-label="4 columns" title="4 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-4"/></svg><span>4</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3 class="group-title">Basic</h3>
+          <div class="tiles">
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-heading"/></svg><span>Heading</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-text"/></svg><span>Text</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-image"/></svg><span>Image</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-button"/></svg><span>Button</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-divider"/></svg><span>Divider</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-spacer"/></svg><span>Spacer</span></button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3 class="group-title">Media</h3>
+          <div class="tiles">
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-gallery"/></svg><span>Gallery</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-video"/></svg><span>Video</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-map"/></svg><span>Map</span></button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3 class="group-title">Content</h3>
+          <div class="tiles">
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-iconbox"/></svg><span>Icon box</span></button>
+            <button class="tile" type="button" draggable="true" data-sel="drag" data-focus="drag" aria-grabbed="false"><svg class="i i-tile" aria-hidden="true"><use href="#w-quote"/></svg><span>Quote</span></button>
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-accordion"/></svg><span>Accordion</span></button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3 class="group-title">Forms</h3>
+          <div class="tiles">
+            <button class="tile" type="button" draggable="true"><svg class="i i-tile" aria-hidden="true"><use href="#w-form"/></svg><span>Form</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit: Heading, Content tab -->
+    <section class="view" data-states="editor publish shortcuts about context">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="false" data-go="drag"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="true" class="is-on">Edit</button>
+        </div>
+      </div>
+      <div class="ed-title">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-heading"/></svg></span>
+        <div><strong>Heading</strong><span>In Hero, column 1</span></div>
+      </div>
+      <div class="subtabs" role="tablist" aria-label="Heading properties">
+        <button role="tab" type="button" aria-selected="true">Content</button>
+        <button role="tab" type="button" aria-selected="false">Style</button>
+        <button role="tab" type="button" aria-selected="false">Advanced</button>
+      </div>
+      <div class="tray-body">
+        <div class="field">
+          <label class="label" for="h-text">Text</label>
+          <textarea id="h-text" class="input" data-focus="editor" rows="2">Swim at slack water</textarea>
+        </div>
+        <div class="field">
+          <span class="label" id="h-level">Level</span>
+          <div class="seg seg-text" role="radiogroup" aria-labelledby="h-level">
+            <button type="button" role="radio" aria-checked="true" class="is-on">H1</button>
+            <button type="button" role="radio" aria-checked="false">H2</button>
+            <button type="button" role="radio" aria-checked="false">H3</button>
+            <button type="button" role="radio" aria-checked="false">H4</button>
+          </div>
+          <p class="hint">Use one H1 per page. It is the title search engines and screen readers announce.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="h-link">Link</label>
+          <div class="input input-icon">
+            <svg class="i" aria-hidden="true"><use href="#i-link"/></svg>
+            <input id="h-link" type="text" placeholder="Paste a link or choose a page">
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Size and color</span>
+          <p class="hint">Set in the Style tab, from your site’s type scale and palette.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit: Column, Style tab, tablet -->
+    <section class="view" data-states="style">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="true" class="is-on">Edit</button>
+        </div>
+      </div>
+      <div class="ed-title">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-column"/></svg></span>
+        <div><strong>Column 1</strong><span>In Hero, 2 columns</span></div>
+      </div>
+      <div class="subtabs" role="tablist" aria-label="Column properties">
+        <button role="tab" type="button" aria-selected="false">Content</button>
+        <button role="tab" type="button" aria-selected="true">Style</button>
+        <button role="tab" type="button" aria-selected="false">Advanced</button>
+      </div>
+      <div class="tray-body tray-body-dense">
+        <p class="device-note"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg><span>Editing for <strong>tablet</strong>. Changes you make now apply to tablets only.</span></p>
+
+        <div class="field">
+          <div class="label-row">
+            <span class="label" id="c-pad">Space inside</span>
+            <span class="scope scope-device"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>Tablet only</span>
+          </div>
+          <div class="ruler" role="slider" aria-labelledby="c-pad" aria-valuemin="0" aria-valuemax="6" aria-valuenow="4" aria-valuetext="L, tablet only. Desktop and phone use None." tabindex="0" data-focus="style" style="--v:4; --inherit:0">
+            <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="ruler-ghost" aria-hidden="true"></span>
+            <span class="ruler-thumb" aria-hidden="true"></span>
+            <span class="ruler-nums" aria-hidden="true"><b>None</b><b>XS</b><b>S</b><b>M</b><b class="on">L</b><b>XL</b><b>XXL</b></span>
+          </div>
+          <div class="override">
+            <svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>
+            <p><strong>Tablet override: L</strong> on all four sides. Desktop and phone use None, marked with a ring.</p>
+            <button class="btn btn-small btn-secondary" type="button">Remove</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <span class="label" id="c-gap">Space between widgets</span>
+            <span class="scope" title="Tablets use the desktop value until you change it here">From desktop</span>
+          </div>
+          <div class="ruler" role="slider" aria-labelledby="c-gap" aria-valuemin="0" aria-valuemax="6" aria-valuenow="4" aria-valuetext="L, from desktop. A change here applies to tablets only." tabindex="0" style="--v:4">
+            <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="ruler-thumb" aria-hidden="true"></span>
+            <span class="ruler-nums" aria-hidden="true"><b>None</b><b>XS</b><b>S</b><b>M</b><b class="on">L</b><b>XL</b><b>XXL</b></span>
+          </div>
+          <p class="scope-then"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>A change here applies to tablets only.</p>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><span class="label" id="c-bg">Background</span><span class="scope" title="Tablets use the desktop value until you change it here">From desktop</span></div>
+          <div class="swatches" role="radiogroup" aria-labelledby="c-bg">
+            <button type="button" role="radio" aria-checked="true" class="sw-none is-on" title="None" aria-label="None"><span class="pick-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span></button>
+            <button type="button" role="radio" aria-checked="false" style="--c:#FFFFFF" title="Paper" aria-label="Paper"></button>
+            <button type="button" role="radio" aria-checked="false" style="--c:#E6EFEA" title="Shallows" aria-label="Shallows"></button>
+            <button type="button" role="radio" aria-checked="false" style="--c:#1E5B4C" title="Sea" aria-label="Sea"></button>
+            <button type="button" role="radio" aria-checked="false" style="--c:#F2A541" title="Buoy" aria-label="Buoy"></button>
+            <button type="button" role="radio" aria-checked="false" style="--c:#14302A" title="Ink" aria-label="Ink"></button>
+          </div>
+          <p class="scope-then"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>A change here applies to tablets only.</p>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><span class="label" id="c-ts">Text size in this column</span><span class="scope" title="Tablets use the desktop value until you change it here">From desktop</span></div>
+          <div class="steps" role="radiogroup" aria-labelledby="c-ts">
+            <button type="button" role="radio" aria-checked="false"><span style="font-size:12px">Aa</span>Small</button>
+            <button type="button" role="radio" aria-checked="true" class="is-on"><span style="font-size:15px">Aa</span>Body</button>
+            <button type="button" role="radio" aria-checked="false"><span style="font-size:19px">Aa</span>Large</button>
+          </div>
+          <p class="scope-then"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>A change here applies to tablets only.</p>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><span class="label">Alignment</span><span class="scope" title="Tablets use the desktop value until you change it here">From desktop</span></div>
+          <div class="pair">
+            <div>
+              <span class="label" id="c-va">Vertical alignment</span>
+              <div class="seg seg-icons" role="radiogroup" aria-labelledby="c-va">
+                <button type="button" role="radio" aria-checked="true" class="is-on" aria-label="Top" title="Top"><svg class="i" aria-hidden="true"><use href="#i-valign-top"/></svg></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Middle" title="Middle"><svg class="i" aria-hidden="true"><use href="#i-valign-middle"/></svg></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Bottom" title="Bottom"><svg class="i" aria-hidden="true"><use href="#i-valign-bottom"/></svg></button>
+              </div>
+            </div>
+            <div>
+              <span class="label" id="c-ha">Horizontal alignment</span>
+              <div class="seg seg-icons" role="radiogroup" aria-labelledby="c-ha">
+                <button type="button" role="radio" aria-checked="true" class="is-on" aria-label="Left" title="Left"><svg class="i" aria-hidden="true"><use href="#i-align-left"/></svg></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Center" title="Center"><svg class="i" aria-hidden="true"><use href="#i-align-center"/></svg></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Right" title="Right"><svg class="i" aria-hidden="true"><use href="#i-align-right"/></svg></button>
+              </div>
+            </div>
+          </div>
+          <p class="scope-then"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>A change here applies to tablets only.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit: Section, Advanced tab (extra state #advanced) -->
+    <section class="view" data-states="advanced">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="true" class="is-on">Edit</button>
+        </div>
+      </div>
+      <div class="ed-title">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-section"/></svg></span>
+        <div><strong>Section</strong><span>Join, 2 columns</span></div>
+      </div>
+      <div class="subtabs" role="tablist" aria-label="Section properties">
+        <button role="tab" type="button" aria-selected="false">Content</button>
+        <button role="tab" type="button" aria-selected="false">Style</button>
+        <button role="tab" type="button" aria-selected="true">Advanced</button>
+      </div>
+      <div class="tray-body">
+        <div class="field">
+          <label class="label" for="a-label">Section label</label>
+          <input id="a-label" class="input" type="text" value="Join" data-focus="advanced">
+          <p class="hint">Only you see it, in the navigator and in history.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="a-anchor">Anchor id</label>
+          <div class="input input-icon">
+            <svg class="i" aria-hidden="true"><use href="#i-anchor"/></svg>
+            <input id="a-anchor" type="text" value="join">
+          </div>
+          <p class="hint">Links to #join scroll to this section.</p>
+        </div>
+        <div class="field">
+          <label class="toggle"><input type="checkbox" role="switch"><span class="toggle-ui" aria-hidden="true"></span><span>Hide on tablet</span></label>
+          <label class="toggle"><input type="checkbox" role="switch"><span class="toggle-ui" aria-hidden="true"></span><span>Hide on phone</span></label>
+          <p class="hint">Hidden sections stay in the navigator, grayed out, so you can find them again.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit: Image, behind the media library -->
+    <section class="view" data-states="media">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="true" class="is-on">Edit</button>
+        </div>
+      </div>
+      <div class="ed-title">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-image"/></svg></span>
+        <div><strong>Image</strong><span>In Hero, column 2</span></div>
+      </div>
+      <div class="subtabs" role="tablist" aria-label="Image properties">
+        <button role="tab" type="button" aria-selected="true">Content</button>
+        <button role="tab" type="button" aria-selected="false">Style</button>
+        <button role="tab" type="button" aria-selected="false">Advanced</button>
+      </div>
+      <div class="tray-body">
+        <div class="field">
+          <span class="label">Image</span>
+          <img class="thumb-wide" src="img/hero-dawn.svg" alt="">
+          <button class="btn btn-secondary btn-block" type="button">Replace image</button>
+        </div>
+        <div class="field">
+          <label class="label" for="i-alt">Alt text</label>
+          <textarea id="i-alt" class="input" rows="3">The bay at dawn at slack water, with a line of buoys and three swimmers</textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit with nothing selected: the page itself -->
+    <section class="view" data-states="empty">
+      <div class="tray-head">
+        <div class="seg seg-wide" role="tablist" aria-label="Panel">
+          <button role="tab" type="button" aria-selected="false" data-go="drag"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add</button>
+          <button role="tab" type="button" aria-selected="true" class="is-on">Edit</button>
+        </div>
+      </div>
+      <div class="ed-title">
+        <span class="ed-icon ed-icon-page"><svg class="i i-tile" aria-hidden="true"><use href="#i-page"/></svg></span>
+        <div><strong>Page</strong><span>Nothing selected, so you are editing the page</span></div>
+      </div>
+      <div class="tray-body">
+        <div class="field">
+          <label class="label" for="p-title">Title</label>
+          <input id="p-title" class="input" type="text" value="Winter series">
+          <p class="hint">Shown in the browser tab and in search results.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="p-addr">Address</label>
+          <div class="input input-icon">
+            <span class="input-prefix" aria-hidden="true">/</span>
+            <input id="p-addr" type="text" value="winter-series">
+          </div>
+          <p class="hint">slackwater.example/winter-series</p>
+        </div>
+        <div class="field">
+          <label class="label" for="p-desc">Description in search results</label>
+          <textarea id="p-desc" class="input" rows="3" placeholder="One or two sentences about this page"></textarea>
+          <p class="hint">Search engines show it under the title. Up to 160 characters.</p>
+        </div>
+        <div class="field">
+          <label class="toggle"><input type="checkbox" role="switch" aria-describedby="p-menu-hint"><span class="toggle-ui" aria-hidden="true"></span><span>Show in the site menu</span></label>
+          <p class="hint" id="p-menu-hint">Turn on to add “Winter series” to the menu in the site header.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Site style -->
+    <section class="view" data-states="site-style">
+      <div class="tray-head tray-head-title">
+        <div>
+          <h2>Site style</h2>
+          <p>Applies to every page of your site.</p>
+        </div>
+        <button class="ibtn" type="button" aria-label="Close site style" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="tray-body">
+        <h3 class="group-title">Palette</h3>
+        <ul class="slots">
+          <li class="slot" title="Ink, #14302A"><span class="slot-chip" style="--c:#14302A"></span><span class="slot-name">Text<small>Ink</small></span></li>
+          <li class="slot" title="Paper, #FFFFFF"><span class="slot-chip" style="--c:#FFFFFF"></span><span class="slot-name">Background<small>Paper</small></span></li>
+          <li class="slot slot-open">
+            <div class="slot-row" title="Harbour, #1D4E6F"><span class="slot-chip" style="--c:#1D4E6F"></span><span class="slot-name">Primary<small>Harbour</small><small class="slot-edited">Edited, was Sea</small></span></div>
+            <div class="slot-editor">
+              <div class="tones" role="radiogroup" aria-label="Primary color">
+                <button type="button" role="radio" aria-checked="false" style="--c:#1E5B4C" title="Sea, #1E5B4C"><span>Sea</span></button>
+                <button type="button" role="radio" aria-checked="true" class="is-on" style="--c:#1D4E6F" title="Harbour, #1D4E6F" data-focus="site-style"><span>Harbour</span><span class="pick-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#3B5A23" title="Kelp, #3B5A23"><span>Kelp</span></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#4A4F57" title="Basalt, #4A4F57"><span>Basalt</span></button>
+              </div>
+              <ul class="checks" aria-label="Contrast checks">
+                <li class="pass"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Button text on it: 8.9 to 1, easy to read</li>
+                <li class="pass"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Links on the background: 8.9 to 1, easy to read</li>
+              </ul>
+              <div class="slot-actions">
+                <button class="btn btn-small btn-secondary" type="button">Reset to Sea</button>
+              </div>
+            </div>
+          </li>
+          <li class="slot" title="Buoy, #F2A541"><span class="slot-chip" style="--c:#F2A541"></span><span class="slot-name">Accent<small>Buoy</small></span></li>
+          <li class="slot" title="Shallows, #E6EFEA"><span class="slot-chip" style="--c:#E6EFEA"></span><span class="slot-name">Soft<small>Shallows</small></span></li>
+          <li class="slot" title="Slate, #4E625B"><span class="slot-chip" style="--c:#4E625B"></span><span class="slot-name">Muted<small>Slate</small></span></li>
+        </ul>
+
+        <h3 class="group-title">Type scale</h3>
+        <div class="field field-tight">
+          <div class="seg seg-text seg-fill" role="radiogroup" aria-label="Contrast between sizes">
+            <button type="button" role="radio" aria-checked="false">Gentle</button>
+            <button type="button" role="radio" aria-checked="true" class="is-on">Balanced</button>
+            <button type="button" role="radio" aria-checked="false">Strong</button>
+          </div>
+        </div>
+        <ul class="scale">
+          <li title="76 px in a wide window, line height 76"><span class="scale-aa" style="font-size:26px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Display</span><span class="scale-num">76</span></li>
+          <li title="56 px in a wide window, line height 59"><span class="scale-aa" style="font-size:23px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Heading 1</span><span class="scale-num">56</span></li>
+          <li title="42 px in a wide window, line height 46"><span class="scale-aa" style="font-size:20px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Heading 2</span><span class="scale-num">42</span></li>
+          <li title="32 px in a wide window, line height 40"><span class="scale-aa" style="font-size:17px;font-stretch:125%;font-weight:600">Aa</span><span class="scale-name">Heading 3</span><span class="scale-num">32</span></li>
+          <li title="24 px in a wide window, line height 35"><span class="scale-aa serif" style="font-size:16px">Aa</span><span class="scale-name">Large text</span><span class="scale-num">24</span></li>
+          <li title="18 px in a wide window, line height 29"><span class="scale-aa serif" style="font-size:14px">Aa</span><span class="scale-name">Body</span><span class="scale-num">18</span></li>
+          <li title="14 px in a wide window, line height 21"><span class="scale-aa serif" style="font-size:12px">Aa</span><span class="scale-name">Small</span><span class="scale-num">14</span></li>
+        </ul>
+        <p class="hint">Balanced: each size is about a third larger than the next. Sizes in a wide window; a narrower one shrinks them all together.</p>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ============ CANVAS ============ -->
+  <main class="canvas" id="canvas" aria-label="Page canvas">
+
+    <!-- The width rule: the canvas width as a dimension line, notched at the breakpoints -->
+    <div class="wrule" data-states="editor drag media publish history site-style shortcuts empty about context advanced" aria-hidden="true" title="The page changes layout at 560 (tablet) and 800 (desktop)">
+      <span class="wrule-line"></span>
+      <span class="wrule-notch" style="--x:560"><span>Tablet layout</span></span>
+      <span class="wrule-notch wrule-notch-end" style="--x:800; --w:832"><span>Desktop layout</span></span>
+      <span class="wrule-label">Desktop, 832 wide</span>
+    </div>
+    <div class="wrule" data-states="style" aria-hidden="true" title="The page changes layout at 560 (tablet) and 800 (desktop)">
+      <span class="wrule-line"></span>
+      <span class="wrule-notch" style="--x:560"><span>Tablet layout</span></span>
+      <span class="wrule-label">Tablet, 768 wide</span>
+    </div>
+
+    <div class="frame" id="frame" data-states="editor style drag media publish history site-style shortcuts page page-phone about context advanced">
+      <div class="site" id="site">
+        <div class="sw">
+
+          <header class="sw-header theme-part">
+            <div class="sw-inner sw-header-row">
+              <a class="sw-brand" href="#top">
+                <svg class="sw-brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+                <span>Slack Water</span>
+              </a>
+              <nav class="sw-nav" aria-label="Main">
+                <div class="sw-nav-links" id="site-menu">
+                  <a href="#swims">Swims</a>
+                  <a href="#gallery">Gallery</a>
+                  <a href="#meet">Meet us</a>
+                  <a href="#questions">Questions</a>
+                </div>
+                <a class="sw-btn sw-btn-small" href="#join">Join</a>
+                <button class="sw-menu" type="button" aria-expanded="false" aria-controls="site-menu"><svg aria-hidden="true"><use href="#s-menu"/></svg>Menu</button>
+              </nav>
+            </div>
+            <div class="ov ov-veil ov-veil-locked" data-states="drag" aria-hidden="true"></div>
+          </header>
+
+          <!-- Hero: two columns on desktop, stacked on tablet and phone -->
+          <section class="sec sec-hero" id="top">
+            <div class="ov ov-section" data-states="editor publish shortcuts about context style" aria-hidden="true"><span class="ov-tab"><svg class="i i-xs"><use href="#i-grip"/></svg>Hero <em>2 columns</em><svg class="i i-xs"><use href="#i-plus"/></svg></span></div>
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols cols-hero" style="--n:2">
+              <div class="col col-hero" id="hero-c1">
+                <div class="ov ov-col" data-states="editor publish shortcuts about context" aria-hidden="true"><span class="ov-tab">Column 1</span></div>
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="ov ov-sel" data-states="style">
+                  <i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i>
+                  <div class="ov-bar" role="toolbar" aria-label="Column 1">
+                    <button type="button" class="ov-grip" aria-label="Drag to move. Or press Space to pick up."><svg class="i"><use href="#i-grip"/></svg></button>
+                    <span class="ov-name">Column 1</span>
+                    <button type="button" aria-label="Duplicate" title="Duplicate (Ctrl+D)"><svg class="i"><use href="#i-duplicate"/></svg></button>
+                    <button type="button" aria-label="Delete" title="Delete (Del)"><svg class="i"><use href="#i-trash"/></svg></button>
+                  </div>
+                </div>
+                <div class="ov ov-pad ov-pad-top" data-states="style" aria-hidden="true"><span>L<svg class="i"><use href="#i-tablet"/></svg></span></div>
+
+                <div class="w">
+                  <h1 class="sw-display">Swim at slack water</h1>
+                  <div class="ov ov-sel" data-states="editor publish shortcuts about context">
+                    <i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i>
+                    <div class="ov-bar" role="toolbar" aria-label="Heading">
+                      <button type="button" class="ov-grip" aria-label="Drag to move. Or press Space to pick up."><svg class="i"><use href="#i-grip"/></svg></button>
+                      <span class="ov-name">Heading</span>
+                      <button type="button" aria-label="Duplicate" title="Duplicate (Ctrl+D)"><svg class="i"><use href="#i-duplicate"/></svg></button>
+                      <button type="button" aria-label="Delete" title="Delete (Del)"><svg class="i"><use href="#i-trash"/></svg></button>
+                    </div>
+                  </div>
+                  <div class="ov ov-dim ov-dim-v" data-states="editor publish shortcuts about context" aria-hidden="true"><span>L</span></div>
+                </div>
+
+                <div class="w">
+                  <p class="sw-lead">Dawn swims, beginners’ courses and a winter series, timed to the one quiet hour the tide gives us.</p>
+                </div>
+
+                <div class="w">
+                  <a class="sw-btn" href="#join">Join a trial swim</a>
+                  <div class="ov ov-hover" data-states="editor" aria-hidden="true"><span class="ov-label">Button</span></div>
+                </div>
+              </div>
+
+              <div class="col col-hero-img">
+                <div class="ov ov-col" data-states="editor publish shortcuts about context" aria-hidden="true"></div>
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <figure class="sw-figure sw-hero-img"><img src="img/hero-dawn.svg" alt="The bay at dawn at slack water, with a line of buoys and three swimmers"></figure>
+                  <div class="ov ov-sel" data-states="media">
+                    <i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- What we do -->
+          <section class="sec sec-what" id="swims">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols" style="--n:3">
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path class="fill" d="M9 25a11 11 0 0 1 22 0z"/><path d="M4 25h32M8 30h24M13 35h14M20 7v5M8.5 12.5l3 3M31.5 12.5l-3 3"/></svg>
+                    <div>
+                      <h3>Dawn swims</h3>
+                      <p>Twice a week, at first light, when the bay is flat.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="M3 31c9-7 21-11 34-13M4 36h32"/><circle class="fill" cx="10" cy="27.5" r="4"/><circle class="fill" cx="21.5" cy="23" r="3.2"/><circle class="fill" cx="31.5" cy="20" r="2.4"/></svg>
+                    <div>
+                      <h3>Beginners’ course</h3>
+                      <p>Four sessions from the shallows to the buoy line.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path class="fill" d="M9 17h19v11a6 6 0 0 1-6 6h-7a6 6 0 0 1-6-6z"/><path d="M28 20h2.5a3.5 3.5 0 0 1 0 7H28M14 12c-1.5-2 1.5-3 0-5.5M19 12c-1.5-2 1.5-3 0-5.5M24 12c-1.5-2 1.5-3 0-5.5"/></svg>
+                    <div>
+                      <h3>Winter series</h3>
+                      <p>Short, cold, and followed by very hot tea.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Gallery -->
+          <section class="sec sec-gallery" id="gallery">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols" style="--n:1">
+              <div class="col">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w"><h2 class="sw-h2">From the water</h2></div>
+                <div class="w">
+                  <ul class="sw-gallery">
+                    <li><img src="img/g-horizon.svg" alt="A flat horizon at first light"></li>
+                    <li><img src="img/g-caps.svg" alt="Three swim caps at the waterline"></li>
+                    <li><img src="img/g-buoys.svg" alt="The buoy line across the bay"></li>
+                    <li><img src="img/g-slipway.svg" alt="The slipway running into the water"></li>
+                    <li><img src="img/g-rockpools.svg" alt="Rock pools at low water"></li>
+                    <li><img src="img/g-wake.svg" alt="A swimmer’s wake on still water"></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- See the bay: video + map -->
+          <section class="sec sec-meet" id="meet" data-scroll="drag">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"><span class="veil-note"><svg class="i i-xs"><use href="#i-block"/></svg>Widgets go inside a column</span></div>
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col" data-valign="end">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w"><h2 class="sw-h2">See the bay before you join</h2></div>
+                <div class="w">
+                  <div class="sw-embed sw-video">
+                    <button class="sw-embed-load" type="button">
+                      <span class="sw-embed-media"><img src="img/poster.svg" alt=""><span class="sw-play-dot" aria-hidden="true"><svg class="i"><use href="#i-play"/></svg></span></span>
+                      <span class="sw-embed-bar"><strong>Watch a dawn swim</strong><small>Loads a video from the provider when you click.</small></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col col-meet-2" data-valign="end">
+                <div class="ov ov-drop ov-drop-target" data-states="drag" aria-hidden="true"><span class="ov-label">Column 2</span></div>
+                <div class="w">
+                  <p>We meet twenty minutes before slack water, whatever the clock says. Bring a bright cap, goggles and something warm for afterwards.</p>
+                </div>
+                <!-- the column opens a gap where the Quote will land -->
+                <div class="drop-slot" data-states="drag" aria-hidden="true">
+                  <span class="drop-line"></span>
+                  <span class="drop-label">Quote</span>
+                  <span class="drag-ghost">
+                    <span class="tile tile-ghost"><svg class="i i-tile"><use href="#w-quote"/></svg><span>Quote</span></span>
+                    <svg class="cursor" viewBox="0 0 20 20"><path d="M4 2.5v13.25l3.4-3.1 2.35 5.1 2.3-1.05-2.3-5h4.75z"/></svg>
+                  </span>
+                </div>
+                <div class="w">
+                  <div class="sw-embed sw-map">
+                    <span class="sw-embed-media"><img src="img/map.svg" alt=""><span class="sw-map-pin" aria-hidden="true"></span></span>
+                    <div class="sw-embed-bar sw-embed-bar-row">
+                      <p><strong>Meeting point:</strong> the slipway at the north end of the beach</p>
+                      <button class="sw-btn sw-btn-small" type="button">Load map</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quote -->
+          <section class="sec sec-quote">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols cols-quote" style="--n:2">
+              <div class="col col-quote">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <figure class="sw-quote">
+                    <!-- an opening mark (“): the blocks sit low and the tails rise to the right -->
+                    <svg class="sw-quote-mark" viewBox="0 0 48 36" aria-hidden="true"><path d="M2 34h18V17h-8c0-5 2-8 6-9V1C7 3 2 9 2 17zM28 34h18V17h-8c0-5 2-8 6-9V1c-9 2-16 8-16 16z"/></svg>
+                    <blockquote><p>I came for the cold water and stayed for the tea.</p></blockquote>
+                    <figcaption>A member since last winter</figcaption>
+                  </figure>
+                </div>
+              </div>
+              <div class="col">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w"><figure class="sw-figure sw-quote-img"><img src="img/m-tea.svg" alt="A flask and two cups of tea on a rock after a swim" width="800" height="600"></figure></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Questions -->
+          <section class="sec sec-faq" id="questions">
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col">
+                <div class="w"><h2 class="sw-h2">Before your first swim</h2></div>
+                <div class="w"><p>Ask us anything at the slipway, or <a href="#join">send a request below</a> and we will answer by email.</p></div>
+              </div>
+              <div class="col">
+                <div class="w">
+                  <div class="sw-accordion">
+                    <details open>
+                      <summary>How cold is it?</summary>
+                      <p>Between 8 and 18 degrees depending on the month. We shorten swims in winter.</p>
+                    </details>
+                    <details>
+                      <summary>Do I need a wetsuit?</summary>
+                      <p>No. Many members swim without one; the course covers both.</p>
+                    </details>
+                    <details>
+                      <summary>What if the sea is rough?</summary>
+                      <p>We cancel by 6 am and post it on this page.</p>
+                    </details>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Join -->
+          <section class="sec sec-join" id="join" data-scroll="advanced">
+            <div class="ov ov-sel" data-states="advanced">
+              <i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i>
+              <div class="ov-bar" role="toolbar" aria-label="Section">
+                <button type="button" class="ov-grip" aria-label="Drag to move"><svg class="i"><use href="#i-grip"/></svg></button>
+                <span class="ov-name">Section</span>
+                <button type="button" aria-label="Duplicate"><svg class="i"><use href="#i-duplicate"/></svg></button>
+                <button type="button" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button>
+              </div>
+            </div>
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col">
+                <div class="w"><h2 class="sw-h2">Join a trial swim</h2></div>
+                <div class="w"><p>Tell us a little about your swimming. We reply within two days with the next trial date and what to bring.</p></div>
+              </div>
+              <div class="col">
+                <div class="w">
+                  <form class="sw-form" onsubmit="return false">
+                    <div class="sw-field">
+                      <label for="f-name">Name</label>
+                      <input id="f-name" type="text" autocomplete="name">
+                    </div>
+                    <div class="sw-field">
+                      <label for="f-email">Email</label>
+                      <input id="f-email" type="email" autocomplete="email">
+                    </div>
+                    <div class="sw-field">
+                      <label for="f-notes">Anything we should know?</label>
+                      <textarea id="f-notes" rows="3"></textarea>
+                    </div>
+                    <label class="sw-check"><input type="checkbox" required><span>I can swim 200 meters without stopping <em>(required)</em></span></label>
+                    <button class="sw-btn sw-btn-primary" type="submit">Send request</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer class="sw-footer theme-part">
+            <div class="sw-inner sw-footer-row">
+              <svg class="sw-brand-mark sw-brand-mark-inv" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+              <p><strong>Slack Water swimming club.</strong> Tide times are a guide, not a promise.</p>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty page -->
+    <div class="frame frame-empty" data-states="empty">
+      <div class="site">
+        <div class="sw">
+          <header class="sw-header theme-part">
+            <div class="sw-inner sw-header-row">
+              <a class="sw-brand" href="#top">
+                <svg class="sw-brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+                <span>Slack Water</span>
+              </a>
+              <nav class="sw-nav" aria-label="Main">
+                <div class="sw-nav-links"><a href="#swims">Swims</a><a href="#gallery">Gallery</a><a href="#meet">Meet us</a><a href="#questions">Questions</a></div>
+                <a class="sw-btn sw-btn-small" href="#join">Join</a>
+                <button class="sw-menu" type="button" aria-expanded="false"><svg aria-hidden="true"><use href="#s-menu"/></svg>Menu</button>
+              </nav>
+            </div>
+          </header>
+          <div class="invite">
+            <div class="invite-zone">
+              <h2>Start this page with a section</h2>
+              <p>A section is a band across the page. Pick its columns; you can change them later.</p>
+              <p class="invite-publish" id="publish-why"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg>Publish turns on once the page has a section. An empty page has nothing to publish.</p>
+              <div class="invite-layouts" role="group" aria-label="Add a section">
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:1"><i></i></span>1 column</button>
+                <button type="button" class="layout-btn" data-focus="empty"><span class="layout-pic" style="--n:2"><i></i><i></i></span>2 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:3"><i></i><i></i><i></i></span>3 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:4"><i></i><i></i><i></i><i></i></span>4 columns</button>
+              </div>
+              <h3 class="invite-sub">Or start from a ready-made section</h3>
+              <div class="invite-presets" role="group" aria-label="Ready-made sections">
+                <button type="button" class="preset"><span class="preset-pic preset-intro" aria-hidden="true"><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i><i class="pp-b"></i></span><span>Heading and intro</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-split" aria-hidden="true"><i class="pp-img"></i><span><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i></span></span><span>Picture beside text</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-three" aria-hidden="true"><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span></span><span>Three icon boxes</span></button>
+              </div>
+              <p class="invite-alt"><svg class="i i-xs" aria-hidden="true"><use href="#i-block"/></svg>Widgets go inside a column, so the section comes first; then drag them in from Add, on the left.</p>
+            </div>
+          </div>
+          <footer class="sw-footer theme-part">
+            <div class="sw-inner sw-footer-row">
+              <svg class="sw-brand-mark sw-brand-mark-inv" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+              <p><strong>Slack Water swimming club.</strong> Tide times are a guide, not a promise.</p>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save states specimen. The fourth state is shown in place: the real top bar above says
+         "Changed in another tab", and its banner sits right under it, across the window. -->
+    <div class="specimen" data-states="save-states">
+      <div class="banner-inplace" role="alert">
+        <svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>
+        <p><strong>Changed in another tab.</strong> This page was saved in another tab after you opened it. Saving is paused until you choose.</p>
+        <div class="banner-actions"><button class="btn btn-small btn-dark" type="button" data-focus="save-states">Reload</button><button class="btn btn-small btn-secondary" type="button">Keep mine</button></div>
+      </div>
+
+      <header class="spec-head">
+        <h1>Save states</h1>
+        <p>The top bar always says where your 6 changes are. They are kept in this tab until the server confirms them, so a failed save loses nothing.</p>
+      </header>
+
+      <div class="spec-row">
+        <figure class="spec">
+          <div class="spec-crop">
+            <span class="save-state"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+            <span class="spec-bar-end"><span class="btn btn-secondary"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview</span><span class="split"><span class="btn btn-primary split-main">Publish</span><span class="btn btn-primary split-more"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></span></span></span>
+          </div>
+          <div class="spec-body">
+            <div class="spec-slot"><span class="spec-tip">All 6 changes saved at 10:46 AM</span></div>
+            <figcaption>
+              <h2>Saved</h2>
+              <p>Every change is on the server. Shown a moment after you stop typing or moving things.</p>
+              <ul class="spec-list">
+                <li>Publish is ready.</li>
+                <li>Closing the tab is safe.</li>
+              </ul>
+              <p class="spec-sr">Screen readers hear “Saved”, once.</p>
+            </figcaption>
+          </div>
+        </figure>
+        <figure class="spec">
+          <div class="spec-crop">
+            <span class="save-state"><svg class="i spin" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…</span>
+            <span class="spec-bar-end"><span class="btn btn-secondary"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview</span><span class="split"><span class="btn btn-primary split-main">Publish</span><span class="btn btn-primary split-more"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></span></span></span>
+          </div>
+          <div class="spec-body">
+            <div class="spec-slot"><span class="spec-tip">Saving your 6 changes. Keep editing.</span></div>
+            <figcaption>
+              <h2>Saving…</h2>
+              <p>Changes are on their way. Shown only when a save takes longer than half a second.</p>
+              <ul class="spec-list">
+                <li>Publish waits for the save, then publishes.</li>
+                <li>Closing the tab asks first.</li>
+              </ul>
+              <p class="spec-sr">Screen readers hear nothing until the save ends.</p>
+            </figcaption>
+          </div>
+        </figure>
+        <figure class="spec">
+          <div class="spec-crop">
+            <span class="save-state save-warn"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Not saved, retrying in 8 s</span>
+            <span class="spec-bar-end"><span class="btn btn-secondary"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview</span><span class="split split-off"><span class="btn split-main" aria-disabled="true">Publish</span><span class="btn split-more" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></span></span></span>
+          </div>
+          <div class="spec-body">
+            <div class="spec-slot"><div class="toast" role="status"><p><strong>Connection lost.</strong> Your 6 changes are kept in this tab and saved when the connection is back.</p><span class="btn btn-small btn-secondary">Retry now</span></div></div>
+            <figcaption>
+              <h2>Not saved, retrying</h2>
+              <p>The server did not answer. The editor retries on its own and counts down; Retry now tries at once.</p>
+              <ul class="spec-list">
+                <li>Publish is paused until the changes are saved.</li>
+                <li>Closing the tab warns that 6 changes would be lost.</li>
+              </ul>
+              <p class="spec-sr">Screen readers hear “Not saved, retrying”.</p>
+            </figcaption>
+          </div>
+        </figure>
+        <figure class="spec">
+          <div class="spec-crop">
+            <span class="save-state save-warn"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Changed in another tab</span>
+            <span class="spec-bar-end"><span class="btn btn-secondary"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview</span><span class="split split-off"><span class="btn split-main" aria-disabled="true">Publish</span><span class="btn split-more" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></span></span></span>
+          </div>
+          <div class="spec-body">
+            <div class="spec-slot"><p class="spec-note"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg><span>Shown in place at the top of this screen: the real top bar, and the banner under it with Reload and Keep mine.</span></p></div>
+            <figcaption>
+              <h2>Changed in another tab</h2>
+              <p>Someone saved this page after you opened it, maybe you in another tab. Nothing is overwritten until you choose.</p>
+              <ul class="spec-list">
+                <li>Saving is paused until you choose.</li>
+                <li>Publish is paused until you choose.</li>
+                <li>Either choice can be undone from History.</li>
+              </ul>
+              <p class="spec-sr">Screen readers hear the banner, as an alert.</p>
+            </figcaption>
+          </div>
+        </figure>
+      </div>
+
+      <section class="flow" aria-labelledby="flow-title">
+        <h2 id="flow-title">How it moves between states</h2>
+        <ul class="flow-rows">
+          <li>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+            <span class="farrow"><span>You make a change</span></span>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…</span>
+            <span class="farrow"><span>The server confirms it</span></span>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+          </li>
+          <li>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…</span>
+            <span class="farrow"><span>The connection drops</span></span>
+            <span class="fchip fchip-warn"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Not saved, retrying</span>
+            <span class="farrow"><span>It comes back, or you choose Retry now</span></span>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…</span>
+          </li>
+          <li>
+            <span class="fchip fchip-any">Any state</span>
+            <span class="farrow"><span>The page is saved in another tab</span></span>
+            <span class="fchip fchip-warn"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Changed in another tab</span>
+            <span class="farrow"><span>You choose Reload or Keep mine</span></span>
+            <span class="fchip"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <p class="live-caption" data-states="drag" role="status"><strong>Quote will be added to Column 2, after Text.</strong><span>Release, or press Space, to add it. Shaded areas cannot hold widgets. Esc cancels.</span></p>
+  </main>
+
+  <!-- ============ RIGHT TRAY ============ -->
+  <aside class="tray tray-right" aria-label="Navigator and history" data-states="editor style drag media publish history site-style shortcuts empty about context advanced">
+
+    <section class="view" data-states="editor style drag media publish site-style shortcuts about context advanced">
+      <div class="tray-head tray-head-title">
+        <h2><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Navigator</h2>
+        <button class="ibtn" type="button" aria-label="Collapse navigator" title="Collapse navigator"><svg class="i" aria-hidden="true"><use href="#i-panel-right"/></svg></button>
+      </div>
+      <div class="tray-body tray-body-tight">
+        <ul class="tree" role="tree" aria-label="Page structure">
+          <li class="t-row t-theme" role="treeitem"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site header</span></li>
+
+          <li role="treeitem" aria-expanded="true" data-open="editor style publish shortcuts about context media site-style">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Hero</span><em class="t-count">2 columns</em></div>
+            <ul role="group" data-states="editor style publish shortcuts about context media site-style">
+              <li role="treeitem" aria-expanded="true" data-open="editor style publish shortcuts about context site-style">
+                <div class="t-row t-l1" data-sel="style"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 1</span><svg class="i i-xs t-flag" aria-label="Has a tablet override" role="img"><use href="#i-tablet"/></svg></div>
+                <ul role="group" data-states="editor style publish shortcuts about context site-style">
+                  <li class="t-row t-l2" role="treeitem" data-sel="editor publish shortcuts about context"><svg class="i" aria-hidden="true"><use href="#w-heading"/></svg><span>Heading</span><em>Swim at slack water</em></li>
+                  <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg><span>Text</span><em>Dawn swims, beginners’…</em></li>
+                  <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg><span>Button</span><em>Join a trial swim</em></li>
+                </ul>
+              </li>
+              <li role="treeitem" aria-expanded="false" data-open="media">
+                <div class="t-row t-l1"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 2</span></div>
+                <ul role="group" data-states="media">
+                  <li class="t-row t-l2" role="treeitem" data-sel="media"><svg class="i" aria-hidden="true"><use href="#w-image"/></svg><span>Image</span><em>hero-dawn.svg</em></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <li role="treeitem" aria-expanded="false">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>What we do</span><em class="t-count">3 columns</em></div>
+          </li>
+          <li role="treeitem" aria-expanded="false">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Gallery</span><em class="t-count">1 column</em></div>
+          </li>
+
+          <li role="treeitem" aria-expanded="false" data-open="drag">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>See the bay</span><em class="t-count">2 columns</em></div>
+            <ul role="group" data-states="drag">
+              <li class="t-row t-l1" role="treeitem" aria-expanded="false"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 1</span></li>
+              <li role="treeitem" aria-expanded="true">
+                <div class="t-row t-l1 t-target"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 2</span></div>
+                <ul role="group">
+                  <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg><span>Text</span><em>We meet twenty minutes…</em></li>
+                  <li class="t-insert" aria-hidden="true"><span>Quote</span></li>
+                  <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-map"/></svg><span>Map</span><em>Meeting point</em></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <li role="treeitem" aria-expanded="false">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Members’ words</span><em class="t-count">2 columns</em></div>
+          </li>
+          <li role="treeitem" aria-expanded="false">
+            <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Questions</span><em class="t-count">2 columns</em></div>
+          </li>
+          <li role="treeitem" aria-expanded="false">
+            <div class="t-row t-l0" data-sel="advanced"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Join</span><em class="t-count">2 columns</em></div>
+          </li>
+          <li class="t-row t-theme" role="treeitem"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site footer</span></li>
+        </ul>
+      </div>
+      <p class="nav-foot">7 sections, 21 widgets</p>
+    </section>
+
+    <section class="view" data-states="empty">
+      <div class="tray-head tray-head-title">
+        <h2><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Navigator</h2>
+        <button class="ibtn" type="button" aria-label="Collapse navigator"><svg class="i" aria-hidden="true"><use href="#i-panel-right"/></svg></button>
+      </div>
+      <div class="tray-body tray-body-tight">
+        <ul class="tree" role="tree" aria-label="Page structure">
+          <li class="t-row t-theme" role="treeitem"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site header</span></li>
+          <li class="t-empty">No sections yet. Each section you add shows up here, with its columns and widgets inside.</li>
+          <li class="t-row t-theme" role="treeitem"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site footer</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="view" data-states="history">
+      <div class="tray-head tray-head-title">
+        <h2><svg class="i" aria-hidden="true"><use href="#i-history"/></svg>History</h2>
+        <button class="ibtn" type="button" aria-label="Close history" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="tray-body tray-body-tight">
+        <h3 class="group-title group-title-pad">This session</h3>
+        <ol class="hist">
+          <li class="hist-undone"><span class="hist-what">Deleted Divider</span><span class="hist-when">Undone</span></li>
+          <li class="hist-now"><span class="hist-what">Changed Quote in Members’ words</span><span class="hist-when">Today, 10:46 AM</span></li>
+          <li><span class="hist-what">Changed Text in See the bay</span><span class="hist-when">Today, 10:44 AM</span></li>
+          <li><span class="hist-what">Set Space inside to L on tablet, Column 1 in Hero</span><span class="hist-when">Today, 10:41 AM</span></li>
+          <li><span class="hist-what">Changed Button text in Join</span><span class="hist-when">Today, 10:38 AM</span></li>
+          <li><span class="hist-what">Renamed section to Questions</span><span class="hist-when">Today, 10:36 AM</span></li>
+        </ol>
+        <p class="hint hint-pad hint-keys">Select an action to go back to it.<br><span class="keys-inline" aria-label="Ctrl+Z"><kbd class="kc">Ctrl</kbd><kbd class="kc">Z</kbd></span> steps back one.</p>
+
+        <div class="hist-versions-head">
+          <h3 class="group-title">Versions</h3>
+          <button class="btn btn-small btn-secondary" type="button" title="Save version (Ctrl+S)"><svg class="i" aria-hidden="true"><use href="#i-bookmark"/></svg>Save version</button>
+        </div>
+        <ul class="versions">
+          <li class="ver ver-draft">
+            <span class="ver-kind">Current draft</span>
+            <span class="ver-name">6 changes not published yet</span>
+            <span class="ver-when">Today, 10:46 AM</span>
+          </li>
+          <li class="ver">
+            <div><span class="ver-kind">Saved by you</span><span class="ver-name">Before the winter series</span><span class="ver-when">Today, 10:20 AM</span></div>
+            <button class="btn btn-small btn-secondary" type="button">Restore</button>
+          </li>
+          <li class="ver">
+            <div><span class="ver-kind">Autosaved</span><span class="ver-when">Today, 9:58 AM</span></div>
+            <button class="btn btn-small btn-secondary" type="button">Restore</button>
+          </li>
+          <li class="ver ver-live">
+            <div><span class="ver-kind"><i class="dot-live" aria-hidden="true"></i>Published by you</span><span class="ver-when">Sep 28, 7:02 AM</span></div>
+            <button class="btn btn-small btn-secondary" type="button">Restore</button>
+          </li>
+          <li class="ver">
+            <div><span class="ver-kind">Saved by you</span><span class="ver-name">First draft</span><span class="ver-when">Sep 27, 9:15 PM</span></div>
+            <button class="btn btn-small btn-secondary" type="button">Restore</button>
+          </li>
+        </ul>
+        <p class="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<!-- ============ PUBLISH MENU ============ -->
+<div class="menu menu-publish" role="menu" aria-label="Publish options" data-states="publish">
+  <button class="menu-item menu-item-rich" role="menuitem" type="button">
+    <svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>
+    <span><strong>Publish now</strong><small>Visitors see your 6 changes right away.</small></span>
+    <span class="keys" aria-label="Ctrl+Shift+Enter"><kbd class="kc">Ctrl</kbd><kbd class="kc">Shift</kbd><kbd class="kc">Enter</kbd></span>
+  </button>
+  <div class="menu-item menu-item-rich menu-item-open" role="menuitem" aria-expanded="true">
+    <svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>
+    <span><strong>Schedule…</strong><small>Choose when visitors see your 6 changes.</small></span>
+  </div>
+  <div class="schedule">
+    <div class="schedule-fields">
+      <div class="field">
+        <label class="label" for="s-date">Date</label>
+        <div class="input input-icon" data-focus="publish"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><input id="s-date" type="text" value="Sun, Oct 4, 2026"></div>
+      </div>
+      <div class="field">
+        <label class="label" for="s-time">Time</label>
+        <div class="input input-icon"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg><input id="s-time" type="text" value="6:15 AM"></div>
+      </div>
+    </div>
+    <p class="tz"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>In your site’s time <strong>(UTC+1)</strong></span><button class="link" type="button">Change</button></p>
+    <button class="btn btn-secondary btn-block" type="button">Schedule for Oct 4 at 6:15 AM</button>
+  </div>
+  <a class="menu-item menu-item-rich menu-link" role="menuitem" href="#page">
+    <svg class="i" aria-hidden="true"><use href="#i-external"/></svg>
+    <span><strong>View live page</strong><small class="menu-addr">slackwater.example</small><small>Published Sep 28 at 7:02 AM. Opens in a new tab.</small></span>
+  </a>
+</div>
+
+<!-- ============ APP MENU (popover) ============ -->
+<div class="menu menu-app" id="app-menu" popover role="menu" aria-label="Page Builder CMS">
+  <button class="menu-item" role="menuitem" type="button" data-go="site-style" data-first><svg class="i" aria-hidden="true"><use href="#i-style"/></svg><span>Site style</span></button>
+  <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span>All pages</span></button>
+  <button class="menu-item" role="menuitem" type="button" data-go="shortcuts"><svg class="i" aria-hidden="true"><use href="#i-keyboard"/></svg><span>Keyboard shortcuts</span><span class="keys" aria-label="?"><kbd class="kc">?</kbd></span></button>
+  <hr class="menu-sep">
+  <button class="menu-item" role="menuitem" type="button" data-go="about"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>About Page Builder CMS</span></button>
+</div>
+
+<!-- ============ CONTEXT MENU ============ -->
+<div class="menu menu-context" id="ctx-menu" role="menu" aria-label="Heading actions" data-states="context">
+  <button class="menu-item" role="menuitem" type="button" data-focus="context"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span><span class="keys" aria-label="Ctrl+C"><kbd class="kc">Ctrl</kbd><kbd class="kc">C</kbd></span></button>
+  <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-paste"/></svg><span>Paste</span><span class="keys" aria-label="Ctrl+V"><kbd class="kc">Ctrl</kbd><kbd class="kc">V</kbd></span></button>
+  <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-duplicate"/></svg><span>Duplicate</span><span class="keys" aria-label="Ctrl+D"><kbd class="kc">Ctrl</kbd><kbd class="kc">D</kbd></span></button>
+  <hr class="menu-sep">
+  <button class="menu-item menu-item-danger" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg><span>Delete</span><span class="keys" aria-label="Del"><kbd class="kc">Del</kbd></span></button>
+</div>
+
+<div class="scrim" data-states="media shortcuts about" aria-hidden="true"></div>
+
+<!-- ============ MEDIA LIBRARY ============ -->
+<div class="dialog dlg-media" role="dialog" aria-modal="true" aria-labelledby="media-title" data-states="media">
+  <header class="dlg-head">
+    <h2 id="media-title">Media library</h2>
+    <p class="dlg-count">10 images, 2 without alt text, 1 uploading</p>
+    <button class="ibtn" type="button" aria-label="Close media library" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="dlg-toolbar">
+    <label class="search search-inline">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <input type="search" placeholder="Search by name or alt text" aria-label="Search images">
+    </label>
+    <div class="seg seg-text" role="radiogroup" aria-label="Show">
+      <button type="button" role="radio" aria-checked="true" class="is-on">All images</button>
+      <button type="button" role="radio" aria-checked="false">On this page</button>
+      <button type="button" role="radio" aria-checked="false">Missing alt text <span class="seg-count">2</span></button>
+    </div>
+    <button class="btn btn-secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Upload images</button>
+  </div>
+  <div class="dlg-body media-body">
+    <ul class="media-grid" role="listbox" aria-label="Images">
+      <li class="m-item m-uploading" role="option" aria-selected="false">
+        <div class="m-thumb"><img src="img/g-rockpools.svg" alt=""></div>
+        <div class="m-progress" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Uploading rock-pools.svg"><span style="width:64%"></span></div>
+        <div class="m-meta"><span>Uploading, 64%</span><button class="ibtn ibtn-small" type="button" aria-label="Cancel upload"><svg class="i i-xs" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+      </li>
+      <li class="m-item m-selected" role="option" aria-selected="true">
+        <div class="m-thumb"><img src="img/g-buoys.svg" alt=""><span class="m-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span><span class="m-flag"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg>No alt text</span></div>
+        <div class="m-meta"><span>buoy-line.svg</span></div>
+      </li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/hero-dawn.svg" alt=""></div><div class="m-meta"><span>hero-dawn.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/g-horizon.svg" alt=""></div><div class="m-meta"><span>first-light.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/g-caps.svg" alt=""></div><div class="m-meta"><span>swim-caps.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/g-slipway.svg" alt=""></div><div class="m-meta"><span>slipway.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/g-wake.svg" alt=""></div><div class="m-meta"><span>wake.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/m-tea.svg" alt=""></div><div class="m-meta"><span>tea-after.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/m-winter.svg" alt=""><span class="m-flag"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg>No alt text</span></div><div class="m-meta"><span>winter-jetty.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/poster.svg" alt=""></div><div class="m-meta"><span>dawn-swim-still.svg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="img/map.svg" alt=""></div><div class="m-meta"><span>beach-plan.svg</span></div></li>
+      <li class="m-item m-drop" aria-hidden="true"><div class="m-thumb"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg><span>Drop images here</span><small>PNG, JPG, SVG or WebP, up to 10 MB</small></div></li>
+    </ul>
+    <aside class="media-details" aria-label="Selected image">
+      <img class="md-preview" src="img/g-buoys.svg" alt="">
+      <p class="md-name">buoy-line.svg</p>
+      <p class="md-meta">1600 × 1200, 84 KB. Added Sep 12.</p>
+      <div class="field field-error">
+        <label class="label" for="md-alt">Alt text <span class="req">required</span></label>
+        <textarea id="md-alt" class="input" rows="3" aria-invalid="true" aria-describedby="md-alt-err" placeholder="What does the image show?" data-focus="media"></textarea>
+        <p class="error" id="md-alt-err"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg><span>Add alt text to use this image. Describe what it shows, for example: “Orange buoys marking the course across the bay”.</span></p>
+      </div>
+      <label class="check"><input type="checkbox"><span>This image is decorative. Screen readers skip it and no alt text is needed.</span></label>
+    </aside>
+  </div>
+  <footer class="dlg-foot">
+    <p class="hint">Images you upload are available on every page.</p>
+    <p class="foot-reason" id="use-why">Add alt text to use this image.</p>
+    <button class="btn btn-secondary" type="button" data-go="editor">Cancel</button>
+    <button class="btn btn-primary" type="button" aria-disabled="true" aria-describedby="use-why">Use image</button>
+  </footer>
+</div>
+
+<!-- ============ SHORTCUTS ============ -->
+<div class="dialog dlg-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title" data-states="shortcuts">
+  <header class="dlg-head">
+    <h2 id="keys-title">Keyboard shortcuts</h2>
+    <label class="search search-inline search-keys">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <input class="is-focus" type="search" placeholder="Find a shortcut" aria-label="Find a shortcut">
+    </label>
+    <button class="ibtn" type="button" aria-label="Close keyboard shortcuts" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="dlg-body keys-body">
+    <section class="keys-group">
+      <h3>Selection</h3>
+      <dl>
+        <div><dt>Select the next block</dt><dd><kbd>Tab</kbd></dd></div>
+        <div><dt>Select the previous block</dt><dd><kbd>Shift</kbd><kbd>Tab</kbd></dd></div>
+        <div><dt>Select the parent column or section</dt><dd><kbd>Alt</kbd><kbd aria-label="Up arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-up"/></svg></kbd></dd></div>
+        <div><dt>Select the first block inside</dt><dd><kbd>Alt</kbd><kbd aria-label="Down arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-down"/></svg></kbd></dd></div>
+        <div><dt>Clear the selection</dt><dd><kbd>Esc</kbd></dd></div>
+      </dl>
+    </section>
+    <section class="keys-group">
+      <h3>Moving</h3>
+      <dl>
+        <div><dt>Pick up the selected block</dt><dd><kbd>Space</kbd></dd></div>
+        <div><dt>Move it up or down</dt><dd><kbd aria-label="Up arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-up"/></svg></kbd><kbd aria-label="Down arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-down"/></svg></kbd></dd></div>
+        <div><dt>Move it to the next or previous column</dt><dd><kbd aria-label="Left arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-left"/></svg></kbd><kbd aria-label="Right arrow"><svg class="i i-key" aria-hidden="true"><use href="#i-arrow-right"/></svg></kbd></dd></div>
+        <div><dt>Drop it here</dt><dd><kbd>Space</kbd></dd></div>
+        <div><dt>Cancel and put it back</dt><dd><kbd>Esc</kbd></dd></div>
+      </dl>
+      <p class="hint">While you move a block, the editor reads out where it will land.</p>
+    </section>
+    <section class="keys-group">
+      <h3>Editing</h3>
+      <dl>
+        <div><dt>Edit the text of a block</dt><dd><kbd>Enter</kbd></dd></div>
+        <div><dt>Copy</dt><dd><kbd>Ctrl</kbd><kbd>C</kbd></dd></div>
+        <div><dt>Paste after the selection</dt><dd><kbd>Ctrl</kbd><kbd>V</kbd></dd></div>
+        <div><dt>Duplicate</dt><dd><kbd>Ctrl</kbd><kbd>D</kbd></dd></div>
+        <div><dt>Delete</dt><dd><kbd>Del</kbd></dd></div>
+      </dl>
+    </section>
+    <section class="keys-group">
+      <h3>History</h3>
+      <dl>
+        <div><dt>Undo</dt><dd><kbd>Ctrl</kbd><kbd>Z</kbd></dd></div>
+        <div><dt>Redo</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></dd></div>
+        <div><dt>Save a named version</dt><dd><kbd>Ctrl</kbd><kbd>S</kbd></dd></div>
+      </dl>
+    </section>
+    <section class="keys-group">
+      <h3>Publish</h3>
+      <dl>
+        <div><dt>Preview</dt><dd><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd></dd></div>
+        <div><dt>Publish now</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></dd></div>
+      </dl>
+    </section>
+    <section class="keys-group">
+      <h3>This list</h3>
+      <dl>
+        <div><dt>Show keyboard shortcuts</dt><dd><kbd>?</kbd></dd></div>
+      </dl>
+    </section>
+  </div>
+  <footer class="dlg-foot dlg-foot-note">
+    <p class="hint">On a Mac, use Cmd where this list says Ctrl, and Option where it says Alt.</p>
+  </footer>
+</div>
+
+<!-- ============ ABOUT ============ -->
+<div class="dialog dlg-about" role="dialog" aria-modal="true" aria-labelledby="about-title" data-states="about">
+  <svg class="logo" width="48" height="48" aria-hidden="true"><use href="#mark"/></svg>
+  <h2 id="about-title">About</h2>
+  <p class="about-line">Page Builder CMS 0.1.0 — Developed by Riccardo Sapuppo</p>
+  <button class="btn btn-secondary" type="button" data-go="editor" data-focus="about">Close</button>
+</div>
+
+<!-- ============ TOKEN SHEET ============ -->
+<div class="tokens" data-states="tokens">
+  <header class="tk-head">
+    <svg class="logo" width="40" height="40" aria-hidden="true"><use href="#mark"/></svg>
+    <div>
+      <h1>Tokens</h1>
+      <p>Two surfaces. The editor chrome never changes. The site theme is built only from these tokens, and every site owner can edit its palette and type scale.</p>
+    </div>
+  </header>
+
+  <section class="tk-sec">
+    <h2>Chrome colors</h2>
+    <ul class="tk-swatches">
+      <li><span class="tk-chip" style="--c:#1B1F24"></span><strong>Graphite</strong><code>#1B1F24</code><small>Text, icons, pressed switches, every focus ring, the mark</small></li>
+      <li><span class="tk-chip" style="--c:#56606B"></span><strong>Steel</strong><code>#56606B</code><small>Secondary text, hints</small></li>
+      <li><span class="tk-chip" style="--c:#7E8690"></span><strong>Rule</strong><code>#7E8690</code><small>Control borders, 3:1 on every chrome surface</small></li>
+      <li><span class="tk-chip" style="--c:#DCE0E5"></span><strong>Alloy</strong><code>#DCE0E5</code><small>The bench behind trays and page</small></li>
+      <li><span class="tk-chip" style="--c:#E9ECEF"></span><strong>Key</strong><code>#E9ECEF</code><small>Tiles and pressable surfaces</small></li>
+      <li><span class="tk-chip" style="--c:#F4F5F7"></span><strong>Plate</strong><code>#F4F5F7</code><small>Top bar, trays, dialogs</small></li>
+      <li><span class="tk-chip" style="--c:#FFFFFF"></span><strong>White</strong><code>#FFFFFF</code><small>Content only: the page and fields</small></li>
+      <li class="tk-accent"><span class="tk-chip" style="--c:var(--mark)"></span><strong>Tool yellow</strong><code>#EDC200</code><small>The accent: the work in hand, and Publish. Always with graphite edges; graphite text on it 9.7 to 1.</small></li>
+      <li><span class="tk-chip" style="--c:#B3261E"></span><strong>Error</strong><code>#B3261E</code><small>Errors, delete</small></li>
+      <li><span class="tk-chip" style="--c:#8A5800"></span><strong>Retrying</strong><code>#8A5800</code><small>Warnings, on Warning tint</small></li>
+      <li><span class="tk-chip" style="--c:#FBDA8E"></span><strong>Warning tint</strong><code>#FBDA8E</code><small>Conflict banner. Amber, never cream.</small></li>
+      <li><span class="tk-chip" style="--c:#1E7B4A"></span><strong>Live</strong><code>#1E7B4A</code><small>Published marker; half filled while changes are not live</small></li>
+    </ul>
+    <p class="tk-note">The accent is one variable, <code>--mark</code>: every mark in the editor reads it, the top-bar mark and this chip included. On white it is only 1.7 to 1 by itself, so it never stands alone: lines carry graphite keylines, thin lines are graphite, and text on it is graphite. It is a color no other page builder wears: pink and magenta, purple and violet, the default blues, black, <span class="nowrap">a shop-builder green</span>.</p>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Site palette slots</h2>
+    <p class="tk-lead">Six slots the site owner can change in Site style. Every widget takes its colors from these, never from a hex value.</p>
+    <ul class="tk-slots">
+      <li style="--c:#14302A; --t:#FFFFFF"><span>Aa</span><strong>Text</strong><small>Ink, #14302A</small></li>
+      <li style="--c:#FFFFFF; --t:#14302A"><span>Aa</span><strong>Background</strong><small>Paper, #FFFFFF</small></li>
+      <li style="--c:#1E5B4C; --t:#FFFFFF"><span>Aa</span><strong>Primary</strong><small>Sea, #1E5B4C</small></li>
+      <li style="--c:#F2A541; --t:#14302A"><span>Aa</span><strong>Accent</strong><small>Buoy, #F2A541</small></li>
+      <li style="--c:#E6EFEA; --t:#14302A"><span>Aa</span><strong>Soft</strong><small>Shallows, #E6EFEA</small></li>
+      <li style="--c:#4E625B; --t:#FFFFFF"><span>Aa</span><strong>Muted</strong><small>Slate, #4E625B</small></li>
+    </ul>
+    <p class="tk-note">Each slot offers curated tones only, and Site style checks their contrast in words. Primary: Sea #1E5B4C, Harbour #1D4E6F, Kelp #3B5A23, Basalt #4A4F57. Accent: Buoy #F2A541, Cap pink #F4A0B5, Sea glass #9FD3C1, Lemon #F6D55C.</p>
+    <p class="tk-note">Illustrations are images and keep their own colors: Sky #DCE7E4, First light #E9DDD7, Mist #E7E9EA, Dawn #F2D3C6, Dawn deep #E8B4A0, Sun #F7C97A, Haze #9DB1A8, Glint #B7CFC5, Sea pale #8FB3A4, Sea mid #5E8E7D, Sea deep #3F7A68, Rock #5E6B66, Rock light #7C8883, Stone #B9C1BC, Concrete #D5DAD7, Cap pink #F4A0B5.</p>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Type</h2>
+    <div class="tk-type">
+      <div>
+        <h3>Chrome: Instrument Sans</h3>
+        <ul class="tk-type-list">
+          <li><span class="tk-sample" style="font:600 22px/28px var(--font-ui)">Save states</span><code>Display 22 / 28, 600</code></li>
+          <li><span class="tk-sample" style="font:600 16px/22px var(--font-ui)">Media library</span><code>Dialog title 16 / 22, 600</code></li>
+          <li><span class="tk-sample" style="font:600 14px/20px var(--font-ui)">Navigator</span><code>Tray title 14 / 20, 600</code></li>
+          <li><span class="tk-sample" style="font:400 13px/18px var(--font-ui)">Paste a link or choose a page</span><code>UI 13 / 18, 400 and 600</code></li>
+          <li><span class="tk-sample" style="font:400 12px/16px var(--font-ui)">Use one H1 per page.</span><code>Hint 12 / 16, 400</code></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Site: Archivo expanded and Source Serif 4</h3>
+        <table class="tk-scale">
+          <thead><tr><th scope="col">Step</th><th scope="col">Sample</th><th scope="col">Desktop</th><th scope="col">Tablet</th><th scope="col">Phone</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Display</th><td><span class="tk-s-display">Slack</span></td><td>76 / 1.0</td><td>52 / 1.02</td><td>40 / 1.05</td></tr>
+            <tr><th scope="row">Heading 1</th><td><span class="tk-s-h" style="font-size:44px">Swim</span></td><td>56 / 1.05</td><td>42 / 1.08</td><td>33 / 1.1</td></tr>
+            <tr><th scope="row">Heading 2</th><td><span class="tk-s-h" style="font-size:36px">From the water</span></td><td>42 / 1.1</td><td>33 / 1.12</td><td>28 / 1.15</td></tr>
+            <tr><th scope="row">Heading 3</th><td><span class="tk-s-h tk-s-h3" style="font-size:30px">Dawn swims</span></td><td>32 / 1.25</td><td>27 / 1.25</td><td>23 / 1.3</td></tr>
+            <tr><th scope="row">Large text</th><td><span class="tk-s-serif" style="font-size:24px">One quiet hour</span></td><td>24 / 1.45</td><td>21 / 1.45</td><td>19 / 1.5</td></tr>
+            <tr><th scope="row">Body</th><td><span class="tk-s-serif" style="font-size:18px">Twice a week, at first light.</span></td><td>18 / 1.6</td><td>17 / 1.6</td><td>16 / 1.6</td></tr>
+            <tr><th scope="row">Small</th><td><span class="tk-s-serif" style="font-size:14px">A member since last winter</span></td><td>14 / 1.5</td><td>14 / 1.5</td><td>13 / 1.5</td></tr>
+          </tbody>
+        </table>
+        <p class="tk-note">Seven steps, no two alike. Each is about a third larger than the one below on desktop (1.333 from 18), a quarter on tablet (1.25 from 17) and a fifth on phones (1.2 from 16). Size in pixels over line height. Between a page 800 wide and 1280 wide, all seven grow together from their tablet size to their desktop size, so Display is always one step above Heading 1: on the 832 canvas they are 54 and 43, from 1280 up 76 and 56. The quote uses the Heading 3 step, set in Source Serif italic.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Spacing</h2>
+    <div class="tk-two">
+      <div>
+        <h3>Site spacing steps</h3>
+        <ul class="tk-space">
+          <li><span class="tk-bar tk-bar-none" style="--w:2px"></span><strong>None</strong><code>0</code></li>
+          <li><span class="tk-bar" style="--w:4px"></span><strong>XS</strong><code>4</code></li>
+          <li><span class="tk-bar" style="--w:8px"></span><strong>S</strong><code>8</code></li>
+          <li><span class="tk-bar" style="--w:16px"></span><strong>M</strong><code>16</code></li>
+          <li><span class="tk-bar" style="--w:24px"></span><strong>L</strong><code>24</code></li>
+          <li><span class="tk-bar" style="--w:32px"></span><strong>XL</strong><code>32</code></li>
+          <li><span class="tk-bar" style="--w:48px"></span><strong>XXL</strong><code>48</code></li>
+        </ul>
+        <p class="tk-note">These names are what the Style tab, the canvas dimension lines and History show; block settings never use pixels. Sections space themselves with two larger theme values, 64 and 96, that are not set per block.</p>
+      </div>
+      <div>
+        <h3>Chrome spacing</h3>
+        <ul class="tk-space">
+          <li><span class="tk-bar tk-bar-g" style="--w:2px"></span><strong>hair</strong><code>2</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:4px"></span><strong>xs</strong><code>4</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:8px"></span><strong>s</strong><code>8</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:12px"></span><strong>m</strong><code>12</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:16px"></span><strong>l</strong><code>16</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:24px"></span><strong>xl</strong><code>24</code></li>
+          <li><span class="tk-bar tk-bar-g" style="--w:32px"></span><strong>xxl</strong><code>32</code></li>
+        </ul>
+        <p class="tk-note">Trays sit 8 apart on the bench. Controls are 32 tall, rows in the navigator 28.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Radii</h2>
+    <ul class="tk-radii">
+      <li><span style="--r:4px"></span><strong>Chrome field</strong><code>4</code></li>
+      <li><span style="--r:6px"></span><strong>Chrome button, tile</strong><code>6</code></li>
+      <li><span style="--r:10px"></span><strong>Tray, menu, dialog</strong><code>10</code></li>
+      <li class="tk-radii-site"><span style="--r:4px"></span><strong>Site field</strong><code>4</code></li>
+      <li class="tk-radii-site"><span style="--r:12px"></span><strong>Site image, embed</strong><code>12</code></li>
+      <li class="tk-radii-site"><span style="--r:999px"></span><strong>Site button</strong><code>round</code></li>
+    </ul>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Breakpoints</h2>
+    <p class="tk-lead">Container queries on the page root, so the canvas and the published page reflow the same way. The editor’s device switch sets the canvas to these widths.</p>
+    <div class="tk-bp" role="img" aria-label="Page width from 0 to 1440. Phone layout below 560, tablet layout from 560 to 799, desktop layout from 800. Device previews at 390 and 768; content stops growing at 1120.">
+      <div class="tk-bp-edges">
+        <span style="--x:560">560</span>
+        <span style="--x:800">800</span>
+      </div>
+      <div class="tk-bp-dims">
+        <span class="tk-dim" style="--a:0; --b:560"><b>Phone layout</b></span>
+        <span class="tk-dim" style="--a:560; --b:800"><b>Tablet layout</b></span>
+        <span class="tk-dim" style="--a:800; --b:1440"><b>Desktop layout</b></span>
+      </div>
+      <div class="tk-bp-ruler">
+        <i style="--x:0">0</i><i style="--x:400">400</i><i style="--x:800">800</i><i style="--x:1200">1200</i>
+      </div>
+      <div class="tk-bp-pins">
+        <span style="--x:390"><strong>390</strong>Phone preview</span>
+        <span style="--x:768"><strong>768</strong>Tablet preview</span>
+        <span style="--x:1120" class="tk-pin-max"><strong>1120</strong>Content stops growing</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tk-sec">
+    <h2>States</h2>
+    <p class="tk-lead">How the editor marks what has focus, what is selected, what applies to one device only, and what went wrong. Focus is always a graphite ring outside the element; a chosen option is always marked inside it; the accent marks only the work on the canvas.</p>
+    <ul class="tk-states">
+      <li>
+        <div class="tk-stage">
+          <label class="search" style="margin:0;width:100%"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><input class="is-focus" type="search" placeholder="Search" aria-label="Search, focus example" tabindex="-1"></label>
+        </div>
+        <div><strong>Focus on the chrome</strong><small>Graphite ring, 2 wide, 2 away. Fields, buttons, tabs, menu items.</small></div>
+      </li>
+      <li>
+        <div class="tk-stage tk-stage-page">
+          <span class="layout-btn tk-focus-canvas"><span class="layout-pic" style="--n:2"><i></i><i></i></span>2 columns</span>
+        </div>
+        <div><strong>Focus on the canvas</strong><small>The same graphite ring, with a white keyline in the gap so it reads on any site color.</small></div>
+      </li>
+      <li>
+        <div class="tk-stage tk-stage-page">
+          <span class="tk-sel">Swim at<span class="ov ov-sel" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i><span class="ov-bar"><span class="ov-name">Heading</span></span></span></span>
+        </div>
+        <div><strong>Selection</strong><small>The block in hand: a yellow line and corner brackets with graphite keylines, and a yellow tab with its name and tools.</small></div>
+      </li>
+      <li>
+        <div class="tk-stage">
+          <div class="swatches" aria-hidden="true">
+            <span class="tk-sw is-on" style="--c:#1E5B4C"><span class="pick-check"><svg class="i"><use href="#i-check"/></svg></span></span>
+            <span class="tk-sw" style="--c:#F2A541"></span>
+            <span class="tk-sw" style="--c:#E6EFEA"></span>
+          </div>
+        </div>
+        <div><strong>Selected</strong><small>One choice in a set: an inset ring and a check, inside the swatch, tone or image. Never a ring outside.</small></div>
+      </li>
+      <li>
+        <div class="tk-stage">
+          <div class="field">
+            <div class="label-row"><span class="label">Space inside</span><span class="scope scope-device"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>Tablet only</span></div>
+            <div class="tk-override"><span class="ov-chip">L<svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg></span><span class="btn btn-small btn-secondary">Remove</span></div>
+          </div>
+        </div>
+        <div><strong>Device override</strong><small>The tablet glyph and “Tablet only”, a way out with Remove, and the same glyph on the canvas dimension line.</small></div>
+      </li>
+      <li>
+        <div class="tk-stage">
+          <div class="field field-error">
+            <span class="label">Alt text <span class="req">required</span></span>
+            <span class="input" style="min-height:30px"></span>
+            <p class="error"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg><span>Add alt text to use this image.</span></p>
+          </div>
+        </div>
+        <div><strong>Error</strong><small>Error border and a sentence that says how to fix it. The action it blocks is turned off.</small></div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Icons</h2>
+    <p class="tk-lead">Drawn for this product on one 20-unit grid with a 1.5 px stroke, butt caps and mitred joins. Widget tiles show them at 24 px with the same stroke on screen.</p>
+    <ul class="tk-icons">
+      <li><svg class="i"><use href="#i-desktop"/></svg></li><li><svg class="i"><use href="#i-tablet"/></svg></li><li><svg class="i"><use href="#i-phone"/></svg></li>
+      <li><svg class="i"><use href="#i-undo"/></svg></li><li><svg class="i"><use href="#i-redo"/></svg></li><li><svg class="i"><use href="#i-history"/></svg></li>
+      <li><svg class="i"><use href="#i-eye"/></svg></li><li><svg class="i"><use href="#i-check"/></svg></li><li><svg class="i"><use href="#i-grip"/></svg></li>
+      <li><svg class="i"><use href="#i-duplicate"/></svg></li><li><svg class="i"><use href="#i-trash"/></svg></li><li><svg class="i"><use href="#i-paste"/></svg></li>
+      <li><svg class="i"><use href="#i-search"/></svg></li><li><svg class="i"><use href="#i-plus"/></svg></li><li><svg class="i"><use href="#i-style"/></svg></li>
+      <li><svg class="i"><use href="#i-align-left"/></svg></li><li><svg class="i"><use href="#i-align-center"/></svg></li><li><svg class="i"><use href="#i-align-right"/></svg></li>
+      <li><svg class="i"><use href="#i-valign-top"/></svg></li><li><svg class="i"><use href="#i-valign-middle"/></svg></li><li><svg class="i"><use href="#i-valign-bottom"/></svg></li>
+      <li><svg class="i"><use href="#i-link"/></svg></li><li><svg class="i"><use href="#i-calendar"/></svg></li><li><svg class="i"><use href="#i-clock"/></svg></li>
+      <li><svg class="i"><use href="#i-globe"/></svg></li><li><svg class="i"><use href="#i-external"/></svg></li><li><svg class="i"><use href="#i-warning"/></svg></li>
+      <li><svg class="i"><use href="#i-error"/></svg></li><li><svg class="i"><use href="#i-info"/></svg></li><li><svg class="i"><use href="#i-upload"/></svg></li>
+      <li><svg class="i"><use href="#i-lock"/></svg></li><li><svg class="i"><use href="#i-keyboard"/></svg></li><li><svg class="i"><use href="#i-anchor"/></svg></li>
+      <li><svg class="i"><use href="#i-tree"/></svg></li><li><svg class="i"><use href="#i-section"/></svg></li><li><svg class="i"><use href="#i-column"/></svg></li>
+      <li><svg class="i"><use href="#i-page"/></svg></li><li><svg class="i"><use href="#i-bookmark"/></svg></li><li><svg class="i"><use href="#i-pin"/></svg></li>
+    </ul>
+    <ul class="tk-icons tk-icons-tile">
+      <li><svg class="i i-tile"><use href="#w-section"/></svg><span>Section</span></li>
+      <li><svg class="i i-tile"><use href="#w-heading"/></svg><span>Heading</span></li>
+      <li><svg class="i i-tile"><use href="#w-text"/></svg><span>Text</span></li>
+      <li><svg class="i i-tile"><use href="#w-image"/></svg><span>Image</span></li>
+      <li><svg class="i i-tile"><use href="#w-button"/></svg><span>Button</span></li>
+      <li><svg class="i i-tile"><use href="#w-divider"/></svg><span>Divider</span></li>
+      <li><svg class="i i-tile"><use href="#w-spacer"/></svg><span>Spacer</span></li>
+      <li><svg class="i i-tile"><use href="#w-gallery"/></svg><span>Gallery</span></li>
+      <li><svg class="i i-tile"><use href="#w-video"/></svg><span>Video</span></li>
+      <li><svg class="i i-tile"><use href="#w-map"/></svg><span>Map</span></li>
+      <li><svg class="i i-tile"><use href="#w-iconbox"/></svg><span>Icon box</span></li>
+      <li><svg class="i i-tile"><use href="#w-quote"/></svg><span>Quote</span></li>
+      <li><svg class="i i-tile"><use href="#w-accordion"/></svg><span>Accordion</span></li>
+      <li><svg class="i i-tile"><use href="#w-form"/></svg><span>Form</span></li>
+    </ul>
+  </section>
+
+  <section class="tk-sec">
+    <h2>Fonts and licenses</h2>
+    <ul class="tk-fonts">
+      <li><strong style="font-family:var(--font-ui)">Instrument Sans</strong><span>Editor chrome. Variable, weight 400 to 700, width 75 to 100. SIL Open Font License 1.1, fonts/LICENSE-InstrumentSans.txt</span></li>
+      <li><strong style="font-family:Archivo;font-stretch:125%">Archivo</strong><span>Site headings and buttons, set expanded. Variable, weight 100 to 900, width 62 to 125. SIL Open Font License 1.1, fonts/LICENSE-Archivo.txt</span></li>
+      <li><strong style="font-family:'Source Serif 4'">Source Serif 4</strong><span>Site body text and quote. Variable with optical sizes, roman and italic. SIL Open Font License 1.1, fonts/LICENSE-SourceSerif4.txt</span></li>
+    </ul>
+  </section>
+
+  <footer class="tk-foot">
+    <p>Page Builder CMS 0.1.0 — Developed by Riccardo Sapuppo</p>
+  </footer>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

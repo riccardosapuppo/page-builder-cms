@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <title>A winter swim beside the jetty under a low white sun</title>
+  <rect width="800" height="600" fill="#E6EFEA"/>
+  <circle cx="220" cy="230" r="54" fill="#FFFFFF"/>
+  <rect y="300" width="800" height="60" fill="#8FB3A4"/>
+  <rect y="360" width="800" height="240" fill="#5E8E7D"/>
+  <rect y="480" width="800" height="120" fill="#3F7A68"/>
+  <rect x="440" y="250" width="360" height="16" fill="#14302A"/>
+  <g fill="#14302A">
+    <rect x="470" y="266" width="12" height="130"/><rect x="580" y="266" width="12" height="150"/>
+    <rect x="690" y="266" width="12" height="170"/>
+  </g>
+  <path d="M300 430a20 17 0 0 1 40 0z" fill="#F2A541"/>
+  <path d="M290 434h-40M350 434h44" stroke="#B7CFC5" stroke-width="4"/>
+  <g fill="#FFFFFF">
+    <circle cx="80" cy="80" r="5"/><circle cx="160" cy="130" r="4"/><circle cx="330" cy="70" r="5"/>
+    <circle cx="420" cy="150" r="4"/><circle cx="560" cy="60" r="5"/><circle cx="680" cy="140" r="4"/>
+    <circle cx="740" cy="50" r="5"/><circle cx="40" cy="200" r="4"/>
+  </g>
+</svg>

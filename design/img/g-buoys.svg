@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <title>The buoy line that marks the course across the bay</title>
+  <rect width="800" height="600" fill="#E6EFEA"/>
+  <path d="M430 232c50-26 120-44 200-44 70 0 130 20 170 40v4z" fill="#9DB1A8"/>
+  <rect y="232" width="800" height="40" fill="#8FB3A4"/>
+  <rect y="272" width="800" height="120" fill="#5E8E7D"/>
+  <rect y="392" width="800" height="208" fill="#3F7A68"/>
+  <path d="M-10 540C180 470 420 390 600 350s160-30 210-36" fill="none" stroke="#14302A" stroke-width="4"/>
+  <g fill="#F2A541">
+    <circle cx="150" cy="490" r="44"/>
+    <circle cx="390" cy="410" r="28"/>
+    <circle cx="570" cy="360" r="18"/>
+    <circle cx="690" cy="333" r="11"/>
+    <circle cx="770" cy="318" r="7"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF">
+    <ellipse cx="150" cy="490" rx="44" ry="11" stroke-width="7"/>
+    <ellipse cx="390" cy="410" rx="28" ry="7" stroke-width="5"/>
+    <ellipse cx="570" cy="360" rx="18" ry="4.5" stroke-width="3"/>
+  </g>
+  <g stroke="#8FB3A4" stroke-width="5">
+    <path d="M86 548h-50M214 548h60M340 446h-40M440 446h44"/>
+  </g>
+</svg>

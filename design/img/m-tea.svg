@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <title>A flask and two cups of tea on a rock after a swim</title>
+  <rect width="800" height="600" fill="#F2D3C6"/>
+  <rect y="250" width="800" height="170" fill="#8FB3A4"/>
+  <g fill="#B7CFC5">
+    <rect x="40" y="292" width="150" height="5" rx="2.5"/>
+    <rect x="620" y="276" width="120" height="5" rx="2.5"/>
+    <rect x="110" y="330" width="90" height="4" rx="2"/>
+  </g>
+  <path d="M0 400c140-40 300-50 460-40s260 30 340 20v220H0z" fill="#5E6B66"/>
+  <rect x="300" y="190" width="96" height="250" rx="22" fill="#F2A541"/>
+  <rect x="314" y="164" width="68" height="36" rx="6" fill="#14302A"/>
+  <path d="M470 330h96l-10 100h-76z" fill="#FFFFFF"/>
+  <path d="M600 350h86l-9 86h-68z" fill="#FFFFFF"/>
+  <path d="M566 352c24 0 30 34 4 44" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round">
+    <path d="M500 310c-12-20 12-30 0-52"/>
+    <path d="M534 312c-12-20 12-30 0-52"/>
+    <path d="M644 330c-10-18 10-26 0-44"/>
+  </g>
+</svg>

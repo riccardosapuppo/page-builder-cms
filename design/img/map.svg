@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <title>Drawn plan of the beach: the road, the path along the dunes, and the slipway at the north end</title>
+  <!-- land -->
+  <rect width="800" height="500" fill="#E6EFEA"/>
+  <!-- sea, to the east -->
+  <path d="M800 0v500H560c-30-70-44-140-34-210s36-150 80-220c14-24 28-48 40-70z" fill="#B7CFC5"/>
+  <path d="M800 0v500H660c-24-70-30-140-20-210s30-150 66-220c10-24 20-48 30-70z" fill="#8FB3A4"/>
+  <!-- beach: a band of sand along the shore -->
+  <path d="M646 0c-12 22-26 46-40 70-44 70-70 150-80 220s4 140 34 210h-40c-30-72-44-142-34-214s38-152 82-224c14-24 28-46 40-62z" fill="#D5DAD7"/>
+  <!-- the road, and the footpath down to the slipway -->
+  <path d="M0 150c120 10 250 0 360-40s170-80 200-110" fill="none" stroke="#FFFFFF" stroke-width="20"/>
+  <path d="M0 150c120 10 250 0 360-40s170-80 200-110" fill="none" stroke="#B9C1BC" stroke-width="2"/>
+  <path d="M150 500c10-80 50-170 130-240s160-90 228-81" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-dasharray="3 11" stroke-linecap="round"/>
+  <!-- the slipway: a wide concrete ramp, square to the shore, that runs from the
+       end of the footpath across the sand and down into the water. Grooved across
+       its width like a real ramp; its lower half is under water and fades out. -->
+  <defs>
+    <linearGradient id="under" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#8FB3A4" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#8FB3A4" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(20 500 169)">
+    <!-- dry part, on the sand -->
+    <rect x="500" y="135" width="66" height="68" fill="#D5DAD7"/>
+    <!-- wet part, under water -->
+    <rect x="566" y="135" width="124" height="68" fill="#B9C1BC"/>
+    <rect x="566" y="135" width="124" height="68" fill="url(#under)"/>
+    <!-- fine grooves across the dry concrete, for grip -->
+    <path d="M512 138v62M521 138v62M530 138v62M539 138v62M548 138v62M557 138v62" stroke="#B9C1BC" stroke-width="2"/>
+    <!-- its two side walls and the top edge; the walls run on under the water -->
+    <path d="M630 135H500v68h130" fill="none" stroke="#5E6B66" stroke-width="5"/>
+    <path d="M630 135h40M630 203h40" stroke="#5E6B66" stroke-width="5" stroke-opacity=".35"/>
+    <!-- the waterline across the ramp, with a ripple at each wall -->
+    <path d="M566 131v76" stroke="#FFFFFF" stroke-width="3"/>
+    <path d="M572 124c6 4 12 4 18 0M572 214c6-4 12-4 18 0" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <!-- small waves offshore -->
+  <g fill="none" stroke="#5E8E7D" stroke-width="3" stroke-linecap="round">
+    <path d="M690 260c24 12 54 14 80 6"/>
+    <path d="M672 360c30 14 70 16 104 6"/>
+    <path d="M720 170c16 8 36 8 52 2"/>
+  </g>
+</svg>
