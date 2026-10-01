@@ -58,11 +58,27 @@ class Api::VersionsTest < ActionDispatch::IntegrationTest
     assert_equal "Old words", json.dig("draft", "document", "title")
     assert_equal 3, json.dig("draft", "revision")
     assert_equal [ "restore", old ], json["version"].values_at("reason", "restoredFrom")
+    kept = json.dig("kept", "number")
+    assert_equal [ "before-restore", nil, json.dig("version", "number") - 1 ], [ json.dig("kept", "reason"), json.dig("kept", "restoredFrom"), kept ]
+    api :get, "/api/pages/#{@page.id}/versions/#{kept}"
+    assert_equal "New words", json.dig("document", "title")
 
     save_draft @page, revision: 2, document: page_document(title: "Stale tab"), save_id: "tab-b-1"
     assert_response :conflict
     assert_equal 3, json["currentRevision"]
     assert_nil json["lastSaveId"]
+  end
+
+  test "a restore made when the draft is already the newest version keeps nothing more" do
+    save_draft @page, revision: 0, document: page_document(title: "Old words")
+    api :post, "/api/pages/#{@page.id}/versions", { "name" => "Old words" }
+
+    api :post, "/api/pages/#{@page.id}/versions/#{json['number']}/restore"
+
+    assert_response :ok
+    assert_nil json["kept"]
+    api :get, "/api/pages/#{@page.id}/versions"
+    assert_equal %w[restore manual auto], json["versions"].map { |v| v["reason"] }
   end
 
   test "a version kept under an older schema is upgraded when it is restored" do

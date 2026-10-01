@@ -4,14 +4,21 @@
 # page, and never change once written.
 #
 # Why a version exists is its reason:
-#   publish  the copy that was put live;
-#   restore  the copy an older version put back into the draft;
-#   manual   "Save version", with the name the person gave it, if any;
-#   auto     made while someone edits, at most one every
-#            Draft::AUTO_VERSION_EVERY, so there is always something
-#            recent to go back to.
+#   publish         the copy that was put live;
+#   restore         the copy an older version put back into the draft;
+#   before-restore  the draft as it was just before a restore replaced it,
+#                   so no edit is lost to a restore;
+#   manual          "Save version", with the name the person gave it, if
+#                   any;
+#   auto            made while someone edits, at most one every
+#                   Draft::AUTO_VERSION_EVERY, so there is always
+#                   something recent to go back to.
+#
+# The pruning of old versions (stage 4) keeps before-restore versions as it
+# keeps manual and restore ones: a before-restore version may be the only
+# copy of the edits it holds.
 class PageVersion < ApplicationRecord
-  REASONS = %w[publish restore manual auto].freeze
+  REASONS = %w[publish restore before-restore manual auto].freeze
   NAME_MAX_LENGTH = 80
 
   belongs_to :page

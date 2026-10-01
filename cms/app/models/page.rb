@@ -104,13 +104,25 @@ class Page < ApplicationRecord
   # first, and keeps a "restore" version of what was copied. The draft's
   # revision goes up, so an editor still holding the old revision gets a
   # 409 on its next save instead of overwriting the restore.
+  #
+  # Before anything is copied, the draft as it is now is kept as a
+  # "before-restore" version, so the edits a restore replaces can always
+  # be had back: the automatic versions come at most every ten minutes and
+  # may miss the last ones. When the draft is exactly the page's newest
+  # version, nothing would be lost and no copy is made.
+  #
+  # Returns the draft, the restore version, and the version kept before
+  # it (nil when none was needed).
   def restore!(number, at: Time.current)
     transaction do
       source = versions.find_by!(number: number)
       draft = Draft.find_by!(page_id: id)
+      current = draft.checked_document
+      newest = versions.order(number: :desc).first
+      kept = PageVersion.record!(page_id: id, document: current, reason: "before-restore", at: at) unless newest&.document == current
       draft.replace_document!(source.document, at: at)
       version = PageVersion.record!(page_id: id, document: draft.document, reason: "restore", restored_from: source.number, at: at)
-      [ draft, version ]
+      [ draft, version, kept ]
     end
   end
 

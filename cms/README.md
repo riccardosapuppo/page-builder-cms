@@ -282,7 +282,11 @@ and the rows it changed decide. A 409 gives `currentRevision` and
 was lost never comes back as a false conflict.
 
 **Versions** are kept on publish, on restore, on "Save version", and at
-most every ten minutes while someone saves. Restoring copies a version
+most every ten minutes while someone saves. A restore first keeps the
+draft it is about to replace as a `before-restore` version (unless the
+draft is exactly the newest version already), so the edits made since the
+last automatic version are never lost to it; the answer names that
+version as `kept`. Restoring copies a version
 back into the draft after upgrading it to the current `schemaVersion`
 ([app/models/block_document/upgrade.rb](app/models/block_document/upgrade.rb),
 where the steps will go when the schema changes; version 1 is the first).

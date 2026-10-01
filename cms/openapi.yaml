@@ -345,10 +345,12 @@ paths:
       operationId: restoreVersion
       summary: Restore a version into the draft
       description: |
-        Copies the version's document, upgraded to the current
-        schemaVersion, into the draft, raises the draft's revision, and keeps
-        a version of kind `restore`. An editor still holding the old revision
-        gets 409 on its next save.
+        First keeps the draft as it is now as a version of kind
+        `before-restore`, so no edit is lost, unless the draft is exactly
+        the page's newest version. Then copies the version's document,
+        upgraded to the current schemaVersion, into the draft, raises the
+        draft's revision, and keeps a version of kind `restore`. An editor
+        still holding the old revision gets 409 on its next save.
       tags: [versions]
       responses:
         '200':
@@ -358,12 +360,18 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [draft, version]
+                required: [draft, version, kept]
                 properties:
                   draft:
                     $ref: '#/components/schemas/Draft'
                   version:
+                    description: The `restore` version, of the document now in the draft.
                     $ref: '#/components/schemas/Version'
+                  kept:
+                    description: The `before-restore` version holding the draft as it was, or null when the draft was already the newest version.
+                    anyOf:
+                      - $ref: '#/components/schemas/Version'
+                      - type: 'null'
         '400':
           $ref: '#/components/responses/MalformedJson'
         '404':
@@ -786,9 +794,9 @@ components:
         number:
           type: integer
         reason:
-          description: publish, restore, manual ("Save version") or auto (kept while someone edits).
+          description: publish, restore, before-restore (the draft a restore replaced), manual ("Save version") or auto (kept while someone edits).
           type: string
-          enum: [publish, restore, manual, auto]
+          enum: [publish, restore, before-restore, manual, auto]
         name:
           type: [string, 'null']
         restoredFrom:
@@ -808,7 +816,7 @@ components:
           type: integer
         reason:
           type: string
-          enum: [publish, restore, manual, auto]
+          enum: [publish, restore, before-restore, manual, auto]
         name:
           type: [string, 'null']
         restoredFrom:

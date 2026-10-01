@@ -30,11 +30,18 @@ module Api
       render json: version_json(version, published_version_id: page.published_version_id), status: :created
     end
 
-    # POST /api/pages/:id/versions/:number/restore
+    # POST /api/pages/:id/versions/:number/restore: the draft as restored,
+    # the restore version, and the version that keeps the draft as it was
+    # before (null when the draft was already the newest version).
     def restore
       page = find_page
-      draft, version = page.restore!(path_integer(:number))
-      render json: { "draft" => draft_json(draft), "version" => version_json(version, published_version_id: page.published_version_id) }
+      draft, version, kept = page.restore!(path_integer(:number))
+      published = page.published_version_id
+      render json: {
+        "draft" => draft_json(draft),
+        "version" => version_json(version, published_version_id: published),
+        "kept" => kept && version_json(kept, published_version_id: published)
+      }
     end
 
     private
