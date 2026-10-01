@@ -119,8 +119,11 @@ So every pattern here:
 
 - uses explicit ASCII classes (`[0-9]`, `[A-Za-z0-9_-]`) and `\uXXXX`
   escapes, never `\d`, `\w`, `\s`, `\S`, `.` or `\p{...}`;
-- never uses the empty negated class `[^]`, inline modifiers like `(?i:)`,
-  `\-` outside a class, or a literal `{`;
+- writes a negated class out in full: "has a visible character" is a
+  `[^...]` that lists every blank character, not `\S`;
+- never uses the empty classes `[]` and `[^]`, a group other than `(?:...)`
+  (so no inline modifier like `(?i:)`), `\-` outside a class, a `{` that is
+  not a quantifier, or `[` or `&&` inside a class;
 - is anchored with `^...$` where it describes a whole value;
 - has, on every link and on every plain-text field, an unanchored second
   check under `not` that finds a control character anywhere. It keeps the
@@ -128,6 +131,8 @@ So every pattern here:
 
 `format` is not used: both engines accept `javascript:alert(1)` as a valid
 `uri`, and they disagree on others. The patterns are the contract.
+
+`npm run lint` (below) holds every pattern to this list.
 
 ## The corpus
 
@@ -239,6 +244,62 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
 | `node compare.ts --corpus <copy without image-url-data.json>` | a corpus file that disappears | `the manifest lists invalid/image-url-data.json, which is not in the corpus` and `193 files in the corpus, fewer than the 194 the manifest lists` |
 | `node compare.ts --rules off` | no application rules on either side | 42 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids and 65 levels of nesting accepted by both; the 20-digit integer read as two different numbers |
 | `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
+
+## The lint of the schema
+
+`npm run lint` checks the schema itself, before any document:
+
+- **Patterns.** Each one is in the portable subset above, compiles in both
+  engines (`new RegExp(pattern, "u")` for ajv, json_schemer's own ECMA
+  translation for Ruby, in [`lint.rb`](tools/lint.rb)), and both engines
+  answer the same on the probe strings: every ASCII character and 28
+  characters engines are known to read differently (Unicode spaces and line
+  breaks, digits of other scripts, letters that fold to ASCII, a combining
+  mark, a byte-order mark, an emoji), alone, next to a letter, and at the
+  start, middle and end of up to six values from the valid corpus that the
+  pattern accepts.
+- **Keywords** the schema must not use: `oneOf` (exponential in depth in
+  both engines), `discriminator` (ajv only), `unevaluatedProperties` and
+  `unevaluatedItems` (the engines disagree after a passing `if`), `format`,
+  `uniqueItems` (Ruby tells `1` from `1.0`) and a fractional `multipleOf`.
+- **Dispatch.** Wherever if/then branches dispatch on a property's const,
+  every value of that property's enum has exactly one branch, every branch
+  is for a value of the enum, and every `if` requires the property, so a
+  block without a type runs no branch. That covers the 14 block types, the
+  video providers, the rich-text nodes and the marks.
+- **Hierarchy,** read from the schema: the page holds sections, a section one
+  to four columns, a column the widget types, and no widget holds children.
+- **Tokens:** the spacing, section-spacing and type-step enums are the names
+  in `tokens.json`. The palette slots are not in `tokens.json`, so they are
+  not checked.
+- **The schema** is valid draft 2020-12 to both engines, and the example at
+  the top of this README is the corpus file `valid/readme-example.json`.
+
+The run of 1 October 2026:
+
+```
+pattern style: 11/11 patterns in the portable subset
+pattern compile: 11/11 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.10)
+pattern probes: 23245 probes over 11 patterns, 9133 matched by both, 0 patterns with a disagreement
+keywords: 341 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
+dispatch: #/$defs/block on type: 14 values, 14 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
+hierarchy: page > section (1-4 columns) > column > 12 widget types, 12 of them with no children
+tokens: spaceToken = 7 names, sectionSpaceToken = 2 names, typeStep = 7 names from tokens.json (palette slots are not in tokens.json; see README)
+schema: compiled by ajv, 0 meta-schema error(s) from json_schemer; README example compared with the corpus
+RESULT: PASS
+```
+
+`npm run lint:plants` shows it can fail: it runs the lint on the schema as
+it is (it must pass), then on 13 copies with one fault planted in each, in
+a temporary folder it removes afterwards. Each must fail for the reason
+planted: `\s`, a dot and a lone `{` in a pattern; with the subset check
+off, an inline modifier json_schemer refuses, a `\-` ajv refuses, and `\S`
+and a dot, which both compile but answer differently (`\S` on U+2028, the
+dot on a carriage return and the two Unicode line breaks); a `oneOf`; a
+widget type with no branch and one with two; an `if` without `required`;
+a section of five columns; a spacing step `tokens.json` lacks; and a README
+example that no longer matches the corpus. The last run: `planted 13,
+caught 13`.
 
 ## Versions
 

@@ -12,6 +12,8 @@
     "compare": "node compare.ts",
     "corpus": "node gen-corpus.ts",
     "corpus:check": "node gen-corpus.ts --check",
+    "lint": "node lint.ts",
+    "lint:plants": "node lint-plants.ts",
     "typecheck": "tsc -p ."
   },
   "devDependencies": {
