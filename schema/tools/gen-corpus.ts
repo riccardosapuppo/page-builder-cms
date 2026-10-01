@@ -587,6 +587,7 @@ invalid("button-href-userinfo", "no user info", HREF, "pattern", (d) => { at(d, 
 invalid("button-href-backslash", "browsers read /\\host as //host", HREF, "pattern", (d) => { at(d, BTN).props.href = `/${BACKSLASH}evil.example`; });
 invalid("button-href-space-in-host", "no spaces", HREF, "pattern", (d) => { at(d, BTN).props.href = "https://exa mple.com/"; });
 invalid("button-label-missing", "a button has a label", `${BTN}/props`, "required", (d) => { delete at(d, BTN).props.label; });
+invalid("button-props-empty", "label and href both missing: ajv reports each key, json_schemer the object once", `${BTN}/props`, "required", (d) => { at(d, BTN).props = {}; });
 invalid("button-label-too-long", "a label has at most 80 characters", `${BTN}/props/label`, "maxLength", (d) => { at(d, BTN).props.label = "x".repeat(81); });
 
 // =============================== INVALID: divider, spacer =======================

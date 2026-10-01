@@ -227,6 +227,12 @@
     "keyword": "maxLength",
     "layer": "schema"
   },
+  "invalid/button-props-empty.json": {
+    "rule": "label and href both missing: ajv reports each key, json_schemer the object once",
+    "pointer": "/sections/0/children/0/children/2/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
   "invalid/divider-children.json": {
     "rule": "a divider holds no blocks",
     "pointer": "/sections/6/children/0/children/0/children",

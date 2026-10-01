@@ -128,3 +128,121 @@ So every pattern here:
 
 `format` is not used: both engines accept `javascript:alert(1)` as a valid
 `uri`, and they disagree on others. The patterns are the contract.
+
+## The corpus
+
+[`corpus/`](corpus) is what both validators are held to.
+
+- `valid/`: documents both must accept. The base page with every widget
+  and overrides on every device, the smallest page, a page of exactly 500
+  blocks, rich text nested to the depth limit, every token, every link
+  form, every icon and video provider, non-ASCII text, escapes, integral
+  floats.
+- `invalid/`: documents both must refuse. Each is the base page with **one**
+  change.
+- `upgrade/`: documents of an older `schemaVersion`. Empty, because version
+  1 is the first; [its README](corpus/upgrade/README.md) says what it will
+  hold.
+- `manifest.json`: for every file, the rule it shows; for every invalid
+  file, also the JSON pointer and the keyword where **both** engines must
+  report it, and whether the application rules or the schema refuse it. A
+  trap refused for the wrong reason fails the comparison.
+
+[`tools/gen-corpus.ts`](tools/gen-corpus.ts) writes all of it, and
+`npm run corpus:check` fails if a file on disk differs from what it would
+write.
+
+There are traps for every widget, and these, which tell engines apart:
+
+- a newline before or after an anchored value (a block id, a video id), and
+  a newline or a tab inside a link;
+- digits of other scripts (Arabic-Indic, fullwidth) in ids and in `tel:`;
+- 200 emoji against a `maxLength` of 200, and letters written as letter
+  plus combining accent;
+- `2.0`, `1.2e1`, `3.000`, `-0.0` and `1e-400` where an integer is
+  expected, and `5.0` above a maximum of 4;
+- `1e400`, `-1e400`, `1e300` and a 20-digit integer;
+- lone surrogates in a value and in a member name, invalid UTF-8 bytes, a
+  byte-order mark;
+- duplicate member names, one of them spelled with an escape;
+- 64 levels of nesting (valid), 65 and 200 (invalid);
+- blank text made of no-break spaces, a line separator, zero-width spaces
+  or an ideographic space.
+
+## Two validators, one verdict
+
+[`tools/`](tools) is a small Node package: TypeScript run directly by
+Node 24, ajv pinned to 8.20.0. The Ruby side runs through the app's own
+bundle, so it uses json_schemer 2.5.0 and the json 3.0.2 parser that
+`cms/Gemfile.lock` pins.
+
+```
+cd schema/tools
+npm ci
+npm run compare
+npm run typecheck
+```
+
+The gems of `cms/` must be installed first ([cms/README.md](../cms/README.md)),
+and `ruby` must be on the PATH.
+
+- [`validate.ts`](tools/validate.ts), the editor's side: `rules.ts`, then
+  ajv as `new Ajv2020({strict: true, strictTuples: false, allErrors: true,
+  validateFormats: false, unicodeRegExp: true})`.
+- [`validate.rb`](tools/validate.rb), the server's side: the twin rules in
+  [`cms/lib/block_document/rules.rb`](../cms/lib/block_document/rules.rb),
+  then `JSONSchemer.schema(schema, regexp_resolver: "ecma", format: false)`.
+- [`compare.ts`](tools/compare.ts) runs both and fails on:
+  - a verdict the two engines disagree on;
+  - an exception on either side: an exception is never a verdict;
+  - a missing, repeated or unknown result, or a runner that exits non-zero;
+  - fewer corpus files than the manifest lists, a file it does not list,
+    or fewer than 60 files in all;
+  - a verdict against the folder (`valid/` must pass, `invalid/` must fail);
+  - an invalid file where either engine does not report the manifest's
+    pointer and keyword;
+  - a document the two languages normalise differently (`2.0` must be the
+    integer `2` on both sides);
+  - a file in `upgrade/` while there is no upgrade step to run on it.
+
+It also compares **where** the errors are, as sets of `{pointer, keyword}`,
+after three normalisations: ajv reports an unknown property at the object
+and json_schemer at the property, so the property is appended to ajv's
+pointer; ajv adds an `if` error at every block whose branch failed, which
+is dropped; and ajv reports `required` once per missing key where
+json_schemer reports the object once, so the errors are compared as sets.
+
+The run of 1 October 2026 (Windows 11, Node 24.19.0, Ruby 3.4.10):
+
+```
+corpus:  ../corpus: 194 files (19 valid, 175 invalid, 0 upgrade); the manifest lists 194
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 194 results in 1.5 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.10, bundle cms/Gemfile, regexp resolver ecma; 194 results in 20.0 s
+verdicts compared: 194; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 175/175, json_schemer 175/175
+identical {pointer, keyword} sets: 175/175 invalid files (refused by the rules: 26/26; by the schema: 149/149)
+errors on the invalid files: ajv 592, json_schemer 191; normalised: 400 ajv "if" errors dropped, 15 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 8, json_schemer 7
+normalised documents with the same numbers and values: 168/168
+RESULT: PASS (194 files, 0 disagreements, 0 exceptions)
+```
+
+### It can fail
+
+Each of these was run, and each exited 1. The flags exist only for this;
+they change nothing on disk, and the shortened corpus is a temporary copy.
+
+| Run | What it plants | What the comparator reported |
+| --- | --- | --- |
+| `node compare.ts --regexp ruby` | json_schemer's default resolver, where `^` and `$` match at line breaks | `verdicts differ` on `block-id-leading-newline`, `block-id-trailing-newline` and `video-youtube-id-trailing-newline` (json_schemer valid). The four links with a newline stayed refused by both, through the unanchored control-character check |
+| `node compare.ts --drop-ruby invalid/image-url-data.json` | a result that goes missing | `json_schemer: no result for invalid/image-url-data.json` |
+| `node compare.ts --min-files 195` | fewer files than required (194 is the corpus, and `--min-files 194` passes) | `only 194 files in the corpus (at least 195 required)` |
+| `node compare.ts --corpus <copy without image-url-data.json>` | a corpus file that disappears | `the manifest lists invalid/image-url-data.json, which is not in the corpus` and `193 files in the corpus, fewer than the 194 the manifest lists` |
+| `node compare.ts --rules off` | no application rules on either side | 42 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids and 65 levels of nesting accepted by both; the 20-digit integer read as two different numbers |
+| `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
+
+## Versions
+
+ajv 8.20.0 (`tools/package-lock.json`); json_schemer 2.5.0 and json 3.0.2
+(`cms/Gemfile.lock`); Node 24 and Ruby 3.4.10 for the runs above. A change
+to any of them, to the schema or to either set of rules is a change that
+must pass the comparator.
