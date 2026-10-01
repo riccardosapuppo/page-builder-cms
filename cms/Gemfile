@@ -22,9 +22,6 @@ gem "solid_queue"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
-# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
-
 # Validates page documents against schema/block-document.schema.json, the
 # same file the editor validates with. Pinned exactly: the two validators
 # are compared on a shared corpus, and a new version is a new comparison.

@@ -38,5 +38,13 @@ module Cms
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    # No image variants on the server. They need libvips, a system library
+    # this project does not ask anyone to install; the editor resizes images
+    # in the browser before uploading them instead. :disabled is Active
+    # Storage's own setting for this (activestorage 8.1.4, engine.rb): with
+    # the 8.1 default, :vips, every boot logs a warning that libvips is
+    # missing.
+    config.active_storage.variant_processor = :disabled
   end
 end
