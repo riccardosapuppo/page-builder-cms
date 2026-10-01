@@ -158,13 +158,13 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 1 October 2026 (Windows 11, Ruby 3.4.10), the same with `CI=1`,
+The run of 2 October 2026 (Windows 11, Ruby 3.4.10), the same with `CI=1`,
 which loads the whole app first as production does:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-201 runs, 972 assertions, 0 failures, 0 errors, 0 skips
-openapi: 135 API response(s) checked against cms/openapi.yaml
+224 runs, 1071 assertions, 0 failures, 0 errors, 0 skips
+openapi: 184 API response(s) checked against cms/openapi.yaml
 ```
 
 The run includes `test/lib/tasks/db_drop_test.rb`, which starts Rails
@@ -228,8 +228,8 @@ twice in processes of its own and takes about 13 seconds of it.
   `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
   one value changed by hand in the file failed it.
 
-Also run, from this folder: `ruby bin/rubocop` (99 files, no offenses on
-1 October) and `ruby bin/brakeman` (no warnings).
+Also run, from this folder: `ruby bin/rubocop` (103 files, no offenses on
+2 October) and `ruby bin/brakeman` (no warnings).
 
 ## The pages a visitor sees
 
