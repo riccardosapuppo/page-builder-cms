@@ -73,7 +73,7 @@
             },
             {
               "id": "m-video-vimeo", "type": "video", "children": [],
-              "props": { "provider": "vimeo", "videoId": "76979871", "title": "A Vimeo video" },
+              "props": { "provider": "vimeo", "videoId": "76979871", "title": "The same swim, from the second provider" },
               "style": { "base": {} }
             },
             {

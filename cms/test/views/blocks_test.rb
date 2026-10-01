@@ -103,6 +103,9 @@ class BlocksTest < ActionView::TestCase
     end
     addresses = html.css("[src], [href]").map { |node| node["src"] || node["href"] }
     assert_equal 2, addresses.count { |a| a.include?("youtube") || a.include?("openstreetmap") }, addresses.inspect
+    assert_equal [ "Watch a dawn swim", "Loads a video from the provider when you click.", "Playing from the provider. Click here to close it." ],
+                 html.css("[data-block-type=video] .sw-embed-bar > *").map(&:text)
+    assert_equal "youtube", html.at_css("[data-block-type=video]")["data-provider"]
   end
 
   test "library images get their size; others keep their url; decorative ones an empty alt; a missing one nothing" do

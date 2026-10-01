@@ -30,12 +30,16 @@ module RenderPolicy
   # The video providers the schema allows, with the id each one takes and
   # the player address built from it. The privacy-enhanced YouTube host
   # sets no cookie until the video plays; Vimeo is asked not to track.
+  #
+  # The page never names a provider to the visitor: the approved design's
+  # card says "the provider", and a provider's own name or brand is theirs.
+  # The provider id stays in the document and in data-provider.
   VIDEO = {
-    "youtube" => { name: "YouTube", origin: "https://www.youtube-nocookie.com", id: /\A[A-Za-z0-9_-]{11}\z/, path: "/embed/%s" },
-    "vimeo" => { name: "Vimeo", origin: "https://player.vimeo.com", id: /\A[0-9]{1,12}\z/, path: "/video/%s?dnt=1" }
+    "youtube" => { origin: "https://www.youtube-nocookie.com", id: /\A[A-Za-z0-9_-]{11}\z/, path: "/embed/%s" },
+    "vimeo" => { origin: "https://player.vimeo.com", id: /\A[0-9]{1,12}\z/, path: "/video/%s?dnt=1" }
   }.freeze
 
-  MAP = { name: "OpenStreetMap", origin: "https://www.openstreetmap.org" }.freeze
+  MAP = { origin: "https://www.openstreetmap.org" }.freeze
 
   # Every origin a page may frame, for the Content-Security-Policy.
   FRAME_ORIGINS = (VIDEO.values.map { |provider| provider[:origin] } + [ MAP[:origin] ]).freeze
@@ -60,8 +64,8 @@ module RenderPolicy
     rule[:origin] + format(rule[:path], video_id)
   end
 
-  def video_provider_name(provider)
-    VIDEO.dig(provider, :name)
+  def video_provider?(provider)
+    VIDEO.key?(provider)
   end
 
   # A section's anchor, the id #anchor links scroll to, or nil.

@@ -1,4 +1,4 @@
-<%# A map of a point, loaded from OpenStreetMap only when the visitor opens it: the same details and lazy iframe as the video. The closed card is the theme's drawing of a shore, with a pin in the middle, and the block's label. -%>
+<%# A map of a point, loaded from OpenStreetMap only when the visitor opens it: the same details and lazy iframe as the video. The closed card is the theme's drawing of a shore, with a pin in the middle, and the block's label; like the video's, it never names the provider. -%>
 <%- props = block_props(block) -%>
 <%- src = RenderPolicy.map_src(props["latitude"], props["longitude"], props["zoom"]) -%>
 <%- label = prop_text(props, "label") -%>

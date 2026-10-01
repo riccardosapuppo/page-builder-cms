@@ -4,6 +4,7 @@ require Rails.root.join("db", "seeds", "example_site").to_s
 # db/seeds.rb, run the way `ruby bin/rails db:seed` runs it, twice.
 class SeedTest < ActionDispatch::IntegrationTest
   include StoredFiles
+  include VisibleText
 
   test "the seed publishes the example site, and running it again changes nothing" do
     capture_io { ExampleSite.run }
@@ -24,6 +25,20 @@ class SeedTest < ActionDispatch::IntegrationTest
       assert_response :ok
       assert_select "main h1", text: heading
     end
+  end
+
+  test "no page of the example site, nor its 404 page, shows a visitor the name of a provider or another brand" do
+    capture_io { ExampleSite.run }
+
+    found = %w[/ /winter-series /notices /no-such-page].to_h do |path|
+      get path
+      [ path, brands_in(response.body) ]
+    end
+
+    assert_equal 404, response.status
+    assert_equal({ "/" => [], "/winter-series" => [], "/notices" => [], "/no-such-page" => [] }, found)
+    get "/"
+    assert_includes visible_text(response.body), "Loads a video from the provider when you click."
   end
 
   test "every seed image went through the library's checks as an upload, as a PNG of the size it declares" do

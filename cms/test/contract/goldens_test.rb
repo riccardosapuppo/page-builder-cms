@@ -11,6 +11,8 @@ require "test_helper"
 # of the renderer. The editor's half (stage 2) reads the manifest to know
 # the goldens are current before it compares its own render with them.
 class ContractGoldensTest < ActiveSupport::TestCase
+  include VisibleText
+
   REPOSITORY = Rails.root.join("..").expand_path
   FIXTURES = REPOSITORY.join("contract", "fixtures")
   RENDERED = REPOSITORY.join("contract", "rendered")
@@ -109,6 +111,12 @@ class ContractGoldensTest < ActiveSupport::TestCase
       %w[fixtures rendered renderer].each do |part|
         assert_equal current[part], stored[part], "manifest.json is stale (#{part}): run UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb"
       end
+    end
+
+    test "no golden shows a visitor the name of a provider or another brand" do
+      found = self.class.fixture_names.to_h { |name| [ golden_name(name), brands_in(RENDERED.join(golden_name(name)).read) ] }.reject { |_, brands| brands.empty? }
+
+      assert_empty found
     end
 
     test "the 500-block fixture is a page the server would accept, of exactly 500 blocks" do

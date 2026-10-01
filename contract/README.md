@@ -20,7 +20,7 @@ stale, renders each fixture with React, and compares the two trees.
     right-to-left text, a no-break space, repeated spaces).
   - `traps-media.json`: images from the library, from another site, a site
     path, decorative, deleted, and with `javascript:`, `data:` and `http:`
-    sources; a gallery mixing all of them; YouTube and Vimeo videos, an
+    sources; a gallery mixing all of them; videos from both providers, an
     unknown provider and an id that is markup; maps in range, zoomed all the
     way out, out of range, and with coordinates written as strings.
   - `traps-structure.json`: every style key on every device, values the
@@ -58,6 +58,13 @@ valid, and a test says so.
   an address it refuses is dropped and the text around it kept. A video or
   map address is built from the provider and id, or the coordinates; no
   stored string is ever used as one.
+- No text a visitor reads names a provider. The video card says "Loads a
+  video from the provider when you click", as the approved design does;
+  the provider's id stays in the document and in `data-provider`. A test
+  reads the visible text of every golden (text, title, alt, aria-label,
+  placeholder) for the providers' names and a list of other brands; on
+  the goldens as they were before this rule it found YouTube and Vimeo in
+  three of them, one in a fixture's own video title.
 - The tree is strict: sections hold columns, columns hold widgets; a block
   anywhere else, or of an unknown type, is not rendered.
 - Library images resolve through a stub, never signed ids (which depend on
