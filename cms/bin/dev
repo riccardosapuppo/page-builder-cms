@@ -1,2 +1,7 @@
 #!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+# Starts the development server. It runs bin/rails through the Ruby that is
+# running this script, because Windows cannot start an extensionless script
+# by itself, and finds it from this file's folder, so it works from any
+# working directory.
+require "rbconfig"
+exec RbConfig.ruby, File.expand_path("rails", __dir__), "server", *ARGV
