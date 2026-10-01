@@ -16,9 +16,10 @@ class MediaItemTest < ActiveSupport::TestCase
 
     assert_not as_svg.valid?
     assert_includes as_svg.errors.details[:file], { error: :content_type }
-    # Active Storage reads the first bytes when the blob is attached, but
-    # keeps the declared image/png: the server's own check of the signature
-    # is what catches the lie.
+    # This blob was stored already marked as identified, so Active Storage
+    # does not read its bytes again when it is attached and keeps the
+    # declared image/png: the server's own check of the signature is what
+    # catches the lie.
     assert_not as_png.valid?
     assert_includes as_png.errors.details[:file], { error: :content_mismatch }
   end
