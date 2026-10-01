@@ -54,11 +54,23 @@ satisfied afterwards, the suite passed, and the listing of
 ```
 ruby bin/rails db:prepare
 ruby bin/rails db:seed
-ruby bin/rails server -p 3900 -b 127.0.0.1
+ruby bin/rails server
 ```
 
 `http://127.0.0.1:3900/up` answers 200 when the app is up. The server
-listens on 127.0.0.1 only: the API has no authentication.
+listens on 127.0.0.1 only, port 3900, the project's own (3000 is every
+project's): the API has no authentication. That is not left to the command
+line. `bin/rails` makes 127.0.0.1 and 3900 the defaults of `rails server`,
+which would otherwise listen on 0.0.0.0:3000 in production;
+`config/puma.rb` does the same for `puma` started by itself; and a Puma
+plugin there stops the boot, before any socket is opened, when the server
+is asked to listen anywhere else (`-b 0.0.0.0`, `BINDING`, a bind line, a
+host name). `-p` changes the port. `ruby bin/dev` starts the same server.
+[test/config/puma_binding_test.rb](test/config/puma_binding_test.rb) builds
+Puma's configuration from the file as Puma does and starts its plugins as
+Puma's launcher does. On 2 October 2026, `ruby bin/rails server` with no
+option printed `Listening on http://127.0.0.1:3900`, and netstat showed
+that one listener.
 
 `db:seed` loads the example site of the design, Slack Water, an invented
 swimming club ([db/seeds/example_site.rb](db/seeds/example_site.rb)):

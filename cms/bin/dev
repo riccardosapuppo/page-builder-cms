@@ -3,5 +3,8 @@
 # running this script, because Windows cannot start an extensionless script
 # by itself, and finds it from this file's folder, so it works from any
 # working directory.
+#
+# On 127.0.0.1, port 3900, the project's port: the API has no
+# authentication. Arguments given to it come after these, and win.
 require "rbconfig"
-exec RbConfig.ruby, File.expand_path("rails", __dir__), "server", *ARGV
+exec RbConfig.ruby, File.expand_path("rails", __dir__), "server", "-p", "3900", "-b", "127.0.0.1", *ARGV

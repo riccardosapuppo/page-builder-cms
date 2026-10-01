@@ -28,8 +28,38 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
+# Every server of this project listens on this machine only: the API has
+# no authentication. Started with no address and no port (`puma` itself),
+# it listens on 127.0.0.1:3900, the project's port; `ruby bin/rails server`
+# gets the same from bin/rails, and -p changes only the port.
+port ENV.fetch("PORT", 3900), "127.0.0.1"
+
+# And it refuses to start anywhere else: -b 0.0.0.0, BINDING=0.0.0.0, a
+# bind line or a host name stop the boot here, before any socket is
+# opened (plugins start before Puma binds). Loopback addresses
+# (127.0.0.0/8, ::1), localhost and unix sockets are let through.
+require "ipaddr"
+require "uri"
+Puma::Plugins.register("loopback_only", Class.new(Puma::Plugin) {
+  def self.loopback?(bind)
+    uri = URI.parse(bind)
+    return true if uri.scheme == "unix"
+
+    host = uri.hostname.to_s
+    host == "localhost" || IPAddr.new(host).loopback?
+  rescue URI::Error, IPAddr::Error
+    false
+  end
+
+  def start(launcher)
+    outside = Array(launcher.options[:binds]).reject { |bind| self.class.loopback?(bind) }
+    return if outside.empty?
+
+    abort "Refusing to listen on #{outside.join(', ')}: this server has no authentication and listens on " \
+          "this machine only. Use -b 127.0.0.1 (the default) and -p for the port."
+  end
+})
+plugin :loopback_only
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

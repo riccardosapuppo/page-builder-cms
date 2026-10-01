@@ -1,4 +1,11 @@
 #!/usr/bin/env ruby
+# `rails server` binds 0.0.0.0 outside development and port 3000 unless
+# told otherwise. This project listens on 127.0.0.1, port 3900 (the API has
+# no authentication, and 3000 is every project's port), so those are the
+# defaults here; -b and -p still win, and config/puma.rb refuses an address
+# that is not this machine's.
+ENV["BINDING"] ||= "127.0.0.1"
+ENV["PORT"] ||= "3900"
 APP_PATH = File.expand_path("../config/application", __dir__)
 require_relative "../config/boot"
 require "rails/commands"
