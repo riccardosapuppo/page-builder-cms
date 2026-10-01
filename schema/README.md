@@ -245,21 +245,23 @@ json_schemer reports the object once, so the errors are compared as sets.
 The run of 1 October 2026 (Windows 11, Node 24.19.0, Ruby 3.4.10):
 
 ```
-corpus:  ../corpus: 194 files (19 valid, 175 invalid, 0 upgrade); the manifest lists 194
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 194 results in 1.5 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.10, bundle cms/Gemfile, regexp resolver ecma; 194 results in 20.0 s
-verdicts compared: 194; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 175/175, json_schemer 175/175
-identical {pointer, keyword} sets: 175/175 invalid files (refused by the rules: 26/26; by the schema: 149/149)
-errors on the invalid files: ajv 592, json_schemer 191; normalised: 400 ajv "if" errors dropped, 15 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 8, json_schemer 7
-normalised documents with the same numbers and values: 168/168
-RESULT: PASS (194 files, 0 disagreements, 0 exceptions)
+corpus:  ../corpus: 207 files (22 valid, 185 invalid, 0 upgrade); the manifest lists 207
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 207 results in 1.5 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.10, bundle cms/Gemfile, regexp resolver ecma; 207 results in 13.4 s
+verdicts compared: 207; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 185/185, json_schemer 185/185
+identical {pointer, keyword} sets: 185/185 invalid files (refused by the rules: 26/26; by the schema: 159/159)
+errors on the invalid files: ajv 630, json_schemer 207; normalised: 422 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
+normalised documents with the same numbers and values: 181/181
+RESULT: PASS (207 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail
 
 Each of these was run, and each exited 1. The flags exist only for this;
 they change nothing on disk, and the shortened corpus is a temporary copy.
+They were run on the corpus as it stood earlier that day, 194 files,
+before the column widths, image crops and section spacing added 13.
 
 | Run | What it plants | What the comparator reported |
 | --- | --- | --- |
@@ -319,32 +321,43 @@ The run of 1 October 2026:
 pattern style: 11/11 patterns in the portable subset
 pattern compile: 11/11 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.10)
 pattern probes: 23245 probes over 11 patterns, 9133 matched by both, 0 patterns with a disagreement
-keywords: 341 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
+keywords: 375 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
 dispatch: #/$defs/block on type: 14 values, 14 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
 hierarchy: page > section (1-4 columns) > column > 12 widget types, 12 of them with no children
-tokens: spaceToken = 7 names, sectionSpaceToken = 2 names, typeStep = 7 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices
+column widths: 1 column: no preset(s), 2 columns: 4 preset(s), 3 columns: 3 preset(s), 4 columns: no preset(s); 7/7 presets offered
+tokens: spaceToken = 7 names, sectionSpaceToken = 9 names, typeStep = 7 names, aspectToken = 6 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices, 3 of them drawn
 schema: compiled by ajv, 0 meta-schema error(s) from json_schemer; README example compared with the corpus
 RESULT: PASS
 ```
 
 `npm run lint:plants` shows it can fail: it runs the lint on the schema as
-it is (it must pass), then on 14 copies with one fault planted in each, in
+it is (it must pass), then on 18 copies with one fault planted in each, in
 a temporary folder it removes afterwards. Each must fail for the reason
 planted: `\s`, a dot and a lone `{` in a pattern; with the subset check
 off, an inline modifier json_schemer refuses, a `\-` ajv refuses, and `\S`
 and a dot, which both compile but answer differently (`\S` on U+2028, the
 dot on a carriage return and the two Unicode line breaks); a `oneOf`; a
 widget type with no branch and one with two; an `if` without `required`;
-a section of five columns; a spacing step and a palette slot `tokens.json`
-lacks; and a README example that no longer matches the corpus. The last
-run: `planted 14, caught 14`.
+a section of five columns; a two-part column preset offered to three
+columns, and a column count left without a branch; a spacing step, a
+section space, an image crop and a palette slot `tokens.json` lacks; and
+a README example that no longer matches the corpus. The last run:
+`planted 18, caught 18`.
 
 The checks on `tokens.json` itself were shown failing by hand once, on
 1 October 2026: with Kelp replaced by a `site-teal` tone that `color` does
 not define, and Soft's default set to `site-sea`, `node lint.ts` exited 1
 with `site-tones/primary names the tone "site-teal", which is not a colour
 of tokens.json` and `site-tones/soft has a default that is not one of its
-tones`. The file was then put back.
+tones`. The file was then put back. The same day, by hand again: with
+16:9 written `16 / 10` it exited 1 with `aspect.site/16:9 is "16 / 10",
+not "16 / 9"`, and with Gentle pointed at Balanced's sizes it failed
+twelve times, beginning `balanced and gentle give display the same size
+on desktop (76)`.
+
+The application rules (`rules.ts`, `rules.rb`) were not touched by the
+column widths, crops and section spacing: they check the whole document
+(ids, depth, numbers, strings, keys), never a style key.
 
 ## Versions
 

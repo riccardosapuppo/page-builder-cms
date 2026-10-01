@@ -42,6 +42,13 @@ There is no `image_processing` and no libvips: the editor resizes images in
 the browser before uploading them, and the server makes no variants
 (`config.active_storage.variant_processor = :disabled`).
 
+`bundle clean`, run with the same `BUNDLE_SYSTEM_BINDIR`, removes from
+`vendor/bundle` the gems the lockfile no longer names. On 1 October 2026
+it removed `image_processing`, `mini_magick`, `ruby-vips` and `ffi`, left
+from before libvips was dropped (129 MB to 127 MB); `bundle check` was
+satisfied afterwards, the suite passed, and the listing of
+`AppData/Local/Microsoft/WindowsApps` was the same before and after.
+
 ## Running it
 
 ```
@@ -133,9 +140,12 @@ which loads the whole app first as production does:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-185 runs, 850 assertions, 0 failures, 0 errors, 0 skips
-openapi: 130 API response(s) checked against cms/openapi.yaml
+201 runs, 972 assertions, 0 failures, 0 errors, 0 skips
+openapi: 135 API response(s) checked against cms/openapi.yaml
 ```
+
+The run includes `test/lib/tasks/db_drop_test.rb`, which starts Rails
+twice in processes of its own and takes about 13 seconds of it.
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
@@ -174,14 +184,19 @@ openapi: 130 API response(s) checked against cms/openapi.yaml
   every root names its id and type, styles become classes, markup typed in
   any text stays text (a heading planted to skip escaping failed it), the
   tree stays strict, the video and the map are closed details with a lazy
-  frame.
+  frame, column widths apply only to a section with one part per column,
+  and images are cropped per device.
+- **No brand on a page:** the visible text of every golden and of the
+  seeded site and its 404 page (text, title, alt, aria-label, placeholder)
+  names no provider and none of a list of brands
+  ([test/support/visible_text.rb](test/support/visible_text.rb)).
 - **The contract goldens** ([test/contract/goldens_test.rb](test/contract/goldens_test.rb)),
   described in [../contract/README.md](../contract/README.md).
 - **tokens.css** must be what `ruby bin/rails tokens:css` writes from
   `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
   one value changed by hand in the file failed it.
 
-Also run, from this folder: `ruby bin/rubocop` (95 files, no offenses on
+Also run, from this folder: `ruby bin/rubocop` (99 files, no offenses on
 1 October) and `ruby bin/brakeman` (no warnings).
 
 ## The pages a visitor sees
@@ -204,8 +219,12 @@ Also run, from this folder: `ruby bin/rubocop` (95 files, no offenses on
   schema's enums list. `tokens.css` is generated from `schema/tokens.json`
   by `ruby bin/rails tokens:css`; `site.css` is the design's `theme.css`,
   with the same class names and the same container queries on the page
-  root. The site style's tones reach the page as data attributes on
-  `.site`, which the generated tone rules read.
+  root. The site style's tones and type scale reach the page as data
+  attributes on `.site`, which the generated rules read. A section's
+  `columnWidths` (`3:2` is `widths-3-2`, on desktop only), an image's crop
+  (`aspect: "16:9"` is `aspect-16-9`) and a section's `spaceAbove` and
+  `spaceBelow` (`space-above-section-s`, `phone-space-below-xxl`) are
+  classes of the same file.
 - **No script, no inline style.** The pages carry a static
   Content-Security-Policy, `script-src 'none'`, frames only from the video
   and map providers, and no nonce: Rails' nonce reads the session, and a
