@@ -10,7 +10,8 @@
   },
   "scripts": {
     "lint:openapi": "node tools/lint-openapi.ts",
-    "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts"
+    "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
+    "seed:images": "node tools/seed-images.ts"
   },
   "devDependencies": {
     "@redocly/cli": "2.57.0",
