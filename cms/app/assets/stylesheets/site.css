@@ -275,3 +275,14 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-play-dot { width: 52px; height: 52px; }
   .sw-footer-row { align-items: flex-start; font-size: 15px; }
 }
+
+/* ---------- The narrowest phones: narrower than 360 ----------
+   The brand, Join and Menu need 359 px side by side. A window 320 wide,
+   the width WCAG's reflow criterion tests (a 1280 window zoomed to 400%),
+   has less, and the page scrolled sideways with Menu cut off. Here the
+   header row wraps: the brand above, Join and Menu below it on the right.
+   The design draws no width this narrow. */
+@container site (width < 360px) {
+  .sw-header-row { flex-wrap: wrap; height: auto; padding-block: 12px; row-gap: 8px; }
+  .sw-nav { margin-left: auto; }
+}

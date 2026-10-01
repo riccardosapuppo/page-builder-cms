@@ -10,7 +10,9 @@
 //   logged as an error (a Content-Security-Policy violation would be);
 // - opening the video and then the map asks the provider for exactly one
 //   frame each. Those frames are answered inside the browser by
-//   Playwright, so nothing reaches the network.
+//   Playwright, so nothing reaches the network;
+// - no page it photographs scrolls sideways in a window 320 wide, the
+//   width WCAG's reflow criterion tests (a 1280 window at 400%).
 //
 // It starts no server and writes only into <folder>. Exits 1 on a failed
 // check, 2 on bad arguments.
@@ -48,7 +50,7 @@ async function open(width: number, height: number, label: string): Promise<{ pag
   const outside: string[] = [];
   page.on("console", (m) => {
     // The 404 page's own status is logged as a failed load; it is the answer expected there.
-    if (label === "not-found" && m.text().includes("status of 404")) return;
+    if ((label === "not-found" || label === "reflow /no-such-page") && m.text().includes("status of 404")) return;
     if (m.type() === "error") problems.push(`${label}: console error: ${m.text()}`);
   });
   page.on("pageerror", (e) => problems.push(`${label}: page error: ${e.message}`));
@@ -90,6 +92,18 @@ try {
     await page.close();
   }
 
+  // Reflow: every page photographed above, 320 wide.
+  const paths = [...new Set(SHOTS.map((shot) => shot.path))];
+  for (const path of paths) {
+    const { page } = await open(320, 800, `reflow ${path}`);
+    await page.goto(origin + path, { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready);
+    const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    if (m.scroll > m.client) problems.push(`${path} at 320 wide: scrollWidth ${m.scroll}, clientWidth ${m.client}`);
+    await page.close();
+  }
+  console.log(`reflow: ${paths.length} pages measured at 320 wide`);
+
   // The click-to-load embeds on the home page.
   const { page, outside } = await open(1280, 900, "embeds");
   await page.goto(origin + "/", { waitUntil: "load" });
@@ -118,4 +132,4 @@ if (problems.length) {
   for (const p of problems) console.log(`FAIL ${p}`);
   process.exit(1);
 }
-console.log(`RESULT: ${SHOTS.length} shots in ${out}, no request left the site before a click, embeds load on click`);
+console.log(`RESULT: ${SHOTS.length} shots in ${out}, no request left the site before a click, embeds load on click, no page scrolls sideways at 320 wide`);

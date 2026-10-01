@@ -292,9 +292,11 @@ Also run, from this folder: `ruby bin/rubocop` (99 files, no offenses on
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
 photographs the pages headless at the widths of the design's shots, and
-checks that no request leaves the site before a click and that opening the
+checks that no request leaves the site before a click, that opening the
 video and the map asks each provider for exactly one frame (answered
-inside the browser).
+inside the browser), and that no page it photographs scrolls sideways at
+320 wide. On the seeded development site on 2 October 2026 it printed
+`reflow: 5 pages measured at 320 wide` and passed.
 
 Laid beside `design/shots/page.png` and `page-phone.png` on 1 October
 2026, the seeded home page has the design's bands at the design's
@@ -309,7 +311,12 @@ still differs:
   plain shore with the pin in the middle, not the design's slipway: both
   are the theme's own drawings in CSS, coloured from the site style, for
   any video and any map rather than this one;
-- "Meeting point:" is not bold: a map's label is plain text.
+- "Meeting point:" is not bold: a map's label is plain text;
+- narrower than 360 px, a width the design does not draw, the header
+  wraps, the brand above and Join and Menu below. The design's header
+  needs 359 px in a row, so at 320, the width WCAG's reflow criterion
+  tests (a 1280 window at 400%), every page scrolled sideways by 39 px
+  with Menu cut off, in the design's own mock as well.
 
 ## The API
 
