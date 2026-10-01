@@ -8,7 +8,9 @@
 module SiteTokens
   PATH = Rails.application.config.x.schema_dir.join("tokens.json")
 
-  Slot = Data.define(:name, :label, :default, :tones)
+  # tones are colour names of tokens.json, in the order the editor offers
+  # them; tone_labels gives each the name a person reads (Sea, Harbour...).
+  Slot = Data.define(:name, :label, :default, :tones, :tone_labels)
 
   module_function
 
@@ -16,13 +18,19 @@ module SiteTokens
     @slots ||= read.fetch("site-tones").filter_map do |name, entry|
       next if name.start_with?("$")
 
+      tones = entry.fetch("tones")
       Slot.new(name: name, label: entry.fetch("label"), default: entry.fetch("default"),
-               tones: entry.fetch("tones").map { |tone| tone.fetch("color") }.freeze)
+               tones: tones.map { |tone| tone.fetch("color") }.freeze,
+               tone_labels: tones.to_h { |tone| [ tone.fetch("color"), tone.fetch("label") ] }.freeze)
     end.index_by(&:name).freeze
   end
 
   def type_scales
-    @type_scales ||= read.fetch("site-type-scale").fetch("choices").map { |choice| choice.fetch("name") }.freeze
+    type_scale_labels.keys
+  end
+
+  def type_scale_labels
+    @type_scale_labels ||= read.fetch("site-type-scale").fetch("choices").to_h { |choice| [ choice.fetch("name"), choice.fetch("label") ] }.freeze
   end
 
   def default_palette
