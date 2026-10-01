@@ -27,17 +27,32 @@ Rails.application.configure do
   # Cache assets for far-future expiry since they are all digest stamped.
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
+  # The fingerprinted files under /assets never change once written, so a
+  # browser may keep them a year without asking again: immutable, scoped to
+  # /assets alone (robots.txt and the error pages keep the header above).
+  # cascade: true hands a request for a file that does not exist on to the
+  # rest of the app, which answers 404 without this header; without it,
+  # Rack::Static answered the miss itself, with the year-long header on the
+  # 404.
+  config.middleware.insert_before ActionDispatch::Static, Rack::Static,
+                                  urls: [ "/assets" ], root: Rails.root.join("public").to_s, cascade: true,
+                                  header_rules: [ [ :all, { "cache-control" => "public, max-age=31536000, immutable" } ] ]
+
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  config.assume_ssl = true
-
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # Assume all access to the app is happening through a SSL-terminating
+  # reverse proxy, and force all access over SSL, with
+  # Strict-Transport-Security and secure cookies. CMS_FORCE_SSL=0 turns both
+  # off, for a local production run over plain HTTP on 127.0.0.1 (the checks
+  # of tools/check-production.ts, measurements, CI): there, HSTS would pin
+  # 127.0.0.1 to HTTPS in the browser that visited it.
+  plain_http = ENV["CMS_FORCE_SSL"] == "0"
+  config.assume_ssl = !plain_http
+  config.force_ssl = !plain_http
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }

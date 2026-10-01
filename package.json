@@ -13,7 +13,8 @@
     "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
     "seed:images": "node tools/seed-images.ts",
     "contract:large": "node tools/gen-contract-500.ts",
-    "shots:site": "node tools/site-shots.ts"
+    "shots:site": "node tools/site-shots.ts",
+    "check:production": "node tools/check-production.ts"
   },
   "devDependencies": {
     "@redocly/cli": "2.57.0",
