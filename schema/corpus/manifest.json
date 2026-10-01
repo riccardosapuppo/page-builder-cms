@@ -65,6 +65,12 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/block-id-leading-newline.json": {
+    "rule": "^...$ must not let a leading newline through (Ruby's ^ would match on the second line)",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
   "invalid/block-id-non-ascii-letter.json": {
     "rule": "ids are ASCII",
     "pointer": "/sections/0/children/0/children/0/id",
@@ -221,6 +227,12 @@
     "keyword": "maxLength",
     "layer": "schema"
   },
+  "invalid/divider-children.json": {
+    "rule": "a divider holds no blocks",
+    "pointer": "/sections/6/children/0/children/0/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/divider-unknown-prop.json": {
     "rule": "a divider has no props",
     "pointer": "/sections/6/children/0/children/0/props/variant",
@@ -300,7 +312,7 @@
     "layer": "schema"
   },
   "invalid/dup-key-escaped.json": {
-    "rule": "the second name is written \\u0074ype and is still type (a rule)",
+    "rule": "the second name spells type with an escaped t, and is still type (a rule)",
     "pointer": "/sections/0/children/0/children/0/type",
     "keyword": "duplicateKey",
     "layer": "rules"
@@ -364,6 +376,12 @@
     "pointer": "/sections/0/children/0/children/0/props/level",
     "keyword": "finite",
     "layer": "rules"
+  },
+  "invalid/heading-level-5-written-5.0.json": {
+    "rule": "5.0 is the integer 5 to both engines, and still above 4",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "maximum",
+    "layer": "schema"
   },
   "invalid/heading-level-5.json": {
     "rule": "levels are 1 to 4",
@@ -612,7 +630,7 @@
     "layer": "rules"
   },
   "invalid/json-raw-tab-in-string.json": {
-    "rule": "a raw tab inside a string is not JSON; \\t is (a rule)",
+    "rule": "a raw tab inside a string is not JSON; the escape is (a rule)",
     "pointer": "",
     "keyword": "parse",
     "layer": "rules"
@@ -1019,6 +1037,12 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/video-youtube-id-trailing-newline.json": {
+    "rule": "an id with a newline after it (Ruby's $ would accept it)",
+    "pointer": "/sections/3/children/0/children/1/props/videoId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
   "valid/columns-one-to-four.json": {
     "rule": "sections with one, two, three and four columns, and an empty column"
   },
@@ -1038,7 +1062,7 @@
     "rule": "library image, external https image, site path, decorative image without alt"
   },
   "valid/integral-floats.json": {
-    "rule": "2.0, 45.0, 1.2e1 and 3.000 are integers to both engines; the rules turn them into integers, so Ruby renders <h2>, not <h2.0>"
+    "rule": "2.0, 45.0, 1.2e1 and 3.000 are integers to both engines, and -0.0 and 1e-400 are 0; the rules turn them into integers, so Ruby renders <h2>, not <h2.0>"
   },
   "valid/landing.json": {
     "rule": "the base page: every widget type, style overrides on every device; each invalid file changes one thing in it"
@@ -1059,7 +1083,7 @@
     "rule": "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs"
   },
   "valid/string-escapes.json": {
-    "rule": "JSON escapes, a surrogate pair written as two escapes, and a member name written with an escape (\\u0074ype is type)"
+    "rule": "JSON escapes: quote, backslash, slash, a letter and an accented letter as u-escapes, an emoji as a surrogate pair of two escapes, and the member name type spelled with an escaped t"
   },
   "valid/styles-every-token.json": {
     "rule": "every style key and token value, with tablet and phone overrides"

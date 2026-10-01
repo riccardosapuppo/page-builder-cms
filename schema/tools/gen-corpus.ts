@@ -4,8 +4,8 @@
 // and the manifest records the rule it breaks and where both validators
 // must report it: the JSON pointer and the keyword. Files that need bytes
 // JSON.stringify cannot write (a byte-order mark, invalid UTF-8, a duplicate
-// key, 1e400) are written from the serialised base with a placeholder
-// swapped for the raw text.
+// key, an escape it would not use, 1e400) are written from the serialised
+// base with a placeholder swapped for the raw text.
 //
 //   node gen-corpus.ts           write the corpus
 //   node gen-corpus.ts --check   compare with what is on disk, write nothing;
@@ -21,6 +21,22 @@ const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting"
 // The corpus is built by mutation, so the tree is handled as plain JSON.
 type J = any;
 type Style = { base: J; tablet?: J; phone?: J };
+
+// Invisible and look-alike characters are written by code point, so the
+// source shows what each trap holds and no editor can quietly change it.
+const cp = (...codes: number[]): string => String.fromCodePoint(...codes);
+const NBSP = cp(0xa0);
+const ZERO_WIDTH_SPACE = cp(0x200b);
+const LINE_SEPARATOR = cp(0x2028);
+const IDEOGRAPHIC_SPACE = cp(0x3000);
+const COMBINING_ACUTE = cp(0x301);
+const BELL = cp(0x07);
+const TAB = cp(0x09);
+const NEWLINE = cp(0x0a);
+// JSON escapes in raw text are assembled from a backslash and the hex
+// digits, for the same reason.
+const BACKSLASH = cp(0x5c);
+const uEscape = (hex: string): string => `${BACKSLASH}u${hex}`;
 
 // --- blocks -------------------------------------------------------------------
 const plain = (): Style => ({ base: {} });
@@ -113,7 +129,7 @@ function landing(): J {
       ]),
       column("questions-2", [
         accordion("questions-list", [
-          { question: "How cold is it?", answer: "Between 8 and 18 degrees depending on the month.\nWe shorten swims in winter." },
+          { question: "How cold is it?", answer: `Between 8 and 18 degrees depending on the month.${NEWLINE}We shorten swims in winter.` },
           { question: "Do I need a wetsuit?", answer: "No. Many members swim without one; the course covers both." },
           { question: "What if the sea is rough?", answer: "We cancel by 6 am and post it on this page." },
         ]),
@@ -207,16 +223,10 @@ function invalidRaw(name: string, rule: string, pointer: string, keyword: string
   const parts = s.split(needle);
   if (parts.length !== 2) throw new Error(`${name}: placeholder found ${parts.length - 1} times`);
   const rawBytes = typeof raw === "string" ? encoder.encode(raw) : raw;
-  const before = encoder.encode(parts[0] as string);
-  const after = encoder.encode(parts[1] as string);
-  const out = new Uint8Array(before.length + rawBytes.length + after.length);
-  out.set(before, 0);
-  out.set(rawBytes, before.length);
-  out.set(after, before.length + rawBytes.length);
-  add(`invalid/${name}.json`, out, invalidEntry(rule, pointer, keyword));
+  add(`invalid/${name}.json`, concat(encoder.encode(parts[0] as string), rawBytes, encoder.encode(parts[1] as string)), invalidEntry(rule, pointer, keyword));
 }
 const bytes = (...b: number[]): Uint8Array => Uint8Array.from(b);
-const concat = (...parts: Uint8Array[]): Uint8Array => {
+function concat(...parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
   let o = 0;
   for (const x of parts) {
@@ -224,7 +234,13 @@ const concat = (...parts: Uint8Array[]): Uint8Array => {
     o += x.length;
   }
   return out;
-};
+}
+// Replaces one literal that must be there, so a change to the base page
+// cannot silently turn a trap into a copy of the base.
+function replaceOnce(s: string, from: string, to: string, name: string): string {
+  if (s.split(from).length !== 2) throw new Error(`${name}: ${JSON.stringify(from)} is not in the text exactly once`);
+  return s.replace(from, () => to);
+}
 
 // =============================== VALID =========================================
 valid("landing", "the base page: every widget type, style overrides on every device; each invalid file changes one thing in it", BASE);
@@ -317,49 +333,58 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     text("uni-t", rich(p(t("À bientôt — 👋 "), t("emoji: 👨‍👩‍👧‍👦", [bold])))),
     image("uni-i", { mediaId: "uni", alt: "Caffè ☕ e cornetto" }),
     button("uni-b", "Più info", "/info"),
-    quote("uni-q", "«Il mare d’inverno»\nnon è un concetto.", "Anonimo"),
+    quote("uni-q", `«Il mare d’inverno»${NEWLINE}non è un concetto.`, "Anonimo"),
     accordion("uni-a", [{ question: "¿Qué?", answer: "Ça va." }]),
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
   ])]),
 ], "Ünïcödé désçription"));
 valid("text-length-emoji-at-max", "200 emoji in a heading: 200 code points (400 UTF-16 units), maxLength 200", doc("Emoji", [
-  section("em", [column("em-1", [heading("em-h", 2, "😀".repeat(200))])]),
+  section("em", [column("em-1", [heading("em-h", 2, cp(0x1f600).repeat(200))])]),
 ]));
 valid("text-length-combining-at-max", "100 times e + U+0301: 200 code points, 100 visible letters, maxLength 200", doc("Combining", [
-  section("cm", [column("cm-1", [heading("cm-h", 2, "é".repeat(100))])]),
+  section("cm", [column("cm-1", [heading("cm-h", 2, `e${COMBINING_ACUTE}`.repeat(100))])]),
 ]));
 valid("text-inner-nbsp", "a no-break space inside text with visible letters is fine; only all-blank text is refused", doc("Nbsp", [
-  section("nb", [column("nb-1", [image("nb-i", { mediaId: "nb", alt: "A photo" }), heading("nb-h", 2, " Leading no-break space")])]),
+  section("nb", [column("nb-1", [image("nb-i", { mediaId: "nb", alt: `A${NBSP}photo` }), heading("nb-h", 2, `${NBSP}Leading no-break space`)])]),
 ]));
 {
-  // Integral floats: valid in both engines, and normalised to integers.
+  // Integral floats, valid in both engines and normalised to integers; -0.0
+  // and 1e-400 (which underflows) both become 0.
   const d = doc("Integral floats", [
     section("fl", [column("fl-1", [
       heading("fl-h", 2, "Level written as 2.0"),
       map("fl-m", 45, -0.5, 12, "Zoom written as 12.0"),
       text("fl-t", rich(ol(3, li(p(t("starts at 3.0")))))),
+      map("fl-zero", 0, 0, 7, "Latitude written as -0.0, longitude as 1e-400"),
     ])]),
   ]);
-  const s = serialise(d)
-    .replace('"level": 2', '"level": 2.0')
-    .replace('"latitude": 45', '"latitude": 45.0')
-    .replace('"longitude": -0.5', '"longitude": -0.5e0')
-    .replace('"zoom": 12', '"zoom": 1.2e1')
-    .replace('"start": 3', '"start": 3.000');
-  for (const lit of ["2.0", "45.0", "-0.5e0", "1.2e1", "3.000"]) if (!s.includes(lit)) throw new Error(`integral-floats: ${lit} missing`);
+  let s = serialise(d);
+  for (const [from, to] of [
+    ['"level": 2', '"level": 2.0'],
+    ['"latitude": 45', '"latitude": 45.0'],
+    ['"longitude": -0.5', '"longitude": -0.5e0'],
+    ['"zoom": 12', '"zoom": 1.2e1'],
+    ['"start": 3', '"start": 3.000'],
+    ['"latitude": 0,', '"latitude": -0.0,'],
+    ['"longitude": 0,', '"longitude": 1e-400,'],
+  ] as const) s = replaceOnce(s, from, to, "integral-floats");
   add("valid/integral-floats.json", encoder.encode(s), {
-    rule: "2.0, 45.0, 1.2e1 and 3.000 are integers to both engines; the rules turn them into integers, so Ruby renders <h2>, not <h2.0>",
+    rule: "2.0, 45.0, 1.2e1 and 3.000 are integers to both engines, and -0.0 and 1e-400 are 0; the rules turn them into integers, so Ruby renders <h2>, not <h2.0>",
   });
 }
 {
   // Escapes the parsers must read the same way, including an escaped member name.
   const d = doc("Escapes", [section("esc", [column("esc-1", [text("esc-t", rich(p(t("__RAW__"))))])])]);
-  const s = serialise(d)
-    .replace('"__RAW__"', String.raw`"quote \" backslash \\ slash \/ e-acute é emoji 😀"`)
-    .replace('"type": "doc"', String.raw`"type": "doc"`);
+  const raw = `"quote ${BACKSLASH}" backslash ${BACKSLASH}${BACKSLASH} slash ${BACKSLASH}/ e-acute ${uEscape("00e9")} emoji ${uEscape("d83d")}${uEscape("de00")} A as ${uEscape("0041")}"`;
+  let s = replaceOnce(serialise(d), '"__RAW__"', raw, "string-escapes");
+  s = replaceOnce(s, '"type": "doc"', `"${uEscape("0074")}ype": "doc"`, "string-escapes");
+  const read = JSON.parse(s);
+  const want = `quote " backslash ${BACKSLASH} slash / e-acute ${cp(0xe9)} emoji ${cp(0x1f600)} A as A`;
+  if (read.sections[0].children[0].children[0].props.doc.content[0].content[0].text !== want) throw new Error("string-escapes: unexpected text");
+  if (read.sections[0].children[0].children[0].props.doc.type !== "doc") throw new Error("string-escapes: escaped member name not read as type");
   add("valid/string-escapes.json", encoder.encode(s), {
-    rule: "JSON escapes, a surrogate pair written as two escapes, and a member name written with an escape (\\u0074ype is type)",
+    rule: "JSON escapes: quote, backslash, slash, a letter and an accented letter as u-escapes, an emoji as a surrogate pair of two escapes, and the member name type spelled with an escaped t",
   });
 }
 {
@@ -406,7 +431,7 @@ invalid("doc-proto-key", "a member named __proto__ is an ordinary unknown member
 });
 invalid("doc-title-missing", "title is required", "", "required", (d) => { delete d.title; });
 invalid("doc-title-blank", "title has a visible character", "/title", "pattern", (d) => { d.title = "   "; });
-invalid("doc-title-newline", "title is one line", "/title", "not", (d) => { d.title = "Slack Water\nswimming club"; });
+invalid("doc-title-newline", "title is one line", "/title", "not", (d) => { d.title = `Slack Water${NEWLINE}swimming club`; });
 invalid("doc-description-too-long", "description is at most 160 characters", "/description", "maxLength", (d) => { d.description = "x".repeat(161); });
 invalid("doc-description-empty", "an empty description is left out, not stored", "/description", "pattern", (d) => { d.description = ""; });
 invalid("doc-sections-object", "sections is an array", "/sections", "type", (d) => { d.sections = {}; });
@@ -421,10 +446,11 @@ invalid("block-children-null", "children is an array", `${DIV}/children`, "type"
 invalid("block-type-unknown", "type is one of the known block types", `${DIV}/type`, "enum", (d) => { at(d, DIV).type = "carousel"; });
 invalid("block-type-missing", "type is required", DIV, "required", (d) => { delete at(d, DIV).type; });
 invalid("block-type-number", "type is a string from the list", `${DIV}/type`, "enum", (d) => { at(d, DIV).type = 3; });
-invalid("block-id-trailing-newline", "^...$ must not let a trailing newline through (Ruby's $ would)", `${H}/id`, "pattern", (d) => { at(d, H).id = "hero-heading\n"; });
-invalid("block-id-arabic-digits", "ids are ASCII: Arabic-Indic digits are not [0-9]", `${H}/id`, "pattern", (d) => { at(d, H).id = "٣٤٥"; });
-invalid("block-id-fullwidth", "ids are ASCII: fullwidth letters are not [A-Za-z]", `${H}/id`, "pattern", (d) => { at(d, H).id = "ｈｅｒｏ"; });
-invalid("block-id-non-ascii-letter", "ids are ASCII", `${H}/id`, "pattern", (d) => { at(d, H).id = "blöck"; });
+invalid("block-id-trailing-newline", "^...$ must not let a trailing newline through (Ruby's $ would)", `${H}/id`, "pattern", (d) => { at(d, H).id = `hero-heading${NEWLINE}`; });
+invalid("block-id-leading-newline", "^...$ must not let a leading newline through (Ruby's ^ would match on the second line)", `${H}/id`, "pattern", (d) => { at(d, H).id = `${NEWLINE}hero-heading`; });
+invalid("block-id-arabic-digits", "ids are ASCII: Arabic-Indic digits are not [0-9]", `${H}/id`, "pattern", (d) => { at(d, H).id = cp(0x663, 0x664, 0x665); });
+invalid("block-id-fullwidth", "ids are ASCII: fullwidth letters are not [A-Za-z]", `${H}/id`, "pattern", (d) => { at(d, H).id = cp(0xff48, 0xff45, 0xff52, 0xff4f); });
+invalid("block-id-non-ascii-letter", "ids are ASCII", `${H}/id`, "pattern", (d) => { at(d, H).id = `bl${cp(0xf6)}ck`; });
 invalid("block-id-empty", "ids have 1 to 64 characters", `${H}/id`, "pattern", (d) => { at(d, H).id = ""; });
 invalid("block-id-too-long", "ids have 1 to 64 characters", `${H}/id`, "pattern", (d) => { at(d, H).id = "a".repeat(65); });
 invalid("block-id-space", "ids have no spaces", `${H}/id`, "pattern", (d) => { at(d, H).id = "hero heading"; });
@@ -466,6 +492,8 @@ invalid("style-override-null", "a removed override is absent, not null", `${H}/s
 
 // =============================== INVALID: heading ===============================
 invalid("heading-level-5", "levels are 1 to 4", `${H}/props/level`, "maximum", (d) => { at(d, H).props.level = 5; });
+invalidRaw("heading-level-5-written-5.0", "5.0 is the integer 5 to both engines, and still above 4", `${H}/props/level`, "maximum",
+  (d) => { at(d, H).props.level = "__RAW__"; }, "5.0");
 invalid("heading-level-0", "levels are 1 to 4", `${H}/props/level`, "minimum", (d) => { at(d, H).props.level = 0; });
 invalid("heading-level-string", "the level is a number", `${H}/props/level`, "type", (d) => { at(d, H).props.level = "2"; });
 invalid("heading-level-fraction", "2.5 is not an integer", `${H}/props/level`, "type", (d) => { at(d, H).props.level = 2.5; });
@@ -475,18 +503,18 @@ invalidRaw("heading-level-huge-integer", "a 20-digit integer is exact in Ruby an
   (d) => { at(d, H).props.level = "__RAW__"; }, "12345678901234567890");
 invalid("heading-text-blank", "text has a visible character", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = "   "; });
 invalid("heading-text-empty", "text has a visible character", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = ""; });
-invalid("heading-text-nbsp-only", "no-break spaces are blank (Ruby's \\S would call them visible)", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = "  "; });
-invalid("heading-text-line-separator-only", "U+2028 is blank (json_schemer's \\s leaves it out)", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = " "; });
-invalid("heading-text-zero-width-only", "zero-width spaces are blank", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = "​​"; });
-invalid("heading-text-newline", "a heading is one line", `${H}/props/text`, "not", (d) => { at(d, H).props.text = "Swim at\nslack water"; });
-invalid("heading-text-emoji-over-max", "201 emoji: 201 code points > maxLength 200", `${H}/props/text`, "maxLength", (d) => { at(d, H).props.text = "😀".repeat(201); });
-invalid("heading-text-combining-over-max", "100 visible letters but 201 code points > 200", `${H}/props/text`, "maxLength", (d) => { at(d, H).props.text = "é".repeat(100) + "x"; });
+invalid("heading-text-nbsp-only", "no-break spaces are blank (Ruby's \\S would call them visible)", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = NBSP.repeat(2); });
+invalid("heading-text-line-separator-only", "U+2028 is blank (json_schemer's \\s leaves it out)", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = LINE_SEPARATOR; });
+invalid("heading-text-zero-width-only", "zero-width spaces are blank", `${H}/props/text`, "pattern", (d) => { at(d, H).props.text = ZERO_WIDTH_SPACE.repeat(2); });
+invalid("heading-text-newline", "a heading is one line", `${H}/props/text`, "not", (d) => { at(d, H).props.text = `Swim at${NEWLINE}slack water`; });
+invalid("heading-text-emoji-over-max", "201 emoji: 201 code points > maxLength 200", `${H}/props/text`, "maxLength", (d) => { at(d, H).props.text = cp(0x1f600).repeat(201); });
+invalid("heading-text-combining-over-max", "100 visible letters but 201 code points > 200", `${H}/props/text`, "maxLength", (d) => { at(d, H).props.text = `e${COMBINING_ACUTE}`.repeat(100) + "x"; });
 invalid("heading-href-javascript", "a heading link follows the link rules", `${H}/props/href`, "pattern", (d) => { at(d, H).props.href = "javascript:alert(1)"; });
 invalid("heading-props-extra", "heading props are closed", `${H}/props/color`, "additionalProperties", (d) => { at(d, H).props.color = "red"; });
 invalidRaw("heading-text-lone-surrogate", "a lone high surrogate: Ruby's parser refuses it, JavaScript's reads it (a rule)", `${H}/props/text`, "wellFormed",
-  (d) => { at(d, H).props.text = "__RAW__"; }, String.raw`"Swim \ud83d at slack water"`);
+  (d) => { at(d, H).props.text = "__RAW__"; }, `"Swim ${uEscape("d83d")} at slack water"`);
 invalidRaw("heading-text-lone-low-surrogate", "a lone low surrogate (a rule)", `${H}/props/text`, "wellFormed",
-  (d) => { at(d, H).props.text = "__RAW__"; }, String.raw`"Swim \udc00 at slack water"`);
+  (d) => { at(d, H).props.text = "__RAW__"; }, `"Swim ${uEscape("dc00")} at slack water"`);
 
 // =============================== INVALID: text (rich text) ======================
 const RUN = `${TXT}/props/doc/content/0/content`;
@@ -499,12 +527,12 @@ invalid("text-link-data", "no data: links", `${RUN}/3/marks/0/attrs/href`, "patt
   at(d, RUN)[3].marks[0].attrs.href = "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==";
 });
 invalid("text-link-newline-then-https", "the line-anchor trap: a second line that would satisfy ^https:// in Ruby", `${RUN}/3/marks/0/attrs/href`, "not", (d) => {
-  at(d, RUN)[3].marks[0].attrs.href = "javascript:alert(1)\nhttps://ok.example/";
+  at(d, RUN)[3].marks[0].attrs.href = `javascript:alert(1)${NEWLINE}https://ok.example/`;
 });
 invalid("text-link-without-attrs", "a link mark has attrs with href", `${RUN}/3/marks/0`, "required", (d) => { delete at(d, RUN)[3].marks[0].attrs; });
 invalid("text-empty-text-node", "text nodes are never empty", `${RUN}/0/text`, "minLength", (d) => { at(d, RUN)[0].text = ""; });
 invalid("text-node-without-text", "a text node has text", `${RUN}/0`, "required", (d) => { delete at(d, RUN)[0].text; });
-invalid("text-control-character", "no control characters in text", `${RUN}/0/text`, "not", (d) => { at(d, RUN)[0].text = "Dawn\u0007 swims, "; });
+invalid("text-control-character", "no control characters in text", `${RUN}/0/text`, "not", (d) => { at(d, RUN)[0].text = `Dawn${BELL} swims, `; });
 invalid("text-paragraph-attrs", "paragraphs have no attributes in the subset", `${TXT}/props/doc/content/0/attrs`, "additionalProperties", (d) => {
   at(d, TXT).props.doc.content[0].attrs = { textAlign: "center" };
 });
@@ -520,8 +548,8 @@ invalid("text-ordered-start-zero", "a numbered list starts at 1 or later", `${LI
 // =============================== INVALID: image =================================
 invalid("image-missing-alt", "alt is required unless the image is decorative", `${IMG}/props`, "required", (d) => { delete at(d, IMG).props.alt; });
 invalid("image-alt-blank", "alt has a visible character", `${IMG}/props/alt`, "pattern", (d) => { at(d, IMG).props.alt = "   "; });
-invalid("image-alt-nbsp-only", "no-break spaces are blank", `${IMG}/props/alt`, "pattern", (d) => { at(d, IMG).props.alt = " "; });
-invalid("image-alt-line-separator-only", "U+2028 alone is blank", `${IMG}/props/alt`, "pattern", (d) => { at(d, IMG).props.alt = " "; });
+invalid("image-alt-nbsp-only", "no-break spaces are blank", `${IMG}/props/alt`, "pattern", (d) => { at(d, IMG).props.alt = NBSP; });
+invalid("image-alt-line-separator-only", "U+2028 alone is blank", `${IMG}/props/alt`, "pattern", (d) => { at(d, IMG).props.alt = LINE_SEPARATOR; });
 invalid("image-alt-and-decorative", "a decorative image has no alt text", `${IMG}/props`, "not", (d) => { at(d, IMG).props.decorative = true; });
 invalid("image-decorative-false", "decorative is stored only as true", `${IMG}/props/decorative`, "const", (d) => {
   const props = at(d, IMG).props;
@@ -537,32 +565,33 @@ invalid("image-url-javascript", "no javascript: images", QURL, "pattern", (d) =>
 invalid("image-url-data", "no data: images", QURL, "pattern", (d) => { at(d, QIMG).props.url = "data:image/png;base64,iVBORw0KGgo="; });
 invalid("image-url-http", "external images are https: http would be mixed content", QURL, "pattern", (d) => { at(d, QIMG).props.url = "http://images.example.org/tea.jpg"; });
 invalid("image-url-protocol-relative", "no //host addresses", QURL, "pattern", (d) => { at(d, QIMG).props.url = "//evil.example/tea.jpg"; });
-invalid("image-url-backslash", "browsers read /\\host as //host", QURL, "pattern", (d) => { at(d, QIMG).props.url = "/\\evil.example/tea.jpg"; });
+invalid("image-url-backslash", "browsers read /\\host as //host", QURL, "pattern", (d) => { at(d, QIMG).props.url = `/${BACKSLASH}evil.example/tea.jpg`; });
 invalid("image-url-newline", "a newline in a URL is caught by the unanchored check", QURL, "not", (d) => {
-  at(d, QIMG).props.url = "https://images.example.org/tea.jpg\njavascript:alert(1)";
+  at(d, QIMG).props.url = `https://images.example.org/tea.jpg${NEWLINE}javascript:alert(1)`;
 });
 invalid("image-url-userinfo", "no user info: the host would be evil.example", QURL, "pattern", (d) => { at(d, QIMG).props.url = "https://images.example.org@evil.example/tea.jpg"; });
 
 // =============================== INVALID: button ================================
 const HREF = `${BTN}/props/href`;
 invalid("button-href-javascript-mixed-case", "no javascript:, in any case", HREF, "pattern", (d) => { at(d, BTN).props.href = "JaVaScRiPt:alert(1)"; });
-invalid("button-href-newline-then-https", "the line-anchor trap", HREF, "not", (d) => { at(d, BTN).props.href = "javascript:alert(1)\nhttps://ok.example"; });
-invalid("button-href-trailing-newline", "Ruby's $ matches before a final newline", HREF, "not", (d) => { at(d, BTN).props.href = "https://example.com/\n"; });
+invalid("button-href-newline-then-https", "the line-anchor trap", HREF, "not", (d) => { at(d, BTN).props.href = `javascript:alert(1)${NEWLINE}https://ok.example`; });
+invalid("button-href-trailing-newline", "Ruby's $ matches before a final newline", HREF, "not", (d) => { at(d, BTN).props.href = `https://example.com/${NEWLINE}`; });
 invalid("button-href-leading-space", "browsers strip a leading space and run what follows", HREF, "pattern", (d) => { at(d, BTN).props.href = " javascript:alert(1)"; });
-invalid("button-href-tab-in-scheme", "browsers drop a tab inside the scheme", HREF, "not", (d) => { at(d, BTN).props.href = "java\tscript:alert(1)"; });
+invalid("button-href-tab-in-scheme", "browsers drop a tab inside the scheme", HREF, "not", (d) => { at(d, BTN).props.href = `java${TAB}script:alert(1)`; });
 invalid("button-href-vbscript", "no vbscript:", HREF, "pattern", (d) => { at(d, BTN).props.href = "vbscript:msgbox(1)"; });
 invalid("button-href-data", "no data: links", HREF, "pattern", (d) => { at(d, BTN).props.href = "data:text/html,<script>alert(1)</script>"; });
-invalid("button-href-tel-arabic-digits", "tel: digits are ASCII", HREF, "pattern", (d) => { at(d, BTN).props.href = "tel:٠١٢٣٤٥"; });
-invalid("button-href-tel-fullwidth-digits", "tel: digits are ASCII", HREF, "pattern", (d) => { at(d, BTN).props.href = "tel:１２３４"; });
+invalid("button-href-tel-arabic-digits", "tel: digits are ASCII", HREF, "pattern", (d) => { at(d, BTN).props.href = `tel:${cp(0x660, 0x661, 0x662, 0x663, 0x664, 0x665)}`; });
+invalid("button-href-tel-fullwidth-digits", "tel: digits are ASCII", HREF, "pattern", (d) => { at(d, BTN).props.href = `tel:${cp(0xff11, 0xff12, 0xff13, 0xff14)}`; });
 invalid("button-href-protocol-relative", "no //host links", HREF, "pattern", (d) => { at(d, BTN).props.href = "//evil.example/"; });
 invalid("button-href-userinfo", "no user info", HREF, "pattern", (d) => { at(d, BTN).props.href = "https://example.com@evil.example/"; });
-invalid("button-href-backslash", "browsers read /\\host as //host", HREF, "pattern", (d) => { at(d, BTN).props.href = "/\\evil.example"; });
+invalid("button-href-backslash", "browsers read /\\host as //host", HREF, "pattern", (d) => { at(d, BTN).props.href = `/${BACKSLASH}evil.example`; });
 invalid("button-href-space-in-host", "no spaces", HREF, "pattern", (d) => { at(d, BTN).props.href = "https://exa mple.com/"; });
 invalid("button-label-missing", "a button has a label", `${BTN}/props`, "required", (d) => { delete at(d, BTN).props.label; });
 invalid("button-label-too-long", "a label has at most 80 characters", `${BTN}/props/label`, "maxLength", (d) => { at(d, BTN).props.label = "x".repeat(81); });
 
 // =============================== INVALID: divider, spacer =======================
 invalid("divider-unknown-prop", "a divider has no props", `${DIV}/props/variant`, "additionalProperties", (d) => { at(d, DIV).props.variant = "dashed"; });
+invalid("divider-children", "a divider holds no blocks", `${DIV}/children`, "maxItems", (d) => { at(d, DIV).children.push(spacer("divider-child", "s")); });
 invalid("spacer-size-pixels", "the size is a spacing step, not pixels", `${SPC}/props/size`, "enum", (d) => { at(d, SPC).props.size = 24; });
 invalid("spacer-size-unknown", "the size is a spacing step", `${SPC}/props/size`, "enum", (d) => { at(d, SPC).props.size = "xxxl"; });
 invalid("spacer-size-missing", "a spacer has a size", `${SPC}/props`, "required", (d) => { delete at(d, SPC).props.size; });
@@ -582,6 +611,9 @@ invalid("video-id-is-url", "a video is stored as an id, never as a URL", `${VID}
   at(d, VID).props.videoId = "https://www.youtube.com/watch?v=Xk3d9Lp0qWe";
 });
 invalid("video-youtube-id-short", "a YouTube id has 11 characters", `${VID}/props/videoId`, "pattern", (d) => { at(d, VID).props.videoId = "Xk3d9Lp0qW"; });
+invalid("video-youtube-id-trailing-newline", "an id with a newline after it (Ruby's $ would accept it)", `${VID}/props/videoId`, "pattern", (d) => {
+  at(d, VID).props.videoId = `Xk3d9Lp0qWe${NEWLINE}`;
+});
 invalid("video-vimeo-id-letters", "a Vimeo id is digits", `${VID}/props/videoId`, "pattern", (d) => {
   at(d, VID).props.provider = "vimeo";
   at(d, VID).props.videoId = "123456789a";
@@ -607,34 +639,33 @@ invalid("iconbox-icon-unknown", "icons come from the project's set", `${ICON}/pr
 invalid("iconbox-icon-markup", "an icon is a name, never markup", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "<svg onload=alert(1)>"; });
 invalid("iconbox-title-missing", "an icon box has a title", `${ICON}/props`, "required", (d) => { delete at(d, ICON).props.title; });
 invalid("iconbox-text-too-long", "the text has at most 300 characters", `${ICON}/props/text`, "maxLength", (d) => { at(d, ICON).props.text = "x".repeat(301); });
-invalid("iconbox-text-tab", "plain text allows a newline, no other control character", `${ICON}/props/text`, "not", (d) => { at(d, ICON).props.text = "Twice a week,\tat first light."; });
+invalid("iconbox-text-tab", "plain text allows a newline, no other control character", `${ICON}/props/text`, "not", (d) => { at(d, ICON).props.text = `Twice a week,${TAB}at first light.`; });
 
 // =============================== INVALID: quote =================================
-invalid("quote-text-blank", "a quote has a visible character", `${QUOTE}/props/text`, "pattern", (d) => { at(d, QUOTE).props.text = " \n "; });
-invalid("quote-text-bell", "no control characters", `${QUOTE}/props/text`, "not", (d) => { at(d, QUOTE).props.text = "I came for the cold water\u0007"; });
-invalid("quote-attribution-newline", "the attribution is one line", `${QUOTE}/props/attribution`, "not", (d) => { at(d, QUOTE).props.attribution = "A member\nsince last winter"; });
+invalid("quote-text-blank", "a quote has a visible character", `${QUOTE}/props/text`, "pattern", (d) => { at(d, QUOTE).props.text = ` ${NEWLINE} `; });
+invalid("quote-text-bell", "no control characters", `${QUOTE}/props/text`, "not", (d) => { at(d, QUOTE).props.text = `I came for the cold water${BELL}`; });
+invalid("quote-attribution-newline", "the attribution is one line", `${QUOTE}/props/attribution`, "not", (d) => { at(d, QUOTE).props.attribution = `A member${NEWLINE}since last winter`; });
 invalid("quote-text-too-long", "a quote has at most 500 characters", `${QUOTE}/props/text`, "maxLength", (d) => { at(d, QUOTE).props.text = "x".repeat(501); });
 
 // =============================== INVALID: accordion =============================
 invalid("accordion-no-items", "an accordion has at least one item", `${ACC}/props/items`, "minItems", (d) => { at(d, ACC).props.items = []; });
 invalid("accordion-item-missing-answer", "every question has an answer", `${ACC}/props/items/0`, "required", (d) => { delete at(d, ACC).props.items[0].answer; });
 invalid("accordion-item-extra-key", "items are closed: which one is open is not stored", `${ACC}/props/items/0/open`, "additionalProperties", (d) => { at(d, ACC).props.items[0].open = true; });
-invalid("accordion-question-blank", "a question has a visible character", `${ACC}/props/items/1/question`, "pattern", (d) => { at(d, ACC).props.items[1].question = "　"; });
+invalid("accordion-question-blank", "a question has a visible character", `${ACC}/props/items/1/question`, "pattern", (d) => { at(d, ACC).props.items[1].question = IDEOGRAPHIC_SPACE; });
 
 // =============================== INVALID: the text itself ======================
 // Duplicate keys: JavaScript keeps the last value, Ruby's json 3 rejects the text.
 invalidRaw("dup-key-type", "a block type given twice: each parser would see a different block (a rule)", `${H}/type`, "duplicateKey",
   (d) => { at(d, H).__RAW__ = 0; }, '"type": "image"');
-invalidRaw("dup-key-escaped", "the second name is written \\u0074ype and is still type (a rule)", `${H}/type`, "duplicateKey",
-  (d) => { at(d, H).__RAW__ = 0; }, String.raw`"type": "image"`);
+invalidRaw("dup-key-escaped", "the second name spells type with an escaped t, and is still type (a rule)", `${H}/type`, "duplicateKey",
+  (d) => { at(d, H).__RAW__ = 0; }, `"${uEscape("0074")}ype": "image"`);
 invalidRaw("dup-key-title", "a duplicate at the top level (a rule)", "/title", "duplicateKey", (d) => { d.__RAW__ = 0; }, '"title": "Another title"');
 invalidRaw("text-lone-surrogate-in-key", "a lone surrogate in a member name is reported on its object (a rule)", `${H}/props`, "wellFormed",
-  (d) => { at(d, H).props.__RAW__ = 0; }, String.raw`"k\ud800": 1`);
+  (d) => { at(d, H).props.__RAW__ = 0; }, `"k${uEscape("d800")}": 1`);
 {
   const s = serialise(BASE);
   const deepJunk = (levels: number): string => "[".repeat(levels) + "]".repeat(levels);
-  const withJunk = s.replace('"level": 1,', `"level": 1, "junk": ${deepJunk(200)},`);
-  if (withJunk === s) throw new Error("deep junk not inserted");
+  const withJunk = replaceOnce(s, '"level": 1,', `"level": 1, "junk": ${deepJunk(200)},`, "nesting-200-levels");
   // junk sits at depth 9 (document, sections, section, children, column,
   // children, heading, props, junk), so its 56th nested array is the first
   // container past 64.
@@ -645,18 +676,18 @@ invalidRaw("text-lone-surrogate-in-key", "a lone surrogate in a member name is r
 }
 const TEXT_BYTES = (s: string): Uint8Array => encoder.encode(s);
 const parseError = (name: string, rule: string, text: Uint8Array): void => add(`invalid/${name}.json`, text, invalidEntry(rule, "", "parse"));
-parseError("json-bom", "a byte-order mark before the document (a rule)", concat(bytes(0xef, 0xbb, 0xbf), TEXT_BYTES(serialise(BASE))));
-parseError("json-comment", "comments are not JSON (a rule)", TEXT_BYTES(serialise(BASE).replace('"schemaVersion": 1,', '"schemaVersion": 1, /* draft */')));
-parseError("json-trailing-comma", "trailing commas are not JSON (a rule)", TEXT_BYTES(serialise(BASE).replace('"anchor": "join"\n', '"anchor": "join",\n')));
-parseError("json-raw-tab-in-string", "a raw tab inside a string is not JSON; \\t is (a rule)", TEXT_BYTES(serialise(BASE).replace("Swim at slack water", "Swim at\tslack water")));
-parseError("json-nan", "NaN is not JSON (a rule)", TEXT_BYTES(serialise(BASE).replace('"zoom": 15', '"zoom": NaN')));
-parseError("json-single-quotes", "single quotes are not JSON (a rule)", TEXT_BYTES(serialise(BASE).replace('"title": "Slack Water swimming club"', "'title': 'Slack Water swimming club'")));
-parseError("json-truncated", "a body cut short in transit (a rule)", TEXT_BYTES(serialise(BASE).slice(0, 2000)));
-parseError("json-two-documents", "text after the document (a rule)", TEXT_BYTES(serialise(BASE) + serialise(BASE)));
-parseError("json-leading-zero", "numbers have no leading zero (a rule)", TEXT_BYTES(serialise(BASE).replace('"zoom": 15', '"zoom": 015')));
+const BASE_TEXT = serialise(BASE);
+parseError("json-bom", "a byte-order mark before the document (a rule)", concat(bytes(0xef, 0xbb, 0xbf), TEXT_BYTES(BASE_TEXT)));
+parseError("json-comment", "comments are not JSON (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, '"schemaVersion": 1,', '"schemaVersion": 1, /* draft */', "json-comment")));
+parseError("json-trailing-comma", "trailing commas are not JSON (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, `"anchor": "join"${NEWLINE}`, `"anchor": "join",${NEWLINE}`, "json-trailing-comma")));
+parseError("json-raw-tab-in-string", "a raw tab inside a string is not JSON; the escape is (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, "Swim at slack water", `Swim at${TAB}slack water`, "json-raw-tab-in-string")));
+parseError("json-nan", "NaN is not JSON (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, '"zoom": 15', '"zoom": NaN', "json-nan")));
+parseError("json-single-quotes", "single quotes are not JSON (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, '"title": "Slack Water swimming club"', "'title': 'Slack Water swimming club'", "json-single-quotes")));
+parseError("json-truncated", "a body cut short in transit (a rule)", TEXT_BYTES(BASE_TEXT.slice(0, 2000)));
+parseError("json-two-documents", "text after the document (a rule)", TEXT_BYTES(BASE_TEXT + BASE_TEXT));
+parseError("json-leading-zero", "numbers have no leading zero (a rule)", TEXT_BYTES(replaceOnce(BASE_TEXT, '"zoom": 15', '"zoom": 015', "json-leading-zero")));
 {
-  const s = serialise(BASE);
-  const [before, after] = s.split("Swim at slack water") as [string, string];
+  const [before, after] = BASE_TEXT.split("Swim at slack water") as [string, string];
   const encodingError = (name: string, rule: string, raw: Uint8Array): void =>
     add(`invalid/${name}.json`, concat(TEXT_BYTES(before), raw, TEXT_BYTES(after)), invalidEntry(rule, "", "encoding"));
   encodingError("utf8-invalid-byte", "a 0xFF byte is not UTF-8: Ruby's parser reads it and json_schemer then raises (a rule)", concat(TEXT_BYTES("Swim "), bytes(0xff), TEXT_BYTES(" at slack water")));

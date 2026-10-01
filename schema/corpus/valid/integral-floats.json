@@ -75,6 +75,20 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "fl-zero",
+              "type": "map",
+              "props": {
+                "latitude": -0.0,
+                "longitude": 1e-400,
+                "zoom": 7,
+                "label": "Latitude written as -0.0, longitude as 1e-400"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {

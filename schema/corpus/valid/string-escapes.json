@@ -17,14 +17,14 @@
               "type": "text",
               "props": {
                 "doc": {
-                  "type": "doc",
+                  "\u0074ype": "doc",
                   "content": [
                     {
                       "type": "paragraph",
                       "content": [
                         {
                           "type": "text",
-                          "text": "quote \" backslash \\ slash \/ e-acute é emoji 😀"
+                          "text": "quote \" backslash \\ slash \/ e-acute \u00e9 emoji \ud83d\ude00 A as \u0041"
                         }
                       ]
                     }
