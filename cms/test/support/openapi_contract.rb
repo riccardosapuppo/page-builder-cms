@@ -38,10 +38,40 @@ module OpenapiContract
   Mismatch = Minitest::Assertion
 
   @checked = Concurrent::AtomicFixnum.new(0)
+  @seen = Concurrent::AtomicFixnum.new(0)
+
+  # Where each parallel test worker leaves its counts for the main process
+  # (on Windows the tests run in one process, and nothing is written).
+  COUNTS = Rails.root.join("tmp", "openapi-contract")
 
   class << self
     def checked
       @checked.value
+    end
+
+    # Requests the application received under /api/, counted where they
+    # enter it (AppCounter), apart from the hook, so a hook that stops
+    # checking cannot go unnoticed.
+    def seen
+      @seen.value
+    end
+
+    def saw!
+      @seen.increment
+    end
+
+    def save_counts(worker)
+      FileUtils.mkdir_p(COUNTS)
+      File.write(COUNTS.join("worker-#{worker}-#{Process.pid}.json"), JSON.generate("seen" => seen, "checked" => checked))
+    end
+
+    # This process's counts plus those the workers left, which are then
+    # removed.
+    def totals
+      files = Dir.glob(COUNTS.join("*.json").to_s)
+      counts = files.map { |file| JSON.parse(File.read(file)) }
+      FileUtils.rm_rf(COUNTS)
+      [ seen + counts.sum { |c| c["seen"] }, checked + counts.sum { |c| c["checked"] } ]
     end
 
     def check!(method, path, status, media_type, body)
@@ -100,6 +130,67 @@ end
 
 ActionDispatch::Integration::Session.prepend(OpenapiContract::SessionHook)
 
+module OpenapiContract
+  # Counts every request the application receives under /api/, at the
+  # application's own door and with its own path test, not the hook's.
+  module AppCounter
+    def call(env)
+      OpenapiContract.saw! if env["PATH_INFO"].to_s.start_with?("/api/")
+      super
+    end
+  end
+end
+
+Rails.application.singleton_class.prepend(OpenapiContract::AppCounter)
+
+# Counts left over from an earlier run would be added to this one's.
+FileUtils.rm_rf(OpenapiContract::COUNTS)
+
+# With parallel workers (forked processes, on Linux and macOS) each worker
+# counts its own requests: it leaves them in a file as it stops, and the
+# main process adds them up.
+ActiveSupport::TestCase.parallelize_teardown { |worker| OpenapiContract.save_counts(worker) }
+
+module OpenapiContract
+  # Counts, in the main process, the results of the API's request tests
+  # (class Api::...), wherever they ran: Rails sends every worker's results
+  # to the main process's reporters. If they ran, responses must have been
+  # checked, even if no worker's counts arrived.
+  class ApiTestCounter < Minitest::AbstractReporter
+    attr_reader :count
+
+    def initialize
+      super
+      @count = 0
+    end
+
+    def record(result)
+      @count += 1 if result.klass.to_s.start_with?("Api::")
+    end
+  end
+
+  API_TESTS = ApiTestCounter.new
+end
+
+module Minitest
+  def self.plugin_openapi_contract_init(_options)
+    reporter << OpenapiContract::API_TESTS
+  end
+end
+Minitest.extensions << "openapi_contract"
+
+# The run fails unless every request the API answered had its response
+# held to the document, and unless some were when the API's request tests
+# ran: a hook that stopped checking (a changed path test, a session class
+# it no longer wraps, worker counts that never arrive) would otherwise
+# leave the suite green, saying only "0 checked".
 Minitest.after_run do
-  puts "openapi: #{OpenapiContract.checked} API response(s) checked against cms/openapi.yaml"
+  seen, checked = OpenapiContract.totals
+  api_tests = OpenapiContract::API_TESTS.count
+  puts "openapi: #{checked} API response(s) checked against cms/openapi.yaml"
+  if checked != seen
+    abort "openapi: #{seen} API request(s) answered by the API, #{checked} held to openapi.yaml: every one must be"
+  elsif api_tests.positive? && checked.zero?
+    abort "openapi: #{api_tests} API request test(s) ran and no response was held to openapi.yaml"
+  end
 end

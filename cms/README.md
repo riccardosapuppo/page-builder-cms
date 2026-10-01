@@ -158,7 +158,16 @@ twice in processes of its own and takes about 13 seconds of it.
   json_schemer's OpenAPI 3.1 support. A response the document does not
   describe fails the test. With a `required` member the server does not
   send planted in one response schema, and the 409 of the draft save
-  removed, 12 request tests failed.
+  removed, 12 request tests failed. The hook cannot stop checking
+  unnoticed: the requests the application receives under `/api/` are
+  counted apart, where they enter it, and the run fails unless every one
+  was checked, and unless some were whenever the API's request tests ran
+  (parallel workers on Linux leave their counts in `tmp/` for the main
+  process to add up). With the hook's path test changed to `/apix/`, as a
+  review planted it, `test/integration/api` exited 1 with "181 API
+  request(s) answered by the API, 0 held to openapi.yaml"; with the counts
+  planted to zero, as when no worker's arrive, it exited 1 with "13 API
+  request test(s) ran and no response was held".
 - **The concurrency test** races two saves of one draft from the same
   revision, in two threads with their own sessions and database
   connections, outside any test transaction, ten rounds. Each round must
