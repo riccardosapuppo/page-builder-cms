@@ -73,8 +73,9 @@ Run them from the repository root.
 
 `contrast.mjs` needs Node only. The three screenshot scripts use Playwright
 (the mock was shot with version 1.62.1) and run Chromium headless, without
-opening a window. Playwright is not installed in this repository yet: it
-arrives with the editor in stage 2.
+opening a window. The repository root's `package.json` pins that version:
+`npm ci` there installs it (its Chromium is downloaded separately, by
+`npx playwright install chromium`, where it is not already cached).
 
 The screenshots in the repository are the approved ones. A new run draws the
 same states, but not byte for byte: anti-aliasing changes a few pixels in

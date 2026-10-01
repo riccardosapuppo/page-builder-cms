@@ -2,9 +2,10 @@
 
 The Rails 8.1 application of the project: it stores the pages, their draft
 and versions, publishes them, keeps the media library and the site style,
-and answers the editor through a JSON API under `/api`. The pages a visitor
-sees are not served yet (stage 4); `links.preview` and `links.live` in the
-API already name their addresses.
+answers the editor through a JSON API under `/api`, and serves the pages a
+visitor sees, rendered on the server in the approved design's theme
+(`../design/`). Caching of those pages (ETag, Solid Cache fragments) and
+the background jobs arrive with stage 4.
 
 Run the commands from this folder. They are written `ruby bin/rails ...`
 because Windows cannot start an extensionless script by itself; on Linux
@@ -45,13 +46,41 @@ the browser before uploading them, and the server makes no variants
 
 ```
 ruby bin/rails db:prepare
+ruby bin/rails db:seed
 ruby bin/rails server -p 3900 -b 127.0.0.1
 ```
 
 `http://127.0.0.1:3900/up` answers 200 when the app is up. The server
 listens on 127.0.0.1 only: the API has no authentication.
 
-A first look with curl:
+`db:seed` loads the example site of the design, Slack Water, an invented
+swimming club ([db/seeds/example_site.rb](db/seeds/example_site.rb)):
+- the home page as `design/index.html#page` draws it, at
+  `http://127.0.0.1:3900/`;
+- a content page, `/winter-series`;
+- a page that breaks assumptions on purpose, `/notices`: four columns, a
+  word too long for any line, emoji and right-to-left text, nested lists, a
+  long alt text, a dark band, a heading hidden on phones.
+
+The nine images go into the media library as an upload does (a blob on the
+storage service, then `MediaItem.create_from_upload!` and its checks), from
+PNGs that `node tools/seed-images.ts` renders from the design's SVGs
+(`db/seed_images/`). Run on a fresh development database on 1 October 2026,
+it printed:
+
+```
+Seeding the example site, Slack Water:
+  Slack Water                  /                version 2, home
+  Winter series                /winter-series   version 2
+  Notices                      /notices         version 2
+  9 images in the media library
+```
+
+Running it again changes nothing (`test/integration/seed_test.rb` runs it
+twice). Version 1 of each page is the automatic version the first save
+makes; version 2 is the publish.
+
+A first look at the API with curl:
 
 ```
 curl -s -X POST http://127.0.0.1:3900/api/pages -H "Content-Type: application/json" -d '{"title":"Winter series","slug":"winter"}'
@@ -79,8 +108,8 @@ which loads the whole app first as production does:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-122 runs, 456 assertions, 0 failures, 0 errors, 0 skips
-openapi: 123 API response(s) checked against cms/openapi.yaml
+185 runs, 850 assertions, 0 failures, 0 errors, 0 skips
+openapi: 130 API response(s) checked against cms/openapi.yaml
 ```
 
 - **Every API response is held to `openapi.yaml`**
@@ -107,9 +136,86 @@ openapi: 123 API response(s) checked against cms/openapi.yaml
   that upload delete their files before their transaction rolls back, and
   the run fails if any file is left there at the end (shown with a planted
   file: exit 1, and 0 without it).
+- **The published pages** are asked for as a browser asks
+  ([test/integration/public_pages_test.rb](test/integration/public_pages_test.rb)):
+  the live version and not the draft, 301 from a moved address, the 404
+  page, the preview's `no-store`, the exact Content-Security-Policy on
+  every answer, and no `Set-Cookie` on any of them. That last test runs
+  with forgery protection on, as production has it: with it off, as the
+  test environment sets it, `csrf_meta_tags` writes nothing, and a call to
+  it planted in the layout passed; with it on, the plant failed the test
+  with the session cookie it set.
+- **The block partials** ([test/views/blocks_test.rb](test/views/blocks_test.rb)):
+  every root names its id and type, styles become classes, markup typed in
+  any text stays text (a heading planted to skip escaping failed it), the
+  tree stays strict, the video and the map are closed details with a lazy
+  frame.
+- **The contract goldens** ([test/contract/goldens_test.rb](test/contract/goldens_test.rb)),
+  described in [../contract/README.md](../contract/README.md).
+- **tokens.css** must be what `ruby bin/rails tokens:css` writes from
+  `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
+  one value changed by hand in the file failed it.
 
-Also run, from this folder: `ruby bin/rubocop` (70 files, no offenses on
+Also run, from this folder: `ruby bin/rubocop` (95 files, no offenses on
 1 October) and `ruby bin/brakeman` (no warnings).
+
+## The pages a visitor sees
+
+| Address | What it serves |
+| --- | --- |
+| `/` | the page marked as home (`PATCH /api/pages/:id {home: true}`), its last published version; the 404 page while there is none |
+| `/<slug>` | any other published page; an address it had before answers 301 to where it is now, and the home page's own slug answers 301 to `/` |
+| `/preview/<page id>` | the page's draft, through the same layout and partials, with `Cache-Control: no-store`, `X-Robots-Tag: noindex` and a robots meta tag |
+| anything else shaped like a slug | the 404 page, a document of its own rendered in the site's look, with status 404 |
+
+- **One partial per block type** in [app/views/blocks/](app/views/blocks/),
+  fourteen in all, walked by `BlocksHelper#render_document`. Every block
+  root carries `data-block-id` and `data-block-type`, and `data-style`
+  repeats the stored style for the contract with the editor's renderer.
+- **Style is by class.** [BlockStyle](app/models/block_style.rb) turns each
+  token of a block's style into a class of
+  `app/assets/stylesheets/tokens.css` (`spaceInside: "l"` is `pad-l`, the
+  same on tablets only is `tablet-pad-l`), and only for values the
+  schema's enums list. `tokens.css` is generated from `schema/tokens.json`
+  by `ruby bin/rails tokens:css`; `site.css` is the design's `theme.css`,
+  with the same class names and the same container queries on the page
+  root. The site style's tones reach the page as data attributes on
+  `.site`, which the generated tone rules read.
+- **No script, no inline style.** The pages carry a static
+  Content-Security-Policy, `script-src 'none'`, frames only from the video
+  and map providers, and no nonce: Rails' nonce reads the session, and a
+  session writes a cookie onto a page meant to be cached. The layout has
+  no `csrf_meta_tags` and no `csp_meta_tag`.
+- **Video and map load on click, without script**: a lazy iframe inside a
+  closed `details`. `node tools/probes/lazy-iframe-in-details.ts`, from the
+  repository root, showed on Chromium 151 that such a frame is not
+  requested until the details opens, even 3000 px from the viewport where
+  a lazy frame without details is fetched at once. The closed card is
+  drawn in CSS, so nothing reaches the provider before the click. Other
+  browsers were not tried.
+- **Rich text** ([RichTextHelper](app/helpers/rich_text_helper.rb)) is
+  built with `tag`, `content_tag` and `safe_join`, so it is a SafeBuffer
+  and the author's text is always escaped; there is no `raw` and no
+  `html_safe` on what an author typed. Addresses go through
+  [RenderPolicy](app/models/render_policy.rb), a small pure module the
+  editor will get a TypeScript twin of: a refused address is dropped and
+  its text kept; a player or map address is built from provider and id, or
+  coordinates.
+- **Library images** are served through Active Storage's proxy route, on
+  the page's own origin, with their width, height and alt text.
+- **Icon box icons** are drawn inline from `../schema/icons.svg`, rebuilt
+  element by element with tag helpers; loading refuses anything but plain
+  shapes.
+- **The header and footer** are the theme's, as the design draws them. Their
+  name, menu and footer line are in [config/site.yml](config/site.yml)
+  until the editor can change them.
+
+From the repository root, with the server running and seeded,
+`node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
+photographs the pages headless at the widths of the design's shots, and
+checks that no request leaves the site before a click and that opening the
+video and the map asks each provider for exactly one frame (answered
+inside the browser).
 
 ## The API
 
@@ -182,7 +288,17 @@ only from `site-tones` and `site-type-scale` in
 - `app/controllers/api/`: the API. `json_body.rb` reads every body from the
   raw bytes; `base_controller.rb` turns every failure into the error shape.
 - `app/models/`: `Page`, `Draft`, `PageVersion`, `SlugRedirect`,
-  `MediaItem`, `MediaUsage`, `SiteStyle`.
+  `MediaItem`, `MediaUsage`, `SiteStyle`; for the rendering,
+  `RenderPolicy`, `BlockStyle`, `MediaResolver` and `SiteIcons`.
+- `app/controllers/pages_controller.rb`, `previews_controller.rb` and
+  `concerns/public_page.rb`: the pages a visitor sees, their layout
+  (`app/views/layouts/public.html.erb`) and their policy.
+- `app/views/blocks/`: one partial per block type; `app/helpers/`:
+  `BlocksHelper`, `RichTextHelper`, `SiteHelper`.
+- `app/assets/`: `stylesheets/site.css` (the theme), `stylesheets/tokens.css`
+  (generated by `lib/site_theme/token_css.rb`), the site's fonts with their
+  SIL licences, and the favicon.
+- `db/seeds/`: the example site; `db/seed_images/`: its pictures.
 
 ## Production
 
@@ -190,3 +306,21 @@ No credentials file is committed. Production reads its secret from the
 `SECRET_KEY_BASE` environment variable and does not boot without it; for a
 local run with nothing to protect, `SECRET_KEY_BASE_DUMMY=1` uses a
 throwaway one. The databases are SQLite files in `storage/`.
+
+Production forces SSL and assumes a proxy in front that ends it;
+`CMS_FORCE_SSL=0` turns both off for a local run over plain HTTP, where
+Strict-Transport-Security would pin 127.0.0.1 to HTTPS in the browser.
+The fingerprinted files under `/assets` are served with
+`public, max-age=31536000, immutable` by a `Rack::Static` rule scoped to
+`/assets`, with `cascade: true`, so a file that does not exist is the app's
+404 without that header.
+
+From the repository root, `node tools/check-production.ts` boots production
+on 127.0.0.1:3902 with throwaway databases under `tmp/`, publishes a page
+through the API and checks the page, its policy, the absence of cookies and
+HSTS, the 301 and 404, the preview's `no-store`, the stylesheets and fonts
+as immutable and a missing asset without the header. It then stops the
+server tree, shows the port closed, removes the precompiled assets with
+`assets:clobber` and deletes its databases. The run of 1 October 2026:
+`RESULT: 21 checks passed`. With `cascade: false` planted, it failed on the
+missing asset, which came back 404 with the year-long immutable header.

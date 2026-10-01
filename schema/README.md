@@ -7,6 +7,12 @@ The page document's one schema, and the design tokens it names.
   json_schemer, and both read this file.
 - [`tokens.json`](tokens.json): the design tokens taken from the approved
   mock in `design/`. The style settings of a block are names from this file.
+- [`icons.svg`](icons.svg): the eight icons an icon box may name, one
+  symbol per name of the schema's `icon` enum. Sunrise, buoys and cup are
+  the design's; calendar, clock, pin, globe and info are drawn in the same
+  language (a 40-unit grid, round strokes, one shape in the accent). The
+  server draws them inline on the published page, and the editor reuses
+  the file.
 
 ## The document
 

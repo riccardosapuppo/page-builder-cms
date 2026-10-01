@@ -16,14 +16,26 @@ A personal project of the author's, not work for a client.
   mock, with the palette slots of the site style and their curated tones.
   It is the copy the code reads.
 - [`schema/`](schema/): the one schema of the page document, the corpus
-  both validators are held to, and the tools that compare them.
+  both validators are held to, the tools that compare them, and the icon
+  box's icons (`icons.svg`).
 - [`cms/`](cms/): the Rails 8.1 application. It stores pages, their draft
   and versions, publishes them, keeps the media library and the site
-  style, and answers the editor through a JSON API described in
-  [`cms/openapi.yaml`](cms/openapi.yaml). Published pages are not served
-  yet. Its README has the commands to install, run and test it.
-- `package.json`: the repository's own Node tools; for now
-  `npm run lint:openapi`, which lints the API description.
+  style, answers the editor through a JSON API described in
+  [`cms/openapi.yaml`](cms/openapi.yaml), and serves the published pages,
+  rendered on the server in the design's theme, with a draft preview and a
+  404 page. `ruby bin/rails db:seed` loads the design's example site. Its
+  README has the commands to install, run and test it.
+- [`contract/`](contract/): the render contract, documents and the HTML the
+  server renders for each, which the editor's renderer will be held to.
+- `package.json` and [`tools/`](tools/): the repository's own Node tools,
+  TypeScript run by Node 24. `npm run lint:openapi` lints the API
+  description; `tools/seed-images.ts` renders the seed's pictures,
+  `tools/gen-contract-500.ts` writes the 500-block fixture,
+  `tools/site-shots.ts` photographs a running site, and
+  `tools/check-production.ts` checks a production boot on 127.0.0.1:3902.
+  `tools/probes/` holds the probe of a risky assumption, run before the
+  code that relies on it. Playwright 1.62.1 drives Chromium headless for
+  the ones that need a browser.
 
 ## The plan, stage by stage
 
