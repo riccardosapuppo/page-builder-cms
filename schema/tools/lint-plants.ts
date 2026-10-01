@@ -93,6 +93,11 @@ const plants: Plant[] = [
     plant: (s) => { s.$defs.spaceToken.enum.push("xxxl"); },
   },
   {
+    name: "a section space that is neither a spacing step nor a section step of tokens.json",
+    expect: "$defs/sectionSpaceToken is",
+    plant: (s) => { s.$defs.sectionSpaceToken.enum.push("section-xl"); },
+  },
+  {
     name: "a palette slot that tokens.json does not have",
     expect: "$defs/paletteSlot is",
     plant: (s) => { s.$defs.paletteSlot.enum.push("brand"); },

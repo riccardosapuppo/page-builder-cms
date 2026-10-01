@@ -294,11 +294,13 @@
       "style": {
         "base": {
           "background": "primary",
-          "sectionSpace": "section-s",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-l",
           "spaceBetween": "m"
         },
         "tablet": {
-          "background": "muted"
+          "background": "muted",
+          "spaceBelow": "m"
         },
         "phone": {
           "visibility": "hidden"

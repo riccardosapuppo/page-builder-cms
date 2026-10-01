@@ -165,8 +165,14 @@ module SiteTheme
       # and for a section the gap between its columns.
       spaces.each { |s| rules << ".#{prefix}gap-#{s} { gap: var(--space-#{s}); }\n" }
       spaces.each { |s| rules << ".#{prefix}cols-gap-#{s} { column-gap: var(--space-#{s}); }\n" }
-      # sectionSpace: the space above and below a section's content.
-      sections.each { |s| rules << ".#{prefix}space-#{s} { padding-block: var(--#{s}); }\n" }
+      # spaceAbove and spaceBelow: the space above and below a section's
+      # content, a spacing step (--space-l) or a section step (--section-s).
+      %w[above top below bottom].each_slice(2) do |side, edge|
+        sections.each do |s|
+          property = spaces.include?(s) ? "--space-#{s}" : "--#{s}"
+          rules << ".#{prefix}space-#{side}-#{s} { padding-#{edge}: var(#{property}); }\n"
+        end
+      end
       # background, with the text colour that reads on it: on the three dark
       # slots, text, headings, links and icons take the background colour.
       rules << ".#{prefix}bg-none { background-color: transparent; }\n"
@@ -210,7 +216,7 @@ module SiteTheme
       site_steps = tokens.fetch("type").fetch("site").keys.reject { |k| k.start_with?("$") || %w[ratio base desktop-fluid].include?(k) }
       {
         "spaceToken" => [ spaces, space.fetch("site").keys ],
-        "sectionSpaceToken" => [ sections, space.fetch("site-section").keys ],
+        "sectionSpaceToken" => [ sections, space.fetch("site").keys + space.fetch("site-section").keys ],
         "paletteSlot" => [ slots, tokens.fetch("site-tones").keys.reject { |k| k.start_with?("$") } ],
         "typeStep" => [ steps, site_steps ]
       }.each do |name, (schema_names, token_names)|

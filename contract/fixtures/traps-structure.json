@@ -5,7 +5,7 @@
     {
       "id": "s-one-column", "type": "section",
       "props": { "anchor": "one" },
-      "style": { "base": { "background": "soft", "sectionSpace": "section-s", "spaceBetween": "xl" }, "tablet": { "sectionSpace": "section-l" }, "phone": { "background": "none", "visibility": "hidden" } },
+      "style": { "base": { "background": "soft", "spaceAbove": "section-s", "spaceBelow": "l", "spaceBetween": "xl" }, "tablet": { "spaceAbove": "section-l", "spaceBelow": "none" }, "phone": { "background": "none", "visibility": "hidden", "spaceAbove": "xs" } },
       "children": [
         {
           "id": "s-one-column-1", "type": "column", "props": {},
@@ -64,7 +64,7 @@
       ]
     },
     {
-      "id": "s-four-columns", "type": "section", "props": {}, "style": { "base": { "background": "primary" } },
+      "id": "s-four-columns", "type": "section", "props": {}, "style": { "base": { "background": "primary", "sectionSpace": "section-l", "spaceAbove": "section-m", "spaceBelow": 24 } },
       "children": [
         { "id": "s-four-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [ { "id": "s-four-1-h", "type": "heading", "props": { "level": 4, "text": "One" }, "style": { "base": {} }, "children": [] } ] },
         { "id": "s-four-2", "type": "column", "props": {}, "style": { "base": { "background": "accent" } }, "children": [] },

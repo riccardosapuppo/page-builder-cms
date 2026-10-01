@@ -94,13 +94,13 @@ module ExampleSite
           column("hero-2", [
             image("hero-image", m[:hero], alt: "The bay at dawn at slack water, with a line of buoys and three swimmers")
           ])
-        ], anchor: "top", label: "Hero", base: { sectionSpace: "section-s", spaceBetween: "xl" }),
+        ], anchor: "top", label: "Hero", base: { spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
 
         section("swims", [
           column("swims-1", [ iconbox("swims-dawn", "sunrise", "Dawn swims", "Twice a week, at first light, when the bay is flat.") ]),
           column("swims-2", [ iconbox("swims-course", "buoys", "Beginners’ course", "Four sessions from the shallows to the buoy line.") ]),
           column("swims-3", [ iconbox("swims-winter", "cup", "Winter series", "Short, cold, and followed by very hot tea.") ])
-        ], anchor: "swims", label: "What we do", base: { background: "soft", sectionSpace: "section-s", spaceBetween: "xl" }),
+        ], anchor: "swims", label: "What we do", base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
 
         section("gallery", [
           column("gallery-1", [
@@ -125,7 +125,7 @@ module ExampleSite
             text("meet-text", "We meet twenty minutes before slack water, whatever the clock says. Bring a bright cap, goggles and something warm for afterwards."),
             map("meet-map", *MAP_POINT, "Meeting point: the slipway at the north end of the beach")
           ], base: { verticalAlign: "bottom" })
-        ], anchor: "meet", label: "See the bay", base: { sectionSpace: "section-s" }),
+        ], anchor: "meet", label: "See the bay", base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
 
         section("quote", [
           column("quote-1", [
@@ -154,7 +154,7 @@ module ExampleSite
             text("join-text", "Tell us a little about your swimming. We reply within two days with the next trial date and what to bring."),
             button("join-button", "Write to the club", "mailto:join@slackwater.example", base: { background: "primary", color: "background" })
           ])
-        ], anchor: "join", label: "Join", base: { sectionSpace: "section-l" })
+        ], anchor: "join", label: "Join", base: { spaceAbove: "section-l", spaceBelow: "section-l" })
       ]
     )
   end
@@ -169,7 +169,7 @@ module ExampleSite
             heading("intro-heading", "Winter series", level: 1),
             text("intro-text", "Short, cold swims from the first Sunday of November to the last of March, and very hot tea after every one.", base: { textSize: "large" })
           ])
-        ], base: { sectionSpace: "section-s" }),
+        ], base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
 
         section("details", [
           column("details-1", [
@@ -186,7 +186,7 @@ module ExampleSite
           column("practical-1", [ iconbox("practical-when", "calendar", "Every Sunday", "From the first Sunday of November\nto the last Sunday of March.") ]),
           column("practical-2", [ iconbox("practical-time", "clock", "At slack water", "The time moves with the tide. Check the table on the noticeboard.") ]),
           column("practical-3", [ iconbox("practical-where", "pin", "The north slipway", "Where the footpath from the car park meets the beach.") ])
-        ], label: "When and where", base: { background: "soft", sectionSpace: "section-s", spaceBetween: "xl" }),
+        ], label: "When and where", base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
 
         section("words", [
           column("words-1", [ quote("words-quote", "Ten minutes in the water, an hour of feeling good.", attribution: "A winter regular") ]),
@@ -215,7 +215,7 @@ module ExampleSite
                  [ "Today’s word from the logbook: Seawaterthermometercalibrationlogbookentriesforthewholewinterseason, which no line is wide enough for." ],
                  [ "Swims this week 🌊🧊☕ and one more 🏊‍♀️.", line_break, "Written the way members write: café, naïve, 日本語, שלום." ])
           ])
-        ], base: { sectionSpace: "section-s" }),
+        ], base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
 
         section("four", [
           column("four-1", [ iconbox("four-visitors", "globe", "Visitors welcome", "Swim with us for a week before you join.") ]),
@@ -233,7 +233,7 @@ module ExampleSite
             text("night-text", "On the shortest night, with lights on the buoys. Members only.")
           ]),
           column("night-2", [ button("night-button", "Ask about it", "mailto:night@slackwater.example") ], base: { verticalAlign: "middle" })
-        ], label: "Dark band", base: { background: "primary", sectionSpace: "section-s" }),
+        ], label: "Dark band", base: { background: "primary", spaceAbove: "section-s", spaceBelow: "section-s" }),
 
         section("lists", [
           column("lists-1", [
@@ -259,7 +259,7 @@ module ExampleSite
             heading("desktop-only-heading", "Shown on desktop and tablets, hidden on phones", level: 3,
                     base: { align: "center" }, tablet: { align: "left" }, phone: { visibility: "hidden" })
           ])
-        ], label: "Hidden on phones", base: { sectionSpace: "section-s" })
+        ], label: "Hidden on phones", base: { spaceAbove: "section-s", spaceBelow: "section-s" })
       ]
     )
   end

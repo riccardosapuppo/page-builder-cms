@@ -83,6 +83,12 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the 404 page's content is a document the schema accepts, like any page's" do
+    result = BlockDocument.check(PublicPage::NOT_FOUND)
+
+    assert result.ok?, result.errors.map(&:message).inspect
+  end
+
   test "/ without a home page, or with one not published yet, is the 404 page" do
     get "/"
     assert_response :not_found

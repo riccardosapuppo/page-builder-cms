@@ -815,6 +815,24 @@
     "keyword": "enum",
     "layer": "schema"
   },
+  "invalid/style-section-space-retired.json": {
+    "rule": "sectionSpace became spaceAbove and spaceBelow before any page was stored: the old key is unknown",
+    "pointer": "/sections/0/style/base/sectionSpace",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-space-above-unknown.json": {
+    "rule": "the space above a section is a spacing step or a section step",
+    "pointer": "/sections/0/style/phone/spaceAbove",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-space-below-on-column.json": {
+    "rule": "only a section has space above and below",
+    "pointer": "/sections/0/children/0/style/base/spaceBelow",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
   "invalid/style-tone-not-slot.json": {
     "rule": "blocks name palette slots, not tones",
     "pointer": "/sections/0/children/0/children/0/style/base/color",
@@ -1087,6 +1105,9 @@
   },
   "valid/rich-text.json": {
     "rule": "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs"
+  },
+  "valid/section-space-every-step.json": {
+    "rule": "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides"
   },
   "valid/string-escapes.json": {
     "rule": "JSON escapes: quote, backslash, slash, a letter and an accented letter as u-escapes, an emoji as a surrogate pair of two escapes, and the member name type spelled with an escaped t"

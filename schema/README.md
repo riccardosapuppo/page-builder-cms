@@ -74,7 +74,7 @@ The page document's one schema, and the design tokens it names.
 | Setting | Values | From |
 | --- | --- | --- |
 | `spaceInside`, `spaceBetween`; spacer `size` | `none` `xs` `s` `m` `l` `xl` `xxl` (None to XXL in the editor) | `space.site` in `tokens.json` |
-| `sectionSpace` | `section-s` `section-l` | `space.site-section` |
+| `spaceAbove`, `spaceBelow` (sections only) | a spacing step, `none` to `xxl`, or `section-s` `section-l`; absent, the theme's rhythm for the device (96, 64 and 48 px on desktop, tablet and phone) | `space.site` and `space.site-section` |
 | `textSize` | `display` `heading-1` `heading-2` `heading-3` `large` `body` `small` | `type.site` |
 | `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots, `site-tones` in `tokens.json` (see below) |
 | `background` | `none` or a palette slot | as above |
@@ -277,8 +277,9 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
   video providers, the rich-text nodes and the marks.
 - **Hierarchy,** read from the schema: the page holds sections, a section one
   to four columns, a column the widget types, and no widget holds children.
-- **Tokens:** the spacing, section-spacing and type-step enums are the names
-  in `tokens.json`; the palette-slot enum is the slots of `site-tones`, and
+- **Tokens:** the spacing and type-step enums are the names in
+  `tokens.json`, the section-spacing enum is the spacing steps followed by
+  the section steps; the palette-slot enum is the slots of `site-tones`, and
   the background enum is `none` and those slots. Every tone is a colour of
   `tokens.json`, every slot's default is one of its tones, and the type
   scale's default is one of its choices.

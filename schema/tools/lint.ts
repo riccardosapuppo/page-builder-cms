@@ -416,9 +416,11 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
   const space = (tokens.space ?? {}) as Obj;
   const type = ((tokens.type ?? {}) as Obj).site as Obj | undefined;
   const steps = Object.entries(type ?? {}).filter(([, v]) => isObject(v) && Array.isArray(v.desktop)).map(([k]) => k);
+  // The space above and below a section is a spacing step or a section
+  // step: both lists, in that order.
   const checks: Array<[string, unknown[], string[]]> = [
     ["spaceToken", enumOf(defs.spaceToken) ?? [], Object.keys((space.site ?? {}) as Obj)],
-    ["sectionSpaceToken", enumOf(defs.sectionSpaceToken) ?? [], Object.keys((space["site-section"] ?? {}) as Obj)],
+    ["sectionSpaceToken", enumOf(defs.sectionSpaceToken) ?? [], [...Object.keys((space.site ?? {}) as Obj), ...Object.keys((space["site-section"] ?? {}) as Obj)]],
     ["typeStep", enumOf(defs.typeStep) ?? [], steps],
   ];
   // The palette slots: the schema's names are the keys of site-tones, and a

@@ -50,6 +50,16 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     assert_match(/spaceToken/, error.message)
   end
 
+  test "the space above and below a section is a spacing step or a section step, on each side alone" do
+    css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
+
+    assert_includes css, ".space-above-l { padding-top: var(--space-l); }"
+    assert_includes css, ".space-below-section-s { padding-bottom: var(--section-s); }"
+    assert_includes css, "  .phone-space-above-none { padding-top: var(--space-none); }"
+    assert_equal 2 * 9 * 3, css.scan(/\.(?:tablet-|phone-)?space-(?:above|below)-[a-z-]+ \{ padding-(?:top|bottom): var\(--[a-z-]+\); \}/).size
+    assert_no_match(/padding-block: var\(--section/, css)
+  end
+
   test "a tablet override applies only between the phone and desktop layouts" do
     css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
 

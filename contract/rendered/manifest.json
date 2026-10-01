@@ -6,7 +6,7 @@
     "empty.json": "da64b1119befdc62fd6ed691cc5bd3a6a8e199ff2449e21998a9d2542cdd9f61",
     "large-500.json": "3f5c33b8c838e7d999e5bda48cd421835fc89195593938ecba7899b74ee5fa5a",
     "traps-media.json": "a0689b8131c7ecaba894de4d9f2f4b15667decdacfa3b74654985d7ac044050a",
-    "traps-structure.json": "7ffadc5d1d14232c0c9aee6a8fe6c777ce72e98c1ffbc2614632f289313cd528",
+    "traps-structure.json": "98af62c96a322b41a99daf7623b60c79096b7b965456d8cd0c3a9e7095e42679",
     "traps-text.json": "b8b5471b574ea86a163aa865a8079654886a529cc539caf79d7cec161d221a56"
   },
   "rendered": {
@@ -14,13 +14,13 @@
     "empty.html": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "large-500.html": "10a3cf20798f2c816bb85187a4372f0700dc5ed08f9ab5506ad3580865d5249e",
     "traps-media.html": "225918e5f54354addaf58ae24d7dfdd582e1e4d151efb4657d3f7a6ce1f494be",
-    "traps-structure.html": "7591aa6c6e53f4dad48cb08128db41c02cd12d355570ef7797d0a01016f5bc20",
+    "traps-structure.html": "1a34f9fad999e8c03a290f92198b626478fa95818e76a8bd42de106aeb7490ca",
     "traps-text.html": "e3ba952de547c0b3be38efe47980b33e9639f04e74ea82ff8b3c16ebc36224b6"
   },
   "renderer": {
     "cms/app/helpers/blocks_helper.rb": "758966b74e3a776d25ac861d5b5069041b5f74c0db3cfd1a20980ef64c2907da",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
-    "cms/app/models/block_style.rb": "12e47a0bf7f8853505145891a7d0d00ed710029fc80cb9dc5e5d7267af42e8d3",
+    "cms/app/models/block_style.rb": "ada153a7e20912e7a5389c71fc38095a95493521fe8d22071237d385b5d3e195",
     "cms/app/models/render_policy.rb": "f8ed39d79eb303877487932e50c85719cd67f4e3b7750989fd0919315362bb71",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "b6d1c422b758c7ff3c6d60910c3c8b9d0cf454274eae4cc811630f55bff9f940",
@@ -33,12 +33,12 @@
     "cms/app/views/blocks/_image.html.erb": "4c16e446d5721a9493619746f363867f5c4b4cc1ffbe8c04b202f45adb59f2d9",
     "cms/app/views/blocks/_map.html.erb": "98723942344b3b8b256b8608cfa7c5bf5c138ca2a8181a631b9713403eb3a444",
     "cms/app/views/blocks/_quote.html.erb": "276b71a553186e663680fc363c0a12de3492b97d790b6e42d42ba412117f8ab4",
-    "cms/app/views/blocks/_section.html.erb": "e9097b6a27c94223f4701b7412e23cca2ea6bb5f3b334bcabbc79a7df7eb0808",
+    "cms/app/views/blocks/_section.html.erb": "cb21f7341db2273b5d0ad50157cc38454770f895589a2470fb97af7880f71d88",
     "cms/app/views/blocks/_spacer.html.erb": "90496c09e14e5331c4f1b1ae848cdfdbee5df1a7d75832fbbae5c76fbdbee249",
     "cms/app/views/blocks/_text.html.erb": "49288e752a9ba939b661315fa3aee7192d058ab634a1aefa29c98c9b17d2f56c",
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
-    "schema/block-document.schema.json": "147e08bbf1de217b5140ecb3c887c5fb51c35492a0ca687f5e18d08b6f6917b2",
+    "schema/block-document.schema.json": "81dff681d3359e5dc8e02dbdc08ff0a6cf93ad3f0f7734abb8eae0ca92b502c6",
     "schema/icons.svg": "86273c3534a9d322caa64654f5dbc2034b237e8edb5f786491261a0468796562"
   }
 }

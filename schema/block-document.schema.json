@@ -437,8 +437,8 @@
       "enum": ["none", "xs", "s", "m", "l", "xl", "xxl"]
     },
     "sectionSpaceToken": {
-      "description": "Vertical space of a section, the keys of space.site-section in tokens.json.",
-      "enum": ["section-s", "section-l"]
+      "description": "The space above or below a section's content: a spacing step (the keys of space.site in tokens.json) or a section step (the keys of space.site-section). Absent, a section takes the theme's rhythm for the device.",
+      "enum": ["none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l"]
     },
     "paletteSlot": {
       "description": "The six palette slots of the site style. A block names a slot, never a tone: the site owner picks the tone of each slot, and every block follows.",
@@ -463,7 +463,8 @@
       "properties": {
         "spaceInside": { "$ref": "#/$defs/spaceToken" },
         "spaceBetween": { "$ref": "#/$defs/spaceToken" },
-        "sectionSpace": { "$ref": "#/$defs/sectionSpaceToken" },
+        "spaceAbove": { "$ref": "#/$defs/sectionSpaceToken" },
+        "spaceBelow": { "$ref": "#/$defs/sectionSpaceToken" },
         "background": { "$ref": "#/$defs/backgroundToken" },
         "color": { "$ref": "#/$defs/paletteSlot" },
         "textSize": { "$ref": "#/$defs/typeStep" },
@@ -495,7 +496,7 @@
     "sectionStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "background": true, "sectionSpace": true, "spaceBetween": true, "visibility": true }
+      "properties": { "background": true, "spaceAbove": true, "spaceBelow": true, "spaceBetween": true, "visibility": true }
     },
     "columnStyle": {
       "type": "object",

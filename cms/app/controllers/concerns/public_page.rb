@@ -19,7 +19,7 @@ module PublicPage
     "title" => "Page not found",
     "sections" => [
       {
-        "id" => "not-found", "type" => "section", "props" => {}, "style" => { "base" => { "sectionSpace" => "section-l" } },
+        "id" => "not-found", "type" => "section", "props" => {}, "style" => { "base" => { "spaceAbove" => "section-l", "spaceBelow" => "section-l" } },
         "children" => [
           {
             "id" => "not-found-column", "type" => "column", "props" => {}, "style" => { "base" => {} },

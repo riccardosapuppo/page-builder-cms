@@ -21,7 +21,8 @@ module BlockStyle
   FAMILY = {
     "spaceInside" => "pad",
     "spaceBetween" => "gap",
-    "sectionSpace" => "space",
+    "spaceAbove" => "space-above",
+    "spaceBelow" => "space-below",
     "background" => "bg",
     "color" => "fg",
     "textSize" => "size",
@@ -33,7 +34,8 @@ module BlockStyle
   ENUM_OF = {
     "spaceInside" => "spaceToken",
     "spaceBetween" => "spaceToken",
-    "sectionSpace" => "sectionSpaceToken",
+    "spaceAbove" => "sectionSpaceToken",
+    "spaceBelow" => "sectionSpaceToken",
     "background" => "backgroundToken",
     "color" => "paletteSlot",
     "textSize" => "typeStep",

@@ -175,10 +175,12 @@
       "style": {
         "base": {
           "background": "soft",
-          "sectionSpace": "section-l"
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-l"
         },
         "phone": {
-          "sectionSpace": "section-s"
+          "spaceAbove": "l",
+          "spaceBelow": "xxl"
         }
       }
     },

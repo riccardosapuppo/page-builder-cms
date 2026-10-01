@@ -24,7 +24,8 @@ stale, renders each fixture with React, and compares the two trees.
     unknown provider and an id that is markup; maps in range, zoomed all the
     way out, out of range, and with coordinates written as strings.
   - `traps-structure.json`: every style key on every device, values the
-    schema does not list, blocks hidden per device, one to five columns,
+    schema does not list (and `sectionSpace`, the key `spaceAbove` and
+    `spaceBelow` replaced), blocks hidden per device, one to five columns,
     and blocks out of place (a section in a column, a widget where a section
     goes, an unknown type, a string where a block goes).
   - `edge.json`: the smallest values, every icon, an empty section, a block

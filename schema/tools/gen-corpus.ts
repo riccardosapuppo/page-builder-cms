@@ -88,7 +88,7 @@ function landing(): J {
       column("hero-2", [
         image("hero-image", { mediaId: "hero-dawn", alt: "The bay at dawn at slack water, with a line of buoys and three swimmers" }),
       ]),
-    ], { label: "Hero", anchor: "top" }, { base: { background: "soft", sectionSpace: "section-l" }, phone: { sectionSpace: "section-s" } }),
+    ], { label: "Hero", anchor: "top" }, { base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-l" }, phone: { spaceAbove: "l", spaceBelow: "xxl" } }),
     section("swims", [
       column("swims-1", [iconbox("swims-dawn", "sunrise", "Dawn swims", "Twice a week, at first light, when the bay is flat.")]),
       column("swims-2", [iconbox("swims-course", "buoys", "Beginners’ course", "Four sessions from the shallows to the buoy line.")]),
@@ -313,8 +313,15 @@ valid("styles-every-token", "every style key and token value, with tablet and ph
       iconbox("st-i", "info", "Info", "Text."),
       quote("st-q", "Quoted."),
     ].map((w: J) => ({ ...w, style: { base: { visibility: "visible" } } }))),
-  ], {}, { base: { background: "primary", sectionSpace: "section-s", spaceBetween: "m" }, tablet: { background: "muted" }, phone: { visibility: "hidden" } }),
+  ], {}, { base: { background: "primary", spaceAbove: "section-s", spaceBelow: "section-l", spaceBetween: "m" }, tablet: { background: "muted", spaceBelow: "m" }, phone: { visibility: "hidden" } }),
 ]));
+valid("section-space-every-step", "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides", doc("Section space", [
+  "none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l",
+].map((step, k, all) => section(`space-${k}`, [column(`space-${k}-1`, [])], {}, {
+  base: { spaceAbove: step, spaceBelow: all[all.length - 1 - k] },
+  tablet: { spaceAbove: all[(k + 1) % all.length] },
+  phone: { spaceBelow: all[(k + 2) % all.length] },
+}))));
 valid("every-icon-and-provider", "every icon name, both video providers, map extremes", doc("Icons", [
   section("ic", [column("ic-1", [
     ...["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"].map((icon) => iconbox(`ic-${icon}`, icon, icon, `The ${icon} icon.`)),
@@ -489,6 +496,11 @@ invalid("style-empty-override", "an override with nothing in it is not stored", 
 invalid("style-desktop-key", "desktop is base: there is no desktop key", `${H}/style/desktop`, "additionalProperties", (d) => { at(d, H).style.desktop = { textSize: "body" }; });
 invalid("style-missing-base", "base is required", `${H}/style`, "required", (d) => { delete at(d, H).style.base; });
 invalid("style-override-null", "a removed override is absent, not null", `${H}/style/phone`, "type", (d) => { at(d, H).style.phone = null; });
+invalid("style-section-space-retired", "sectionSpace became spaceAbove and spaceBelow before any page was stored: the old key is unknown", `${HERO}/style/base/sectionSpace`, "additionalProperties", (d) => {
+  at(d, HERO).style.base.sectionSpace = "section-s";
+});
+invalid("style-space-above-unknown", "the space above a section is a spacing step or a section step", `${HERO}/style/phone/spaceAbove`, "enum", (d) => { at(d, HERO).style.phone.spaceAbove = "section-m"; });
+invalid("style-space-below-on-column", "only a section has space above and below", `${COL}/style/base/spaceBelow`, "additionalProperties", (d) => { at(d, COL).style.base.spaceBelow = "l"; });
 
 // =============================== INVALID: heading ===============================
 invalid("heading-level-5", "levels are 1 to 4", `${H}/props/level`, "maximum", (d) => { at(d, H).props.level = 5; });
