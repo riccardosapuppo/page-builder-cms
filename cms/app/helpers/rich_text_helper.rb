@@ -8,8 +8,8 @@
 # is a SafeBuffer in which every piece of the author's text went through
 # ActionView's escaping: nothing here marks a string as safe, and there is
 # no raw. A link whose address RenderPolicy refuses is dropped and its text
-# kept; a node or a mark the schema does not know is left out, with its
-# text if it has any.
+# kept, as is the text under a mark the schema does not know; a node the
+# schema does not know is left out with all it holds.
 #
 # The output follows TipTap's own: marks nest in the order they are stored,
 # the first one innermost, and an ordered list writes start only when it

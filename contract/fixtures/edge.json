@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "title": "Edge cases",
+  "sections": [
+    {
+      "id": "e-bare", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "e-bare-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "e-heading-min", "type": "heading", "props": { "level": 4, "text": "x" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-text-min", "type": "text", "props": { "doc": { "type": "doc", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "  leading and   inner spaces  " } ] } ] } }, "style": { "base": {} }, "children": [] },
+            { "id": "e-text-only-break", "type": "text", "props": { "doc": { "type": "doc", "content": [ { "type": "paragraph", "content": [ { "type": "hardBreak" } ] } ] } }, "style": { "base": {} }, "children": [] },
+            { "id": "e-button-path", "type": "button", "props": { "label": "Home", "href": "/" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-button-query", "type": "button", "props": { "label": "Query", "href": "?season=winter" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-divider", "type": "divider", "props": {}, "style": { "base": {} }, "children": [] },
+            { "id": "e-spacer", "type": "spacer", "props": { "size": "m" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-gallery-one", "type": "gallery", "props": { "items": [ { "mediaId": "g-rockpools", "alt": "Rock pools" } ] }, "style": { "base": {} }, "children": [] },
+            { "id": "e-video-vimeo-long-id", "type": "video", "props": { "provider": "vimeo", "videoId": "123456789012", "title": "Twelve digits" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-map-max-zoom", "type": "map", "props": { "latitude": 0, "longitude": 0, "zoom": 19, "label": "Null island" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-map-pole", "type": "map", "props": { "latitude": -90, "longitude": 180, "zoom": 3, "label": "The South Pole" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-1", "type": "iconbox", "props": { "icon": "sunrise", "title": "sunrise", "text": "s" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-2", "type": "iconbox", "props": { "icon": "buoys", "title": "buoys", "text": "b" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-3", "type": "iconbox", "props": { "icon": "cup", "title": "cup", "text": "c" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-4", "type": "iconbox", "props": { "icon": "calendar", "title": "calendar", "text": "c" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-5", "type": "iconbox", "props": { "icon": "clock", "title": "clock", "text": "c" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-6", "type": "iconbox", "props": { "icon": "pin", "title": "pin", "text": "p" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-7", "type": "iconbox", "props": { "icon": "globe", "title": "globe", "text": "g" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-iconbox-every-icon-8", "type": "iconbox", "props": { "icon": "info", "title": "info", "text": "i" }, "style": { "base": {} }, "children": [] },
+            { "id": "e-accordion-one", "type": "accordion", "props": { "items": [ { "question": "Only one?", "answer": "Only one, and open." } ] }, "style": { "base": {} }, "children": [] },
+            { "id": "e-quote-lines", "type": "quote", "props": { "text": "One\n\nTwo after an empty line" }, "style": { "base": {} }, "children": [] }
+          ]
+        }
+      ]
+    },
+    { "id": "e-empty-section", "type": "section", "props": { "label": "No columns" }, "style": { "base": {} }, "children": [] },
+    {
+      "id": "e-missing-keys", "type": "section",
+      "children": [
+        { "id": "e-missing-column", "type": "column", "children": [ { "id": "e-missing-widget", "type": "heading", "props": { "text": "No level, no style" } } ] }
+      ]
+    }
+  ]
+}

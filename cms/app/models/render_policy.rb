@@ -79,7 +79,12 @@ module RenderPolicy
 
     half_width = 360.0 / (2**zoom) * 400 / 256
     half_height = half_width * 500 / 800 * Math.cos([ latitude.abs, 85 ].min * Math::PI / 180)
-    box = [ longitude - half_width, latitude - half_height, longitude + half_width, latitude + half_height ]
+    # Zoomed far out, the area would run past the edges of the map: it is
+    # cut at the meridian 180 and at 85 degrees, where the map itself ends.
+    box = [
+      [ longitude - half_width, -180 ].max, [ latitude - half_height, -85 ].max,
+      [ longitude + half_width, 180 ].min, [ latitude + half_height, 85 ].min
+    ]
     "#{MAP[:origin]}/export/embed.html?bbox=#{box.map { |n| decimal(n) }.join('%2C')}" \
       "&layer=mapnik&marker=#{decimal(latitude)}%2C#{decimal(longitude)}"
   end

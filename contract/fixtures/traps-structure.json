@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "title": "Structure and style traps",
+  "sections": [
+    {
+      "id": "s-one-column", "type": "section",
+      "props": { "anchor": "one" },
+      "style": { "base": { "background": "soft", "sectionSpace": "section-s", "spaceBetween": "xl" }, "tablet": { "sectionSpace": "section-l" }, "phone": { "background": "none", "visibility": "hidden" } },
+      "children": [
+        {
+          "id": "s-one-column-1", "type": "column", "props": {},
+          "style": { "base": { "spaceInside": "none", "spaceBetween": "l", "textSize": "large", "color": "muted", "align": "center", "verticalAlign": "middle" }, "tablet": { "spaceInside": "l", "align": "left" }, "phone": { "verticalAlign": "top" } },
+          "children": [
+            {
+              "id": "s-heading-styled", "type": "heading", "children": [],
+              "props": { "level": 1, "text": "Every style key" },
+              "style": { "base": { "textSize": "display", "color": "primary", "align": "left", "visibility": "visible" }, "phone": { "textSize": "heading-1" } }
+            },
+            {
+              "id": "s-button-styled", "type": "button", "children": [],
+              "props": { "label": "Styled", "href": "#one" },
+              "style": { "base": { "background": "primary", "color": "background", "align": "right" }, "phone": { "align": "center" } }
+            },
+            {
+              "id": "s-text-hidden-on-desktop", "type": "text", "children": [],
+              "props": { "doc": { "type": "doc", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Hidden on desktop, shown on tablets and phones." } ] } ] } },
+              "style": { "base": { "visibility": "hidden" }, "tablet": { "visibility": "visible" }, "phone": { "visibility": "visible" } }
+            },
+            {
+              "id": "s-divider-colored", "type": "divider", "children": [], "props": {},
+              "style": { "base": { "color": "primary" }, "tablet": { "color": "accent" } }
+            },
+            {
+              "id": "s-accordion-colored", "type": "accordion", "children": [],
+              "props": { "items": [ { "question": "Lines in Primary?", "answer": "Yes." } ] },
+              "style": { "base": { "color": "primary" } }
+            },
+            {
+              "id": "s-iconbox-styled", "type": "iconbox", "children": [],
+              "props": { "icon": "globe", "title": "Centred", "text": "An icon box with its own colour." },
+              "style": { "base": { "color": "text", "align": "center" } }
+            },
+            {
+              "id": "s-quote-styled", "type": "quote", "children": [],
+              "props": { "text": "Smaller than a quote's usual step.", "attribution": "Style" },
+              "style": { "base": { "textSize": "body" } }
+            },
+            {
+              "id": "s-spacers", "type": "spacer", "children": [], "props": { "size": "xxl" },
+              "style": { "base": {}, "phone": { "visibility": "hidden" } }
+            },
+            {
+              "id": "s-bad-style-values", "type": "heading", "children": [],
+              "props": { "level": 2, "text": "Values the schema does not list" },
+              "style": { "base": { "textSize": "huge onclick=alert(1)", "color": "#ff0000", "align": "justify", "visibility": "maybe" }, "desktop": { "textSize": "display" }, "tablet": "not an object" }
+            },
+            {
+              "id": "s-image-hidden", "type": "image", "children": [],
+              "props": { "mediaId": "g-slipway", "alt": "Hidden on tablets" },
+              "style": { "base": {}, "tablet": { "visibility": "hidden" } }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s-four-columns", "type": "section", "props": {}, "style": { "base": { "background": "primary" } },
+      "children": [
+        { "id": "s-four-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [ { "id": "s-four-1-h", "type": "heading", "props": { "level": 4, "text": "One" }, "style": { "base": {} }, "children": [] } ] },
+        { "id": "s-four-2", "type": "column", "props": {}, "style": { "base": { "background": "accent" } }, "children": [] },
+        { "id": "s-four-3", "type": "column", "props": {}, "style": { "base": {} }, "children": [ { "id": "s-four-3-sp", "type": "spacer", "props": { "size": "none" }, "style": { "base": {} }, "children": [] } ] },
+        { "id": "s-four-4", "type": "column", "props": {}, "style": { "base": {} }, "children": [ { "id": "s-four-4-d", "type": "divider", "props": {}, "style": { "base": {} }, "children": [] } ] }
+      ]
+    },
+    {
+      "id": "s-strict-tree", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "s-strict-1", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "s-nested-section", "type": "section", "props": {}, "style": { "base": {} }, "children": [] },
+            { "id": "s-nested-column", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+            { "id": "s-unknown-type", "type": "carousel", "props": {}, "style": { "base": {} }, "children": [] },
+            "not a block",
+            { "id": "s-kept", "type": "heading", "props": { "level": 2, "text": "Only this widget is kept" }, "style": { "base": {} }, "children": [] }
+          ]
+        },
+        { "id": "s-widget-as-column", "type": "heading", "props": { "level": 2, "text": "A widget where a column goes" }, "style": { "base": {} }, "children": [] }
+      ]
+    },
+    { "id": "s-widget-as-section", "type": "heading", "props": { "level": 2, "text": "A widget where a section goes" }, "style": { "base": {} }, "children": [] },
+    {
+      "id": "s-five-columns", "type": "section", "props": { "anchor": "Not An Anchor!" }, "style": { "base": {} },
+      "children": [
+        { "id": "s-five-1", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-five-2", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-five-3", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-five-4", "type": "column", "props": {}, "style": { "base": {} }, "children": [] },
+        { "id": "s-five-5", "type": "column", "props": {}, "style": { "base": {} }, "children": [] }
+      ]
+    }
+  ]
+}

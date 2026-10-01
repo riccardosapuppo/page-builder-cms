@@ -157,6 +157,26 @@ class BlocksTest < ActionView::TestCase
     assert_nil html.at_css("[data-block-id=b]")["data-icon"]
   end
 
+  test "markup in any text the author typed reaches the visitor as text, never as an element" do
+    trap = %(<b class="x">bold</b><img src=x onerror=alert(1)>)
+    html = html_of(page(
+      block("h", "heading", { "level" => 2, "text" => trap }),
+      block("t", "text", { "doc" => { "type" => "doc", "content" => [ { "type" => "paragraph", "content" => [ { "type" => "text", "text" => trap } ] } ] } }),
+      block("b", "button", { "label" => trap, "href" => "/" }),
+      block("i", "iconbox", { "icon" => "cup", "title" => trap, "text" => trap }),
+      block("q", "quote", { "text" => trap, "attribution" => trap }),
+      block("a", "accordion", { "items" => [ { "question" => trap, "answer" => trap } ] }),
+      block("v", "video", { "provider" => "vimeo", "videoId" => "76979871", "title" => trap }),
+      block("m", "map", { "latitude" => 1, "longitude" => 2, "zoom" => 3, "label" => trap }),
+      block("p", "image", { "mediaId" => "hero", "alt" => trap })
+    ))
+
+    assert_empty html.css("b, [onerror]")
+    assert_equal [ "hero.png" ], html.css("img").map { |img| img["src"].split("/").last }
+    %w[h t b i q a v m].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    assert_equal trap, html.at_css("[data-block-id=p] img")["alt"]
+  end
+
   test "no block writes an inline style, which the pages' Content-Security-Policy would block" do
     html = render_document(page(*every_widget), media: MEDIA)
 

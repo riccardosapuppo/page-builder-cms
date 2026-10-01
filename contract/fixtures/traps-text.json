@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "title": "Tom & Jerry's \"traps\" <page>",
+  "description": "Every text widget with markup, entities, quotes and hostile links in its text.",
+  "sections": [
+    {
+      "id": "t-section", "type": "section",
+      "props": { "label": "Traps & \"labels\" <b>", "anchor": "traps" },
+      "style": { "base": {} },
+      "children": [
+        {
+          "id": "t-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            {
+              "id": "t-heading-script", "type": "heading", "children": [],
+              "props": { "level": 1, "text": "Tom & Jerry's <script>alert(1)</script> \"quoted\" &amp; &copy" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-heading-link", "type": "heading", "children": [],
+              "props": { "level": 2, "text": "A heading that links", "href": "/winter?a=1&c='3'#join" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-heading-link-with-quote", "type": "heading", "children": [],
+              "props": { "level": 2, "text": "A link with a double quote, which no address may hold", "href": "/winter?b=\"2\"" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-heading-javascript", "type": "heading", "children": [],
+              "props": { "level": 3, "text": "A heading whose link runs script", "href": "javascript:alert(document.cookie)" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-heading-level-out-of-range", "type": "heading", "children": [],
+              "props": { "level": 7, "text": "Level 7 does not exist" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-text", "type": "text", "children": [],
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "Plain <script>alert(1)</script> & more: " },
+                        { "type": "text", "text": "bold", "marks": [ { "type": "bold" } ] },
+                        { "type": "text", "text": ", " },
+                        { "type": "text", "text": "both", "marks": [ { "type": "bold" }, { "type": "italic" } ] },
+                        { "type": "text", "text": ", a " },
+                        { "type": "text", "text": "safe link", "marks": [ { "type": "link", "attrs": { "href": "https://example.com/?a=1&b='2'", "target": "_blank", "rel": "noopener noreferrer nofollow", "class": null } } ] },
+                        { "type": "hardBreak" },
+                        { "type": "text", "text": "and links that must not survive: " },
+                        { "type": "text", "text": "javascript", "marks": [ { "type": "link", "attrs": { "href": "javascript:alert(1)" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "mixed case", "marks": [ { "type": "link", "attrs": { "href": " JaVaScRiPt:alert(2)" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "tab", "marks": [ { "type": "link", "attrs": { "href": "java\tscript:alert(3)" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "entity", "marks": [ { "type": "link", "attrs": { "href": "javascript&colon;alert(4)" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "data", "marks": [ { "type": "link", "attrs": { "href": "data:text/html,<script>alert(5)</script>" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "another site", "marks": [ { "type": "link", "attrs": { "href": "//evil.example/" } } ] },
+                        { "type": "text", "text": " " },
+                        { "type": "text", "text": "backslash", "marks": [ { "type": "link", "attrs": { "href": "/\\evil.example" } } ] }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "Unicode: caffè, naïve, é combining, 日本語, emoji 🎉 👩‍👩‍👧, RTL שלום, a no-break space, literal &amp; entity, &copy text,   three spaces." }
+                      ]
+                    },
+                    { "type": "paragraph" },
+                    {
+                      "type": "bulletList",
+                      "content": [
+                        { "type": "listItem", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "first <li>" } ] } ] },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            { "type": "paragraph", "content": [ { "type": "text", "text": "second, with a nested list" } ] },
+                            {
+                              "type": "orderedList", "attrs": { "start": 3, "type": null },
+                              "content": [
+                                { "type": "listItem", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "three" } ] } ] },
+                                { "type": "listItem", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "four", "marks": [ { "type": "italic" } ] } ] } ] }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "orderedList", "attrs": { "start": 1, "type": "i" },
+                      "content": [
+                        { "type": "listItem", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "roman one" } ] } ] }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "an unknown mark is dropped", "marks": [ { "type": "underline" } ] },
+                        { "type": "image", "attrs": { "src": "https://evil.example/x.png" } }
+                      ]
+                    },
+                    { "type": "heading", "attrs": { "level": 1 }, "content": [ { "type": "text", "text": "an unknown node is dropped" } ] }
+                  ]
+                }
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-button-safe", "type": "button", "children": [],
+              "props": { "label": "Join <now> & \"save\"", "href": "mailto:club@example.org?subject=Trial%20swim" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-button-javascript", "type": "button", "children": [],
+              "props": { "label": "Click me", "href": "javascript:alert(1)" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-button-tel", "type": "button", "children": [],
+              "props": { "label": "Call", "href": "tel:+44-20-7946-0958" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-iconbox", "type": "iconbox", "children": [],
+              "props": { "icon": "info", "title": "<b>Bold?</b> & \"no\"", "text": "Line one <i>\nline two & three" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-iconbox-markup-icon", "type": "iconbox", "children": [],
+              "props": { "icon": "<svg onload=alert(1)>", "title": "An icon name that is markup", "text": "No icon is drawn." },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-quote", "type": "quote", "children": [],
+              "props": { "text": "\"I came for the <cold> water\"\n& stayed for the tea.", "attribution": "A member </figcaption><script>alert(1)</script>" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-quote-no-attribution", "type": "quote", "children": [],
+              "props": { "text": "A quote with nobody named." },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-accordion", "type": "accordion", "children": [],
+              "props": {
+                "items": [
+                  { "question": "Is </summary><script>alert(1)</script> safe?", "answer": "Yes: it is text.\nOn two lines & escaped." },
+                  { "question": "Second, closed", "answer": "Closed until opened." }
+                ]
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-divider", "type": "divider", "children": [], "props": {},
+              "style": { "base": { "color": "accent\" onmouseover=\"alert(1)" } }
+            },
+            {
+              "id": "t-spacer", "type": "spacer", "children": [],
+              "props": { "size": "<xl>" },
+              "style": { "base": {} }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

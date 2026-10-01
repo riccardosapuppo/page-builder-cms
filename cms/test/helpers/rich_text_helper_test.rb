@@ -58,7 +58,7 @@ class RichTextHelperTest < ActionView::TestCase
     assert_equal %(<ul><li><p>one</p><ol start="3"><li><p>three</p></li></ol></li></ul><ol type="a"><li><p>a<br>b</p></li></ol><p></p>), html
   end
 
-  test "a node or a mark the schema does not know is left out, its text kept" do
+  test "a mark the schema does not know is ignored and its text kept; an unknown node is left out whole" do
     html = rich_text(doc(paragraph(text("plain", { "type" => "underline" })), { "type" => "heading", "content" => [ text("big") ] }, "not a node"))
 
     assert_equal "<p>plain</p>", html

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "title": "Media traps",
+  "sections": [
+    {
+      "id": "m-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "m-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            {
+              "id": "m-image-library", "type": "image", "children": [],
+              "props": { "mediaId": "hero-dawn", "alt": "The bay at dawn & \"three\" swimmers <script>" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-external", "type": "image", "children": [],
+              "props": { "url": "https://images.example.org/bay/buoys.jpg?w=800&h=600", "alt": "The buoy line" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-site-path", "type": "image", "children": [],
+              "props": { "url": "/uploads/jetty.png", "alt": "The jetty" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-decorative", "type": "image", "children": [],
+              "props": { "mediaId": "g-wake", "decorative": true },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-missing-media", "type": "image", "children": [],
+              "props": { "mediaId": "missing-item", "alt": "An image deleted from the library" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-javascript", "type": "image", "children": [],
+              "props": { "url": "javascript:alert(1)", "alt": "Script as a source" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-data", "type": "image", "children": [],
+              "props": { "url": "data:image/svg+xml,<svg onload=alert(1)>", "alt": "Data as a source" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-http", "type": "image", "children": [],
+              "props": { "url": "http://images.example.org/mixed.jpg", "alt": "Mixed content" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-image-no-alt", "type": "image", "children": [],
+              "props": { "mediaId": "g-caps" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-gallery", "type": "gallery", "children": [],
+              "props": {
+                "items": [
+                  { "mediaId": "g-horizon", "alt": "A flat horizon" },
+                  { "url": "https://images.example.org/two.jpg", "alt": "Two" },
+                  { "mediaId": "missing-too", "alt": "Gone" },
+                  { "url": "javascript:alert(1)", "alt": "Bad" },
+                  { "mediaId": "g-buoys", "decorative": true }
+                ]
+              },
+              "style": { "base": { "spaceBetween": "s" } }
+            },
+            {
+              "id": "m-video-youtube", "type": "video", "children": [],
+              "props": { "provider": "youtube", "videoId": "M7lc1UVf-VE", "title": "Watch a \"dawn\" swim <now>" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-video-vimeo", "type": "video", "children": [],
+              "props": { "provider": "vimeo", "videoId": "76979871", "title": "A Vimeo video" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-video-unknown-provider", "type": "video", "children": [],
+              "props": { "provider": "dailymotion", "videoId": "x7tgad0", "title": "Not a provider the policy knows" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-video-bad-id", "type": "video", "children": [],
+              "props": { "provider": "youtube", "videoId": "\"><script>alert(1)</script>", "title": "An id that is markup" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-map", "type": "map", "children": [],
+              "props": { "latitude": 54.5, "longitude": -3.25, "zoom": 15, "label": "Meeting point: the <slipway> & \"north\" end" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-map-southern-west", "type": "map", "children": [],
+              "props": { "latitude": -33.8915, "longitude": 151.2767, "zoom": 1, "label": "Zoomed all the way out" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-map-out-of-range", "type": "map", "children": [],
+              "props": { "latitude": 91, "longitude": 0, "zoom": 10, "label": "Latitude 91" },
+              "style": { "base": {} }
+            },
+            {
+              "id": "m-map-strings", "type": "map", "children": [],
+              "props": { "latitude": "54.5", "longitude": "-3.25", "zoom": "15", "label": "Coordinates as strings" },
+              "style": { "base": {} }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

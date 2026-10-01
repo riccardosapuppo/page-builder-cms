@@ -46,6 +46,9 @@ class RenderPolicyTest < ActiveSupport::TestCase
     # 400 pixels either side are 0.0171661 degrees; 250 pixels up and down,
     # shrunk by cos(54.5 degrees) = 0.5807030, are 0.0062303 degrees.
     assert_equal "https://www.openstreetmap.org/export/embed.html?bbox=-3.267166%2C54.493770%2C-3.232834%2C54.506230&layer=mapnik&marker=54.500000%2C-3.250000", src
+    # Zoomed all the way out, the area stops at the edges of the map.
+    assert_equal "https://www.openstreetmap.org/export/embed.html?bbox=-180.000000%2C-85.000000%2C180.000000%2C85.000000&layer=mapnik&marker=0.000000%2C0.000000",
+                 RenderPolicy.map_src(0, 0, 1)
     assert_nil RenderPolicy.map_src(91, 0, 10)
     assert_nil RenderPolicy.map_src(0, 0, 20)
     assert_nil RenderPolicy.map_src(Float::INFINITY, 0, 10)
