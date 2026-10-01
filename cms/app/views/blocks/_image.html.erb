@@ -1,4 +1,5 @@
-<%# An image from the media library or another site, with its size when the library knows it, and an empty alt when it is decorative. Nothing to show leaves the block empty. -%>
+<%# An image from the media library or another site, with its size when the library knows it, and an empty alt when it is decorative, cropped to the shape its style names on each device (aspect-*, tokens.css). Nothing to show leaves the block empty. -%>
 <%- props = block_props(block) -%>
+<%- style = block_style(block) -%>
 <%- image = block_img(props, media) -%>
-<%= tag.div(**block_root(block, [ "w", "w-image", BlockStyle.visibility_classes(block_style(block)) ], data: { media_id: (props["mediaId"] if props["mediaId"].is_a?(String)) })) do %><%= tag.figure(image, class: "sw-figure") if image %><% end %>
+<%= tag.div(**block_root(block, [ "w", "w-image", BlockStyle.classes(style, "aspect"), BlockStyle.visibility_classes(style) ], data: { media_id: (props["mediaId"] if props["mediaId"].is_a?(String)) })) do %><%= tag.figure(image, class: "sw-figure") if image %><% end %>

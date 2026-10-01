@@ -75,6 +75,7 @@ The page document's one schema, and the design tokens it names.
 | --- | --- | --- |
 | `spaceInside`, `spaceBetween`; spacer `size` | `none` `xs` `s` `m` `l` `xl` `xxl` (None to XXL in the editor) | `space.site` in `tokens.json` |
 | `spaceAbove`, `spaceBelow` (sections only) | a spacing step, `none` to `xxl`, or `section-s` `section-l`; absent, the theme's rhythm for the device (96, 64 and 48 px on desktop, tablet and phone) | `space.site` and `space.site-section` |
+| `aspect` (images only) | `original` `16:9` `3:2` `4:3` `5:4` `1:1`: the crop, width to height; `original` keeps the image's shape, and as a tablet or phone override undoes a crop | `aspect.site`, which gives each its CSS `aspect-ratio` |
 | `textSize` | `display` `heading-1` `heading-2` `heading-3` `large` `body` `small` | `type.site` |
 | `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots, `site-tones` in `tokens.json` (see below) |
 | `background` | `none` or a palette slot | as above |
@@ -277,9 +278,10 @@ they change nothing on disk, and the shortened corpus is a temporary copy.
   video providers, the rich-text nodes and the marks.
 - **Hierarchy,** read from the schema: the page holds sections, a section one
   to four columns, a column the widget types, and no widget holds children.
-- **Tokens:** the spacing and type-step enums are the names in
+- **Tokens:** the spacing, type-step and crop enums are the names in
   `tokens.json`, the section-spacing enum is the spacing steps followed by
-  the section steps; the palette-slot enum is the slots of `site-tones`, and
+  the section steps, and every crop's value is the ratio its name says
+  (`16:9` is `16 / 9`); the palette-slot enum is the slots of `site-tones`, and
   the background enum is `none` and those slots. Every tone is a colour of
   `tokens.json`, every slot's default is one of its tones, and the type
   scale's default is one of its choices.

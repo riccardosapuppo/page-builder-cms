@@ -98,6 +98,11 @@ const plants: Plant[] = [
     plant: (s) => { s.$defs.sectionSpaceToken.enum.push("section-xl"); },
   },
   {
+    name: "an image crop that tokens.json does not have",
+    expect: "$defs/aspectToken is",
+    plant: (s) => { s.$defs.aspectToken.enum.push("21:9"); },
+  },
+  {
     name: "a palette slot that tokens.json does not have",
     expect: "$defs/paletteSlot is",
     plant: (s) => { s.$defs.paletteSlot.enum.push("brand"); },

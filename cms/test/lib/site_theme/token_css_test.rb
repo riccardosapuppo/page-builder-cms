@@ -60,6 +60,19 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     assert_no_match(/padding-block: var\(--section/, css)
   end
 
+  test "each crop is the aspect-ratio tokens.json gives it, and original undoes a crop only as an override" do
+    css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
+
+    assert_includes css, "\n.aspect-16-9 img { aspect-ratio: 16 / 9; object-fit: cover; }\n"
+    assert_includes css, "  .tablet-aspect-1-1 img { aspect-ratio: 1 / 1; object-fit: cover; }\n"
+    assert_includes css, "  .phone-aspect-original img { aspect-ratio: auto; object-fit: fill; }\n"
+    assert_no_match(/^\.aspect-original/, css)
+    changed = tokens
+    changed["aspect"]["site"].delete("3:2")
+    error = assert_raises(ArgumentError) { SiteTheme::TokenCss.generate(tokens: changed, schema: schema) }
+    assert_match(/aspectToken/, error.message)
+  end
+
   test "a tablet override applies only between the phone and desktop layouts" do
     css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
 

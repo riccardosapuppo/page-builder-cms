@@ -138,7 +138,15 @@
               },
               "children": [],
               "style": {
-                "base": {}
+                "base": {
+                  "aspect": "1:1"
+                },
+                "tablet": {
+                  "aspect": "16:9"
+                },
+                "phone": {
+                  "aspect": "5:4"
+                }
               }
             }
           ],

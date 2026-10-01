@@ -26,6 +26,7 @@ class ContractGoldensTest < ActiveSupport::TestCase
     cms/app/models/block_style.rb
     cms/app/models/render_policy.rb
     cms/app/models/site_icons.rb
+    cms/lib/site_theme/token_css.rb
     cms/test/support/contract_media.rb
     schema/icons.svg
     schema/block-document.schema.json

@@ -156,7 +156,9 @@ module SiteTheme
       steps = defs.fetch("typeStep").fetch("enum")
       aligns = defs.fetch("alignToken").fetch("enum")
       valigns = defs.fetch("verticalAlignToken").fetch("enum")
-      check_names!(tokens, spaces: spaces, sections: sections, slots: slots, steps: steps)
+      aspects = defs.fetch("aspectToken").fetch("enum")
+      check_names!(tokens, spaces: spaces, sections: sections, slots: slots, steps: steps, aspects: aspects)
+      ratios = tokens.fetch("aspect").fetch("site")
 
       rules = []
       # spaceInside of a column: padding on all four sides.
@@ -188,7 +190,23 @@ module SiteTheme
       steps.each { |step| rules << ".#{prefix}size-#{step} { font-size: var(--fs-#{step}); line-height: var(--lh-#{step}); }\n" }
       aligns.each { |a| rules << ".#{prefix}align-#{a} { text-align: #{a}; }\n" }
       valigns.each { |v| rules << ".#{prefix}valign-#{v} { justify-content: #{VALIGN.fetch(v)}; }\n" }
+      # aspect: the crop of an image, on the img inside the block. Cropped,
+      # the picture covers its box. original needs no rule on every device:
+      # the img keeps the shape its width and height attributes give it,
+      # even before it loads. Only as a tablet or phone override does it
+      # undo a crop, and then the shape comes from the file once loaded.
+      aspects.each do |a|
+        next if a == "original" && prefix.empty?
+
+        fit = a == "original" ? "fill" : "cover"
+        rules << ".#{prefix}aspect-#{class_value(a)} img { aspect-ratio: #{ratios.fetch(a)}; object-fit: #{fit}; }\n"
+      end
       rules
+    end
+
+    # A token as a class name: "16:9" is aspect-16-9.
+    def class_value(value)
+      value.tr(":", "-")
     end
 
     # visibility: the renderer works out, for each device, whether a block
@@ -211,14 +229,15 @@ module SiteTheme
     # The schema's enums and tokens.json must name the same things: a class
     # for a step tokens.json lacks would point at a custom property that is
     # never set.
-    def check_names!(tokens, spaces:, sections:, slots:, steps:)
+    def check_names!(tokens, spaces:, sections:, slots:, steps:, aspects:)
       space = tokens.fetch("space")
       site_steps = tokens.fetch("type").fetch("site").keys.reject { |k| k.start_with?("$") || %w[ratio base desktop-fluid].include?(k) }
       {
         "spaceToken" => [ spaces, space.fetch("site").keys ],
         "sectionSpaceToken" => [ sections, space.fetch("site").keys + space.fetch("site-section").keys ],
         "paletteSlot" => [ slots, tokens.fetch("site-tones").keys.reject { |k| k.start_with?("$") } ],
-        "typeStep" => [ steps, site_steps ]
+        "typeStep" => [ steps, site_steps ],
+        "aspectToken" => [ aspects, tokens.fetch("aspect").fetch("site").keys ]
       }.each do |name, (schema_names, token_names)|
         next if schema_names.sort == token_names.sort
 

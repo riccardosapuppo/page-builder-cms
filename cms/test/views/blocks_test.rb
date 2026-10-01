@@ -68,6 +68,17 @@ class BlocksTest < ActionView::TestCase
     assert_nil html.at_css("[data-block-id=a]")["data-style"]
   end
 
+  test "an image is cropped per device by class, and a crop the schema does not list gives none" do
+    html = html_of(page(
+      block("a", "image", { "mediaId" => "hero", "alt" => "Bay" }, style: { "base" => { "aspect" => "1:1" }, "tablet" => { "aspect" => "16:9" }, "phone" => { "aspect" => "5:4" } }),
+      block("b", "image", { "mediaId" => "hero", "alt" => "Bay" }, style: { "base" => { "aspect" => "21:9" }, "phone" => { "aspect" => "original" } })
+    ))
+
+    assert_equal %w[w w-image aspect-1-1 tablet-aspect-16-9 phone-aspect-5-4], html.at_css("[data-block-id=a]")["class"].split
+    assert_equal "base.aspect=1:1;tablet.aspect=16:9;phone.aspect=5:4", html.at_css("[data-block-id=a]")["data-style"]
+    assert_equal %w[w w-image phone-aspect-original], html.at_css("[data-block-id=b]")["class"].split
+  end
+
   test "a block hidden on one device carries the class that hides it there only" do
     html = html_of(page(block("x", "divider", {}, style: { "base" => { "visibility" => "hidden" }, "tablet" => { "visibility" => "visible" } })))
 

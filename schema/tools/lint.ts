@@ -423,6 +423,17 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
     ["sectionSpaceToken", enumOf(defs.sectionSpaceToken) ?? [], [...Object.keys((space.site ?? {}) as Obj), ...Object.keys((space["site-section"] ?? {}) as Obj)]],
     ["typeStep", enumOf(defs.typeStep) ?? [], steps],
   ];
+  // The crops: the schema's names are the keys of aspect.site, and each
+  // value is the CSS aspect-ratio its name says ("16:9" is "16 / 9",
+  // original is auto), so the stylesheet cannot crop to another shape.
+  const aspects = (((tokens.aspect ?? {}) as Obj).site ?? {}) as Obj;
+  checks.push(["aspectToken", enumOf(defs.aspectToken) ?? [], Object.keys(aspects)]);
+  for (const [name, value] of Object.entries(aspects)) {
+    const ratio = /^([1-9][0-9]?):([1-9][0-9]?)$/.exec(name);
+    const want = name === "original" ? "auto" : ratio ? `${ratio[1]} / ${ratio[2]}` : undefined;
+    if (want === undefined) problem("tokens", `aspect.site has the crop ${JSON.stringify(name)}, which is neither original nor width:height`);
+    else if (value !== want) problem("tokens", `aspect.site/${name} is ${JSON.stringify(value)}, not ${JSON.stringify(want)}`);
+  }
   // The palette slots: the schema's names are the keys of site-tones, and a
   // background is "none" or a slot. Each slot's tones are colours tokens.json
   // defines, and its default is one of its tones: the server reads the same

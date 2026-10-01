@@ -139,6 +139,11 @@
 .valign-top { justify-content: flex-start; }
 .valign-middle { justify-content: center; }
 .valign-bottom { justify-content: flex-end; }
+.aspect-16-9 img { aspect-ratio: 16 / 9; object-fit: cover; }
+.aspect-3-2 img { aspect-ratio: 3 / 2; object-fit: cover; }
+.aspect-4-3 img { aspect-ratio: 4 / 3; object-fit: cover; }
+.aspect-5-4 img { aspect-ratio: 5 / 4; object-fit: cover; }
+.aspect-1-1 img { aspect-ratio: 1 / 1; object-fit: cover; }
 
 /* ---------- The same settings, overridden on tablets only ---------- */
 @container site (560px <= width < 800px) {
@@ -213,6 +218,12 @@
   .tablet-valign-top { justify-content: flex-start; }
   .tablet-valign-middle { justify-content: center; }
   .tablet-valign-bottom { justify-content: flex-end; }
+  .tablet-aspect-original img { aspect-ratio: auto; object-fit: fill; }
+  .tablet-aspect-16-9 img { aspect-ratio: 16 / 9; object-fit: cover; }
+  .tablet-aspect-3-2 img { aspect-ratio: 3 / 2; object-fit: cover; }
+  .tablet-aspect-4-3 img { aspect-ratio: 4 / 3; object-fit: cover; }
+  .tablet-aspect-5-4 img { aspect-ratio: 5 / 4; object-fit: cover; }
+  .tablet-aspect-1-1 img { aspect-ratio: 1 / 1; object-fit: cover; }
 }
 
 /* ---------- The same settings, overridden on phones only ---------- */
@@ -288,6 +299,12 @@
   .phone-valign-top { justify-content: flex-start; }
   .phone-valign-middle { justify-content: center; }
   .phone-valign-bottom { justify-content: flex-end; }
+  .phone-aspect-original img { aspect-ratio: auto; object-fit: fill; }
+  .phone-aspect-16-9 img { aspect-ratio: 16 / 9; object-fit: cover; }
+  .phone-aspect-3-2 img { aspect-ratio: 3 / 2; object-fit: cover; }
+  .phone-aspect-4-3 img { aspect-ratio: 4 / 3; object-fit: cover; }
+  .phone-aspect-5-4 img { aspect-ratio: 5 / 4; object-fit: cover; }
+  .phone-aspect-1-1 img { aspect-ratio: 1 / 1; object-fit: cover; }
 }
 
 /* ---------- Visibility, worked out per device by the renderer ---------- */

@@ -58,6 +58,16 @@
               "id": "s-image-hidden", "type": "image", "children": [],
               "props": { "mediaId": "g-slipway", "alt": "Hidden on tablets" },
               "style": { "base": {}, "tablet": { "visibility": "hidden" } }
+            },
+            {
+              "id": "s-image-cropped", "type": "image", "children": [],
+              "props": { "mediaId": "hero-dawn", "alt": "Square on desktop, wide on tablets, its own shape on phones" },
+              "style": { "base": { "aspect": "1:1" }, "tablet": { "aspect": "16:9" }, "phone": { "aspect": "original" } }
+            },
+            {
+              "id": "s-image-bad-crops", "type": "image", "children": [],
+              "props": { "url": "https://images.example.org/crop.jpg", "alt": "Crops the schema does not list" },
+              "style": { "base": { "aspect": "21:9" }, "tablet": { "aspect": "16/9" }, "phone": { "aspect": "1:1 onclick" } }
             }
           ]
         }

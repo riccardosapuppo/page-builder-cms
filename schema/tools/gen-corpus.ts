@@ -45,7 +45,7 @@ const section = (id: string, columns: J[], props: J = {}, style: Style = plain()
 const column = (id: string, widgets: J[], style: Style = plain()): J => block(id, "column", {}, widgets, style);
 const heading = (id: string, level: number, text: string, style: Style = plain()): J => block(id, "heading", { level, text }, [], style);
 const text = (id: string, doc: J, style: Style = plain()): J => block(id, "text", { doc }, [], style);
-const image = (id: string, ref: J): J => block(id, "image", ref);
+const image = (id: string, ref: J, style: Style = plain()): J => block(id, "image", ref, [], style);
 const button = (id: string, label: string, href: string, style: Style = plain()): J => block(id, "button", { label, href }, [], style);
 const divider = (id: string): J => block(id, "divider", {});
 const spacer = (id: string, size: string): J => block(id, "spacer", { size });
@@ -86,7 +86,8 @@ function landing(): J {
         button("hero-button", "Join a trial swim", "#join", { base: { background: "accent", color: "text" } }),
       ], { base: { spaceInside: "none", spaceBetween: "l" }, tablet: { spaceInside: "l" } }),
       column("hero-2", [
-        image("hero-image", { mediaId: "hero-dawn", alt: "The bay at dawn at slack water, with a line of buoys and three swimmers" }),
+        image("hero-image", { mediaId: "hero-dawn", alt: "The bay at dawn at slack water, with a line of buoys and three swimmers" },
+          { base: { aspect: "1:1" }, tablet: { aspect: "16:9" }, phone: { aspect: "5:4" } }),
       ]),
     ], { label: "Hero", anchor: "top" }, { base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-l" }, phone: { spaceAbove: "l", spaceBelow: "xxl" } }),
     section("swims", [
@@ -262,6 +263,14 @@ valid("image-sources", "library image, external https image, site path, decorati
     image("img-decorative", { mediaId: "rule-wave", decorative: true }),
     image("img-decorative-url", { url: "https://cdn.example.net/wave.svg", decorative: true }),
   ])]),
+]));
+valid("image-crop-every-aspect", "every crop an image may take, in base and in both overrides, original included as an override back to the image's own shape", doc("Crops", [
+  section("crops", [column("crops-1", ["original", "16:9", "3:2", "4:3", "5:4", "1:1"].map((aspect, k, all) =>
+    image(`crop-${k}`, { mediaId: `crop-${k}`, alt: `Cropped ${aspect}` }, {
+      base: { aspect },
+      tablet: { aspect: all[(k + 1) % all.length], visibility: "visible" },
+      phone: { aspect: all[(k + 2) % all.length] },
+    })))]),
 ]));
 valid("hrefs-every-form", "every link form the href pattern allows", doc("Links", [
   section("links", [column("links-1", [
@@ -572,6 +581,9 @@ invalid("image-two-sources", "an image is from the library or from a URL, never 
 invalid("image-no-source", "an image has a source", `${IMG}/props`, "required", (d) => { delete at(d, IMG).props.mediaId; });
 invalid("image-media-id-path", "a media id is an id, not a path", `${IMG}/props/mediaId`, "pattern", (d) => { at(d, IMG).props.mediaId = "../etc/passwd"; });
 invalid("image-props-extra", "image props are closed", `${IMG}/props/width`, "additionalProperties", (d) => { at(d, IMG).props.width = 800; });
+invalid("image-aspect-unknown", "a crop is one of the shapes of tokens.json, not any ratio", `${IMG}/style/tablet/aspect`, "enum", (d) => { at(d, IMG).style.tablet.aspect = "21:9"; });
+invalid("image-aspect-in-props", "the crop is a style setting, per device, not a property", `${IMG}/props/aspect`, "additionalProperties", (d) => { at(d, IMG).props.aspect = "1:1"; });
+invalid("image-aspect-on-gallery", "only an image takes a crop: the gallery crops its own", `${GAL}/style/base/aspect`, "additionalProperties", (d) => { at(d, GAL).style.base.aspect = "1:1"; });
 const QURL = `${QIMG}/props/url`;
 invalid("image-url-javascript", "no javascript: images", QURL, "pattern", (d) => { at(d, QIMG).props.url = "javascript:alert(1)"; });
 invalid("image-url-data", "no data: images", QURL, "pattern", (d) => { at(d, QIMG).props.url = "data:image/png;base64,iVBORw0KGgo="; });

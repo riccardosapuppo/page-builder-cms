@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "title": "Crops",
+  "sections": [
+    {
+      "id": "crops",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "crops-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "crop-0",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-0",
+                "alt": "Cropped original"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "original"
+                },
+                "tablet": {
+                  "aspect": "16:9",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "3:2"
+                }
+              }
+            },
+            {
+              "id": "crop-1",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-1",
+                "alt": "Cropped 16:9"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "16:9"
+                },
+                "tablet": {
+                  "aspect": "3:2",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "4:3"
+                }
+              }
+            },
+            {
+              "id": "crop-2",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-2",
+                "alt": "Cropped 3:2"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "3:2"
+                },
+                "tablet": {
+                  "aspect": "4:3",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "5:4"
+                }
+              }
+            },
+            {
+              "id": "crop-3",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-3",
+                "alt": "Cropped 4:3"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "4:3"
+                },
+                "tablet": {
+                  "aspect": "5:4",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "1:1"
+                }
+              }
+            },
+            {
+              "id": "crop-4",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-4",
+                "alt": "Cropped 5:4"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "5:4"
+                },
+                "tablet": {
+                  "aspect": "1:1",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "original"
+                }
+              }
+            },
+            {
+              "id": "crop-5",
+              "type": "image",
+              "props": {
+                "mediaId": "crop-5",
+                "alt": "Cropped 1:1"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "1:1"
+                },
+                "tablet": {
+                  "aspect": "original",
+                  "visibility": "visible"
+                },
+                "phone": {
+                  "aspect": "16:9"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

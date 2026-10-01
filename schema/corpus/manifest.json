@@ -533,6 +533,24 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/image-aspect-in-props.json": {
+    "rule": "the crop is a style setting, per device, not a property",
+    "pointer": "/sections/0/children/1/children/0/props/aspect",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/image-aspect-on-gallery.json": {
+    "rule": "only an image takes a crop: the gallery crops its own",
+    "pointer": "/sections/2/children/0/children/1/style/base/aspect",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/image-aspect-unknown.json": {
+    "rule": "a crop is one of the shapes of tokens.json, not any ratio",
+    "pointer": "/sections/0/children/1/children/0/style/tablet/aspect",
+    "keyword": "enum",
+    "layer": "schema"
+  },
   "invalid/image-decorative-false.json": {
     "rule": "decorative is stored only as true",
     "pointer": "/sections/0/children/1/children/0/props/decorative",
@@ -1081,6 +1099,9 @@
   },
   "valid/ids-edge.json": {
     "rule": "ids: 64 characters, digits only, underscores and hyphens"
+  },
+  "valid/image-crop-every-aspect.json": {
+    "rule": "every crop an image may take, in base and in both overrides, original included as an override back to the image's own shape"
   },
   "valid/image-sources.json": {
     "rule": "library image, external https image, site path, decorative image without alt"

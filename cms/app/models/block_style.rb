@@ -27,7 +27,8 @@ module BlockStyle
     "color" => "fg",
     "textSize" => "size",
     "align" => "align",
-    "verticalAlign" => "valign"
+    "verticalAlign" => "valign",
+    "aspect" => "aspect"
   }.freeze
 
   # The schema's enum for each key, read once from the schema file.
@@ -41,7 +42,8 @@ module BlockStyle
     "textSize" => "typeStep",
     "align" => "alignToken",
     "verticalAlign" => "verticalAlignToken",
-    "visibility" => "visibilityToken"
+    "visibility" => "visibilityToken",
+    "aspect" => "aspectToken"
   }.freeze
 
   ALLOWED = ENUM_OF.transform_values do |name|
@@ -62,7 +64,8 @@ module BlockStyle
       value = default if value.nil? && device == "base"
       next if value.nil?
 
-      device == "base" ? "#{family}-#{value}" : "#{device}-#{family}-#{value}"
+      name = SiteTheme::TokenCss.class_value(value)
+      device == "base" ? "#{family}-#{name}" : "#{device}-#{family}-#{name}"
     end
   end
 
