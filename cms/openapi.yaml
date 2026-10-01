@@ -1,0 +1,1045 @@
+openapi: 3.1.0
+info:
+  title: Page Builder CMS API
+  version: 0.1.0
+  summary: The JSON API the page editor saves and publishes through.
+  description: |
+    Pages, their draft and versions, publishing, the media library and the
+    site style of Page Builder CMS. The editor talks to the CMS only through
+    this API, so another server that answers the same way can stand in for
+    it.
+
+    The page document is not described here: it is the one schema both the
+    editor and the server validate with, `schema/block-document.schema.json`,
+    and every document below refers to that file.
+
+    **Errors** all have one shape, `{"error": <code>, "message": <sentence>}`.
+    A 422 adds `errors`, one entry per problem, each with a JSON `pointer`
+    into the request body, the `keyword` of the rule it broke and, for a
+    value inside a block of the document, the `blockPointer` of that block.
+    A request body with a member name repeated in one object is refused with
+    422 `duplicate_key`; a body that is not JSON at all, with 400
+    `malformed_json`.
+
+    The API has no authentication: the server listens on 127.0.0.1 only.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://127.0.0.1:3900
+    description: The CMS started on this machine.
+security: []
+tags:
+  - name: pages
+    description: Pages, their draft, publishing.
+  - name: versions
+    description: Frozen copies of a page's document.
+  - name: media
+    description: The media library.
+  - name: site-style
+    description: The palette and type scale of the whole site.
+
+paths:
+  /api/pages:
+    get:
+      operationId: listPages
+      summary: List the pages
+      tags: [pages]
+      responses:
+        '200':
+          description: Every page, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [pages]
+                properties:
+                  pages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PageSummary'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+    post:
+      operationId: createPage
+      summary: Create a page
+      description: A new page with an empty document holding its title. Nothing is live until it is published.
+      tags: [pages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, slug]
+              properties:
+                title:
+                  description: The page title, the document's title.
+                  type: string
+                slug:
+                  $ref: '#/components/schemas/Slug'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+
+  /api/pages/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    get:
+      operationId: getPage
+      summary: Read a page
+      description: The page, its draft with the document, what is live, and its links.
+      tags: [pages]
+      responses:
+        '200':
+          description: The page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: setNextSlug
+      summary: Set the page's next address
+      description: The address takes effect on the next publish; the live address does not change before.
+      tags: [pages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [slug]
+              properties:
+                slug:
+                  $ref: '#/components/schemas/Slug'
+      responses:
+        '200':
+          description: The page with its new next address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+
+  /api/pages/{id}/draft:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    get:
+      operationId: getDraft
+      summary: Read the draft
+      tags: [pages]
+      responses:
+        '200':
+          description: The draft, with its document upgraded to the current schemaVersion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: saveDraft
+      summary: Save the draft
+      description: |
+        Saves the document if the draft is still at `revision`, and raises
+        the revision by one. Give each save its own `saveId`, and send the
+        same one again when retrying a save whose answer never came: if that
+        save was accepted, the retry is answered 200, not 409.
+
+        While someone keeps saving, a version of kind `auto` is kept at most
+        every ten minutes.
+      tags: [pages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revision, document, saveId]
+              properties:
+                revision:
+                  description: The revision the editor started from.
+                  type: integer
+                  minimum: 0
+                saveId:
+                  $ref: '#/components/schemas/SaveId'
+                document:
+                  $ref: '../schema/block-document.schema.json'
+      responses:
+        '200':
+          description: Saved, or a retry of the last accepted save.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftSaved'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidRequestOrDocument'
+
+  /api/pages/{id}/publish:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    post:
+      operationId: publishPage
+      summary: Publish the draft
+      description: |
+        Puts live what the draft holds now, as a new version of kind
+        `publish`. The draft's next address takes effect, and the previous
+        live address redirects to the page from then on. `publishedAt` never
+        moves back. With `revision`, the publish happens only if the draft
+        is still at that revision.
+      tags: [pages]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                revision:
+                  description: The draft revision the person publishing has seen.
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Published.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [published, version, links]
+                properties:
+                  published:
+                    $ref: '#/components/schemas/Published'
+                  version:
+                    $ref: '#/components/schemas/Version'
+                  links:
+                    $ref: '#/components/schemas/PageLinks'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidRequestOrDocument'
+
+  /api/pages/{id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    get:
+      operationId: listVersions
+      summary: List the versions
+      tags: [versions]
+      responses:
+        '200':
+          description: Every version, newest first, without documents.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [versions]
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Version'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: saveVersion
+      summary: Save a version
+      description: Keeps the draft as it is now as a version of kind `manual`, under an optional name.
+      tags: [versions]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  description: One line of text, at most 80 characters.
+                  type: string
+                  maxLength: 80
+      responses:
+        '201':
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidRequestOrDocument'
+
+  /api/pages/{id}/versions/{number}:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+      - $ref: '#/components/parameters/VersionNumber'
+    get:
+      operationId: getVersion
+      summary: Read a version
+      tags: [versions]
+      responses:
+        '200':
+          description: The version, with its document upgraded to the current schemaVersion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionWithDocument'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/pages/{id}/versions/{number}/restore:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+      - $ref: '#/components/parameters/VersionNumber'
+    post:
+      operationId: restoreVersion
+      summary: Restore a version into the draft
+      description: |
+        Copies the version's document, upgraded to the current
+        schemaVersion, into the draft, raises the draft's revision, and keeps
+        a version of kind `restore`. An editor still holding the old revision
+        gets 409 on its next save.
+      tags: [versions]
+      responses:
+        '200':
+          description: Restored.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [draft, version]
+                properties:
+                  draft:
+                    $ref: '#/components/schemas/Draft'
+                  version:
+                    $ref: '#/components/schemas/Version'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidDocument'
+
+  /api/media/direct_uploads:
+    post:
+      operationId: startUpload
+      summary: Start an image upload
+      description: |
+        The first step of a direct upload, the same request and answer as
+        Active Storage's own endpoint, so `@rails/activestorage` works with
+        it unchanged (hence the snake_case names). Then PUT the bytes to
+        `direct_upload.url` with `direct_upload.headers`, and create the
+        media item with the `signed_id`. Only JPEG, PNG, WebP and GIF, at
+        most 10 MB.
+      tags: [media]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [blob]
+              properties:
+                blob:
+                  type: object
+                  additionalProperties: false
+                  required: [filename, byte_size, checksum, content_type]
+                  properties:
+                    filename:
+                      type: string
+                      maxLength: 255
+                    byte_size:
+                      type: integer
+                      minimum: 1
+                      maximum: 10485760
+                    checksum:
+                      description: The MD5 of the bytes, base64.
+                      type: string
+                      maxLength: 255
+                    content_type:
+                      $ref: '#/components/schemas/ImageType'
+      responses:
+        '200':
+          description: Where to send the bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectUpload'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+
+  /api/media:
+    get:
+      operationId: listMedia
+      summary: List the media library
+      tags: [media]
+      responses:
+        '200':
+          description: Every item, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [media]
+                properties:
+                  media:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MediaItem'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+    post:
+      operationId: createMedia
+      summary: Add an uploaded image to the library
+      tags: [media]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [signedBlobId, width, height]
+              properties:
+                signedBlobId:
+                  description: The signed_id of a finished direct upload.
+                  type: string
+                width:
+                  type: integer
+                  minimum: 1
+                  maximum: 10000
+                height:
+                  type: integer
+                  minimum: 1
+                  maximum: 10000
+                alt:
+                  $ref: '#/components/schemas/Alt'
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaItem'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+
+  /api/media/{id}:
+    parameters:
+      - $ref: '#/components/parameters/MediaId'
+    patch:
+      operationId: setMediaAlt
+      summary: Change the proposed alt text
+      description: The alt text new images start with. Images already on pages keep their own.
+      tags: [media]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [alt]
+              properties:
+                alt:
+                  $ref: '#/components/schemas/Alt'
+      responses:
+        '200':
+          description: Changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaItem'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    delete:
+      operationId: deleteMedia
+      summary: Delete an image
+      tags: [media]
+      responses:
+        '204':
+          description: Deleted, with its file.
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: A draft or a kept version still shows the image; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaInUseError'
+
+  /api/site-style:
+    get:
+      operationId: getSiteStyle
+      summary: Read the site style
+      tags: [site-style]
+      responses:
+        '200':
+          description: The style, and the values each part may take.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteStyle'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+    put:
+      operationId: setSiteStyle
+      summary: Change the site style
+      description: The whole style, every palette slot named, each with one of its curated tones.
+      tags: [site-style]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [palette, typeScale]
+              properties:
+                palette:
+                  $ref: '#/components/schemas/Palette'
+                typeScale:
+                  type: string
+      responses:
+        '200':
+          description: Changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteStyle'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+
+components:
+  parameters:
+    PageId:
+      name: id
+      in: path
+      required: true
+      description: The page's id.
+      schema:
+        type: integer
+        minimum: 1
+    VersionNumber:
+      name: number
+      in: path
+      required: true
+      description: The version's number within its page.
+      schema:
+        type: integer
+        minimum: 1
+    MediaId:
+      name: id
+      in: path
+      required: true
+      description: The media item's id, the one documents name as mediaId.
+      schema:
+        $ref: '#/components/schemas/MediaId'
+
+  responses:
+    MalformedJson:
+      description: The request cannot be read. Its body is not JSON, or the body or the query is not UTF-8; any request can get this answer.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MalformedJsonError'
+    NotFound:
+      description: No such page, version or media item.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFoundError'
+    Conflict:
+      description: The draft has moved past the revision sent.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConflictError'
+    InvalidRequest:
+      description: The body is not what the request takes, or names a member twice.
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/InvalidRequestError'
+              - $ref: '#/components/schemas/DuplicateKeyError'
+    InvalidDocument:
+      description: The document is not valid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InvalidDocumentError'
+    InvalidRequestOrDocument:
+      description: The body is not what the request takes, names a member twice, or holds a document that is not valid.
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/InvalidRequestError'
+              - $ref: '#/components/schemas/DuplicateKeyError'
+              - $ref: '#/components/schemas/InvalidDocumentError'
+
+  schemas:
+    Slug:
+      description: An address, /<slug>. Lowercase letters and digits in words joined by single hyphens, at most 64 characters. Names the application answers itself (api, up, assets, rails, preview, and any file in public/ such as 404) are refused.
+      type: string
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      maxLength: 64
+    SaveId:
+      description: The id the editor gives a save.
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+    MediaId:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+    Alt:
+      description: Empty, or one line of text with a visible character, at most 300 characters.
+      type: string
+      maxLength: 300
+    ImageType:
+      type: string
+      enum: [image/jpeg, image/png, image/webp, image/gif]
+    Time:
+      description: ISO 8601, UTC.
+      type: string
+    Document:
+      $ref: '../schema/block-document.schema.json'
+
+    PageSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, slug, revision, updatedAt, published, links]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          description: The next address, the one the next publish applies.
+          type: string
+        revision:
+          type: integer
+        updatedAt:
+          $ref: '#/components/schemas/Time'
+        published:
+          $ref: '#/components/schemas/Published'
+        links:
+          $ref: '#/components/schemas/PageLinks'
+    Page:
+      type: object
+      additionalProperties: false
+      required: [page, draft, published, links]
+      properties:
+        page:
+          type: object
+          additionalProperties: false
+          required: [id, title, slug, createdAt]
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            slug:
+              description: The next address, the one the next publish applies.
+              type: string
+            createdAt:
+              $ref: '#/components/schemas/Time'
+        draft:
+          $ref: '#/components/schemas/Draft'
+        published:
+          $ref: '#/components/schemas/Published'
+        links:
+          $ref: '#/components/schemas/PageLinks'
+    Published:
+      description: What is live, or null before the first publish.
+      type: [object, 'null']
+      additionalProperties: false
+      required: [slug, versionNumber, publishedAt]
+      properties:
+        slug:
+          description: The live address.
+          type: string
+        versionNumber:
+          type: integer
+        publishedAt:
+          $ref: '#/components/schemas/Time'
+    PageLinks:
+      type: object
+      additionalProperties: false
+      required: [self, draft, versions, publish, preview, live]
+      properties:
+        self:
+          type: string
+        draft:
+          type: string
+        versions:
+          type: string
+        publish:
+          type: string
+        preview:
+          description: The draft as the published page would look.
+          type: string
+        live:
+          description: The live page, or null before the first publish.
+          type: [string, 'null']
+    DraftSaved:
+      type: object
+      additionalProperties: false
+      required: [revision, lastSaveId, updatedAt]
+      properties:
+        revision:
+          type: integer
+        lastSaveId:
+          type: [string, 'null']
+        updatedAt:
+          $ref: '#/components/schemas/Time'
+    Draft:
+      type: object
+      additionalProperties: false
+      required: [revision, lastSaveId, updatedAt, document]
+      properties:
+        revision:
+          type: integer
+        lastSaveId:
+          type: [string, 'null']
+        updatedAt:
+          $ref: '#/components/schemas/Time'
+        document:
+          $ref: '#/components/schemas/Document'
+    Version:
+      type: object
+      additionalProperties: false
+      required: [number, reason, name, restoredFrom, createdAt, published]
+      properties:
+        number:
+          type: integer
+        reason:
+          description: publish, restore, manual ("Save version") or auto (kept while someone edits).
+          type: string
+          enum: [publish, restore, manual, auto]
+        name:
+          type: [string, 'null']
+        restoredFrom:
+          description: For a restore, the number of the version copied back.
+          type: [integer, 'null']
+        createdAt:
+          $ref: '#/components/schemas/Time'
+        published:
+          description: Whether this is the version that is live.
+          type: boolean
+    VersionWithDocument:
+      type: object
+      additionalProperties: false
+      required: [number, reason, name, restoredFrom, createdAt, published, document]
+      properties:
+        number:
+          type: integer
+        reason:
+          type: string
+          enum: [publish, restore, manual, auto]
+        name:
+          type: [string, 'null']
+        restoredFrom:
+          type: [integer, 'null']
+        createdAt:
+          $ref: '#/components/schemas/Time'
+        published:
+          type: boolean
+        document:
+          $ref: '#/components/schemas/Document'
+    DirectUpload:
+      type: object
+      additionalProperties: false
+      required: [signed_id, filename, content_type, byte_size, checksum, direct_upload]
+      properties:
+        signed_id:
+          type: string
+        filename:
+          type: string
+        content_type:
+          $ref: '#/components/schemas/ImageType'
+        byte_size:
+          type: integer
+        checksum:
+          type: string
+        direct_upload:
+          type: object
+          additionalProperties: false
+          required: [url, headers]
+          properties:
+            url:
+              description: Where to PUT the bytes.
+              type: string
+            headers:
+              description: The headers to send with them.
+              type: object
+              additionalProperties:
+                type: string
+    MediaItem:
+      type: object
+      additionalProperties: false
+      required: [id, alt, width, height, contentType, byteSize, filename, url, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/MediaId'
+        alt:
+          $ref: '#/components/schemas/Alt'
+        width:
+          type: integer
+        height:
+          type: integer
+        contentType:
+          $ref: '#/components/schemas/ImageType'
+        byteSize:
+          type: integer
+        filename:
+          type: string
+        url:
+          description: Where the image is served.
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Time'
+    Palette:
+      description: A tone for every palette slot, by colour name of schema/tokens.json.
+      type: object
+      additionalProperties:
+        type: string
+    SiteStyle:
+      type: object
+      additionalProperties: false
+      required: [palette, typeScale, updatedAt, choices]
+      properties:
+        palette:
+          $ref: '#/components/schemas/Palette'
+        typeScale:
+          type: string
+        updatedAt:
+          description: Null until the style is first changed.
+          type: [string, 'null']
+        choices:
+          description: The values each part of the style may take, from schema/tokens.json.
+          type: object
+          additionalProperties: false
+          required: [palette, typeScales]
+          properties:
+            palette:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [color, label, hex]
+                  properties:
+                    color:
+                      type: string
+                    label:
+                      type: string
+                    hex:
+                      type: string
+                      pattern: '^#[0-9A-Fa-f]{6}$'
+            typeScales:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [name, label]
+                properties:
+                  name:
+                    type: string
+                  label:
+                    type: string
+
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [pointer, keyword, blockPointer, message]
+      properties:
+        pointer:
+          description: A JSON pointer into the request body ("" is the body itself).
+          type: string
+        keyword:
+          description: The rule that failed, as JSON Schema names it (required, type, pattern, maximum...) or as the application rules do (uniqueId, duplicateKey, finite, mediaExists...).
+          type: string
+        blockPointer:
+          description: For a value inside a block of the document, the pointer of that block; otherwise null.
+          type: [string, 'null']
+        message:
+          type: string
+    MalformedJsonError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: malformed_json
+        message:
+          type: string
+    NotFoundError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: not_found
+        message:
+          type: string
+    ConflictError:
+      type: object
+      additionalProperties: false
+      required: [error, message, currentRevision, lastSaveId]
+      properties:
+        error:
+          const: conflict
+        message:
+          type: string
+        currentRevision:
+          type: integer
+        lastSaveId:
+          description: The saveId of the save that brought the draft to currentRevision; null after a restore.
+          type: [string, 'null']
+    InvalidRequestError:
+      type: object
+      additionalProperties: false
+      required: [error, message, errors]
+      properties:
+        error:
+          const: invalid_request
+        message:
+          type: string
+        errors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    InvalidDocumentError:
+      type: object
+      additionalProperties: false
+      required: [error, message, errors]
+      properties:
+        error:
+          const: invalid_document
+        message:
+          type: string
+        errors:
+          description: Pointers start with /document.
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    DuplicateKeyError:
+      type: object
+      additionalProperties: false
+      required: [error, message, pointer, errors]
+      properties:
+        error:
+          const: duplicate_key
+        message:
+          type: string
+        pointer:
+          description: The member whose name appears twice.
+          type: string
+        errors:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    MediaInUseError:
+      type: object
+      additionalProperties: false
+      required: [error, message, usedBy]
+      properties:
+        error:
+          const: media_in_use
+        message:
+          type: string
+        usedBy:
+          type: object
+          additionalProperties: false
+          required: [pages, versions]
+          properties:
+            pages:
+              description: Pages whose draft shows the image.
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [id, title, slug]
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                  slug:
+                    type: string
+            versions:
+              description: Kept versions that show it.
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [pageId, number]
+                properties:
+                  pageId:
+                    type: integer
+                  number:
+                    type: integer
