@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "title": "Rich text",
+  "sections": [
+    {
+      "id": "rt",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "rt-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "rt-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Plain, "
+                        },
+                        {
+                          "type": "text",
+                          "text": "bold",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": ", "
+                        },
+                        {
+                          "type": "text",
+                          "text": "italic",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": ", "
+                        },
+                        {
+                          "type": "text",
+                          "text": "both",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            },
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " and "
+                        },
+                        {
+                          "type": "text",
+                          "text": "a link",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "https://example.com/",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph"
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Line one"
+                        },
+                        {
+                          "type": "hardBreak",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "line two"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "bulletList",
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "one"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "bulletList",
+                              "content": [
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "one.a"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "orderedList",
+                                      "attrs": {
+                                        "start": 3,
+                                        "type": null
+                                      },
+                                      "content": [
+                                        {
+                                          "type": "listItem",
+                                          "content": [
+                                            {
+                                              "type": "paragraph",
+                                              "content": [
+                                                {
+                                                  "type": "text",
+                                                  "text": "one.a.iii"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "listItem",
+                                          "content": [
+                                            {
+                                              "type": "paragraph",
+                                              "content": [
+                                                {
+                                                  "type": "text",
+                                                  "text": "one.a.iv"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "two",
+                                  "marks": [
+                                    {
+                                      "type": "link",
+                                      "attrs": {
+                                        "href": "mailto:hello@example.com",
+                                        "target": null,
+                                        "rel": "noopener noreferrer nofollow",
+                                        "class": null
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "a second paragraph in the item"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "orderedList",
+                      "attrs": {
+                        "start": 1,
+                        "type": null
+                      },
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "first"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "second"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

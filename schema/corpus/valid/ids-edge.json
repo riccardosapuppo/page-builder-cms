@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "title": "Ids",
+  "sections": [
+    {
+      "id": "_",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "0123456789",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Ids"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "A-b_C-9",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "More ids"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

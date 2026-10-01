@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "title": "Slack Water swimming club",
+  "description": "Dawn swims, beginners’ courses and a winter series, timed to slack water.",
+  "sections": [
+    {
+      "id": "hero",
+      "type": "section",
+      "props": {
+        "label": "Hero",
+        "anchor": "top"
+      },
+      "children": [
+        {
+          "id": "hero-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "hero-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Swim at slack water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display",
+                  "color": "primary"
+                },
+                "phone": {
+                  "textSize": "heading-1"
+                }
+              }
+            },
+            {
+              "id": "hero-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims, "
+                        },
+                        {
+                          "type": "text",
+                          "text": "beginners’ courses",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " and a "
+                        },
+                        {
+                          "type": "text",
+                          "text": "winter series",
+                          "marks": [
+                       

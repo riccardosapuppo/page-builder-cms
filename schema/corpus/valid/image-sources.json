@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "title": "Images",
+  "sections": [
+    {
+      "id": "imgs",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "imgs-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "img-library",
+              "type": "image",
+              "props": {
+                "mediaId": "M_01-x",
+                "alt": "A library image"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "img-external",
+              "type": "image",
+              "props": {
+                "url": "https://cdn.example.net:8443/a/b.png?w=800&h=600#x",
+                "alt": "An external image"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "img-path",
+              "type": "image",
+              "props": {
+                "url": "/media/2026/10/photo.jpg",
+                "alt": "An image on this site"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "img-decorative",
+              "type": "image",
+              "props": {
+                "mediaId": "rule-wave",
+                "decorative": true
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "img-decorative-url",
+              "type": "image",
+              "props": {
+                "url": "https://cdn.example.net/wave.svg",
+                "decorative": true
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

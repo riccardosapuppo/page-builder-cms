@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "title": "Nbsp",
+  "sections": [
+    {
+      "id": "nb",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "nb-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "nb-i",
+              "type": "image",
+              "props": {
+                "mediaId": "nb",
+                "alt": "A photo"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "nb-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": " Leading no-break space"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

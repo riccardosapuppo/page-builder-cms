@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "title": "Icons",
+  "sections": [
+    {
+      "id": "ic",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "ic-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "ic-sunrise",
+              "type": "iconbox",
+              "props": {
+                "icon": "sunrise",
+                "title": "sunrise",
+                "text": "The sunrise icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-buoys",
+              "type": "iconbox",
+              "props": {
+                "icon": "buoys",
+                "title": "buoys",
+                "text": "The buoys icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-cup",
+              "type": "iconbox",
+              "props": {
+                "icon": "cup",
+                "title": "cup",
+                "text": "The cup icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-calendar",
+              "type": "iconbox",
+              "props": {
+                "icon": "calendar",
+                "title": "calendar",
+                "text": "The calendar icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-clock",
+              "type": "iconbox",
+              "props": {
+                "icon": "clock",
+                "title": "clock",
+                "text": "The clock icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-pin",
+              "type": "iconbox",
+              "props": {
+                "icon": "pin",
+                "title": "pin",
+                "text": "The pin icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-globe",
+              "type": "iconbox",
+              "props": {
+                "icon": "globe",
+                "title": "globe",
+                "text": "The globe icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-info",
+              "type": "iconbox",
+              "props": {
+                "icon": "info",
+                "title": "info",
+                "text": "The info icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-youtube",
+              "type": "video",
+              "props": {
+                "provider": "youtube",
+                "videoId": "A_b-C1d2E3f",
+                "title": "A video"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-vimeo",
+              "type": "video",
+              "props": {
+                "provider": "vimeo",
+                "videoId": "123456789",
+                "title": "Another video"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-map-north",
+              "type": "map",
+              "props": {
+                "latitude": 90,
+                "longitude": 180,
+                "zoom": 19,
+                "label": "North-east corner"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-map-south",
+              "type": "map",
+              "props": {
+                "latitude": -90,
+                "longitude": -180,
+                "zoom": 1,
+                "label": "South-west corner"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

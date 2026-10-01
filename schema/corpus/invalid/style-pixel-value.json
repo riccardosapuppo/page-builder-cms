@@ -1,0 +1,693 @@
+{
+  "schemaVersion": 1,
+  "title": "Slack Water swimming club",
+  "description": "Dawn swims, beginners’ courses and a winter series, timed to slack water.",
+  "sections": [
+    {
+      "id": "hero",
+      "type": "section",
+      "props": {
+        "label": "Hero",
+        "anchor": "top"
+      },
+      "children": [
+        {
+          "id": "hero-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "hero-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Swim at slack water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display",
+                  "color": "primary"
+                },
+                "phone": {
+                  "textSize": "heading-1"
+                }
+              }
+            },
+            {
+              "id": "hero-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims, "
+                        },
+                        {
+                          "type": "text",
+                          "text": "beginners’ courses",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " and a "
+                        },
+                        {
+                          "type": "text",
+                          "text": "winter series",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "/winter-series",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "hardBreak"
+                        },
+                        {
+                          "type": "text",
+                          "text": "timed to the one quiet hour the tide gives us.",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "hero-button",
+              "type": "button",
+              "props": {
+                "label": "Join a trial swim",
+                "href": "#join"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "accent",
+                  "color": "text"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceInside": 24,
+              "spaceBetween": "l"
+            },
+            "tablet": {
+              "spaceInside": "l"
+            }
+          }
+        },
+        {
+          "id": "hero-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "hero-image",
+              "type": "image",
+              "props": {
+                "mediaId": "hero-dawn",
+                "alt": "The bay at dawn at slack water, with a line of buoys and three swimmers"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "soft",
+          "sectionSpace": "section-l"
+        },
+        "phone": {
+          "sectionSpace": "section-s"
+        }
+      }
+    },
+    {
+      "id": "swims",
+      "type": "section",
+      "props": {
+        "anchor": "swims"
+      },
+      "children": [
+        {
+          "id": "swims-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "swims-dawn",
+              "type": "iconbox",
+              "props": {
+                "icon": "sunrise",
+                "title": "Dawn swims",
+                "text": "Twice a week, at first light, when the bay is flat."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "swims-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "swims-course",
+              "type": "iconbox",
+              "props": {
+                "icon": "buoys",
+                "title": "Beginners’ course",
+                "text": "Four sessions from the shallows to the buoy line."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "swims-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "swims-winter",
+              "type": "iconbox",
+              "props": {
+                "icon": "cup",
+                "title": "Winter series",
+                "text": "Short, cold, and followed by very hot tea."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "gallery",
+      "type": "section",
+      "props": {
+        "anchor": "gallery"
+      },
+      "children": [
+        {
+          "id": "gallery-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "gallery-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "From the water"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "gallery-images",
+              "type": "gallery",
+              "props": {
+                "items": [
+                  {
+                    "mediaId": "g-horizon",
+                    "alt": "A flat horizon at first light"
+                  },
+                  {
+                    "mediaId": "g-caps",
+                    "alt": "Three swim caps at the waterline"
+                  },
+                  {
+                    "url": "https://images.example.org/bay/buoys.jpg",
+                    "alt": "The buoy line across the bay"
+                  },
+                  {
+                    "mediaId": "g-wake",
+                    "decorative": true
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "meet",
+      "type": "section",
+      "props": {
+        "anchor": "meet"
+      },
+      "children": [
+        {
+          "id": "meet-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "meet-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "See the bay before you join"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "meet-video",
+              "type": "video",
+              "props": {
+                "provider": "youtube",
+                "videoId": "Xk3d9Lp0qWe",
+                "title": "Watch a dawn swim"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "bottom"
+            }
+          }
+        },
+        {
+          "id": "meet-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "meet-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "We meet twenty minutes before slack water. Bring:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "bulletList",
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "a bright cap"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "orderedList",
+                              "attrs": {
+                                "start": 1,
+                                "type": null
+                              },
+                              "content": [
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "goggles"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "something warm"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "a towel"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "meet-map",
+              "type": "map",
+              "props": {
+                "latitude": 54.4851,
+                "longitude": -0.6157,
+                "zoom": 15,
+                "label": "Meeting point: the slipway at the north end of the beach"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "quote",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "quote-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "quote-text",
+              "type": "quote",
+              "props": {
+                "text": "I came for the cold water and stayed for the tea.",
+                "attribution": "A member since last winter"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "quote-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "quote-image",
+              "type": "image",
+              "props": {
+                "url": "https://images.example.org/bay/tea.jpg",
+                "alt": "A flask and two cups of tea on a rock after a swim"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {},
+        "tablet": {
+          "visibility": "hidden"
+        }
+      }
+    },
+    {
+      "id": "questions",
+      "type": "section",
+      "props": {
+        "anchor": "questions"
+      },
+      "children": [
+        {
+          "id": "questions-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "questions-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Before your first swim"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "questions-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Ask us anything at the slipway, or "
+                        },
+                        {
+                          "type": "text",
+                          "text": "send a request",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "#join",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "questions-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "questions-list",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "How cold is it?",
+                    "answer": "Between 8 and 18 degrees depending on the month.\nWe shorten swims in winter."
+                  },
+                  {
+                    "question": "Do I need a wetsuit?",
+                    "answer": "No. Many members swim without one; the course covers both."
+                  },
+                  {
+                    "question": "What if the sea is rough?",
+                    "answer": "We cancel by 6 am and post it on this page."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "join",
+      "type": "section",
+      "props": {
+        "anchor": "join"
+      },
+      "children": [
+        {
+          "id": "join-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "join-divider",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "join-spacer",
+              "type": "spacer",
+              "props": {
+                "size": "l"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "join-button",
+              "type": "button",
+              "props": {
+                "label": "Write to us",
+                "href": "mailto:hello@slackwater.example?subject=Trial%20swim"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

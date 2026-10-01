@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "title": "Links",
+  "sections": [
+    {
+      "id": "links",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "links-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "l-https",
+              "type": "button",
+              "props": {
+                "label": "https",
+                "href": "https://example.com/a/b?q=1&r=two#top"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-http-port",
+              "type": "button",
+              "props": {
+                "label": "http with a port",
+                "href": "http://localhost:8080/"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-host-only",
+              "type": "button",
+              "props": {
+                "label": "host only",
+                "href": "https://example.com"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-mailto",
+              "type": "button",
+              "props": {
+                "label": "mailto",
+                "href": "mailto:sales@example.com?subject=Hi%20there"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-tel",
+              "type": "button",
+              "props": {
+                "label": "tel",
+                "href": "tel:+39-06-1234567"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-path",
+              "type": "button",
+              "props": {
+                "label": "site path",
+                "href": "/pricing/plans?ref=hero"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-root",
+              "type": "button",
+              "props": {
+                "label": "root",
+                "href": "/"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-query",
+              "type": "button",
+              "props": {
+                "label": "query",
+                "href": "?page=2"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-fragment",
+              "type": "button",
+              "props": {
+                "label": "fragment",
+                "href": "#contact"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-percent",
+              "type": "button",
+              "props": {
+                "label": "percent-encoded",
+                "href": "https://example.com/caf%C3%A9"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-subdomain",
+              "type": "button",
+              "props": {
+                "label": "subdomains and hyphens",
+                "href": "https://a-b.c-d.example.co.uk/x_y~z"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

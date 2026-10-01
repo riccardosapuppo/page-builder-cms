@@ -1,0 +1,1079 @@
+{
+  "invalid/accordion-item-extra-key.json": {
+    "rule": "items are closed: which one is open is not stored",
+    "pointer": "/sections/5/children/1/children/0/props/items/0/open",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/accordion-item-missing-answer.json": {
+    "rule": "every question has an answer",
+    "pointer": "/sections/5/children/1/children/0/props/items/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/accordion-no-items.json": {
+    "rule": "an accordion has at least one item",
+    "pointer": "/sections/5/children/1/children/0/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/accordion-question-blank.json": {
+    "rule": "a question has a visible character",
+    "pointer": "/sections/5/children/1/children/0/props/items/1/question",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-children-null.json": {
+    "rule": "children is an array",
+    "pointer": "/sections/6/children/0/children/0/children",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/block-extra-key.json": {
+    "rule": "a block has exactly five keys",
+    "pointer": "/sections/0/children/0/children/0/parentId",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/block-id-arabic-digits.json": {
+    "rule": "ids are ASCII: Arabic-Indic digits are not [0-9]",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-duplicate-across-sections.json": {
+    "rule": "a widget may not reuse a section's id",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "uniqueId",
+    "layer": "rules"
+  },
+  "invalid/block-id-duplicate.json": {
+    "rule": "block ids are unique across the page (a rule: the schema cannot say it)",
+    "pointer": "/sections/6/children/0/children/1/id",
+    "keyword": "uniqueId",
+    "layer": "rules"
+  },
+  "invalid/block-id-empty.json": {
+    "rule": "ids have 1 to 64 characters",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-fullwidth.json": {
+    "rule": "ids are ASCII: fullwidth letters are not [A-Za-z]",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-non-ascii-letter.json": {
+    "rule": "ids are ASCII",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-number.json": {
+    "rule": "ids are strings",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/block-id-space.json": {
+    "rule": "ids have no spaces",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-too-long.json": {
+    "rule": "ids have 1 to 64 characters",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-id-trailing-newline.json": {
+    "rule": "^...$ must not let a trailing newline through (Ruby's $ would)",
+    "pointer": "/sections/0/children/0/children/0/id",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/block-missing-props.json": {
+    "rule": "props is required on every block",
+    "pointer": "/sections/6/children/0/children/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/block-missing-style.json": {
+    "rule": "style is required on every block",
+    "pointer": "/sections/0/children/0/children/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/block-props-null.json": {
+    "rule": "props is an object",
+    "pointer": "/sections/6/children/0/children/0/props",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/block-type-missing.json": {
+    "rule": "type is required",
+    "pointer": "/sections/6/children/0/children/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/block-type-number.json": {
+    "rule": "type is a string from the list",
+    "pointer": "/sections/6/children/0/children/0/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/block-type-unknown.json": {
+    "rule": "type is one of the known block types",
+    "pointer": "/sections/6/children/0/children/0/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/button-href-backslash.json": {
+    "rule": "browsers read /\\host as //host",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-data.json": {
+    "rule": "no data: links",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-javascript-mixed-case.json": {
+    "rule": "no javascript:, in any case",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-leading-space.json": {
+    "rule": "browsers strip a leading space and run what follows",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-newline-then-https.json": {
+    "rule": "the line-anchor trap",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/button-href-protocol-relative.json": {
+    "rule": "no //host links",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-space-in-host.json": {
+    "rule": "no spaces",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-tab-in-scheme.json": {
+    "rule": "browsers drop a tab inside the scheme",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/button-href-tel-arabic-digits.json": {
+    "rule": "tel: digits are ASCII",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-tel-fullwidth-digits.json": {
+    "rule": "tel: digits are ASCII",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-trailing-newline.json": {
+    "rule": "Ruby's $ matches before a final newline",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/button-href-userinfo.json": {
+    "rule": "no user info",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-href-vbscript.json": {
+    "rule": "no vbscript:",
+    "pointer": "/sections/0/children/0/children/2/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/button-label-missing.json": {
+    "rule": "a button has a label",
+    "pointer": "/sections/0/children/0/children/2/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/button-label-too-long.json": {
+    "rule": "a label has at most 80 characters",
+    "pointer": "/sections/0/children/0/children/2/props/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/divider-unknown-prop.json": {
+    "rule": "a divider has no props",
+    "pointer": "/sections/6/children/0/children/0/props/variant",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/doc-description-empty.json": {
+    "rule": "an empty description is left out, not stored",
+    "pointer": "/description",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/doc-description-too-long.json": {
+    "rule": "description is at most 160 characters",
+    "pointer": "/description",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/doc-extra-key.json": {
+    "rule": "the document is closed: the address is not part of it",
+    "pointer": "/slug",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/doc-missing-schema-version.json": {
+    "rule": "schemaVersion is required",
+    "pointer": "",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/doc-proto-key.json": {
+    "rule": "a member named __proto__ is an ordinary unknown member to both engines",
+    "pointer": "/__proto__",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/doc-schema-version-2.json": {
+    "rule": "schemaVersion is 1",
+    "pointer": "/schemaVersion",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/doc-schema-version-string.json": {
+    "rule": "schemaVersion is the number 1, not the string",
+    "pointer": "/schemaVersion",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/doc-sections-object.json": {
+    "rule": "sections is an array",
+    "pointer": "/sections",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/doc-title-blank.json": {
+    "rule": "title has a visible character",
+    "pointer": "/title",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/doc-title-missing.json": {
+    "rule": "title is required",
+    "pointer": "",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/doc-title-newline.json": {
+    "rule": "title is one line",
+    "pointer": "/title",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/doc-top-level-array.json": {
+    "rule": "the document is an object",
+    "pointer": "",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/dup-key-escaped.json": {
+    "rule": "the second name is written \\u0074ype and is still type (a rule)",
+    "pointer": "/sections/0/children/0/children/0/type",
+    "keyword": "duplicateKey",
+    "layer": "rules"
+  },
+  "invalid/dup-key-title.json": {
+    "rule": "a duplicate at the top level (a rule)",
+    "pointer": "/title",
+    "keyword": "duplicateKey",
+    "layer": "rules"
+  },
+  "invalid/dup-key-type.json": {
+    "rule": "a block type given twice: each parser would see a different block (a rule)",
+    "pointer": "/sections/0/children/0/children/0/type",
+    "keyword": "duplicateKey",
+    "layer": "rules"
+  },
+  "invalid/gallery-item-missing-alt.json": {
+    "rule": "every gallery image has alt text or is decorative",
+    "pointer": "/sections/2/children/0/children/1/props/items/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/gallery-item-two-sources.json": {
+    "rule": "one source per image",
+    "pointer": "/sections/2/children/0/children/1/props/items/0",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/gallery-item-url-javascript.json": {
+    "rule": "gallery URLs follow the image URL rules",
+    "pointer": "/sections/2/children/0/children/1/props/items/2/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/gallery-no-items.json": {
+    "rule": "a gallery has at least one image",
+    "pointer": "/sections/2/children/0/children/1/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/gallery-too-many-items.json": {
+    "rule": "a gallery has at most 24 images",
+    "pointer": "/sections/2/children/0/children/1/props/items",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/heading-href-javascript.json": {
+    "rule": "a heading link follows the link rules",
+    "pointer": "/sections/0/children/0/children/0/props/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/heading-level-0.json": {
+    "rule": "levels are 1 to 4",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/heading-level-1e400.json": {
+    "rule": "1e400 reads as Infinity in both languages, and json_schemer raises on it (a rule)",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "finite",
+    "layer": "rules"
+  },
+  "invalid/heading-level-5.json": {
+    "rule": "levels are 1 to 4",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/heading-level-fraction.json": {
+    "rule": "2.5 is not an integer",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/heading-level-huge-integer.json": {
+    "rule": "a 20-digit integer is exact in Ruby and rounded in JavaScript (a rule)",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "safeInteger",
+    "layer": "rules"
+  },
+  "invalid/heading-level-string.json": {
+    "rule": "the level is a number",
+    "pointer": "/sections/0/children/0/children/0/props/level",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/heading-props-extra.json": {
+    "rule": "heading props are closed",
+    "pointer": "/sections/0/children/0/children/0/props/color",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/heading-text-blank.json": {
+    "rule": "text has a visible character",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/heading-text-combining-over-max.json": {
+    "rule": "100 visible letters but 201 code points > 200",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/heading-text-emoji-over-max.json": {
+    "rule": "201 emoji: 201 code points > maxLength 200",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/heading-text-empty.json": {
+    "rule": "text has a visible character",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/heading-text-line-separator-only.json": {
+    "rule": "U+2028 is blank (json_schemer's \\s leaves it out)",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/heading-text-lone-low-surrogate.json": {
+    "rule": "a lone low surrogate (a rule)",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "wellFormed",
+    "layer": "rules"
+  },
+  "invalid/heading-text-lone-surrogate.json": {
+    "rule": "a lone high surrogate: Ruby's parser refuses it, JavaScript's reads it (a rule)",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "wellFormed",
+    "layer": "rules"
+  },
+  "invalid/heading-text-nbsp-only.json": {
+    "rule": "no-break spaces are blank (Ruby's \\S would call them visible)",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/heading-text-newline.json": {
+    "rule": "a heading is one line",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/heading-text-zero-width-only.json": {
+    "rule": "zero-width spaces are blank",
+    "pointer": "/sections/0/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/iconbox-icon-markup.json": {
+    "rule": "an icon is a name, never markup",
+    "pointer": "/sections/1/children/0/children/0/props/icon",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/iconbox-icon-unknown.json": {
+    "rule": "icons come from the project's set",
+    "pointer": "/sections/1/children/0/children/0/props/icon",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/iconbox-text-tab.json": {
+    "rule": "plain text allows a newline, no other control character",
+    "pointer": "/sections/1/children/0/children/0/props/text",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/iconbox-text-too-long.json": {
+    "rule": "the text has at most 300 characters",
+    "pointer": "/sections/1/children/0/children/0/props/text",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/iconbox-title-missing.json": {
+    "rule": "an icon box has a title",
+    "pointer": "/sections/1/children/0/children/0/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/image-alt-and-decorative.json": {
+    "rule": "a decorative image has no alt text",
+    "pointer": "/sections/0/children/1/children/0/props",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/image-alt-blank.json": {
+    "rule": "alt has a visible character",
+    "pointer": "/sections/0/children/1/children/0/props/alt",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-alt-line-separator-only.json": {
+    "rule": "U+2028 alone is blank",
+    "pointer": "/sections/0/children/1/children/0/props/alt",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-alt-nbsp-only.json": {
+    "rule": "no-break spaces are blank",
+    "pointer": "/sections/0/children/1/children/0/props/alt",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-decorative-false.json": {
+    "rule": "decorative is stored only as true",
+    "pointer": "/sections/0/children/1/children/0/props/decorative",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/image-media-id-path.json": {
+    "rule": "a media id is an id, not a path",
+    "pointer": "/sections/0/children/1/children/0/props/mediaId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-missing-alt.json": {
+    "rule": "alt is required unless the image is decorative",
+    "pointer": "/sections/0/children/1/children/0/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/image-no-source.json": {
+    "rule": "an image has a source",
+    "pointer": "/sections/0/children/1/children/0/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/image-props-extra.json": {
+    "rule": "image props are closed",
+    "pointer": "/sections/0/children/1/children/0/props/width",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/image-two-sources.json": {
+    "rule": "an image is from the library or from a URL, never both",
+    "pointer": "/sections/0/children/1/children/0/props",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/image-url-backslash.json": {
+    "rule": "browsers read /\\host as //host",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-url-data.json": {
+    "rule": "no data: images",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-url-http.json": {
+    "rule": "external images are https: http would be mixed content",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-url-javascript.json": {
+    "rule": "no javascript: images",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-url-newline.json": {
+    "rule": "a newline in a URL is caught by the unanchored check",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/image-url-protocol-relative.json": {
+    "rule": "no //host addresses",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/image-url-userinfo.json": {
+    "rule": "no user info: the host would be evil.example",
+    "pointer": "/sections/4/children/1/children/0/props/url",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/json-bom.json": {
+    "rule": "a byte-order mark before the document (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-comment.json": {
+    "rule": "comments are not JSON (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-leading-zero.json": {
+    "rule": "numbers have no leading zero (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-nan.json": {
+    "rule": "NaN is not JSON (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-raw-tab-in-string.json": {
+    "rule": "a raw tab inside a string is not JSON; \\t is (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-single-quotes.json": {
+    "rule": "single quotes are not JSON (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-trailing-comma.json": {
+    "rule": "trailing commas are not JSON (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-truncated.json": {
+    "rule": "a body cut short in transit (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/json-two-documents.json": {
+    "rule": "text after the document (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/map-label-blank.json": {
+    "rule": "a map has a label",
+    "pointer": "/sections/3/children/1/children/1/props/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/map-latitude-91.json": {
+    "rule": "latitude is -90 to 90",
+    "pointer": "/sections/3/children/1/children/1/props/latitude",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/map-latitude-minus-1e400.json": {
+    "rule": "-1e400 is -Infinity (a rule)",
+    "pointer": "/sections/3/children/1/children/1/props/latitude",
+    "keyword": "finite",
+    "layer": "rules"
+  },
+  "invalid/map-longitude-string.json": {
+    "rule": "coordinates are numbers",
+    "pointer": "/sections/3/children/1/children/1/props/longitude",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/map-zoom-0.json": {
+    "rule": "zoom is 1 to 19",
+    "pointer": "/sections/3/children/1/children/1/props/zoom",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/map-zoom-1e300.json": {
+    "rule": "1e300 is an integer far beyond 2^53 (a rule)",
+    "pointer": "/sections/3/children/1/children/1/props/zoom",
+    "keyword": "safeInteger",
+    "layer": "rules"
+  },
+  "invalid/map-zoom-20.json": {
+    "rule": "zoom is 1 to 19",
+    "pointer": "/sections/3/children/1/children/1/props/zoom",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/map-zoom-fraction.json": {
+    "rule": "zoom is an integer",
+    "pointer": "/sections/3/children/1/children/1/props/zoom",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/map-zoom-missing.json": {
+    "rule": "zoom is required",
+    "pointer": "/sections/3/children/1/children/1/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/nesting-200-levels.json": {
+    "rule": "200 nested arrays inside props: past the rules' 64 and Ruby's own 100; the scanner stops first",
+    "pointer": "/sections/0/children/0/children/0/props/junk/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0",
+    "keyword": "maxNesting",
+    "layer": "rules"
+  },
+  "invalid/nesting-over-limit.json": {
+    "rule": "rich text with 13 nested lists: 65 levels of JSON nesting",
+    "pointer": "/sections/0/children/0/children/0/props/doc/content/0/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/1/content/0/content/0/content/0",
+    "keyword": "maxNesting",
+    "layer": "rules"
+  },
+  "invalid/quote-attribution-newline.json": {
+    "rule": "the attribution is one line",
+    "pointer": "/sections/4/children/0/children/0/props/attribution",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/quote-text-bell.json": {
+    "rule": "no control characters",
+    "pointer": "/sections/4/children/0/children/0/props/text",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/quote-text-blank.json": {
+    "rule": "a quote has a visible character",
+    "pointer": "/sections/4/children/0/children/0/props/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/quote-text-too-long.json": {
+    "rule": "a quote has at most 500 characters",
+    "pointer": "/sections/4/children/0/children/0/props/text",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/spacer-size-missing.json": {
+    "rule": "a spacer has a size",
+    "pointer": "/sections/6/children/0/children/1/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/spacer-size-pixels.json": {
+    "rule": "the size is a spacing step, not pixels",
+    "pointer": "/sections/6/children/0/children/1/props/size",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/spacer-size-unknown.json": {
+    "rule": "the size is a spacing step",
+    "pointer": "/sections/6/children/0/children/1/props/size",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-desktop-key.json": {
+    "rule": "desktop is base: there is no desktop key",
+    "pointer": "/sections/0/children/0/children/0/style/desktop",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-empty-override.json": {
+    "rule": "an override with nothing in it is not stored",
+    "pointer": "/sections/0/children/0/style/phone",
+    "keyword": "minProperties",
+    "layer": "schema"
+  },
+  "invalid/style-key-not-for-type.json": {
+    "rule": "a divider has no text size",
+    "pointer": "/sections/6/children/0/children/0/style/base/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-missing-base.json": {
+    "rule": "base is required",
+    "pointer": "/sections/0/children/0/children/0/style",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/style-null-value.json": {
+    "rule": "an absent key means inherit; null is not a value",
+    "pointer": "/sections/0/style/base/background",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-override-null.json": {
+    "rule": "a removed override is absent, not null",
+    "pointer": "/sections/0/children/0/children/0/style/phone",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/style-pixel-value.json": {
+    "rule": "block settings never use pixels",
+    "pointer": "/sections/0/children/0/style/base/spaceInside",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-tone-not-slot.json": {
+    "rule": "blocks name palette slots, not tones",
+    "pointer": "/sections/0/children/0/children/0/style/base/color",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-unknown-key.json": {
+    "rule": "no free CSS: only the listed settings",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontFamily",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-unknown-token.json": {
+    "rule": "values are token names",
+    "pointer": "/sections/0/children/0/style/base/spaceInside",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/text-control-character.json": {
+    "rule": "no control characters in text",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/0/text",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/text-empty-doc.json": {
+    "rule": "a doc has at least one node",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/text-empty-text-node.json": {
+    "rule": "text nodes are never empty",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/0/text",
+    "keyword": "minLength",
+    "layer": "schema"
+  },
+  "invalid/text-heading-node.json": {
+    "rule": "no headings inside rich text: the heading widget does that",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/1/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/text-link-data.json": {
+    "rule": "no data: links",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks/0/attrs/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/text-link-javascript.json": {
+    "rule": "a link mark follows the link rules",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks/0/attrs/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/text-link-newline-then-https.json": {
+    "rule": "the line-anchor trap: a second line that would satisfy ^https:// in Ruby",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks/0/attrs/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/text-link-without-attrs.json": {
+    "rule": "a link mark has attrs with href",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/text-list-item-starts-with-list.json": {
+    "rule": "a list item starts with a paragraph",
+    "pointer": "/sections/3/children/1/children/0/props/doc/content/1/content/0/content/0/type",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/text-lone-surrogate-in-key.json": {
+    "rule": "a lone surrogate in a member name is reported on its object (a rule)",
+    "pointer": "/sections/0/children/0/children/0/props",
+    "keyword": "wellFormed",
+    "layer": "rules"
+  },
+  "invalid/text-node-without-text.json": {
+    "rule": "a text node has text",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/text-ordered-start-zero.json": {
+    "rule": "a numbered list starts at 1 or later",
+    "pointer": "/sections/3/children/1/children/0/props/doc/content/1/content/0/content/1/attrs/start",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/text-paragraph-attrs.json": {
+    "rule": "paragraphs have no attributes in the subset",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/attrs",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/text-underline-mark.json": {
+    "rule": "marks are bold, italic and link only",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/1/marks/0/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/text-wrong-root.json": {
+    "rule": "the root node is doc",
+    "pointer": "/sections/0/children/0/children/1/props/doc/type",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/tree-column-in-column.json": {
+    "rule": "columns do not nest",
+    "pointer": "/sections/0/children/0/children/3/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-column-props.json": {
+    "rule": "a column has no properties: its width follows from the count",
+    "pointer": "/sections/0/children/0/props/width",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/tree-heading-with-children.json": {
+    "rule": "widgets hold no blocks",
+    "pointer": "/sections/0/children/0/children/0/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/tree-section-anchor.json": {
+    "rule": "anchors are lowercase letters, digits and hyphens",
+    "pointer": "/sections/0/props/anchor",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/tree-section-at-column-level.json": {
+    "rule": "the page holds sections only",
+    "pointer": "/sections/7/type",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/tree-section-five-columns.json": {
+    "rule": "a section has at most four columns",
+    "pointer": "/sections/0/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/tree-section-in-column.json": {
+    "rule": "a column holds widgets only",
+    "pointer": "/sections/0/children/0/children/3/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-label-too-long.json": {
+    "rule": "a section label has at most 60 characters",
+    "pointer": "/sections/0/props/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/tree-section-no-columns.json": {
+    "rule": "a section has at least one column",
+    "pointer": "/sections/0/children",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/tree-section-unknown-prop.json": {
+    "rule": "section props are closed",
+    "pointer": "/sections/0/props/columns",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/tree-widget-in-section.json": {
+    "rule": "a section holds columns only",
+    "pointer": "/sections/0/children/2/type",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/utf8-invalid-byte.json": {
+    "rule": "a 0xFF byte is not UTF-8: Ruby's parser reads it and json_schemer then raises (a rule)",
+    "pointer": "",
+    "keyword": "encoding",
+    "layer": "rules"
+  },
+  "invalid/utf8-overlong.json": {
+    "rule": "an overlong encoding of / (C0 AF) is not UTF-8 (a rule)",
+    "pointer": "",
+    "keyword": "encoding",
+    "layer": "rules"
+  },
+  "invalid/utf8-surrogate-bytes.json": {
+    "rule": "a surrogate encoded as UTF-8 bytes (ED A0 80) is not UTF-8 (a rule)",
+    "pointer": "",
+    "keyword": "encoding",
+    "layer": "rules"
+  },
+  "invalid/video-id-is-url.json": {
+    "rule": "a video is stored as an id, never as a URL",
+    "pointer": "/sections/3/children/0/children/1/props/videoId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/video-provider-unknown.json": {
+    "rule": "providers come from a fixed list",
+    "pointer": "/sections/3/children/0/children/1/props/provider",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/video-title-missing.json": {
+    "rule": "the player needs an accessible name",
+    "pointer": "/sections/3/children/0/children/1/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/video-url-prop.json": {
+    "rule": "no URL property: the renderer builds the address",
+    "pointer": "/sections/3/children/0/children/1/props/url",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/video-vimeo-id-letters.json": {
+    "rule": "a Vimeo id is digits",
+    "pointer": "/sections/3/children/0/children/1/props/videoId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/video-youtube-id-short.json": {
+    "rule": "a YouTube id has 11 characters",
+    "pointer": "/sections/3/children/0/children/1/props/videoId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "valid/columns-one-to-four.json": {
+    "rule": "sections with one, two, three and four columns, and an empty column"
+  },
+  "valid/every-icon-and-provider.json": {
+    "rule": "every icon name, both video providers, map extremes"
+  },
+  "valid/heading-link.json": {
+    "rule": "a heading may carry a link, as in the approved mock"
+  },
+  "valid/hrefs-every-form.json": {
+    "rule": "every link form the href pattern allows"
+  },
+  "valid/ids-edge.json": {
+    "rule": "ids: 64 characters, digits only, underscores and hyphens"
+  },
+  "valid/image-sources.json": {
+    "rule": "library image, external https image, site path, decorative image without alt"
+  },
+  "valid/integral-floats.json": {
+    "rule": "2.0, 45.0, 1.2e1 and 3.000 are integers to both engines; the rules turn them into integers, so Ruby renders <h2>, not <h2.0>"
+  },
+  "valid/landing.json": {
+    "rule": "the base page: every widget type, style overrides on every device; each invalid file changes one thing in it"
+  },
+  "valid/large-500-blocks.json": {
+    "rule": "exactly 500 blocks: 20 sections of 4 columns of 5 widgets"
+  },
+  "valid/minimal.json": {
+    "rule": "the smallest document: no description, no sections"
+  },
+  "valid/nesting-at-limit.json": {
+    "rule": "rich text with 12 nested lists: exactly 64 levels of JSON nesting, the most the rules allow"
+  },
+  "valid/readme-example.json": {
+    "rule": "the example in schema/README.md, checked by the lint"
+  },
+  "valid/rich-text.json": {
+    "rule": "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs"
+  },
+  "valid/string-escapes.json": {
+    "rule": "JSON escapes, a surrogate pair written as two escapes, and a member name written with an escape (\\u0074ype is type)"
+  },
+  "valid/styles-every-token.json": {
+    "rule": "every style key and token value, with tablet and phone overrides"
+  },
+  "valid/text-inner-nbsp.json": {
+    "rule": "a no-break space inside text with visible letters is fine; only all-blank text is refused"
+  },
+  "valid/text-length-combining-at-max.json": {
+    "rule": "100 times e + U+0301: 200 code points, 100 visible letters, maxLength 200"
+  },
+  "valid/text-length-emoji-at-max.json": {
+    "rule": "200 emoji in a heading: 200 code points (400 UTF-16 units), maxLength 200"
+  },
+  "valid/unicode-text.json": {
+    "rule": "non-ASCII text in every plain-text field and in rich text"
+  }
+}

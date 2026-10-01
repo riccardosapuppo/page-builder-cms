@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "title": "Integral floats",
+  "sections": [
+    {
+      "id": "fl",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "fl-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "fl-h",
+              "type": "heading",
+              "props": {
+                "level": 2.0,
+                "text": "Level written as 2.0"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fl-m",
+              "type": "map",
+              "props": {
+                "latitude": 45.0,
+                "longitude": -0.5e0,
+                "zoom": 1.2e1,
+                "label": "Zoom written as 12.0"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fl-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "orderedList",
+                      "attrs": {
+                        "start": 3.000,
+                        "type": null
+                      },
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "starts at 3.0"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "title": "Winter series",
+  "description": "Short, cold swims from November to March.",
+  "sections": [
+    {
+      "id": "s1",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "s1c1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "h1",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Winter series"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display"
+                },
+                "phone": {
+                  "textSize": "heading-1"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

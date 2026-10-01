@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "title": "Escapes",
+  "sections": [
+    {
+      "id": "esc",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "esc-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "esc-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "quote \" backslash \\ slash \/ e-acute é emoji 😀"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

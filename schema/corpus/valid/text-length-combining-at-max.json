@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "title": "Combining",
+  "sections": [
+    {
+      "id": "cm",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "cm-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "cm-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

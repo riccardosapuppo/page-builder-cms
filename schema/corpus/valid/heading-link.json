@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "title": "Heading link",
+  "sections": [
+    {
+      "id": "hl",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "hl-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "hl-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Read the rules",
+                "href": "/rules"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

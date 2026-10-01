@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "title": "Columns",
+  "sections": [
+    {
+      "id": "one",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "one-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "one-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "One column"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "two",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "two-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "two-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "two-s",
+              "type": "spacer",
+              "props": {
+                "size": "xxl"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "three",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "three-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "three-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "three-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "three-d",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "four",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "four-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-4",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "four-h",
+              "type": "heading",
+              "props": {
+                "level": 4,
+                "text": "Four"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}
