@@ -11,6 +11,9 @@ A personal project of the author's, not work for a client.
   editor and of a published page, with the design tokens, the mark, the
   fonts and their licences, and screenshots of every state. Its own README
   says how to open it.
+- [`schema/tokens.json`](schema/tokens.json): the design tokens (colours and
+  their contrast pairs, spacing, type, radii, breakpoints), taken from the
+  mock. It is the copy the code will read.
 
 ## The plan, stage by stage
 
