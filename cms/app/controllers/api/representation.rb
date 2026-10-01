@@ -14,6 +14,7 @@ module Api
         "id" => page.id,
         "title" => draft.document["title"],
         "slug" => draft.slug,
+        "home" => page.home?,
         "revision" => draft.revision,
         "updatedAt" => iso([ page.updated_at, draft.updated_at ].max),
         "published" => published_json(page),
@@ -27,6 +28,7 @@ module Api
           "id" => page.id,
           "title" => page.draft.document["title"],
           "slug" => page.draft.slug,
+          "home" => page.home?,
           "createdAt" => iso(page.created_at)
         },
         "draft" => draft_json(page.draft),
@@ -58,7 +60,7 @@ module Api
         "versions" => "#{base}/versions",
         "publish" => "#{base}/publish",
         "preview" => "/preview/#{page.id}",
-        "live" => page.published? ? "/#{page.slug}" : nil
+        "live" => page.live_path
       }
     end
 

@@ -75,6 +75,41 @@ class Api::PagesTest < ActionDispatch::IntegrationTest
     assert_equal "winter", json.dig("published", "slug")
   end
 
+  test "one page at a time is the home page, and its live address is /" do
+    winter = create_page
+    about = create_page(title: "About us", slug: "about")
+    winter.publish!
+    about.publish!
+
+    api :patch, "/api/pages/#{winter.id}", { "home" => true }
+    assert_response :ok
+    assert_equal true, json.dig("page", "home")
+    assert_equal "/", json.dig("links", "live")
+
+    api :patch, "/api/pages/#{about.id}", { "home" => true }
+    assert_response :ok
+    api :get, "/api/pages"
+    assert_equal [ [ "Winter series", false, "/winter" ], [ "About us", true, "/" ] ],
+                 json["pages"].map { |p| [ p["title"], p["home"], p.dig("links", "live") ] }
+
+    api :patch, "/api/pages/#{about.id}", { "home" => false }
+    api :get, "/api/pages"
+    assert_equal [ false, false ], json["pages"].map { |p| p["home"] }
+  end
+
+  test "an update must say what to change, and home is true or false" do
+    page = create_page
+
+    api :patch, "/api/pages/#{page.id}", {}
+    assert_response :unprocessable_content
+    assert_equal [ [ "", "minProperties" ] ], error_pointers
+
+    api :patch, "/api/pages/#{page.id}", { "home" => "yes" }
+    assert_response :unprocessable_content
+    assert_equal [ [ "/home", "type" ] ], error_pointers
+    assert_not page.reload.home?
+  end
+
   test "a page that does not exist, or an id that is not one, is not found" do
     [ "/api/pages/999999", "/api/pages/12abc", "/api/pages/0" ].each do |path|
       api :get, path

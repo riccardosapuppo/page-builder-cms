@@ -126,7 +126,7 @@ the schema file) each failed it.
 | Route | What it does |
 | --- | --- |
 | `GET /api/pages`, `POST /api/pages` | list; create with `{title, slug}` |
-| `GET /api/pages/:id`, `PATCH /api/pages/:id` | the page, its draft, what is live, links; set the next address `{slug}` |
+| `GET /api/pages/:id`, `PATCH /api/pages/:id` | the page, its draft, what is live, links; set the next address `{slug}`, make it the home page `{home: true}` |
 | `GET /api/pages/:id/draft`, `PUT /api/pages/:id/draft` | read; save `{revision, document, saveId}` |
 | `POST /api/pages/:id/publish` | publish the draft, optionally only at `{revision}` |
 | `GET /api/pages/:id/versions`, `POST ...` | list; "Save version" `{name?}` |

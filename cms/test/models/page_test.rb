@@ -131,6 +131,18 @@ class PageTest < ActiveSupport::TestCase
     assert_includes page.errors.details[:published_at], { error: :moved_back }
   end
 
+  test "the database itself holds at most one home page" do
+    first = Page.create_with_draft!(title: "Home", slug: "home")
+    second = Page.create_with_draft!(title: "Other", slug: "other")
+    first.make_home!
+
+    assert_raises(ActiveRecord::RecordNotUnique) { second.update_column(:home, true) }
+    second.make_home!
+
+    assert_equal [ second.id ], Page.where(home: true).pluck(:id)
+    assert_equal second, Page.home_page
+  end
+
   test "publishing with a revision someone has saved past is a conflict, and nothing goes live" do
     page = Page.create_with_draft!(title: "Winter series", slug: "winter")
     Draft.save_document!(page_id: page.id, revision: 0, document: page_document, save_id: "a1")

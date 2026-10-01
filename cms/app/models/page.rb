@@ -30,6 +30,38 @@ class Page < ApplicationRecord
     !published_version_id.nil?
   end
 
+  # The page / serves, or nil when no page is marked as home.
+  def self.home_page
+    find_by(home: true)
+  end
+
+  # Makes this page the one / serves, at once; the page that was home stops
+  # being it. Until this page is published, / answers 404. The other page
+  # is unmarked first, so the unique index on home never sees two. Both
+  # rows are written whatever this object believes it holds, then read
+  # back: an attribute set in memory by a write that failed must not make
+  # the write look unneeded.
+  def make_home!(at: Time.current)
+    transaction do
+      Page.where(home: true).where.not(id: id).update_all(home: false, updated_at: at)
+      Page.where(id: id).update_all(home: true, updated_at: at)
+    end
+    reload
+  end
+
+  def unmake_home!(at: Time.current)
+    Page.where(id: id).update_all(home: false, updated_at: at)
+    reload
+  end
+
+  # Where a visitor finds the live page: / for the home page, /<slug> for
+  # the others, nil before the first publish.
+  def live_path
+    return nil unless published?
+
+    home? ? "/" : "/#{slug}"
+  end
+
   # Publishes what the draft holds now, as a new version.
   #
   # expected_revision, when given, is the draft revision the person

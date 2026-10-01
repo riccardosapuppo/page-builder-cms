@@ -29,15 +29,28 @@ module Api
       render json: page_json(find_page)
     end
 
-    # PATCH /api/pages/:id {slug}: the address the page will have after its
-    # next publish. The live address does not change until then.
+    # PATCH /api/pages/:id {slug?, home?}
+    #
+    # slug: the address the page will have after its next publish. The
+    # live address does not change until then.
+    # home: true makes this the page / serves, at once, and the page that
+    # was home stops being it; false leaves / with no page.
     def update
-      check = BodyCheck.new(body, allowed: %w[slug])
-      check.string("slug", required: true)
+      check = BodyCheck.new(body, allowed: %w[slug home])
+      check.any_of("slug", "home")
+      check.string("slug")
+      check.boolean("home")
       check.finish!
 
       page = find_page
-      page.draft.update!(slug: body["slug"])
+      Page.transaction do
+        page.draft.update!(slug: body["slug"]) if body.key?("slug")
+        if body["home"] == true
+          page.make_home!
+        elsif body["home"] == false
+          page.unmake_home!
+        end
+      end
       render json: page_json(page)
     end
 

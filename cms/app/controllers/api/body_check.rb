@@ -62,6 +62,20 @@ module Api
       end
     end
 
+    def boolean(name, required: false)
+      return unless present?(name, required)
+
+      fail_at("/#{name}", "type", "must be true or false") unless [ true, false ].include?(body[name])
+    end
+
+    # At least one of names must be present, as JSON Schema's minProperties
+    # says for a body whose members are all optional.
+    def any_of(*names)
+      return if names.any? { |name| body.key?(name) }
+
+      fail_at("", "minProperties", "must name at least one of #{names.join(', ')}")
+    end
+
     def object(name, required: false)
       return unless present?(name, required)
 

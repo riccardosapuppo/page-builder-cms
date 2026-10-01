@@ -112,9 +112,14 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
-      operationId: setNextSlug
-      summary: Set the page's next address
-      description: The address takes effect on the next publish; the live address does not change before.
+      operationId: updatePage
+      summary: Set the page's next address, or make it the home page
+      description: |
+        `slug` takes effect on the next publish; the live address does not
+        change before. `home: true` makes this the page the site's root
+        address `/` serves, at once, and the page that was home stops being
+        it; `home: false` leaves `/` with no page. Until the home page is
+        published, `/` answers 404.
       tags: [pages]
       requestBody:
         required: true
@@ -123,13 +128,15 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [slug]
+              minProperties: 1
               properties:
                 slug:
                   $ref: '#/components/schemas/Slug'
+                home:
+                  type: boolean
       responses:
         '200':
-          description: The page with its new next address.
+          description: The page as it is now.
           content:
             application/json:
               schema:
@@ -666,7 +673,7 @@ components:
     PageSummary:
       type: object
       additionalProperties: false
-      required: [id, title, slug, revision, updatedAt, published, links]
+      required: [id, title, slug, home, revision, updatedAt, published, links]
       properties:
         id:
           type: integer
@@ -675,6 +682,8 @@ components:
         slug:
           description: The next address, the one the next publish applies.
           type: string
+        home:
+          $ref: '#/components/schemas/Home'
         revision:
           type: integer
         updatedAt:
@@ -691,7 +700,7 @@ components:
         page:
           type: object
           additionalProperties: false
-          required: [id, title, slug, createdAt]
+          required: [id, title, slug, home, createdAt]
           properties:
             id:
               type: integer
@@ -700,6 +709,8 @@ components:
             slug:
               description: The next address, the one the next publish applies.
               type: string
+            home:
+              $ref: '#/components/schemas/Home'
             createdAt:
               $ref: '#/components/schemas/Time'
         draft:
@@ -721,6 +732,9 @@ components:
           type: integer
         publishedAt:
           $ref: '#/components/schemas/Time'
+    Home:
+      description: Whether this is the page the site's root address, `/`, serves. At most one page is.
+      type: boolean
     PageLinks:
       type: object
       additionalProperties: false
@@ -738,7 +752,7 @@ components:
           description: The draft as the published page would look.
           type: string
         live:
-          description: The live page, or null before the first publish.
+          description: The live page, `/` for the home page, or null before the first publish.
           type: [string, 'null']
     DraftSaved:
       type: object

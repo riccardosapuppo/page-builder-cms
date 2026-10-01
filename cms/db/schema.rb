@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_184300) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_193000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -90,6 +90,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_184300) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "published_version_id"
+    t.boolean "home", default: false, null: false
+    t.index ["home"], name: "index_pages_one_home", unique: true, where: "home"
     t.index ["published_version_id"], name: "index_pages_on_published_version_id"
     t.index ["slug"], name: "index_pages_on_slug", unique: true
   end
