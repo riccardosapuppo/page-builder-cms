@@ -22,6 +22,12 @@ gem "solid_queue"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
+# The JSON parser, named here rather than left to whatever Rails pulls in.
+# From 3.0 it refuses a text with a duplicate member name, which the API
+# turns into a 422; under 2.x the same option is silently ignored and the
+# last value wins, so a downgrade would quietly change what is saved.
+gem "json", "~> 3.0", ">= 3.0.2"
+
 # Validates page documents against schema/block-document.schema.json, the
 # same file the editor validates with. Pinned exactly: the two validators
 # are compared on a shared corpus, and a new version is a new comparison.

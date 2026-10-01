@@ -294,6 +294,7 @@ DEPENDENCIES
   brakeman
   bundler-audit
   debug
+  json (~> 3.0, >= 3.0.2)
   json_schemer (= 2.5.0)
   propshaft
   puma (>= 5.0)
