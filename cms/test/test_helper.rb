@@ -19,6 +19,12 @@ module ActiveSupport
   end
 end
 
+module ActionDispatch
+  class IntegrationTest
+    include ApiRequests
+  end
+end
+
 # The test storage service has a root of its own (config/storage.yml). Tests
 # that upload delete their files as they finish (StoredFiles); what is left
 # at the end are the empty folders the disk service made, removed here. A
