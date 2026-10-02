@@ -8,7 +8,7 @@
 // to the ones it must find.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fromLsof, fromNetstat, fromSs } from "./processes.ts";
+import { fromLsof, fromNetstat, fromSs, fromTasklist, processName } from "./processes.ts";
 
 const NETSTAT = [
   "",
@@ -53,6 +53,23 @@ test("ss: the listening sockets on the port, with the first process ss names", (
   ]);
   assert.deepEqual(fromSs(SS, 53), [{ address: "127.0.0.53%lo:53", pid: "512" }]);
   assert.deepEqual(fromSs(SS, 3900), []);
+});
+
+// tasklist /FO CSV /NH: one line per match; when nothing matches, a
+// sentence in Windows' language and no quotes.
+const TASKLIST = '"ruby.exe","4242","Console","1","45.312 K"\r\n';
+const TASKLIST_NONE = "INFORMAZIONI: nessuna attività in esecuzione corrispondente ai criteri specificati.\r\n";
+
+test("tasklist: the image name of the process asked for, and nothing for a sentence", () => {
+  assert.equal(fromTasklist(TASKLIST, "4242"), "ruby.exe");
+  assert.equal(fromTasklist(TASKLIST, "424"), undefined);
+  assert.equal(fromTasklist(TASKLIST_NONE, "4242"), undefined);
+});
+
+test("processName: this process by its own id, and nothing for an id no process has", () => {
+  const name = processName(String(process.pid));
+  assert.ok(name && /node/i.test(name), `expected node, got ${name}`);
+  assert.equal(processName("not-a-pid"), undefined);
 });
 
 test("lsof: each address on the port under the process listed before it", () => {

@@ -54,6 +54,37 @@ export function fromLsof(out: string, port: number): Listener[] {
   return found;
 }
 
+// The name of a running process, for a sentence such as "port 3900 is
+// held by ruby.exe (process 4242)"; undefined when the system does not say
+// (the process has gone, or belongs to another user).
+// - Windows: tasklist /FI "PID eq n" /FO CSV /NH, one quoted CSV line; when
+//   nothing matches it prints a sentence in Windows' language instead.
+// - elsewhere: ps -p n -o comm=.
+export function processName(pid: string): string | undefined {
+  if (!/^\d+$/.test(pid)) return undefined;
+  if (windows) return fromTasklist(spawnSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], { encoding: "utf8" }).stdout ?? "", pid);
+  const name = (spawnSync("ps", ["-p", pid, "-o", "comm="], { encoding: "utf8" }).stdout ?? "").trim();
+  return name || undefined;
+}
+
+// '"ruby.exe","4242","Console","1","45.000 K"': the image name, from the
+// line whose second field is the process id.
+export function fromTasklist(out: string, pid: string): string | undefined {
+  for (const line of out.split(/\r?\n/)) {
+    const fields = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+    if (fields.length >= 2 && fields[1] === pid) return fields[0] || undefined;
+  }
+  return undefined;
+}
+
+// "ruby.exe (process 4242) on 127.0.0.1:3900", for every listener given.
+export function describeListeners(found: Listener[]): string {
+  return found.map((l) => {
+    const name = processName(l.pid);
+    return `${name ? `${name} ` : ""}(process ${l.pid}) on ${l.address}`;
+  }).join(", ");
+}
+
 function portOf(address: string | undefined): number | undefined {
   const match = /:(\d+)$/.exec(address ?? "");
   return match ? Number(match[1]) : undefined;
