@@ -72,7 +72,9 @@ export default defineConfig({
           // Pure tests run in Node; a test that needs a DOM says so in its
           // first line, `// @vitest-environment jsdom`.
           environment: "node",
-          include: ["src/**/*.test.{ts,tsx}", "build/**/*.test.ts", "test/**/*.test.{ts,tsx}"],
+          // Each test file runs in the one project its name says
+          // (build/projects.test.ts holds every file to it).
+          include: ["src/**/*.test.{ts,tsx}", "build/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
           exclude: ["**/*.rails.test.{ts,tsx}", "**/*.contract.test.{ts,tsx}"],
           setupFiles: ["test/setup-dom.ts"],
         },
@@ -88,7 +90,7 @@ export default defineConfig({
           name: "contract",
           environment: "node",
           env: { NODE_ENV: "production" },
-          include: ["src/**/*.contract.test.{ts,tsx}"],
+          include: ["src/**/*.contract.test.{ts,tsx}", "test/**/*.contract.test.{ts,tsx}"],
         },
       },
       {
@@ -108,7 +110,7 @@ export default defineConfig({
           environmentOptions: { jsdom: { url: `http://127.0.0.1:${cmsPort()}/` } },
           // test/: the rule-9 check, which reads the pages the CMS serves
           // and so sits outside the fence of src/.
-          include: ["src/**/*.rails.test.ts", "test/**/*.rails.test.{ts,tsx}"],
+          include: ["src/**/*.rails.test.{ts,tsx}", "test/**/*.rails.test.{ts,tsx}"],
           globalSetup: ["e2e/harness/vitest-rails.ts"],
           testTimeout: 30_000,
           hookTimeout: 30_000,
