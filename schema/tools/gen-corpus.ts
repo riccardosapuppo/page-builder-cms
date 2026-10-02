@@ -303,6 +303,11 @@ valid("rich-text", "the rich-text subset: nested lists three deep, every mark, h
     ol(1, li(p(t("first"))), li(p(t("second")))),
   ))])]),
 ]));
+valid("rich-text-every-mark-once", "all three marks on one text node and on one line break, in two orders: each type at most once is the rule, not a fixed order", doc("Marks", [
+  section("mk", [column("mk-1", [text("mk-text", rich(
+    p(t("bold, italic and a link", [bold, italic, link("/marks")]), br([link("#top"), italic, bold]), t("link first", [link("https://example.com/"), bold])),
+  ))])]),
+]));
 valid("styles-every-token", "every style key and token value, with tablet and phone overrides", doc("Styles", [
   section("st", [
     column("st-1", [
@@ -558,6 +563,11 @@ invalid("text-link-data", "no data: links", `${RUN}/3/marks/0/attrs/href`, "patt
 invalid("text-link-newline-then-https", "the line-anchor trap: a second line that would satisfy ^https:// in Ruby", `${RUN}/3/marks/0/attrs/href`, "not", (d) => {
   at(d, RUN)[3].marks[0].attrs.href = `javascript:alert(1)${NEWLINE}https://ok.example/`;
 });
+invalid("text-link-twice", "two link marks on one text node would be one <a> inside another, which a browser splits in two", `${RUN}/3/marks`, "not", (d) => {
+  at(d, RUN)[3].marks.push(link("/somewhere-else"));
+});
+invalid("text-bold-twice", "a mark type at most once on a node, bold included", `${RUN}/1/marks`, "not", (d) => { at(d, RUN)[1].marks.push(bold); });
+invalid("text-break-italic-twice", "a line break's marks follow the same rule", `${RUN}/4/marks`, "not", (d) => { at(d, RUN)[4].marks = [italic, italic]; });
 invalid("text-link-without-attrs", "a link mark has attrs with href", `${RUN}/3/marks/0`, "required", (d) => { delete at(d, RUN)[3].marks[0].attrs; });
 invalid("text-empty-text-node", "text nodes are never empty", `${RUN}/0/text`, "minLength", (d) => { at(d, RUN)[0].text = ""; });
 invalid("text-node-without-text", "a text node has text", `${RUN}/0`, "required", (d) => { delete at(d, RUN)[0].text; });

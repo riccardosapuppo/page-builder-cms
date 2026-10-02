@@ -869,6 +869,18 @@
     "keyword": "enum",
     "layer": "schema"
   },
+  "invalid/text-bold-twice.json": {
+    "rule": "a mark type at most once on a node, bold included",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/1/marks",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/text-break-italic-twice.json": {
+    "rule": "a line break's marks follow the same rule",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/4/marks",
+    "keyword": "not",
+    "layer": "schema"
+  },
   "invalid/text-control-character.json": {
     "rule": "no control characters in text",
     "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/0/text",
@@ -908,6 +920,12 @@
   "invalid/text-link-newline-then-https.json": {
     "rule": "the line-anchor trap: a second line that would satisfy ^https:// in Ruby",
     "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks/0/attrs/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/text-link-twice.json": {
+    "rule": "two link marks on one text node would be one <a> inside another, which a browser splits in two",
+    "pointer": "/sections/0/children/0/children/1/props/doc/content/0/content/3/marks",
     "keyword": "not",
     "layer": "schema"
   },
@@ -1150,6 +1168,9 @@
   },
   "valid/readme-example.json": {
     "rule": "the example in schema/README.md, checked by the lint"
+  },
+  "valid/rich-text-every-mark-once.json": {
+    "rule": "all three marks on one text node and on one line break, in two orders: each type at most once is the rule, not a fixed order"
   },
   "valid/rich-text.json": {
     "rule": "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs"

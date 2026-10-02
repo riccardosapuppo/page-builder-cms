@@ -69,6 +69,13 @@ The page document's one schema, and the design tokens it names.
 - **Images** come from the media library (`{mediaId, alt}`) or from another
   site (`{url, alt}`), never both. Alt text is required unless the image is
   marked `"decorative": true`, and then it has none.
+- **Rich text** is the editor's own JSON, cut down to paragraphs, line
+  breaks, bullet and numbered lists, and bold, italic and link marks. A
+  run of text carries each mark at most once: two links on one run would
+  be one `<a>` inside another, which HTML does not allow and a browser
+  splits in two. The editor's marks each exclude themselves, so it never
+  writes a repeat; the schema says it with `contains` and `minContains`
+  under `not`, since `uniqueItems` would compare whole marks.
 - **Video and map store data, not URLs:** a provider from a fixed list and
   a video id; or latitude, longitude and zoom. The renderers build the
   addresses, so no stored string is ever parsed as a URL on the way out.
@@ -245,18 +252,19 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 1 October 2026 (Windows 11, Node 24.19.0, Ruby 3.4.10):
+The run of 2 October 2026 (Windows 10, Node 24.19.0, Ruby 3.4.11):
 
 ```
-corpus:  ../corpus: 207 files (22 valid, 185 invalid, 0 upgrade); the manifest lists 207
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 207 results in 1.5 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.10, bundle cms/Gemfile, regexp resolver ecma; 207 results in 13.4 s
-verdicts compared: 207; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 185/185, json_schemer 185/185
-identical {pointer, keyword} sets: 185/185 invalid files (refused by the rules: 26/26; by the schema: 159/159)
-errors on the invalid files: ajv 630, json_schemer 207; normalised: 422 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
-normalised documents with the same numbers and values: 181/181
-RESULT: PASS (207 files, 0 disagreements, 0 exceptions)
+corpus:  ../corpus: 211 files (23 valid, 188 invalid, 0 upgrade); the manifest lists 211
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 211 results in 0.7 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 211 results in 7.5 s
+rules:   on; Ruby normalisation: on
+verdicts compared: 211; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 188/188, json_schemer 188/188
+identical {pointer, keyword} sets: 188/188 invalid files (refused by the rules: 26/26; by the schema: 162/162)
+errors on the invalid files: ajv 648, json_schemer 210; normalised: 437 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
+normalised documents with the same numbers and values: 185/185
+RESULT: PASS (211 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail
@@ -274,6 +282,7 @@ before the column widths, image crops and section spacing added 13.
 | `node compare.ts --corpus <copy without image-url-data.json>` | a corpus file that disappears | `the manifest lists invalid/image-url-data.json, which is not in the corpus` and `193 files in the corpus, fewer than the 194 the manifest lists` |
 | `node compare.ts --rules off` | no application rules on either side | 42 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids and 65 levels of nesting accepted by both; the 20-digit integer read as two different numbers |
 | `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
+| `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
 
 ## The lint of the schema
 
@@ -297,6 +306,9 @@ before the column widths, image crops and section spacing added 13.
   is for a value of the enum, and every `if` requires the property, so a
   block without a type runs no branch. That covers the 14 block types, the
   video providers, the rich-text nodes and the marks.
+- **Marks:** every mark type of the enum has exactly one entry in the rule
+  that a run of text carries it at most once, so a mark type added later
+  cannot be repeated for want of one.
 - **Hierarchy,** read from the schema: the page holds sections, a section one
   to four columns, a column the widget types, and no widget holds children.
 - **Column widths:** every count of columns from one to four has exactly
@@ -318,14 +330,15 @@ before the column widths, image crops and section spacing added 13.
 - **The schema** is valid draft 2020-12 to both engines, and the example at
   the top of this README is the corpus file `valid/readme-example.json`.
 
-The run of 1 October 2026:
+The run of 2 October 2026:
 
 ```
 pattern style: 11/11 patterns in the portable subset
-pattern compile: 11/11 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.10)
+pattern compile: 11/11 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.11)
 pattern probes: 23245 probes over 11 patterns, 9133 matched by both, 0 patterns with a disagreement
-keywords: 375 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
+keywords: 385 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
 dispatch: #/$defs/block on type: 14 values, 14 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
+marks: 3 mark types, 3 of them at most once on a node
 hierarchy: page > section (1-4 columns) > column > 12 widget types, 12 of them with no children
 column widths: 1 column: no preset(s), 2 columns: 4 preset(s), 3 columns: 3 preset(s), 4 columns: no preset(s); 7/7 presets offered
 tokens: spaceToken = 7 names, sectionSpaceToken = 9 names, typeStep = 7 names, aspectToken = 6 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices, 3 of them drawn
@@ -334,18 +347,19 @@ RESULT: PASS
 ```
 
 `npm run lint:plants` shows it can fail: it runs the lint on the schema as
-it is (it must pass), then on 18 copies with one fault planted in each, in
+it is (it must pass), then on 19 copies with one fault planted in each, in
 a temporary folder it removes afterwards. Each must fail for the reason
 planted: `\s`, a dot and a lone `{` in a pattern; with the subset check
 off, an inline modifier json_schemer refuses, a `\-` ajv refuses, and `\S`
 and a dot, which both compile but answer differently (`\S` on U+2028, the
 dot on a carriage return and the two Unicode line breaks); a `oneOf`; a
 widget type with no branch and one with two; an `if` without `required`;
-a section of five columns; a two-part column preset offered to three
-columns, and a column count left without a branch; a spacing step, a
+the link mark left out of the at-most-once rule; a section of five
+columns; a two-part column preset offered to three columns, and a column
+count left without a branch; a spacing step, a
 section space, an image crop and a palette slot `tokens.json` lacks; and
-a README example that no longer matches the corpus. The last run:
-`planted 18, caught 18`.
+a README example that no longer matches the corpus. The last run, on
+2 October 2026: `planted 19, caught 19`.
 
 The checks on `tokens.json` itself were shown failing by hand once, on
 1 October 2026: with Kelp replaced by a `site-teal` tone that `color` does

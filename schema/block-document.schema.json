@@ -767,9 +767,18 @@
       }
     },
     "pmMarks": {
+      "description": "Each mark at most once on a node. Two links on one run of text would be one <a> inside another, which HTML does not allow and a browser splits in two; the editor's marks each exclude themselves, so it never writes a repeat.",
       "type": "array",
       "maxItems": 3,
-      "items": { "$ref": "#/$defs/pmMark" }
+      "items": { "$ref": "#/$defs/pmMark" },
+      "$comment": "'Not two of a type', written with contains and minContains: 2 under not, because uniqueItems would compare whole marks (two links to different addresses are different items) and is not used here anyway (see the lint).",
+      "not": {
+        "anyOf": [
+          { "contains": { "type": "object", "required": ["type"], "properties": { "type": { "const": "bold" } } }, "minContains": 2 },
+          { "contains": { "type": "object", "required": ["type"], "properties": { "type": { "const": "italic" } } }, "minContains": 2 },
+          { "contains": { "type": "object", "required": ["type"], "properties": { "type": { "const": "link" } } }, "minContains": 2 }
+        ]
+      }
     },
     "pmMark": {
       "type": "object",

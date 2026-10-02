@@ -5,8 +5,9 @@
 // script; the addresses use every form and character the schema allows;
 // the map's numbers fall on and near the points where a sixth decimal is
 // half way; every style key of a type takes every token on every device;
-// rich text nests lists, repeats marks, and puts marks on line breaks. The
-// widgets the panel makes (../src/widgets) are among them.
+// rich text nests lists, puts up to all three marks on one run of text in
+// any order, and puts marks on line breaks. The widgets the panel makes
+// (../src/widgets) are among them.
 //
 // Each document is validated before it is used, so a generator that drifts
 // from the schema fails loudly instead of testing less.
@@ -120,7 +121,9 @@ const linkMark = fc.record({
   rel: fc.option(fc.constantFrom(null, "noopener noreferrer nofollow"), { nil: undefined }),
   class: fc.option(fc.constant(null), { nil: undefined }),
 }).map((attrs) => ({ type: "link", attrs: compact(attrs) }));
-const marks = fc.array(fc.oneof(fc.constant({ type: "bold" }), fc.constant({ type: "italic" }), linkMark), { maxLength: 3 });
+// Each mark at most once on a node, as the schema says, in any order.
+const marks = fc.tuple(fc.shuffledSubarray(["bold", "italic", "link"] as const), linkMark)
+  .map(([types, link]) => types.map((type) => (type === "link" ? link : { type })));
 const inline = fc.oneof(
   { weight: 5, arbitrary: fc.tuple(line(200), marks).map(([text, m]) => compact({ type: "text", text, marks: m.length > 0 ? m : undefined })) },
   { weight: 1, arbitrary: marks.map((m) => compact({ type: "hardBreak", marks: m.length > 0 ? m : undefined })) },

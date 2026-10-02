@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "title": "Marks",
+  "sections": [
+    {
+      "id": "mk",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "mk-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "mk-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "bold, italic and a link",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            },
+                            {
+                              "type": "italic"
+                            },
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "/marks",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "hardBreak",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "#top",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            },
+                            {
+                              "type": "italic"
+                            },
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "link first",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "https://example.com/",
+                                "target": null,
+                                "rel": "noopener noreferrer nofollow",
+                                "class": null
+                              }
+                            },
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

@@ -83,6 +83,11 @@ const plants: Plant[] = [
     plant: (s) => { delete s.$defs.block.allOf[0].if.required; },
   },
   {
+    name: "a mark type a run of text may carry twice",
+    expect: "\"link\" has 0 entries",
+    plant: (s) => { s.$defs.pmMarks.not.anyOf = s.$defs.pmMarks.not.anyOf.filter((e: J) => e.contains.properties.type.const !== "link"); },
+  },
+  {
     name: "a section that holds five columns",
     expect: "one to four columns",
     plant: (s) => { s.$defs.sectionBlock.properties.children.maxItems = 5; },

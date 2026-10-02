@@ -383,6 +383,36 @@ const blockTypes = enumOf(defs.blockType) ?? [];
 if (blockDispatch && !sameList(blockDispatch.values, blockTypes)) problem("dispatch", "#/$defs/block dispatches on an enum other than $defs/blockType");
 report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values.length} values, ${d.branches} branches`).join("; ")}`);
 
+// --- 3b. marks ---------------------------------------------------------------------------
+// A run of text carries each mark at most once (two links would nest one
+// <a> in another). $defs/pmMarks says it under not: anyOf, one entry per
+// mark type, "contains that type" with minContains 2. A mark type added to
+// the enum without its entry could be repeated, so every type must have
+// exactly one.
+{
+  const markTypes = enumOf((deref(defs.pmMark)?.properties as Obj | undefined)?.type) ?? [];
+  const marks = deref(defs.pmMarks);
+  const entries = isObject(marks) && isObject(marks.not) && Array.isArray(marks.not.anyOf) ? marks.not.anyOf : [];
+  const guarded = new Map<unknown, number>();
+  entries.forEach((entry: unknown, index: number) => {
+    const at = `#/$defs/pmMarks/not/anyOf/${index}`;
+    const contains = isObject(entry) && isObject(entry.contains) ? entry.contains : undefined;
+    const type = contains && isObject(contains.properties) && isObject(contains.properties.type) ? contains.properties.type.const : undefined;
+    if (!isObject(entry) || entry.minContains !== 2 || "maxContains" in entry || !contains || type === undefined
+      || !Array.isArray(contains.required) || !contains.required.includes("type")) {
+      problem("marks", `${at} is not: contains one mark type, with required ["type"], at least twice (minContains 2, no maxContains)`);
+      return;
+    }
+    guarded.set(type, (guarded.get(type) ?? 0) + 1);
+    if (!markTypes.includes(type)) problem("marks", `${at} guards ${JSON.stringify(type)}, which is not a mark type`);
+  });
+  for (const type of markTypes) {
+    const n = guarded.get(type) ?? 0;
+    if (n !== 1) problem("marks", `${JSON.stringify(type)} has ${n} entries in #/$defs/pmMarks/not/anyOf, so ${n === 0 ? "a run of text may carry it twice" : "its entry is repeated"}`);
+  }
+  report.push(`marks: ${markTypes.length} mark types, ${guarded.size} of them at most once on a node`);
+}
+
 // --- 4. hierarchy ------------------------------------------------------------------------
 {
   const widgetTypes = enumOf(defs.widgetType) ?? [];
