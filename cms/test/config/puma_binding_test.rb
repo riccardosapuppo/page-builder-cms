@@ -35,8 +35,10 @@ class PumaBindingTest < ActiveSupport::TestCase
     end
   end
 
+  # 203.0.113.10 is in a range kept for documentation (RFC 5737): an
+  # address of another machine, as one on the local network would be.
   test "an address outside this machine stops the boot before any socket is opened" do
-    [ "tcp://0.0.0.0:3901", "tcp://[::]:3901", "tcp://192.168.1.10:3901", "tcp://example.com:3901", "tcp://:3901",
+    [ "tcp://0.0.0.0:3901", "tcp://[::]:3901", "tcp://203.0.113.10:3901", "tcp://example.com:3901", "tcp://:3901",
       "ssl://0.0.0.0:3901?key=k&cert=c" ].each do |bind|
       config = configuration(binds: [ bind ])
 
