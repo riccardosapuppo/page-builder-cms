@@ -124,7 +124,7 @@ export function App({ env, adapter, address = locationAddress }: AppProps) {
       },
     };
     setAutosave(saving);
-    setCurrent({ id: page.page.id, slug: page.page.slug, home: page.page.home, published: page.published, savedAt: page.draft.updatedAt });
+    setCurrent({ id: page.page.id, slug: page.page.slug, home: page.page.home, published: page.published, revision: page.draft.revision });
     setStatus({ kind: "ready" });
     address.write(page.page.id);
     return null;

@@ -13,8 +13,9 @@ export interface OpenPage {
   slug: string;
   home: boolean;
   published: Published | null;
-  // The draft's last save the server confirmed when the page was opened.
-  savedAt: string | null;
+  // The draft's revision when the page was opened; the autosave's
+  // snapshot has it from then on.
+  revision: number;
 }
 
 export interface Session {

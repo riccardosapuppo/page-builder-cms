@@ -140,22 +140,27 @@ function useSaveSnapshot(): SaveSnapshot | null {
   return useSyncExternalStore(autosave ? autosave.subscribe : noSubscription, autosave ? autosave.getSnapshot : () => NEVER);
 }
 
-// Whether visitors see the page, and whether they see all of it: an edit
-// saved after the last publish, or a new address, is not live yet.
-function PublishedChip({ page }: { page: OpenPage }) {
+// Whether visitors see the page, and how much of it: each save since the
+// draft revision the live version was taken from is a change visitors do
+// not see yet (the CMS's draftRevision), and a new address waits for the
+// next publish too.
+export function PublishedChip({ page }: { page: OpenPage }) {
   const snapshot = useSaveSnapshot();
   if (!page.published) {
     return <span className="chip chip-draft"><span className="dot-draft" aria-hidden="true" />Not published yet</span>;
   }
-  const savedAt = snapshot?.savedAt ?? page.savedAt;
-  const changed = (snapshot?.unsavedEdits ?? 0) > 0
-    || (snapshot?.savedEdits ?? 0) > 0
-    || (savedAt !== null && Date.parse(savedAt) > Date.parse(page.published.publishedAt))
-    || page.published.slug !== page.slug;
+  const revision = snapshot?.revision ?? page.revision;
+  const changes = Math.max(0, revision - page.published.draftRevision);
+  const moved = page.published.slug !== page.slug && !page.home;
   const since = `Published ${when(page.published.publishedAt)}.`;
-  return changed
-    ? <span className="chip chip-draft" title={`${since} Changes made since then are saved but not live yet.`}><span className="dot-part" aria-hidden="true" />Published, changes not live</span>
-    : <span className="chip chip-draft" title={since}><span className="dot-live" aria-hidden="true" />Published</span>;
+  if (changes > 0) {
+    const what = `${changes} ${changes === 1 ? "change" : "changes"}`;
+    return <span className="chip chip-draft" title={`${since} Your ${what} since then are saved but not live yet.`}><span className="dot-part" aria-hidden="true" />Published, {what} not live</span>;
+  }
+  if (moved) {
+    return <span className="chip chip-draft" title={`${since} The page’s new address, /${page.slug}, is not live yet.`}><span className="dot-part" aria-hidden="true" />Published, new address not live</span>;
+  }
+  return <span className="chip chip-draft" title={since}><span className="dot-live" aria-hidden="true" />Published</span>;
 }
 
 // Where the edits are. The server's answers decide: saved means the server
