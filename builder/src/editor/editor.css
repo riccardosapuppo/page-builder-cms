@@ -336,7 +336,9 @@ span.ov-grip { cursor: default; }
    so nothing is asked of a provider while editing. */
 .canvas .site :is(a, summary, button, input, textarea, select, label, iframe) { pointer-events: none; }
 .canvas .sec, .canvas .col, .canvas .w { position: relative; }
-.canvas .site [data-block-id] { scroll-margin: 56px 0 24px; }
+/* A block brought into view keeps its floating bar, 41 above it, clear of
+   the width rule, 42 tall and sticky. */
+.canvas .site [data-block-id] { scroll-margin: 96px 0 24px; }
 .canvas .site [data-block-id]:focus { outline: none; }
 .canvas .site [data-block-id]:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; box-shadow: 0 0 0 2px var(--white); }
 
