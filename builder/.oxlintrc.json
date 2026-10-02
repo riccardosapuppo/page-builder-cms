@@ -1,0 +1,57 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/jsx-key": "error"
+  },
+  "overrides": [
+    {
+      // The fence. The editor reaches the server only through its storage
+      // adapter, src/storage/: no other file of the editor's source sends a
+      // request, so the adapter can be swapped (for the browser-only demo)
+      // and its tests cover every call the editor makes. That includes
+      // @rails/activestorage, which sends its own requests from inside the
+      // library. Tests and their harness (e2e/, build/, test/) run in Node
+      // or on test pages, outside the editor's bundle, and are not fenced.
+      // build/lint-fence.test.ts plants a violation of every kind and shows
+      // each one caught, and a file in src/storage/ let through.
+      "files": ["src/**"],
+      "excludeFiles": ["src/storage/**"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          { "name": "fetch", "message": "Only src/storage/ talks to the server: go through the storage adapter." },
+          { "name": "XMLHttpRequest", "message": "Only src/storage/ talks to the server: go through the storage adapter." },
+          { "name": "EventSource", "message": "Only src/storage/ talks to the server: go through the storage adapter." }
+        ],
+        "no-restricted-properties": [
+          "error",
+          { "object": "window", "property": "fetch", "message": "Only src/storage/ talks to the server." },
+          { "object": "globalThis", "property": "fetch", "message": "Only src/storage/ talks to the server." },
+          { "object": "self", "property": "fetch", "message": "Only src/storage/ talks to the server." },
+          { "object": "window", "property": "XMLHttpRequest", "message": "Only src/storage/ talks to the server." },
+          { "object": "globalThis", "property": "XMLHttpRequest", "message": "Only src/storage/ talks to the server." },
+          { "object": "self", "property": "XMLHttpRequest", "message": "Only src/storage/ talks to the server." },
+          { "object": "window", "property": "EventSource", "message": "Only src/storage/ talks to the server." },
+          { "object": "globalThis", "property": "EventSource", "message": "Only src/storage/ talks to the server." },
+          { "object": "self", "property": "EventSource", "message": "Only src/storage/ talks to the server." }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^@rails/activestorage(/|$)",
+                "message": "@rails/activestorage sends its own requests: only src/storage/ may import it."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
