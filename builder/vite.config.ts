@@ -9,6 +9,7 @@
 //   only here, in development: ../docs/decisions/editor-api-through-the-dev-proxy.md
 //   says what that costs.
 // - The schema's validator is compiled ahead of time (build/validator.ts),
+//   the icon box's icons are read from schema/icons.svg (build/site-icons.ts),
 //   the published page's stylesheets and the fonts are read from where the
 //   repository keeps them (build/paths.ts, build/fonts.ts), and the built
 //   bundle is checked before the build says it is done (build/bundle-check.ts).
@@ -18,6 +19,7 @@ import { bundleCheck } from "./build/bundle-check.ts";
 import { cmsPort } from "./e2e/harness/ports.ts";
 import { fontAliases, fontLicences } from "./build/fonts.ts";
 import { builderRoot, cmsFonts, cmsStylesheets, designFonts, schemaDir } from "./build/paths.ts";
+import { siteIcons } from "./build/site-icons.ts";
 import { documentValidator, validatorSource } from "./build/validator.ts";
 
 const port = Number(process.env.BUILDER_PORT ?? 4900);
@@ -31,7 +33,7 @@ if (!Number.isInteger(port) || port <= 0) throw new Error(`BUILDER_PORT must be 
 const toCms = { target: cmsUrl, changeOrigin: false };
 
 export default defineConfig({
-  plugins: [react(), documentValidator(), fontLicences(), bundleCheck()],
+  plugins: [react(), documentValidator(), siteIcons(), fontLicences(), bundleCheck()],
   resolve: { alias: fontAliases() },
   // No fallback page: an address that is not a file is a 404, never the
   // editor's index answered for it.
