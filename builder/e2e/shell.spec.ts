@@ -1,8 +1,9 @@
-// The editor's page boots in a browser: its bundle loads without an error,
-// and the schema's validator, compiled ahead of time, runs there.
+// The editor's page boots in a browser: its bundle loads without an error
+// and draws the approved design's shell, and an address that is no file
+// is a 404, never the editor's page.
 import { expect, test } from "@playwright/test";
 
-test("the editor's page loads and validates a new page in the browser", async ({ page }) => {
+test("the editor's page loads its shell without an error", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
@@ -10,8 +11,13 @@ test("the editor's page loads and validates a new page in the browser", async ({
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page Builder CMS");
-  await expect(page.locator("[data-check=validator]")).toHaveText("A new page passes the document schema.");
+  await expect(page.getByRole("button", { name: "Page Builder CMS menu" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Device" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Panel" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Navigator" })).toBeVisible();
+  // Whatever pages the run has made so far, the canvas's place shows a
+  // page or says why there is none, and is no longer opening one.
+  await expect(page.getByRole("main", { name: "Page canvas" })).not.toHaveAttribute("aria-busy", "true");
   expect(errors).toEqual([]);
 });
 
