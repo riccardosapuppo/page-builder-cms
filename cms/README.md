@@ -163,7 +163,7 @@ which loads the whole app first as production does:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-224 runs, 1071 assertions, 0 failures, 0 errors, 0 skips
+225 runs, 1074 assertions, 0 failures, 0 errors, 0 skips
 openapi: 184 API response(s) checked against cms/openapi.yaml
 ```
 
@@ -231,8 +231,9 @@ twice in processes of its own and takes about 13 seconds of it.
   `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
   one value changed by hand in the file failed it.
 
-Also run, from this folder: `ruby bin/rubocop` (103 files, no offenses on
-2 October) and `ruby bin/brakeman` (no warnings).
+Also run, from this folder: `ruby bin/rubocop` (104 files, no offenses on
+2 October, with `Layout/SpaceAroundOperators` switched on over the
+omakase style) and `ruby bin/brakeman` (no warnings).
 
 ## The pages a visitor sees
 
