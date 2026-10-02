@@ -1,6 +1,7 @@
-# The checks of stage 1 (domain, API and server rendering), on Linux, at
-# every push to main and on every pull request. Each job has a time limit:
-# a job that hangs is a failure, not a wait.
+# The checks of stage 1 (domain, API and server rendering) and of the
+# editor's package (stage 2), on Linux, at every push to main and on every
+# pull request. Each job has a time limit: a job that hangs is a failure,
+# not a wait.
 name: CI
 
 on:
@@ -114,3 +115,57 @@ jobs:
       # needs on Ubuntu, at the version the pinned Playwright expects.
       - run: npx playwright install --with-deps chromium
       - run: node tools/check-production.ts
+
+  builder:
+    name: Editor checks on Node ${{ matrix.node }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lowest Node the editor declares (builder/package.json), and
+        # the one it is built on.
+        node: ["22.13.0", "24"]
+    defaults:
+      run:
+        working-directory: builder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      # The unit tests include the fence's planted violations
+      # (build/lint-fence.test.ts) and the bundle check's own tests.
+      - run: npm test
+      # The build fails on eval, Function, require() or a missing font
+      # licence in its own output (build/bundle-check.ts).
+      - run: npm run build
+
+  builder-e2e:
+    name: Editor against a CMS of its own, in a browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: cms
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+        working-directory: builder
+      # Chromium for Playwright, at the version the pinned Playwright expects.
+      - run: npx playwright install --with-deps chromium
+        working-directory: builder
+      # Each starts its own CMS (e2e environment) and, for the browser
+      # tests, the editor's development server, on 3901 and 4901.
+      - run: npm run test:rails
+        working-directory: builder
+      - run: npm run e2e
+        working-directory: builder

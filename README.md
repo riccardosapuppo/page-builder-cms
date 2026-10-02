@@ -27,6 +27,18 @@ A personal project of the author's, not work for a client.
   README has the commands to install, run and test it.
 - [`contract/`](contract/): the render contract, documents and the HTML the
   server renders for each, which the editor's renderer will be held to.
+- [`builder/`](builder/): the editor's package, React 19, TypeScript and
+  Vite, at its start: every dependency pinned, the source layout, the
+  document's types and its validator compiled from the schema, the
+  published page's stylesheets and fonts taken from `cms/`, Oxlint keeping
+  every call to the server inside `src/storage/`, and tests that start a
+  CMS and an editor server of their own, among them a browser saving a
+  draft and uploading an image through the editor's proxy. The interface
+  itself is not written yet. Its README has the commands; from here,
+  `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
+  `builder:test` and `builder:build`.
+- [`docs/decisions/`](docs/decisions/): decisions with their cost, each
+  with the command that shows it holds.
 - `package.json` and [`tools/`](tools/): the repository's own Node tools,
   TypeScript run by Node 24. `npm run lint:openapi` lints the API
   description; `tools/seed-images.ts` renders the seed's pictures,
@@ -44,13 +56,16 @@ A personal project of the author's, not work for a client.
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml): the same checks
   on Linux, each job with a time limit: the Rails tests on Ruby 3.3 and
   3.4, the schema's two validators and its lint, the contract fixture and
-  the API description, RuboCop, Brakeman and bundler-audit, and the
-  production check. It has not run yet: the repository is not on GitHub
+  the API description, RuboCop, Brakeman and bundler-audit, the
+  production check, and the editor's checks, on Node 22.13.0 (the lowest
+  it declares) and 24, then against a CMS of its own in a browser. It has
+  not run yet: the repository is not on GitHub
   yet. Until it runs green, every check has passed on Windows only, and
   what only Linux and macOS take has not run in full anywhere: the Rails
   tests in forked workers, which leave their OpenAPI counts for the main
-  process to add up, and the production check's ss or lsof and its stop
-  of the server's process group. The adding up and the readers of ss and
+  process to add up, the production check's ss or lsof and its stop of
+  the server's process group, the same in the editor's test harness, and
+  the editor's checks on Node 22. The adding up and the readers of ss and
   lsof output run on Windows too, in tests of their own; the rest waits
   for the first run.
 
@@ -63,7 +78,8 @@ A personal project of the author's, not work for a client.
    rendering of every widget, the media library, and the API description.
    In progress.
 2. **The editor.** A React and TypeScript app with a widget panel, a canvas
-   and a navigator: drag and drop, properties, automatic saving.
+   and a navigator: drag and drop, properties, automatic saving. Begun:
+   its foundation is in `builder/`.
 3. **Editing in depth.** Rich text, undo and redo, versions and restore,
    tablet and phone overrides, full keyboard use, image uploads.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled

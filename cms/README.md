@@ -477,6 +477,31 @@ step and width, Gentle drawing Balanced's sizes.
   SIL licences, and the favicon.
 - `db/seeds/`: the example site; `db/seed_images/`: its pictures.
 
+## The e2e environment
+
+The CMS the editor's tests start for themselves
+([../builder/e2e/harness/servers.ts](../builder/e2e/harness/servers.ts)),
+on port 3901: [config/environments/e2e.rb](config/environments/e2e.rb).
+It behaves as production does where that matters to them: forgery
+protection on, eager loading, `solid_cache` and `solid_queue` (the queue is
+not yet run inside Puma; that comes with the jobs of stage 4), only
+`127.0.0.1`, `localhost` and `[::1]` as host names. Its data is its own:
+three databases, primary, cache and queue, and an Active Storage root. The
+harness gives each run a folder under `tmp/`, passes the paths as
+`DATABASE_URL`, `CACHE_DATABASE_URL`, `QUEUE_DATABASE_URL` and
+`CMS_STORAGE_ROOT`, and deletes the folder once the server is stopped;
+without them the paths default to `tmp/e2e/`. Like production, it reads its
+secret from the environment. By hand, in a POSIX shell:
+
+```
+RAILS_ENV=e2e SECRET_KEY_BASE_DUMMY=1 ruby bin/rails db:create db:schema:load
+RAILS_ENV=e2e SECRET_KEY_BASE_DUMMY=1 ruby bin/rails server -p 3901
+```
+
+Run on 2 October 2026, the first made the three databases in `tmp/e2e/`,
+the second answered 200 on `/up` and `{"pages":[]}` on `/api/pages`;
+`tmp/e2e/` is deleted by hand afterwards, with the server stopped.
+
 ## Production
 
 No credentials file is committed. Production reads its secret from the
