@@ -218,7 +218,10 @@ and `ruby` must be on the PATH.
 
 - [`validate.ts`](tools/validate.ts), the editor's side: `rules.ts`, then
   ajv as `new Ajv2020({strict: true, strictTuples: false, allErrors: true,
-  validateFormats: false, unicodeRegExp: true})`.
+  validateFormats: false, unicodeRegExp: true})`. The options are one
+  object, in [`ajv-options.ts`](tools/ajv-options.ts), which the editor's
+  build imports too when it compiles the schema ahead of time
+  (`builder/build/validator.ts`); the editor imports `rules.ts` itself.
 - [`validate.rb`](tools/validate.rb), the server's side: the twin rules in
   [`cms/lib/block_document/rules.rb`](../cms/lib/block_document/rules.rb),
   then `JSONSchemer.schema(schema, regexp_resolver: "ecma", format: false)`.
