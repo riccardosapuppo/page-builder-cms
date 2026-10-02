@@ -3,16 +3,18 @@
 // named, the sections a widget cannot go into shaded; the navigator shows
 // the same place as a line; the live region says where the block will go,
 // and why not when it cannot. Dropping makes one command; cancelling
-// leaves the page as it was. The pointer and the keys themselves are
-// Chromium's (e2e/drag.spec.ts): jsdom lays nothing out.
+// leaves the page as it was; a drag starts only once the text being typed
+// is in. The pointer and the keys themselves are Chromium's
+// (e2e/drag.spec.ts): jsdom lays nothing out.
 // @vitest-environment jsdom
-import { act, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { Canvas } from "../Canvas.tsx";
 import { Navigator } from "../Navigator.tsx";
-import { DragLayer, dropSentence } from "./DragLayer.tsx";
+import { BlockPanel } from "../panels/EditPanel.tsx";
+import { beginDrag, DragLayer, dropSentence } from "./DragLayer.tsx";
 
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
 
@@ -89,4 +91,32 @@ test("the drop is one command; a cancel leaves the page and the history as they 
   expect(kit.doc()).toBe(before);
   expect(kit.store.getState().past).toHaveLength(1);
   expect(root("h1").dataset.dragSlot).toBeUndefined();
+});
+
+test("a drag starts only once the text being typed is in, as a command of its own", () => {
+  const kit = editorKit({ document: page(), selection: "q1" });
+  kit.render(<BlockPanel id="q1" />);
+  const quote = screen.getByLabelText("Quote");
+  fireEvent.focus(quote);
+  fireEvent.change(quote, { target: { value: "Cold, then very glad." } });
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+  act(() => {
+    expect(beginDrag(kit.env, { kind: "selection" }, true)).toBeNull();
+  });
+  expect(kit.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Quote in Join"]);
+  expect(kit.store.getState().drag?.base).toBe(kit.doc());
+  expect(kit.ui.getState().dragMode).toBe("keyboard");
+  act(() => kit.store.getState().dragOver({ parentId: "c2", index: 0 }));
+  act(() => {
+    kit.store.getState().drop();
+  });
+  expect(kit.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Quote in Join", "Moved Quote to Column 2 in Hero"]);
+  expect(kit.block("q1")?.props).toMatchObject({ text: "Cold, then very glad." });
+});
+
+test("with nothing selected there is nothing to drag, and the editor says so", () => {
+  const kit = editorKit({ document: page() });
+  expect(beginDrag(kit.env, { kind: "selection" }, false)).toMatchObject({ reason: "nothing" });
+  expect(kit.store.getState().drag).toBeNull();
+  expect(kit.ui.getState().notice).toBe("Select a block to move it.");
 });

@@ -282,6 +282,22 @@ export function Canvas() {
     });
   }, [document]);
 
+  // The container a block is dragged out of keeps the height it has once
+  // the block is drawn as the indicator: when the indicator goes to a
+  // column further down, nothing between them moves up from under the
+  // pointer, which would put the pointer past where it was aiming and the
+  // indicator back where it came from, and so on.
+  const origin = useEditor((s) => (s.drag?.source.kind === "block" ? (locate(s.drag.base, s.drag.source.id)?.parentId ?? null) : null));
+  useLayoutEffect(() => {
+    if (origin === null) return undefined;
+    const element = frame.current?.querySelector<HTMLElement>(`[data-block-id="${origin}"]`);
+    if (!element) return undefined;
+    element.style.minHeight = `${element.getBoundingClientRect().height}px`;
+    return () => {
+      element.style.minHeight = "";
+    };
+  }, [origin]);
+
   // With the keyboard, the place the block would land stays in view.
   const keyboardTarget = useEditor((s) => (s.drag && ui.getState().dragMode === "keyboard" ? `${s.drag.target?.parentId ?? ""} ${s.drag.target?.index ?? ""}` : null));
   useEffect(() => {

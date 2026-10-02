@@ -19,11 +19,13 @@ import { describeDrop, verdictFor, type DragSession, type DropTarget } from "../
 import { locate } from "../../document/tree.ts";
 import { focusBlock, placeFocus } from "../act.ts";
 import { BlockIcon } from "../block-icon.tsx";
-import { useEditor, useEnv, useUi } from "../context.tsx";
+import type { CommandError } from "../../document/check.ts";
+import { useEditor, useEnv, useUi, type EditorEnv } from "../context.tsx";
 import { DragDropProvider, DragOverlay, isKeyboardEvent, plugins, type DragDropManager } from "./dnd.ts";
 import { draggedName, draggedOf, homeRule } from "./marks.ts";
 import { PAGE_TARGET, placeAtPoint, placeFromSide, targetForPlace, type Point, type Rect, type Side } from "./place.ts";
 import { stepPlace, type Direction } from "./steps.ts";
+import { sensorCodes } from "../keymap.ts";
 
 // What a drag source carries: the canvas's selection, or a widget panel
 // tile, which makes its new block (with ids the page does not have) from
@@ -32,11 +34,11 @@ export type SourceData =
   | { kind: "selection" }
   | { kind: "tile"; make: (doc: PageDocument) => Block };
 
-// The canvas's element for a block, never the inert, hidden copy a drag
-// library may leave in its place.
+// The canvas's element for a block, never the inert copy a drag library
+// may leave in its place (a block may be aria-hidden itself: a spacer).
 export function liveBlock(id: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(`.canvas [data-block-id="${id}"]`)) {
-    if (!element.closest("[inert], [aria-hidden=true], [data-dnd-placeholder]")) return element;
+    if (!element.closest("[inert], [data-dnd-placeholder]")) return element;
   }
   return null;
 }
@@ -64,6 +66,30 @@ function ownPlace(session: DragSession): DropTarget | null {
   if (session.source.kind !== "block") return null;
   const own = locate(session.base, session.source.id);
   return own ? { parentId: own.parentId, index: own.index } : null;
+}
+
+// The start of a drag: the text still being typed is handed over first,
+// as a command of its own; then the store's drag, from the selected block
+// or the tile's new block, with the block's own place as where it is.
+// The refusal, said, when there is nothing to drag.
+export function beginDrag(env: Pick<EditorEnv, "store" | "ui">, data: SourceData, keyboard: boolean): CommandError | null {
+  const { store, ui } = env;
+  ui.getState().pending.deliver();
+  ui.getState().setBlockMenu(null);
+  const { document: page, selection } = store.getState();
+  const started = data.kind === "selection"
+    ? selection === null
+      ? { ok: false as const, error: { reason: "nothing" as const, message: "Select a block to move it." } }
+      : store.getState().startDrag({ kind: "block", id: selection })
+    : store.getState().startDrag({ kind: "palette", block: data.make(page) });
+  if (!started.ok) {
+    ui.getState().say(started.error.message);
+    return started.error;
+  }
+  ui.setState({ dragMode: keyboard ? "keyboard" : "pointer", notice: null, hover: null, dragSaid: "" });
+  const own = ownPlace(store.getState().drag!);
+  if (own) store.getState().dragOver(own);
+  return null;
 }
 
 interface Ghost {
@@ -117,7 +143,20 @@ export function DragLayer({ children }: { children: ReactNode }) {
     sync(manager);
   }, [store, sync]);
 
+  // One keyboard step: the next place that way, as the library's target.
+  const step = useCallback((manager: DragDropManager, direction: Direction) => {
+    const session = store.getState().drag;
+    if (!session) return;
+    const from = session.target ?? ownPlace(session);
+    if (!from) return;
+    const next = stepPlace(session.base, draggedOf(session), from, direction, (parentId) => verdictFor(session, parentId).allowed);
+    if (next) aim(manager, next);
+  }, [aim, store]);
+
   const scrollListener = useRef<(() => void) | null>(null);
+  // The library takes no move until the drag has started, a frame after
+  // Space: arrows pressed in between are kept and taken then, not lost.
+  const early = useRef<{ directions: Direction[]; stop: () => void } | null>(null);
 
   return (
     <DragDropProvider
@@ -125,26 +164,23 @@ export function DragLayer({ children }: { children: ReactNode }) {
       onBeforeDragStart={(event, manager) => {
         const data = event.operation.source?.data as SourceData | undefined;
         if (!data) return;
-        // What is being typed is kept first, as a command of its own.
-        ui.getState().pending.deliver();
-        ui.getState().setBlockMenu(null);
-        const { document: page, selection } = store.getState();
-        const started = data.kind === "selection"
-          ? selection === null
-            ? { ok: false as const, error: { reason: "nothing" as const, message: "Select a block to move it." } }
-            : store.getState().startDrag({ kind: "block", id: selection })
-          : store.getState().startDrag({ kind: "palette", block: data.make(page) });
-        if (!started.ok) {
+        const keyboard = isKeyboardEvent(event.operation.activatorEvent);
+        if (beginDrag({ store, ui }, data, keyboard)) {
           event.preventDefault();
-          ui.getState().say(started.error.message);
           return;
         }
-        const keyboard = isKeyboardEvent(event.operation.activatorEvent);
-        ui.setState({ dragMode: keyboard ? "keyboard" : "pointer", notice: null, hover: null, dragSaid: "" });
         const session = store.getState().drag!;
-        const own = ownPlace(session);
-        if (own) store.getState().dragOver(own);
-        if (!keyboard) {
+        if (keyboard) {
+          const directions: Direction[] = [];
+          const codes = sensorCodes();
+          const keep = (key: KeyboardEvent) => {
+            if (manager.dragOperation.status.dragging) return;
+            const direction = ((["up", "down", "left", "right"] as const).find((d) => codes[d].includes(key.code)));
+            if (direction) directions.push(direction);
+          };
+          window.addEventListener("keydown", keep, true);
+          early.current = { directions, stop: () => window.removeEventListener("keydown", keep, true) };
+        } else {
           const element = event.operation.source?.element;
           const box = element?.getBoundingClientRect();
           const start = event.operation.position.current;
@@ -162,10 +198,14 @@ export function DragLayer({ children }: { children: ReactNode }) {
         }
       }}
       onDragStart={(_event, manager) => {
+        const kept = early.current;
+        early.current = null;
+        kept?.stop();
         const session = store.getState().drag;
         if (!session || ui.getState().dragMode !== "keyboard") return;
         const own = ownPlace(session);
         if (own) aim(manager, own);
+        for (const direction of kept?.directions ?? []) step(manager, direction);
       }}
       onCollision={(event) => {
         // With the keyboard, the keys choose the target, not the geometry.
@@ -176,13 +216,8 @@ export function DragLayer({ children }: { children: ReactNode }) {
           // The library would move the block by a few pixels; the editor
           // moves it by one place on the page.
           event.preventDefault();
-          const session = store.getState().drag;
           const direction = directionOf(event.by);
-          if (!session || !direction) return;
-          const from = session.target ?? ownPlace(session);
-          if (!from) return;
-          const next = stepPlace(session.base, draggedOf(session), from, direction, (parentId) => verdictFor(session, parentId).allowed);
-          if (next) aim(manager, next);
+          if (direction) step(manager, direction);
           return;
         }
         if (event.to) {
@@ -194,6 +229,8 @@ export function DragLayer({ children }: { children: ReactNode }) {
         if (ui.getState().dragMode === "pointer") sync(manager);
       }}
       onDragEnd={(event) => {
+        early.current?.stop();
+        early.current = null;
         scrollListener.current?.();
         scrollListener.current = null;
         const keyboard = ui.getState().dragMode === "keyboard";

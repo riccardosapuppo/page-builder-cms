@@ -9,9 +9,9 @@
 // the dragged element: the canvas draws the store's preview instead, so
 // React keeps every element of the page) and its announcements (the
 // editor's live region says where the block will go, in its own words).
-import { CollisionPriority, type CollisionDetector } from "@dnd-kit/abstract";
+import { CollisionPriority, type CollisionDetector, type Plugins } from "@dnd-kit/abstract";
 import { pointerIntersection } from "@dnd-kit/collision";
-import { Accessibility, KeyboardSensor, PointerActivationConstraints, PointerSensor, type DragDropManager } from "@dnd-kit/dom";
+import { Accessibility, AutoScroller, KeyboardSensor, PointerActivationConstraints, PointerSensor, type DragDropManager } from "@dnd-kit/dom";
 import { isKeyboardEvent } from "@dnd-kit/dom/utilities";
 import { useDroppable, type UseDroppableInput } from "@dnd-kit/react";
 import { containerPriority } from "../../document/drag.ts";
@@ -21,9 +21,14 @@ export { DragDropProvider, DragOverlay, useDraggable } from "@dnd-kit/react";
 export type { DragDropManager };
 export { isKeyboardEvent };
 
-// The plugins of the library's default preset but its announcements.
-export function plugins<T>(defaults: T[]): T[] {
-  return defaults.filter((plugin) => plugin !== (Accessibility as unknown));
+// The plugins of the library's default preset but its announcements, and
+// an auto-scroll that starts only in the last tenth of the canvas: the
+// default fifth of a canvas 850 high would scroll the page under a
+// pointer aiming at a block near its foot.
+export function plugins(defaults: Plugins<DragDropManager>): Plugins<DragDropManager> {
+  return defaults
+    .filter((plugin) => plugin !== Accessibility)
+    .map((plugin) => (plugin === AutoScroller ? AutoScroller.configure({ threshold: 0.1 }) : plugin));
 }
 
 // The source of a drag from the canvas: its selected block, carried by
