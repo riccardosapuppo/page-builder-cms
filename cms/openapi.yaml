@@ -810,7 +810,7 @@ components:
         updatedAt:
           $ref: '#/components/schemas/Time'
         published:
-          $ref: '#/components/schemas/Published'
+          $ref: '#/components/schemas/PublishedOrNone'
         links:
           $ref: '#/components/schemas/PageLinks'
     Page:
@@ -837,12 +837,17 @@ components:
         draft:
           $ref: '#/components/schemas/Draft'
         published:
-          $ref: '#/components/schemas/Published'
+          $ref: '#/components/schemas/PublishedOrNone'
         links:
           $ref: '#/components/schemas/PageLinks'
-    Published:
+    PublishedOrNone:
       description: What is live, or null before the first publish.
-      type: [object, 'null']
+      anyOf:
+        - $ref: '#/components/schemas/Published'
+        - type: 'null'
+    Published:
+      description: What is live. A publish always answers with it.
+      type: object
       additionalProperties: false
       required: [slug, versionNumber, publishedAt]
       properties:
