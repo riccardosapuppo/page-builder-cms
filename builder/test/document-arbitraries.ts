@@ -17,8 +17,7 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, ICON_NAMES, PALETTE_SLOTS,
-  SCHEMA_VERSION, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VISIBILITY_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -106,19 +105,7 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
 };
 
 // The tokens each style key takes.
-export const TOKENS: Readonly<Record<keyof StyleTokens, readonly string[]>> = {
-  spaceInside: SPACE_TOKENS,
-  spaceBetween: SPACE_TOKENS,
-  spaceAbove: SECTION_SPACE_TOKENS,
-  spaceBelow: SECTION_SPACE_TOKENS,
-  aspect: ASPECT_TOKENS,
-  background: BACKGROUND_TOKENS,
-  color: PALETTE_SLOTS,
-  textSize: TYPE_STEPS,
-  align: ALIGN_TOKENS,
-  verticalAlign: VERTICAL_ALIGN_TOKENS,
-  visibility: VISIBILITY_TOKENS,
-};
+const TOKENS: Readonly<Record<keyof StyleTokens, readonly string[]>> = STYLE_TOKENS;
 
 function stylePart(type: BlockType, minKeys: number): fc.Arbitrary<AnyObject> {
   const keys = STYLE_KEYS_BY_TYPE[type] as readonly (keyof StyleTokens)[];

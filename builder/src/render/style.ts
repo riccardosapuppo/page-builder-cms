@@ -10,10 +10,7 @@
 // write a class of its own choosing. The lists come from
 // ../shared/document.ts, which document.test.ts holds to the schema.
 import { isObject } from "../document/json.ts";
-import {
-  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, COLUMN_WIDTHS_TOKENS, DEVICES, PALETTE_SLOTS, SECTION_SPACE_TOKENS,
-  SPACE_TOKENS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VISIBILITY_TOKENS, type StyleTokens,
-} from "../shared/document.ts";
+import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
 
 export type StyleKey = keyof StyleTokens;
 
@@ -31,20 +28,9 @@ const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility">, string>> = {
   aspect: "aspect",
 };
 
-// The schema's enum for each key.
-const ALLOWED: ReadonlyMap<string, readonly string[]> = new Map<StyleKey, readonly string[]>([
-  ["spaceInside", SPACE_TOKENS],
-  ["spaceBetween", SPACE_TOKENS],
-  ["spaceAbove", SECTION_SPACE_TOKENS],
-  ["spaceBelow", SECTION_SPACE_TOKENS],
-  ["background", BACKGROUND_TOKENS],
-  ["color", PALETTE_SLOTS],
-  ["textSize", TYPE_STEPS],
-  ["align", ALIGN_TOKENS],
-  ["verticalAlign", VERTICAL_ALIGN_TOKENS],
-  ["visibility", VISIBILITY_TOKENS],
-  ["aspect", ASPECT_TOKENS],
-]);
+// The schema's enum for each key. A map, so a key a document makes up
+// ("constructor") finds nothing.
+const ALLOWED: ReadonlyMap<string, readonly string[]> = new Map(Object.entries(STYLE_TOKENS));
 
 // The spacing steps, which a spacer's size takes too.
 export function isSpaceToken(value: unknown): value is string {

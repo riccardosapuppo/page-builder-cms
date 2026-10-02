@@ -9,7 +9,7 @@ import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
   COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, HEADING_LEVELS, ICON_NAMES, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
   ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
-  SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
+  SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
 
@@ -72,6 +72,10 @@ describe("the document's types match the schema", () => {
 
   test("the style settings, and which ones each block type takes", () => {
     expect([...STYLE_TOKEN_KEYS].sort()).toEqual(Object.keys(properties(def("styleTokens"))).sort());
+    // Each setting's tokens are the enum its key refers to.
+    const settings = properties(def("styleTokens"));
+    expect(Object.keys(STYLE_TOKENS).sort()).toEqual([...STYLE_TOKEN_KEYS].sort());
+    for (const key of STYLE_TOKEN_KEYS) expect([...STYLE_TOKENS[key]], key).toEqual(enumOf(settings[key] as Node));
     for (const type of BLOCK_TYPES) {
       const style = branch(type).style;
       // Each device of a type's style refers to the same list of keys.

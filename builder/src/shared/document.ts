@@ -97,6 +97,23 @@ export const STYLE_TOKEN_KEYS = [
   "color", "textSize", "align", "verticalAlign", "visibility",
 ] as const satisfies readonly (keyof StyleTokens)[];
 
+// The tokens each style setting takes: the enum its key refers to in the
+// schema's $defs/styleTokens. The renderer turns only these into classes,
+// the Style panel offers them, and the tests' random pages draw from them.
+export const STYLE_TOKENS = {
+  spaceInside: SPACE_TOKENS,
+  spaceBetween: SPACE_TOKENS,
+  spaceAbove: SECTION_SPACE_TOKENS,
+  spaceBelow: SECTION_SPACE_TOKENS,
+  aspect: ASPECT_TOKENS,
+  background: BACKGROUND_TOKENS,
+  color: PALETTE_SLOTS,
+  textSize: TYPE_STEPS,
+  align: ALIGN_TOKENS,
+  verticalAlign: VERTICAL_ALIGN_TOKENS,
+  visibility: VISIBILITY_TOKENS,
+} as const satisfies { readonly [K in keyof StyleTokens]-?: readonly NonNullable<StyleTokens[K]>[] };
+
 const TEXT_STYLE = ["textSize", "color", "align", "visibility"] as const;
 const LINE_STYLE = ["color", "visibility"] as const;
 const PLAIN_STYLE = ["visibility"] as const;
