@@ -86,6 +86,19 @@ class Api::DraftTest < ActionDispatch::IntegrationTest
     assert_equal 0, @page.draft.reload.revision
   end
 
+  test "two sections with one anchor are refused at the second, which no link to it could reach" do
+    document = page_document
+    document["sections"] << section_block("s2", []).tap { |s| s["props"]["anchor"] = "join" }
+    document["sections"][0]["props"]["anchor"] = "join"
+
+    save_draft @page, revision: 0, document: document
+
+    assert_response :unprocessable_content
+    assert_equal [ { "pointer" => "/document/sections/1/props/anchor", "keyword" => "uniqueAnchor", "blockPointer" => "/document/sections/1" } ],
+                 json["errors"].map { |e| e.except("message") }
+    assert_equal 0, @page.draft.reload.revision
+  end
+
   test "an image from the library that does not exist is refused at its mediaId" do
     save_draft @page, revision: 0, document: page_document(widgets: [ image_block("i1", "gone") ])
 

@@ -17,7 +17,7 @@ interface Entry {
   layer?: "rules" | "schema";
 }
 const manifest = JSON.parse(readFileSync(join(corpus, "manifest.json"), "utf8")) as Record<string, Entry>;
-// 207 files, a page of 500 blocks among them: about a second on an idle
+// 214 files, a page of 500 blocks among them: about a second on an idle
 // machine, five times that on a busy one.
 const CORPUS_TIMEOUT = 60_000;
 

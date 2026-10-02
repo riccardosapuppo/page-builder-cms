@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { MAX_NESTING } from "./rules.ts";
 
 const CORPUS = join(dirname(fileURLToPath(import.meta.url)), "..", "corpus");
-const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId"]);
+const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor"]);
 
 // The corpus is built by mutation, so the tree is handled as plain JSON.
 type J = any;
@@ -185,6 +185,7 @@ const MAP = P("meet-map");
 const QUOTE = P("quote-text");
 const QIMG = P("quote-image");
 const ACC = P("questions-list");
+const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
 
@@ -293,6 +294,12 @@ valid("hrefs-every-form", "every link form the href pattern allows", doc("Links"
 ]));
 valid("heading-link", "a heading may carry a link, as in the approved mock", doc("Heading link", [
   section("hl", [column("hl-1", [block("hl-h", "heading", { level: 2, text: "Read the rules", href: "/rules" })])]),
+]));
+valid("section-anchors-apart-from-ids", "an anchor may be another block's id, since only anchors become ids on the page; sections without one never clash", doc("Anchors", [
+  section("intro", [column("intro-1", [heading("intro-h", 2, "Intro")])], { anchor: "outro" }),
+  section("outro", [column("outro-1", [])], { anchor: "intro" }),
+  section("plain", [column("plain-1", [])]),
+  section("plain-again", [column("plain-again-1", [])]),
 ]));
 valid("rich-text", "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs", doc("Rich text", [
   section("rt", [column("rt-1", [text("rt-text", rich(
@@ -504,6 +511,12 @@ invalid("tree-section-widths-free-ratio", "column widths are presets, not any ra
 invalid("tree-section-widths-equal-written", "equal widths are the absence of a preset, never written", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "equal"; });
 invalid("tree-section-widths-one-column", "a section of one column takes no preset", `${P("gallery")}/props`, "not", (d) => { at(d, P("gallery")).props.columnWidths = "3:2"; });
 invalid("tree-section-anchor", "anchors are lowercase letters, digits and hyphens", `${HERO}/props/anchor`, "pattern", (d) => { at(d, HERO).props.anchor = "Join Us"; });
+invalid("section-anchor-duplicate", "section anchors are unique on the page (a rule: the schema cannot say it): a link to #top would never reach a second section with it", `${JOIN}/props/anchor`, "uniqueAnchor", (d) => {
+  at(d, JOIN).props.anchor = "top";
+});
+invalid("section-anchor-duplicate-first-changed", "the second section with an anchor, in page order, is the one refused, whichever of the two was changed", `${JOIN}/props/anchor`, "uniqueAnchor", (d) => {
+  at(d, HERO).props.anchor = "join";
+});
 invalid("tree-section-label-too-long", "a section label has at most 60 characters", `${HERO}/props/label`, "maxLength", (d) => { at(d, HERO).props.label = "x".repeat(61); });
 invalid("tree-section-unknown-prop", "section props are closed", `${HERO}/props/columns`, "additionalProperties", (d) => { at(d, HERO).props.columns = 2; });
 

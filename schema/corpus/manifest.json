@@ -773,6 +773,18 @@
     "keyword": "maxLength",
     "layer": "schema"
   },
+  "invalid/section-anchor-duplicate-first-changed.json": {
+    "rule": "the second section with an anchor, in page order, is the one refused, whichever of the two was changed",
+    "pointer": "/sections/6/props/anchor",
+    "keyword": "uniqueAnchor",
+    "layer": "rules"
+  },
+  "invalid/section-anchor-duplicate.json": {
+    "rule": "section anchors are unique on the page (a rule: the schema cannot say it): a link to #top would never reach a second section with it",
+    "pointer": "/sections/6/props/anchor",
+    "keyword": "uniqueAnchor",
+    "layer": "rules"
+  },
   "invalid/spacer-size-missing.json": {
     "rule": "a spacer has a size",
     "pointer": "/sections/6/children/0/children/1/props",
@@ -1174,6 +1186,9 @@
   },
   "valid/rich-text.json": {
     "rule": "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs"
+  },
+  "valid/section-anchors-apart-from-ids.json": {
+    "rule": "an anchor may be another block's id, since only anchors become ids on the page; sections without one never clash"
   },
   "valid/section-space-every-step.json": {
     "rule": "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides"

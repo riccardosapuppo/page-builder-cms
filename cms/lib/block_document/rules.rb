@@ -21,7 +21,7 @@ require "json"
 #      it does, that is a bug and it raises
 #   4. the tree: well-formed strings ("wellFormed"), finite numbers
 #      ("finite"), exact integers ("safeInteger"), unique block ids
-#      ("uniqueId")
+#      ("uniqueId"), unique section anchors ("uniqueAnchor")
 #   5. normalisation: an integral Float becomes an Integer (2.0 -> 2)
 # Then the schema runs on the normalised document.
 module BlockDocument
@@ -126,6 +126,7 @@ module BlockDocument
       end
 
       errors.concat(duplicate_ids(document))
+      errors.concat(duplicate_anchors(document))
     end
 
     # Block ids, in document order: the second block with an id is the one
@@ -153,6 +154,29 @@ module BlockDocument
           end
         end
         push_children.call(block["children"], "#{pointer}/children") if block["children"].is_a?(Array)
+      end
+      errors
+    end
+
+    # Section anchors, in page order: the second section with an anchor is
+    # the one reported. An anchor is the id of the section's element on the
+    # published page, and a link to #anchor goes to the first element with
+    # that id, so a second section with it could never be reached. Only
+    # sections carry an anchor, and sections are the page's own children.
+    def duplicate_anchors(document)
+      return [] unless document.is_a?(Hash) && document["sections"].is_a?(Array)
+
+      errors = []
+      seen = {}
+      document["sections"].each_with_index do |section, k|
+        anchor = section["props"]["anchor"] if section.is_a?(Hash) && section["props"].is_a?(Hash)
+        next unless anchor.is_a?(String)
+
+        if seen.key?(anchor)
+          errors << Error.new(pointer: "/sections/#{k}/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"#{anchor}\" is already used by another section.")
+        else
+          seen[anchor] = true
+        end
       end
       errors
     end

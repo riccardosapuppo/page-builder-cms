@@ -1057,7 +1057,7 @@ components:
           description: A JSON pointer into the request body ("" is the body itself).
           type: string
         keyword:
-          description: The rule that failed, as JSON Schema names it (required, type, pattern, maximum...) or as the application rules do (uniqueId, duplicateKey, finite, mediaExists...).
+          description: The rule that failed, as JSON Schema names it (required, type, pattern, maximum...) or as the application rules do (uniqueId, uniqueAnchor, duplicateKey, finite, mediaExists...).
           type: string
         blockPointer:
           description: For a value inside a block of the document, the pointer of that block; otherwise null.

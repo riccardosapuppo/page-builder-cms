@@ -213,6 +213,18 @@ function giveIds(sections: AnyObject[], prefixes: readonly string[]): void {
   sections.forEach(visit);
 }
 
+// Anchors are unique on a page (the application rules): a repeat drawn
+// for a later section is dropped.
+function dropRepeatedAnchors(sections: AnyObject[]): void {
+  const seen = new Set<unknown>();
+  for (const section of sections) {
+    const props = section.props as AnyObject;
+    if (props.anchor === undefined) continue;
+    if (seen.has(props.anchor)) delete props.anchor;
+    else seen.add(props.anchor);
+  }
+}
+
 export function page(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
   return fc.record({
     title: line(120),
@@ -222,6 +234,7 @@ export function page(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
   }).map(({ title, description, sections, prefixes }) => {
     const copy = structuredClone(sections);
     giveIds(copy, prefixes);
+    dropRepeatedAnchors(copy);
     return checked(compact({ schemaVersion: SCHEMA_VERSION, title, description, sections: copy }));
   });
 }

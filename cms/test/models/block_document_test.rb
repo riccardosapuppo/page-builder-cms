@@ -48,6 +48,19 @@ class BlockDocumentTest < ActiveSupport::TestCase
                  errors.map { |e| [ e.pointer, e.keyword, e.block_pointer ] }
   end
 
+  test "a section anchor used twice is refused at the second section, which a link could never reach" do
+    anchored = ->(id, anchor) { section_block(id, []).tap { |s| s["props"]["anchor"] = anchor if anchor } }
+    document = page_document
+    document["sections"] += [ anchored.call("s2", "join"), anchored.call("s3", nil), anchored.call("s4", "join"), anchored.call("s5", "faq") ]
+
+    errors = BlockDocument.check(document).errors
+
+    assert_equal [ [ "/sections/3/props/anchor", "uniqueAnchor", "/sections/3" ] ], errors.map { |e| [ e.pointer, e.keyword, e.block_pointer ] }
+    assert_equal "The anchor \"join\" is already used by another section.", errors.first.message
+    document["sections"][3]["props"]["anchor"] = "join-again"
+    assert BlockDocument.check(document).ok?
+  end
+
   test "a number too large to store is refused by the rules, not left to crash the schema" do
     document = page_document
     document["sections"][0]["children"][0]["children"][0]["props"]["level"] = Float::INFINITY

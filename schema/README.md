@@ -133,7 +133,7 @@ before the schema, identically in the editor and on the server.
 | The text is strict JSON | A byte-order mark, comments, trailing commas, raw control characters: the schema only sees what a parser made of the text | application rules: `parse` |
 | `2.0` is the integer `2` | Both engines accept `2.0` where an integer is required, as the specification says, but Ruby keeps it a Float: the page would render `<h2.0>` | application rules: normalisation, after the checks |
 | The media item exists | The schema does not know the library | the server, when it saves (stage 1) |
-| Section anchors are unique on the page | Same reason as block ids | not enforced yet: two equal anchors make the second unreachable by link |
+| Section anchors are unique on the page | Same reason as block ids: an anchor is a field of each section, and the sections are many items | application rules: `uniqueAnchor`, at the second section in page order. An anchor is the section's element id on the page, and a link reaches only the first element with an id |
 | The video id exists at the provider | Only the provider knows | not checked: the player shows the provider's own error |
 | Older documents | Each `schemaVersion` has its own shape | upgrade functions, run when a document is read (none exist for version 1) |
 | Text length as people count it | `maxLength` counts code points in both engines: an emoji is 1, an accented letter written as letter plus accent is 2 | the editor counts code points too, never UTF-16 units or graphemes |
@@ -255,16 +255,16 @@ json_schemer reports the object once, so the errors are compared as sets.
 The run of 2 October 2026 (Windows 10, Node 24.19.0, Ruby 3.4.11):
 
 ```
-corpus:  ../corpus: 211 files (23 valid, 188 invalid, 0 upgrade); the manifest lists 211
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 211 results in 0.7 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 211 results in 7.5 s
+corpus:  ../corpus: 214 files (24 valid, 190 invalid, 0 upgrade); the manifest lists 214
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 214 results in 0.7 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 214 results in 7.2 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 211; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 188/188, json_schemer 188/188
-identical {pointer, keyword} sets: 188/188 invalid files (refused by the rules: 26/26; by the schema: 162/162)
-errors on the invalid files: ajv 648, json_schemer 210; normalised: 437 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
-normalised documents with the same numbers and values: 185/185
-RESULT: PASS (211 files, 0 disagreements, 0 exceptions)
+verdicts compared: 214; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 190/190, json_schemer 190/190
+identical {pointer, keyword} sets: 190/190 invalid files (refused by the rules: 28/28; by the schema: 162/162)
+errors on the invalid files: ajv 650, json_schemer 212; normalised: 437 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
+normalised documents with the same numbers and values: 186/186
+RESULT: PASS (214 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail
@@ -283,6 +283,7 @@ before the column widths, image crops and section spacing added 13.
 | `node compare.ts --rules off` | no application rules on either side | 42 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids and 65 levels of nesting accepted by both; the 20-digit integer read as two different numbers |
 | `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
 | `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
+| `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 
 ## The lint of the schema
 

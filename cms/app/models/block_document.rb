@@ -5,7 +5,7 @@
 #
 #   1. the application rules of lib/block_document/rules.rb, the twin of the
 #      editor's rules.ts: well-formed strings, finite numbers, exact
-#      integers, unique block ids, nesting depth;
+#      integers, unique block ids and section anchors, nesting depth;
 #   2. the schema, schema/block-document.schema.json, the file the editor
 #      validates with too (BlockDocument::Schema);
 #   3. normalisation: 2.0 becomes 2.

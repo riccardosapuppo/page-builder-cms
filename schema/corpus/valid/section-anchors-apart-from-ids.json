@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "title": "Anchors",
+  "sections": [
+    {
+      "id": "intro",
+      "type": "section",
+      "props": {
+        "anchor": "outro"
+      },
+      "children": [
+        {
+          "id": "intro-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "intro-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Intro"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "outro",
+      "type": "section",
+      "props": {
+        "anchor": "intro"
+      },
+      "children": [
+        {
+          "id": "outro-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "plain",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "plain-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "plain-again",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "plain-again-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

@@ -14,7 +14,7 @@
 //      fail, so if it does, that is a bug and it throws
 //   4. the tree: well-formed strings ("wellFormed"), finite numbers
 //      ("finite"), exact integers ("safeInteger"), unique block ids
-//      ("uniqueId")
+//      ("uniqueId"), unique section anchors ("uniqueAnchor")
 //   5. normalisation: an integral number becomes an integer (2.0 -> 2)
 // Then the schema runs on the normalised document.
 
@@ -382,6 +382,7 @@ export function checkTree(document: unknown): RuleError[] {
       if (Array.isArray(block.children)) pushChildren(block.children, `${pointer}/children`);
     }
   }
+  errors.push(...duplicateAnchors(document));
   return errors;
 }
 
