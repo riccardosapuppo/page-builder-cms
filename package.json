@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node tools/start.cjs",
     "setup": "node tools/start.cjs --setup",
+    "check:start-interrupt": "node tools/start/interrupt-check.ts",
     "typecheck": "tsc -p tsconfig.json",
     "lint:openapi": "node tools/lint-openapi.ts",
     "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
