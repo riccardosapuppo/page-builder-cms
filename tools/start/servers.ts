@@ -14,6 +14,7 @@
 //   process group elsewhere: ../lib/processes.ts) and then asks the system
 //   again that nothing listens on its port.
 import type { ChildProcess } from "node:child_process";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { builderRoot, cmsRoot } from "../lib/commands.ts";
 import { describeListeners, listeners, startTree, stopTree } from "../lib/processes.ts";
@@ -66,7 +67,18 @@ export function startCms(port: number, rubyEnv: NodeJS.ProcessEnv, print: (line:
   const env: NodeJS.ProcessEnv = { ...rubyEnv, RAILS_ENV: "development" };
   delete env.BINDING;
   delete env.PORT;
-  return launch("cms", "the CMS", port, "ruby", ["bin/rails", "server", "-b", "127.0.0.1", "-p", String(port), "-P", join("tmp", "pids", `start-${port}.pid`)], cmsRoot, env, print);
+  // A pid file of npm start's own, which a stop by taskkill leaves behind
+  // (Puma has no time to remove it). Windows reuses process ids, and Rails
+  // refuses to start while the id in the file belongs to a live process,
+  // whatever that process is; the preflight has already seen the port
+  // free, so a file left here is stale.
+  const pidFile = cmsPidFile(port);
+  rmSync(pidFile, { force: true });
+  return launch("cms", "the CMS", port, "ruby", ["bin/rails", "server", "-b", "127.0.0.1", "-p", String(port), "-P", pidFile], cmsRoot, env, print);
+}
+
+export function cmsPidFile(port: number): string {
+  return join(cmsRoot, "tmp", "pids", `start-${port}.pid`);
 }
 
 export function startEditor(port: number, cmsUrl: string, print: (line: string) => void): Server {
@@ -133,5 +145,6 @@ export async function stop(server: Server): Promise<{ lines: string[]; closed: b
     still = (error as Error).message;
   }
   lines.push(still ? `${server.what}: port ${server.port} is still held by ${still}` : `${server.what}: nothing listens on ${server.port}`);
+  if (!still && server.name === "cms") rmSync(cmsPidFile(server.port), { force: true });
   return { lines, closed: !still };
 }
