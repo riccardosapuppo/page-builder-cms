@@ -25,6 +25,8 @@ input)`, which makes a new block: `{id, type, props, children: [], style:
 {base: {}}}`. `registry.ts` lists the definitions in the panel's order
 (Basic, Media, Content, as the design has them), the renderer of each
 type, and the Layout group's tiles (a section, with one to four columns).
+`icon.tsx` draws a tile (`WidgetIcon`) with the renderer's SVG drawer,
+`shapeElements` of `../render/drawings.tsx`.
 
 ## New widgets
 
@@ -42,7 +44,8 @@ Three need something first, and their definition says which:
 
 `registry.test.ts`: one definition for each widget type of the schema;
 the panel's groups, order and labels and every tile's icon equal to the
-approved design's (read from `design/index.html`); every new widget a
+approved design's (read from `design/index.html`), and drawn as that
+symbol's markup with no warning from React; every new widget a
 valid block, and a page holding one of each a valid page. The contract
 test checks each widget's traps exist, in a fixture, with its type, and
 the rule-9 check saves one of each new widget to the CMS and compares the
