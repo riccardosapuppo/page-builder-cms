@@ -49,6 +49,8 @@ export default defineConfig({
       allow: [builderRoot, schemaDir, cmsStylesheets, cmsFonts, designFonts],
     },
   },
+  // `vite preview` serves the build the same way, and takes server.proxy
+  // as its own.
   preview: { host: "127.0.0.1", port, strictPort: true },
   optimizeDeps: {
     // The compiled validator imports ajv's runtime helpers from a virtual

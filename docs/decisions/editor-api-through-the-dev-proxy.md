@@ -38,12 +38,13 @@ The other ways, and why not:
 
 ## What it costs
 
-1. **The proxy exists only in development.** It is a feature of `vite`
-   (`npm run dev`) and of nothing else. `vite build` writes static files with
-   no proxy, and `vite preview` is given none here. Whoever serves a built
-   editor next to the CMS must put both behind one origin (a reverse proxy
-   that sends `/api` and `/rails/active_storage` to Rails and keeps the
-   `Host`), or build it with an absolute `VITE_API_BASE`.
+1. **The proxy exists only in development.** It is a feature of Vite's own
+   servers, `vite` (`npm run dev`) and `vite preview`, which takes the same
+   proxy unless given another, and of nothing else: the files `vite build`
+   writes have none. Whoever serves a built editor next to the CMS with
+   anything else must put both behind one origin (a reverse proxy that
+   sends `/api` and `/rails/active_storage` to Rails and keeps the `Host`),
+   or build it with an absolute `VITE_API_BASE`.
 2. **An absolute `VITE_API_BASE` needs CORS on that server.** Built with
    `VITE_API_BASE=https://cms.example/api`, the editor sends its requests
    there directly: every write becomes cross-origin, with a preflight, and

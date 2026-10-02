@@ -16,7 +16,14 @@
     "shots:site": "node tools/site-shots.ts",
     "check:type-scales": "node tools/type-scales.ts",
     "check:production": "node tools/check-production.ts",
-    "test:tools": "node --test tools/lib/processes.test.ts"
+    "test:tools": "node --test tools/lib/processes.test.ts",
+    "builder:install": "npm ci --prefix builder",
+    "builder:typecheck": "npm run typecheck --prefix builder",
+    "builder:lint": "npm run lint --prefix builder",
+    "builder:test": "npm run test --prefix builder",
+    "builder:build": "npm run build --prefix builder",
+    "builder:test:rails": "npm run test:rails --prefix builder",
+    "builder:e2e": "npm run e2e --prefix builder"
   },
   "devDependencies": {
     "@redocly/cli": "2.57.0",
