@@ -26,7 +26,7 @@ A personal project of the author's, not work for a client.
   404 page. `ruby bin/rails db:seed` loads the design's example site. Its
   README has the commands to install, run and test it.
 - [`contract/`](contract/): the render contract, documents and the HTML the
-  server renders for each, which the editor's renderer will be held to.
+  server renders for each, which the editor's renderer is held to.
 - [`builder/`](builder/): the editor's package, React 19, TypeScript and
   Vite, with every dependency pinned, the document's types and its
   validator compiled from the schema, the published page's stylesheets

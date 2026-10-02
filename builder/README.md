@@ -5,8 +5,8 @@ Vite, that builds pages and saves them to the CMS (`../cms/`) through its
 JSON API. It is a package of its own, with its own `package.json` and
 lockfile.
 
-**Stage 2 is half done.** What is here is what the interface will stand
-on, each part with its tests: the pinned toolchain, the document's types
+**Stage 2, its first half.** What is here is what the interface will
+stand on, each part with its tests: the pinned toolchain, the document's types
 and its validator, the published page's CSS and fonts, the fence around
 the code that talks to the server, the test harness; the page as data
 and every change to it as a command with its inverse (`src/document/`),
