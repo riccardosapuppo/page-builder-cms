@@ -1,0 +1,12 @@
+/* Instrument Sans, the editor's own typeface, as the approved design
+   declares it (design/styles.css). The file is design/fonts', with its
+   licence beside it; build/fonts.ts resolves the bare name to it, and the
+   build emits the licence next to the font. */
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("instrument-sans-variable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-stretch: 75% 100%;
+  font-style: normal;
+  font-display: block;
+}

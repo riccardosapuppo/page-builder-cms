@@ -1,0 +1,29 @@
+{
+  // The code that ships to the browser: src/, without its tests. No Node
+  // types here, so browser code cannot lean on Node by accident.
+  "compilerOptions": {
+    // ES2024 for String.prototype.isWellFormed, which the application rules
+    // (schema/tools/rules.ts) use to find lone surrogates.
+    "target": "es2024",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    // An absent key and a key set to undefined are different documents:
+    // removing a tablet or phone override removes the key (schema/README.md).
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

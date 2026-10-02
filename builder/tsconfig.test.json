@@ -1,0 +1,9 @@
+{
+  // src/ with its tests, which run in Node (or jsdom) and may read files.
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src", "test"],
+  "exclude": []
+}

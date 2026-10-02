@@ -1,0 +1,4 @@
+# What the build and the tests write; node_modules/ is ignored at the root.
+dist/
+e2e/test-results/
+e2e/report/

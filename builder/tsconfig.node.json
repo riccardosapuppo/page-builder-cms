@@ -1,0 +1,24 @@
+{
+  // What runs in Node: the Vite configuration and its plugins (build/), and
+  // the end-to-end tests with their harness (e2e/). The pages under
+  // e2e/pages run in the browser, hence the DOM types.
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["vite.config.ts", "build", "e2e", "src/shared/validator-module.d.ts"]
+}

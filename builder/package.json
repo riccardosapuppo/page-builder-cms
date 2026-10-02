@@ -12,8 +12,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
-    "lint": "oxlint --deny-warnings src e2e build vite.config.ts",
+    "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.test.json && tsc -p tsconfig.node.json",
+    "lint": "oxlint -f default --deny-warnings src e2e build test vite.config.ts",
+    "lint:plants": "vitest run --project unit build/lint-fence.test.ts",
     "test": "vitest run --project unit",
     "test:rails": "vitest run --project rails",
     "e2e": "playwright test -c e2e/playwright.config.ts"

@@ -1,0 +1,20 @@
+/* The published page's stylesheets, the very files the CMS serves, in the
+   order its layout links them (cms/app/views/layouts/public.html.erb):
+   site.css, the theme, then tokens.css, which `ruby bin/rails tokens:css`
+   writes from schema/tokens.json and the schema's style enums, and which a
+   Rails test holds to that generator. Nothing is copied or regenerated here,
+   so the canvas draws a block with the same rules as the page a visitor
+   gets: the same classes, the same palette and type scale, the same
+   container queries on .site, which make a canvas 768 or 375 wide lay out
+   as a tablet or a phone without an iframe.
+
+   site.css names its fonts by bare file name, as Propshaft resolves them;
+   build/fonts.ts points those names at cms/app/assets/fonts.
+
+   Imported as they are, not inside a cascade layer: a layer would let any
+   rule of the editor's chrome on a bare element (button, p) beat the
+   theme's classes inside the canvas. The chrome keeps to its own classes
+   instead. Three rules of site.css reach outside .site: box-sizing on
+   every element, no margin on html and body, a white body. */
+@import "../../../cms/app/assets/stylesheets/site.css";
+@import "../../../cms/app/assets/stylesheets/tokens.css";

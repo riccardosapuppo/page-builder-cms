@@ -1,0 +1,9 @@
+{
+  // For editors: the three programs `npm run typecheck` checks one by one.
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.test.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
