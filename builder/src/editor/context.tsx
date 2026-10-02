@@ -41,18 +41,22 @@ export function useUi<T>(selector: (state: UiState) => T): T {
 
 // Applies a command a maker made, or gives back why there is none: the
 // maker's refusal, or the store's (the schema, the rules, a full section).
-export function runMade(store: EditorStore, made: Made): { ok: true; outcome: Extract<StoreOutcome, { ok: true }> } | { ok: false; error: CommandError } {
+// The text still waiting in another field goes first (./pending.ts); a
+// command made a moment before it stays good, since its steps check what
+// they change (../document/ops.ts) and text changes only its own key.
+export function runMade(env: { store: EditorStore; ui: UiStore }, made: Made): { ok: true; outcome: Extract<StoreOutcome, { ok: true }> } | { ok: false; error: CommandError } {
   if (!made.ok) return { ok: false, error: made.error };
-  const outcome = store.getState().dispatch(made.command);
+  env.ui.getState().pending.deliver();
+  const outcome = env.store.getState().dispatch(made.command);
   return outcome.ok ? { ok: true, outcome } : { ok: false, error: outcome.error };
 }
 
 // runMade for a component: null when the command was applied, the refusal
 // otherwise.
 export function useRun(): (made: Made) => CommandError | null {
-  const { store } = useEnv();
+  const { store, ui } = useEnv();
   return useCallback((made: Made) => {
-    const result = runMade(store, made);
+    const result = runMade({ store, ui }, made);
     return result.ok ? null : result.error;
-  }, [store]);
+  }, [store, ui]);
 }

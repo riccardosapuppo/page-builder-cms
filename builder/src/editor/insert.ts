@@ -12,6 +12,7 @@ import { makeInsert, pasteTarget, type Made } from "../document/commands.ts";
 import { nestingMessage, type CommandError } from "../document/check.ts";
 import { childrenOf, type Position } from "../document/tree.ts";
 import type { Block, BlockType, PageDocument } from "../shared/document.ts";
+import { focusBlock } from "./act.ts";
 import { runMade, useEnv } from "./context.tsx";
 
 export function insertTarget(doc: PageDocument, type: BlockType, selection: string | null): Position | null {
@@ -28,19 +29,6 @@ export function nowhereMessage(doc: PageDocument, type: BlockType): string {
   return nestingMessage(type, "page");
 }
 
-// The canvas's element for a block, focused and brought into view, once
-// React has drawn it.
-export function focusBlock(id: string): void {
-  const run = () => {
-    const element = document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`);
-    if (!element) return;
-    element.focus({ preventScroll: true });
-    element.scrollIntoView?.({ block: "nearest" });
-  };
-  if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
-  else setTimeout(run, 0);
-}
-
 export interface Inserter {
   // A block made elsewhere, put where the selection says; null when it was
   // placed, the refusal otherwise (also said in the notice).
@@ -52,7 +40,7 @@ export interface Inserter {
 export function useInsert(): Inserter {
   const { store, ui } = useEnv();
   const settle = useCallback((made: Made): CommandError | null => {
-    const result = runMade(store, made);
+    const result = runMade({ store, ui }, made);
     if (!result.ok) {
       ui.getState().say(result.error.message);
       return result.error;

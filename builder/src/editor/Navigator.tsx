@@ -16,7 +16,7 @@ import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { focusBlock } from "./insert.ts";
+import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
 
 interface Row {

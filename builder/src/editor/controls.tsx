@@ -129,11 +129,14 @@ interface TextFieldProps {
 }
 
 export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled }: TextFieldProps) {
-  const { clock } = useEnv();
+  const { clock, ui } = useEnv();
   const id = useId();
   const [draft, setDraft] = useState(value);
   const [refusal, setRefusal] = useState<string | null>(null);
   const timer = useRef<unknown>(null);
+  // While text waits for its pause, the editor's other commands hand it
+  // over first (./pending.ts): this lets go of that hold.
+  const release = useRef<(() => void) | null>(null);
   const focused = useRef(false);
   const sent = useRef(value);
   // What a commit hands over when it runs later (a timer, a blur, the panel
@@ -150,6 +153,8 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       clock.clearTimeout(timer.current);
       timer.current = null;
     }
+    release.current?.();
+    release.current = null;
     const { draft: text, onCommit: hand, rules: r, field: f } = latest.current;
     if (text === sent.current) return;
     const error = hand(text);
@@ -193,8 +198,12 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       commit();
     },
     onChange: (event: { target: { value: string } }) => {
+      // The text handed over by a command elsewhere is this render's, so
+      // the latest is set at once, not after the next render.
+      latest.current = { ...latest.current, draft: event.target.value };
       setDraft(event.target.value);
       if (timer.current !== null) clock.clearTimeout(timer.current);
+      release.current ??= ui.getState().pending.hold(commit);
       timer.current = clock.setTimeout(() => {
         timer.current = null;
         commit();

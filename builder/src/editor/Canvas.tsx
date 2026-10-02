@@ -23,9 +23,10 @@ import { PageRoot } from "../render/page.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
 import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
-import { runMade, useEditor, useEnv, useUi } from "./context.tsx";
+import { focusBlock, runCommand } from "./act.ts";
+import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { focusBlock, useInsert } from "./insert.ts";
+import { useInsert } from "./insert.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
@@ -100,23 +101,15 @@ interface MarksProps {
 }
 
 function Marks({ id, kind, name, relation, hovered, columns, empty }: MarksProps) {
-  const { store, ui, newId } = useEnv();
+  const env = useEnv();
+  const { store, ui, newId } = env;
   const select = (target: string) => {
     store.getState().select(target);
     ui.setState({ tray: "edit" });
     focusBlock(target);
   };
   const act = (command: "duplicate" | "delete") => {
-    const doc = store.getState().document;
-    const result = runMade(store, command === "duplicate" ? makeDuplicate(doc, id, newId) : makeDelete(doc, id));
-    if (!result.ok) {
-      ui.getState().say(result.error.message);
-      return;
-    }
-    ui.getState().say(null);
-    const focus = result.outcome.focus;
-    if (focus) focusBlock(focus.id);
-    else document.querySelector<HTMLElement>(".canvas")?.focus();
+    runCommand(env, (doc) => (command === "duplicate" ? makeDuplicate(doc, id, newId) : makeDelete(doc, id)), "canvas");
   };
   return (
     <>

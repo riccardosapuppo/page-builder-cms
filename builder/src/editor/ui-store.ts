@@ -1,14 +1,16 @@
 // What the interface agrees on besides the page itself: which block the
 // pointer is over, the width the canvas previews, which tab each tray
-// shows, the media library and the site style the canvas draws with, and
-// the errors of the last save the server refused. A vanilla zustand store,
-// like the editor's own (../store), so each part of the interface
-// subscribes to the one value it draws and nothing else redraws.
+// shows, the media library and the site style the canvas draws with, the
+// errors of the last save the server refused, and the text typed in a
+// field and not handed over yet. A vanilla zustand store, like the
+// editor's own (../store), so each part of the interface subscribes to the
+// one value it draws and nothing else redraws.
 //
 // The page document, the selection and the history are not here: they are
 // the editor store's, changed only by its commands.
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { BlockFieldError, MediaItem, SiteStyle } from "../storage/adapter.ts";
+import { PendingText } from "./pending.ts";
 
 export const PREVIEWS = ["desktop", "tablet", "phone"] as const;
 export type Preview = (typeof PREVIEWS)[number];
@@ -30,6 +32,9 @@ export interface UiState {
   serverErrors: readonly BlockFieldError[];
   // One sentence about what just happened, or why nothing did.
   notice: string | null;
+  // The text typed in a panel's field and not handed over yet. The same
+  // object for the life of the store: holding text draws nothing.
+  pending: PendingText;
 
   setHover(id: string | null): void;
   setPreview(preview: Preview): void;
@@ -55,6 +60,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     siteStyle: null,
     serverErrors: [],
     notice: null,
+    pending: new PendingText(),
 
     setHover: (hover) => set({ hover }),
     setPreview: (preview) => set({ preview }),
