@@ -81,7 +81,7 @@ describe("the editor's store", () => {
     s().undo();
     s().undo();
     expect(s().undo().ok).toBe(false);
-    expect((locate(s().document, "b1")?.block.props as { label: string }).label).toBe("One");
+    expect(locate(s().document, "b1")?.block.props).toMatchObject({ label: "One" });
   });
 
   test("loading a page starts the history again; selecting a block that is not there selects nothing", () => {
