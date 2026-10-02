@@ -60,7 +60,7 @@ export function parseSections(html: string): Node[] {
 
 // The children of the <main> of a whole page the server served, without the
 // line breaks its templates write around what the renderer writes: the
-// layout's after <main id="main"> and before </main>
+// layout's after <main id="main_content"> and before </main>
 // (cms/app/views/layouts/public.html.erb), and the one that ends the page's
 // view (cms/app/views/pages/show.html.erb). Anything else there is the
 // renderer's, and is compared.

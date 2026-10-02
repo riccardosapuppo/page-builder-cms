@@ -204,6 +204,26 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_equal png_bytes(width: 4, height: 3), response.body
   end
 
+  test "every id on a page is there once, and the skip link reaches the main content, whatever the anchors" do
+    page = create_page(title: "Anchors", slug: "anchors")
+    document = page_document(title: "Anchors")
+    # Every word the anchor pattern allows that the layout itself might
+    # use as an id, on the page's sections.
+    %w[main content top skip].each_with_index do |anchor, k|
+      document["sections"] << section_block("s#{k + 2}", []).tap { |s| s["props"]["anchor"] = anchor }
+    end
+    Draft.save_document!(page_id: page.id, revision: 0, document: document, save_id: "first")
+    page.publish!
+
+    get "/anchors"
+
+    ids = css_select("[id]").map { |element| element["id"] }
+    assert_equal ids.uniq, ids
+    assert_equal %w[main content top skip], css_select("section[id]").map { |s| s["id"] }
+    target = css_select(".sw-skip").first["href"].delete_prefix("#")
+    assert_equal [ "main" ], css_select("[id]").select { |element| element["id"] == target }.map(&:name)
+  end
+
   test "the stylesheets the page names are served, with the fonts they name" do
     publish(title: "Slack Water", slug: "home", home: true)
     get "/"

@@ -54,7 +54,7 @@ describe("what it finds", () => {
 
 test("a served page's main, without the line breaks of its templates around the render", () => {
   // The layout's line break, the render, the view's and the layout's.
-  const page = `<!doctype html><html><body><div class="site"><main id="main">\n${golden}\n\n</main></div></body></html>`;
+  const page = `<!doctype html><html><body><div class="site"><main id="main_content">\n${golden}\n\n</main></div></body></html>`;
   expect(canonical(mainOfPage(page))).toEqual(canonical(parseSections(golden)));
   expect(canonical(mainOfPage(page)).map((l) => l.line)).toEqual(canonical(parseSections(golden.replaceAll("</div>\n", "</div>"))).map((l) => l.line));
   expect(() => mainOfPage("<main><section></section></main>")).toThrow(/templates' line breaks/);
