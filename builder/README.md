@@ -152,16 +152,17 @@ editor's origin by CORS (the decision note above).
     safety check on both sides (`npm run test:contract`; the 500-block
     page drew in a median of 70.8 ms on 2 October 2026, on a busy machine);
   - rule 9: random valid pages saved through the API and compared with the
-    preview the CMS serves, and a published page (300 pages with seed 7
-    agreed, 24277 nodes; four faults planted in the renderer were each
-    found within 12 pages);
+    preview the CMS serves, and a published page (on 2 October 2026, 300
+    pages with seed 7 agreed, 26527 nodes, in 117.5 s; the default run, 60
+    pages, took 25.7 s; four faults planted in the renderer were each found
+    within 39 pages);
   - the twins: the URL policy and rich text against the CMS's own Ruby on
     values the schema refuses too (57000 policy answers and 1500 rich
     texts the same);
   - the layout: the canvas's page roots against the CMS's pages in
     headless Chromium at 1280, 900, 768 and 375, every element's box and
-    computed style (536 elements on a responsive page, 1708 on three
-    random pages, the same).
+    computed style, to 1/64 of a pixel (536 elements on a responsive page,
+    2152 on three random pages, the same).
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor

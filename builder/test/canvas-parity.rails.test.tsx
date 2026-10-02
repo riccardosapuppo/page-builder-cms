@@ -14,9 +14,9 @@
 //   widths side by side in one window 1400 wide: only the root's width
 //   tells each how to lay out.
 // For every element of the page, in order, its box (from the left of the
-// page root and the top of the sections' container) and the properties the
-// stylesheets set must be the same. Images from elsewhere are not fetched
-// by either page.
+// page root and the top of the sections' container, to 1/64 of a pixel,
+// the unit layout works in) and the properties the stylesheets set must be
+// the same. Images from elsewhere are not fetched by either page.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
@@ -131,7 +131,9 @@ async function measure(page: Page, rootSelector: string): Promise<Measured[]> {
     const main = root.querySelector<HTMLElement>("main, .sw-main")!;
     const left = root.getBoundingClientRect().left;
     const top = main.getBoundingClientRect().top;
-    const round = (n: number) => Math.round(n * 2) / 2;
+    // Layout works in 1/64 of a pixel; anything finer is the float error of
+    // a drawing's box (an svg path's) at another place in the window.
+    const round = (n: number) => Math.round(n * 64) / 64;
     return [...root.querySelectorAll<Element>("section.sec, section.sec *")].map((element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
@@ -229,7 +231,8 @@ async function compare(doc: PageDocument, label: string, stylesheets = ["site.cs
     // usually the cause, its ancestors only grew with it.
     page.forEach((one, index) => {
       const drawn = ours[index]!;
-      if (JSON.stringify(one) === JSON.stringify(drawn)) return;
+      const sameBox = one.box === null || drawn.box === null ? one.box === drawn.box : one.box.every((n, k) => Math.abs(n - drawn.box![k]!) <= 1 / 64);
+      if (sameBox && one.tag === drawn.tag && one.block === drawn.block && JSON.stringify(one.style) === JSON.stringify(drawn.style)) return;
       const styles = one.style.flatMap((line, k) => (line === drawn.style[k] ? [] : [`${line} | canvas ${drawn.style[k]}`]));
       differences.push({ width, index, tag: one.tag, block: one.block, page: one.box, canvas: drawn.box, styles });
     });

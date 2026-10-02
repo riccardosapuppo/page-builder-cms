@@ -60,18 +60,23 @@ const INVISIBLE: ReadonlyArray<readonly [number, number]> = [
   [0x2028, 0x2029], [0x202f, 0x202f], [0x205f, 0x2060], [0x3000, 0x3000], [0xfeff, 0xfeff],
 ];
 const visible = (text: string) => [...text].some((c) => !INVISIBLE.some(([from, to]) => c.codePointAt(0)! >= from && c.codePointAt(0)! <= to));
-const length = (text: string) => [...text].length;
+
+// The pieces joined, cut to the field's length in code points (never in the
+// middle of one), with a visible character added when there is none. Made
+// to fit rather than filtered: a filter that refuses most of what it is
+// given made the pages several times slower to generate.
+function fit(pieces: readonly string[], max: number): string {
+  const text = [...pieces.join("")].slice(0, max - 1).join("");
+  return visible(text) ? text : `${text}x`;
+}
 
 export function line(max: number): fc.Arbitrary<string> {
-  return fc.array(fc.constantFrom(...PIECES), { minLength: 1, maxLength: 5 })
-    .map((pieces) => pieces.join(""))
-    .filter((text) => visible(text) && length(text) <= max);
+  return fc.array(fc.constantFrom(...PIECES), { minLength: 1, maxLength: 5 }).map((pieces) => fit(pieces, max));
 }
 
 function paragraph(max: number): fc.Arbitrary<string> {
   return fc.array(fc.oneof({ weight: 4, arbitrary: fc.constantFrom(...PIECES) }, { weight: 1, arbitrary: fc.constantFrom("\n", "\n\n") }), { minLength: 1, maxLength: 7 })
-    .map((pieces) => pieces.join(""))
-    .filter((text) => visible(text) && length(text) <= max);
+    .map((pieces) => fit(pieces, max));
 }
 
 // ------------------------------------------------------------ addresses

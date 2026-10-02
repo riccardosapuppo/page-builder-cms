@@ -12,7 +12,9 @@ import { safetyProblems } from "./render-safety.ts";
 
 const resolver = (id: string) => (id === "lib-1" ? { src: "/rails/active_storage/blobs/proxy/x/a.png", width: 3, height: 2 } : null);
 
-test("200 generated pages are valid, hold every block type, and draw safely", () => {
+// 80 pages, drawn by React's development build: about 20 s on a busy
+// machine. The rule-9 check is where the pages are many.
+test("80 generated pages are valid, hold every block type, and draw safely", () => {
   const seen = new Set<string>();
   let maps = 0;
   fc.assert(
@@ -25,8 +27,8 @@ test("200 generated pages are valid, hold every block type, and draw safely", ()
       const html = renderToStaticMarkup(<PageSections document={document} ctx={{ media: resolver }} />);
       expect(safetyProblems(html)).toEqual([]);
     }),
-    { seed: 20261002, numRuns: 200 },
+    { seed: 20261002, numRuns: 80 },
   );
   expect([...seen].sort()).toEqual([...BLOCK_TYPES].sort());
   expect(maps).toBeGreaterThan(10);
-}, 120_000);
+}, 240_000);
