@@ -20,7 +20,7 @@
 // parent (the measurements are in ../../README.md).
 import { checkTree, MAX_NESTING } from "../../../schema/tools/rules.ts";
 import type { BlockType, PageDocument } from "../shared/document.ts";
-import { validateBlockSchema, validateDocument, type DocumentError } from "../shared/validate.ts";
+import { validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError } from "../shared/validate.ts";
 import { blockWithPlace, ITEM_NAMES, plural, TYPE_NAMES } from "./labels.ts";
 import { canContain, childTypes, containersFor, type ContainerType } from "./nesting.ts";
 import { duplicateId, locate, pointerOf, type ParentId } from "./tree.ts";
@@ -118,12 +118,15 @@ export function checkContainer(doc: PageDocument, id: ParentId): CommandError | 
   return countRefusal(doc, id, found.block.type, result.errors) ?? refusal("invalid", `${blockWithPlace(doc, id)} would not be valid: ${errors[0]?.message ?? "invalid"}.`, errors);
 }
 
+// The shell is checked by the schema alone: the values in it are the
+// page's own and the sections' and columns' props and style, which the
+// application rules saw when each came in.
 function checkPageShell(doc: PageDocument): CommandError | null {
   const shell = {
     ...doc,
     sections: doc.sections.map((section) => ({ ...section, children: section.children.map((column) => ({ ...column, children: [] })) })),
   };
-  const result = validateDocument(shell);
+  const result = validateDocumentSchema(shell);
   if (result.valid) return null;
   return countRefusal(doc, null, "page", result.errors, "/sections")
     ?? refusal("invalid", `The page would not be valid: ${result.errors[0]?.message ?? "invalid"}.`, result.errors);
@@ -165,7 +168,7 @@ export function checkUniqueIds(doc: PageDocument): CommandError | null {
 // The whole page, as the server will check it: the application rules, then
 // the schema.
 export function checkRoot(doc: PageDocument): CommandError | null {
-  const result = validateDocument(doc);
+  const result = validateHeldDocument(doc);
   if (result.valid) return null;
   return refusal("invalid", `The page would not be valid: ${result.errors[0]?.message ?? "invalid"}.`, result.errors);
 }

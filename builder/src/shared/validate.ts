@@ -8,7 +8,7 @@
 // comparator uses. The server still decides: this lets the editor say what
 // is wrong before a save is refused for it.
 import validateSchema, { validateBlock } from "virtual:block-document-validator";
-import { checkDocument, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
+import { checkDocument, checkTree, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
 import type { Block, PageDocument } from "./document.ts";
 
 export interface DocumentError {
@@ -37,6 +37,24 @@ export function validateDocument(value: unknown): Validation {
 // text steps of the rules apply too (strict JSON, duplicate keys, UTF-8).
 export function parseAndValidate(input: Uint8Array | string): Validation {
   return finish(parseDocument(input));
+}
+
+// A document the editor itself holds, checked by the same rules and schema
+// as validateDocument but not normalised: in memory JavaScript has one
+// number type, so there is no 2.0 to turn into 2, and the copy normalising
+// makes is the larger part of the cost on a large page.
+export function validateHeldDocument(value: unknown): Validation {
+  const errors = checkTree(value);
+  if (errors.length > 0) return finish({ document: value, errors });
+  return validateDocumentSchema(value);
+}
+
+// The schema alone, no application rules: for a page whose values the
+// rules have already seen (../document/check.ts checks each value a change
+// brings in).
+export function validateDocumentSchema(value: unknown): Validation {
+  if (validateSchema(value)) return { valid: true, document: value as PageDocument };
+  return { valid: false, errors: schemaErrors(validateSchema.errors) };
 }
 
 // One block and everything under it, against the schema's $defs/block: the
