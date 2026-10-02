@@ -1,7 +1,8 @@
-# The checks of stage 1 (domain, API and server rendering) and of the
-# editor's package (stage 2), on Linux, at every push to main and on every
-# pull request. Each job has a time limit: a job that hangs is a failure,
-# not a wait.
+# The checks of stage 1 (domain, API and server rendering) and of stage 2
+# (the editor, the render contract, accessibility, and npm start), at every
+# push to main and on every pull request; on Linux, and on Windows where the
+# code takes another path there (npm start and its tools). Each job has a
+# time limit: a job that hangs is a failure, not a wait.
 name: CI
 
 on:
@@ -169,3 +170,110 @@ jobs:
         working-directory: builder
       - run: npm run e2e
         working-directory: builder
+      # The keyboard path, focus after every command, axe on the editor,
+      # the published page and every widget, and the shortcut window.
+      - run: npm run check:a11y
+        working-directory: builder
+
+  contract:
+    name: Render contract, the server's half and the editor's
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: cms
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # The goldens are what the block partials render now, and the
+      # manifest names the renderer's sources as they are.
+      - run: bin/rails db:test:prepare
+        working-directory: cms
+      - run: bin/rails test test/contract/goldens_test.rb
+        working-directory: cms
+      # The React renderer gives the same trees, and passes the safety check.
+      - run: npm ci
+        working-directory: builder
+      - run: npm run test:contract -- --reporter=verbose
+        working-directory: builder
+
+  tools:
+    name: Repository tools on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # npm start's parts take different paths on each: netstat and
+        # taskkill, ss and process groups, the registry and systemd.
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+      # Ruby for the tests that ask Bundler where it writes the launchers
+      # (tools/start/install.test.ts) and that check Ruby's version.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:tools
+
+  start-guard:
+    name: npm start refuses Node ${{ matrix.node }} in one sentence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        # The editor's own minimum, which the TypeScript tools cannot run
+        # on, and an older Node still.
+        node: ["22.13.0", "18"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Before any install, as a reader who clones and types npm start
+      # meets it: exit 2 and the sentence, never a stack trace.
+      - name: The guard says which Node is needed, and nothing starts
+        shell: bash
+        run: |
+          set +e
+          npm start > guard.txt 2>&1
+          code=$?
+          cat guard.txt
+          test "$code" -eq 2 || { echo "expected exit 2, got $code"; exit 1; }
+          grep -q "and the repository's tools need Node >=24" guard.txt || { echo "the sentence is missing"; exit 1; }
+          if grep -q "at .*(.*:[0-9]*:[0-9]*)" guard.txt; then echo "a stack trace was printed"; exit 1; fi
+
+  start-smoke:
+    name: npm start in smoke mode on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    # A first install of the gems on Windows compiles native extensions.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+      # No bundler-cache and no npm ci: npm start installs what it needs by
+      # its own routine, as on a reader's machine.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # Preflight, install, database, both servers ready, the stop, and
+      # what changed outside the repository.
+      - run: npm start -- --smoke
+      # A real Ctrl+C, and a child that dies, each stopping everything.
+      - run: npm run check:start-interrupt
