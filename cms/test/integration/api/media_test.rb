@@ -29,9 +29,28 @@ class Api::MediaTest < ActionDispatch::IntegrationTest
     assert_equal png_bytes, MediaItem.find_by!(public_id: item["id"]).file.download
 
     get item["url"]
-    assert_response :redirect
+    assert_response :ok
+    assert_equal png_bytes, response.body
     api :get, "/api/media"
     assert_equal [ item["id"] ], json["media"].map { |m| m["id"] }
+  end
+
+  test "an image's address is the one the published page gives it, served from this site and cached for good" do
+    upload(png_bytes)
+    item = json
+    page = create_page(title: "Jetty", slug: "jetty")
+    Draft.save_document!(page_id: page.id, revision: 0, document: page_document(widgets: [ image_block("i1", item["id"]) ]), save_id: "first")
+    page.publish!
+
+    get "/jetty"
+    assert_equal [ item["url"] ], css_select("main img").map { |img| img["src"] }
+
+    get item["url"]
+    assert_response :ok
+    assert_equal png_bytes, response.body
+    # The bytes behind a signed blob id never change, so the answer may be
+    # kept: no redirect to an address that expires in minutes.
+    assert_equal [ "immutable", "max-age=3155695200", "public" ], response.headers["Cache-Control"].split(/,\s*/).sort
   end
 
   test "Active Storage's own endpoint wants a CSRF token the editor does not have; this one does not" do

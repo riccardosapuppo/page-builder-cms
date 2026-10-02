@@ -993,7 +993,7 @@ components:
         filename:
           type: string
         url:
-          description: Where the image is served.
+          description: Where the image is served, a path on this site and the same address the published page gives it. It answers with the bytes themselves, not a redirect, and may be cached for good, since the bytes behind it never change.
           type: string
         createdAt:
           $ref: '#/components/schemas/Time'

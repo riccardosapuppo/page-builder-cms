@@ -87,7 +87,10 @@ module Api
         "contentType" => blob.content_type,
         "byteSize" => blob.byte_size,
         "filename" => blob.filename.to_s,
-        "url" => Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true),
+        # The address the published page gives the same image (MediaResolver),
+        # so the canvas and the page show one address, and the browser
+        # caches the bytes once.
+        "url" => Rails.application.routes.url_helpers.rails_storage_proxy_path(blob, only_path: true),
         "createdAt" => iso(item.created_at)
       }
     end

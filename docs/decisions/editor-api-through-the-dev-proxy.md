@@ -22,9 +22,10 @@ development server passes `/api` and `/rails/active_storage` to `CMS_URL`
 asked for** (`changeOrigin: false`, [builder/vite.config.ts](../../builder/vite.config.ts)).
 The CMS then sees a request addressed to the editor's host, carrying the
 editor's `Origin`: one origin, so its rule lets the write in, and no CORS is
-needed. The addresses the CMS builds from the request, the upload address
-of a direct upload and the redirect of a library image, are on the editor's
-host too, so the bytes also go through the proxy.
+needed. The upload address of a direct upload, which the CMS builds from
+the request, is on the editor's host too, and a library image's address is
+a path on whatever host asks (Active Storage's proxy route, the one the
+published page uses), so the bytes also go through the proxy.
 
 The other ways, and why not:
 - **CORS on the CMS**: an allow-list of origins, preflights, and the origin
