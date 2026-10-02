@@ -2,3 +2,6 @@
 dist/
 e2e/test-results/
 e2e/report/
+# The mutated copies of src/ that src/document/mutants.test.ts makes and
+# removes when it ends.
+.mutants/
