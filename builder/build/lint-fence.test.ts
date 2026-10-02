@@ -69,7 +69,8 @@ function lint(cwd: string, paths: string[]): { status: number | null; diagnostic
 const copy = mkdtempSync(join(tmpdir(), "pbc-lint-fence-"));
 afterAll(() => rmSync(copy, { recursive: true, force: true }));
 
-describe("the fence around src/storage/", () => {
+// Each test starts oxlint: well under a second idle, more on a busy machine.
+describe("the fence around src/storage/", { timeout: 30_000 }, () => {
   test("catches every planted call outside src/storage/ and lets the same calls through inside it", () => {
     copyFileSync(join(builderRoot, ".oxlintrc.json"), join(copy, ".oxlintrc.json"));
     for (const [file, plant] of Object.entries({ ...PLANTS, [ALLOWED]: { source: ALLOWED_SOURCE, expected: [] } })) {

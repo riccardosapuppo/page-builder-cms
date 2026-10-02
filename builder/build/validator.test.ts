@@ -17,7 +17,8 @@ const standaloneCode = standaloneModule.default;
 const REQUIRE = /\brequire\s*\(/g;
 
 describe("the compiled validator", () => {
-  test("ajv's own output calls require(), and the module the build serves calls none", () => {
+  // Two compilations of the whole schema.
+  test("ajv's own output calls require(), and the module the build serves calls none", { timeout: 60_000 }, () => {
     const ajv = new Ajv2020({ ...AJV_OPTIONS, code: { source: true, esm: true } });
     const raw = standaloneCode(ajv, ajv.compile(readSchema()));
     const before = raw.match(REQUIRE)?.length ?? 0;
@@ -37,7 +38,8 @@ describe("the compiled validator", () => {
     expect(() => replaceRequires(planted)).toThrow(/still calls require\(\)/);
   });
 
-  test("it answers every corpus file as ajv compiled at run time does, errors included", () => {
+  // Every corpus file, twice: seconds on a busy machine.
+  test("it answers every corpus file as ajv compiled at run time does, errors included", { timeout: 60_000 }, () => {
     const runtime = new Ajv2020({ ...AJV_OPTIONS }).compile(readSchema());
     const corpus = join(schemaDir, "corpus");
     let compared = 0;
