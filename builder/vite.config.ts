@@ -15,6 +15,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import { bundleCheck } from "./build/bundle-check.ts";
+import { cmsPort } from "./e2e/harness/ports.ts";
 import { fontAliases, fontLicences } from "./build/fonts.ts";
 import { builderRoot, cmsFonts, cmsStylesheets, designFonts, schemaDir } from "./build/paths.ts";
 import { documentValidator, validatorSource } from "./build/validator.ts";
@@ -82,6 +83,13 @@ export default defineConfig({
           // their own on E2E_CMS_PORT (3901), with its own databases and
           // storage, and deletes them afterwards.
           environment: "node",
+          // A suite there that needs a browser's XMLHttpRequest (an
+          // upload through @rails/activestorage) says
+          // `// @vitest-environment jsdom`, and its document is on the
+          // CMS's origin, so those requests are same-origin as the
+          // editor's are through its proxy. jsdom takes a window's origin
+          // when the window is made, so it is set here, not later.
+          environmentOptions: { jsdom: { url: `http://127.0.0.1:${cmsPort()}/` } },
           include: ["src/**/*.rails.test.ts"],
           globalSetup: ["e2e/harness/vitest-rails.ts"],
           testTimeout: 30_000,

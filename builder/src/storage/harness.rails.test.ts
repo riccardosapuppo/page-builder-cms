@@ -25,8 +25,10 @@ describe("the CMS this run started", () => {
     expect(created.status).toBe(201);
     const listed = await call("GET", "/api/pages");
     expect(listed.status).toBe(200);
-    const pages = (listed.json as { pages: Array<{ title: string; slug: string }> }).pages;
-    // The harness saw an empty list before any test ran.
-    expect(pages.map((p) => [p.title, p.slug])).toEqual([["Harness check", "harness-check"]]);
+    const pages = (listed.json as { pages: Array<{ id: number; title: string; slug: string }> }).pages;
+    // The harness saw an empty list before any test ran; the battery of
+    // rails.rails.test.ts, on the same CMS, may have added its own since.
+    const id = (created.json as { page: { id: number } }).page.id;
+    expect(pages.filter((p) => p.id === id).map((p) => [p.title, p.slug])).toEqual([["Harness check", "harness-check"]]);
   });
 });
