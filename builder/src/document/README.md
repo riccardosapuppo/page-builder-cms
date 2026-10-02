@@ -4,8 +4,11 @@ The page document as data, and every change to it, in pure functions: no
 React, no DOM, no clock, no network. Everything here runs in Node, and its
 tests say so in their first line, `// @vitest-environment node`.
 
-Types come from `../shared/document.ts`. Nothing here imports from
-`../store`, `../render`, `../widgets`, `../editor` or `../storage`.
+Types come from `../shared/document.ts`, the validator and the pieces of
+the application rules from `../shared/validate.ts`. Nothing here imports
+from `../store`, `../render`, `../widgets`, `../editor` or `../storage`,
+except `property.test.ts` and `mutants.test.ts`, which replay each random
+session through the store as well.
 
 | File | What it holds |
 | --- | --- |

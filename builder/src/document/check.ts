@@ -16,11 +16,12 @@
 // widgets, when its own keys or its list of sections changed.
 //
 // The whole page is validated only when asked (a drop, a document read from
-// outside): about a millisecond on 500 blocks, against microseconds for one
-// parent (the measurements are in ../../README.md).
-import { checkTree, MAX_NESTING } from "../../../schema/tools/rules.ts";
+// outside): milliseconds on 500 blocks, against microseconds for one parent
+// (the measurements are in ./README.md).
 import type { BlockType, PageDocument } from "../shared/document.ts";
-import { validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError } from "../shared/validate.ts";
+import {
+  checkTree, MAX_NESTING, validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError,
+} from "../shared/validate.ts";
 import { blockWithPlace, ITEM_NAMES, plural, TYPE_NAMES } from "./labels.ts";
 import { canContain, childTypes, containersFor, type ContainerType } from "./nesting.ts";
 import { duplicateId, locate, pointerOf, type ParentId } from "./tree.ts";

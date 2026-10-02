@@ -44,6 +44,7 @@ import {
   type Version,
   type VersionWithDocument,
 } from "./adapter.ts";
+import { isObject } from "../document/json.ts";
 import { systemClock, type Clock } from "./clock.ts";
 import { apiBase } from "./config.ts";
 
@@ -122,9 +123,6 @@ interface Answer {
 }
 
 type Accepts = "conflict" | "invalid" | "in-use";
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdapter {
   const base = (config.apiBase ?? apiBase()).replace(/\/+$/, "");

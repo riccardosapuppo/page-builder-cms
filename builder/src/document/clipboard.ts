@@ -5,9 +5,8 @@
 // so it is read like a document from the network: strict JSON with no
 // duplicate keys, the application rules, then the schema for one block.
 // The paste command (./commands.ts, makePaste) then gives it new ids.
-import { checkTree, normalise, scanJson } from "../../../schema/tools/rules.ts";
 import { SCHEMA_VERSION, type Block, type PageDocument } from "../shared/document.ts";
-import { validateBlockSchema } from "../shared/validate.ts";
+import { checkTree, normalise, scanJson, validateBlockSchema } from "../shared/validate.ts";
 import { refusal, type CommandError } from "./check.ts";
 import { copyJson, isObject } from "./json.ts";
 import { locate } from "./tree.ts";

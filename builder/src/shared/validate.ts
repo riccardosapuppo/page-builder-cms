@@ -8,8 +8,13 @@
 // comparator uses. The server still decides: this lets the editor say what
 // is wrong before a save is refused for it.
 import validateSchema, { validateBlock } from "virtual:block-document-validator";
-import { checkDocument, checkTree, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
+import { checkDocument, checkTree, escapePointer, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
 import type { Block, PageDocument } from "./document.ts";
+
+// The pieces of the application rules the editor's checks of one change
+// use (../document/check.ts, ../document/clipboard.ts), passed on from here
+// like everything else the editor takes from outside builder/.
+export { checkTree, MAX_NESTING, normalise, scanJson } from "../../../schema/tools/rules.ts";
 
 export interface DocumentError {
   // A JSON pointer into the document, as the server's 422 gives it.
@@ -91,7 +96,7 @@ function schemaErrors(errors: typeof validateSchema.errors): DocumentError[] {
     const params = e.params as { additionalProperty?: unknown; limit?: unknown };
     const key = e.keyword === "additionalProperties" && typeof params.additionalProperty === "string" ? params.additionalProperty : undefined;
     const error: DocumentError = {
-      pointer: key === undefined ? e.instancePath : `${e.instancePath}/${key.replaceAll("~", "~0").replaceAll("/", "~1")}`,
+      pointer: key === undefined ? e.instancePath : `${e.instancePath}/${escapePointer(key)}`,
       keyword: e.keyword,
       message: e.message ?? e.keyword,
       layer: "schema",
