@@ -89,7 +89,10 @@ id and field (`/props/level`), the way the editor shows them.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It runs in jsdom, whose document is on the CMS's origin
+  It first checks the battery holds its 26 cases, each named once, and
+  that the Rails adapter skips none of them (with `publish` planted as
+  absent in its capabilities, that check failed). It runs in jsdom, whose
+  document is on the CMS's origin
   (`../../vite.config.ts`), so `DirectUpload`'s requests are same-origin,
   as the editor's are through its proxy; jsdom fixes a window's origin
   when the window is made, and an origin changed afterwards sent the

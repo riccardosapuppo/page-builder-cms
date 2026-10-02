@@ -184,8 +184,9 @@ twice in processes of its own and takes about 13 seconds of it.
   (parallel workers on Linux and macOS leave their counts in `tmp/` for
   the main process to add up; Windows runs the tests in one process, so
   `test/contract/openapi_counts_test.rb` runs the saving and the adding
-  up on files of its own, and they wait for CI to run in real forked
-  workers). With the hook's path test changed to `/apix/`, as a
+  up on files of its own; CI ran them in real forked workers on Linux on
+  2 October 2026, and the counts added up). With the hook's path test
+  changed to `/apix/`, as a
   review planted it, `test/integration/api` exited 1 with "181 API
   request(s) answered by the API, 0 held to openapi.yaml"; with the counts
   planted to zero, as when no worker's arrive, it exited 1 with "13 API
@@ -231,7 +232,7 @@ twice in processes of its own and takes about 13 seconds of it.
   `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
   one value changed by hand in the file failed it.
 
-Also run, from this folder: `ruby bin/rubocop` (104 files, no offenses on
+Also run, from this folder: `ruby bin/rubocop` (105 files, no offenses on
 2 October, with `Layout/SpaceAroundOperators` switched on over the
 omakase style) and `ruby bin/brakeman` (no warnings).
 
@@ -287,10 +288,11 @@ omakase style) and `ruby bin/brakeman` (no warnings).
   built with `tag`, `content_tag` and `safe_join`, so it is a SafeBuffer
   and the author's text is always escaped; there is no `raw` and no
   `html_safe` on what an author typed. Addresses go through
-  [RenderPolicy](app/models/render_policy.rb), a small pure module the
-  editor will get a TypeScript twin of: a refused address is dropped and
-  its text kept; a player or map address is built from provider and id, or
-  coordinates.
+  [RenderPolicy](app/models/render_policy.rb), a small pure module whose
+  TypeScript twin is the editor's `../builder/src/render/policy.ts`, held
+  to it by a test that runs both on the same values: a refused address is
+  dropped and its text kept; a player or map address is built from
+  provider and id, or coordinates.
 - **Library images** are served through Active Storage's proxy route, on
   the page's own origin, with their width, height and alt text.
 - **Icon box icons** are drawn inline from `../schema/icons.svg`, rebuilt
@@ -396,12 +398,14 @@ has Rails' own list, which refuses such a name too.
 [test/integration/api/other_sites_test.rb](test/integration/api/other_sites_test.rb)
 sends the text/plain create, the empty form post that publishes, and JSON
 from a foreign origin: with the rule taken out, five of its seven tests
-failed, the page created and the draft published. The editor (stage 2)
-will reach the API through its development server's proxy, which keeps
-the Host the browser asked for, so its origin is the one addressed: a
-test saves a draft and starts an upload with `Host: 127.0.0.1:4900` and
-that origin, and gets the upload address on that host. With the Host
-planted as the CMS's own, 127.0.0.1:3900, the save got 403.
+failed, the page created and the draft published. The editor reaches the
+API through its development server's proxy, which keeps the Host the
+browser asked for, so its origin is the one addressed: a test saves a
+draft and starts an upload with `Host: 127.0.0.1:4900` and that origin,
+and gets the upload address on that host. With the Host planted as the
+CMS's own, 127.0.0.1:3900, the save got 403. The editor's
+`../builder/e2e/probe.spec.ts` does the same from Chromium through the
+real proxy.
 
 **Saving.** The revision check is one statement,
 `UPDATE drafts SET ..., revision = revision + 1 WHERE page_id = ? AND revision = ?`,
@@ -541,9 +545,10 @@ find each ring drawn, 2 px or more, at 3:1 against its band, and each
 text link at 4.5:1. It then stops the server tree, shows the port
 closed, removes the precompiled assets with `assets:clobber` and deletes
 its databases. It runs on Windows (netstat, taskkill) and on Linux and
-macOS (ss or lsof, and the server's own process group, signalled); it was
-run on Windows only. The run of 2 October 2026: `RESULT: 35 checks
-passed`. With seven faults planted at once in the stylesheets (`.cols-2`
+macOS (ss or lsof, and the server's own process group, signalled). On
+2 October 2026 it printed `RESULT: 35 checks passed` on Windows, on 3902
+and again with `PRODUCTION_CHECK_PORT=3901`, and passed in CI on Linux;
+it has not run on macOS. With seven faults planted at once in the stylesheets (`.cols-2`
 outweighed as `.sw .cols-2`, the Primary band painted Muted, Display
 capped at 70 px, the header's wrap moved to 300 px, the ring back to ink
 everywhere, the colours of a phone's `none` and of Accent undone), 8 of

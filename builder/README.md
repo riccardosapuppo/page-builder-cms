@@ -5,12 +5,17 @@ Vite, that builds pages and saves them to the CMS (`../cms/`) through its
 JSON API. It is a package of its own, with its own `package.json` and
 lockfile.
 
-**Stage 2 has just begun.** What is here is the foundation the editor is
-built on: the pinned toolchain, the source layout, the document's types
-and its validator, the published page's CSS and fonts, the fence around the
-code that talks to the server, and the test harness with its first probe.
-The editor's interface is not written yet: `npm run dev` shows a
-placeholder page.
+**Stage 2 is half done.** What is here is what the interface will stand
+on, each part with its tests: the pinned toolchain, the document's types
+and its validator, the published page's CSS and fonts, the fence around
+the code that talks to the server, the test harness; the page as data
+and every change to it as a command with its inverse (`src/document/`),
+the store with undo, redo and drag and drop (`src/store/`); the storage
+adapter for the CMS's API and the autosave (`src/storage/`); the React
+renderer and the twelve widgets' definitions, held to the server's pages
+(`src/render/`, `src/widgets/`). The editor's interface, the widget
+panel, canvas, panels and navigator of `src/editor/`, is not written yet:
+`npm run dev` shows a placeholder page.
 
 ## Before you start
 
@@ -50,9 +55,9 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run typecheck` | `tsc` three times: the code that ships (`src/` without tests, no Node types), the tests, and what runs in Node (`vite.config.ts`, `build/`, `e2e/`). Strict, with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. |
 | `npm run lint` | Oxlint, the default rules plus the fence below. It prints how many files it read. |
 | `npm run lint:plants` | Shows the fence firing: `build/lint-fence.test.ts`. |
-| `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, `test/setup-dom.ts`), then the "contract" project. |
+| `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, `test/setup-dom.ts`), then the "contract" project. Each test file runs in the one project its name says (`*.rails.test.*`, `*.contract.test.*`, any other `*.test.*` in "unit"); `build/projects.test.ts` asks Vitest and fails on a file in none. |
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
-| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` in `src/`, `*.rails.test.tsx` in `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
+| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, at least 1, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
@@ -74,7 +79,7 @@ editor's origin by CORS (the decision note above).
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
 | `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers. |
-| `test/` | The Vitest setup, and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the rule-9 pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |
+| `test/` | The Vitest setup; `env.ts`, which reads a run's seed or count from the environment; and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For storage: the fake clock. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the rule-9 pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |
 
 ## What the checks hold
 
@@ -95,8 +100,9 @@ editor's origin by CORS (the decision note above).
   with an import and stops the build on any other. On the corpus, the
   compiled validator gives the same verdict and errors as ajv compiled at
   run time on every file, and `validateDocument` refuses every invalid file
-  at the manifest's pointer, with its keyword, by the layer it names (about
-  1.6 s for the corpus at 16% CPU on 2 October 2026). The same module
+  at the manifest's pointer, with its keyword, by the layer it names (on
+  2 October 2026, with other work keeping the CPU 40% busy, 1.0 s for the
+  manifest's files and 1.9 s for the comparison with ajv). The same module
   exports `validateBlock`, for one block against `$defs/block`, which the
   editor's own checks use on the one parent a change touches
   (`src/document/check.ts`); `build/validator.test.ts` validates every
@@ -110,8 +116,10 @@ editor's origin by CORS (the decision note above).
   `require`, and on a missing validator, font or licence. The build of
   2 October 2026 printed: `bundle check: 1 JavaScript file(s), 371.7 KiB,
   parsed; eval() 0, Function() 0, new Function() 0, require() 0; validator
-  in assets/index-DPqO62fD.js; fonts with their licence: 4/4` (358.7 KiB
-  before `validateBlock` was added).
+  in assets/index-YT-ML5cR.js; fonts with their licence: 4/4` (358.7 KiB
+  before `validateBlock` was added). With `new Function` planted in
+  `src/main.tsx`, the build failed: the minifier had made it `Function()`,
+  which the check counted.
 - **The published page's CSS** is the CMS's own `site.css` and
   `tokens.css`, imported where they are (`src/shared/site.css`); its fonts
   come from `../cms/app/assets/fonts`, the editor's from `../design/fonts`,
@@ -150,19 +158,23 @@ editor's origin by CORS (the decision note above).
     server's golden, after the goldens are shown current against their
     manifest, with the normalization `../contract/README.md` lists and the
     safety check on both sides (`npm run test:contract`; the 500-block
-    page drew in a median of 70.8 ms on 2 October 2026, on a busy machine);
+    page drew in a median of 70.8 ms with other work keeping the CPU 93%
+    busy, and of 35.9 ms in a later run on a less busy machine, both on
+    2 October 2026: an order of magnitude, not a measure);
   - rule 9: random valid pages saved through the API and compared with the
     preview the CMS serves, and a published page (on 2 October 2026, 300
-    pages with seed 7 agreed, 26527 nodes, in 117.5 s; the default run, 60
-    pages, took 25.7 s; four faults planted in the renderer were each found
-    within 39 pages);
+    pages with seed 7 agreed, 26527 nodes, in 117.5 s, and the same in
+    119.1 s in a later run; the default run, 60 pages, 4952 nodes, took
+    25.7 s and later 30.8 s; four faults planted in the renderer were each
+    found within 39 pages);
   - the twins: the URL policy and rich text against the CMS's own Ruby on
     values the schema refuses too (57000 policy answers and 1500 rich
     texts the same);
   - the layout: the canvas's page roots against the CMS's pages in
-    headless Chromium at 1280, 900, 768 and 375, every element's box and
-    computed style, to 1/64 of a pixel (536 elements on a responsive page,
-    2152 on three random pages, the same).
+    headless Chromium at 1280, 900 and the editor's two previews, 768 and
+    390 (`src/shared/preview-widths.ts`, from `schema/tokens.json`), every
+    element's box and computed style, to 1/64 of a pixel (536 elements on
+    a responsive page, 2152 on three random pages, the same).
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor
@@ -184,8 +196,10 @@ It waits for each to answer for itself (`/up` and an empty page list, the
 index page and the same list through the proxy), then checks that the
 process it started, and no other, listens on the port. At the end it stops
 each tree (`taskkill /T /F` on Windows, the process group elsewhere),
-shows the port closed, and deletes the folder. On 2 October 2026 the CMS
-was ready 25.9 s after the start, on Windows 11 with Ruby 3.4.10.
+shows the port closed, and deletes the folder. On 2 October 2026, on
+Windows 11 with Ruby 3.4.10 and an Intel Core i5-7200U, the CMS was ready
+25.9 s after the start, and 137.6 s in a later run with other work
+keeping the CPU fully busy; stopping it took under a second.
 
 ## Versions
 

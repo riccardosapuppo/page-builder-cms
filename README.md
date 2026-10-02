@@ -28,15 +28,23 @@ A personal project of the author's, not work for a client.
 - [`contract/`](contract/): the render contract, documents and the HTML the
   server renders for each, which the editor's renderer will be held to.
 - [`builder/`](builder/): the editor's package, React 19, TypeScript and
-  Vite, at its start: every dependency pinned, the source layout, the
-  document's types and its validator compiled from the schema, the
-  published page's stylesheets and fonts taken from `cms/`, Oxlint keeping
-  every call to the server inside `src/storage/`, and tests that start a
-  CMS and an editor server of their own, among them a browser saving a
-  draft and uploading an image through the editor's proxy. The interface
-  itself is not written yet. Its README has the commands; from here,
+  Vite, with every dependency pinned, the document's types and its
+  validator compiled from the schema, the published page's stylesheets
+  and fonts taken from `cms/`, and Oxlint keeping every call to the server
+  inside `src/storage/`. Written and tested so far, beneath the interface:
+  every change to a page as a command with its inverse, held to it on
+  random pages and editing sessions; the store that runs them, with undo,
+  redo and drag and drop; the storage adapter for the CMS's API, held to
+  `cms/openapi.yaml` and to a battery of cases run against a CMS of the
+  test run's own, and the autosave, one request in flight; the React
+  renderer and the twelve widgets' definitions, held to the server's
+  goldens by the render contract and to the pages the CMS serves for
+  random valid documents. Tests start a CMS and an editor server of their
+  own, among them a browser saving a draft and uploading an image through
+  the editor's proxy. The interface itself (widget panel, canvas, panels,
+  navigator) is not written yet. Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
-  `builder:test` and `builder:build`.
+  `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
 - [`docs/decisions/`](docs/decisions/): decisions with their cost, each
   with the command that shows it holds.
 - `package.json` and [`tools/`](tools/): the repository's own Node tools,
@@ -46,7 +54,8 @@ A personal project of the author's, not work for a client.
   `tools/site-shots.ts` photographs a running site,
   `tools/type-scales.ts` measures its headings under each type-scale
   choice, and
-  `tools/check-production.ts` checks a production boot on 127.0.0.1:3902,
+  `tools/check-production.ts` (`npm run check:production`) checks a
+  production boot on 127.0.0.1:3902 (`PRODUCTION_CHECK_PORT` moves it),
   and in a browser the published page's layout, colours, reflow and
   focus rings. `npm run test:tools` tests how it reads, from netstat, ss
   or lsof, who listens on a port.
@@ -58,16 +67,15 @@ A personal project of the author's, not work for a client.
   3.4, the schema's two validators and its lint, the contract fixture and
   the API description, RuboCop, Brakeman and bundler-audit, the
   production check, and the editor's checks, on Node 22.13.0 (the lowest
-  it declares) and 24, then against a CMS of its own in a browser. It has
-  not run yet: the repository is not on GitHub
-  yet. Until it runs green, every check has passed on Windows only, and
-  what only Linux and macOS take has not run in full anywhere: the Rails
-  tests in forked workers, which leave their OpenAPI counts for the main
-  process to add up, the production check's ss or lsof and its stop of
-  the server's process group, the same in the editor's test harness, and
-  the editor's checks on Node 22. The adding up and the readers of ss and
-  lsof output run on Windows too, in tests of their own; the rest waits
-  for the first run.
+  it declares) and 24, then against a CMS of its own in a browser. It
+  first ran on 2 October 2026, on the checks of stage 1, and every job
+  passed on Linux, among them the Rails tests in forked workers, whose
+  OpenAPI counts the main process added up, and the production check,
+  which found who listened and stopped the server's process group. The
+  editor's jobs have not run yet: until they do, the editor's checks have
+  passed on Windows only, and its test harness's Linux path (ss and the
+  process group) and its checks on Node 22 have run nowhere. Nothing has
+  run on macOS.
 
 ## The plan, stage by stage
 
@@ -76,10 +84,11 @@ A personal project of the author's, not work for a client.
 1. **Domain and API.** The Rails side: the page document and its shared
    schema, one draft and its versions, publishing and previews, server-side
    rendering of every widget, the media library, and the API description.
-   In progress.
+   Done.
 2. **The editor.** A React and TypeScript app with a widget panel, a canvas
-   and a navigator: drag and drop, properties, automatic saving. Begun:
-   its foundation is in `builder/`.
+   and a navigator: drag and drop, properties, automatic saving. In
+   progress: what the interface stands on is in `builder/` (above); the
+   interface is next.
 3. **Editing in depth.** Rich text, undo and redo, versions and restore,
    tablet and phone overrides, full keyboard use, image uploads.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled
