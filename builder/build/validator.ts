@@ -11,11 +11,19 @@
 // which a browser cannot run. Each one is replaced here with an import of
 // the same helper, and anything left that looks like a require() fails the
 // build instead of reaching the bundle.
+//
+// The module has two validators, sharing their compiled code: the default
+// export checks a whole page document; validateBlock checks one block and
+// everything under it against $defs/block, so the editor can check the one
+// parent a change touches (a section that would get a fifth column) without
+// validating the page. The same plugin serves virtual:block-document-nesting,
+// the nesting rule read from the schema (build/nesting.ts).
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 import Ajv2020Module from "ajv/dist/2020.js";
 import standaloneModule from "ajv/dist/standalone/index.js";
 import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
+import { nestingSource } from "./nesting.ts";
 import { ajvOptionsFile, schemaFile } from "./paths.ts";
 
 // ajv is CommonJS: the constructor and the function are module.exports.default.
@@ -24,6 +32,8 @@ const standaloneCode = standaloneModule.default;
 
 export const VALIDATOR_MODULE = "virtual:block-document-validator";
 const RESOLVED = `\0${VALIDATOR_MODULE}`;
+export const NESTING_MODULE = "virtual:block-document-nesting";
+const RESOLVED_NESTING = `\0${NESTING_MODULE}`;
 
 // The one form ajv's standalone code uses for a runtime helper.
 const RUNTIME_REQUIRE = /require\("(ajv\/dist\/runtime\/[a-z0-9_]+)"\)\.default/g;
@@ -40,12 +50,22 @@ export function readSchema(): object {
   return JSON.parse(readFileSync(schemaFile, "utf8")) as object;
 }
 
-// Compiles the schema with the project's ajv options and returns it as an
-// ES module whose default export is the validate function.
-export function validatorSource(schema: object = readSchema()): ValidatorSource {
+// ajv's own standalone output for the schema: `export const validateDocument`
+// for the page, `export const validateBlock` for $defs/block.
+export function ajvStandalone(schema: object = readSchema()): string {
+  const id = (schema as { $id?: unknown }).$id;
+  if (typeof id !== "string") throw new Error("the schema has no $id to name its validators by");
   const ajv = new Ajv2020({ ...AJV_OPTIONS, code: { source: true, esm: true } });
-  const raw = standaloneCode(ajv, ajv.compile(schema));
-  return replaceRequires(raw);
+  ajv.addSchema(schema);
+  return standaloneCode(ajv, { validateDocument: id, validateBlock: `${id}#/$defs/block` });
+}
+
+// Compiles the schema with the project's ajv options and returns it as an
+// ES module whose default export validates a page document, and whose
+// validateBlock export validates one block.
+export function validatorSource(schema: object = readSchema()): ValidatorSource {
+  const source = replaceRequires(ajvStandalone(schema));
+  return { ...source, code: `${source.code}\nexport default validateDocument;\n` };
 }
 
 export function replaceRequires(raw: string): ValidatorSource {
@@ -74,19 +94,29 @@ export function replaceRequires(raw: string): ValidatorSource {
 }
 
 // The Vite plugin: `import validate from "virtual:block-document-validator"`
-// gives the compiled validator, rebuilt from the schema file whenever the
-// module is loaded, so it can never be older than the schema.
+// gives the compiled validator, and `import { CHILD_TYPES } from
+// "virtual:block-document-nesting"` the nesting rule, both rebuilt from the
+// schema file whenever the module is loaded, so neither can be older than
+// the schema.
 export function documentValidator(): Plugin {
   return {
     name: "page-builder-cms:document-validator",
     resolveId(source) {
-      return source === VALIDATOR_MODULE ? RESOLVED : null;
+      if (source === VALIDATOR_MODULE) return RESOLVED;
+      if (source === NESTING_MODULE) return RESOLVED_NESTING;
+      return null;
     },
     load(id) {
-      if (id !== RESOLVED) return null;
-      this.addWatchFile(schemaFile);
-      this.addWatchFile(ajvOptionsFile);
-      return validatorSource().code;
+      if (id === RESOLVED) {
+        this.addWatchFile(schemaFile);
+        this.addWatchFile(ajvOptionsFile);
+        return validatorSource().code;
+      }
+      if (id === RESOLVED_NESTING) {
+        this.addWatchFile(schemaFile);
+        return nestingSource(readSchema());
+      }
+      return null;
     },
   };
 }
