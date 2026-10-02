@@ -7,7 +7,7 @@ require "test_helper"
 class Api::OtherSitesTest < ActionDispatch::IntegrationTest
   include StoredFiles
 
-  OWN ="http://www.example.com" # the integration session's host
+  OWN = "http://www.example.com" # the integration session's host
   ELSEWHERE = "https://evil.example"
 
   setup do

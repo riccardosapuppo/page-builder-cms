@@ -1,8 +1,8 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
-# Overwrite or add rules to create your own house style
-#
-# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
-# Layout/SpaceInsideArrayLiteralBrackets:
-#   Enabled: false
+# Omakase leaves the spaces around = and the other binary operators
+# unchecked, and a missing one went through. Columns lined up on purpose
+# stay allowed.
+Layout/SpaceAroundOperators:
+  Enabled: true
