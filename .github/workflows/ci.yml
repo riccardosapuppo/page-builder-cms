@@ -107,6 +107,9 @@ jobs:
         with:
           node-version: "24"
       - run: npm ci
+      # The readers of netstat, ss and lsof, on samples of each, before the
+      # check relies on the one this system takes.
+      - run: npm run test:tools
       # Chromium for the browser half of the check, with the libraries it
       # needs on Ubuntu, at the version the pinned Playwright expects.
       - run: npx playwright install --with-deps chromium

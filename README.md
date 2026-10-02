@@ -36,7 +36,8 @@ A personal project of the author's, not work for a client.
   choice, and
   `tools/check-production.ts` checks a production boot on 127.0.0.1:3902,
   and in a browser the published page's layout, colours, reflow and
-  focus rings.
+  focus rings. `npm run test:tools` tests how it reads, from netstat, ss
+  or lsof, who listens on a port.
   `tools/probes/` holds the probe of a risky assumption, run before the
   code that relies on it. Playwright 1.62.1 drives Chromium headless for
   the ones that need a browser.

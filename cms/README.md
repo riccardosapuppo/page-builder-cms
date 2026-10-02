@@ -523,3 +523,10 @@ of 2.17:1 and 1:1 on the dark bands, paper text on paper, and a link at
 3.85:1 on Accent. With `cascade: false` planted (1 October), it failed on
 the missing asset, which came back 404 with the year-long immutable
 header.
+
+`npm run test:tools`, from the repository root, tests how the check reads
+who listens from netstat, ss and lsof, on any system, with a sample of
+each system's output that holds lines to skip next to the ones to find.
+With three faults planted in the readers (netstat's established
+connections let through, ss's process name cut at its first space,
+lsof's process ids never read), all three tests failed.
