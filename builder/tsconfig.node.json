@@ -20,5 +20,8 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["vite.config.ts", "build", "e2e", "src/shared/validator-module.d.ts"]
+  "include": [
+    "vite.config.ts", "build", "e2e",
+    "src/env.d.ts", "src/shared/validator-module.d.ts", "src/storage/activestorage.d.ts", "test/provided-context.d.ts"
+  ]
 }

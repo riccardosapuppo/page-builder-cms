@@ -20,6 +20,23 @@ test:
   <<: *default
   database: storage/test.sqlite3
 
+# The CMS the editor's browser tests start (config/environments/e2e.rb).
+# The harness gives each run a folder of its own through DATABASE_URL,
+# CACHE_DATABASE_URL and QUEUE_DATABASE_URL, and deletes it afterwards;
+# these paths are the defaults, for a run by hand.
+e2e:
+  primary:
+    <<: *default
+    database: tmp/e2e/e2e.sqlite3
+  cache:
+    <<: *default
+    database: tmp/e2e/e2e_cache.sqlite3
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: tmp/e2e/e2e_queue.sqlite3
+    migrations_paths: db/queue_migrate
+
 # SQLite3 write its data on the local filesystem, as such it requires
 # persistent disks. If you are deploying to a managed service, you should
 # make sure it provides disk persistence, as many don't.
