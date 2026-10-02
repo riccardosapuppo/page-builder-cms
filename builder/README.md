@@ -50,7 +50,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run lint` | Oxlint, the default rules plus the fence below. It prints how many files it read. |
 | `npm run lint:plants` | Shows the fence firing: `build/lint-fence.test.ts`. |
 | `npm test` | Vitest, the "unit" project: pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub (`test/setup-dom.ts`). |
-| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901). |
+| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)). |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
@@ -114,6 +114,14 @@ editor's origin by CORS (the decision note above).
   `build/lint-fence.test.ts` plants 8 violations in three folders and the
   same calls in `src/storage/`: each planted line is reported by its rule,
   the storage file is not, and the real tree lints clean.
+- **Storage**: the adapter's types and its route table are held to
+  `../cms/openapi.yaml` key by key and operation by operation
+  (`src/storage/openapi.test.ts`); the battery every adapter must pass
+  runs on the Rails adapter against a CMS of the run's own
+  (`src/storage/rails.rails.test.ts`); the autosave runs on a fake clock
+  against a fake CMS keeping a draft by the CMS's rules
+  (`src/storage/autosave.test.ts`). Each was shown failing with faults
+  planted: [src/storage/README.md](src/storage/README.md).
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor

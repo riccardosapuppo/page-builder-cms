@@ -6,24 +6,159 @@ The only folder of the editor that talks to a server. Oxlint makes
 everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 `../../build/lint-fence.test.ts`).
 
-- `config.ts`: where the API is, `VITE_API_BASE`, `/api` by default.
-- `adapter.ts`: the storage adapter's interface, whole from stage 2:
-  pages (list, create, draft, save with its revision, versions, restore,
-  publish, schedule), media (list, upload, alt text, delete), the site
-  style, form answers, and `capabilities`, which says what this adapter
-  can do, so the editor shows no control for what it cannot (scheduling
-  until stage 4, answers until stage 5).
-- `rails.ts`: the adapter for the CMS's API (`../../../cms/openapi.yaml`),
-  each call with its method written out. Uploads go through
-  `@rails/activestorage` to `POST /api/media/direct_uploads`.
-- `contract.ts`: the battery of behaviour every adapter must pass, written
-  against the interface; it runs against a real CMS in `*.rails.test.ts`
-  files, which `npm run test:rails` runs with a CMS of their own
-  (`../../e2e/harness/`). `browser.ts`, the IndexedDB adapter of the
-  demo, arrives in stage 6 and runs the same battery.
-- The autosave: debounce on an injected clock, one save in flight, three
-  outcomes (saved; conflict, with reload or overwrite; unknown, retried
-  with the same `saveId`).
+| File | What it is |
+| --- | --- |
+| `config.ts` | Where the API is: `VITE_API_BASE`, `/api` by default. |
+| `adapter.ts` | The storage adapter's interface, whole from stage 2, and the types of what it answers. |
+| `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
+| `contract.ts` | The battery every adapter must pass, written against the interface alone. |
+| `autosave.ts` | Saving on its own: the module the store hands each new document to, and the interface reads. |
+| `clock.ts` | The clock the storage code waits on, passed in so tests move time by hand. |
 
-The response types are written by looking at what the server really
-sends, and the CMS's request tests hold its answers to `openapi.yaml`.
+## The interface
+
+`StorageAdapter` has every operation of the plan: pages (list, create,
+read, set the next address or the home mark), the draft (read, save at a
+revision), publish, schedule, versions (list, read, "Save version",
+restore), the media library (list, upload, alt text, delete), the site
+style, form answers, and `capabilities`, which says which of the optional
+operations (publish, schedule, responses) this adapter has. The editor
+shows no control for one it lacks; the adapter refuses it as
+`unsupported` without asking anyone. The Rails adapter declares
+scheduling (stage 4) and form answers (stage 5) absent until the CMS has
+them; their shapes in `adapter.ts` are a guess until then.
+
+How an operation answers:
+- what it was asked for; or, where the editor has a way forward, an
+  `Outcome` naming the refusal: `conflict` (with `currentRevision` and
+  the `lastSaveId` that took the draft there), `invalid` (with each error's
+  `pointer`, `keyword` and `blockPointer`), `in-use` (an image, with the
+  pages and versions that show it). The compiler makes the caller look at
+  them;
+- anything else is thrown as a `StorageError`, whose `failure` is one of
+  four: `unknown` (no answer that says what happened: no network, the time
+  ran out, a 5xx, something that is not the API's JSON; a write may or may
+  not have taken effect), `refused` (a 400, 403 or 415: nothing changed,
+  and sending it again changes nothing), `not-found`, `unsupported`.
+
+A refusal's pointers point into the request as it was given to the
+adapter: `/document/sections/0/...` for a save, `/slug` for a page,
+`/file`, `/width`, `/height` and `/alt` for an upload (the Rails adapter
+moves the API's `/blob/content_type` and `/signedBlobId` there).
+`errorsByBlock(sent, errors)` lays a refused save's errors out by block
+id and field (`/props/level`), the way the editor shows them.
+
+## The Rails adapter
+
+- Every call names its method, path and body in `RAILS_ROUTES`, by the
+  API's `operationId`; no method is deduced from whether there is a body.
+  Every POST, PUT and PATCH says `Content-Type: application/json`, even
+  with no body, which the CMS requires of every write.
+- Each call times out after `timeoutMs` (30 s) on the injected clock, and
+  the caller can abandon it with a signal: both are an `unknown` outcome.
+- An image goes up with `@rails/activestorage`'s `DirectUpload`,
+  unchanged, to `POST /api/media/direct_uploads`, then becomes a library
+  item with `POST /api/media`. The library is imported only when an image
+  is uploaded. `DirectUpload` reports a failure as a sentence with the
+  status in it; the adapter keeps its request through the delegate and
+  reads the API's answer from there, so a 422 keeps its fields.
+- With an absolute `VITE_API_BASE`, an image's address is made absolute on
+  that origin. The `preview` and `live` links of a page stay paths on the
+  CMS's origin, which the editor's development proxy does not forward
+  (only `/api` and `/rails/active_storage`).
+
+## Checks
+
+- `openapi.test.ts` holds the adapter to `cms/openapi.yaml`. Each type the
+  adapter reads or writes is written out once more as a table of its keys,
+  each with its JSON type, whether it may be null and whether it is
+  required; the compiler holds the table to the type, and the test holds
+  it to the schema the API gives for it (34 of them, answers and requests),
+  with the version reasons, the image types and the refusal codes. The
+  route table is held to the API's operations both ways: method, path and
+  body. Planted, each failed: a required key added to `MediaItem` in the
+  YAML, `getDraft`'s path changed, and `MediaItem.filename` made optional
+  in the type (the compiler refused the table). It found the publish
+  answer described as nullable though a publish always says what went
+  live; the description now says so (`Published` and `PublishedOrNone`).
+- `rails.test.ts` runs the Rails adapter on a fetch that records what it
+  is asked: each operation's method, address, headers and body, and what
+  each kind of answer becomes (a 5xx, an HTML page, a 2xx without the
+  API's object, a timeout on the fake clock, an abandoned call). A wrong
+  method and a bodiless POST without its JSON type, planted, failed it.
+- `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
+  the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
+  3901), on its own databases and Active Storage root, deleted at the end.
+  It runs in jsdom, whose document is on the CMS's origin
+  (`../../vite.config.ts`), so `DirectUpload`'s requests are same-origin,
+  as the editor's are through its proxy; jsdom fixes a window's origin
+  when the window is made, and an origin changed afterwards sent the
+  upload's first request cross-origin. Three faults planted at once in
+  the adapter (a 409 not read as a conflict, an image address left
+  relative to the API, upload errors left on the API's fields) failed six
+  of its cases.
+- `autosave.test.ts` runs the autosave on a fake clock
+  (`../../test/fake-clock.ts`) against a fake CMS that keeps a draft by the
+  CMS's own rules, and looks at what it holds and received.
+
+## The battery
+
+`contract.ts` exports `STORAGE_CONTRACT`, a list of cases, each with the
+optional operations it needs and a `run(env)`. The runner hands it the
+adapter, a way to open a second tab on the same storage, its `expect`,
+fresh names, and a way to read an image's bytes back; it runs each case as
+a test of its own, and skips (visibly) a case its adapter's capabilities
+lack. Every case makes its own pages; the site style is put back as it was
+found. The cases: pages and drafts, the conflict between two tabs, the
+same save sent twice being a success counted once, the same `saveId` with
+another document being a conflict, the schema's and the application
+rules' refusals by block and field, a page's address and home mark,
+versions and restore, publishing and publishing a stale revision, the
+media library (upload and bytes read back, refusals at `/file`, alt text,
+deleting, an image in use naming who uses it, an image that does not
+exist), the site style, refusing what the capabilities declare absent,
+and the autosave on top of the adapter (a run of edits one request at a
+time, a lost answer, a conflict resolved both ways). Stage 6 runs it
+unchanged on the browser's adapter, with two pages of one browser as the
+two tabs.
+
+## The autosave
+
+`createAutosave({ adapter, pageId, revision, document, clock, ... })`.
+The store calls `edit(document)` with each new document; the interface
+reads `getSnapshot()` and `subscribe(listener)` (the shape React's
+`useSyncExternalStore` takes). It imports nothing of either.
+
+- A save leaves `debounceMs` (1 s) after the last edit, and at the latest
+  `maxWaitMs` (5 s) after the first edit it carries.
+- One request in flight. Edits made meanwhile wait, and leave with the
+  revision its answer gave.
+- `phase`, kept apart from publishing, which this module knows nothing
+  about: `saved`; `waiting` (the pause has not run out); `saving`;
+  `retrying` (the outcome is unknown: the very same request, same
+  `saveId`, revision and document, goes again at `retryAt`, after 2, 4,
+  8, 16, then every 30 s, and the CMS answers a save it had stored as
+  saved); `conflict` (saving stops until `reload()`, which takes the
+  server's draft and gives it to the caller, or `overwrite()`, which saves
+  this tab's document on top); `invalid` (a 422, with `errors`; the next
+  edit saves again); `refused` (a 403, 404, 415...: the next edit or
+  `retryNow()` sends again).
+- `warnOnClose` is up whenever an edit is not confirmed, or an outcome is
+  unknown: the interface asks before the tab closes. `unsavedEdits`,
+  `savedAt`, `sentAt` (for "Saving..." after half a second) and `retryAt`
+  (for the countdown) are there for the top bar.
+- A state that asks for a person, a conflict or an unknown outcome, is
+  cleared only by a definite answer about that save or by the person's
+  choice: a later edit does not clear a conflict, and a refusal after an
+  unknown outcome keeps the outcome unknown, and the same save, to send
+  again.
+- `flush()` sends what waits at once and resolves on the first phase that
+  is neither `waiting` nor `saving`: publishing goes ahead only on
+  `saved`.
+
+Four faults planted one at a time each failed `autosave.test.ts`: queued
+edits sent from the first revision, a new `saveId` on a retry, a second
+request in flight, a conflict cleared by an edit.
+
+Not here yet: the browser case with a slowed network, which needs the
+editor's interface.
