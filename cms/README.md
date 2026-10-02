@@ -158,17 +158,18 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 2 October 2026 (Windows 11, Ruby 3.4.10), the same with `CI=1`,
-which loads the whole app first as production does:
+The run of 2 October 2026, late (Windows 10, Ruby 3.4.11), the same with
+`CI=1`, which loads the whole app first as production does:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-225 runs, 1074 assertions, 0 failures, 0 errors, 0 skips
-openapi: 184 API response(s) checked against cms/openapi.yaml
+234 runs, 1110 assertions, 0 failures, 0 errors, 0 skips
+openapi: 198 API response(s) checked against cms/openapi.yaml
 ```
 
-The run includes `test/lib/tasks/db_drop_test.rb`, which starts Rails
-twice in processes of its own and takes about 13 seconds of it.
+The run includes two tests that start Rails twice each, in processes of
+their own: `test/lib/tasks/db_drop_test.rb` (about 13 seconds on the
+earlier machine) and `test/db/migrations_keep_rows_test.rb` (about 10).
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
@@ -231,8 +232,20 @@ twice in processes of its own and takes about 13 seconds of it.
 - **tokens.css** must be what `ruby bin/rails tokens:css` writes from
   `schema/tokens.json` ([test/lib/site_theme/token_css_test.rb](test/lib/site_theme/token_css_test.rb));
   one value changed by hand in the file failed it.
+- **Migrations keep the data** ([test/db/migrations_keep_rows_test.rb](test/db/migrations_keep_rows_test.rb)):
+  the migrations run, as `ruby bin/rails db:migrate` runs them, on a
+  database of the test's own with a row in every table, and every row is
+  still there at the end. SQLite cannot add or drop a check, or drop a
+  column, in place; Rails then rebuilds the table, and dropping the old
+  one inside the migration's transaction runs the `ON DELETE CASCADE` of
+  every table pointing at it, since Rails' "foreign keys off" does nothing
+  in a transaction. One migration did that to the media usages of versions
+  (`RestoreVersionMediaUsages` puts them back); without that repair the
+  test finds one usage of two, and with a check planted on `pages` it
+  finds no draft, version, redirect or usage left. So a migration here
+  adds plain columns, or uses SQLite's own `ALTER TABLE ... DROP COLUMN`.
 
-Also run, from this folder: `ruby bin/rubocop` (105 files, no offenses on
+Also run, from this folder: `ruby bin/rubocop` (108 files, no offenses on
 2 October, with `Layout/SpaceAroundOperators` switched on over the
 omakase style) and `ruby bin/brakeman` (no warnings).
 
@@ -431,14 +444,19 @@ where the steps will go when the schema changes; version 1 is the first).
 `publishedAt` forward and never back, and applies the draft's address; the
 old one becomes a redirect to the page. `api`, `up`, `assets`, `rails`,
 `preview` and any name a file in `public/` answers (such as `404`) are
-refused as addresses.
+refused as addresses. What is live names the draft revision it was taken
+from, `published.draftRevision`: the draft's revision minus it is the
+number of saves visitors do not see yet, the editor's "N changes not
+live".
 
 **Media.** JPEG, PNG, WebP and GIF, never SVG, at most 10 MB, recognised
 by their first bytes. The upload goes to `/api/media/direct_uploads`, not
 to Active Storage's own endpoint, which wants a CSRF token the editor does
 not have (a test shows the stock one refusing with forgery protection on,
 and this one accepting). Every save indexes the images a draft or version
-uses, so a delete can answer 409 with them.
+uses, so a delete can answer 409 with them. An item's `url` is Active
+Storage's proxy route, the address the published page gives the image
+too: a path on this site, answered with the bytes, cacheable for good.
 
 **Site style.** The tone of each palette slot and the type-scale choice,
 only from `site-tones` and `site-type-scale` in
