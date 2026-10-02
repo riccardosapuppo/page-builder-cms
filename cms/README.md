@@ -518,7 +518,8 @@ The fingerprinted files under `/assets` are served with
 404 without that header.
 
 From the repository root, `node tools/check-production.ts` boots production
-on port 3902 with throwaway databases under `tmp/`. It first asks the
+on port 3902 (`PRODUCTION_CHECK_PORT` moves it, so it can run beside
+another run that holds 3902) with throwaway databases under `tmp/`. It first asks the
 server to listen on 192.0.2.1, an address no machine has, and checks the
 refusal and that nothing listened; then starts it with no address and
 asks the system who listens: 127.0.0.1:3902 only, the process it started.

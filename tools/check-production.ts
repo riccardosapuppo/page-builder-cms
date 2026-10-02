@@ -1,7 +1,8 @@
 // node tools/check-production.ts
 //
-// Boots the CMS in production mode on 127.0.0.1:3902 and checks, over
-// plain HTTP, what a visitor's browser gets from it:
+// Boots the CMS in production mode on 127.0.0.1:3902 (PRODUCTION_CHECK_PORT
+// moves it) and checks, over plain HTTP, what a visitor's browser gets
+// from it:
 // - the server refuses to listen outside this machine, and with no
 //   address given listens on 127.0.0.1 only (production's own default
 //   would be 0.0.0.0);
@@ -36,7 +37,17 @@ import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cms = join(root, "cms");
-const PORT = 3902;
+// 3902, the project's port for production runs; PRODUCTION_CHECK_PORT moves
+// it, so the check can run beside another that holds 3902.
+const PORT = ((raw) => {
+  if (raw === undefined || raw === "") return 3902;
+  const port = Number(raw);
+  if (!/^[0-9]+$/.test(raw) || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    console.log(`PRODUCTION_CHECK_PORT must be a port number, not "${raw}": nothing was started`);
+    process.exit(2);
+  }
+  return port;
+})(process.env.PRODUCTION_CHECK_PORT);
 const BASE = `http://127.0.0.1:${PORT}`;
 const IMMUTABLE = "public, max-age=31536000, immutable";
 // An address of TEST-NET-1 (RFC 5737), which no machine has: asked to
