@@ -135,10 +135,44 @@ function replaceIn(list: AnyBlock[], index: number, rest: readonly number[], cha
 
 // The page with a container's children replaced by what `change` returns.
 export function replaceChildren(doc: PageDocument, parentId: ParentId, change: (children: AnyBlock[]) => AnyBlock[]): PageDocument {
-  if (parentId === null) {
-    return { ...doc, sections: change((doc.sections as unknown as AnyBlock[]).slice()) as unknown as PageDocument["sections"] };
-  }
+  if (parentId === null) return replaceChildrenAtPath(doc, [], change);
   const found = locate(doc, parentId);
   if (!found) throw new Error(`no block ${parentId}`);
-  return replaceAtPath(doc, found.path, (block) => ({ ...block, children: change(block.children.slice()) }));
+  return replaceChildrenAtPath(doc, found.path, change);
+}
+
+// The same, for the container at `path` ([] for the page).
+export function replaceChildrenAtPath(doc: PageDocument, path: readonly number[], change: (children: AnyBlock[]) => AnyBlock[]): PageDocument {
+  if (path.length === 0) {
+    return { ...doc, sections: change((doc.sections as unknown as AnyBlock[]).slice()) as unknown as PageDocument["sections"] };
+  }
+  return replaceAtPath(doc, path, (block) => ({ ...block, children: change(block.children.slice()) }));
+}
+
+// The block at `path`, found by walking down, without the page's index:
+// for a page made a moment ago, walking three levels costs less than
+// indexing every block.
+export function blockAtPath(doc: PageDocument, path: readonly number[]): AnyBlock | undefined {
+  let list = doc.sections as unknown as AnyBlock[];
+  let block: AnyBlock | undefined;
+  for (const index of path) {
+    block = list[index];
+    if (!block) return undefined;
+    list = block.children;
+  }
+  return block;
+}
+
+// Where the block at `path` is once the block at `removed` has left its
+// container: one place earlier if it was after it, or under a block after
+// it, in the same container; where it was otherwise.
+export function pathAfterRemoval(path: readonly number[], removed: readonly number[]): readonly number[] {
+  const level = removed.length - 1;
+  const removedIndex = removed[level];
+  const here = path[level];
+  if (removedIndex === undefined || here === undefined || here <= removedIndex) return path;
+  for (let i = 0; i < level; i++) if (path[i] !== removed[i]) return path;
+  const moved = path.slice();
+  moved[level] = here - 1;
+  return moved;
 }

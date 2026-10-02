@@ -13,7 +13,9 @@
 // the same document byte for byte.
 import type { Block, PageDocument } from "../shared/document.ts";
 import { isObject, keyIndex, sameJson, withKey, withoutKey, type Json } from "./json.ts";
-import { childrenOf, locate, replaceAtPath, replaceChildren, type AnyBlock, type Position } from "./tree.ts";
+import {
+  blockAtPath, childrenOf, locate, pathAfterRemoval, replaceAtPath, replaceChildren, replaceChildrenAtPath, type AnyBlock, type Position,
+} from "./tree.ts";
 
 // Keys inside a block (["props"], ["style", "tablet"], ["props", "items", 2])
 // or inside the page ([]).
@@ -67,9 +69,9 @@ export function invertOp(op: Op): Op {
 // for, or the step asks for something no command makes.
 export class StaleStep extends Error {}
 
-const stale = (message: string): never => {
+function stale(message: string): never {
   throw new StaleStep(message);
-};
+}
 
 // The document with one step applied, structurally: the step's own
 // preconditions are checked, the schema is not (./check.ts does that for a
@@ -97,19 +99,26 @@ export function applyOp(doc: PageDocument, op: Op): PageDocument {
       });
     }
     case "move": {
-      const children = childrenOf(doc, op.from.parentId) ?? stale(`there is no block ${String(op.from.parentId)} to move from`);
-      const block = children[op.from.index];
-      if (!block || block.id !== op.id) stale(`the block at ${String(op.from.parentId)}/${op.from.index} is not ${op.id}`);
-      const without = replaceChildren(doc, op.from.parentId, (list) => {
+      const moving = locate(doc, op.id);
+      if (!moving || moving.parentId !== op.from.parentId || moving.index !== op.from.index) {
+        stale(`the block at ${String(op.from.parentId)}/${op.from.index} is not ${op.id}`);
+      }
+      // The destination is found on the page as it is, and its place worked
+      // out once the block has left, so the page between the two halves of
+      // the move never needs an index of its own.
+      const destination = op.to.parentId === null ? [] : locate(doc, op.to.parentId)?.path ?? stale(`there is no block ${op.to.parentId} to move into`);
+      const from = moving.path;
+      // A block cannot go inside itself or a block of its own.
+      if (destination.length >= from.length && from.every((index, level) => destination[level] === index)) stale(`${op.id} cannot go inside itself`);
+      const without = replaceChildrenAtPath(doc, from.slice(0, -1), (list) => {
         list.splice(op.from.index, 1);
         return list;
       });
-      // A block cannot go inside itself.
-      if (op.to.parentId !== null && !locate(without, op.to.parentId)) stale(`there is no block ${op.to.parentId} to move into`);
-      const target = childrenOf(without, op.to.parentId) ?? [];
+      const to = pathAfterRemoval(destination, from);
+      const target = to.length === 0 ? without.sections : (blockAtPath(without, to)?.children ?? []);
       if (!Number.isInteger(op.to.index) || op.to.index < 0 || op.to.index > target.length) stale(`index ${op.to.index} is outside ${String(op.to.parentId)}`);
-      return replaceChildren(without, op.to.parentId, (list) => {
-        list.splice(op.to.index, 0, block as unknown as AnyBlock);
+      return replaceChildrenAtPath(without, to, (list) => {
+        list.splice(op.to.index, 0, moving.block as unknown as AnyBlock);
         return list;
       });
     }

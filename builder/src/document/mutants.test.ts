@@ -93,8 +93,8 @@ const MUTANTS: Array<{ name: string; plants: Plant[]; expect: RegExp }> = [
       },
       {
         file: "document/ops.ts",
-        search: "import { childrenOf, locate, replaceAtPath, replaceChildren, type AnyBlock, type Position } from \"./tree.ts\";",
-        replace: "import { childrenOf, locate, replaceAtPath, replaceChildren, type AnyBlock, type Position } from \"./tree.ts\";\nimport { reidentify } from \"./ids.ts\";",
+        search: "import { isObject, keyIndex, sameJson, withKey, withoutKey, type Json } from \"./json.ts\";",
+        replace: "import { isObject, keyIndex, sameJson, withKey, withoutKey, type Json } from \"./json.ts\";\nimport { reidentify } from \"./ids.ts\";",
       },
     ],
     expect: /(undoing|redoing) Duplicated/,
