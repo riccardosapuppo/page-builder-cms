@@ -181,8 +181,11 @@ twice in processes of its own and takes about 13 seconds of it.
   unnoticed: the requests the application receives under `/api/` are
   counted apart, where they enter it, and the run fails unless every one
   was checked, and unless some were whenever the API's request tests ran
-  (parallel workers on Linux leave their counts in `tmp/` for the main
-  process to add up). With the hook's path test changed to `/apix/`, as a
+  (parallel workers on Linux and macOS leave their counts in `tmp/` for
+  the main process to add up; Windows runs the tests in one process, so
+  `test/contract/openapi_counts_test.rb` runs the saving and the adding
+  up on files of its own, and they wait for CI to run in real forked
+  workers). With the hook's path test changed to `/apix/`, as a
   review planted it, `test/integration/api` exited 1 with "181 API
   request(s) answered by the API, 0 held to openapi.yaml"; with the counts
   planted to zero, as when no worker's arrive, it exited 1 with "13 API

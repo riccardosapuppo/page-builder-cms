@@ -60,17 +60,18 @@ module OpenapiContract
       @seen.increment
     end
 
-    def save_counts(worker)
-      FileUtils.mkdir_p(COUNTS)
-      File.write(COUNTS.join("worker-#{worker}-#{Process.pid}.json"), JSON.generate("seen" => seen, "checked" => checked))
+    # dir: only test/contract/openapi_counts_test.rb names another folder.
+    def save_counts(worker, dir: COUNTS)
+      FileUtils.mkdir_p(dir)
+      File.write(dir.join("worker-#{worker}-#{Process.pid}.json"), JSON.generate("seen" => seen, "checked" => checked))
     end
 
     # This process's counts plus those the workers left, which are then
     # removed.
-    def totals
-      files = Dir.glob(COUNTS.join("*.json").to_s)
+    def totals(dir: COUNTS)
+      files = Dir.glob(dir.join("*.json").to_s)
       counts = files.map { |file| JSON.parse(File.read(file)) }
-      FileUtils.rm_rf(COUNTS)
+      FileUtils.rm_rf(dir)
       [ seen + counts.sum { |c| c["seen"] }, checked + counts.sum { |c| c["checked"] } ]
     end
 
