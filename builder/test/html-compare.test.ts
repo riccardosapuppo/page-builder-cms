@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { repoRoot } from "../build/paths.ts";
-import { compareHtml, mainOfPage, canonical } from "./html-compare.ts";
+import { canonical, compareHtml, mainOfPage, parseSections } from "./html-compare.ts";
 
 const golden = readFileSync(join(repoRoot, "contract", "rendered", "traps-text.html"), "utf8");
 
@@ -52,12 +52,13 @@ describe("what it finds", () => {
   });
 });
 
-test("a served page's main, without the line breaks of the layout around it", () => {
-  const page = `<!doctype html><html><body><div class="site"><main id="main">\n${golden}\n</main></div></body></html>`;
-  expect(canonical(mainOfPage(page))).toEqual(canonical(mainOfPage(`<main>\n${golden}\n</main>`)));
-  const fromPage = canonical(mainOfPage(page)).map((l) => l.line);
-  const fromGolden = canonical(mainOfPage(`<main>\n${golden.replaceAll("</div>\n", "</div>")}\n</main>`)).map((l) => l.line);
-  expect(fromPage).toEqual(fromGolden);
-  expect(() => mainOfPage("<main><section></section></main>")).toThrow(/layout's line breaks/);
-  expect(canonical(mainOfPage("<main>\n\n</main>"))).toEqual([]);
+test("a served page's main, without the line breaks of its templates around the render", () => {
+  // The layout's line break, the render, the view's and the layout's.
+  const page = `<!doctype html><html><body><div class="site"><main id="main">\n${golden}\n\n</main></div></body></html>`;
+  expect(canonical(mainOfPage(page))).toEqual(canonical(parseSections(golden)));
+  expect(canonical(mainOfPage(page)).map((l) => l.line)).toEqual(canonical(parseSections(golden.replaceAll("</div>\n", "</div>"))).map((l) => l.line));
+  expect(() => mainOfPage("<main><section></section></main>")).toThrow(/templates' line breaks/);
+  expect(canonical(mainOfPage("<main>\n\n\n</main>"))).toEqual([]);
+  // A line break of the render's own, past the templates', is compared.
+  expect(canonical(mainOfPage("<main>\n\n\n\n</main>"))).toEqual([{ line: '#text "\\n"', block: "(page)" }]);
 });

@@ -106,7 +106,9 @@ export default defineConfig({
           // editor's are through its proxy. jsdom takes a window's origin
           // when the window is made, so it is set here, not later.
           environmentOptions: { jsdom: { url: `http://127.0.0.1:${cmsPort()}/` } },
-          include: ["src/**/*.rails.test.ts"],
+          // test/: the rule-9 check, which reads the pages the CMS serves
+          // and so sits outside the fence of src/.
+          include: ["src/**/*.rails.test.ts", "test/**/*.rails.test.{ts,tsx}"],
           globalSetup: ["e2e/harness/vitest-rails.ts"],
           testTimeout: 30_000,
           hookTimeout: 30_000,

@@ -59,23 +59,25 @@ export function parseSections(html: string): Node[] {
 }
 
 // The children of the <main> of a whole page the server served, without the
-// two line breaks its layout writes around what the page renders
-// (cms/app/views/layouts/public.html.erb: one right after <main id="main">,
-// one right before </main>).
+// line breaks its templates write around what the renderer writes: the
+// layout's after <main id="main"> and before </main>
+// (cms/app/views/layouts/public.html.erb), and the one that ends the page's
+// view (cms/app/views/pages/show.html.erb). Anything else there is the
+// renderer's, and is compared.
 export function mainOfPage(html: string): Node[] {
   const main = findElement(parse(html), (element) => element.tagName === "main");
   if (!main) throw new Error("the page has no <main>");
   const nodes = [...main.childNodes];
   const trim = (index: number, cut: (value: string) => string | null) => {
     const node = nodes[index];
-    if (node?.nodeName !== "#text") throw new Error("the page's <main> does not start and end with the layout's line breaks");
+    if (node?.nodeName !== "#text") throw new Error("the page's <main> does not start and end with its templates' line breaks");
     const value = cut((node as DefaultTreeAdapterMap["textNode"]).value);
-    if (value === null) throw new Error("the page's <main> does not start and end with the layout's line breaks");
+    if (value === null) throw new Error("the page's <main> does not start and end with its templates' line breaks");
     if (value === "") nodes.splice(index, 1);
     else nodes[index] = { ...node, value } as typeof node;
   };
   trim(0, (value) => (value.startsWith("\n") ? value.slice(1) : null));
-  trim(nodes.length - 1, (value) => (value.endsWith("\n") ? value.slice(0, -1) : null));
+  trim(nodes.length - 1, (value) => (value.endsWith("\n\n") ? value.slice(0, -2) : null));
   return nodes;
 }
 
