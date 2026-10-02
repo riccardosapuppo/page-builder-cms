@@ -23,7 +23,7 @@ class Api::PagesTest < ActionDispatch::IntegrationTest
 
     assert_response :ok
     assert_equal [ "Winter series", "About us" ], json["pages"].map { |p| p["title"] }
-    assert_equal({ "slug" => "winter", "versionNumber" => 1, "publishedAt" => "2026-10-01T09:00:00.000Z" }, json["pages"].first["published"])
+    assert_equal({ "slug" => "winter", "versionNumber" => 1, "draftRevision" => 0, "publishedAt" => "2026-10-01T09:00:00.000Z" }, json["pages"].first["published"])
     assert_nil json["pages"].last["published"]
   end
 

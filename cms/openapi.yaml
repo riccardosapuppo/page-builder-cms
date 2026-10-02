@@ -849,13 +849,17 @@ components:
       description: What is live. A publish always answers with it.
       type: object
       additionalProperties: false
-      required: [slug, versionNumber, publishedAt]
+      required: [slug, versionNumber, draftRevision, publishedAt]
       properties:
         slug:
           description: The live address.
           type: string
         versionNumber:
           type: integer
+        draftRevision:
+          description: The draft's revision the live version was taken from. While the draft's own revision is past it, the draft holds that many saves visitors do not see yet (a save holds every edit made since the one before; one that undoes an earlier save counts too). Equal to it, the draft is what is live. A change of the next address alone (PATCH slug) is no save; compare the page's slug with this object's.
+          type: integer
+          minimum: 0
         publishedAt:
           $ref: '#/components/schemas/Time'
     Home:

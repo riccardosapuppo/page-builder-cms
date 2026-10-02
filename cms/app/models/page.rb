@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # A page of the site. The row holds what is live: the address it is served
-# at, the version that is served, and when it was last published. What is
-# being edited lives in its Draft; every frozen copy is a PageVersion.
+# at, the version that is served, the draft revision that version was taken
+# from, and when it was last published. What is being edited lives in its
+# Draft; every frozen copy is a PageVersion.
 class Page < ApplicationRecord
   has_one :draft, dependent: :delete
   has_many :versions, class_name: "PageVersion", inverse_of: :page, dependent: :delete_all
@@ -11,6 +12,10 @@ class Page < ApplicationRecord
 
   validates :slug, slug: true, allow_nil: true
   validates :slug, uniqueness: { message: "is already the address of another page" }, allow_nil: true
+  # The draft revision the live version came from, exactly when something
+  # is live (here and not in the database: see the migration that added it).
+  validates :published_revision, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: :published?
+  validates :published_revision, absence: true, unless: :published?
   validate :published_at_never_moves_back
 
   # A new page: an empty document with its title, and the address it will
@@ -80,6 +85,8 @@ class Page < ApplicationRecord
       previous_slug = slug
       self.slug = draft.slug
       self.published_version = version
+      # The draft's saves after this one are what is not live yet.
+      self.published_revision = draft.revision
       # Never earlier than the last publish, even if the clock went back.
       self.published_at = [ published_at, at ].compact.max
       # A live page wins over a redirect: the address is this page's now.

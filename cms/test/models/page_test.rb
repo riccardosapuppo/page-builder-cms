@@ -86,6 +86,31 @@ class PageTest < ActiveSupport::TestCase
     assert_equal 0, SlugRedirect.count
   end
 
+  test "a publish records the draft revision it took, and nothing else moves it" do
+    page = Page.create_with_draft!(title: "Winter series", slug: "winter")
+    Draft.save_document!(page_id: page.id, revision: 0, document: page_document, save_id: "a1")
+    assert_nil page.reload.published_revision
+
+    page.publish!
+    Draft.save_document!(page_id: page.id, revision: 1, document: page_document(title: "Later"), save_id: "a2")
+    page.save_version!(name: "Kept")
+
+    assert_equal [ 1, 2 ], [ page.reload.published_revision, page.draft.revision ]
+  end
+
+  test "the model holds published_revision to what is live: there exactly when a version is" do
+    page = Page.create_with_draft!(title: "Winter series", slug: "winter")
+    page.published_revision = 0
+    assert_not page.valid?
+    assert_equal [ :present ], page.errors.details[:published_revision].map { |d| d[:error] }
+
+    page.reload.publish!
+    page.published_revision = nil
+    assert_not page.valid?
+    page.published_revision = -1
+    assert_not page.valid?
+  end
+
   test "a new address takes effect on publish and the old one becomes a redirect" do
     page = Page.create_with_draft!(title: "Winter series", slug: "winter")
     page.publish!

@@ -43,10 +43,18 @@ module Api
       json
     end
 
+    # draftRevision is the draft's revision the live version was taken
+    # from: the draft holds saves that are not live while its own revision
+    # is past it, as many as the difference.
     def published_json(page)
       return nil unless page.published?
 
-      { "slug" => page.slug, "versionNumber" => page.published_version.number, "publishedAt" => iso(page.published_at) }
+      {
+        "slug" => page.slug,
+        "versionNumber" => page.published_version.number,
+        "draftRevision" => page.published_revision,
+        "publishedAt" => iso(page.published_at)
+      }
     end
 
     # Where to go next from a page. preview and live are the pages a

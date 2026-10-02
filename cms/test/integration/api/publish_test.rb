@@ -11,11 +11,36 @@ class Api::PublishTest < ActionDispatch::IntegrationTest
     travel_to(Time.utc(2026, 10, 1, 9, 0)) { api :post, "/api/pages/#{@page.id}/publish" }
 
     assert_response :ok
-    assert_equal({ "slug" => "winter", "versionNumber" => 2, "publishedAt" => "2026-10-01T09:00:00.000Z" }, json["published"])
+    assert_equal({ "slug" => "winter", "versionNumber" => 2, "draftRevision" => 1, "publishedAt" => "2026-10-01T09:00:00.000Z" }, json["published"])
     assert_equal [ "publish", true ], json["version"].values_at("reason", "published")
     assert_equal "/winter", json.dig("links", "live")
     api :get, "/api/pages/#{@page.id}/versions/2"
     assert_equal "Cold swims", json.dig("document", "title")
+  end
+
+  test "the page says which draft revision is live, so the saves since are the changes not live" do
+    save_draft @page, revision: 0, document: page_document(title: "Cold swims"), save_id: "a1"
+    api :post, "/api/pages/#{@page.id}/publish", { "revision" => 1 }
+    assert_equal 1, json.dig("published", "draftRevision")
+
+    save_draft @page, revision: 1, document: page_document(title: "Colder swims"), save_id: "a2"
+    save_draft @page, revision: 2, document: page_document(title: "Coldest swims"), save_id: "a3"
+
+    api :get, "/api/pages/#{@page.id}"
+    assert_equal [ 3, 1 ], [ json.dig("draft", "revision"), json.dig("published", "draftRevision") ]
+    api :get, "/api/pages"
+    listed = json["pages"].first
+    assert_equal [ 3, 1 ], [ listed["revision"], listed.dig("published", "draftRevision") ]
+
+    # A restore is a save like any other: the draft moves on, the live page stays.
+    api :post, "/api/pages/#{@page.id}/versions/1/restore"
+    api :get, "/api/pages/#{@page.id}"
+    assert_equal [ 4, 1 ], [ json.dig("draft", "revision"), json.dig("published", "draftRevision") ]
+
+    api :post, "/api/pages/#{@page.id}/publish", { "revision" => 4 }
+    assert_equal 4, json.dig("published", "draftRevision")
+    api :get, "/api/pages/#{@page.id}"
+    assert_equal json.dig("draft", "revision"), json.dig("published", "draftRevision")
   end
 
   test "a new address takes effect on publish, and the old one is recorded as a redirect to the page" do
