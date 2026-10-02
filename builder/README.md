@@ -33,6 +33,7 @@ npm run typecheck
 npm run lint
 npm run lint:plants
 npm test
+npm run test:contract
 npm run test:rails
 npm run e2e
 npm run build
@@ -49,8 +50,9 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run typecheck` | `tsc` three times: the code that ships (`src/` without tests, no Node types), the tests, and what runs in Node (`vite.config.ts`, `build/`, `e2e/`). Strict, with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. |
 | `npm run lint` | Oxlint, the default rules plus the fence below. It prints how many files it read. |
 | `npm run lint:plants` | Shows the fence firing: `build/lint-fence.test.ts`. |
-| `npm test` | Vitest, the "unit" project: pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub (`test/setup-dom.ts`). |
-| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)). |
+| `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, `test/setup-dom.ts`), then the "contract" project. |
+| `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
+| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` in `src/`, `*.rails.test.tsx` in `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
@@ -66,13 +68,13 @@ editor's origin by CORS (the decision note above).
 | [`src/shared/`](src/shared/README.md) | What comes from the rest of the repository: the document's types, the validator, the published page's CSS, the editor's font. Every other folder imports from here. |
 | [`src/document/`](src/document/README.md) | The tree, the commands with their inverses, the reducer, migrations: pure functions. |
 | [`src/store/`](src/store/README.md) | The vanilla zustand store that runs the reducer, the selection, the history. |
-| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, panel, renderer, icon and accessibility test. |
+| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, renderer and icon; its panel and accessibility test come with the interface. `registry.ts` lists them. |
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
 | `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers. |
-| `test/` | The Vitest setup, and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. |
+| `test/` | The Vitest setup, and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the rule-9 pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |
 
 ## What the checks hold
 
@@ -142,6 +144,24 @@ editor's origin by CORS (the decision note above).
   source, six faults in all, and each one fails while the unchanged copy
   passes. What the checks of a change cost on 500 blocks:
   `npx vitest run --config build/measure.config.ts`.
+- **The renderer** ([src/render/README.md](src/render/README.md)) is held
+  to the server's four ways, each shown failing with faults planted:
+  - the render contract: every fixture of `../contract` against the
+    server's golden, after the goldens are shown current against their
+    manifest, with the normalization `../contract/README.md` lists and the
+    safety check on both sides (`npm run test:contract`; the 500-block
+    page drew in a median of 70.8 ms on 2 October 2026, on a busy machine);
+  - rule 9: random valid pages saved through the API and compared with the
+    preview the CMS serves, and a published page (300 pages with seed 7
+    agreed, 24277 nodes; four faults planted in the renderer were each
+    found within 12 pages);
+  - the twins: the URL policy and rich text against the CMS's own Ruby on
+    values the schema refuses too (57000 policy answers and 1500 rich
+    texts the same);
+  - the layout: the canvas's page roots against the CMS's pages in
+    headless Chromium at 1280, 900, 768 and 375, every element's box and
+    computed style (536 elements on a responsive page, 1708 on three
+    random pages, the same).
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor

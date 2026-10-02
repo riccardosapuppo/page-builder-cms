@@ -4,17 +4,52 @@ One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
 `map/`, `iconbox/`, `quote/`, `accordion/`. Each holds:
 
-- its definition: type, label, group in the widget panel, icon, the props
-  of a new one (a valid document by `../shared/validate.ts`);
-- its properties panel (Content, Style, Advanced), which changes the
-  document only by commands of `../document`;
-- its React renderer, held to the server's partial by the render contract;
-- its icon;
-- its accessibility test.
+- `definition.ts`: the type, the widget panel's group and label (the
+  label is `TYPE_NAMES` of `../document/labels.ts`, the history's too),
+  the tile's icon, what the panel must have before it can add one
+  (`needs`), the props of a new one, the renderer, and its **traps**: the
+  ids of the blocks in `contract/fixtures` that hold what this widget must
+  survive (markup in its text, refused addresses, values the schema does
+  not list);
+- `render.tsx`: its React renderer, the twin of the server's partial,
+  built on `../render`'s helpers and held to the partial by the render
+  contract;
+- `icon.ts`: its tile, the approved design's `w-<type>` symbol
+  (`design/index.html`), shape for shape.
 
-`registry.ts` lists them, and the order of the widget panel. Adding a
-widget is one small commit: the schema branch, this folder, the server's
-partial, its contract traps.
+The properties panel (Content, Style, Advanced) and the accessibility test
+of each widget come with the editor's interface.
 
-Sections and columns are structure, not widgets: they render in
-`../render` and are edited from the canvas and the navigator.
+`types.ts` has the definition's type and `newWidget(definition, id,
+input)`, which makes a new block: `{id, type, props, children: [], style:
+{base: {}}}`. `registry.ts` lists the definitions in the panel's order
+(Basic, Media, Content, as the design has them), the renderer of each
+type, and the Layout group's tiles (a section, with one to four columns).
+
+## New widgets
+
+A new block is valid from the moment it exists. Most widgets start from
+props of their own ("Heading", a spacer of size M, a map of a shore).
+Three need something first, and their definition says which:
+
+| Widget | `needs` | The input |
+| --- | --- | --- |
+| Image | `"image"` | one image: `{mediaId, alt}` once its upload has finished, or `{url, alt}`; or decorative |
+| Gallery | `"images"` | at least one image, the same way |
+| Video | `"video"` | `{provider, videoId}`: an id made up here would point at somebody's video |
+
+## Checks
+
+`registry.test.ts`: one definition for each widget type of the schema;
+the panel's groups, order and labels and every tile's icon equal to the
+approved design's (read from `design/index.html`); every new widget a
+valid block, and a page holding one of each a valid page. The contract
+test checks each widget's traps exist, in a fixture, with its type, and
+the rule-9 check saves one of each new widget to the CMS and compares the
+page it serves with React's.
+
+## Adding a widget
+
+One small commit: the schema's branch, a folder here with its definition,
+renderer and icon, a line in `registry.ts`, the server's partial, and its
+traps in `contract/fixtures` with the goldens written again.

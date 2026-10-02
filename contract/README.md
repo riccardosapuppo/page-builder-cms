@@ -6,9 +6,9 @@ published page, preview and 404, and the editor's (React, stage 2), which
 draws the same document on the canvas. What the editor shows must be what a
 visitor reads, so both are held to the same output for the same documents.
 
-**This folder holds the server's half.** The editor's half arrives in
-stage 2: a Vitest test that reads these files, fails if they are missing or
-stale, renders each fixture with React, and compares the two trees.
+**This folder holds the server's half**: the fixtures, and the goldens
+the server writes for them. The editor's half is
+`builder/src/render/render.contract.test.tsx` (below).
 
 ## What is here
 
@@ -98,6 +98,47 @@ It can fail: with one heading partial planted to mark its text as safe
 instead of escaping it, the run failed on `traps-text.json` and on
 `large-500.json`, both of which carry `<script>` in a heading, and on the
 stale manifest.
+
+## The editor's half
+
+From `builder/`, `npm run test:contract` (also part of `npm test`):
+
+1. checks the goldens are usable: a golden for every fixture and no
+   other, and every sha256 of `manifest.json` (fixtures, goldens and the
+   renderer's sources, from the same list as the server's test) equal to
+   the file's; otherwise it compares nothing;
+2. renders each fixture with the editor's React renderer
+   (`builder/src/render/`), with the same media stub;
+3. parses both with parse5, inside a `<main>` as on the page, and compares
+   the trees node by node, with exactly this normalization:
+   - the `"\n"` each partial writes after a block's root element is
+     dropped (React writes none, and between blocks it draws nothing);
+   - attributes are compared as a set, in any order;
+   - a boolean attribute is compared by its presence (`open="open"` and
+     `open=""` are both open);
+
+   every element, attribute value, class list and character of text is
+   compared as it is;
+4. runs the safety check on both sides: no `<script>` or other element that
+   loads or runs something, no `on*` attribute or `srcdoc`, no
+   `javascript:`, `vbscript:` or `data:` address in any attribute that
+   holds one (read as a browser reads it), and frames only from the URL
+   policy's origins.
+
+It runs on React's production build. On 2 October 2026, on the machine of
+the server's timing below with Node 24.19.0, the test printed a median of
+70.8 ms for the 500-block page (30 renders after 5 warm-ups); the same
+renders on the development build, measured once in the unit project, had
+a median of 1383 ms. Other programs had the CPU 93% busy when sampled
+right after: an order of magnitude again. Its 3691 nodes were the same as
+the golden's.
+
+The rule-9 check (`builder/test/render-agreement.rails.test.tsx`) does the
+same for random valid pages, saved through the API and compared with the
+preview the CMS serves; there the line breaks of the page's layout and
+view around the sections are left out too.
+
+## Timing the server's render
 
 `RAILS_ENV=test ruby bin/rails contract:bench` times the render of
 `large-500.json` (30 renders after 5 warm-ups). On 1 October 2026 it gave
