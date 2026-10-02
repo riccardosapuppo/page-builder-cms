@@ -26,11 +26,15 @@ amounts.
   the test gems included, which Bundler installs unless told not to;
 - the editor's packages into `builder/node_modules`: 166 MB.
 
-How many bytes a first install downloads, and how long a first start
-takes: **to measure**. Both need a machine that has installed nothing
-yet, and a quiet one; the machine these lines were written on had
-everything installed, and other work kept its processors busy. CI's
-smoke runs (below) install everything from nothing on Linux and Windows.
+With everything installed and the database prepared, `npm start` was
+ready, both servers answering, in 14.1, 14.2 and 14.4 seconds: three
+runs of `npm start -- --smoke` on 3 October 2026, on a Windows 10
+virtual machine with 8 logical processors and 12 GB of memory, its
+processors 0 to 8% busy before and after each run. How many bytes a
+first install downloads, and how long a first start takes: **to
+measure**. Both need a machine that has installed nothing yet; this one
+had. CI's smoke runs (below) install everything from nothing on Linux
+and Windows.
 
 **To develop** (the tests, `npm run check`), add:
 - the root's tools, `npm ci` at the root: 56 MB (TypeScript, Redocly,
