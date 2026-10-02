@@ -8,16 +8,28 @@ require "test_helper"
 # its own, with a worker's file written by the same method a worker calls
 # and another standing for a worker that missed a check.
 class OpenapiCountsTest < ActiveSupport::TestCase
+  # The process's counts are whatever the run has reached, 0 and 0 when
+  # this test runs first or alone, and a sum that left them out would
+  # still add up then. So each step gets counts of its own, all different:
+  # any one left out changes the totals.
+  def with_counts(seen, checked)
+    saved = %i[seen checked].index_with { |name| OpenapiContract.method(name) }
+    OpenapiContract.define_singleton_method(:seen) { seen }
+    OpenapiContract.define_singleton_method(:checked) { checked }
+    yield
+  ensure
+    saved&.each { |name, method| OpenapiContract.define_singleton_method(name, method) }
+  end
+
   test "the main process adds each worker's counts to its own, and removes their files" do
     dir = Rails.root.join("tmp", "openapi-counts-#{SecureRandom.hex(4)}")
-    seen = OpenapiContract.seen
-    checked = OpenapiContract.checked
 
-    OpenapiContract.save_counts(3, dir: dir)
-    assert_equal({ "seen" => seen, "checked" => checked }, JSON.parse(dir.join("worker-3-#{Process.pid}.json").read))
+    with_counts(3, 2) { OpenapiContract.save_counts(3, dir: dir) }
+    assert_equal({ "seen" => 3, "checked" => 2 }, JSON.parse(dir.join("worker-3-#{Process.pid}.json").read))
     dir.join("worker-4-1.json").write(JSON.generate("seen" => 40, "checked" => 39))
 
-    assert_equal [ 2 * seen + 40, 2 * checked + 39 ], OpenapiContract.totals(dir: dir)
+    totals = with_counts(7, 5) { OpenapiContract.totals(dir: dir) }
+    assert_equal [ 7 + 3 + 40, 5 + 2 + 39 ], totals
     assert_not dir.exist?
   ensure
     FileUtils.rm_rf(dir) if dir
