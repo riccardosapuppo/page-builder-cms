@@ -1,8 +1,9 @@
 // A page as the published layout holds it (cms/app/views/layouts/public.html.erb):
 // .site, the page root, carrying the site style; .sw inside it; the sections
 // in main. The page's stylesheets (../shared/site.css) set their container
-// queries on .site, so a root 768 or 375 pixels wide lays out as a tablet or
-// a phone, whatever the window's width: the canvas needs no iframe.
+// queries on .site, so a root as wide as the editor's tablet or phone
+// preview (../shared/preview-widths.ts: 768 and 390) lays out as a tablet
+// or a phone, whatever the window's width: the canvas needs no iframe.
 //
 // The theme's header and footer are not drawn: they are the server's
 // (cms/config/site.yml), the same on every page, and no API gives them.
@@ -40,7 +41,7 @@ interface PageRootProps {
   document: unknown;
   ctx: RenderContext;
   siteStyle?: SiteStyleChoice | null;
-  // The page root's width in pixels (768 for a tablet, 375 for a phone);
+  // The page root's width in pixels (PREVIEW_WIDTHS.tablet or .phone);
   // absent, it takes the width it is given.
   width?: number;
   // A <main> landmark around the sections, as on the page; the canvas, a

@@ -24,7 +24,7 @@ widgets import its helpers. Nothing here talks to a server.
 ## Using it
 
 ```tsx
-<PageRoot document={page} ctx={{ media }} siteStyle={style} width={768} landmark={false} />
+<PageRoot document={page} ctx={{ media }} siteStyle={style} width={PREVIEW_WIDTHS.tablet} landmark={false} />
 ```
 
 - **`ctx.media`** answers a `mediaId` with `{ src, width, height }` or
@@ -39,8 +39,10 @@ widgets import its helpers. Nothing here talks to a server.
   content (the floating bar, an empty column's drop zone). The page's own
   attributes win over any of the same name, and nothing replaces a
   block's content. Without it, the render is the page's.
-- **`width`** sets the page root's width: 768 lays it out as a tablet,
-  375 as a phone, in any window, because the page's stylesheets
+- **`width`** sets the page root's width: the editor's previews,
+  `PREVIEW_WIDTHS` of `../shared/preview-widths.ts` (from
+  `schema/tokens.json`), lay it out as a tablet at 768 and as a phone at
+  390, in any window, because the page's stylesheets
   (`../shared/site.css`) set their container queries on `.site`. The
   canvas passes `landmark={false}`, so the sections sit in a plain block
   instead of a second `<main>` in the editor's page.
@@ -80,7 +82,7 @@ widgets import its helpers. Nothing here talks to a server.
 | The canvas, `canvas.test.tsx` | `npm test` | React DOM builds the tree the contract compared; the decoration reaches the root only; a change redraws its path and no more. |
 | Rule 9, `../../test/render-agreement.rails.test.tsx` and its plants | `npm run test:rails` | Random valid pages saved through the API and compared with the preview the CMS serves, then a published page. `RULE9_RUNS` (60) and `RULE9_SEED` (20261002) set the run. |
 | The twins, `twins.rails.test.ts` | `npm run test:rails` | `policy.ts` and `rich-text.tsx` against the CMS's own `RenderPolicy` and `RichTextHelper`, in Ruby, on values the schema refuses too. |
-| Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 375 against the CMS's preview at those window widths: every element's box and computed style. |
+| Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 390 (the two previews) against the CMS's preview at those window widths: every element's box and computed style. |
 
 The comparison and its normalization are in
 `../../test/html-compare.ts`; the safety check in

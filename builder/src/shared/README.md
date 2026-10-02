@@ -10,6 +10,7 @@ file follows a file outside `builder/`, and changes with it.
 | `validate.ts` | `validateDocument(value)` and `parseAndValidate(text or bytes)`: the application rules, then the schema, with the server's pointers. For the editor's own checks (`../document/check.ts`): `validateBlockSchema` (one block alone, against `$defs/block`), `validateDocumentSchema` (the schema without the rules) and `validateHeldDocument` (both, without normalising a page held in memory) | `schema/tools/rules.ts`, imported as it is, and the schema, compiled when the editor is built (`build/validator.ts`) |
 | `validator-module.d.ts` | The types of the two modules the build makes from the schema: the compiled validators (`virtual:block-document-validator`) and the nesting rule (`virtual:block-document-nesting`, `build/nesting.ts`) | |
 | `site.css` | The published page's stylesheets, for the canvas | `cms/app/assets/stylesheets/site.css` and `tokens.css`, imported as they are |
+| `preview-widths.ts` | `PREVIEW_WIDTHS`, the page root's width on the canvas for the tablet and phone previews (768 and 390) | `schema/tokens.json`, `breakpoints["device-preview"]`, imported as it is |
 | `editor-font.css` | Instrument Sans, the editor's typeface | `design/fonts/` |
 
 Import from here; never copy a type, a token list or a rule into a feature

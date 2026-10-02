@@ -14,8 +14,10 @@ interface Tokens {
   type: { site: Record<string, { desktop: [number, number]; tablet: [number, number]; phone: [number, number] }> };
   color: Record<string, string>;
   "site-tones": Record<string, { default: string }>;
+  breakpoints: { "device-preview": { tablet: number; phone: number } };
 }
 const tokens = JSON.parse(readFileSync(tokensFile, "utf8")) as Tokens;
+const preview = tokens.breakpoints["device-preview"];
 const heading2 = tokens.type.site["heading-2"]!;
 const primary = tokens.color[tokens["site-tones"].primary!.default]!;
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
@@ -47,8 +49,9 @@ test("the published page's CSS lays out each page root by its own width, in the 
 
   expect(measured).toEqual([
     { width: 1280, tracks: 2, padding: "0px", fontSize: `${heading2.desktop[0]}px`, color: rgb(primary), fontFamily: expect.stringContaining("Archivo") },
-    { width: 768, tracks: 1, padding: `${tokens.space.site.l}px`, fontSize: `${heading2.tablet[0]}px`, color: rgb(primary), fontFamily: expect.stringContaining("Archivo") },
-    { width: 390, tracks: 1, padding: `${tokens.space.site.xl}px`, fontSize: `${heading2.phone[0]}px`, color: rgb(primary), fontFamily: expect.stringContaining("Archivo") },
+    // The editor's tablet and phone previews, as the tokens give them.
+    { width: preview.tablet, tracks: 1, padding: `${tokens.space.site.l}px`, fontSize: `${heading2.tablet[0]}px`, color: rgb(primary), fontFamily: expect.stringContaining("Archivo") },
+    { width: preview.phone, tracks: 1, padding: `${tokens.space.site.xl}px`, fontSize: `${heading2.phone[0]}px`, color: rgb(primary), fontFamily: expect.stringContaining("Archivo") },
   ]);
 
   const loaded = await page.evaluate(() => [...document.fonts].filter((f) => f.status === "loaded").map((f) => `${f.family.replaceAll('"', "")} ${f.style}`).sort());

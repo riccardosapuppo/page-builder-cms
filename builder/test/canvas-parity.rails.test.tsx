@@ -8,7 +8,8 @@
 // The same documents are drawn twice in Chromium, headless:
 // - the page the CMS serves (its draft preview), in a window as wide as the
 //   device: 1280, 900 (where the type grows between the tablet and the
-//   desktop sizes), 768 and 375;
+//   desktop sizes), and the editor's tablet and phone previews, 768 and
+//   390 (src/shared/preview-widths.ts, from schema/tokens.json);
 // - the editor's page root (src/render/page.tsx) with the published page's
 //   stylesheets (site.css and tokens.css, as the CMS has them), all four
 //   widths side by side in one window 1400 wide: only the root's width
@@ -26,11 +27,12 @@ import { afterAll, beforeAll, expect, inject, test } from "vitest";
 import { cmsFonts, cmsStylesheets } from "../build/paths.ts";
 import { PageRoot, type SiteStyleChoice } from "../src/render/page.tsx";
 import type { PageDocument } from "../src/shared/document.ts";
+import { PREVIEW_WIDTHS } from "../src/shared/preview-widths.ts";
 import { createRailsAdapter } from "../src/storage/rails.ts";
 import { checked, page as randomPage } from "./render-arbitraries.ts";
 
 const cms = inject("cmsUrl");
-const WIDTHS = [1280, 900, 768, 375] as const;
+const WIDTHS = [1280, 900, PREVIEW_WIDTHS.tablet, PREVIEW_WIDTHS.phone] as const;
 const CANVAS = "http://canvas.test";
 
 // A page whose settings change with the device: sizes, spaces, alignment,
@@ -242,7 +244,7 @@ async function compare(doc: PageDocument, label: string, stylesheets = ["site.cs
   return { elements, differences };
 }
 
-test("a page whose settings change with the device lays out on the canvas as on the CMS, at 1280, 900, 768 and 375", async () => {
+test(`a page whose settings change with the device lays out on the canvas as on the CMS, at ${WIDTHS.join(", ")}`, async () => {
   const { elements, differences } = await compare(responsive as unknown as PageDocument, "responsive");
   expect(differences.slice(0, 12)).toEqual([]);
   console.log(`canvas parity: responsive page, ${elements} elements over ${WIDTHS.length} widths, the same boxes and styles`);
