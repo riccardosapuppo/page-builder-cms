@@ -73,8 +73,22 @@ export default defineConfig({
           // first line, `// @vitest-environment jsdom`.
           environment: "node",
           include: ["src/**/*.test.{ts,tsx}", "build/**/*.test.ts", "test/**/*.test.{ts,tsx}"],
-          exclude: ["**/*.rails.test.ts"],
+          exclude: ["**/*.rails.test.{ts,tsx}", "**/*.contract.test.{ts,tsx}"],
           setupFiles: ["test/setup-dom.ts"],
+        },
+      },
+      {
+        extends: true,
+        // The render contract (*.contract.test.tsx) on React's production
+        // build, JSX included: the development build checks every element
+        // as it is made and is many times slower on the 500-block page,
+        // and its JSX would call a jsxDEV the production build does not have.
+        oxc: { jsx: { runtime: "automatic", development: false } },
+        test: {
+          name: "contract",
+          environment: "node",
+          env: { NODE_ENV: "production" },
+          include: ["src/**/*.contract.test.{ts,tsx}"],
         },
       },
       {

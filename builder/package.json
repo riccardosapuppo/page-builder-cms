@@ -15,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.test.json && tsc -p tsconfig.node.json",
     "lint": "oxlint -f default --deny-warnings src e2e build test vite.config.ts",
     "lint:plants": "vitest run --project unit build/lint-fence.test.ts",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --project contract",
+    "test:contract": "vitest run --project contract",
     "test:rails": "vitest run --project rails",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
