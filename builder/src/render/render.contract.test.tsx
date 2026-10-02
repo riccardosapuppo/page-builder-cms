@@ -85,7 +85,10 @@ test("the fixtures hold every block type, and every widget's traps, of that widg
 // The probe the plan moved from stage 1 ("ActionView parity on 500
 // blocks"): the 500-block page, through the same comparison, and how long
 // React takes to draw it.
-test("the 500-block page: React matches the server's render, and its time", () => {
+// It renders the page 35 times: 1.9 s in one run, and 7.8 s in another
+// with other work keeping the CPU fully busy, past Vitest's 5 s. The time
+// is printed, never asserted, so the test gets room for a busy machine.
+test("the 500-block page: React matches the server's render, and its time", { timeout: 120_000 }, () => {
   const document: unknown = JSON.parse(fixtureText("large-500.json"));
   const rounds = 30;
   for (let i = 0; i < 5; i += 1) renderFixture(document);
