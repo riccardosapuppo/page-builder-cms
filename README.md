@@ -130,8 +130,10 @@ itself.
   what changed outside the repository. `npm run check:start-interrupt`
   stops a running start once with a real Ctrl+C and once by killing the
   editor's server, and checks that nothing is left running either time.
-  On 2 October 2026, on Windows, they printed `smoke: 6 checks passed`
-  and `RESULT: 11 checks passed`.
+  On 3 October 2026, on Windows, they printed `smoke: 7 checks passed`
+  and `RESULT: 11 checks passed`. The smoke run reads, among its seven
+  looks, the editor's entry module as Vite compiles it: a module with a
+  syntax error answers 500 there.
 
 ## What is here now
 

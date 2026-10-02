@@ -446,7 +446,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(node, ["tools/start.cjs", "--smoke"], { cwd: repoRoot });
       if (step.code === 2) return notRun(step.output.trim().split(/\r?\n/).filter((l) => l.startsWith("[start]")).slice(-2).join(" "));
-      return readChecks(step.output, step.code, 6);
+      return readChecks(step.output, step.code, 7);
     },
   },
   {

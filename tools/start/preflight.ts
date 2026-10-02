@@ -61,9 +61,15 @@ export function checkNode(version = process.versions.node): string[] {
 
 export function checkRuby(): { problems: string[]; ruby?: string; bundler?: string } {
   const ruby = run("ruby", ["-e", "print RUBY_VERSION"], { cwd: cmsRoot });
-  if (ruby.error || ruby.status !== 0) {
+  if (ruby.error) {
     const install = windows ? "RubyInstaller with its DevKit (https://rubyinstaller.org/)" : "your system's packages or a version manager";
     return { problems: [`Ruby is not on the PATH: install Ruby ${RUBY_MINIMUM} or later, from ${install}, then open a new terminal so the PATH is read again.`] };
+  }
+  if (ruby.status !== 0) {
+    // A version manager's shim that does not have the version
+    // cms/.ruby-version names says so here, and that is the sentence.
+    const said = (ruby.stderr || ruby.stdout).trim().split(/\r?\n/)[0] ?? "";
+    return { problems: [`Ruby is on the PATH but did not run in cms/ (exit ${ruby.status}): ${said}`] };
   }
   const version = ruby.stdout.trim();
   if (olderThan(version, RUBY_MINIMUM)) {

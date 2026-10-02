@@ -213,6 +213,13 @@ async function serve(cms: Server, editor: Server, { argv, smoke, readyWithin, be
   look(pages > 0, `the CMS lists ${pages} page(s): the database is prepared and seeded`);
   const home = await fetch(`${cms.url}/`, { signal: AbortSignal.timeout(30_000) }).then(async (r) => ({ status: r.status, html: await r.text() }), () => ({ status: 0, html: "" }));
   look(home.status === 200 && home.html.includes("<html"), `the CMS serves its home page (${home.status})`);
+  // The module the editor's page loads, as Vite compiles it for the
+  // browser: a syntax error there is a 500. Vite puts its own client
+  // (/@vite/client) first in the page; the editor's is the other one.
+  const index = await fetch(`${editor.url}/`, { signal: AbortSignal.timeout(30_000) }).then((r) => r.text(), () => "");
+  const entry = [...index.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1]!).find((src) => !src.startsWith("/@"));
+  const compiled = entry ? await fetch(new URL(entry, `${editor.url}/`), { signal: AbortSignal.timeout(120_000) }).then((r) => r.status, () => 0) : 0;
+  look(compiled === 200, `the editor's entry module ${entry ?? "(none in its page)"} compiles (${compiled})`);
   const stopped = await requestStop("the smoke run is done", 0);
   look(stopped === 0, `both stopped, and nothing listens on ${cms.port} or ${editor.port}`);
   if (before) {
