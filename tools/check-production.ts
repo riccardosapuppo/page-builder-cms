@@ -55,7 +55,7 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const OUTSIDE = "192.0.2.1";
 const run = `production-check-${process.pid}`;
 const tmp = join(cms, "tmp", run);
-const env = {
+const env: NodeJS.ProcessEnv = {
   ...process.env,
   RAILS_ENV: "production",
   SECRET_KEY_BASE_DUMMY: "1",

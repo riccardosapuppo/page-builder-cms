@@ -30,11 +30,9 @@ const STEPS: Array<[string, string]> = [
 ];
 
 async function api(method: string, path: string, body?: unknown): Promise<any> {
-  const response = await fetch(origin + path, {
-    method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const response = await fetch(origin + path, body === undefined
+    ? { method }
+    : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!response.ok) throw new Error(`${method} ${path} answered ${response.status}: ${await response.text()}`);
   return response.json();
 }
@@ -71,7 +69,7 @@ for (const width of WIDTHS) {
   const cells = STEPS.map(([step]) => `${step} ${CHOICES.map((c) => sizes[c]?.[width]?.[step]?.toFixed(1)).join(" / ")}`);
   console.log(`  ${String(width).padStart(4)} wide: ${cells.join(";  ")}`);
   for (const [step] of STEPS) {
-    const [gentle, balanced, strong] = CHOICES.map((c) => sizes[c]?.[width]?.[step] ?? NaN);
+    const [gentle = NaN, balanced = NaN, strong = NaN] = CHOICES.map((c) => sizes[c]?.[width]?.[step] ?? NaN);
     if (!(gentle < balanced && balanced < strong)) problems.push(`${step} at ${width}: ${gentle} / ${balanced} / ${strong} are not three sizes, smallest to largest`);
   }
 }

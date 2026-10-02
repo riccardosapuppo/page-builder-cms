@@ -9,6 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
     "lint:openapi": "node tools/lint-openapi.ts",
     "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
     "seed:images": "node tools/seed-images.ts",
@@ -27,6 +28,8 @@
   },
   "devDependencies": {
     "@redocly/cli": "2.57.0",
-    "playwright": "1.62.1"
+    "@types/node": "24.19.0",
+    "playwright": "1.62.1",
+    "typescript": "6.0.3"
   }
 }
