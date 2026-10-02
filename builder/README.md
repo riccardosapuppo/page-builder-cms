@@ -70,9 +70,9 @@ editor's origin by CORS (the decision note above).
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
-| `build/` | The Vite plugins (compiled validator, font licences, bundle check) and the tests of the package itself. |
+| `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers. |
-| `test/` | The Vitest setup. |
+| `test/` | The Vitest setup, and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. |
 
 ## What the checks hold
 
@@ -94,13 +94,22 @@ editor's origin by CORS (the decision note above).
   compiled validator gives the same verdict and errors as ajv compiled at
   run time on every file, and `validateDocument` refuses every invalid file
   at the manifest's pointer, with its keyword, by the layer it names (about
-  1.6 s for the corpus at 16% CPU on 2 October 2026).
+  1.6 s for the corpus at 16% CPU on 2 October 2026). The same module
+  exports `validateBlock`, for one block against `$defs/block`, which the
+  editor's own checks use on the one parent a change touches
+  (`src/document/check.ts`); `build/validator.test.ts` validates every
+  section of the corpus both ways and shows a page whose sections all pass
+  alone fails only for its own keys or for a block type the nesting rule
+  refuses. That rule, page > section > column > widget, is read from the
+  schema at build time too (`build/nesting.ts`), and a schema it cannot
+  read stops the build.
 - **The bundle check**, after every `npm run build`, parses the
   JavaScript it wrote and fails on a call of `eval`, `Function` or
   `require`, and on a missing validator, font or licence. The build of
-  2 October 2026 printed: `bundle check: 1 JavaScript file(s), 358.7 KiB,
+  2 October 2026 printed: `bundle check: 1 JavaScript file(s), 371.7 KiB,
   parsed; eval() 0, Function() 0, new Function() 0, require() 0; validator
-  in assets/index-Dc33gYvc.js; fonts with their licence: 4/4`.
+  in assets/index-DPqO62fD.js; fonts with their licence: 4/4` (358.7 KiB
+  before `validateBlock` was added).
 - **The published page's CSS** is the CMS's own `site.css` and
   `tokens.css`, imported where they are (`src/shared/site.css`); its fonts
   come from `../cms/app/assets/fonts`, the editor's from `../design/fonts`,
@@ -122,6 +131,17 @@ editor's origin by CORS (the decision note above).
   against a fake CMS keeping a draft by the CMS's rules
   (`src/storage/autosave.test.ts`). Each was shown failing with faults
   planted: [src/storage/README.md](src/storage/README.md).
+- **The commands** ([src/document/README.md](src/document/README.md)): on
+  random valid pages and random editing sessions (fast-check, seeded and
+  replayable), every command the reducer accepts gives a page the schema
+  and the application rules accept, its inverse gives back the same page
+  byte for byte with every removed key absent, and redoing it gives the
+  same page with the same ids (`src/document/property.test.ts`, 300
+  sessions). `src/document/mutants.test.ts` runs the same sessions on a
+  copy of `src/document` and `src/store` with one fault planted in its
+  source, six faults in all, and each one fails while the unchanged copy
+  passes. What the checks of a change cost on 500 blocks:
+  `npx vitest run --config build/measure.config.ts`.
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor
