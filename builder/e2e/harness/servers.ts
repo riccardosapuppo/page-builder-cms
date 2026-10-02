@@ -20,7 +20,7 @@
 import { spawnSync, type ChildProcess } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { listeners, startTree, stopTree } from "../../../tools/lib/processes.ts";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
 
@@ -93,13 +93,9 @@ async function stopServer(child: ChildProcess, port: number, folder: string, wha
   return done;
 }
 
-// A CMS of the run's own, on 127.0.0.1:<port>, on an empty database.
-export async function startCms(port: number): Promise<Server> {
-  assertFree(port, "the CMS");
-  const run = `e2e-${port}-${process.pid}`;
-  const folder = join(cmsRoot, "tmp", run);
-  rmSync(folder, { recursive: true, force: true });
-  mkdirSync(folder, { recursive: true });
+// The environment of a run's CMS, whose databases and storage are in the
+// folder cms/tmp/<run>.
+function cmsEnv(run: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     RAILS_ENV: "e2e",
@@ -109,11 +105,33 @@ export async function startCms(port: number): Promise<Server> {
     DATABASE_URL: `sqlite3:tmp/${run}/e2e.sqlite3`,
     CACHE_DATABASE_URL: `sqlite3:tmp/${run}/e2e_cache.sqlite3`,
     QUEUE_DATABASE_URL: `sqlite3:tmp/${run}/e2e_queue.sqlite3`,
-    CMS_STORAGE_ROOT: join(folder, "storage"),
+    CMS_STORAGE_ROOT: join(cmsRoot, "tmp", run, "storage"),
   };
   // What bin/rails would otherwise take from this shell.
   delete env.BINDING;
   delete env.PORT;
+  return env;
+}
+
+// Puts the example site of cms/db/seeds.rb into a running CMS of the
+// run's own, as `ruby bin/rails db:seed` does for a person: its pages and
+// the images of its media library. For the editor's screenshots, which
+// show the design's example page; the tests make the pages they need.
+export function seedCms(cms: Server): string {
+  const run = basename(cms.folder);
+  const seed = spawnSync("ruby", ["bin/rails", "db:seed"], { cwd: cmsRoot, env: cmsEnv(run), encoding: "utf8" });
+  if (seed.status !== 0) throw new Error(`the CMS could not be seeded (exit ${seed.status}):\n${seed.stdout ?? ""}${seed.stderr ?? ""}${seed.error?.message ?? ""}`);
+  return seed.stdout;
+}
+
+// A CMS of the run's own, on 127.0.0.1:<port>, on an empty database.
+export async function startCms(port: number): Promise<Server> {
+  assertFree(port, "the CMS");
+  const run = `e2e-${port}-${process.pid}`;
+  const folder = join(cmsRoot, "tmp", run);
+  rmSync(folder, { recursive: true, force: true });
+  mkdirSync(folder, { recursive: true });
+  const env = cmsEnv(run);
 
   const setup = spawnSync("ruby", ["bin/rails", "db:create", "db:schema:load"], { cwd: cmsRoot, env, encoding: "utf8" });
   if (setup.status !== 0) {

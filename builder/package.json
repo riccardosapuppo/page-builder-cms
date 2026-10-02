@@ -18,7 +18,8 @@
     "test": "vitest run --project unit --project contract",
     "test:contract": "vitest run --project contract",
     "test:rails": "vitest run --project rails",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "shots:editor": "node e2e/shots/editor-shots.ts"
   },
   "dependencies": {
     "@dnd-kit/abstract": "0.5.0",
