@@ -6,11 +6,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseFragment, type DefaultTreeAdapterMap } from "parse5";
-import { expect, test } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, onTestFinished, test, vi } from "vitest";
 import { repoRoot } from "../../build/paths.ts";
 import { TYPE_NAMES } from "../document/labels.ts";
 import { WIDGET_TYPES, type ImageRef, type WidgetType } from "../shared/document.ts";
 import { validateBlockSchema, validateDocument } from "../shared/validate.ts";
+import { WidgetIcon } from "./icon.tsx";
 import { LAYOUT, WIDGETS } from "./registry.ts";
 import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type IconData, type InputOf, type WidgetDefinition } from "./types.ts";
 
@@ -65,6 +68,28 @@ test("each tile's icon is the design's symbol, shape for shape", () => {
   for (const choice of LAYOUT.columns) expect(choice.icon, choice.label).toEqual(designSymbol(`w-col-${choice.count}`));
   const layout = designPanel().find((g) => g.title === "Layout")!;
   expect(layout.tiles).toEqual([{ label: LAYOUT.section.label, symbol: "w-section" }]);
+});
+
+test("each tile draws its shapes under their SVG names, as the design's symbol holds them", () => {
+  // React's development build says when a prop is no DOM property
+  // (stroke-dasharray handed over as it is written in SVG) and still
+  // writes it: the markup alone would not show the fault.
+  const said = vi.spyOn(console, "error").mockImplementation(() => {});
+  onTestFinished(() => said.mockRestore());
+  const icons: Array<[string, IconData]> = [
+    ...WIDGETS.map((w): [string, IconData] => [`w-${w.type}`, w.icon]),
+    ["w-section", LAYOUT.section.icon],
+    ...LAYOUT.columns.map((c): [string, IconData] => [`w-col-${c.count}`, c.icon]),
+  ];
+  for (const [symbol, icon] of icons) {
+    const svg = elements(parseFragment(renderToStaticMarkup(createElement(WidgetIcon, { icon }))))[0]!;
+    expect(attr(svg, "viewBox"), symbol).toBe(icon.viewBox);
+    const drawn = elements(svg).map((shape) => [shape.tagName, Object.fromEntries(shape.attrs.map((a) => [a.name, a.value]))]);
+    expect(drawn, symbol).toEqual(designSymbol(symbol).shapes);
+  }
+  // The section's dashes are the one hyphenated attribute among them.
+  expect(renderToStaticMarkup(createElement(WidgetIcon, { icon: LAYOUT.section.icon }))).toContain('stroke-dasharray="1.5 1.5"');
+  expect(said.mock.calls.map((call) => String(call[0]))).toEqual([]);
 });
 
 // What the widget panel hands a widget that needs something first.

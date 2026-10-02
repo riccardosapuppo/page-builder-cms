@@ -2,6 +2,7 @@
 // exports one, and registry.ts lists them in the widget panel's order.
 import type { ComponentType } from "react";
 import type { BlockRenderProps } from "../render/context.ts";
+import type { Shape } from "../render/drawings.tsx";
 import type { BlockOfType, ImageRef, PropsOf, VideoProvider, WidgetType } from "../shared/document.ts";
 
 // The widget panel's groups, in the approved design's order.
@@ -16,7 +17,7 @@ export type WidgetGroup = (typeof WIDGET_GROUPS)[number]["id"];
 // attributes as SVG writes them (stroke-dasharray, not strokeDasharray).
 export interface IconData {
   viewBox: string;
-  shapes: ReadonlyArray<readonly [element: string, attributes: Readonly<Record<string, string>>]>;
+  shapes: readonly Shape[];
 }
 
 // A video the author names: the provider and the provider's id for it.

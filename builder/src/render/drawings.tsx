@@ -6,13 +6,25 @@
 import { createElement, Fragment, type ReactNode } from "react";
 import { SITE_ICONS } from "virtual:site-icons";
 
-type Shape = readonly [element: string, attributes: Readonly<Record<string, string>>];
+// One shape of an SVG drawing: an element name and its attributes as SVG
+// writes them (class, stroke-dasharray).
+export type Shape = readonly [element: string, attributes: Readonly<Record<string, string>>];
 
-function shapeElements(shapes: readonly Shape[]): ReactNode[] {
-  return shapes.map(([element, attributes], index) => {
-    const { class: className, ...rest } = attributes;
-    return createElement(element, { key: index, className, ...rest });
-  });
+// The attributes under React's names, which React writes back as SVG's:
+// class is className, a hyphenated presentation attribute is camel-cased
+// (stroke-dasharray is strokeDasharray), aria-* and data-* stay as they are.
+function reactProps(attributes: Shape[1]): Record<string, string> {
+  return Object.fromEntries(Object.entries(attributes).map(([name, value]) => {
+    if (name === "class") return ["className", value];
+    if (name.startsWith("aria-") || name.startsWith("data-")) return [name, value];
+    return [name.replace(/-([a-z])/g, (_whole, letter: string) => letter.toUpperCase()), value];
+  }));
+}
+
+// The shapes as React elements: the icon box's icons and the theme's
+// drawings here, and the widget panel's tiles (../widgets/icon.tsx).
+export function shapeElements(shapes: readonly Shape[]): ReactNode[] {
+  return shapes.map(([element, attributes], index) => createElement(element, { key: index, ...reactProps(attributes) }));
 }
 
 // Whether a name is an icon of the set. The names are own keys of the
