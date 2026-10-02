@@ -19,6 +19,7 @@
     "test:contract": "vitest run --project contract",
     "test:rails": "vitest run --project rails",
     "e2e": "playwright test -c e2e/playwright.config.ts",
+    "check:a11y": "playwright test -c e2e/playwright.config.ts --grep @a11y",
     "shots:editor": "node e2e/shots/editor-shots.ts"
   },
   "dependencies": {
