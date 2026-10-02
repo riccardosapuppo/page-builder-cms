@@ -212,11 +212,11 @@ describe("the Rails adapter's answers", () => {
   });
 
   test("an image's address is made absolute on the CMS's origin when the API is on another", async () => {
-    const item = { id: "m1", alt: "", width: 3, height: 2, contentType: "image/png", byteSize: 70, filename: "a.png", url: "/rails/active_storage/blobs/redirect/x/a.png", createdAt: "2026-10-02T08:00:00.000Z" };
+    const item = { id: "m1", alt: "", width: 3, height: 2, contentType: "image/png", byteSize: 70, filename: "a.png", url: "/rails/active_storage/blobs/proxy/x/a.png", createdAt: "2026-10-02T08:00:00.000Z" };
     const { fetch } = fakeFetch(() => ({ status: 200, body: { media: [item] } }));
     const [far] = await createRailsAdapter({ apiBase: "http://127.0.0.1:3901/api", fetch }).listMedia();
     const [near] = await createRailsAdapter({ apiBase: "/api", fetch }).listMedia();
-    expect(far!.url).toBe("http://127.0.0.1:3901/rails/active_storage/blobs/redirect/x/a.png");
-    expect(near!.url).toBe("/rails/active_storage/blobs/redirect/x/a.png");
+    expect(far!.url).toBe("http://127.0.0.1:3901/rails/active_storage/blobs/proxy/x/a.png");
+    expect(near!.url).toBe("/rails/active_storage/blobs/proxy/x/a.png");
   });
 });
