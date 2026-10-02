@@ -162,6 +162,14 @@ export const pageDocument: fc.Arbitrary<PageDocument> = fc.record({
 }).map(({ title, description, sections }) => {
   const copy = structuredClone(sections);
   numberIds(copy);
+  // Anchors are unique on a page (the application rules): a repeat drawn
+  // here is dropped, so the pages hold anchors, and sections without one.
+  const anchors = new Set<unknown>();
+  for (const s of copy) {
+    if (s.props.anchor === undefined) continue;
+    if (anchors.has(s.props.anchor)) delete (s.props as AnyObject).anchor;
+    else anchors.add(s.props.anchor);
+  }
   const doc = compact({ schemaVersion: SCHEMA_VERSION, title, description, sections: copy });
   const checked = validateDocument(doc);
   if (!checked.valid) throw new Error(`the generator made an invalid page: ${JSON.stringify(checked.errors.slice(0, 3))}`);
@@ -272,7 +280,11 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       if (!picked) return null;
       const updates = propUpdates(c.REMOVE, picked.block.type, picked.block.props as AnyObject, wish.variant, wish.value);
       if (!updates) return null;
-      return { made: c.makeSetProps(doc, picked.block.id, updates), mustAccept: true };
+      // An anchor another section has is refused (the application rules),
+      // so that change is tried without being required.
+      const anchor = updates.anchor;
+      const taken = typeof anchor === "string" && doc.sections.some((s) => s.id !== picked.block.id && s.props.anchor === anchor);
+      return { made: c.makeSetProps(doc, picked.block.id, updates), mustAccept: !taken };
     }
     case "style": {
       const picked = at(blocks, wish.pick);

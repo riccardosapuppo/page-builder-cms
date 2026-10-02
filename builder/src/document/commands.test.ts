@@ -210,6 +210,23 @@ describe("duplicate and paste", () => {
     expect(c.label).toBe("Pasted Quote into Column 1 in Hero");
   });
 
+  test("a copied section keeps its anchor only where the page does not use it: a duplicate never, a paste from another page may", () => {
+    const doc = page();
+    const duplicated = apply(doc, makeDuplicate(doc, "join", counter("dup"))).document;
+    expect(block(duplicated, "join").props).toEqual({ label: "Join", anchor: "join" });
+    expect(block(duplicated, "dup1").props).toEqual({ label: "Join" });
+    const copied = copyBlock(doc, "join");
+    if (!copied) throw new Error("nothing copied");
+    const here = apply(doc, makePaste(doc, copied, "hero", counter("p"))).document;
+    expect(block(here, "p1").props).toEqual({ label: "Join" });
+    // A page with no section at #join, as another page would be.
+    const elsewhere = done(applyCommand(doc, command(makeDelete(doc, "join")))).document;
+    const there = apply(elsewhere, makePaste(elsewhere, copied, "hero", counter("p"))).document;
+    expect(block(there, "p1").props).toEqual({ label: "Join", anchor: "join" });
+    // The copy in the clipboard is left as it was.
+    expect(copied.props).toEqual({ label: "Join", anchor: "join" });
+  });
+
   test("where a paste goes: beside the selection, else inside it, else beside a block above", () => {
     const doc = page();
     expect(pasteTarget(doc, "quote", "c2")).toEqual({ parentId: "c2", index: 1 });
@@ -388,5 +405,23 @@ describe("the reducer", () => {
     const copy: Block = { ...block(doc, "q1") };
     const result = applyCommand(doc, command(makeInsert(doc, copy, { parentId: "c1", index: 0 })));
     expect(result.ok ? null : result.error).toMatchObject({ reason: "duplicateId", message: "The id q1 is already used by another block." });
+  });
+
+  test("an anchor another section has is refused, at the second section in page order as on the server, naming the other", () => {
+    const doc = page();
+    const taken = applyCommand(doc, command(makeSetProps(doc, "hero", { anchor: "join" })));
+    expect(taken.ok ? null : taken.error).toEqual({
+      reason: "duplicateAnchor",
+      message: "The anchor #join is already used by Join.",
+      errors: [{ pointer: "/sections/1/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"join\" is already used by another section.", layer: "rules" }],
+    });
+    // A section brought back by an undo is held to it too.
+    const removed = command(makeDelete(doc, "join"));
+    const without = done(applyCommand(doc, removed)).document;
+    const reused = done(applyCommand(without, command(makeSetProps(without, "hero", { anchor: "join" })))).document;
+    const back = applyCommand(reused, invertCommand(removed));
+    expect(back.ok ? null : back.error.reason).toBe("duplicateAnchor");
+    // A free anchor goes through.
+    expect(block(apply(doc, makeSetProps(doc, "hero", { anchor: "top" })).document, "hero").props).toMatchObject({ anchor: "top" });
   });
 });

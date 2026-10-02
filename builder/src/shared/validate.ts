@@ -14,7 +14,7 @@ import type { Block, PageDocument } from "./document.ts";
 // The pieces of the application rules the editor's checks of one change
 // use (../document/check.ts, ../document/clipboard.ts), passed on from here
 // like everything else the editor takes from outside builder/.
-export { checkTree, MAX_NESTING, normalise, scanJson } from "../../../schema/tools/rules.ts";
+export { checkTree, duplicateAnchors, MAX_NESTING, normalise, scanJson } from "../../../schema/tools/rules.ts";
 
 export interface DocumentError {
   // A JSON pointer into the document, as the server's 422 gives it.

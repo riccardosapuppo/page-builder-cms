@@ -75,10 +75,13 @@ What they promise:
 The reducer replays a command's steps and checks what they could break:
 the nesting rule where each block landed; the application rules
 (`../../../schema/tools/rules.ts`) on what came in, at the depth it sits;
-ids nobody else on the page has; and the schema on each container whose
-children changed and each block whose props or style changed, validated
-alone with everything under it (`validateBlock`, compiled from the schema's
-`$defs/block`). A block's validity is its own and its subtree's, so a page
+ids nobody else on the page has; section anchors no other section has,
+when a section came in or its props changed (a duplicate, and a paste
+onto a page that uses the anchor, leave it off the copy); and the schema
+on each container whose children changed and each block whose props or
+style changed, validated alone with everything under it (`validateBlock`,
+compiled from the schema's `$defs/block`). A block's validity is its own
+and its subtree's, so a page
 that was valid stays valid; the random sessions below check that claim by
 validating the whole page after every command. Counts are the schema's
 own: a fifth column is refused by its "at most 4", said as "Hero is full:

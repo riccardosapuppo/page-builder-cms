@@ -10,8 +10,9 @@
 //   under it (a section that would get a fifth column fails here, by the
 //   schema's own "at most 4", not by a count written again in the editor);
 // - what the change brought in keeps the application rules: well-formed
-//   strings, finite and exact numbers, nesting depth where it now sits, and
-//   ids nobody else on the page has.
+//   strings, finite and exact numbers, nesting depth where it now sits,
+//   ids nobody else on the page has, and section anchors no other section
+//   has.
 // The page itself is checked as a shell, its sections without their
 // widgets, when its own keys or its list of sections changed.
 //
@@ -20,9 +21,9 @@
 // (the measurements are in ./README.md).
 import type { BlockType, PageDocument } from "../shared/document.ts";
 import {
-  checkTree, MAX_NESTING, validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError,
+  checkTree, duplicateAnchors, MAX_NESTING, validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError,
 } from "../shared/validate.ts";
-import { blockWithPlace, ITEM_NAMES, plural, TYPE_NAMES } from "./labels.ts";
+import { blockName, blockWithPlace, ITEM_NAMES, plural, TYPE_NAMES } from "./labels.ts";
 import { canContain, childTypes, containersFor, type ContainerType } from "./nesting.ts";
 import { duplicateId, locate, pointerOf, type ParentId } from "./tree.ts";
 
@@ -39,6 +40,8 @@ export type Reason =
   | "empty"
   // An id the page already has.
   | "duplicateId"
+  // An anchor another section of the page already has.
+  | "duplicateAnchor"
   // Anything else the schema or the application rules refuse.
   | "invalid"
   // There is nowhere for it to go (a paste with nothing that can hold it).
@@ -164,6 +167,21 @@ export function checkUniqueIds(doc: PageDocument): CommandError | null {
   return refusal("duplicateId", `The id ${twice.id} is already used by another block.`, [
     { pointer: `${pointerOf(twice.path)}/id`, keyword: "uniqueId", message: `The id "${twice.id}" is already used by another block.`, layer: "rules" },
   ]);
+}
+
+// Anchors the page holds twice once the change is made. The rule is the
+// server's own (duplicateAnchors), so the error is where the server puts
+// it: at the second section in page order. The sentence names the section
+// that had the anchor before, one the change did not touch. Anchors sit on
+// sections only, so this reads the page's sections and nothing under them.
+export function checkUniqueAnchors(doc: PageDocument, changed: ReadonlySet<string> = new Set()): CommandError | null {
+  const [twice] = duplicateAnchors(doc);
+  if (!twice) return null;
+  const anchor = doc.sections[Number(twice.pointer.split("/")[2])]?.props.anchor;
+  const holders = doc.sections.filter((section) => section.props.anchor === anchor);
+  const owner = holders.find((section) => !changed.has(section.id)) ?? holders[0];
+  const name = owner ? blockName(doc, owner.id) : "another section";
+  return refusal("duplicateAnchor", `The anchor #${anchor ?? ""} is already used by ${name}.`, [{ ...twice, layer: "rules" }]);
 }
 
 // The whole page, as the server will check it: the application rules, then

@@ -29,7 +29,8 @@ export type RuleKeyword =
   | "wellFormed"
   | "finite"
   | "safeInteger"
-  | "uniqueId";
+  | "uniqueId"
+  | "uniqueAnchor";
 
 export interface RuleError {
   pointer: string;
@@ -381,6 +382,28 @@ export function checkTree(document: unknown): RuleError[] {
       if (Array.isArray(block.children)) pushChildren(block.children, `${pointer}/children`);
     }
   }
+  return errors;
+}
+
+// Section anchors, in page order: the second section with an anchor is the
+// one reported. An anchor is the id of the section's element on the
+// published page, and a link to #anchor goes to the first element with
+// that id, so a second section with it could never be reached. Only
+// sections carry an anchor, and sections are the page's own children.
+// Exported for the editor, which checks a change's anchors on their own.
+export function duplicateAnchors(document: unknown): RuleError[] {
+  if (!isObject(document) || !Array.isArray(document.sections)) return [];
+  const errors: RuleError[] = [];
+  const seen = new Set<string>();
+  document.sections.forEach((section: unknown, k: number) => {
+    const anchor = isObject(section) && isObject(section.props) ? section.props.anchor : undefined;
+    if (typeof anchor !== "string") return;
+    if (seen.has(anchor)) {
+      errors.push({ pointer: `/sections/${k}/props/anchor`, keyword: "uniqueAnchor", message: `The anchor "${anchor}" is already used by another section.` });
+    } else {
+      seen.add(anchor);
+    }
+  });
   return errors;
 }
 

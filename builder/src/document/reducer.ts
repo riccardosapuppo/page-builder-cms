@@ -13,7 +13,7 @@
 // An undo is the inverse command, so it focuses the block it touched, or
 // where that block was when the undo took it away.
 import type { PageDocument } from "../shared/document.ts";
-import { checkContainer, checkNesting, checkRoot, checkUniqueIds, checkValueRules, refusal, type CommandError } from "./check.ts";
+import { checkContainer, checkNesting, checkRoot, checkUniqueAnchors, checkUniqueIds, checkValueRules, refusal, type CommandError } from "./check.ts";
 import type { Command } from "./commands.ts";
 import { applyOp, StaleStep, type Op } from "./ops.ts";
 import { childrenOf, depthOf, locate, pointerOf, typeOf, type ParentId } from "./tree.ts";
@@ -103,6 +103,13 @@ function check(next: PageDocument, ops: readonly Op[]): CommandError | null {
   if (inserted.size > 0) {
     const ids = checkUniqueIds(next);
     if (ids) return ids;
+  }
+  // Anchors sit on sections: a section brought in, or one whose props
+  // changed, may now share its anchor with another.
+  const changed = new Set([...inserted, ...edited]);
+  if ([...changed].some((id) => locate(next, id)?.block.type === "section")) {
+    const anchors = checkUniqueAnchors(next, changed);
+    if (anchors) return anchors;
   }
 
   // The schema, on each block touched, alone; a block under another one

@@ -246,7 +246,7 @@ export function makeDuplicate(doc: PageDocument, id: string, newId: NewId): Made
   const found = locate(doc, id);
   if (!found) return unknown(id);
   const copy = reidentify(found.block, idDraw(doc, newId));
-  const ops = insertSteps(doc, copy, { parentId: found.parentId, index: found.index + 1 });
+  const ops = insertSteps(doc, withoutTakenAnchor(doc, copy), { parentId: found.parentId, index: found.index + 1 });
   if (!Array.isArray(ops)) return refuse(ops);
   return made("duplicate", `Duplicated ${blockWithPlace(doc, id)}`, { id: copy.id }, ops);
 }
@@ -279,9 +279,20 @@ export function makePaste(doc: PageDocument, block: Block, selection: string | n
     return refuse(refusal("noTarget", `Nowhere to paste ${TYPE_NAMES[block.type]} here. ${nestingMessage(block.type, where)}`));
   }
   const copy = reidentify(block, idDraw(doc, newId));
-  const ops = insertSteps(doc, copy, at);
+  const ops = insertSteps(doc, withoutTakenAnchor(doc, copy), at);
   if (!Array.isArray(ops)) return refuse(ops);
   return made("paste", insertLabel(doc, "Pasted", copy, at), { id: copy.id }, ops);
+}
+
+// A section's anchor is its address on the page, which no other section
+// may have (the application rules refuse it), so a copy keeps its anchor
+// only where the page does not use it yet: a duplicate never does, a
+// section pasted from another page may.
+function withoutTakenAnchor(doc: PageDocument, copy: Block): Block {
+  if (copy.type !== "section") return copy;
+  const { anchor, ...props } = copy.props;
+  if (anchor === undefined || !doc.sections.some((section) => section.props.anchor === anchor)) return copy;
+  return { ...copy, props };
 }
 
 // ----------------------------------------------------------- properties
