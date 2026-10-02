@@ -10,6 +10,7 @@
    chrome's own containers with :where(), at the weight of a bare element:
    inside .site the theme's rules stand as on the published page.
    1. Font and tokens   2. Chrome   3. Canvas   4. Menus and dialogs
+   5. The keyboard and the block's menu
    ========================================================================== */
 
 /* ---------- 1. Font and tokens ---------- */
@@ -463,3 +464,25 @@ span.ov-grip { cursor: default; }
 .media-pick img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .media-pick button[aria-checked="true"]::after, .media-pick button[aria-pressed="true"]::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px var(--graphite), inset 0 0 0 5px var(--white); }
 .media-pick .pick-check { top: 8px; right: 8px; }
+
+/* ---------- 5. The keyboard and the block's menu ---------- */
+/* The keyboard shortcuts window (design/shots/shortcuts.png), and keys
+   wherever there is room for them. */
+.dlg-keys { width: min(1000px, calc(100vw - 32px)); }
+.search-keys { width: 260px; margin: 0; }
+.keys-body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 40px; padding: 4px 24px 28px; }
+.keys-group h3 { margin: 14px 0 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--steel); }
+.keys-group dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
+.keys-group dt { line-height: 17px; }
+.keys-group dd { display: flex; gap: 4px; flex: none; margin: 0; }
+.keys-group .hint { margin-top: 8px; }
+kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--rule); border-bottom-width: 2.5px; border-radius: 5px; background: var(--plate); color: var(--graphite); font: 600 12px/1 var(--font-ui); }
+kbd .i-key { width: 14px; height: 14px; stroke-width: 2.15; }
+.keys { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; flex: none; }
+kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2px; border-radius: 4px; color: var(--steel); font: 600 12px/1 var(--font-ui); }
+.dlg-foot-note { justify-content: flex-start; padding: 14px 24px 18px; background: var(--key); border-radius: 0 0 12px 12px; }
+.dlg-foot-note .hint { margin: 0; }
+
+/* The block's menu (design/shots-extra/context.png). */
+.menu-context { width: 236px; }
+.menu-item-danger, .menu-item-danger > .i { color: var(--err); }

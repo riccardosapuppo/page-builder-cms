@@ -9,9 +9,11 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import type { SaveSnapshot } from "../storage/autosave.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon, Mark } from "./icons.tsx";
+import { ariaKeyShortcuts, entry, entryCaps } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { useSession, type OpenPage } from "./session.tsx";
+import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { PREVIEWS, type Preview } from "./ui-store.ts";
 import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 
@@ -63,6 +65,10 @@ export function TopBar() {
             </button>
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); setCreating(true); }}>
               <Icon name="plus" /><span>New page…</span>
+            </button>
+            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); ui.getState().setShortcutsOpen(true); }}>
+              <Icon name="keyboard" /><span>Keyboard shortcuts</span>
+              <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
             </button>
           </Menu>
         )}

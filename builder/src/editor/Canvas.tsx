@@ -12,7 +12,7 @@
 // selection redraws the blocks it concerns and no others.
 //
 // The page's own links, buttons and disclosures do nothing here: a click
-// selects the block it falls in.
+// selects the block it falls in, a right click opens its menu.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../document/commands.ts";
@@ -24,6 +24,7 @@ import type { ImageRef, PageDocument } from "../shared/document.ts";
 import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
 import { focusBlock, runCommand } from "./act.ts";
+import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { useInsert } from "./insert.ts";
@@ -120,8 +121,8 @@ function Marks({ id, kind, name, relation, hovered, columns, empty }: MarksProps
           <div className="ov-bar" role="toolbar" aria-label={name}>
             <span className="ov-grip" aria-hidden="true"><Icon name="grip" /></span>
             <span className="ov-name">{kind === "section" ? "Section" : name}</span>
-            <button type="button" aria-label={`Duplicate ${name}`} title="Duplicate" onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
-            <button type="button" aria-label={`Delete ${name}`} title="Delete" onClick={() => act("delete")}><Icon name="trash" /></button>
+            <button type="button" aria-label={`Duplicate ${name}`} title="Duplicate (Ctrl+D)" onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
+            <button type="button" aria-label={`Delete ${name}`} title="Delete (Del)" onClick={() => act("delete")}><Icon name="trash" /></button>
           </div>
         </div>
       )}
@@ -151,7 +152,8 @@ function Marks({ id, kind, name, relation, hovered, columns, empty }: MarksProps
 const PREVIEW_NAMES = { desktop: "Desktop", tablet: "Tablet", phone: "Phone" } as const;
 
 export function Canvas() {
-  const { store, ui } = useEnv();
+  const env = useEnv();
+  const { store, ui } = env;
   const document = useEditor((s) => s.document);
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
@@ -195,11 +197,13 @@ export function Canvas() {
     <main
       className="canvas"
       aria-label="Page canvas"
+      aria-describedby="canvas-keys"
       tabIndex={-1}
       onClick={(event) => {
         if (event.target === event.currentTarget) pick(null);
       }}
     >
+      <p id="canvas-keys" hidden>Arrow keys select the next or previous block. Question mark lists every shortcut.</p>
       <WidthRule preview={preview} width={shown} fixed={width !== undefined} />
       <div
         ref={frame}
@@ -211,6 +215,11 @@ export function Canvas() {
           // A link or a disclosure of the page does nothing on the canvas.
           event.preventDefault();
           pick(event.target);
+        }}
+        onContextMenu={(event) => {
+          const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+          const id = element?.dataset.blockId;
+          if (id) openBlockMenu(env, event, id, "canvas");
         }}
         onFocus={(event) => {
           const element = event.target;

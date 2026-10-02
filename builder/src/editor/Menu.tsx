@@ -1,19 +1,22 @@
-// A menu opened from a button (the ARIA menu button pattern): the first
-// item takes the focus, the arrows move along the items, Escape or a click
-// elsewhere closes it and gives the focus back to its button.
-import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+// A menu opened from a button (the ARIA menu button pattern), or from a
+// block (its context menu): the first item takes the focus, the arrows
+// move along the items, Escape or a click elsewhere closes it and gives the
+// focus back to its button or block.
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
 
 interface MenuProps {
   label: string;
   className: string;
-  button: RefObject<HTMLButtonElement | null>;
+  button: RefObject<HTMLElement | null>;
   onClose: () => void;
   children: ReactNode;
+  // Where it opens, for a menu that is not under a button.
+  style?: CSSProperties;
 }
 
 const ITEMS = "[role=menuitem]:not([aria-disabled=true])";
 
-export function Menu({ label, className, button, onClose, children }: MenuProps) {
+export function Menu({ label, className, button, onClose, children, style }: MenuProps) {
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   useLayoutEffect(() => {
@@ -37,6 +40,7 @@ export function Menu({ label, className, button, onClose, children }: MenuProps)
       className={`menu chrome ${className}`}
       role="menu"
       aria-label={label}
+      style={style}
       onKeyDown={(event) => {
         const items = [...(box.current?.querySelectorAll<HTMLElement>(ITEMS) ?? [])];
         const at = items.indexOf(document.activeElement as HTMLElement);

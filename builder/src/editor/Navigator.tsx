@@ -7,13 +7,16 @@
 // The tree follows the ARIA tree pattern: one Tab stop, the arrows move
 // along the rows shown (and the selection with them), Right opens a row or
 // goes into it, Left closes it or goes up to its parent, Home and End go
-// to the first and last row.
+// to the first and last row. A right click (or the menu key) on a row opens
+// the block's menu; the editing keys of the keymap (./keys.ts) work on the
+// selected row as on the canvas.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { blockName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Block, PageDocument, StyleTokens } from "../shared/document.ts";
 import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
+import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
@@ -201,6 +204,7 @@ interface TreeItemProps {
 }
 
 function TreeItem(props: TreeItemProps) {
+  const env = useEnv();
   const { doc, block, level, parent, expanded, selection, tabStop, errorsOn, items, onChoose, onToggle, onKeyDown } = props;
   const children = block.children as readonly Block[];
   const hasChildren = children.length > 0;
@@ -222,8 +226,13 @@ function TreeItem(props: TreeItemProps) {
       aria-label={`${detail && block.type !== "section" ? `${name}: ${detail}` : name}${errorsOn.has(block.id) ? ", refused by the server" : ""}`}
       tabIndex={tabStop === block.id ? 0 : -1}
       className={hidden ? "t-hidden" : undefined}
+      data-row-id={block.id}
       onKeyDown={(event) => {
         if (event.target === event.currentTarget) onKeyDown(event, { block, level, parent, hasChildren });
+      }}
+      onContextMenu={(event) => {
+        event.stopPropagation();
+        openBlockMenu(env, event, block.id, "navigator");
       }}
     >
       <div

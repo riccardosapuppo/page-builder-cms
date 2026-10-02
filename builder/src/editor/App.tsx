@@ -5,19 +5,25 @@
 // (its draft upgraded and checked, openDocument, before the store takes
 // it), and gives every new document the store makes to the page's
 // autosave. Nothing here talks to a server but through the adapter.
+//
+// Around it all: the keyboard map (./keys.ts) and its "?" window, and the
+// selected block's menu.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { errorsByBlock, isStorageError, type FieldError, type NewPage, type PageSummary, type StorageAdapter } from "../storage/adapter.ts";
 import { createAutosave, type Autosave } from "../storage/autosave.ts";
+import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { LeftTray } from "./LeftTray.tsx";
 import { Navigator } from "./Navigator.tsx";
+import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { SessionProvider, type OpenPage, type Session } from "./session.tsx";
+import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 // Where the open page is remembered, so a reload opens it again: the
@@ -213,6 +219,9 @@ export function App({ env, adapter, address = locationAddress }: AppProps) {
           {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
           <Navigator />
         </div>
+        <EditorKeys />
+        <BlockMenu />
+        <ShortcutsDialog />
         <Notice />
       </SessionProvider>
     </EditorProvider>

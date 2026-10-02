@@ -1,10 +1,11 @@
 // What the interface agrees on besides the page itself: which block the
 // pointer is over, the width the canvas previews, which tab each tray
 // shows, the media library and the site style the canvas draws with, the
-// errors of the last save the server refused, and the text typed in a
-// field and not handed over yet. A vanilla zustand store, like the
-// editor's own (../store), so each part of the interface subscribes to the
-// one value it draws and nothing else redraws.
+// errors of the last save the server refused, whether the shortcuts window
+// is open, and the text typed in a field and not handed over yet. A
+// vanilla zustand store, like the editor's own (../store), so each part of
+// the interface subscribes to the one value it draws and nothing else
+// redraws.
 //
 // The page document, the selection and the history are not here: they are
 // the editor store's, changed only by its commands.
@@ -17,6 +18,12 @@ export type Preview = (typeof PREVIEWS)[number];
 
 export const PANEL_TABS = ["content", "style", "advanced"] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
+
+export interface BlockMenuAt {
+  x: number;
+  y: number;
+  from: "canvas" | "navigator";
+}
 
 export interface UiState {
   hover: string | null;
@@ -32,6 +39,14 @@ export interface UiState {
   serverErrors: readonly BlockFieldError[];
   // One sentence about what just happened, or why nothing did.
   notice: string | null;
+  // The keyboard shortcuts window (./ShortcutsDialog.tsx) is open.
+  shortcutsOpen: boolean;
+  // The block this tab copied last, as the clipboard carries it: what the
+  // block's menu pastes when the browser will not read the clipboard.
+  copied: string | null;
+  // The selected block's menu, open at a point of the window, opened from
+  // the canvas or from the navigator.
+  blockMenu: BlockMenuAt | null;
   // The text typed in a panel's field and not handed over yet. The same
   // object for the life of the store: holding text draws nothing.
   pending: PendingText;
@@ -45,6 +60,8 @@ export interface UiState {
   setSiteStyle(style: SiteStyle | null): void;
   setServerErrors(errors: readonly BlockFieldError[]): void;
   say(notice: string | null): void;
+  setShortcutsOpen(open: boolean): void;
+  setBlockMenu(menu: BlockMenuAt | null): void;
 }
 
 export type UiStore = StoreApi<UiState>;
@@ -60,6 +77,9 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     siteStyle: null,
     serverErrors: [],
     notice: null,
+    shortcutsOpen: false,
+    copied: null,
+    blockMenu: null,
     pending: new PendingText(),
 
     setHover: (hover) => set({ hover }),
@@ -71,5 +91,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setSiteStyle: (siteStyle) => set({ siteStyle }),
     setServerErrors: (serverErrors) => set({ serverErrors }),
     say: (notice) => set({ notice }),
+    setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
+    setBlockMenu: (blockMenu) => set({ blockMenu }),
   }));
 }
