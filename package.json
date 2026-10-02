@@ -9,6 +9,8 @@
     "node": ">=24"
   },
   "scripts": {
+    "start": "node tools/start.cjs",
+    "setup": "node tools/start.cjs --setup",
     "typecheck": "tsc -p tsconfig.json",
     "lint:openapi": "node tools/lint-openapi.ts",
     "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
@@ -17,7 +19,7 @@
     "shots:site": "node tools/site-shots.ts",
     "check:type-scales": "node tools/type-scales.ts",
     "check:production": "node tools/check-production.ts",
-    "test:tools": "node --test tools/lib/processes.test.ts",
+    "test:tools": "node --test \"tools/**/*.test.ts\"",
     "builder:install": "npm ci --prefix builder",
     "builder:typecheck": "npm run typecheck --prefix builder",
     "builder:lint": "npm run lint --prefix builder",
@@ -29,7 +31,9 @@
   "devDependencies": {
     "@redocly/cli": "2.57.0",
     "@types/node": "24.19.0",
+    "@types/semver": "7.8.0",
     "playwright": "1.62.1",
+    "semver": "7.8.5",
     "typescript": "6.0.3"
   }
 }
