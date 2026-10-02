@@ -409,6 +409,28 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       env.expect((await env.adapter.getPage(page.id)).published).toBe(null);
     },
   },
+  {
+    name: "what is live names the draft revision it came from, so the saves since are the changes not live",
+    needs: ["publish"],
+    async run(env) {
+      const page = await newPage(env, "not-live");
+      const r1 = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Live"), saveId: "not-live-1" });
+      const first = value(await env.adapter.publish(page.id, { revision: r1 }), "the publish");
+      env.expect(first.published.draftRevision).toBe(r1);
+      const r2 = await saved(env.adapter, page.id, { revision: r1, document: documentOf("Not live"), saveId: "not-live-2" });
+      const r3 = await saved(env.openTab(), page.id, { revision: r2, document: documentOf("Not live either"), saveId: "not-live-3" });
+      const read = await env.adapter.getPage(page.id);
+      env.expect(read.published?.draftRevision).toBe(r1);
+      // Each save moves the revision up by one, so the difference counts them.
+      env.expect(read.draft.revision - r1).toBe(2);
+      const listed = (await env.adapter.listPages()).find((p) => p.id === page.id);
+      env.expect([listed?.revision, listed?.published?.draftRevision]).toEqual([r3, r1]);
+      const second = value(await env.adapter.publish(page.id, { revision: r3 }), "the second publish");
+      env.expect(second.published.draftRevision).toBe(r3);
+      const after = await env.adapter.getPage(page.id);
+      env.expect(after.published?.draftRevision).toBe(after.draft.revision);
+    },
+  },
 
   // ------------------------------------------------------------- media
   {

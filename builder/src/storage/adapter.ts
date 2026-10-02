@@ -45,6 +45,12 @@ export interface Published {
   // next publish.
   slug: string;
   versionNumber: number;
+  // The draft's revision the live version was taken from. The draft's own
+  // revision minus this is the number of saves visitors do not see yet
+  // ("Published, N changes not live"); zero, and the draft is what is
+  // live. A restore counts as a save; a new address alone does not (the
+  // page's slug against this object's says that).
+  draftRevision: number;
   publishedAt: Time;
 }
 

@@ -44,7 +44,7 @@ const orNull = <F extends { nullable: false }>(field: F) => ({ ...field, nullabl
 const optional = <F extends { required: true }>(field: F) => ({ ...field, required: false }) as Omit<F, "required"> & { required: false };
 
 const PAGE_LINKS = { self: str, draft: str, versions: str, publish: str, preview: str, live: orNull(str) } as const satisfies Shape<PageLinks>;
-const PUBLISHED = { slug: str, versionNumber: num, publishedAt: str } as const satisfies Shape<Published>;
+const PUBLISHED = { slug: str, versionNumber: num, draftRevision: num, publishedAt: str } as const satisfies Shape<Published>;
 const PAGE_SUMMARY = {
   id: num, title: str, slug: str, home: bool, revision: num, updatedAt: str, published: orNull(obj), links: obj,
 } as const satisfies Shape<PageSummary>;

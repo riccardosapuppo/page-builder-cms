@@ -89,7 +89,7 @@ id and field (`/props/level`), the way the editor shows them.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 26 cases, each named once, and
+  It first checks the battery holds its 27 cases, each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). It runs in jsdom, whose
   document is on the CMS's origin
@@ -117,6 +117,8 @@ same save sent twice being a success counted once, the same `saveId` with
 another document being a conflict, the schema's and the application
 rules' refusals by block and field, a page's address and home mark,
 versions and restore, publishing and publishing a stale revision, the
+draft revision what is live came from (the saves since it are the changes
+not live), the
 media library (upload and bytes read back, refusals at `/file`, alt text,
 deleting, an image in use naming who uses it, an image that does not
 exist), the site style, refusing what the capabilities declare absent,
