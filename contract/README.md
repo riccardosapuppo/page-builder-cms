@@ -63,6 +63,22 @@ valid, and a test says so.
   an address it refuses is dropped and the text around it kept. A video or
   map address is built from the provider and id, or the coordinates; no
   stored string is ever used as one.
+- A map address writes its numbers (the area's four edges and the marker)
+  with six decimals the way Ruby's `format("%.6f")` writes them
+  (`RenderPolicy.decimal`), and the editor copies that way, quirk included
+  (`decimal` in `builder/src/render/policy.ts`). It is deterministic, but
+  not always the exact value correctly rounded: Ruby takes a remainder
+  within its arithmetic's error of one half as exactly half way, and
+  rounds that to the even digit. So 149.8070625000000007 is 149.807062
+  where correct rounding gives 149.807063, and 0.0078125 is 0.007812 where
+  JavaScript's `toFixed` writes 0.007813. The difference is one unit of the
+  sixth decimal, about 0.1 m on the map, and both renderers write the same
+  text, which is what the contract needs. **Change both sides or neither:**
+  rounding correctly in Ruby, or using `toFixed` in the editor, would give
+  the canvas and the page two addresses for one map, and
+  `builder/src/render/policy.test.ts` (fixed values, these two among them),
+  `twins.rails.test.ts` there (thousands of numbers through Ruby itself)
+  and the rule-9 check would fail.
 - No text a visitor reads names a provider. The video card says "Loads a
   video from the provider when you click", as the approved design does;
   the provider's id stays in the document and in `data-provider`. A test

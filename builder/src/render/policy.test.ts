@@ -1,5 +1,5 @@
 // The URL policy, the twin of cms/app/models/render_policy.rb, on the cases
-// its rules are about. policy.rails.test.ts runs Ruby's own on generated
+// its rules are about. twins.rails.test.ts runs Ruby's own on generated
 // values beside it; the render contract holds both to the goldens.
 // @vitest-environment node
 import { describe, expect, test } from "vitest";

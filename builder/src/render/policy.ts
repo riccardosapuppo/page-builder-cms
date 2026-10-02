@@ -2,7 +2,7 @@
 // links, image sources, and the players and maps a visitor can load. The
 // twin of cms/app/models/render_policy.rb, rule for rule; the render
 // contract and the rule-9 check hold the two to the same output, and
-// policy.rails.test.ts runs both on the same generated values.
+// twins.rails.test.ts runs both on the same generated values.
 //
 // The schema already refuses a document with a bad address, so on a valid
 // document these rules change nothing. They are the last check before the
@@ -102,7 +102,7 @@ export function mapSrc(latitude: unknown, longitude: unknown, zoom: unknown): st
 // - Everything else is the exact value, correctly rounded.
 // rubyTakesAsHalf below makes the same double operations, in the same
 // order, to find the values Ruby takes as half way;
-// policy.rails.test.ts holds the result to Ruby's own on values on both
+// twins.rails.test.ts holds the result to Ruby's own on values on both
 // sides of that bound.
 export function decimal(number: number): string {
   const text = fixed6(number);
