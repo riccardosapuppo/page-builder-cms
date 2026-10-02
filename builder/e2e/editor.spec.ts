@@ -7,72 +7,10 @@
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
-import { test as base, expect, type APIRequestContext, type Page } from "@playwright/test";
-
-// A picture for the images these pages take "from another site": answered
-// inside the browser, so nothing leaves the machine (a 1 by 1 PNG).
-const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
-const ELSEWHERE = "https://images.example.org/";
-
-// Every test ends with no error on the page, none in its console (but the
-// browser's own line for a request the CMS answered 422, which these tests
-// ask for) and no request that went anywhere but the run's two servers.
-const test = base.extend<{ quiet: void }>({
-  quiet: [async ({ page, baseURL }, use) => {
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    page.on("console", (message) => {
-      if (message.type() === "error" && !/status of 422/.test(message.text())) errors.push(message.text());
-    });
-    await page.route("**/*", async (route) => {
-      const url = route.request().url();
-      if (url.startsWith(ELSEWHERE)) return route.fulfill({ body: PIXEL, contentType: "image/png" });
-      if (url.startsWith(baseURL ?? "") || url.startsWith(cms())) return route.fallback();
-      errors.push(`request outside the run's servers: ${url}`);
-      return route.abort();
-    });
-    await use();
-    expect(errors).toEqual([]);
-  }, { auto: true }],
-});
-
-const cms = () => {
-  const url = process.env.E2E_CMS_URL;
-  if (!url) throw new Error("E2E_CMS_URL is not set: the run's global setup starts the CMS");
-  return url;
-};
-
-let made = 0;
-const unique = (base: string) => `${base}-${process.pid}-${Date.now().toString(36)}-${++made}`;
-
-const widget = (id: string, type: string, props: Record<string, unknown>) => ({ id, type, props, children: [], style: { base: {} } });
-const column = (id: string, children: unknown[]) => ({ id, type: "column", props: {}, children, style: { base: {} } });
-const section = (id: string, label: string, children: unknown[]) => ({ id, type: "section", props: { label }, children, style: { base: {} } });
-
-// A page with this document as its draft, made as the editor would: the
-// page, then a save at the draft's revision.
-async function makePage(request: APIRequestContext, title: string, sections: unknown[]): Promise<{ id: number; slug: string }> {
-  const slug = unique(title.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-  const created = await request.post(`${cms()}/api/pages`, { data: { title, slug } });
-  expect(created.status(), await created.text()).toBe(201);
-  const { page } = (await created.json()) as { page: { id: number } };
-  const draft = (await (await request.get(`${cms()}/api/pages/${page.id}/draft`)).json()) as { revision: number };
-  const saved = await request.put(`${cms()}/api/pages/${page.id}/draft`, { data: { revision: draft.revision, saveId: `setup-${slug}`, document: { schemaVersion: 1, title, sections } } });
-  expect(saved.status(), await saved.text()).toBe(200);
-  return { id: page.id, slug };
-}
-
-async function draftOf(request: APIRequestContext, id: number): Promise<{ revision: number; document: { sections: Array<{ children: Array<{ children: Array<{ type: string; props: Record<string, unknown> }> }> }> } }> {
-  return (await (await request.get(`${cms()}/api/pages/${id}/draft`)).json()) as never;
-}
-
-async function open(page: Page, id: number): Promise<void> {
-  await page.goto(`/?page=${id}`);
-  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
-}
+import type { Page } from "@playwright/test";
+import { cms, column, draftOf, expect, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
 
 const row = (page: Page, name: string) => page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
-const saved = (page: Page) => expect(page.getByRole("status").filter({ hasText: /^Saved$/ })).toBeVisible();
 
 // The approved design's window: the canvas gives the page 832, wide
 // enough for the page's desktop layout.
