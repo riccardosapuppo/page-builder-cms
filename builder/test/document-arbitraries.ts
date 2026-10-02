@@ -21,6 +21,7 @@ import {
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
+import { wholeNumberFromEnv } from "./env.ts";
 import type * as Clipboard from "../src/document/clipboard.ts";
 import type * as Commands from "../src/document/commands.ts";
 import type { Json } from "../src/document/json.ts";
@@ -462,8 +463,8 @@ export function session(impl: Implementation, start: PageDocument, wishes: reado
 // DOC_PROPERTY_SEED, DOC_PROPERTY_RUNS and DOC_PROPERTY_PATH replay the
 // failure fast-check reports.
 export function runSettings(defaultRuns: number): { seed: number; numRuns: number; path?: string } {
-  const seed = Number(process.env.DOC_PROPERTY_SEED ?? 20261002);
-  const numRuns = Number(process.env.DOC_PROPERTY_RUNS ?? defaultRuns);
+  const seed = wholeNumberFromEnv("DOC_PROPERTY_SEED", 20261002);
+  const numRuns = wholeNumberFromEnv("DOC_PROPERTY_RUNS", defaultRuns, 1);
   const path = process.env.DOC_PROPERTY_PATH;
   return path ? { seed, numRuns, path } : { seed, numRuns };
 }

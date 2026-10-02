@@ -22,14 +22,15 @@ import type { WidgetType } from "../src/shared/document.ts";
 import { PNG_BYTES } from "../src/storage/contract.ts";
 import { WIDGETS } from "../src/widgets/registry.ts";
 import { newWidget, type WidgetDefinition } from "../src/widgets/types.ts";
-import { fromEnv, oneColumn, startAgreement, type Agreement } from "./agreement-harness.ts";
+import { oneColumn, startAgreement, type Agreement } from "./agreement-harness.ts";
+import { wholeNumberFromEnv } from "./env.ts";
 import { findElement } from "./html-compare.ts";
 import { checked, page } from "./render-arbitraries.ts";
 import { parse } from "parse5";
 
 const cms = inject("cmsUrl");
-const RUNS = fromEnv("RULE9_RUNS", 60);
-const SEED = fromEnv("RULE9_SEED", 20261002);
+const RUNS = wholeNumberFromEnv("RULE9_RUNS", 60, 1);
+const SEED = wholeNumberFromEnv("RULE9_SEED", 20261002);
 let cmsPage: Agreement;
 
 beforeAll(async () => {

@@ -8,7 +8,8 @@
 // drawn. Shrinking is skipped (endOnFailure): finding is what is shown here.
 import fc from "fast-check";
 import { beforeAll, expect, inject, test, vi } from "vitest";
-import { fromEnv, startAgreement, type Agreement } from "./agreement-harness.ts";
+import { startAgreement, type Agreement } from "./agreement-harness.ts";
+import { wholeNumberFromEnv } from "./env.ts";
 import { page } from "./render-arbitraries.ts";
 
 const plant = vi.hoisted(() => ({ current: "none" as "none" | "toFixed" | "unsorted" | "breaks" | "paragraphs" }));
@@ -72,7 +73,7 @@ vi.mock("../src/render/rich-text.tsx", async (importOriginal) => {
 });
 
 const cms = inject("cmsUrl");
-const SEED = fromEnv("RULE9_SEED", 20261002);
+const SEED = wholeNumberFromEnv("RULE9_SEED", 20261002);
 let cmsPage: Agreement;
 
 beforeAll(async () => {

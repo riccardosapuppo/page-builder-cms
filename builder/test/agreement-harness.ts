@@ -100,11 +100,3 @@ export async function startAgreement(cms: string, name: string): Promise<Agreeme
 
   return { adapter, pageId, slug, previewPath, library, resolver, save, revision: () => revision, agree, fetchText };
 }
-
-export function fromEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (raw === undefined || raw === "") return fallback;
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a whole number, not "${raw}"`);
-  return value;
-}
