@@ -71,6 +71,21 @@ class Api::DraftTest < ActionDispatch::IntegrationTest
     assert_equal 0, @page.draft.reload.revision
   end
 
+  test "two links on one run of text are refused at its marks: the page would hold one <a> inside another" do
+    link = ->(href) { { "type" => "link", "attrs" => { "href" => href } } }
+    text = {
+      "id" => "t1", "type" => "text", "style" => { "base" => {} }, "children" => [],
+      "props" => { "doc" => { "type" => "doc", "content" => [ { "type" => "paragraph", "content" => [ { "type" => "text", "text" => "x", "marks" => [ link.call("/a"), link.call("/b") ] } ] } ] } }
+    }
+
+    save_draft @page, revision: 0, document: page_document(widgets: [ text ])
+
+    assert_response :unprocessable_content
+    assert_equal [ { "pointer" => "/document#{FIRST_WIDGET}/props/doc/content/0/content/0/marks", "keyword" => "not", "blockPointer" => "/document#{FIRST_WIDGET}" } ],
+                 json["errors"].map { |e| e.except("message") }
+    assert_equal 0, @page.draft.reload.revision
+  end
+
   test "an image from the library that does not exist is refused at its mediaId" do
     save_draft @page, revision: 0, document: page_document(widgets: [ image_block("i1", "gone") ])
 
