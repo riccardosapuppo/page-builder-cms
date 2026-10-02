@@ -13,9 +13,12 @@ and every change to it as a command with its inverse (`src/document/`),
 the store with undo, redo and drag and drop (`src/store/`); the storage
 adapter for the CMS's API and the autosave (`src/storage/`); the React
 renderer and the twelve widgets' definitions, held to the server's pages
-(`src/render/`, `src/widgets/`). The editor's interface, the widget
-panel, canvas, panels and navigator of `src/editor/`, is not written yet:
-`npm run dev` shows a placeholder page.
+(`src/render/`, `src/widgets/`). On those, the editor's interface
+(`src/editor/`): the shell of the approved design, the page switch, the
+widget panel, the canvas with its marks and the device widths, the
+property panels (Content, Style, Advanced) with each widget's Content in
+its folder, and the navigator. Drag and drop, the keyboard map,
+publishing and site style come next in this stage.
 
 ## Before you start
 
@@ -41,6 +44,7 @@ npm test
 npm run test:contract
 npm run test:rails
 npm run e2e
+npm run shots:editor -- <folder>
 npm run build
 npm run preview
 ```
@@ -59,6 +63,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, at least 1, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
+| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, style, advanced, empty) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 
@@ -73,7 +78,7 @@ editor's origin by CORS (the decision note above).
 | [`src/shared/`](src/shared/README.md) | What comes from the rest of the repository: the document's types, the validator, the published page's CSS, the editor's font. Every other folder imports from here. |
 | [`src/document/`](src/document/README.md) | The tree, the commands with their inverses, the reducer, migrations: pure functions. |
 | [`src/store/`](src/store/README.md) | The vanilla zustand store that runs the reducer, the selection, the history. |
-| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, renderer and icon; its panel and accessibility test come with the interface. `registry.ts` lists them. |
+| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, renderer, icon, and its panel with the panel's test; its accessibility test comes with the editor's accessibility checks. `registry.ts` lists the definitions, `panels.ts` the panels. |
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |

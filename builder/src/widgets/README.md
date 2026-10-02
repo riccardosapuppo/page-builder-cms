@@ -15,10 +15,18 @@ One folder per widget, named as its `type` in the schema: `heading/`,
   built on `../render`'s helpers and held to the partial by the render
   contract;
 - `icon.ts`: its tile, the approved design's `w-<type>` symbol
-  (`design/index.html`), shape for shape.
+  (`design/index.html`), shape for shape;
+- `panel.tsx`: its Content tab in the editor's property panel, whose
+  controls make the widget's own commands; and `panel.test.tsx`, which
+  drives those controls, checks the page and the command, and finds the
+  server's 422 on the field it names. The Style and Advanced tabs are
+  the same for every block (`../editor/panels/`), drawn from the style
+  settings the type accepts.
 
-The properties panel (Content, Style, Advanced) and the accessibility test
-of each widget come with the editor's interface.
+`panels.ts` lists the panels by type, apart from `registry.ts`: the render
+contract and the rule-9 check load the registry and have no use for the
+editor's controls. The accessibility test of each widget comes with the
+editor's accessibility checks.
 
 `types.ts` has the definition's type and `newWidget(definition, id,
 input)`, which makes a new block: `{id, type, props, children: [], style:
@@ -54,5 +62,6 @@ page it serves with React's.
 ## Adding a widget
 
 One small commit: the schema's branch, a folder here with its definition,
-renderer and icon, a line in `registry.ts`, the server's partial, and its
-traps in `contract/fixtures` with the goldens written again.
+renderer, icon and panel with its test, a line in `registry.ts` and in
+`panels.ts`, the server's partial, and its traps in `contract/fixtures`
+with the goldens written again.
