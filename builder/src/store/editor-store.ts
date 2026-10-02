@@ -29,7 +29,10 @@ export interface HistoryEntry {
   at: number;
 }
 
-export type Outcome = { ok: true; focus: Focus | null } | { ok: false; error: CommandError };
+// What a command, an undo, a redo or a drop came to: where the focus went,
+// or why nothing happened. Not the storage adapter's Outcome, which is a
+// server's answer.
+export type StoreOutcome = { ok: true; focus: Focus | null } | { ok: false; error: CommandError };
 
 export interface EditorState {
   document: PageDocument;
@@ -43,17 +46,17 @@ export interface EditorState {
   drag: DragSession | null;
   error: CommandError | null;
 
-  dispatch(command: Command): Outcome;
-  undo(): Outcome;
-  redo(): Outcome;
+  dispatch(command: Command): StoreOutcome;
+  undo(): StoreOutcome;
+  redo(): StoreOutcome;
   // A page read from storage, already upgraded and checked
   // (../document/upgrade.ts, openDocument): the history starts again.
   load(document: PageDocument): void;
   select(id: string | null): void;
   setDevice(device: Device): void;
-  startDrag(source: DragSource): Outcome;
+  startDrag(source: DragSource): StoreOutcome;
   dragOver(target: DropTarget | null): void;
-  drop(): Outcome;
+  drop(): StoreOutcome;
   cancelDrag(): void;
 }
 
@@ -69,15 +72,15 @@ export const DEFAULT_HISTORY_LIMIT = 200;
 export type EditorStore = StoreApi<EditorState>;
 
 export function createEditorStore({ document, now, historyLimit = DEFAULT_HISTORY_LIMIT }: EditorStoreOptions): EditorStore {
-  const nothing = (message: string): Outcome => ({ ok: false, error: { reason: "nothing", message } });
+  const nothing = (message: string): StoreOutcome => ({ ok: false, error: { reason: "nothing", message } });
 
   return createStore<EditorState>()((set, get) => {
-    const refused = (error: CommandError): Outcome => {
+    const refused = (error: CommandError): StoreOutcome => {
       set({ error });
       return { ok: false, error };
     };
     // The page after a command, with the focus and selection it leaves.
-    const settle = (next: PageDocument, focus: Focus | null, past: readonly HistoryEntry[], future: readonly HistoryEntry[]): Outcome => {
+    const settle = (next: PageDocument, focus: Focus | null, past: readonly HistoryEntry[], future: readonly HistoryEntry[]): StoreOutcome => {
       const selection = focus?.id ?? null;
       set({ document: next, focus, selection, past, future, error: null, drag: null });
       return { ok: true, focus };

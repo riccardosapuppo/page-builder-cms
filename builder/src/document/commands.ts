@@ -188,10 +188,11 @@ export function makeInsertSection(doc: PageDocument, columns: number, index: num
 
 // An image whose upload has finished: the command is made only then, with
 // the media id the library gave, so nothing half uploaded is ever on the
-// page and redoing it never uploads again.
-export type Upload = { mediaId: string; alt: string } | { mediaId: string; decorative: true };
+// page and redoing it never uploads again. (The file on its way up is the
+// storage adapter's Upload.)
+export type UploadedImage = { mediaId: string; alt: string } | { mediaId: string; decorative: true };
 
-export function makeInsertUploadedImage(doc: PageDocument, upload: Upload, at: Position, newId: NewId): Made {
+export function makeInsertUploadedImage(doc: PageDocument, upload: UploadedImage, at: Position, newId: NewId): Made {
   const props = "decorative" in upload ? { mediaId: upload.mediaId, decorative: true as const } : { mediaId: upload.mediaId, alt: upload.alt };
   const image: WidgetBlock = { id: idDraw(doc, newId)(), type: "image", props, children: [], style: { base: {} } };
   return makeInsert(doc, image, at);
