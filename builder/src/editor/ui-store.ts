@@ -47,6 +47,10 @@ export interface UiState {
   // The selected block's menu, open at a point of the window, opened from
   // the canvas or from the navigator.
   blockMenu: BlockMenuAt | null;
+  // A block being dragged, by the mouse or the keyboard (the store holds
+  // the drag itself), and the live region's last word on a drag that ended.
+  dragMode: "pointer" | "keyboard" | null;
+  dragSaid: string;
   // The text typed in a panel's field and not handed over yet. The same
   // object for the life of the store: holding text draws nothing.
   pending: PendingText;
@@ -80,6 +84,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     shortcutsOpen: false,
     copied: null,
     blockMenu: null,
+    dragMode: null,
+    dragSaid: "",
     pending: new PendingText(),
 
     setHover: (hover) => set({ hover }),

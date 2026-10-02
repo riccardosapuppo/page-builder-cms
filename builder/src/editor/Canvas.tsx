@@ -6,26 +6,42 @@
 //
 // What the editor adds to the page is drawn inside each block's root
 // (../render/context.ts, useDecoration): the selection's marks and its
-// floating bar (move, duplicate, delete), the hover outline, the outlines
+// floating bar (grip, duplicate, delete), the hover outline, the outlines
 // of the section and columns around the selection, an empty column's
 // place. Each block subscribes to its own part of the state, so a new
 // selection redraws the blocks it concerns and no others.
 //
+// While a block is dragged (./drag/DragLayer.tsx) the canvas draws the
+// store's preview, a separate page with the block where it would land,
+// and each block draws its part of the drag (./drag/marks.ts): the
+// dragged block as the drop indicator, the container it would land in
+// framed, those that cannot take it shaded. Every block, and the page
+// itself, is a drop target of the drag library; the selected block is its
+// source, picked up by the bar's grip or by Space.
+//
 // The page's own links, buttons and disclosures do nothing here: a click
 // selects the block it falls in, a right click opens its menu.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
+  type CSSProperties, type ReactNode,
+} from "react";
 import { useStore } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../document/commands.ts";
 import { blockName, plural } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
 import { PageRoot } from "../render/page.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
+import type { EditorState } from "../store/editor-store.ts";
 import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
 import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
+import { collisionPriority, SELECTION_SENSORS, SELECTION_SOURCE, useDraggable, useDropTarget } from "./drag/dnd.ts";
+import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
+import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
 import { useInsert } from "./insert.ts";
 import { mediaResolver } from "./media.ts";
@@ -69,26 +85,86 @@ function nameOf(doc: PageDocument, id: string | null): string {
 
 // ------------------------------------------------------------ decoration
 
+// The drag source's element, given to the block it is: the selection, or
+// the block being dragged wherever the preview puts it.
+const SourceRef = createContext<((element: Element | null) => void) | null>(null);
+
+// Whether a block may take part in the drag at all, for the library: a
+// place beside its siblings, or a container for the dragged block.
+function useAccept(id: string | null): () => boolean {
+  const { store } = useEnv();
+  return useCallback(() => {
+    const session = store.getState().drag;
+    if (!session || id === null) return false;
+    const dragged = draggedOf(session);
+    return id === dragged.id || roleOf(session.base, dragged, id) !== null;
+  }, [store, id]);
+}
+
+// The library's priority for a block while something is dragged: a
+// container the dragged block would go into ranks below its children,
+// unless it has none; a block it would stand beside keeps the default.
+function priorityOf(state: EditorState, id: string | null): ReturnType<typeof collisionPriority> {
+  const session = state.drag;
+  if (!session || id === null) return undefined;
+  const dragged = draggedOf(session);
+  if (id === dragged.id) return undefined;
+  const role = roleOf(session.base, dragged, id);
+  if (role?.kind !== "container") return undefined;
+  const children = (locate(session.preview, id)?.block.children ?? []).filter((b) => b.id !== dragged.id).length;
+  return collisionPriority(children);
+}
+
 function useDecoration(block: RawBlock): Decoration | undefined {
   const { store, ui } = useEnv();
+  const anonymous = useId();
   const id = typeof block.id === "string" ? block.id : null;
-  const relation = useStore(store, (s) => relationOf(s.document, s.selection, id));
+  const relation = useStore(store, (s) => (s.drag ? null : relationOf(s.document, s.selection, id)));
   const hovered = useStore(ui, (u) => id !== null && u.hover === id);
-  const name = useStore(store, (s) => nameOf(s.document, id));
+  const name = useStore(store, (s) => nameOf(s.drag?.preview ?? s.document, id));
+  const mark = useStore(store, useShallow((s): DragMark => (s.drag && id !== null ? dragMarkOf(s.drag, s.drag.preview, id) : null)));
+  const isSource = useStore(store, (s) => id !== null && (s.drag ? draggedOf(s.drag).id === id : s.selection === id));
+  const priority = useStore(store, (s) => priorityOf(s, id));
+  const sourceRef = useContext(SourceRef);
+  const accept = useAccept(id);
+  const { ref: dropRef } = useDropTarget({ id: id ?? anonymous, disabled: id === null, accept }, priority);
+  const ref = useCallback((element: HTMLElement | null) => {
+    dropRef(element);
+    if (isSource) sourceRef?.(element);
+  }, [dropRef, isSource, sourceRef]);
+
   if (id === null) return undefined;
   const kind = block.type === "section" ? "section" : block.type === "column" ? "column" : "widget";
   const columns = block.type === "section" && Array.isArray(block.children) ? block.children.length : 0;
   const empty = block.type === "column" && Array.isArray(block.children) && block.children.length === 0;
+  const slot = mark?.kind === "slot" ? mark : null;
   return {
+    ref,
     attributes: {
       role: "group",
       "aria-roledescription": kind,
       "aria-label": name,
-      tabIndex: relation === "selected" || relation === "entry" ? 0 : -1,
+      tabIndex: relation === "selected" || relation === "entry" || isSource ? 0 : -1,
       "data-editor-selected": relation === "selected" ? "true" : undefined,
+      "data-drag-slot": slot ? slot.mode : undefined,
+      "data-drag-row": slot?.row ? "true" : undefined,
     },
-    after: <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered} columns={columns} empty={empty} />,
+    after: slot
+      ? <DropIndicator mode={slot.mode} label={slot.label} />
+      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} />,
   };
+}
+
+// The drop indicator, one for the mouse and the keyboard: a line with the
+// block's name where it will land, or, alone in its container, the frame
+// of that container. The dragged block itself is drawn as it.
+export function DropIndicator({ mode, label }: { mode: "line" | "frame"; label: string }) {
+  return (
+    <span className="drop-ui drop-slot" data-mode={mode} aria-hidden="true">
+      {mode === "line" && <span className="drop-line" />}
+      <span className="drop-label">{label}</span>
+    </span>
+  );
 }
 
 interface MarksProps {
@@ -99,9 +175,10 @@ interface MarksProps {
   hovered: boolean;
   columns: number;
   empty: boolean;
+  mark: DragMark;
 }
 
-function Marks({ id, kind, name, relation, hovered, columns, empty }: MarksProps) {
+function Marks({ id, kind, name, relation, hovered, columns, empty, mark }: MarksProps) {
   const env = useEnv();
   const { store, ui, newId } = env;
   const select = (target: string) => {
@@ -115,11 +192,18 @@ function Marks({ id, kind, name, relation, hovered, columns, empty }: MarksProps
   return (
     <>
       {empty && <div className="col-empty">Empty column</div>}
+      {mark?.kind === "target" && <div className="ov ov-drop ov-drop-target" aria-hidden="true"><span className="ov-label">{mark.label}</span></div>}
+      {mark?.kind === "open" && kind === "column" && <div className="ov ov-drop" aria-hidden="true" />}
+      {mark?.kind === "shut" && (
+        <div className="ov ov-veil" aria-hidden="true">
+          {kind === "section" && <span className="veil-note"><Icon name="block" className="i i-xs" />{mark.note}</span>}
+        </div>
+      )}
       {relation === "selected" && (
         <div className="ov ov-sel">
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
           <div className="ov-bar" role="toolbar" aria-label={name}>
-            <span className="ov-grip" aria-hidden="true"><Icon name="grip" /></span>
+            <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press Space to pick it up`} title="Drag to move. Or press Space to pick up."><Icon name="grip" /></button>
             <span className="ov-name">{kind === "section" ? "Section" : name}</span>
             <button type="button" aria-label={`Duplicate ${name}`} title="Duplicate (Ctrl+D)" onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
             <button type="button" aria-label={`Delete ${name}`} title="Delete (Del)" onClick={() => act("delete")}><Icon name="trash" /></button>
@@ -154,12 +238,27 @@ const PREVIEW_NAMES = { desktop: "Desktop", tablet: "Tablet", phone: "Phone" } a
 export function Canvas() {
   const env = useEnv();
   const { store, ui } = env;
-  const document = useEditor((s) => s.document);
+  const document = useEditor((s) => s.drag?.preview ?? s.document);
+  const dragType = useEditor((s) => s.drag?.type ?? null);
+  const pageMark = useEditor(useShallow((s): DragMark => (s.drag ? containerMark(s.drag, s.drag.preview, PAGE_TARGET) : null)));
+  const sections = useEditor((s) => (s.drag?.preview ?? s.document).sections.length);
+  const selection = useEditor((s) => s.selection);
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
   const siteStyle = useUi((u) => u.siteStyle);
   const frame = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState(0);
+
+  // The selected block, the drag's source: its element is given to it by
+  // the block itself (SourceRef).
+  const source = useDraggable({ id: SELECTION_SOURCE, data: { kind: "selection" }, sensors: SELECTION_SENSORS, disabled: selection === null });
+  // The page itself, for a section dropped below the last one.
+  const acceptPage = useAccept(PAGE_TARGET);
+  const page = useDropTarget({ id: PAGE_TARGET, accept: acceptPage }, collisionPriority(sections));
+  const frameRef = useCallback((element: HTMLDivElement | null) => {
+    frame.current = element;
+    page.ref(element);
+  }, [page]);
 
   // The context's hook must stay the same function: the library's lookup
   // is the only part that changes, and only when the library does.
@@ -183,6 +282,13 @@ export function Canvas() {
     });
   }, [document]);
 
+  // With the keyboard, the place the block would land stays in view.
+  const keyboardTarget = useEditor((s) => (s.drag && ui.getState().dragMode === "keyboard" ? `${s.drag.target?.parentId ?? ""} ${s.drag.target?.index ?? ""}` : null));
+  useEffect(() => {
+    if (keyboardTarget === null) return;
+    frame.current?.querySelector<HTMLElement>("[data-drag-slot]")?.scrollIntoView?.({ block: "nearest" });
+  }, [keyboardTarget]);
+
   const pick = (target: EventTarget | null) => {
     const element = target instanceof Element ? target : null;
     if (!element || element.closest(".ov-bar, .ov-tab")) return;
@@ -193,9 +299,10 @@ export function Canvas() {
   };
 
   const shown = width ?? measured;
+  const dragClass = dragType === null ? "" : ` canvas-drag canvas-drag-${dragType === "section" || dragType === "column" ? dragType : "widget"}`;
   return (
     <main
-      className="canvas"
+      className={`canvas${dragClass}`}
       aria-label="Page canvas"
       aria-describedby="canvas-keys"
       tabIndex={-1}
@@ -203,40 +310,44 @@ export function Canvas() {
         if (event.target === event.currentTarget) pick(null);
       }}
     >
-      <p id="canvas-keys" hidden>Arrow keys select the next or previous block. Question mark lists every shortcut.</p>
+      <p id="canvas-keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
       <WidthRule preview={preview} width={shown} fixed={width !== undefined} />
-      <div
-        ref={frame}
-        className={`frame${width !== undefined ? " frame-fixed" : ""}`}
-        style={width !== undefined ? ({ width: `${width}px` } as CSSProperties) : undefined}
-        onClickCapture={(event) => {
-          const element = event.target instanceof Element ? event.target : null;
-          if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
-          // A link or a disclosure of the page does nothing on the canvas.
-          event.preventDefault();
-          pick(event.target);
-        }}
-        onContextMenu={(event) => {
-          const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
-          const id = element?.dataset.blockId;
-          if (id) openBlockMenu(env, event, id, "canvas");
-        }}
-        onFocus={(event) => {
-          const element = event.target;
-          if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined) return;
-          if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
-        }}
-        onPointerOver={(event) => {
-          const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
-          const id = element?.dataset.blockId ?? null;
-          if (ui.getState().hover !== id) ui.getState().setHover(id);
-        }}
-        onPointerLeave={() => ui.getState().setHover(null)}
-      >
-        {document.sections.length === 0
-          ? <Invite />
-          : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} {...(width === undefined ? {} : { width })} />}
-      </div>
+      <SourceRef.Provider value={source.ref}>
+        <div
+          ref={frameRef}
+          className={`frame${width !== undefined ? " frame-fixed" : ""}${pageMark?.kind === "shut" ? " frame-shut" : ""}`}
+          style={width !== undefined ? ({ width: `${width}px` } as CSSProperties) : undefined}
+          onClickCapture={(event) => {
+            const element = event.target instanceof Element ? event.target : null;
+            if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
+            // A link or a disclosure of the page does nothing on the canvas.
+            event.preventDefault();
+            pick(event.target);
+          }}
+          onContextMenu={(event) => {
+            const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+            const id = element?.dataset.blockId;
+            if (!id || store.getState().drag) return;
+            openBlockMenu(env, event, id, "canvas");
+          }}
+          onFocus={(event) => {
+            const element = event.target;
+            if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined || store.getState().drag) return;
+            if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
+          }}
+          onPointerOver={(event) => {
+            if (store.getState().drag) return;
+            const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+            const id = element?.dataset.blockId ?? null;
+            if (ui.getState().hover !== id) ui.getState().setHover(id);
+          }}
+          onPointerLeave={() => ui.getState().setHover(null)}
+        >
+          {document.sections.length === 0
+            ? <Invite />
+            : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} {...(width === undefined ? {} : { width })} />}
+        </div>
+      </SourceRef.Provider>
     </main>
   );
 }

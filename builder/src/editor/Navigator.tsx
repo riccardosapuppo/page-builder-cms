@@ -10,6 +10,9 @@
 // to the first and last row. A right click (or the menu key) on a row opens
 // the block's menu; the editing keys of the keymap (./keys.ts) work on the
 // selected row as on the canvas.
+//
+// While a block is dragged the tree shows the store's preview: the
+// dragged block as a line where it would land, its container marked.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { blockName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
@@ -18,6 +21,7 @@ import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
+import { draggedName } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
@@ -54,8 +58,18 @@ function countWidgets(doc: PageDocument): number {
 }
 
 export function Navigator() {
-  const { store, ui } = useEnv();
-  const doc = useEditor((s) => s.document);
+  const env = useEnv();
+  const { store, ui } = env;
+  const doc = useEditor((s) => s.drag?.preview ?? s.document);
+  const base = useEditor((s) => s.document);
+  const drag = useEditor((s) => s.drag);
+  // While a block is dragged: which row is the line, and which container
+  // it would land in, open so the line shows.
+  const dragging = useMemo<Dragging | null>(() => {
+    if (!drag) return null;
+    const id = drag.source.kind === "block" ? drag.source.id : drag.source.block.id;
+    return { id, target: drag.target && drag.verdict?.allowed ? drag.target.parentId : undefined, name: draggedName(drag) };
+  }, [drag]);
   const selection = useEditor((s) => s.selection);
   const open = useUi((u) => u.navigatorOpen);
   const serverErrors = useUi((u) => u.serverErrors);
@@ -82,7 +96,13 @@ export function Navigator() {
     if (selection !== null) items.current.get(selection)?.scrollIntoView?.({ block: "nearest" });
   }, [selection, expanded]);
 
-  const rows = useMemo(() => visibleRows(doc, expanded), [doc, expanded]);
+  const shownOpen = useMemo(() => {
+    if (!dragging) return expanded;
+    const open = new Set(expanded);
+    for (let up = locate(doc, dragging.id)?.parentId ?? null; up !== null; up = locate(doc, up)?.parentId ?? null) open.add(up);
+    return open;
+  }, [doc, dragging, expanded]);
+  const rows = useMemo(() => visibleRows(doc, shownOpen), [doc, shownOpen]);
   const errorsOn = useMemo(() => new Set(serverErrors.map((e) => e.blockId)), [serverErrors]);
   const tabStop = rows.some((r) => r.block.id === active) ? active : (rows[0]?.block.id ?? null);
 
@@ -148,8 +168,8 @@ export function Navigator() {
     );
   }
 
-  const sections = doc.sections.length;
-  const widgets = countWidgets(doc);
+  const sections = base.sections.length;
+  const widgets = countWidgets(base);
   return (
     <aside className="tray tray-right chrome" aria-label="Navigator">
       <section className="view">
@@ -169,7 +189,8 @@ export function Navigator() {
                   block={section}
                   level={1}
                   parent={null}
-                  expanded={expanded}
+                  expanded={shownOpen}
+                  dragging={dragging}
                   selection={selection}
                   tabStop={tabStop}
                   errorsOn={errorsOn}
@@ -188,8 +209,16 @@ export function Navigator() {
   );
 }
 
+interface Dragging {
+  id: string;
+  // The container the block would land in; undefined when nowhere.
+  target: string | null | undefined;
+  name: string;
+}
+
 interface TreeItemProps {
   doc: PageDocument;
+  dragging: Dragging | null;
   block: Block;
   level: number;
   parent: string | null;
@@ -205,7 +234,10 @@ interface TreeItemProps {
 
 function TreeItem(props: TreeItemProps) {
   const env = useEnv();
-  const { doc, block, level, parent, expanded, selection, tabStop, errorsOn, items, onChoose, onToggle, onKeyDown } = props;
+  const { doc, dragging, block, level, parent, expanded, selection, tabStop, errorsOn, items, onChoose, onToggle, onKeyDown } = props;
+  if (dragging?.id === block.id) {
+    return <li className="t-insert" aria-hidden="true" style={{ marginLeft: 4 + (level - 1) * 19 }}><span>{dragging.name}</span></li>;
+  }
   const children = block.children as readonly Block[];
   const hasChildren = children.length > 0;
   const isOpen = hasChildren && expanded.has(block.id);
@@ -232,11 +264,11 @@ function TreeItem(props: TreeItemProps) {
       }}
       onContextMenu={(event) => {
         event.stopPropagation();
-        openBlockMenu(env, event, block.id, "navigator");
+        if (!dragging) openBlockMenu(env, event, block.id, "navigator");
       }}
     >
       <div
-        className="t-row"
+        className={`t-row${dragging?.target === block.id ? " t-target" : ""}`}
         style={{ paddingLeft: 4 + (level - 1) * 19 }}
         onClick={() => onChoose(block.id)}
       >

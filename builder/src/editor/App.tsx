@@ -6,8 +6,8 @@
 // it), and gives every new document the store makes to the page's
 // autosave. Nothing here talks to a server but through the adapter.
 //
-// Around it all: the keyboard map (./keys.ts) and its "?" window, and the
-// selected block's menu.
+// Around it all: drag and drop (./drag/DragLayer.tsx), the keyboard map
+// (./keys.ts) and its "?" window, and the selected block's menu.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { openDocument } from "../document/upgrade.ts";
@@ -17,6 +17,7 @@ import { createAutosave, type Autosave } from "../storage/autosave.ts";
 import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
+import { DragLayer } from "./drag/DragLayer.tsx";
 import { Icon } from "./icons.tsx";
 import { LeftTray } from "./LeftTray.tsx";
 import { Navigator } from "./Navigator.tsx";
@@ -213,12 +214,14 @@ export function App({ env, adapter, address = locationAddress }: AppProps) {
   return (
     <EditorProvider env={env}>
       <SessionProvider value={session}>
-        <div className={`app${navigatorOpen ? "" : " nav-closed"}`}>
-          <TopBar />
-          <LeftTray />
-          {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
-          <Navigator />
-        </div>
+        <DragLayer>
+          <div className={`app${navigatorOpen ? "" : " nav-closed"}`}>
+            <TopBar />
+            <LeftTray />
+            {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
+            <Navigator />
+          </div>
+        </DragLayer>
         <EditorKeys />
         <BlockMenu />
         <ShortcutsDialog />

@@ -10,7 +10,7 @@
    chrome's own containers with :where(), at the weight of a bare element:
    inside .site the theme's rules stand as on the published page.
    1. Font and tokens   2. Chrome   3. Canvas   4. Menus and dialogs
-   5. The keyboard and the block's menu
+   5. Dragging, the keyboard and the block's menu
    ========================================================================== */
 
 /* ---------- 1. Font and tokens ---------- */
@@ -314,7 +314,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    room. */
 .frame { margin: 40px 28px 32px; background: var(--white); border-radius: 4px; }
 .frame-fixed { margin: 40px auto 32px; }
-span.ov-grip { cursor: default; }
 
 /* The width rule: the canvas width as a dimension line, notched where the
    page changes layout (tokens.json breakpoints, 560 and 800), each named
@@ -465,7 +464,73 @@ span.ov-grip { cursor: default; }
 .media-pick button[aria-checked="true"]::after, .media-pick button[aria-pressed="true"]::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px var(--graphite), inset 0 0 0 5px var(--white); }
 .media-pick .pick-check { top: 8px; right: 8px; }
 
-/* ---------- 5. The keyboard and the block's menu ---------- */
+/* ---------- 5. Dragging, the keyboard and the block's menu ---------- */
+/* While a block is dragged (design/shots/drag.png): the dragged block, in
+   the store's preview, is the drop indicator; the container it would land
+   in is framed; where it cannot go is hatched. A widget's columns stand
+   above their section's hatching, on the band's own colour. */
+.canvas .site .sec, .canvas .site .col { --sec-bg: var(--sw-background); }
+.canvas .site .bg-text { --sec-bg: var(--sw-text); }
+.canvas .site .bg-background { --sec-bg: var(--sw-background); }
+.canvas .site .bg-primary { --sec-bg: var(--sw-primary); }
+.canvas .site .bg-accent { --sec-bg: var(--sw-accent); }
+.canvas .site .bg-soft { --sec-bg: var(--sw-soft); }
+.canvas .site .bg-muted { --sec-bg: var(--sw-muted); }
+.canvas-drag-widget .site .col { z-index: 2; background-color: var(--sec-bg); }
+.canvas-drag-widget .site .w { z-index: 3; }
+.ov-veil { inset: 0; z-index: 1; background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(233 236 239 / .72); }
+.veil-note { position: absolute; left: var(--pad-x, 24px); top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: var(--plate); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; box-shadow: 0 0 0 1px var(--rule); }
+.veil-note .i { color: var(--steel); }
+.frame-shut { background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(233 236 239 / .72); }
+.ov-drop { inset: -8px; z-index: 0; border: 1.5px dashed var(--mark-line); border-radius: 4px; background: var(--sec-bg); }
+.ov-drop-target { border: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--mark-key), inset 0 0 0 1px var(--mark-key); }
+.col > .ov-drop-target { background: var(--white); }
+.ov-drop-target > .ov-label { left: -2px; top: auto; bottom: calc(100% + 3px); background: var(--mark); color: var(--on-mark); border-color: var(--mark-line); }
+.sec > .ov-drop, .sec > .ov-drop-target { inset: 0; background: none; z-index: 6; }
+.sec > .ov-drop-target > .ov-label { top: 4px; bottom: auto; left: 8px; }
+
+/* The dragged block, drawn as the indicator: a gap of 40 with a line and
+   its name where it will land, or the frame of the container it would
+   be alone in. Its own content waits, undrawn, until the drop. */
+.canvas .site [data-drag-slot] { position: relative; height: 40px; min-height: 0; margin-block: 0; padding: 0; border: 0; background: none; box-shadow: none; z-index: 4; }
+.canvas .site [data-drag-slot] > :not(.drop-ui) { display: none !important; }
+.canvas .site [data-drag-slot="frame"], .canvas .site [data-drag-slot][data-drag-row] { height: auto; min-height: 72px; }
+.drop-slot { position: absolute; inset: 0; border-radius: 4px; outline: 1.5px dashed var(--mark-line); outline-offset: -1.5px; pointer-events: none; }
+.drop-slot[data-mode="frame"] { outline: 2px solid var(--mark); box-shadow: inset 0 0 0 3px var(--mark-key); background: rgb(237 194 0 / .12); }
+.drop-line { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
+.drop-line::before, .drop-line::after { content: ""; position: absolute; top: -6px; width: 3px; height: 15px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
+.drop-line::before { left: 0; }
+.drop-line::after { right: 0; }
+[data-drag-row] > .drop-slot .drop-line { left: 50%; right: auto; top: 0; bottom: 0; width: 3px; height: auto; margin: 0 0 0 -1.5px; }
+[data-drag-row] > .drop-slot .drop-line::before, [data-drag-row] > .drop-slot .drop-line::after { left: -6px; width: 15px; height: 3px; }
+[data-drag-row] > .drop-slot .drop-line::before { top: 0; }
+[data-drag-row] > .drop-slot .drop-line::after { top: auto; bottom: 0; }
+.drop-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px var(--mark-key); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
+[data-drag-row] > .drop-slot .drop-label { top: 12px; transform: none; }
+
+/* What follows the pointer: the tile of what is dragged, tilted. */
+.drag-overlay { pointer-events: none; }
+.drag-ghost { position: absolute; width: 0; height: 0; pointer-events: none; }
+.tile-ghost { position: absolute; left: 12px; top: -40px; flex-direction: row; gap: 8px; width: auto; height: 38px; padding: 0 14px 0 10px; background: var(--plate); color: var(--graphite); transform: rotate(-3deg); box-shadow: 0 0 0 1px var(--rule), 0 14px 24px -10px rgb(27 31 36 / .45); font: 500 13px/16px var(--font-ui); white-space: nowrap; }
+
+/* Where the block will go, said and shown at the foot of the canvas. */
+.live-caption {
+  position: fixed; bottom: 20px; left: calc(var(--tray-left) + (100vw - var(--tray-left) - var(--tray-right)) / 2); transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 2px; max-width: calc(100vw - var(--tray-left) - var(--tray-right) - 32px); padding: 10px 16px; border-radius: 8px;
+  background: var(--graphite); color: var(--white); font-size: 13px; line-height: 18px; z-index: 45;
+  box-shadow: 0 10px 24px -10px rgb(27 31 36 / .6);
+}
+.live-caption strong { font-weight: 600; }
+.live-caption span { color: var(--alloy); font-size: 12px; line-height: 16px; }
+.live-caption-quiet { position: absolute; left: 0; bottom: auto; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; transform: none; box-shadow: none; }
+
+/* The navigator during a drag: the line where the block would land. */
+.t-target { background: var(--key); }
+.t-insert { position: relative; height: 18px; margin-right: 8px; list-style: none; }
+.t-insert::before { content: ""; position: absolute; left: 22px; right: 0; top: 8px; height: 2px; background: var(--mark-line); }
+.t-insert::after { content: ""; position: absolute; left: 22px; right: 0; top: 4px; height: 10px; border-left: 2px solid var(--mark-line); border-right: 2px solid var(--mark-line); }
+.t-insert span { position: absolute; left: 32px; top: 1px; z-index: 1; padding: 1px 5px; border-radius: 3px; background: var(--mark); color: var(--on-mark); font-size: 12px; line-height: 16px; font-weight: 600; }
+
 /* The keyboard shortcuts window (design/shots/shortcuts.png), and keys
    wherever there is room for them. */
 .dlg-keys { width: min(1000px, calc(100vw - 32px)); }
