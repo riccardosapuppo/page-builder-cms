@@ -116,10 +116,8 @@ function coordinate(limit: number): fc.Arbitrary<number> {
 // A library image names an item the library has: the CMS refuses to save a
 // draft that names any other (its mediaExists rule).
 function imageRef(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
-  const source = fc.oneof(
-    fc.constantFrom(...mediaIds).map((mediaId) => ({ mediaId })),
-    imageUrl.map((url) => ({ url })),
-  );
+  const external = imageUrl.map((url): AnyObject => ({ url }));
+  const source = mediaIds.length === 0 ? external : fc.oneof(fc.constantFrom(...mediaIds).map((mediaId): AnyObject => ({ mediaId })), external);
   const text = fc.oneof({ weight: 4, arbitrary: line(300).map((alt) => ({ alt })) }, { weight: 1, arbitrary: fc.constant({ decorative: true }) });
   return fc.tuple(source, text).map(([s, t]) => ({ ...s, ...t }));
 }
