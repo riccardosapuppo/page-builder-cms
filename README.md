@@ -46,7 +46,13 @@ A personal project of the author's, not work for a client.
   3.4, the schema's two validators and its lint, the contract fixture and
   the API description, RuboCop, Brakeman and bundler-audit, and the
   production check. It has not run yet: the repository is not on GitHub
-  yet.
+  yet. Until it runs green, every check has passed on Windows only, and
+  what only Linux and macOS take has not run in full anywhere: the Rails
+  tests in forked workers, which leave their OpenAPI counts for the main
+  process to add up, and the production check's ss or lsof and its stop
+  of the server's process group. The adding up and the readers of ss and
+  lsof output run on Windows too, in tests of their own; the rest waits
+  for the first run.
 
 ## The plan, stage by stage
 
