@@ -236,7 +236,7 @@ export class TextSession {
     const { view } = this.editor;
     const found = at === "end" ? null : view.posAtCoords({ left: at.x, top: at.y });
     const { doc } = view.state;
-    view.dispatch(view.state.tr.setSelection(found ? TextSelection.near(doc.resolve(found.pos)) : Selection.atEnd(doc)));
+    view.dispatch(view.state.tr.setSelection(found ? TextSelection.near(doc.resolve(found.pos)) : Selection.atEnd(doc)).scrollIntoView());
     view.focus();
   }
 
