@@ -22,7 +22,7 @@
 // stored in that form (../editor/rich/editor.test.ts holds the editor to it
 // on random texts).
 import type { BlockType, InlineNode, ListItem, Mark, PageDocument, Paragraph, RichTextBlock, RichTextDoc } from "../shared/document.ts";
-import { refusal } from "./check.ts";
+import { refusal, type CommandError } from "./check.ts";
 import { makeSetProps, type Made } from "./commands.ts";
 import { isObject, sameJson, type Json } from "./json.ts";
 import { locate } from "./tree.ts";
@@ -176,6 +176,38 @@ function marksOf(marks: unknown): Mark[] {
 }
 
 const RICH_TEXT_TYPES: readonly BlockType[] = ["text"];
+
+// Why the page refuses a text, as the person can act on it: which part of
+// the text is past which of the schema's counts, or that its lists are
+// nested deeper than the page takes ("a text holds at most 500 paragraphs
+// and lists"). The refusal's first finding names the place, as a pointer
+// from the page; `editorJson` is the text refused, read at that place.
+export function textLimitWords(error: CommandError, editorJson: unknown): string {
+  const finding = error.errors?.[0];
+  if (!finding) return error.message;
+  if (finding.keyword === "maxNesting") return "lists cannot be nested any deeper in a text";
+  if (finding.keyword !== "maxItems" || finding.limit === undefined) return error.message;
+  const at = finding.pointer.indexOf("/props/doc/");
+  if (at < 0) return error.message;
+  // The node whose content is too long: the pointer less its "/content".
+  const steps = finding.pointer.slice(at + "/props/doc/".length).split("/").slice(0, -1);
+  let node: unknown = richTextFromEditor(editorJson);
+  for (const step of steps) node = isObject(node) ? node[step] : Array.isArray(node) ? node[Number(step)] : undefined;
+  const limit = finding.limit;
+  switch (isObject(node) ? node.type : null) {
+    case "doc":
+      return `a text holds at most ${limit} paragraphs and lists`;
+    case "paragraph":
+      return `a paragraph holds at most ${limit} line breaks and changes of bold, italic or link`;
+    case "bulletList":
+    case "orderedList":
+      return `a list holds at most ${limit} items`;
+    case "listItem":
+      return `a list item holds at most ${limit} paragraphs and lists`;
+    default:
+      return error.message;
+  }
+}
 
 // The command that keeps what the editor holds for a text block: the
 // block's document replaced, as one change of its props. Its inverse puts

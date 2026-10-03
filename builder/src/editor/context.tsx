@@ -6,7 +6,7 @@
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { useStore } from "zustand";
 import type { Made } from "../document/commands.ts";
-import type { CommandError } from "../document/check.ts";
+import { refusal, type CommandError } from "../document/check.ts";
 import type { NewId } from "../document/ids.ts";
 import type { EditorState, EditorStore, StoreOutcome } from "../store/editor-store.ts";
 import type { Clock } from "../storage/clock.ts";
@@ -46,7 +46,9 @@ export function useUi<T>(selector: (state: UiState) => T): T {
 // they change (../document/ops.ts) and text changes only its own key.
 export function runMade(env: { store: EditorStore; ui: UiStore }, made: Made): { ok: true; outcome: Extract<StoreOutcome, { ok: true }> } | { ok: false; error: CommandError } {
   if (!made.ok) return { ok: false, error: made.error };
-  env.ui.getState().pending.deliver();
+  // A text the page refused stays where it is written, and the command
+  // waits (./act.ts, handOver).
+  if (!env.ui.getState().pending.deliver()) return { ok: false, error: refusal("invalid", env.ui.getState().notice ?? "A text the page cannot keep is still being written.") };
   const outcome = env.store.getState().dispatch(made.command);
   return outcome.ok ? { ok: true, outcome } : { ok: false, error: outcome.error };
 }

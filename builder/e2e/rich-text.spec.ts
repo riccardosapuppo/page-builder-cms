@@ -264,3 +264,93 @@ test("the text editor's code is fetched only once a text is selected", async ({ 
   await block(page, "t").click();
   await expect.poll(() => fetched.filter((url) => /rich\/TextEditor/.test(url)).length).toBeGreaterThan(0);
 });
+
+// A plain-text paste as the browser delivers one.
+async function pastePlain(page: Page, words: string) {
+  await editor(page).evaluate((element, text) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", text);
+    element.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  }, words);
+}
+
+const LINES = (count: number) => Array.from({ length: count }, (_, n) => `line ${n}`).join("\n");
+const notice = (page: Page) => page.locator(".notice");
+const CUT = "Only the start of the paste was kept: a text holds at most 500 paragraphs and lists.";
+
+// What the person does next, with the text still being written.
+const NEXT: Array<[string, (page: Page) => Promise<void>, (stored: string) => void]> = [
+  ["Esc", async (page) => { await page.keyboard.press("Escape"); }, () => {}],
+  ["a drag of the block", async (page) => {
+    await pickUp(page, grip(page));
+    await moveOnto(page, block(page, "c2"), "bottom");
+    await page.mouse.up();
+    await expect.poll(() => childIds(page, "c2")).toEqual(["d", "t"]);
+  }, () => {}],
+  ["Duplicate on the block's bar", async (page) => {
+    await page.locator('.canvas [data-block-id="t"] .ov-bar').getByRole("button", { name: /^Duplicate / }).click();
+    await expect(page.locator('.canvas [data-block-type="text"]')).toHaveCount(2);
+  }, () => {}],
+];
+
+for (const [what, next] of NEXT) {
+  test(`a paste of 501 lines is cut to what the page takes, and the words typed around it survive ${what}`, async ({ page, request }) => {
+    const { id } = await makePage(request, `Paste past ${what}`, [
+      section("s", "Story", [column("c1", [widget("t", "text", { doc: { type: "doc", content: [p(t("Start"))] } }), heading("h", "Alpha")]), column("c2", [widget("d", "divider", {})])]),
+    ]);
+    await open(page, id);
+    await openText(page);
+    await page.keyboard.press("Control+End");
+    await page.keyboard.type(" typed-before");
+    await pastePlain(page, LINES(501));
+    await expect(notice(page)).toContainText(CUT);
+    await page.keyboard.type(" typed-after");
+    await next(page);
+    await expect(page.locator(".topbar .save-state")).toHaveText("Saved", { timeout: 15_000 });
+    const stored = JSON.stringify(findBlock((await draftOf(request, id)).document.sections, "t")?.props.doc);
+    expect(stored).toContain("Start typed-beforeline 0");
+    expect(stored).toContain("line 499 typed-after");
+    expect(stored).not.toContain("line 500");
+  });
+}
+
+test("Undo after a paste cut to fit takes back the paste and the words typed with it, and Redo brings them back", async ({ page, request }) => {
+  const { id } = await makePage(request, "Paste then undo", [section("s", "Story", [column("c1", [widget("t", "text", { doc: { type: "doc", content: [p(t("Start"))] } }), heading("h", "Alpha")])])]);
+  await open(page, id);
+  await openText(page);
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type(" first words");
+  // A pause: the first words become a step of their own.
+  await expect.poll(() => storedText(request, id).then((doc) => JSON.stringify(doc))).toContain("first words");
+  await page.keyboard.type(" typed-before");
+  await pastePlain(page, LINES(501));
+  await page.keyboard.type(" typed-after");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.locator(".canvas .rte")).toHaveCount(0);
+  await expect(page.locator(".topbar .save-state")).toHaveText("Saved", { timeout: 15_000 });
+  let stored = JSON.stringify(await storedText(request, id));
+  expect(stored).toContain("Start first words");
+  expect(stored).not.toContain("typed-before");
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect.poll(async () => JSON.stringify(await storedText(request, id))).toContain("line 499 typed-after");
+  stored = JSON.stringify(await storedText(request, id));
+  expect(stored).toContain("Start first words typed-beforeline 0");
+});
+
+test("Enter and Tab in a list stop at the depth the page takes, say so, and every word typed is kept", async ({ page, request }) => {
+  const { id } = await makePage(request, "Deep list", [section("s", "Story", [column("c1", [widget("t", "text", { doc: { type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [p(t("level0"))] }] }] } })])])]);
+  await open(page, id);
+  await openText(page);
+  await page.keyboard.press("Control+End");
+  for (let level = 1; level <= 14; level += 1) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Tab");
+    await page.keyboard.type(`level${level}`);
+  }
+  await expect(notice(page)).toContainText("Not done: lists cannot be nested any deeper in a text.");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".topbar .save-state")).toHaveText("Saved", { timeout: 15_000 });
+  const stored = JSON.stringify(await storedText(request, id));
+  for (let level = 0; level <= 14; level += 1) expect(stored).toContain(`"level${level}"`);
+  await expect(block(page, "t").locator("ul")).toHaveCount(12);
+});

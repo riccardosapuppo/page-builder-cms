@@ -235,7 +235,16 @@ default the origin of an absolute `VITE_API_BASE`, else
   page's history exactly (`src/editor/rich/editor.test.ts`); the two
   histories' hand-over is tested on the editor in jsdom
   (`src/editor/rich/text-session.test.ts`) and in Chromium
-  (`e2e/rich-text.spec.ts`).
+  (`e2e/rich-text.spec.ts`), and so is what the page takes of a text: a
+  paste of 501 or 600 lines cut to 500 paragraphs and said, the words
+  typed before and after it kept through Esc, a drag, Duplicate, and Undo
+  and Redo; Enter and Tab stopped twelve lists deep, where a linked word
+  still fits the page's nesting; a paste of which nothing fits not kept;
+  and a text the store refuses all the same kept open, the commands and
+  drags waiting. Every package the text editor's chunk imports is in
+  `vite.config.ts`'s `optimizeDeps` (`build/optimize-deps.test.ts`): one
+  that is not is bundled when a text is first edited, and the page
+  reloads.
 - **The renderer** ([src/render/README.md](src/render/README.md)) is held
   to the server's four ways, each shown failing with faults planted:
   - the render contract: every fixture of `../contract` against the

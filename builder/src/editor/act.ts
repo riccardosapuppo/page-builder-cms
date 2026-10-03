@@ -2,7 +2,8 @@
 // floating bar, the keyboard, the block's menu, the widget panel or a drop:
 //
 // 1. the text still waiting in a panel's field is handed over first, as a
-//    command of its own (./pending.ts);
+//    command of its own (./pending.ts); a text the page refuses keeps the
+//    command from running, and the sentence that says why stays;
 // 2. the command is made from the page as it is then, and applied;
 // 3. the focus goes where the command's result says (../document/reducer.ts,
 //    focusAfter): after a delete to the neighbour, after an insert, a paste
@@ -11,7 +12,7 @@
 //    there;
 // 4. a refusal is said, in one sentence, and the page stays as it was.
 import { useMemo } from "react";
-import type { CommandError } from "../document/check.ts";
+import { refusal, type CommandError } from "../document/check.ts";
 import type { Made } from "../document/commands.ts";
 import type { Focus } from "../document/reducer.ts";
 import type { PageDocument } from "../shared/document.ts";
@@ -87,10 +88,19 @@ function settle(env: Env, outcome: StoreOutcome, region: Region): CommandError |
   return null;
 }
 
+// The text still waiting, handed over; the refusal when the page refused
+// one, which stays in its field or editor with the notice saying why: the
+// command waits rather than land on a page without it.
+export function handOver(env: Env): CommandError | null {
+  if (env.ui.getState().pending.deliver()) return null;
+  return refusal("invalid", env.ui.getState().notice ?? "A text the page cannot keep is still being written.");
+}
+
 // A command made from the page as it is once the waiting text is in; null
 // when it was applied, the refusal otherwise (also said).
 export function runCommand(env: Env, make: (doc: PageDocument) => Made, region: Region): CommandError | null {
-  env.ui.getState().pending.deliver();
+  const held = handOver(env);
+  if (held) return held;
   const made = make(env.store.getState().document);
   if (!made.ok) {
     env.ui.getState().say(made.error.message);
@@ -100,12 +110,14 @@ export function runCommand(env: Env, make: (doc: PageDocument) => Made, region: 
 }
 
 export function runUndo(env: Env, region: Region): CommandError | null {
-  env.ui.getState().pending.deliver();
+  const held = handOver(env);
+  if (held) return held;
   return settle(env, env.store.getState().undo(), region);
 }
 
 export function runRedo(env: Env, region: Region): CommandError | null {
-  env.ui.getState().pending.deliver();
+  const held = handOver(env);
+  if (held) return held;
   return settle(env, env.store.getState().redo(), region);
 }
 

@@ -4,25 +4,35 @@
 // document, and the start of every drag, hands it over first (as a command
 // of its own), so a delete, a paste or a move never lands between the
 // typing and the command that keeps it, and the history reads in the order
-// the person worked. The canvas's rich text joins in stage 3.
+// the person worked. The text written on the canvas joins in
+// (./rich/text-session.ts).
+//
+// A text the page refuses is not let go: its holder keeps the hold, and
+// says why. deliver() then answers false, and the command or drag that
+// asked waits (./act.ts), so nothing typed is dropped behind its back.
 export class PendingText {
-  readonly #commits = new Set<() => void>();
+  readonly #commits = new Set<() => boolean | void>();
 
-  // A field with text waiting, by the function that hands it over. The
-  // field calls the release once its text is handed over or dropped.
-  hold(commit: () => void): () => void {
+  // A field with text waiting, by the function that hands it over: true
+  // (or nothing) once handed over, false when the page refused it and the
+  // field still holds it. The field calls the release once its text is
+  // handed over or dropped.
+  hold(commit: () => boolean | void): () => void {
     this.#commits.add(commit);
     return () => {
       this.#commits.delete(commit);
     };
   }
 
-  // Hands every waiting text over, in the order it was typed. A field
+  // Hands every waiting text over, in the order it was typed; false when
+  // one of them is still held because the page refused it. A field
   // releases itself before it hands its text over, so a command it causes
   // finds nothing left to deliver from it.
-  deliver(): void {
+  deliver(): boolean {
+    let all = true;
     // A copy: each field lets go of its hold as it hands its text over.
-    for (const commit of Array.from(this.#commits)) commit();
+    for (const commit of Array.from(this.#commits)) if (commit() === false) all = false;
+    return all;
   }
 
   get waiting(): number {

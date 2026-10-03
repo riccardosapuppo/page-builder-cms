@@ -21,11 +21,21 @@
 // than by this editor (an undo from the top bar, a reload): the page
 // drawn again is then the truth, and the typing still waiting is handed
 // over first, onto that page.
+//
+// The text never becomes one the page refuses: a change past what the
+// page takes of a text is not made, and a paste is cut to it (./limits.ts,
+// asked of the page here). Should the page refuse a text all the same, the
+// typing is not dropped: the hold stays, the editor stays open with the
+// sentence that says why, and the commands, drags and the leaving that
+// would lose it wait (../act.ts) until the text is one the page takes.
 import type { Editor } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
-import { makeTextEdit } from "../../document/rich-text.ts";
-import { locate } from "../../document/tree.ts";
+import type { CommandError } from "../../document/check.ts";
+import { applyCommand } from "../../document/reducer.ts";
+import { makeTextEdit, textLimitWords } from "../../document/rich-text.ts";
+import { depthOf, locate } from "../../document/tree.ts";
 import type { PageDocument } from "../../shared/document.ts";
+import { MAX_NESTING } from "../../shared/validate.ts";
 import type { EditorState } from "../../store/editor-store.ts";
 import type { EditorEnv } from "../context.tsx";
 import { COMMIT_AFTER_MS } from "../controls.tsx";
@@ -68,6 +78,7 @@ export class TextSession {
       content: this.#matched,
       label,
       keys: { openLink: () => this.#commands.openLink(), leave: () => this.stop(true) },
+      limits: { refuses: (json) => this.#refuses(json), deepestList: () => this.#deepestList(), say: (sentence) => env.ui.getState().say(sentence) },
       on: {
         onUpdate: () => this.#typed(),
         onTransaction: () => this.#publish(),
@@ -84,37 +95,77 @@ export class TextSession {
   }
 
   // Hands the text over as one command, if it waits, and closes TipTap's
-  // history there. Bound, since the pending text calls it as it is.
-  readonly deliver = (): void => {
+  // history there: true once the page has it (or has nothing to take),
+  // false when the page refused it, the hold kept and the reason said.
+  // Bound, since the pending text calls it as it is.
+  readonly deliver = (): boolean => {
     this.#clearTimer();
     const release = this.#release;
     this.#release = null;
     release?.();
     if (!this.editor.isDestroyed) this.editor.view.dispatch(closeHistory(this.editor.state.tr));
-    const { store, ui } = this.#env;
-    const made = makeTextEdit(store.getState().document, this.#id, this.editor.getJSON());
+    const { store } = this.#env;
+    const json = this.editor.getJSON();
+    const made = makeTextEdit(store.getState().document, this.#id, json);
     if (!made.ok) {
       // The same text: nothing to keep. The block gone: nothing to keep it in.
-      if (made.error.reason !== "nothing" && made.error.reason !== "unknown") ui.getState().say(`The text could not be kept: ${made.error.message}`);
-      return;
+      if (made.error.reason === "nothing" || made.error.reason === "unknown") return true;
+      return this.#keep(made.error, json);
     }
     this.#applying = true;
     const outcome = store.getState().dispatch(made.command);
     this.#applying = false;
-    if (outcome.ok) this.#matched = storedText(store.getState().document, this.#id);
-    else ui.getState().say(`The text could not be kept: ${outcome.error.message}`);
+    if (!outcome.ok) return this.#keep(outcome.error, json);
+    this.#matched = storedText(store.getState().document, this.#id);
+    return true;
   };
 
+  // A text the page refused: held again, so whatever asked for it waits,
+  // and the reason said, with what to do.
+  #keep(error: CommandError, json: unknown): false {
+    if (!this.#disposed) this.#release ??= this.#env.ui.getState().pending.hold(this.deliver);
+    const why = textLimitWords(error, json).replace(/\.$/, "");
+    this.#env.ui.getState().say(`This text cannot be kept yet: ${why}. It stays open here until the page can take it.`);
+    return false;
+  }
+
+  // Why the page would refuse this text, or null: the command that would
+  // keep it, checked as the store checks it.
+  #refuses(json: unknown): string | null {
+    const page = this.#env.store.getState().document;
+    const made = makeTextEdit(page, this.#id, json);
+    if (!made.ok) return made.error.reason === "nothing" || made.error.reason === "unknown" ? null : textLimitWords(made.error, json);
+    const applied = applyCommand(page, made.command);
+    return applied.ok ? null : textLimitWords(applied.error, json);
+  }
+
+  // How many lists deep a list item of this text may stand: the block's
+  // own depth on the page, then props, doc and its content; four levels
+  // for each list (the list, its items, an item, its content); then a
+  // paragraph holding a word with a link (the paragraph, its content, the
+  // word, its marks, the mark, its attributes), all within MAX_NESTING.
+  #deepestList(): number {
+    const found = locate(this.#env.store.getState().document, this.#id);
+    if (!found) return Number.POSITIVE_INFINITY;
+    const aboveDoc = depthOf(found.path) + 4;
+    return Math.floor((MAX_NESTING - aboveDoc - 6) / 4);
+  }
+
   // Closes the editor: the text handed over, the canvas told, the focus
-  // on the block itself when the person left with Esc.
-  stop(focusBlock: boolean): void {
-    if (this.#stopped) return;
+  // on the block itself when the person left with Esc. A text the page
+  // refuses keeps it open, the focus back in it when asked: false.
+  stop(focusBlock: boolean): boolean {
+    if (this.#stopped) return true;
+    if (this.#release && !this.deliver()) {
+      if (focusBlock) this.#focusText();
+      return false;
+    }
     this.#stopped = true;
-    if (this.#release) this.deliver();
     const { ui } = this.#env;
     if (ui.getState().editingText?.id === this.#id) ui.setState({ editingText: null });
     if (ui.getState().textTools?.id === this.#id) ui.setState({ textTools: null });
     if (focusBlock) this.#root?.focus({ preventScroll: true });
+    return true;
   }
 
   // The editor's element leaves the page: anything still waiting is
@@ -152,7 +203,12 @@ export class TextSession {
 
   #watch(state: EditorState): void {
     if (this.#stopped || this.#disposed || this.#applying) return;
-    if (state.drag !== null || state.selection !== this.#id) return this.stop(false);
+    if (state.drag !== null || state.selection !== this.#id) {
+      // Another block chosen while this text cannot be kept: the selection
+      // comes back to it, rather than the typing going.
+      if (!this.stop(false) && state.drag === null && storedText(state.document, this.#id) !== undefined) this.#env.store.getState().select(this.#id);
+      return;
+    }
     const text = storedText(state.document, this.#id);
     if (text === undefined || text !== this.#matched) this.stop(false);
   }

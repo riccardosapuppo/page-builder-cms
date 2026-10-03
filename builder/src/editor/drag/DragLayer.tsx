@@ -17,7 +17,7 @@ import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { Block, PageDocument } from "../../shared/document.ts";
 import { describeDrop, verdictFor, type DragSession, type DropTarget } from "../../document/drag.ts";
 import { locate } from "../../document/tree.ts";
-import { focusBlock, placeFocus } from "../act.ts";
+import { focusBlock, handOver, placeFocus } from "../act.ts";
 import { BlockIcon } from "../block-icon.tsx";
 import type { CommandError } from "../../document/check.ts";
 import { useEditor, useEnv, useUi, type EditorEnv } from "../context.tsx";
@@ -74,7 +74,10 @@ function ownPlace(session: DragSession): DropTarget | null {
 // The refusal, said, when there is nothing to drag.
 export function beginDrag(env: Pick<EditorEnv, "store" | "ui">, data: SourceData, keyboard: boolean): CommandError | null {
   const { store, ui } = env;
-  ui.getState().pending.deliver();
+  // A text the page refused is still being written: no drag until it is
+  // one the page takes (its sentence stays said).
+  const held = handOver(env);
+  if (held) return held;
   ui.getState().setBlockMenu(null);
   const { document: page, selection } = store.getState();
   const started = data.kind === "selection"

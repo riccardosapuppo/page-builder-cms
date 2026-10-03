@@ -7,6 +7,7 @@
 import { Editor, type EditorOptions } from "@tiptap/core";
 import { cleanPastedText } from "../../document/rich-text.ts";
 import { textExtensions, type TextKeyActions } from "./extensions.ts";
+import { TextLimitsGuard, type TextLimits } from "./limits.ts";
 import { cleanPastedHtml } from "./paste.ts";
 
 export interface TextEditorSetup {
@@ -18,13 +19,16 @@ export interface TextEditorSetup {
   // What a screen reader calls the text.
   label: string;
   keys?: TextKeyActions;
+  // What the page takes of the text (./limits.ts): a change past it is not
+  // made, and a paste is cut to it.
+  limits?: TextLimits;
   on?: Partial<Pick<EditorOptions, "onUpdate" | "onSelectionUpdate" | "onTransaction" | "onFocus" | "onBlur">>;
 }
 
-export function createTextEditor({ element, content, label, keys, on = {} }: TextEditorSetup): Editor {
+export function createTextEditor({ element, content, label, keys, limits, on = {} }: TextEditorSetup): Editor {
   return new Editor({
     element: element ? { mount: element } : null,
-    extensions: textExtensions(keys),
+    extensions: [...textExtensions(keys), ...(limits ? [TextLimitsGuard.configure({ limits })] : [])],
     content: content as EditorOptions["content"],
     injectCSS: false,
     editorProps: {

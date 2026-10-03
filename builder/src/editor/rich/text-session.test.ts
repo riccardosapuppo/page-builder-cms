@@ -9,7 +9,7 @@
 // same typing in an editor whose history nobody closes is undone in one go.
 import { closeHistory } from "@tiptap/pm/history";
 import { afterEach, beforeAll, expect, test } from "vitest";
-import { openTextKit, standInLayout, type TextKit } from "../../../test/text-editor-kit.ts";
+import { openTextKit, standInLayout, textPage, type TextKit } from "../../../test/text-editor-kit.ts";
 import { makeDuplicate } from "../../document/commands.ts";
 import { runCommand } from "../act.ts";
 import { COMMIT_AFTER_MS } from "../controls.tsx";
@@ -133,6 +133,106 @@ test("the text changed from elsewhere closes the editor, the typing handed over 
   expect(k.session.stopped).toBe(true);
   // The words typed since are not lost: kept as a step after the undo.
   expect(words(k)).toContain("Cold water one two");
+  expect(k.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Text in Story"]);
+});
+
+// The words of the text the page holds, and of the one the editor holds.
+const held = (k: TextKit) => JSON.stringify(k.stored());
+// jsdom has no ClipboardEvent: the paste is ProseMirror's own, from its text.
+const pasteEvent = () => new Event("paste") as ClipboardEvent;
+const press = (k: TextKit, key: string, shiftKey = false) => k.session.editor.view.dom.dispatchEvent(new KeyboardEvent("keydown", { key, shiftKey, bubbles: true, cancelable: true }));
+
+test("a paste past what a text holds is cut to what the page takes, said, and every word typed around it is kept", () => {
+  const k = open();
+  type(k, " typed-before");
+  k.session.editor.view.pasteText(Array.from({ length: 600 }, (_, n) => `line ${n}`).join("\n"), pasteEvent());
+  expect(k.ui.getState().notice).toBe("Only the start of the paste was kept: a text holds at most 500 paragraphs and lists.");
+  // The first line joins the paragraph the caret was in; 499 more follow.
+  expect(k.session.editor.state.doc.childCount).toBe(500);
+  type(k, " typed-after");
+  press(k, "Escape");
+  expect(k.session.stopped).toBe(true);
+  const kept = k.stored() as { content: unknown[] };
+  expect(kept.content).toHaveLength(500);
+  expect(held(k)).toContain("Cold water typed-beforeline 0");
+  expect(held(k)).toContain("line 499 typed-after");
+  expect(held(k)).not.toContain("line 500");
+  expect(k.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Text in Story"]);
+});
+
+test("a text at its limit takes what still fits of a paste, and a paste of which nothing fits is not kept, saying why", () => {
+  const full = { type: "doc", content: Array.from({ length: 500 }, (_, n) => ({ type: "paragraph", content: [{ type: "text", text: `p${n}` }] })) };
+  let k = (kit = openTextKit(textPage(full)));
+  // The first line joins the last paragraph; the second would be the 501st.
+  k.session.editor.view.pasteText("one\ntwo", pasteEvent());
+  expect(k.ui.getState().notice).toBe("Only the start of the paste was kept: a text holds at most 500 paragraphs and lists.");
+  expect(k.session.editor.state.doc.childCount).toBe(500);
+  expect(k.session.editor.getText()).toMatch(/p499one$/);
+  k.close();
+
+  // A paragraph of 2000 runs and line breaks: a bold word would be one more.
+  const runs = Array.from({ length: 1000 }, () => [{ type: "hardBreak" }, { type: "text", text: "a" }]).flat();
+  k = (kit = openTextKit(textPage({ type: "doc", content: [{ type: "paragraph", content: runs }] })));
+  k.session.editor.view.pasteHTML("<b>x</b>", pasteEvent());
+  expect(k.ui.getState().notice).toBe("The paste was not kept: a paragraph holds at most 2000 line breaks and changes of bold, italic or link.");
+  expect(k.session.editor.state.doc.firstChild?.childCount).toBe(2000);
+  // Typing in a run that is there already adds none.
+  k.ui.getState().say(null);
+  type(k, "b");
+  expect(k.ui.getState().notice).toBeNull();
+});
+
+test("Enter and Tab past the depth a text's lists may take are not done, say why, and the words typed stay", () => {
+  const list = { type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "level0" }] }] }] }] };
+  const k = (kit = openTextKit(textPage(list)));
+  const editor = k.session.editor;
+  for (let level = 1; level <= 14; level += 1) {
+    press(k, "Enter");
+    press(k, "Tab");
+    editor.view.dispatch(editor.state.tr.insertText(`level${level}`));
+  }
+  expect(k.ui.getState().notice).toBe("Not done: lists cannot be nested any deeper in a text.");
+  press(k, "Escape");
+  expect(k.session.stopped).toBe(true);
+  const kept = held(k);
+  for (let level = 0; level <= 14; level += 1) expect(kept).toContain(`"level${level}"`);
+  // Twelve lists deep, a linked word in the deepest still within the page's nesting.
+  let depth = 0;
+  for (let node = (k.stored() as { content: unknown[] }).content[0] as { type: string; content?: Array<{ content?: unknown[] }> } | undefined; node?.type === "bulletList"; depth += 1) {
+    node = node.content?.at(-1)?.content?.at(-1) as typeof node;
+  }
+  expect(depth).toBe(12);
+});
+
+test("a text the page refuses is never dropped: commands and drags wait, Esc and another selection leave it open, and the sentence stays", async () => {
+  const k = open();
+  const dispatch = k.store.getState().dispatch;
+  let refusing = true;
+  // A refusal the guard did not see coming: the store's own, for the text.
+  k.store.setState({
+    dispatch: (command) => (refusing && command.label.startsWith("Changed Text") ? { ok: false, error: { reason: "invalid", message: "The page would not be valid." } } : dispatch(command)),
+  });
+  type(k, " typed-before");
+  await k.clock.advance(COMMIT_AFTER_MS);
+  const said = k.ui.getState().notice;
+  expect(said).toBe("This text cannot be kept yet: The page would not be valid. It stays open here until the page can take it.");
+  expect(k.ui.getState().pending.waiting).toBe(1);
+  type(k, " typed-after");
+  expect(runCommand(k.env, (doc) => makeDuplicate(doc, "h", k.env.newId), "canvas")?.message).toBe(k.ui.getState().notice);
+  expect(k.store.getState().past).toEqual([]);
+  expect(beginDrag(k.env, { kind: "selection" }, false)).not.toBeNull();
+  expect(k.store.getState().drag).toBeNull();
+  press(k, "Escape");
+  expect(k.session.stopped).toBe(false);
+  k.store.getState().select("h");
+  expect(k.store.getState().selection).toBe("t");
+  expect(k.session.stopped).toBe(false);
+  expect(k.ui.getState().notice).toContain("This text cannot be kept yet");
+  // Once the page takes it, everything typed is kept, in one step.
+  refusing = false;
+  press(k, "Escape");
+  expect(k.session.stopped).toBe(true);
+  expect(held(k)).toContain("Cold water typed-before typed-after");
   expect(k.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Text in Story"]);
 });
 
