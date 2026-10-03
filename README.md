@@ -269,11 +269,11 @@ On 3 October 2026, on the virtual machine of "Before you start", with
 `CMS_PORT`, `BUILDER_PORT` and `PRODUCTION_CHECK_PORT` set to 3901 and
 4901 so that every server it started was on the test ports, the whole
 run took 11 minutes and ended `RESULT: 25 passed, 1 could not run here`:
-bundler-audit, for want of its database. Among its counts, in the last
-run of the day, which took 10 min 33 s: 517 unit tests and the render
+bundler-audit, for want of its database. Among its counts, in a run
+that ended at 17:05 and took 10 min 50 s: 517 unit tests and the render
 contract's 22, 214 corpus files with no disagreement, 237 Rails runs
 with 201 API answers held to the description, 47 tests against a CMS of
-their own, 78 browser tests and 25 accessibility tests, 40 serving
+their own, 82 browser tests and 25 accessibility tests, 40 serving
 checks and 35 of the production boot. The floors in `suites.ts` are
 those counts.
 
