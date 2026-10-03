@@ -152,8 +152,30 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     },
     after: slot
       ? <DropIndicator mode={slot.mode} label={slot.label} />
-      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} />,
+      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} />,
   };
+}
+
+// A button is drawn as a pill inside a root as wide as its column, as on
+// the published page; its hover outline and selection frame hug the pill
+// (design/shots/editor.png), placed from the pill's box in the root's own
+// layout (offset*, which neither scrolling nor a scaled canvas changes),
+// and placed again whenever either box changes size.
+function hug(mark: HTMLElement | null): (() => void) | undefined {
+  const root = mark?.parentElement;
+  const pill = root?.querySelector<HTMLElement>(":scope > .sw-btn");
+  if (!mark || !root || !pill) return undefined;
+  const place = () => {
+    mark.style.setProperty("--hug-x", `${pill.offsetLeft}px`);
+    mark.style.setProperty("--hug-y", `${pill.offsetTop}px`);
+    mark.style.setProperty("--hug-w", `${pill.offsetWidth}px`);
+    mark.style.setProperty("--hug-h", `${pill.offsetHeight}px`);
+  };
+  place();
+  const observer = new ResizeObserver(place);
+  observer.observe(root);
+  observer.observe(pill);
+  return () => observer.disconnect();
 }
 
 // The drop indicator, one for the mouse and the keyboard: a line with the
@@ -177,9 +199,11 @@ interface MarksProps {
   columns: number;
   empty: boolean;
   mark: DragMark;
+  // The outline and frame hug what the block draws (a button's pill).
+  hug: boolean;
 }
 
-function Marks({ id, kind, name, relation, hovered, columns, empty, mark }: MarksProps) {
+function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs }: MarksProps) {
   const env = useEnv();
   const { store, ui, newId } = env;
   const select = (target: string) => {
@@ -201,7 +225,7 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark }: Mark
         </div>
       )}
       {relation === "selected" && (
-        <div className="ov ov-sel">
+        <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
           <div className="ov-bar" role="toolbar" aria-label={name}>
             <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press Space to pick it up`} title="Drag to move. Or press Space to pick up."><Icon name="grip" /></button>
@@ -212,7 +236,7 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark }: Mark
         </div>
       )}
       {relation !== "selected" && hovered && (
-        <div className="ov ov-hover" aria-hidden="true"><span className="ov-label">{name}</span></div>
+        <div className={`ov ov-hover${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined} aria-hidden="true"><span className="ov-label">{name}</span></div>
       )}
       {relation === "around" && (
         <div className="ov ov-section">

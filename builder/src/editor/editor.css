@@ -395,6 +395,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-label { position: absolute; padding: 3px 6px; border-radius: 3px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
 .ov-hover .ov-label { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
 .col > .ov-hover .ov-label, .sec > .ov-hover .ov-label { left: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
+/* A button's root is as wide as its column, as on the published page; its
+   outline and frame hug the pill it draws instead (Canvas.tsx, useHug). */
+.ov-hover.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 4px); top: calc(var(--hug-y, 0px) - 4px); width: calc(var(--hug-w, 100%) + 8px); height: calc(var(--hug-h, 100%) + 8px); }
+.ov-sel.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 6px); top: calc(var(--hug-y, 0px) - 6px); width: calc(var(--hug-w, 100%) + 12px); height: calc(var(--hug-h, 100%) + 12px); }
 
 /* The section and the columns around the selection: dashed, graphite on plate. */
 .ov-section { inset: 0; outline: 1px dashed var(--rule); outline-offset: -1px; z-index: 4; }
