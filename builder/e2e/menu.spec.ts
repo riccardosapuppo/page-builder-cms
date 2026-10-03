@@ -28,6 +28,14 @@ test("a right click opens the block's menu, whose items copy, paste, duplicate a
   await expect(menu).toBeVisible();
   await expect(menu.getByRole("menuitem")).toHaveText(["CopyCtrlC", "PasteCtrlV", "DuplicateCtrlD", "DeleteDel"]);
   await expect(menu.getByRole("menuitem").first()).toBeFocused();
+  // Its ring shows, opened by the mouse too (design/shots-extra/
+  // context.png), and goes with the focus.
+  await expect(menu.getByRole("menuitem").first()).toHaveCSS("outline-style", "solid");
+  await expect(menu.getByRole("menuitem").first()).toHaveCSS("outline-width", "2px");
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem").first()).toHaveCSS("outline-style", "none");
+  await page.keyboard.press("ArrowUp");
+  await expect(menu.getByRole("menuitem").first()).toBeFocused();
   await expect(block(page, "b")).toHaveAttribute("data-editor-selected", "true");
 
   await menu.getByRole("menuitem", { name: /^Copy/ }).click();

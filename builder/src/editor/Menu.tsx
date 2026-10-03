@@ -24,7 +24,17 @@ export function Menu({ label, className, button, onClose, children, style }: Men
   });
 
   useEffect(() => {
-    box.current?.querySelector<HTMLElement>(ITEMS)?.focus();
+    // The first item takes the focus and shows its ring however the menu
+    // was opened (design/shots-extra/context.png, app-menu.png): after a
+    // click the browser would not draw it, and the person would not see
+    // that the arrows now move through the menu. The ring goes with the
+    // focus.
+    const first = box.current?.querySelector<HTMLElement>(ITEMS);
+    if (first) {
+      first.dataset.focusRing = "";
+      first.addEventListener("blur", () => delete first.dataset.focusRing, { once: true });
+      first.focus();
+    }
     const away = (event: PointerEvent) => {
       const target = event.target as Node;
       if (box.current?.contains(target) || button.current?.contains(target)) return;

@@ -71,7 +71,7 @@ body {
    Selection is never a ring outside the element, so the two cannot be
    confused. */
 :where(.chrome) :focus { outline: none; }
-:where(.chrome) :focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
+:where(.chrome) :focus-visible, :where(.chrome) [data-focus-ring]:focus { outline: 2px solid var(--graphite); outline-offset: 2px; }
 
 .pick-check { position: absolute; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--graphite); color: var(--white); box-shadow: 0 0 0 2px var(--white); pointer-events: none; }
 .pick-check .i { width: 12px; height: 12px; stroke-width: 2.5; }
