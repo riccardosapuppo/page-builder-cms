@@ -28,15 +28,16 @@ import {
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../document/commands.ts";
-import { blockName, plural } from "../document/labels.ts";
+import { blockName, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
+import { styleValue } from "../render/style.ts";
 import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
-import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
+import { COLUMN_GAP_DEFAULT, LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
 import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
@@ -127,6 +128,8 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   const mark = useStore(store, useShallow((s): DragMark => (s.drag && id !== null ? dragMarkOf(s.drag, s.drag.preview, id) : null)));
   const isSource = useStore(store, (s) => id !== null && (s.drag ? draggedOf(s.drag).id === id : s.selection === id));
   const priority = useStore(store, (s) => priorityOf(s, id));
+  const device = useStore(ui, (u) => u.preview);
+  const dimension = useStore(store, useShallow((s) => (s.drag || id === null || s.selection !== id ? null : dimensionOf(s.document, id, device))));
   const sourceRef = useContext(SourceRef);
   const accept = useAccept(id);
   const { ref: dropRef } = useDropTarget({ id: id ?? anonymous, disabled: id === null, accept }, priority);
@@ -153,8 +156,80 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     },
     after: slot
       ? <DropIndicator mode={slot.mode} label={slot.label} />
-      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} />,
+      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} />,
   };
+}
+
+// The spacing the selected block's dimension line measures, by the step
+// the Style tab names (design/shots/editor.png, the "L" under the hero's
+// heading): for a widget, the gap below it to the next widget, its
+// column's Space between; for a column, the space inside it, at its top.
+// The step is the one the previewed device takes: its own, else the
+// tablet's (a phone), else the base. None for the last widget of a column,
+// and for no space at all.
+export interface Dimension {
+  kind: "gap" | "pad";
+  label: string;
+}
+
+const DEVICE_CHAIN: Readonly<Record<string, readonly string[]>> = { desktop: ["base"], tablet: ["tablet", "base"], phone: ["phone", "tablet", "base"] };
+
+export function dimensionOf(doc: PageDocument, id: string, preview: string): Dimension | null {
+  const found = locate(doc, id);
+  if (!found) return null;
+  const step = (style: unknown, key: string): string | null => {
+    for (const device of DEVICE_CHAIN[preview] ?? ["base"]) {
+      const value = styleValue(style, device, key);
+      if (value !== null) return value;
+    }
+    return null;
+  };
+  const { block } = found;
+  if (block.type === "column") {
+    const value = step(block.style, "spaceInside");
+    return value && value !== "none" ? { kind: "pad", label: tokenName(value) } : null;
+  }
+  if (block.type === "section" || found.parentId === null) return null;
+  const column = locate(doc, found.parentId)?.block;
+  if (!column || found.index >= column.children.length - 1) return null;
+  const value = step(column.style, "spaceBetween") ?? COLUMN_GAP_DEFAULT;
+  return value !== "none" ? { kind: "gap", label: tokenName(value) } : null;
+}
+
+// Draws the dimension line from the block's own layout: the gap to the
+// next block, or the padding at its top (offsets and computed sizes,
+// which a scaled canvas leaves alone), placed again as the block changes.
+function measureDimension(kind: Dimension["kind"]) {
+  return (mark: HTMLElement | null): (() => void) | undefined => {
+    const root = mark?.parentElement;
+    if (!mark || !root) return undefined;
+    const place = () => {
+      let size = 0;
+      if (kind === "pad") size = parseFloat(getComputedStyle(root).paddingTop) || 0;
+      else {
+        let next = root.nextElementSibling;
+        while (next && !(next instanceof HTMLElement && next.dataset.blockId !== undefined)) next = next.nextElementSibling;
+        if (next instanceof HTMLElement) size = next.offsetTop - (root.offsetTop + root.offsetHeight);
+      }
+      mark.style.height = `${Math.max(0, size)}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(root);
+    if (root.parentElement) observer.observe(root.parentElement);
+    return () => observer.disconnect();
+  };
+}
+
+const measureGap = measureDimension("gap");
+const measurePad = measureDimension("pad");
+
+function DimensionLine({ dimension }: { dimension: Dimension }) {
+  return (
+    <div className={`ov ${dimension.kind === "gap" ? "ov-dim-v" : "ov-pad ov-pad-top"}`} ref={dimension.kind === "gap" ? measureGap : measurePad} aria-hidden="true">
+      <span>{dimension.label}</span>
+    </div>
+  );
 }
 
 // A button is drawn as a pill inside a root as wide as its column, as on
@@ -202,9 +277,11 @@ interface MarksProps {
   mark: DragMark;
   // The outline and frame hug what the block draws (a button's pill).
   hug: boolean;
+  // The selected block's dimension line, if it has one.
+  dimension: Dimension | null;
 }
 
-function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs }: MarksProps) {
+function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs, dimension }: MarksProps) {
   const env = useEnv();
   const { store, ui, newId } = env;
   const select = (target: string) => {
@@ -214,6 +291,13 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
   };
   const act = (command: "duplicate" | "delete") => {
     runCommand(env, (doc) => (command === "duplicate" ? makeDuplicate(doc, id, newId) : makeDelete(doc, id)), "canvas");
+  };
+  const { insertMade } = useInsert();
+  // A section of one column, as the Section tile makes, right after this one.
+  const addSectionAfter = (sectionId: string) => {
+    const doc = store.getState().document;
+    const at = doc.sections.findIndex((s) => s.id === sectionId);
+    if (at >= 0) insertMade(makeInsertSection(doc, 1, at + 1, newId));
   };
   return (
     <>
@@ -225,6 +309,7 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
           {kind === "section" && <span className="veil-note"><Icon name="block" className="i i-xs" />{mark.note}</span>}
         </div>
       )}
+      {relation === "selected" && dimension && <DimensionLine dimension={dimension} />}
       {relation === "selected" && (
         <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
@@ -241,9 +326,17 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
       )}
       {relation === "around" && (
         <div className="ov ov-section">
-          <button className="ov-tab" type="button" tabIndex={-1} aria-label={`Select section ${name}`} onClick={() => select(id)}>
-            {name} <em>{columns} {plural("column", columns)}</em>
-          </button>
+          {/* The section's tab: its grip moves the section (pressed, it
+              selects the section, which the drag then carries: ./drag/
+              dnd.ts listens on the whole page for a grip), its name
+              selects it, its + adds a section after it. */}
+          <div className="ov-tab ov-tab-section">
+            <span className="ov-tab-grip" data-grip aria-hidden="true" title="Drag to move this section" onPointerDown={() => select(id)}><Icon name="grip" className="i i-xs" /></span>
+            <button className="ov-tab-name" type="button" tabIndex={-1} aria-label={`Select section ${name}`} onClick={() => select(id)}>
+              {name} <em>{columns} {plural("column", columns)}</em>
+            </button>
+            <button className="ov-tab-add" type="button" tabIndex={-1} aria-label={`Add a section after ${name}`} title="Add a section after this one" onClick={() => addSectionAfter(id)}><Icon name="plus" className="i i-xs" /></button>
+          </div>
         </div>
       )}
       {(relation === "parent" || relation === "column") && (

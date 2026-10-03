@@ -78,5 +78,5 @@ export function caption(page: Page): Locator {
 
 // The floating bar's grip of the selected block.
 export function grip(page: Page): Locator {
-  return page.locator(".canvas [data-grip]");
+  return page.locator(".canvas .ov-bar [data-grip]");
 }

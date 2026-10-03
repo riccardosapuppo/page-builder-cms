@@ -13,6 +13,11 @@ export const LAYOUT_BREAKPOINTS: Readonly<{ tablet: number; phone: number }> = {
   phone: tokens.breakpoints.container["phone-below"],
 };
 
+// The space between a column's widgets when the column sets none: the
+// theme's own, in the published page's stylesheet (site.css, --col-gap,
+// which site-tokens.test.ts reads to hold the two together).
+export const COLUMN_GAP_DEFAULT = "l";
+
 const COLORS: Readonly<Record<string, string>> = tokens.color;
 const TONES = tokens["site-tones"];
 

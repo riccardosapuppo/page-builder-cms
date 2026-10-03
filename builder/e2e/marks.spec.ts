@@ -6,8 +6,12 @@
 // nothing hovered or selected, so they cannot see it; this one measures
 // the real canvas with a block hovered and selected, against the page a
 // visitor gets. A button's marks hug the pill it draws, as the approved
-// design draws them, not the column-wide root around it.
-import { cms, column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
+// design draws them, not the column-wide root around it. The section's
+// tab carries its grip and its +, and the selected block its dimension
+// line, in steps.
+import type { Page } from "@playwright/test";
+import { block, caption, moveOnto, pickUp } from "./helpers/canvas.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -72,4 +76,68 @@ test("a button's hover outline and selection frame hug its pill, not its column"
   await button.click();
   await expect(button.locator(":scope > .ov-sel")).toHaveCount(1);
   expect(await around(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+});
+
+const twoSections = () => [
+  section("s1", "Hero", [column("c1", [heading("h", "Swim at slack water"), widget("t", "button", { label: "Join", href: "/join" })]), column("c2", [])]),
+  section("s2", "Questions", [column("c3", [heading("q", "Questions")])]),
+];
+const sectionIds = (page: Page) => page.locator(".canvas .sw-main > [data-block-id]").evaluateAll((elements) => elements.map((e) => e.getAttribute("data-block-id")));
+
+test("the section's tab: its grip, its name and columns, its +, which adds a section after it", async ({ page, request }) => {
+  const { id } = await makePage(request, "Tab", twoSections());
+  await open(page, id);
+  await block(page, "h").click();
+  const tab = page.locator('.canvas [data-block-id="s1"] > .ov-section > .ov-tab');
+  await expect(tab).toHaveText("Hero 2 columns");
+  await expect(tab.locator("[data-grip] svg")).toHaveCount(1);
+  await tab.getByRole("button", { name: "Add a section after Hero" }).click();
+  await expect.poll(() => sectionIds(page)).toHaveLength(3);
+  const [, added] = await sectionIds(page);
+  expect(added).not.toBe("s2");
+  await expect(block(page, added!)).toBeFocused();
+  await expect(block(page, added!)).toHaveAttribute("data-editor-selected", "true");
+  await saved(page);
+  const draft = await draftOf(request, id);
+  expect(draft.document.sections.map((s) => [s.id, s.children.length])).toEqual([["s1", 2], [added, 1], ["s2", 1]]);
+});
+
+test("the section's tab's grip drags the section, though a widget inside it is the one selected", async ({ page, request }) => {
+  const { id } = await makePage(request, "Tab drag", twoSections());
+  await open(page, id);
+  await block(page, "h").click();
+  await pickUp(page, page.locator('.canvas [data-block-id="s1"] > .ov-section > .ov-tab [data-grip]'));
+  await moveOnto(page, block(page, "s2"), "bottom");
+  await expect(caption(page).locator("strong")).toHaveText("Hero will move to the page, after Questions.");
+  await page.mouse.up();
+  await expect.poll(() => sectionIds(page)).toEqual(["s2", "s1"]);
+  await saved(page);
+  expect((await draftOf(request, id)).document.sections.map((s) => s.id)).toEqual(["s2", "s1"]);
+});
+
+test("the selected widget's dimension line names its column's Space between, as tall as the gap; a column's names its Space inside", async ({ page, request }) => {
+  const padded = { ...column("c3", [heading("q", "Questions")]), style: { base: { spaceInside: "m" } } };
+  const { id } = await makePage(request, "Dimensions", [twoSections()[0], section("s2", "Questions", [padded])]);
+  await open(page, id);
+  await block(page, "h").click();
+  const line = page.locator('.canvas [data-block-id="h"] > .ov-dim-v');
+  await expect(line).toHaveText("L");
+  const above = (await block(page, "h").boundingBox())!;
+  const next = (await block(page, "t").boundingBox())!;
+  const drawn = (await line.boundingBox())!;
+  expect(Math.abs(drawn.y - (above.y + above.height))).toBeLessThan(1);
+  expect(Math.abs(drawn.height - (next.y - (above.y + above.height)))).toBeLessThan(1);
+  // The last widget of its column has no gap below it.
+  await block(page, "t").click();
+  await expect(page.locator(".canvas .ov-dim-v")).toHaveCount(0);
+  // A column's own space inside, at its top: the column taken by a click
+  // in that space.
+  const padded3 = (await block(page, "c3").boundingBox())!;
+  await page.mouse.click(padded3.x + 4, padded3.y + 4);
+  await expect(block(page, "c3")).toHaveAttribute("data-editor-selected", "true");
+  const pad = page.locator('.canvas [data-block-id="c3"] > .ov-pad-top');
+  await expect(pad).toHaveText("M");
+  const padding = await block(page, "c3").evaluate((element) => parseFloat(getComputedStyle(element).paddingTop));
+  expect(padding).toBeGreaterThan(0);
+  expect(Math.abs((await pad.boundingBox())!.height - padding)).toBeLessThan(1);
 });

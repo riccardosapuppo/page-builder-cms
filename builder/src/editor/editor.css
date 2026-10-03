@@ -416,8 +416,27 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-tab em { font-style: normal; font-weight: 500; color: var(--steel); }
 .ov-tab:hover { background: var(--key); }
 .ov-tab:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
-.canvas .site .ov-tab { pointer-events: auto; }
+.canvas .site .ov-tab, .canvas .site .ov-tab button { pointer-events: auto; }
 .ov-section .ov-tab { left: 50%; top: 0; transform: translate(-50%, -50%); }
+/* The section's tab holds three controls: the grip, the name, the +. */
+.ov-tab-section { gap: 2px; padding: 0 2px; cursor: default; }
+.ov-tab-section:hover { background: var(--plate); }
+.ov-tab-section > * { display: inline-flex; align-items: center; gap: 4px; height: 22px; margin: 0; padding: 0 4px; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; white-space: nowrap; cursor: pointer; }
+.ov-tab-section > :hover { background: var(--key); }
+.ov-tab-section > .ov-tab-grip { cursor: grab; color: var(--steel); padding: 0 2px; }
+.ov-tab-section > .ov-tab-add { color: var(--steel); padding: 0 3px; }
+.ov-tab-section > button:focus-visible { outline: 2px solid var(--graphite); outline-offset: 1px; }
+
+/* Dimension lines: the selected block's spacing measured in steps, never
+   in pixels, beside it (design/styles.css .ov-dim-v, .ov-pad). */
+.ov-dim-v { top: 100%; left: 46%; width: 12px; z-index: 8; }
+.ov-pad { left: 62%; width: 12px; z-index: 8; }
+.ov-pad-top { top: 0; }
+.ov-dim-v::before, .ov-pad-top::before { content: ""; position: absolute; left: 5px; top: 1px; bottom: 1px; width: 2px; background: var(--mark-line); }
+.ov-dim-v::after, .ov-pad-top::after { content: ""; position: absolute; inset: 0; border-top: 2px solid var(--mark-line); border-bottom: 2px solid var(--mark-line); }
+.ov-dim-v span, .ov-pad span { position: absolute; left: 18px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
+.ov-dim-v span { top: 9px; }
+.ov-pad-top span { top: 3px; }
 
 .ov-col .ov-tab { left: -1px; bottom: -1px; transform: translateY(100%); border-radius: 0 0 var(--r-control) var(--r-control); }
 /* The tab hangs below its column: where the columns stack (a narrow page),

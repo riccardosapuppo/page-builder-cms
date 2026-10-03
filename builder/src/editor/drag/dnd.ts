@@ -40,10 +40,18 @@ const onGrip = (target: EventTarget | null): boolean => target instanceof Elemen
 
 export const SELECTION_SENSORS = [
   PointerSensor.configure({
-    // Only the grip starts a drag: a press anywhere else on a block
-    // selects it, and its text can be selected as on any page.
+    // Only a grip starts a drag: a press anywhere else on a block selects
+    // it, and its text can be selected as on any page.
     preventActivation: (event) => !onGrip(event.target),
     activationConstraints: [new PointerActivationConstraints.Distance({ value: 4 })],
+    // A press is heard anywhere on the page, not only on the selected
+    // block: the grip of a section's tab sits outside the block selected
+    // inside that section. Pressed, it selects the section, which the drag
+    // then carries, as it carries whatever is selected when it starts.
+    activatorElements: (source) => {
+      const page = source.element?.closest(".canvas .frame") ?? source.element;
+      return page ? [page] : [];
+    },
   }),
   KeyboardSensor.configure({
     keyboardCodes: sensorCodes(),
