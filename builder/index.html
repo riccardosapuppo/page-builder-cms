@@ -10,6 +10,13 @@
     <!-- The approved design's mark (design/mark.svg), drawn on the 16 px grid it is seen at. -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="manifest" href="/manifest.webmanifest">
+    <script>
+      // A service worker that another program left on this origin, within
+      // this editor's own path, would serve its old files before the
+      // network: it is unregistered. Only this path's, since on a shared
+      // origin (github.io) the paths above belong to other sites.
+      navigator.serviceWorker?.getRegistrations().then((all) => all.filter((worker) => worker.scope.startsWith(new URL("./", location.href).href)).forEach((worker) => worker.unregister()));
+    </script>
   </head>
   <body>
     <div id="root"></div>

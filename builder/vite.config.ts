@@ -13,9 +13,12 @@
 //   the published page's stylesheets and the fonts are read from where the
 //   repository keeps them (build/paths.ts, build/fonts.ts), and the built
 //   bundle is checked before the build says it is done (build/bundle-check.ts).
+// - The editor's page is never stored and the hashed files are kept a year,
+//   on this server and on `vite preview` (build/serving.ts).
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import { bundleCheck } from "./build/bundle-check.ts";
+import { shellServing } from "./build/serving.ts";
 import { cmsPort } from "./e2e/harness/ports.ts";
 import { fontAliases, fontLicences } from "./build/fonts.ts";
 import { builderRoot, cmsFonts, cmsStylesheets, designFonts, schemaDir } from "./build/paths.ts";
@@ -40,7 +43,7 @@ if (!process.env.VITE_CMS_ORIGIN?.trim() && !absoluteApi && process.env.CMS_URL)
 const toCms = { target: cmsUrl, changeOrigin: false };
 
 export default defineConfig({
-  plugins: [react(), documentValidator(), siteIcons(), fontLicences(), bundleCheck()],
+  plugins: [react(), documentValidator(), siteIcons(), fontLicences(), bundleCheck(), shellServing()],
   resolve: { alias: fontAliases() },
   // No fallback page: an address that is not a file is a 404, never the
   // editor's index answered for it.

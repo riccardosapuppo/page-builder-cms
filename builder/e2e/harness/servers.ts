@@ -163,14 +163,16 @@ export async function startCms(port: number): Promise<Server> {
 }
 
 // The editor's development server on 127.0.0.1:<port>, its proxy pointed
-// at the CMS given.
-export async function startBuilder(port: number, cmsUrl: string): Promise<Server> {
+// at the CMS given; or, given a folder `vite build` wrote, `vite preview`
+// serving that build the same way.
+export async function startBuilder(port: number, cmsUrl: string, options: { preview?: string } = {}): Promise<Server> {
   assertFree(port, "the editor");
   const folder = mkdtempSync(join(tmpdir(), "pbc-e2e-builder-"));
   const log = join(folder, "vite.log");
   const fd = openSync(log, "w");
   const vite = join(builderRoot, "node_modules", "vite", "bin", "vite.js");
-  const child = startTree(process.execPath, [vite, "--clearScreen", "false"], {
+  const args = options.preview ? ["preview", "--outDir", options.preview] : ["--clearScreen", "false"];
+  const child = startTree(process.execPath, [vite, ...args], {
     cwd: builderRoot,
     env: { ...process.env, BUILDER_PORT: String(port), CMS_URL: cmsUrl },
     stdio: ["ignore", fd, fd],
