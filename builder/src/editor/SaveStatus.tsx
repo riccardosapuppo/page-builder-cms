@@ -10,7 +10,8 @@
 //   Screen readers hear "Saved" and "Not saved, retrying" once each,
 //   nothing while a save is on its way, and not the countdown;
 // - the conflict banner under the top bar, an alert, with Reload and Keep
-//   mine: saving and publishing wait for the choice;
+//   mine: saving and publishing wait for the choice, and either choice can
+//   be undone from the history (./App.tsx says how);
 // - a toast while a save's outcome is unknown, saying why and offering
 //   Retry now, which sends the very same save at once.
 //
@@ -179,8 +180,8 @@ export function ConflictBanner() {
       <Icon name="warning" />
       <p><strong>Changed in another tab.</strong> This page was saved in another tab after you opened it. Saving is paused until you choose.</p>
       <div className="banner-actions">
-        <button className="btn btn-small btn-dark" type="button" disabled={choosing} title="Take the page as it is on the server; this tab's unsaved changes are dropped" onClick={() => void choose(session.reload)}>Reload</button>
-        <button className="btn btn-small btn-secondary" type="button" disabled={choosing} title="Save this tab's page over the one on the server" onClick={() => void choose(session.keepMine)}>Keep mine</button>
+        <button className="btn btn-small btn-dark" type="button" disabled={choosing} title="Take the page as it is on the server; Undo brings this tab's page back" onClick={() => void choose(session.reload)}>Reload</button>
+        <button className="btn btn-small btn-secondary" type="button" disabled={choosing} title="Save this tab's page over the one on the server, which is kept in Versions first" onClick={() => void choose(session.keepMine)}>Keep mine</button>
       </div>
     </div>
   );
