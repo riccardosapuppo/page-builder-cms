@@ -26,6 +26,9 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("z", { metaKey: true }))).toEqual(["undo"]);
   expect(actions(press("Z", { ctrlKey: true, shiftKey: true }))).toEqual(["redo"]);
   expect(actions(press("y", { ctrlKey: true }))).toEqual(["redo"]);
+  expect(actions(press("s", { ctrlKey: true }))).toEqual(["saveVersion"]);
+  expect(actions(press("s", { metaKey: true }))).toEqual(["saveVersion"]);
+  expect(actions(press("S", { ctrlKey: true, shiftKey: true }))).toEqual([]);
   expect(actions(press("z"))).toEqual([]);
   expect(actions(press("d", { ctrlKey: true }))).toEqual(["duplicate"]);
   expect(actions(press("Delete"))).toEqual(["delete"]);
@@ -69,5 +72,7 @@ test("the window and the menus name the keys as the design does", () => {
   expect(entryCaps(entry("publish"))).toEqual([{ text: "Ctrl" }, { text: "Shift" }, { text: "Enter" }]);
   expect(entryCaps(entry("preview"))).toEqual([{ text: "Ctrl" }, { text: "Alt" }, { text: "P" }]);
   expect(entryKeysText(entry("publish"))).toBe("Ctrl+Shift+Enter");
+  expect(entryCaps(entry("saveVersion"))).toEqual([{ text: "Ctrl" }, { text: "S" }]);
+  expect(ariaKeyShortcuts(entry("saveVersion"))).toBe("Control+S");
   expect(ariaKeyShortcuts(entry("preview"))).toBe("Control+Alt+P");
 });

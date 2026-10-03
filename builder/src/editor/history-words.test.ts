@@ -5,7 +5,7 @@
 // @vitest-environment node
 import { expect, test } from "vitest";
 import type { Version } from "../storage/adapter.ts";
-import { draftLine, nameProblem, serverTime, stepTime, versionWords } from "./history-words.ts";
+import { draftLine, nameProblem, serverTime, stepTime, timeInSentence, versionInSentence, versionWords } from "./history-words.ts";
 
 // 2 October 2026, 10:46 in UTC.
 const NOW = Date.UTC(2026, 9, 2, 10, 46);
@@ -23,6 +23,18 @@ test("a time reads Today or Yesterday by the day it falls on where the person is
   expect(stepTime(at("2026-10-02T00:05:00Z"), NOW, "America/Los_Angeles")).toBe("Yesterday, 5:05 PM");
   expect(serverTime("2026-10-02T09:58:00.000Z", NOW, "UTC")).toBe("Today, 9:58 AM");
   expect(serverTime("not a time", NOW, "UTC")).toBe("not a time");
+  expect(timeInSentence("2026-10-02T09:58:00.000Z", NOW, "UTC")).toBe("today at 9:58 AM");
+  expect(timeInSentence("2026-10-01T21:15:00Z", NOW, "UTC")).toBe("yesterday at 9:15 PM");
+  expect(timeInSentence("2026-09-28T07:02:00Z", NOW, "UTC")).toBe("on Sep 28 at 7:02 AM");
+  expect(timeInSentence("2025-12-30T16:10:00Z", NOW, "UTC")).toBe("on Dec 30, 2025 at 4:10 PM");
+});
+
+test("a version inside a sentence goes by its name, else by how and when it was made", () => {
+  const named = { number: 4, reason: "manual", name: "Before the winter series", restoredFrom: null, createdAt: "2026-10-02T10:20:00Z", published: false } as const;
+  expect(versionInSentence(named, NOW, "UTC")).toBe("“Before the winter series”, saved today at 10:20 AM");
+  expect(versionInSentence({ ...named, name: null, reason: "auto", createdAt: "2026-10-02T09:58:00Z" }, NOW, "UTC")).toBe("the version autosaved today at 9:58 AM");
+  expect(versionInSentence({ ...named, name: null, reason: "publish", createdAt: "2026-09-28T07:02:00Z" }, NOW, "UTC")).toBe("the version published on Sep 28 at 7:02 AM");
+  expect(versionInSentence({ ...named, name: null, reason: "before-restore" }, NOW, "UTC")).toBe("the version kept before a restore today at 10:20 AM");
 });
 
 const version = (number: number, reason: Version["reason"], createdAt: string, extra: Partial<Version> = {}): Version => ({

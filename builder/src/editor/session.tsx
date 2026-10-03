@@ -1,12 +1,12 @@
 // The page being edited, as the shell (./App.tsx) holds it: the site's
 // pages, the one open, its autosave, and the operations on pages that are
 // not commands on the document (open another, make a new one, change its
-// address, preview it, publish it, settle a conflict), and the site style's
-// one way to the server. Given to the interface through a context, so a
+// address, preview it, publish it, settle a conflict, keep a version of it
+// and restore one), and the site style's one way to the server. Given to the interface through a context, so a
 // panel or a test can be drawn with a session of its own making.
 import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
-import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, SiteStyleChange } from "../storage/adapter.ts";
+import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, SiteStyleChange, Version } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
 
 export interface OpenPage {
@@ -27,6 +27,16 @@ export interface OpenPage {
 // with the reason. Kept apart from the page's own save state: the two are
 // different things saved by different requests.
 export type StyleSave = { phase: "idle" | "saving" | "saved" } | { phase: "failed"; message: string };
+
+// The open page's kept versions, newest first, as the CMS last listed them:
+// kept on screen while they are read again, with why the last read failed.
+export interface VersionList {
+  phase: "idle" | "loading" | "ready" | "failed";
+  items: readonly Version[];
+  message: string | null;
+}
+
+export const NO_VERSIONS: VersionList = { phase: "idle", items: [], message: null };
 
 export interface Session {
   pages: readonly PageSummary[];
@@ -59,6 +69,19 @@ export interface Session {
   keepMine(): void;
   // The site style: the canvas follows at once, the server after.
   saveSiteStyle(change: SiteStyleChange): void;
+  // The open page's versions (./HistoryPanel.tsx), read again by
+  // loadVersions().
+  versions: VersionList;
+  loadVersions(): void;
+  // "Save version": the edits waiting are saved first, then the draft is
+  // kept under the name ("" for none); resolves with the server's findings
+  // about the name, or null.
+  saveVersion(name: string): Promise<FieldError[] | null>;
+  // Copies a version back into the draft, once the edits waiting are
+  // saved; the notice says how it went.
+  restoreVersion(number: number): Promise<void>;
+  // The version a restore is copying back, while it is on its way.
+  restoring: number | null;
 }
 
 const SessionContext = createContext<Session | null>(null);
@@ -102,6 +125,11 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     reload: async () => {},
     keepMine: () => {},
     saveSiteStyle: () => {},
+    versions: NO_VERSIONS,
+    loadVersions: () => {},
+    saveVersion: async () => null,
+    restoreVersion: async () => {},
+    restoring: null,
     ...changes,
   };
 }

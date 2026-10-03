@@ -1,15 +1,16 @@
 // The top bar of the approved design (design/shots/editor.png): the mark
 // and its menu, the open page and the switch to another one, whether the
-// page is live, Site style, the device the canvas previews, where the edits
-// are, Preview and Publish.
+// page is live, Site style, the device the canvas previews, undo, redo and
+// the history (design/shots/history.png), where the edits are, Preview and
+// Publish.
 //
 // What the design draws here and the editor does not have yet is not drawn
-// (no control that does nothing): undo, redo and the history come with
-// stage 3.
+// (no control that does nothing).
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
-import { useEnv, useUi } from "./context.tsx";
+import { runRedo, runUndo } from "./act.ts";
+import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon, Mark } from "./icons.tsx";
-import { ariaKeyShortcuts, entry, entryCaps } from "./keymap.ts";
+import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, PreviewButton, PublishButton } from "./Publish.tsx";
@@ -142,6 +143,7 @@ export function TopBar() {
       </div>
 
       <div className="tb-right">
+        {current && <HistoryButtons />}
         {session.autosave && <SaveState />}
         <PreviewButton />
         <PublishButton />
@@ -192,6 +194,55 @@ function useLeftRoom(): RefObject<HTMLElement | null> {
     };
   }, []);
   return bar;
+}
+
+// Undo and redo, on the store's history, as their keys do (./act.ts: the
+// text still waiting in a field goes first, the focus to the block the
+// step touched); with nothing to undo or redo they stay where they are,
+// greyed, and say so. History opens the panel in the navigator's place.
+function HistoryButtons() {
+  const env = useEnv();
+  const last = useEditor((s) => s.past.at(-1));
+  const next = useEditor((s) => s.future.at(-1));
+  const open = useUi((u) => u.historyOpen);
+  const undoKeys = entry("undo");
+  const redoKeys = entry("redo");
+  return (
+    <>
+      <button
+        className="ibtn"
+        type="button"
+        aria-label="Undo"
+        aria-keyshortcuts={ariaKeyShortcuts(undoKeys)}
+        aria-disabled={last ? undefined : true}
+        title={last ? `Undo “${last.command.label}” (${entryKeysText(undoKeys)})` : "Nothing to undo"}
+        onClick={() => runUndo(env, "canvas")}
+      >
+        <Icon name="undo" />
+      </button>
+      <button
+        className="ibtn"
+        type="button"
+        aria-label="Redo"
+        aria-keyshortcuts={ariaKeyShortcuts(redoKeys)}
+        aria-disabled={next ? undefined : true}
+        title={next ? `Redo “${next.command.label}” (${entryKeysText(redoKeys)})` : "Nothing to redo"}
+        onClick={() => runRedo(env, "canvas")}
+      >
+        <Icon name="redo" />
+      </button>
+      <button
+        className="btn btn-quiet"
+        type="button"
+        data-history=""
+        aria-pressed={open}
+        title="This session's changes and the page's versions"
+        onClick={() => env.ui.getState().setHistoryOpen(!open)}
+      >
+        <Icon name="history" />History
+      </button>
+    </>
+  );
 }
 
 // The open page's title as the document holds it now.

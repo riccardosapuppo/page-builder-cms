@@ -88,6 +88,16 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
       runRedo(env, region === "panel" ? "canvas" : region);
       return true;
     },
+    // The history panel, open on "Save version" with its name field, which
+    // takes the focus (./HistoryPanel.tsx).
+    saveVersion: () => {
+      if (!session()?.current) return false;
+      ui.getState().setHistoryOpen(true);
+      ui.getState().setNamingVersion(true);
+      // Already open, the field takes the focus back.
+      setTimeout(() => document.querySelector<HTMLElement>(".ver-form input")?.focus(), 0);
+      return true;
+    },
     preview: () => {
       const now = session();
       if (!now?.current) return false;

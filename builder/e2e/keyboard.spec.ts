@@ -123,6 +123,22 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await press(page, pressed, "Control+y");
     await expect.poll(async () => (await childIds(page, "c2")).length).toBe(2);
   },
+  async saveVersion(page, pressed) {
+    // The history opens on "Save version", its name field taking the keys.
+    await block(page, "a").click();
+    await press(page, pressed, "Control+s");
+    const history = page.getByRole("complementary", { name: "History" });
+    const name = history.getByRole("textbox", { name: /^Name/ });
+    await expect(name).toBeFocused();
+    await page.keyboard.type("Every key, kept");
+    await page.keyboard.press("Enter");
+    await expect(history.getByRole("listitem").filter({ hasText: "Every key, kept" })).toBeVisible();
+    const listed = await page.request.get(`${cms()}/api/pages/${opened.id}/versions`);
+    const { versions } = (await listed.json()) as { versions: Array<{ reason: string; name: string | null }> };
+    expect(versions[0]).toMatchObject({ reason: "manual", name: "Every key, kept" });
+    await history.getByRole("button", { name: "Close history" }).click();
+    await expect(history).toHaveCount(0);
+  },
   async preview(page, pressed) {
     // The draft as the CMS serves it, in a tab of its own, on the CMS.
     const opening = page.context().waitForEvent("page");

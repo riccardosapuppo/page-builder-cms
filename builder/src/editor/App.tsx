@@ -13,6 +13,11 @@
 // (reload, keep mine), and sends the site style's changes, one request at
 // a time, the latest change last.
 //
+// The page's versions: the list the history panel shows (./HistoryPanel.tsx),
+// "Save version" and restore, each after the edits waiting are saved. A
+// restore puts the restored draft on the canvas only when this tab has
+// nothing the restore did not keep; otherwise the conflict bar asks.
+//
 // Around it all: drag and drop (./drag/DragLayer.tsx), the keyboard map
 // (./keys.ts) and its "?" window, the selected block's menu, the save
 // state's banner and toast (./SaveStatus.tsx) and About.
@@ -20,7 +25,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useStore } from "zustand";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { errorsByBlock, isStorageError, type FieldError, type NewPage, type PageSummary, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
+import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
 import { cmsAddress, cmsOrigin as configuredCmsOrigin } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
@@ -28,6 +33,8 @@ import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { DragLayer } from "./drag/DragLayer.tsx";
+import { HistoryPanel } from "./HistoryPanel.tsx";
+import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { LeftTray } from "./LeftTray.tsx";
 import { Navigator } from "./Navigator.tsx";
@@ -35,7 +42,7 @@ import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
-import { SessionProvider, type OpenPage, type Session, type StyleSave } from "./session.tsx";
+import { NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { TopBar } from "./TopBar.tsx";
 
@@ -105,6 +112,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   const [attempt, setAttempt] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [styleSave, setStyleSave] = useState<StyleSave>({ phase: "idle" });
+  const [versions, setVersions] = useState<VersionList>(NO_VERSIONS);
+  const [restoring, setRestoring] = useState<number | null>(null);
   const live = useRef<{ autosave: Autosave | null; unsubscribe: () => void; adopting: boolean }>({ autosave: null, unsubscribe: () => {}, adopting: false });
   // The page as the latest render had it, for the operations that run
   // after an await.
@@ -123,6 +132,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
 
   // The latest page asked for: an earlier request still loading gives way.
   const opening = useRef(0);
+  // The same for the versions: only the latest read is shown.
+  const versionReads = useRef(0);
   const openPage = useCallback(async (id: number): Promise<string | null> => {
     const ticket = ++opening.current;
     const previous = live.current.autosave;
@@ -166,6 +177,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     previous?.dispose();
     store.getState().load(opened.document);
     ui.setState({ serverErrors: [], hover: null, notice: null, tray: "edit", panelTab: "content" });
+    // The page left's versions, and any read of them still on its way, go.
+    versionReads.current += 1;
+    setVersions(NO_VERSIONS);
 
     // The document of each save, so the server's errors can be put on the
     // blocks of the document they were about.
@@ -271,6 +285,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     return null;
   }, [adapter, current, refreshPages]);
 
+  // The open page's versions, read again; the list on screen stays until
+  // the answer replaces it, and a read that fails says why beside it.
+  const loadVersions = useCallback(() => {
+    const page = opened.current;
+    if (!page) return;
+    const ticket = ++versionReads.current;
+    setVersions((list) => ({ ...list, phase: "loading" }));
+    Promise.resolve().then(() => adapter.listVersions(page.id)).then(
+      (items) => {
+        if (versionReads.current === ticket) setVersions({ phase: "ready", items, message: null });
+      },
+      (error: unknown) => {
+        if (versionReads.current === ticket) setVersions((list) => ({ ...list, phase: "failed", message: `The versions could not be read: ${describe(error)}` }));
+      },
+    );
+  }, [adapter]);
+
   // The draft as the CMS would serve it, in a new tab, once the edits
   // waiting are on the server; if they cannot be, the preview shows the
   // last saved draft and the notice says so.
@@ -325,13 +356,29 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       }
       const result = outcome.value;
       setCurrent((open) => (open?.id === page.id ? { ...open, published: result.published, links: { preview: result.links.preview, live: result.links.live } } : open));
+      // The publish is a version of its own, and the live one now: the
+      // history, if it shows the versions, lists it.
+      if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
       await refreshPages().catch(() => undefined);
       const where = result.links.live === null ? null : cmsAddress(result.links.live, cmsOrigin);
       ui.getState().say(where ? `Published: visitors see this page at ${shownAddress(where)}.` : "Published.", where ? { href: where, label: "View live page" } : null);
     } finally {
       setPublishing(false);
     }
-  }, [adapter, cmsOrigin, refreshPages, store, ui]);
+  }, [adapter, cmsOrigin, loadVersions, refreshPages, store, ui]);
+
+  // A draft the server holds, put on the canvas in place of this tab's
+  // page: no edit, so the autosave sends nothing for it. The undo history
+  // starts again, its steps having been made on the page replaced.
+  const putDraft = useCallback((document: PageDocument) => {
+    live.current.adopting = true;
+    try {
+      store.getState().load(document);
+    } finally {
+      live.current.adopting = false;
+    }
+    ui.setState({ serverErrors: [], hover: null });
+  }, [store, ui]);
 
   // The conflict, settled the person's way: the server's draft replaces
   // this tab's, or this tab's is saved over it.
@@ -350,20 +397,105 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       ui.getState().say(`The page on the server could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`);
       return;
     }
-    live.current.adopting = true;
-    try {
-      store.getState().load(taken.document);
-    } finally {
-      live.current.adopting = false;
-    }
-    ui.setState({ serverErrors: [], hover: null });
-    ui.getState().say("Reloaded: this is the page as it is on the server.");
-  }, [store, ui]);
+    putDraft(taken.document);
+    ui.getState().say(`Reloaded: this is the page as it is on the server. ${UNDO_AGAIN}`);
+  }, [putDraft, ui]);
 
   const keepMine = useCallback(() => {
     live.current.autosave?.overwrite();
     ui.getState().say("Keeping this tab's page: it is saved over the one on the server.");
   }, [ui]);
+
+  // "Save version": the CMS keeps its draft, so what waits is saved first,
+  // and the version holds what the canvas shows.
+  const saveVersion = useCallback(async (name: string): Promise<FieldError[] | null> => {
+    const page = opened.current;
+    const saving = live.current.autosave;
+    if (!page || !saving) return null;
+    const problem = (keyword: string, message: string): FieldError[] => [{ pointer: "", keyword, blockPointer: null, message }];
+    ui.getState().pending.deliver();
+    const settled = await saving.flush();
+    if (settled.phase !== "saved") return problem("unsaved", `Not kept: ${unsavedWhy(settled.phase)}`);
+    const named = name.trim();
+    let outcome;
+    try {
+      outcome = await adapter.saveVersion(page.id, named === "" ? {} : { name: named });
+    } catch (error) {
+      const unknown = isStorageError(error) && error.failure.kind === "unknown";
+      loadVersions();
+      return problem("unknown", unknown
+        ? `No answer from the CMS (${describe(error)}): the version may have been kept. The list below shows what it has.`
+        : `Not kept: ${describe(error)}`);
+    }
+    if (!outcome.ok) return outcome.problem.errors.length > 0 ? outcome.problem.errors : problem("invalid", outcome.problem.message);
+    if (opened.current?.id === page.id) loadVersions();
+    ui.getState().say(named === "" ? "Kept as a version." : `Kept as a version: “${named}”.`);
+    return null;
+  }, [adapter, loadVersions, ui]);
+
+  // Copies a version back into the draft. The edits waiting are saved
+  // first, so the version the CMS keeps of the draft before the restore
+  // holds them. Once the restore is made, the restored draft takes this
+  // tab's place only if this tab has nothing the restore did not keep: an
+  // edit made while it travelled, and saved after it, meets a conflict
+  // instead, and the conflict bar lets the person choose.
+  const restoringNow = useRef(false);
+  // The versions as the panel shows them, for the restore's sentence.
+  const versionsShown = useRef<readonly Version[]>([]);
+  useLayoutEffect(() => {
+    versionsShown.current = versions.items;
+  }, [versions]);
+  const restoreVersion = useCallback(async (number: number) => {
+    const page = opened.current;
+    const saving = live.current.autosave;
+    if (!page || !saving || restoringNow.current) return;
+    const say = ui.getState().say;
+    restoringNow.current = true;
+    setRestoring(number);
+    try {
+      ui.getState().pending.deliver();
+      const settled = await saving.flush();
+      if (settled.phase !== "saved") {
+        say(`Not restored: ${unsavedWhy(settled.phase)}`);
+        return;
+      }
+      if (live.current.autosave !== saving) return;
+      let outcome;
+      try {
+        outcome = await adapter.restoreVersion(page.id, number);
+      } catch (error) {
+        const unknown = isStorageError(error) && error.failure.kind === "unknown";
+        say(unknown
+          ? `No answer from the CMS about the restore (${describe(error)}): it may have been made. If it was, the editor asks you to choose before it saves this page again.`
+          : `Not restored: ${describe(error)}`);
+        if (live.current.autosave === saving) loadVersions();
+        return;
+      }
+      if (live.current.autosave !== saving) return;
+      if (!outcome.ok) {
+        say(`Not restored: ${outcome.problem.errors[0]?.message ?? outcome.problem.message}`);
+        return;
+      }
+      const result = outcome.value;
+      const shown = versionsShown.current;
+      // What the person did while the restore travelled is settled first.
+      const after = await saving.flush();
+      if (live.current.autosave !== saving) return;
+      loadVersions();
+      const taken = openDocument(result.draft.document);
+      if (after.phase === "saved" && after.revision < result.draft.revision && taken.ok && adopt(saving, result.draft)) {
+        putDraft(taken.document);
+        say(restoredSentence(result, shown, clock.now()));
+      } else if (after.phase === "conflict") {
+        say("Restored on the server, but this tab changed the page while the restore was on its way. Reload takes the restored page; Keep mine saves this tab’s page over it.");
+      } else {
+        say("Restored on the server, but this tab changed the page while the restore was on its way, and has not saved that change yet. Saving it will ask you to choose between the two.");
+      }
+    } finally {
+      restoringNow.current = false;
+      setRestoring(null);
+    }
+  }, [adapter, clock, loadVersions, putDraft, ui]);
 
   // The site style: the canvas takes a change at once; the CMS gets one
   // request at a time, and the latest change goes when the one on its way
@@ -427,19 +559,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   const session = useMemo<Session>(() => ({
     pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishing, styleSave,
     openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle,
-  }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle]);
+    versions, loadVersions, saveVersion, restoreVersion, restoring,
+  }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   const navigatorOpen = useStoreNavigator(env);
+  // The right tray holds the history in the navigator's place; it is open
+  // whenever the history is, even with the navigator collapsed.
+  const historyOpen = useStore(env.ui, (state) => state.historyOpen) && current !== null;
 
   return (
     <EditorProvider env={env}>
       <SessionProvider value={session}>
         <DragLayer>
-          <div className={`app${navigatorOpen ? "" : " nav-closed"}`}>
+          <div className={`app${navigatorOpen || historyOpen ? "" : " nav-closed"}`}>
             <TopBar />
             <ConflictBanner />
             <LeftTray />
             {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
-            <Navigator />
+            {historyOpen ? <HistoryPanel /> : <Navigator />}
           </div>
         </DragLayer>
         <EditorKeys />
@@ -451,6 +587,31 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       </SessionProvider>
     </EditorProvider>
   );
+}
+
+// Why the undo history is empty after the page on the canvas was replaced
+// by one from the server.
+const UNDO_AGAIN = "Undo starts again from here: its steps belonged to the page that was replaced.";
+
+// The autosave takes the restored draft, unless a save went out after all
+// (it refuses then): the caller falls back on the conflict's way.
+function adopt(saving: Autosave, draft: Draft): boolean {
+  try {
+    saving.adopt(draft);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// What a restore did, in one notice: which version came back (by its own
+// time and name, as the panel lists it), where the draft it replaced is
+// kept, and why undo starts again.
+export function restoredSentence(result: RestoreResult, shown: readonly Version[], now: number, timeZone?: string): string {
+  const source = shown.find((v) => v.number === result.version.restoredFrom);
+  const which = source ? versionInSentence(source, now, timeZone) : `version ${result.version.restoredFrom ?? "?"}`;
+  const kept = result.kept ? " The draft it replaced is kept in Versions, as “Before restoring”." : "";
+  return `Restored ${which}.${kept} ${UNDO_AGAIN}`;
 }
 
 // Why what waits for a save did not go ahead, as the end of a sentence.

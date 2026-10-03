@@ -1,0 +1,46 @@
+/* The top bar's undo and redo with nothing to undo or redo: still there,
+   greyed, and saying so when pressed. */
+.topbar .ibtn[aria-disabled="true"] { color: var(--rule); cursor: default; }
+.topbar .ibtn[aria-disabled="true"]:hover { background: none; }
+
+/* The history panel (design/shots/history.png), from design/styles.css's
+   .hist and .versions rules. A step of the session is a button, so it can
+   be chosen with the keyboard: the design's row padding and its dot are
+   the button's. */
+.hist { list-style: none; padding: 0; margin-top: 2px; }
+.hist li > button { position: relative; display: block; width: 100%; padding: 4px 8px 4px 24px; border-radius: 5px; line-height: 18px; text-align: left; }
+.hist li > button::before { content: ""; position: absolute; left: 9px; top: 10px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--rule); background: var(--plate); }
+.hist li > button:hover { background: var(--key); }
+.hist li > button:focus-visible { outline-offset: -2px; }
+.hist-what { display: block; }
+.hist-when { display: block; font-size: 12px; line-height: 16px; font-weight: 400; color: var(--steel); white-space: nowrap; }
+.hist-now > button { background: var(--key); }
+.hist-now .hist-what { font-weight: 600; }
+.hist-now > button::before { background: var(--graphite); border-color: var(--graphite); }
+.hist-undone > button { color: var(--steel); }
+.hint-keys { line-height: 22px; }
+.keys-inline { display: inline-flex; gap: 3px; margin-right: 2px; white-space: nowrap; vertical-align: -5px; }
+
+.hist-versions-head { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 6px; padding-left: 8px; }
+.hist-versions-head .group-title { margin: 0; }
+.hist-versions-head .btn > .i { width: 18px; height: 18px; }
+.versions { list-style: none; padding: 0; display: grid; gap: 2px; }
+.ver { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border-radius: var(--r-control); }
+.ver:hover { background: var(--key); }
+.ver > div { min-width: 0; }
+/* The draft: the selection's corner brackets, as the design marks it. */
+.ver-draft { position: relative; display: block; padding: 10px 12px; background: var(--key); }
+.ver-draft::before, .ver-draft::after { content: ""; position: absolute; width: 12px; height: 12px; border: 0 solid var(--mark-line); }
+.ver-draft::before { left: 0; top: 0; border-width: 2px 0 0 2px; border-top-left-radius: var(--r-control); }
+.ver-draft::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; border-bottom-right-radius: var(--r-control); }
+.ver-kind { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.ver-name { display: block; font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.ver-when { display: block; font-size: 12px; line-height: 16px; color: var(--steel); }
+.ver .btn { flex: none; }
+.ver .btn[aria-disabled="true"] { cursor: progress; }
+
+/* "Save version": the name, asked under the button. */
+.ver-form { margin: 0 0 10px; padding: 10px 8px 12px; border-radius: var(--r-control); background: var(--key); }
+.ver-optional { font-weight: 400; color: var(--steel); }
+.ver-form-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.hist-failed { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }

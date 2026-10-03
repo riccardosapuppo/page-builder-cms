@@ -40,6 +40,34 @@ export function serverTime(iso: string, now: number, timeZone?: string): string 
   return Number.isNaN(at) ? iso : stepTime(at, now, timeZone);
 }
 
+// The same time inside a sentence: "today at 10:46 AM", "yesterday at
+// 9:58 PM", "on Sep 28 at 7:02 AM".
+export function timeInSentence(iso: string, now: number, timeZone?: string): string {
+  const shown = serverTime(iso, now, timeZone);
+  const comma = shown.lastIndexOf(", ");
+  if (comma === -1) return shown;
+  const day = shown.slice(0, comma);
+  const time = shown.slice(comma + 2);
+  if (day === "Today" || day === "Yesterday") return `${day.toLowerCase()} at ${time}`;
+  return `on ${day} at ${time}`;
+}
+
+const MADE: Readonly<Record<Version["reason"], string>> = {
+  publish: "published",
+  manual: "saved",
+  auto: "autosaved",
+  restore: "restored",
+  "before-restore": "kept before a restore",
+};
+
+// A version inside a sentence, by its name or else by how it was made, and
+// when: "“First draft”, saved on Sep 27 at 9:15 PM", "the version
+// autosaved today at 9:58 AM".
+export function versionInSentence(version: Version, now: number, timeZone?: string): string {
+  const at = timeInSentence(version.createdAt, now, timeZone);
+  return version.name === null ? `the version ${MADE[version.reason]} ${at}` : `“${version.name}”, ${MADE[version.reason]} ${at}`;
+}
+
 export interface VersionWords {
   // Why it was made: "Published", "Saved", "Autosaved", "Restored",
   // "Before restoring".

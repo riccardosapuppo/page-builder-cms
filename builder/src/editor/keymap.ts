@@ -10,17 +10,17 @@
 // Plain data, with no React and no DOM, so the tests of every kind can
 // read it.
 //
-// Undo and redo are here already, on the store's history: stage 3 adds
-// their buttons and the history panel. The named version arrives with the
-// versions, and the text of a block is edited on the canvas from stage 3:
-// until then their keys do nothing, so they are not listed.
+// Undo and redo run on the store's history, as the top bar's buttons do;
+// Ctrl+S opens the history panel on "Save version", asking for the name.
+// The text of a block is edited on the canvas from stage 3: until then its
+// key does nothing, so it is not listed.
 
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
   | "addTile"
   | "copy" | "paste" | "duplicate" | "delete"
-  | "undo" | "redo"
+  | "undo" | "redo" | "saveVersion"
   | "preview" | "publish"
   | "showShortcuts";
 
@@ -99,6 +99,7 @@ export const KEYMAP: readonly KeyEntry[] = [
 
   { action: "undo", group: "History", label: "Undo", chords: [{ key: "z", mod: true }], scope: "editor", via: "keymap" },
   { action: "redo", group: "History", label: "Redo", chords: [{ key: "z", mod: true, shift: true }, { key: "y", mod: true }], scope: "editor", via: "keymap" },
+  { action: "saveVersion", group: "History", label: "Save a named version", chords: [{ key: "s", mod: true }], scope: "editor", via: "keymap" },
 
   { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", mod: true, alt: true }], scope: "editor", via: "keymap" },
   { action: "publish", group: "Publish", label: "Publish now", chords: [{ key: "Enter", mod: true, shift: true }], scope: "editor", via: "keymap" },
