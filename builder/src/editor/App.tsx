@@ -20,7 +20,8 @@
 //
 // Around it all: drag and drop (./drag/DragLayer.tsx), the keyboard map
 // (./keys.ts) and its "?" window, the selected block's menu, the save
-// state's banner and toast (./SaveStatus.tsx) and About.
+// state's banner and toast (./SaveStatus.tsx), About, and the media
+// library's work on this adapter (./library/context.tsx).
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
@@ -38,6 +39,7 @@ import { HistoryPanel } from "./HistoryPanel.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { LeftTray } from "./LeftTray.tsx";
+import { MediaProvider } from "./library/context.tsx";
 import { Navigator } from "./Navigator.tsx";
 import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
@@ -613,21 +615,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   return (
     <EditorProvider env={env}>
       <SessionProvider value={session}>
-        <DragLayer>
-          <div className={`app${navigatorOpen || historyOpen ? "" : " nav-closed"}`}>
-            <TopBar />
-            <ConflictBanner />
-            <LeftTray />
-            {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
-            {historyOpen ? <HistoryPanel /> : <Navigator />}
-          </div>
-        </DragLayer>
-        <EditorKeys />
-        <BlockMenu />
-        <ShortcutsDialog />
-        <AboutDialog />
-        <SaveToast />
-        <Notice />
+        <MediaProvider adapter={adapter}>
+          <DragLayer>
+            <div className={`app${navigatorOpen || historyOpen ? "" : " nav-closed"}`}>
+              <TopBar />
+              <ConflictBanner />
+              <LeftTray />
+              {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
+              {historyOpen ? <HistoryPanel /> : <Navigator />}
+            </div>
+          </DragLayer>
+          <EditorKeys />
+          <BlockMenu />
+          <ShortcutsDialog />
+          <AboutDialog />
+          <SaveToast />
+          <Notice />
+        </MediaProvider>
       </SessionProvider>
     </EditorProvider>
   );

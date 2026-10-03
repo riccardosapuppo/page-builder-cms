@@ -1,5 +1,6 @@
 // The top bar of the approved design (design/shots/editor.png): the mark
-// and its menu, the open page and the switch to another one, whether the
+// and its menu (with the media library, to look after it outside any
+// block), the open page and the switch to another one, whether the
 // page is live, Site style, the device the canvas previews, undo, redo and
 // the history (design/shots/history.png), where the edits are, Preview and
 // Publish.
@@ -8,9 +9,12 @@
 // (no control that does nothing).
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { runRedo, runUndo } from "./act.ts";
+import { BlockIcon } from "./block-icon.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon, Mark } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
+import { useMediaService } from "./library/context.tsx";
+import { MediaLibrary } from "./library/MediaLibrary.tsx";
 import { Menu } from "./Menu.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, PreviewButton, PublishButton } from "./Publish.tsx";
@@ -34,6 +38,9 @@ export function TopBar() {
   const title = useSessionTitle();
   const [menu, setMenu] = useState<"app" | "pages" | null>(null);
   const [creating, setCreating] = useState(false);
+  // The media library opened from the menu, to look after it.
+  const media = useMediaService();
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const markButton = useRef<HTMLButtonElement>(null);
   const pageButton = useRef<HTMLButtonElement>(null);
   const current = session.current;
@@ -75,6 +82,11 @@ export function TopBar() {
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => setMenu("pages")}>
               <Icon name="page" /><span>All pages</span>
             </button>
+            {media && (
+              <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-haspopup="dialog" onClick={() => { setMenu(null); markButton.current?.focus(); setLibraryOpen(true); }}>
+                <BlockIcon type="image" className="i" /><span>Media library</span>
+              </button>
+            )}
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
               <Icon name="keyboard" /><span>Keyboard shortcuts</span>
               <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
@@ -149,6 +161,7 @@ export function TopBar() {
         <PublishButton />
       </div>
       {creating && <NewPageDialog onClose={() => setCreating(false)} />}
+      {libraryOpen && <MediaLibrary purpose={{ kind: "manage" }} onClose={() => setLibraryOpen(false)} />}
     </header>
   );
 }
