@@ -29,6 +29,15 @@ shows no control for one it lacks; the adapter refuses it as
 `unsupported` without asking anyone. The Rails adapter declares
 scheduling (stage 4) and form answers (stage 5) absent until the CMS has
 them; their shapes in `adapter.ts` are a guess until then.
+`capabilities.imageVariants` says one thing more, not an operation:
+whether the storage makes smaller copies of an uploaded image for the
+pages to serve. The CMS does not (it has no image library: no libvips),
+so the Rails adapter says false, the battery reads an image's bytes back
+unchanged, and the media library says so on screen and resizes each
+image in the browser before it goes up. `MAX_UPLOAD_BYTES` (10 MB) and
+`MAX_IMAGE_SIDE` (10,000 px) are the CMS's limits, held to
+`openapi.yaml`; the editor uses them to word a refusal, and the CMS
+enforces them.
 
 How an operation answers:
 - what it was asked for; or, where the editor has a way forward, an

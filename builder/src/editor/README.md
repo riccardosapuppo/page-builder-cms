@@ -25,7 +25,8 @@ random block ids.
 | `Publish.tsx` | Preview, a link to the draft's preview on the CMS's own origin; the split Publish button and its menu (Publish now, the live page), waiting and saying why on an empty page, a conflict or a save not confirmed; nothing for what the storage lacks (no Schedule before stage 4) |
 | `SiteStylePanel.tsx` | Site style, the one screen that changes the tokens: each slot's curated tones, their contrast in words, back to a new site's tone, the type scale and its steps |
 | `AboutDialog.tsx` | About: the mark, the version (the package's, held to the repository's) and "Developed by Riccardo Sapuppo" |
-| `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added |
+| `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added (images from the media library, below) |
+| `library/` | The media library (design/shots/media.png), opened by every image tile, Replace image, a gallery's Add images and the picture beside text, and from the mark's menu to look after the library itself. A search, three filters (all, on this page, missing alt text), the count. Uploads (`service.ts`, through the storage adapter only): one at a time, each drawn again first in the browser (`resize.ts`: the EXIF orientation applied, at most 2400 px on the long side, proportions kept, in its own format, the camera's notes left behind; an image that moves goes up as it is), with its progress and a way to stop it; what the browser or the CMS refuses keeps its reason (`files.ts`). No image is placed without alt text or the decorative mark: the button says why it waits and leads to the field. Placing is one command born with the mediaId, the alt text copied in and kept as the library's proposal (PIANO, section 5). Delete, asked twice, after the edits waiting are saved; one the CMS refuses names the pages and kept versions that show the image (`words.ts`). The footer says the CMS makes no smaller copies (`capabilities.imageVariants`) |
 | `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx` |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
 | `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end; the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
@@ -40,7 +41,7 @@ random block ids.
 
 ## Not here yet
 
-Tablet and phone overrides and the media library
+Tablet and phone overrides
 are stage 3; scheduling a publish is stage 4. The top bar draws no control for any of them until it works, and
 the "?" window lists no key for them.
 
@@ -82,6 +83,17 @@ owner to undo:
   does not draw. Keep mine keeps the page it saves over as a version
   named "Before Keep mine", so that choice, like Reload, can be undone
   from History, as the design's save states say.
+- **Media library:** the button that places the chosen images says what
+  placing does ("Add image", "Replace image", "Add images", "Add
+  section"), where the design says "Use image". The drop tile names the
+  formats the CMS takes, JPEG, PNG, WebP and GIF, where the design lists
+  SVG, which the CMS refuses; and it says the size an image is sent at.
+  The footer's line goes on to say that the CMS makes no smaller copies,
+  so each image is resized here first. Under the alt text a hint says
+  where the text goes; with nothing chosen, the details say so and offer
+  an image from another site by its address; a refused upload stays in
+  the grid with its reason; the chosen image's details end with Delete
+  from library. The mark's menu has a Media library item.
 
 ## Checks
 
@@ -96,7 +108,10 @@ typed while it travels), the command runner, the
 keymap and its listener, and the drag layer's preview and live region
 have theirs here, and so does the text editor in `rich/` (its nodes and
 marks against the schema, the link's check, the paste, its two histories,
-random texts and random editing, on the real editor in jsdom). jsdom lays nothing out, so the pointer, the keys and
+random texts and random editing, on the real editor in jsdom). The media
+library's are in `library/`: a file's rules, the uploads against a
+storage of the test's own, and the dialog (alt text before an image is
+placed, one command, an upload kept off the page, a refused delete). jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
 `../../e2e/editor.spec.ts` (the shell; sections anchored with the
 editor's own ids, which hold an underscore no anchor can; the theme's
@@ -129,7 +144,12 @@ the network drops sent again with its saveId into the conflict, closing
 that tab asking first, a restore in one tab told to the other),
 `history.spec.ts` (undo and redo from the top bar, a step chosen in the
 history, Save version, Restore and its undoing, the live version, axe on
-the panel), `publish.spec.ts`
+the panel), `media.spec.ts` (an image of 3000 pixels uploaded at 2400
+with its progress, given its alt text, placed as one step, published and
+served with it; a photo marked to be turned uploaded turned and with no
+EXIF left; an SVG and an image too large once made ready refused, each
+saying why; a delete the CMS refuses naming the page; axe on the open
+library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
 (the mark read back at 16 px), `a11y.spec.ts` (axe in twenty states, and

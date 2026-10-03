@@ -37,6 +37,16 @@ Its typing becomes one command of the page, kept in one form
 and before any other command or drag; inside the text Ctrl+Z is
 TipTap's, outside it the page's.
 
+**Stage 3, the media library.** Every image tile, Replace image and a
+gallery's Add images open the library of the approved design
+(`src/editor/library/`): images uploaded straight to the CMS with
+Active Storage, each drawn again in the browser first (turned the way
+its camera said, at most 2400 pixels on its long side, since the CMS
+makes no smaller copies and says so), with their progress; alt text or
+the decorative mark required before an image is placed, placing being
+one command born with its mediaId; the library's alt text, and delete,
+refused while a page shows the image, with which page.
+
 ## Before you start
 
 - **Node** `^22.13.0 || ^24.0.0 || >=26.0.0` (`engines`, the narrowest of
