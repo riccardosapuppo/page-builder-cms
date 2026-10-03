@@ -7,6 +7,7 @@
    .hist and .versions rules. A step of the session is a button, so it can
    be chosen with the keyboard: the design's row padding and its dot are
    the button's. */
+.group-title-pad { padding: 8px 8px 0; }
 .hist { list-style: none; padding: 0; margin-top: 2px; }
 .hist li > button { position: relative; display: block; width: 100%; padding: 4px 8px 4px 24px; border-radius: 5px; line-height: 18px; text-align: left; }
 .hist li > button::before { content: ""; position: absolute; left: 9px; top: 10px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--rule); background: var(--plate); }
@@ -14,10 +15,10 @@
 .hist li > button:focus-visible { outline-offset: -2px; }
 .hist-what { display: block; }
 .hist-when { display: block; font-size: 12px; line-height: 16px; font-weight: 400; color: var(--steel); white-space: nowrap; }
-.hist-now > button { background: var(--key); }
-.hist-now .hist-what { font-weight: 600; }
-.hist-now > button::before { background: var(--graphite); border-color: var(--graphite); }
-.hist-undone > button { color: var(--steel); }
+.hist li.hist-now > button { background: var(--key); }
+.hist li.hist-now .hist-what { font-weight: 600; }
+.hist li.hist-now > button::before { background: var(--graphite); border-color: var(--graphite); }
+.hist li.hist-undone > button { color: var(--steel); }
 .hint-keys { line-height: 22px; }
 .keys-inline { display: inline-flex; gap: 3px; margin-right: 2px; white-space: nowrap; vertical-align: -5px; }
 

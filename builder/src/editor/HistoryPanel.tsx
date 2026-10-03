@@ -161,6 +161,7 @@ export function HistoryPanel() {
                       onClick={() => choose(step.entry.command)}
                     >
                       <span className="hist-what">{step.entry.command.label}</span>
+                      <span className="visually-hidden">, </span>
                       <span className="hist-when">{step.undone ? "Undone" : stepTime(step.entry.at, now)}</span>
                     </button>
                   </li>
@@ -248,9 +249,15 @@ function NameForm({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
-  const live = useRef(true);
-  useEffect(() => () => {
-    live.current = false;
+  // Whether the form is still on screen when the CMS answers. Set by the
+  // effect itself, not only at first: React's strict mode runs it, undoes
+  // it and runs it again.
+  const live = useRef(false);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
   }, []);
   // Opened by the button or by Ctrl+S: the field takes the focus.
   useLayoutEffect(() => {

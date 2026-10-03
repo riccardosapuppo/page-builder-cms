@@ -8,6 +8,7 @@
 // CMS's refusal of it.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { expect, test } from "vitest";
 import { editorKit, type Kit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
@@ -161,7 +162,9 @@ test("Save version asks for a name in the panel, keeps it through the session, a
       },
     },
   });
-  kit.render(<HistoryPanel />);
+  // In strict mode, as the editor runs: its effects run, are undone and run
+  // again, and the form must still close once the version is kept.
+  kit.render(<StrictMode><HistoryPanel /></StrictMode>);
   const save = screen.getByRole("button", { name: "Save version" });
   expect(save.getAttribute("aria-keyshortcuts")).toBe("Control+S");
   fireEvent.click(save);

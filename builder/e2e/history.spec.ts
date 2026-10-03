@@ -50,8 +50,10 @@ async function versionsOf(page: Page, id: number): Promise<ListedVersion[]> {
 test("undo and redo from the top bar, and a step chosen in the history, bring the page back, and the CMS saves it", { tag: "@a11y" }, async ({ page, request }) => {
   const { id } = await makePage(request, "Steps back", fixture());
   await open(page, id);
-  const undo = page.getByRole("button", { name: "Undo" });
-  const redo = page.getByRole("button", { name: "Redo" });
+  // Exact: a step undone in the history is a button whose name holds
+  // "Undone".
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  const redo = page.getByRole("button", { name: "Redo", exact: true });
   await expect(undo).toHaveAttribute("aria-disabled", "true");
 
   await block(page, "d").click();
@@ -114,6 +116,9 @@ test("versions from the screen: Save version with a name, Restore, a restore und
   await name.fill("Before the change");
   await name.press("Enter");
   await expect(page.locator(".notice")).toHaveText("Kept as a version: “Before the change”.");
+  // The field goes, the focus back on the button that opened it.
+  await expect(name).toHaveCount(0);
+  await expect(history(page).getByRole("button", { name: "Save version" })).toBeFocused();
   await expect(versionRows(page).nth(1).locator(".ver-kind")).toHaveText("Saved");
   await expect(versionRows(page).nth(1).locator(".ver-name")).toHaveText("Before the change");
   const named = (await versionsOf(page, id))[0]!;
@@ -126,7 +131,7 @@ test("versions from the screen: Save version with a name, Restore, a restore und
   await history(page).getByRole("button", { name: /^Restore: Saved, Before the change, Today, / }).click();
   await expect(words(page)).toHaveText("Before the change");
   await expect(page.locator(".notice")).toHaveText(/^Restored “Before the change”, saved today at \d{1,2}:\d{2} [AP]M\. The draft it replaced is kept in Versions, as “Before restoring”\. Undo starts again from here: its steps belonged to the page that was replaced\.$/);
-  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toHaveAttribute("aria-disabled", "true");
   await expect(history(page).getByText("No changes yet.", { exact: false })).toBeVisible();
   await expect(versionRows(page).locator(".ver-kind")).toHaveText(["Current draft", "Restored", "Before restoring", "Saved", "Autosaved"]);
   await expect(versionRows(page).nth(1).locator(".ver-name")).toHaveText(/^From “Before the change”, Today, /);

@@ -2,7 +2,7 @@
 //
 // Photographs the editor in the states the approved design's shots show
 // (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
-// publish.png, site-style.png, save-states.png, and design/shots-extra/
+// publish.png, site-style.png, history.png, save-states.png, and design/shots-extra/
 // advanced.png, context.png, app-menu.png and about.png), plus the widget
 // panel, the phone preview and a save retrying, headless, in two windows: 1280 by 800, and
 // 1440 by 900, the size the design itself was shot at, whose canvas is
@@ -174,6 +174,46 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await style.getByRole("button", { name: "Reset to Sea" }).click();
   await style.getByText("Saved for every page").waitFor();
   await style.getByRole("button", { name: "Close site style" }).click();
+
+  // #history: three changes made in this session, the last undone, and a
+  // version kept under a name (the first time; the second window finds it).
+  // Then the changes are undone, so the page is as the seed has it again.
+  const change = async (id: string, tab: "Content", field: string, words: string) => {
+    await page.locator(`.canvas [data-block-id="${id}"]`).click();
+    await page.getByRole("tab", { name: tab }).click();
+    const box = page.getByRole("textbox", { name: field, exact: true });
+    await box.fill(words);
+    await box.blur();
+  };
+  await change("join-button", "Content", "Text", "Write to us");
+  await change("quote-text", "Content", "Quote", "I came for the cold water and stayed for the tea and the talk.");
+  await page.locator('.canvas [data-block-id="gallery-heading"]').click();
+  await page.keyboard.press("Delete");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  // The block the undo brought back has the focus: Esc lets it go, so the
+  // page shows no selection, as in the design.
+  await page.locator('.canvas [data-block-id="gallery-heading"]:focus').waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "History" }).click();
+  const history = page.getByRole("complementary", { name: "History" });
+  if (first) {
+    await history.getByRole("button", { name: "Save version" }).click();
+    await history.getByRole("textbox", { name: /^Name/ }).fill("Before the winter series");
+    await history.getByRole("textbox", { name: /^Name/ }).press("Enter");
+    await history.getByText("Before the winter series").waitFor();
+    // The notice saying so goes, as the design draws no notice.
+    await page.locator(".notice").getByRole("button", { name: "Dismiss" }).click();
+  }
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
+  await history.getByRole("button", { name: /^Restore: / }).first().waitFor();
+  // As the design draws it: the widget panel, the top of the page.
+  await page.getByRole("tab", { name: "Add" }).click();
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await away();
+  await shoot("history");
+  for (let step = 0; step < 2; step += 1) await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
+  await history.getByRole("button", { name: "Close history" }).click();
 
   // #save-states: the page saved elsewhere while this tab edits it, the
   // banner across the window; Reload settles it (the other save left the
