@@ -15,6 +15,7 @@
 // The text of a text block is edited on the canvas (./rich/): Enter opens
 // it, and inside it the text editor carries its own keys, listed in the
 // Text group.
+import { listed } from "./plain-words.ts";
 
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
@@ -127,8 +128,7 @@ export const KEYMAP: readonly KeyEntry[] = [
 // The entries that keep their keys while the person types, in words: "Save
 // a named version, Preview and Publish now".
 function typingWords(): string {
-  const labels = KEYMAP.filter((e) => e.typing).map((e) => e.label);
-  return labels.length < 2 ? labels.join("") : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)!}`;
+  return listed(KEYMAP.filter((e) => e.typing).map((e) => e.label));
 }
 
 // What the window says under a group.

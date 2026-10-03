@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import type { MediaItem, PageSummary } from "../../storage/adapter.ts";
 import type { PageDocument } from "../../shared/document.ts";
 import { mediaIdsOn } from "./on-page.ts";
-import { addedOn, countLine, inUseSentence, listed, metaLine } from "./words.ts";
+import { addedOn, countLine, inUseSentence, metaLine } from "./words.ts";
 
 const NOW = Date.UTC(2026, 9, 3, 9, 30);
 
@@ -23,10 +23,6 @@ test("an image's size, weight and day, the day as a person reads it", () => {
   expect(addedOn("2025-12-30T16:10:00.000Z", NOW, "UTC")).toBe("Added Dec 30, 2025");
   // The day is the browser's: late on the 2nd in UTC is the 3rd in Tokyo.
   expect(addedOn("2026-10-02T23:50:00.000Z", NOW, "Asia/Tokyo")).toBe("Added today");
-});
-
-test("lists read as a sentence", () => {
-  expect([listed([]), listed(["A"]), listed(["A", "B"]), listed(["A", "B", "C"])]).toEqual(["", "A", "A and B", "A, B and C"]);
 });
 
 const summary = (id: number, title: string) => ({ id, title }) as PageSummary;

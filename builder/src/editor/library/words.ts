@@ -3,15 +3,10 @@
 // the CMS would not delete. Plain functions of their arguments, the
 // clock's time among them, so the tests give the time they mean.
 import type { MediaItem, MediaUse, PageSummary } from "../../storage/adapter.ts";
+import { dayWords, listed } from "../plain-words.ts";
 import { bytesText } from "./files.ts";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
-// "A", "A and B", "A, B and C".
-export function listed(items: readonly string[]): string {
-  if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-}
 
 // "10 images, 2 without alt text, 1 uploading", leaving out what is none.
 export function countLine(images: number, withoutAlt: number, uploading: number): string {
@@ -20,17 +15,12 @@ export function countLine(images: number, withoutAlt: number, uploading: number)
     .join(", ");
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const day = (at: number, timeZone: string | undefined) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
-
 // "Added today", "Added yesterday", "Added Sep 12", "Added Dec 30, 2025".
 export function addedOn(iso: string, now: number, timeZone?: string): string {
   const at = Date.parse(iso);
   if (Number.isNaN(at)) return `Added ${iso}`;
-  if (day(at, timeZone) === day(now, timeZone)) return "Added today";
-  if (day(at, timeZone) === day(now - DAY_MS, timeZone)) return "Added yesterday";
-  const sameYear = day(at, timeZone).slice(0, 4) === day(now, timeZone).slice(0, 4);
-  return `Added ${new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) }).format(at)}`;
+  const day = dayWords(at, now, timeZone);
+  return `Added ${day === "Today" || day === "Yesterday" ? day.toLowerCase() : day}`;
 }
 
 // "1600 × 1200, 84 KB. Added Sep 12."

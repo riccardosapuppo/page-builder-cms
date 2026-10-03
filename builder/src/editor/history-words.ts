@@ -7,17 +7,7 @@
 // Plain functions of their arguments, the clock's time among them, so the
 // tests give the time and the time zone they mean.
 import type { Version } from "../storage/adapter.ts";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// The calendar day of a time in a time zone, as "2026-10-02".
-function dayOf(at: number, timeZone: string | undefined): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
-}
-
-function yearOf(at: number, timeZone: string | undefined): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric" }).format(at);
-}
+import { dayWords } from "./plain-words.ts";
 
 // "Today, 10:46 AM", "Yesterday, 9:58 PM", "Sep 28, 7:02 AM", and with the
 // year when it is not this one: "Dec 30, 2025, 4:10 PM". `at` and `now` are
@@ -25,12 +15,7 @@ function yearOf(at: number, timeZone: string | undefined): string {
 // test names one.
 export function stepTime(at: number, now: number, timeZone?: string): string {
   const time = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(at);
-  const day = dayOf(at, timeZone);
-  if (day === dayOf(now, timeZone)) return `Today, ${time}`;
-  if (day === dayOf(now - DAY_MS, timeZone)) return `Yesterday, ${time}`;
-  const sameYear = yearOf(at, timeZone) === yearOf(now, timeZone);
-  const date = new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) }).format(at);
-  return `${date}, ${time}`;
+  return `${dayWords(at, now, timeZone)}, ${time}`;
 }
 
 // The same for a time the CMS wrote (ISO 8601); a string that is no time
