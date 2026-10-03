@@ -10,13 +10,15 @@
 // clipboard both ways without asking the person for a permission.
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { makeDelete, makeDuplicate } from "../document/commands.ts";
-import { runCommand, runRedo, runUndo, focusBlock, placeFocus, regionOf, type Region } from "./act.ts";
+import { locate } from "../document/tree.ts";
+import { afterRender, runCommand, runRedo, runUndo, focusBlock, placeFocus, regionOf, type Region } from "./act.ts";
 import { copySelection, pasteText } from "./clipboard.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
 import { useOptionalSession, type Session } from "./session.tsx";
 import { publishPaused } from "./Publish.tsx";
+import { startEditing } from "./rich/tools.ts";
 
 const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
 
@@ -80,6 +82,23 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     },
     duplicate: (region) => command((id) => (doc) => makeDuplicate(doc, id, newId), region),
     delete: (region) => command((id) => (doc) => makeDelete(doc, id), region),
+    // A text block's text is written on the canvas: its editor opens, the
+    // caret at the end. Another widget's words are in its panel: the
+    // Content tab, and its first field. A divider, a spacer, a section or a
+    // column has no words to edit.
+    editText: () => {
+      const id = selected();
+      const block = id === null ? undefined : locate(store.getState().document, id)?.block;
+      if (!block || id === null) return false;
+      if (block.type === "text") {
+        startEditing(env, id, "end");
+        return true;
+      }
+      if (["section", "column", "divider", "spacer"].includes(block.type)) return false;
+      ui.setState({ tray: "edit", panelTab: "content" });
+      afterRender(() => document.querySelector<HTMLElement>(".tray-left [role=tabpanel] :is(input:not([type=hidden]), textarea)")?.focus());
+      return true;
+    },
     undo: (region) => {
       runUndo(env, region === "panel" ? "canvas" : region);
       return true;

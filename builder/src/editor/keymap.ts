@@ -12,14 +12,16 @@
 //
 // Undo and redo run on the store's history, as the top bar's buttons do;
 // Ctrl+S opens the history panel on "Save version", asking for the name.
-// The text of a block is edited on the canvas from stage 3: until then its
-// key does nothing, so it is not listed.
+// The text of a text block is edited on the canvas (./rich/): Enter opens
+// it, and inside it the text editor carries its own keys, listed in the
+// Text group.
 
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
   | "addTile"
-  | "copy" | "paste" | "duplicate" | "delete"
+  | "editText" | "copy" | "paste" | "duplicate" | "delete"
+  | "bold" | "italic" | "link" | "leaveText"
   | "undo" | "redo" | "saveVersion"
   | "preview" | "publish"
   | "showShortcuts";
@@ -29,14 +31,16 @@ export type KeyAction =
 // - selection: a block of the canvas, or a row of the navigator;
 // - editor: anywhere in the editor;
 // - tile: a tile of the widget panel;
-// - moving: while a block is picked up with the keyboard.
-// Never in a text field, a menu or a dialog, which keep their keys.
-export type Scope = "canvas" | "selection" | "editor" | "tile" | "moving";
+// - moving: while a block is picked up with the keyboard;
+// - text: in the text of a text block, edited on the canvas.
+// Never in a text field, a menu or a dialog, which keep their keys, but
+// for the text editor's own.
+export type Scope = "canvas" | "selection" | "editor" | "tile" | "moving" | "text";
 
 // Who carries the entry out: the editor's keydown listener, the drag
-// library's keyboard sensor, or the browser (a button's own key, the
-// clipboard's events).
-export type Via = "keymap" | "drag" | "native";
+// library's keyboard sensor, the text editor on the canvas (./rich/), or
+// the browser (a button's own key, the clipboard's events).
+export type Via = "keymap" | "drag" | "text" | "native";
 
 export interface Chord {
   // KeyboardEvent.key: "ArrowDown", "Delete", "z", "?", " ". Letters are
@@ -52,9 +56,9 @@ export interface Chord {
   alt?: boolean;
 }
 
-// In the approved window's order, with Adding, which it does not have,
-// after Publish.
-export const KEY_GROUPS = ["Selection", "Moving", "Editing", "History", "Publish", "Adding", "This list"] as const;
+// In the approved window's order, with two groups it does not have: Text,
+// the keys inside a text being edited, after Editing; Adding after Publish.
+export const KEY_GROUPS = ["Selection", "Moving", "Editing", "Text", "History", "Publish", "Adding", "This list"] as const;
 export type KeyGroup = (typeof KEY_GROUPS)[number];
 
 export interface KeyEntry {
@@ -92,10 +96,16 @@ export const KEYMAP: readonly KeyEntry[] = [
 
   { action: "addTile", group: "Adding", label: "Add the widget of a tile after the selection", chords: [{ key: "Enter" }], scope: "tile", via: "native" },
 
+  { action: "editText", group: "Editing", label: "Edit the text of a block", chords: [{ key: "Enter" }], scope: "canvas", via: "keymap" },
   { action: "copy", group: "Editing", label: "Copy", chords: [{ key: "c", mod: true }], scope: "selection", via: "native" },
   { action: "paste", group: "Editing", label: "Paste after the selection", chords: [{ key: "v", mod: true }], scope: "selection", via: "native" },
   { action: "duplicate", group: "Editing", label: "Duplicate", chords: [{ key: "d", mod: true }], scope: "selection", via: "keymap" },
   { action: "delete", group: "Editing", label: "Delete", chords: [{ key: "Delete" }, { key: "Backspace" }], scope: "selection", via: "keymap" },
+
+  { action: "bold", group: "Text", label: "Bold", chords: [{ key: "b", mod: true }], scope: "text", via: "text" },
+  { action: "italic", group: "Text", label: "Italic", chords: [{ key: "i", mod: true }], scope: "text", via: "text" },
+  { action: "link", group: "Text", label: "Link the selected words", chords: [{ key: "k", mod: true }], scope: "text", via: "text" },
+  { action: "leaveText", group: "Text", label: "Leave the text", chords: [ESCAPE], scope: "text", via: "text" },
 
   { action: "undo", group: "History", label: "Undo", chords: [{ key: "z", mod: true }], scope: "editor", via: "keymap" },
   { action: "redo", group: "History", label: "Redo", chords: [{ key: "z", mod: true, shift: true }, { key: "y", mod: true }], scope: "editor", via: "keymap" },
@@ -110,6 +120,7 @@ export const KEYMAP: readonly KeyEntry[] = [
 // What the window says under a group.
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
   Moving: "While you move a block, the editor reads out where it will land. A column moves along its section with the side arrows, and to another section with the others.",
+  Text: "While you write in a text on the page. There Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Shift+Enter starts a new line in the same paragraph.",
   Adding: "Enter on a tile of the Add panel, or drag the tile onto the page.",
 };
 

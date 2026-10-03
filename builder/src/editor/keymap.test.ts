@@ -36,7 +36,14 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("ArrowUp"))).toEqual(["selectPrevious", "moveVertically"]);
   expect(actions(press("ArrowUp", { altKey: true }))).toEqual(["selectParent"]);
   expect(actions(press("ArrowDown", { altKey: true }))).toEqual(["selectFirstChild"]);
-  expect(actions(press("Escape"))).toEqual(["clearSelection", "cancelMove"]);
+  // Esc in a text leaves it; on a block it clears the selection; with a
+  // block picked up it puts it back: three places, one key.
+  expect(actions(press("Escape"))).toEqual(["clearSelection", "cancelMove", "leaveText"]);
+  expect(actions(press("Enter"))).toEqual(["addTile", "editText"]);
+  expect(actions(press("b", { ctrlKey: true }))).toEqual(["bold"]);
+  expect(actions(press("I", { metaKey: true, shiftKey: true }))).toEqual([]);
+  expect(actions(press("i", { metaKey: true }))).toEqual(["italic"]);
+  expect(actions(press("k", { ctrlKey: true }))).toEqual(["link"]);
   expect(actions(press(" "))).toEqual(["pickUp", "drop"]);
   // "?" is Shift and "/" on one keyboard and a key of its own on another.
   expect(actions(press("?", { shiftKey: true }))).toEqual(["showShortcuts"]);

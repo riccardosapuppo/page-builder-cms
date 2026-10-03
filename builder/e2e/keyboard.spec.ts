@@ -15,7 +15,11 @@ const fixture = () => [
     column("c1", [heading("a", "Alpha"), widget("b", "quote", { text: "Bravo" }), widget("c", "button", { label: "Charlie", href: "#" })]),
     column("c2", [widget("d", "divider", {})]),
   ]),
+  // A text, for the keys that open it and the keys inside it.
+  section("s2", "Second", [column("c3", [widget("t", "text", { doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Tango" }] }] } })])]),
 ];
+
+const text = (page: Page) => page.locator('.canvas [data-block-id="t"] .rte');
 
 // The page the run makes, for the exercises that open it on the CMS.
 let opened = { id: 0, slug: "" };
@@ -87,6 +91,17 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect.poll(async () => (await childIds(page, "c1")).length).toBe(3);
     await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(1)).toHaveAttribute("data-block-type", "spacer");
   },
+  async editText(page, pressed) {
+    await block(page, "t").click();
+    await press(page, pressed, "Enter");
+    await expect(text(page)).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(block(page, "t")).toBeFocused();
+    // Another widget's words are in its panel: Enter goes to its first field.
+    await block(page, "a").click();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("textbox", { name: "Text" })).toBeFocused();
+  },
   async copy(page, pressed) {
     await block(page, "c").click();
     await press(page, pressed, "Control+c");
@@ -111,6 +126,37 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect.poll(() => focusedId(page)).not.toBeNull();
     await press(page, pressed, "Backspace");
     await expect.poll(async () => (await childIds(page, "c2")).length).toBe(2);
+  },
+  async bold(page, pressed) {
+    await block(page, "t").click();
+    await page.keyboard.press("Enter");
+    await expect(text(page)).toBeFocused();
+    await page.keyboard.press("Control+a");
+    await press(page, pressed, "Control+b");
+    await expect(text(page).locator("strong")).toHaveText("Tango");
+  },
+  async italic(page, pressed) {
+    await press(page, pressed, "Control+i");
+    await expect(text(page).locator("strong em, em strong")).toHaveText("Tango");
+  },
+  async link(page, pressed) {
+    await press(page, pressed, "Control+k");
+    const field = page.locator(".ov-link input");
+    await expect(field).toBeFocused();
+    await field.fill("/tango");
+    await field.press("Enter");
+    await expect(text(page).locator('a[href="/tango"]')).toHaveText("Tango");
+    await expect(text(page)).toBeFocused();
+  },
+  async leaveText(page, pressed) {
+    await press(page, pressed, "Escape");
+    await expect(page.locator(".canvas .rte")).toHaveCount(0);
+    await expect(block(page, "t")).toBeFocused();
+    await expect(block(page, "t").locator('a[href="/tango"]')).toHaveText("Tango");
+    // The text's change is one step of the page's history: undone here, so
+    // the history keys below find the steps they expect.
+    await page.keyboard.press("Control+z");
+    await expect(block(page, "t").locator("strong, em, a")).toHaveCount(0);
   },
   async undo(page, pressed) {
     await press(page, pressed, "Control+z");

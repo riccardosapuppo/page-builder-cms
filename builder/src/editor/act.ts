@@ -22,7 +22,7 @@ import { useEnv, type EditorEnv } from "./context.tsx";
 // part of the editor. The panel keeps its own focus (its field).
 export type Region = "canvas" | "navigator" | "panel";
 
-const afterRender = (run: () => void): void => {
+export const afterRender = (run: () => void): void => {
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
   else setTimeout(run, 0);
 };
