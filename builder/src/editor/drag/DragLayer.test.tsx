@@ -49,7 +49,7 @@ test("the dragged block is drawn as a line where it would land, its column frame
   const caption = document.querySelector(".live-caption")!;
   expect(caption.getAttribute("role")).toBe("status");
   expect(caption.querySelector("strong")?.textContent).toBe("Quote will move to Column 1 in Hero, after Heading.");
-  expect(caption.querySelector("span")?.textContent).toBe("Release to drop it. Shaded areas cannot hold widgets. Esc cancels.");
+  expect(caption.querySelector("span")?.textContent).toBe("Release, or press Space, to drop it. Shaded areas cannot hold widgets. Esc cancels.");
 
   // The navigator shows the same place, as a line, its column open.
   const line = document.querySelector(".tree .t-insert");
@@ -69,7 +69,7 @@ test("a tile of the widget panel is added, not moved: the live region says so", 
   act(() => kit.store.getState().dragOver({ parentId: "c1", index: 1 }));
   const caption = document.querySelector(".live-caption")!;
   expect(caption.querySelector("strong")?.textContent).toBe("Divider will be added to Column 1 in Hero, after Heading.");
-  expect(caption.querySelector("span")?.textContent).toBe("Release to add it. Shaded areas cannot hold widgets. Esc cancels.");
+  expect(caption.querySelector("span")?.textContent).toBe("Release, or press Space, to add it. Shaded areas cannot hold widgets. Esc cancels.");
 });
 
 test("over nothing that can take it, the live region says why; the block's own place keeps it", () => {

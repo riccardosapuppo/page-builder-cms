@@ -118,7 +118,7 @@ test.describe("with the mouse", () => {
     await pickUp(page, tile);
     await moveOnto(page, block(page, "a"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Quote will be added to Column 1 in First, after Heading.");
-    await expect(caption(page).locator("span")).toHaveText("Release to add it. Shaded areas cannot hold widgets. Esc cancels.");
+    await expect(caption(page).locator("span")).toHaveText("Release, or press Space, to add it. Shaded areas cannot hold widgets. Esc cancels.");
     // The tile it came from leaves its dashed place in the panel.
     await expect(tile).toHaveCSS("outline-style", "dashed");
     await page.mouse.up();
@@ -139,6 +139,20 @@ test.describe("with the mouse", () => {
     const sections = (await draftOf(request, id)).document.sections;
     expect(sections.map((s) => s.children.length)).toEqual([2, 2, 2]);
     expect(sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "quote", "button"]);
+  });
+
+  test("Space, with the button still held, drops the tile where the caption says, once", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Space drops");
+    await page.getByRole("tab", { name: "Add" }).click();
+    await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
+    await moveOnto(page, block(page, "a"), "bottom");
+    await expect(caption(page).locator("strong")).toHaveText("Quote will be added to Column 1 in First, after Heading.");
+    await page.keyboard.press("Space");
+    await expect(caption(page)).toHaveText("Added Quote to Column 1 in First.");
+    await page.mouse.up();
+    await expect.poll(() => canvasShape(page)).toEqual([["s1", [["c1", ["a", expect.any(String), "b", "c"]], ["c2", ["d"]]]], ["s2", [["c3", ["e"]], ["c4", []]]]]);
+    await saved(page);
+    expect((await draftOf(request, id)).document.sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "quote", "button"]);
   });
 
   test("a widget released where widgets cannot go stays where it was, and the editor says why", async ({ page, request }) => {

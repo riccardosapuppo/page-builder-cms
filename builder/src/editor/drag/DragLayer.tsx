@@ -194,7 +194,19 @@ export function DragLayer({ children }: { children: ReactNode }) {
           const canvas = document.querySelector(".canvas");
           const resync = () => sync(manager);
           canvas?.addEventListener("scroll", resync, { passive: true });
-          scrollListener.current = () => canvas?.removeEventListener("scroll", resync);
+          // Space drops it where it is, as releasing does (the caption says
+          // so): a hand that holds the button can still use the keyboard.
+          const space = (key: KeyboardEvent) => {
+            if (key.code !== "Space" || key.repeat || !manager.dragOperation.status.dragging) return;
+            key.preventDefault();
+            key.stopPropagation();
+            void manager.actions.stop({ event: key });
+          };
+          window.addEventListener("keydown", space, true);
+          scrollListener.current = () => {
+            canvas?.removeEventListener("scroll", resync);
+            window.removeEventListener("keydown", space, true);
+          };
         }
       }}
       onDragStart={(_event, manager) => {
@@ -290,7 +302,7 @@ function LiveCaption() {
   const adding = session !== null && !draggedOf(session).fromPage;
   const help = mode === "keyboard"
     ? "The arrows move it, Space drops it here, Esc puts it back."
-    : `Release to ${adding ? "add" : "drop"} it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
+    : `Release, or press Space, to ${adding ? "add" : "drop"} it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
   // One element for the life of the editor, so a screen reader follows it.
   return (
     <p className={`live-caption chrome${moving ? "" : " live-caption-quiet"}`} role="status" aria-live="polite">
