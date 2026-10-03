@@ -43,7 +43,24 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
     app?.setAttribute("inert", "");
     const first = box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
+    // A focus that left the dialog for the page (the field it was in went
+    // away): Esc still closes it, and Tab comes back into it.
+    const outside = (event: KeyboardEvent) => {
+      if (!box.current || (event.target instanceof Node && box.current.contains(event.target))) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close.current();
+      } else if (event.key === "Tab") {
+        const items = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+        const to = event.shiftKey ? items.at(-1) : items[0];
+        if (!to) return;
+        event.preventDefault();
+        to.focus();
+      }
+    };
+    document.addEventListener("keydown", outside);
     return () => {
+      document.removeEventListener("keydown", outside);
       app?.removeAttribute("inert");
       if (before?.isConnected) before.focus();
     };

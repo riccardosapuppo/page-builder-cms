@@ -37,6 +37,9 @@ export function isTyping(target: EventTarget | null): boolean {
 export function inScope(scope: Scope, target: EventTarget | null, typing = false): boolean {
   const element = target instanceof Element ? target : null;
   if (element?.closest("[role=dialog], [role=menu]")) return false;
+  // A modal dialog open: the editor behind it takes no key, wherever the
+  // focus is (lost to the page, say, when a field it was in went).
+  if (document.querySelector("[role=dialog][aria-modal=true]")) return false;
   if (!typing && isTyping(element)) return false;
   switch (scope) {
     case "canvas":

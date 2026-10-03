@@ -270,3 +270,22 @@ test("Escape closes the block's menu and gives the focus back to the block", asy
   expect(screen.queryByRole("menu")).toBeNull();
   expect(focused()).toBe("i1");
 });
+
+test("with a modal dialog open, the editor behind it takes no key even with the focus lost to the page; Tab and Esc reach the dialog", () => {
+  const kit = shell("h1");
+  act(() => kit.ui.getState().setShortcutsOpen(true));
+  const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+  act(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(document.activeElement).toBe(document.body);
+  press("Delete");
+  press("d", { ctrlKey: true });
+  press("ArrowDown");
+  expect(kit.store.getState().selection).toBe("h1");
+  expect(kit.store.getState().past).toEqual([]);
+  // Tab goes back into the dialog; Esc from the page closes it.
+  press("Tab");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  act(() => (document.activeElement as HTMLElement | null)?.blur());
+  press("Escape");
+  expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
+});

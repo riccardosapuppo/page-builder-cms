@@ -166,6 +166,32 @@ describe("uploading", () => {
     expect(lastWidget(kit).props).toEqual({ mediaId: "harbour", alt: "Boats in the harbour" });
   });
 
+  test("an upload that finishes while the alt text of the image shown is being written leaves the field, its focus and its words where they are, and says it is in", async () => {
+    const lib = library([item("buoys", "")]);
+    const kit = editorKit({ document: widgetPage(), media: lib.make });
+    kit.render(<MediaLibrary purpose={{ kind: "manage" }} onClose={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "Media library" });
+    fireEvent.change(within(dialog).getByLabelText("Images to upload"), { target: { files: [new File(["bytes"], "probe-b.png", { type: "image/png" })] } });
+    await waitFor(() => expect(lib.uploads).toHaveLength(1));
+    fireEvent.click(within(dialog).getByRole("radio", { name: "buoys.png, no alt text" }));
+    const alt = within(dialog).getByRole("textbox", { name: "Alt text" });
+    act(() => alt.focus());
+    fireEvent.change(alt, { target: { value: "Orange bu" } });
+    act(() => lib.uploads[0]!.resolve({ ok: true, value: item("b", "", "probe-b.png") }));
+    await within(dialog).findByText("“probe-b.png” is in the library now.");
+    expect(document.activeElement).toBe(alt);
+    expect((alt as HTMLTextAreaElement).value).toBe("Orange bu");
+    expect(within(dialog).getByRole("radio", { name: "buoys.png, no alt text" }).getAttribute("aria-checked")).toBe("true");
+    // With nothing being written, the next one finished is shown.
+    fireEvent.blur(alt);
+    await within(dialog).findByText("Saved in the library.");
+    act(() => within(dialog).getByRole("radio", { name: "buoys.png" }).focus());
+    fireEvent.change(within(dialog).getByLabelText("Images to upload"), { target: { files: [new File(["bytes"], "probe-c.png", { type: "image/png" })] } });
+    await waitFor(() => expect(lib.uploads).toHaveLength(2));
+    act(() => lib.uploads[1]!.resolve({ ok: true, value: item("c", "", "probe-c.png") }));
+    await waitFor(() => expect(within(dialog).getByRole("radio", { name: "probe-c.png, no alt text" }).getAttribute("aria-checked")).toBe("true"));
+  });
+
   test("a file refused before it goes up says why, by name, until it is dismissed", async () => {
     const lib = library([]);
     lib.refusals.set("logo.svg", "SVG images are not taken: an SVG is a document that can carry script.");

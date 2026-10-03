@@ -220,3 +220,35 @@ test.describe("deleting", () => {
     expect(await libraryItem(page, spare)).toBeUndefined();
   });
 });
+
+test("an upload that finishes while an alt text is being written takes neither the field nor the focus from the person", async ({ page }) => {
+  const { id } = await makePage(page.request, "Busy library", [section("s", "Story", [column("c", [heading("h", "At the harbour")])])]);
+  await open(page, id);
+  await openLibrary(page);
+  const first = `${unique("first")}.png`;
+  const second = `${unique("second")}.png`;
+  await upload(page, { name: first, mimeType: "image/png", buffer: png(400, 300, () => [30, 110, 90]) });
+  await expect(dialog(page).getByRole("radio", { name: `${first}, no alt text` })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  // The second file's bytes wait until the first's alt text is half written.
+  let release: () => void = () => {};
+  const held = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route("**/rails/active_storage/disk/**", async (route) => {
+    if (route.request().method() === "PUT") await held;
+    await route.fallback();
+  });
+  await upload(page, { name: second, mimeType: "image/png", buffer: png(400, 300, () => [230, 200, 140]) });
+  const alt = dialog(page).getByRole("textbox", { name: /^Alt text/ });
+  await alt.click();
+  await page.keyboard.type("Orange bu");
+  release();
+  await expect(dialog(page).locator(".media-note")).toHaveText(`“${second}” is in the library now.`, { timeout: 30_000 });
+  await expect(alt).toBeFocused();
+  await page.keyboard.type("oys");
+  await expect(alt).toHaveValue("Orange buoys");
+  await page.keyboard.press("Tab");
+  await expect.poll(async () => (await libraryItem(page, first))?.alt).toBe("Orange buoys");
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+});

@@ -16,7 +16,7 @@
 // Everything that reaches the CMS goes through the media service
 // (./service.ts) and so through the storage adapter; without one (a panel's
 // test) the library is only chosen from, and draws no control for the rest.
-import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import type { CommandError } from "../../document/check.ts";
 import type { ImageRef } from "../../shared/document.ts";
 import { MAX_UPLOAD_BYTES, type MediaItem } from "../../storage/adapter.ts";
@@ -91,7 +91,14 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadButton = useRef<HTMLButtonElement>(null);
   const grid = useRef<HTMLDivElement>(null);
+  const details = useRef<HTMLElement>(null);
   const mounted = useRef(true);
+  // The image shown and the alt texts typed, as the latest render has them,
+  // for an upload that finishes later.
+  const latest = useRef({ current, alts });
+  useLayoutEffect(() => {
+    latest.current = { current, alts };
+  });
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -114,6 +121,14 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
   // An image deleted, here or in another tab, is no longer chosen.
   const live = chosen.filter((imageId) => media.has(imageId));
   const shownItem = itemOf(current);
+  // Details drawn for another image, or for none, take their fields with
+  // them: a focus that was in them goes to the images, never to the page
+  // behind the dialog, where no key would reach the dialog.
+  const shownId = shownItem?.id ?? null;
+  useLayoutEffect(() => {
+    if (document.activeElement !== null && document.activeElement !== document.body) return;
+    (grid.current?.querySelector<HTMLElement>("[data-media-id][tabindex='0']") ?? uploadButton.current)?.focus();
+  }, [shownId]);
 
   const needle = query.trim().toLowerCase();
   const shown = library.filter((item) => {
@@ -187,15 +202,21 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
     setQuery("");
     service.upload(files, (item) => {
       if (!mounted.current) return;
-      setActive(item.id);
-      if (!picking) setCurrent(item.id);
-      else if (multiple) {
-        setChosen((list) => [...list.filter((other) => other !== item.id), item.id]);
-        setCurrent(item.id);
-      } else {
-        setChosen([item.id]);
-        setCurrent(item.id);
+      // A gallery takes each image uploaded for it.
+      if (multiple) setChosen((list) => [...list.filter((other) => other !== item.id), item.id]);
+      // The person at work on the image shown (in its details, or with its
+      // alt text typed and not yet kept) keeps it: the new one is said,
+      // not shown in its place, which would take the field from under the
+      // typing.
+      const shown = latest.current.current;
+      const busy = shown !== null && shown !== item.id && (details.current?.contains(document.activeElement) === true || latest.current.alts.has(shown));
+      if (busy) {
+        setNote(`“${item.filename}” is in the library now.`);
+        return;
       }
+      setActive(item.id);
+      if (picking && !multiple) setChosen([item.id]);
+      setCurrent(item.id);
     });
   };
 
@@ -384,7 +405,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
             </p>
           )}
         </div>
-        <aside className="media-details" aria-label="Selected image">
+        <aside ref={details} className="media-details" aria-label="Selected image">
           {shownItem ? (
             <Details
               key={shownItem.id}
