@@ -258,6 +258,28 @@ describe("looking after the library", () => {
     expect(within(dialog).getByText(/^Images you upload are available on every page\. The CMS makes no smaller copies of them, so each is resized here first, to 2400 px at most on its long side\.$/)).toBeTruthy();
   });
 
+  test("the images are one tab stop: the arrows, Home and End move along them, and a radio follows the focus", () => {
+    const lib = library([item("a", "A"), item("b", "B"), item("c", "C")]);
+    const kit = editorKit({ document: widgetPage(), media: lib.make });
+    kit.render(<MediaLibrary purpose={{ kind: "manage" }} onClose={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "Media library" });
+    const tiles = within(dialog).getAllByRole("radio", { name: /\.png$/ });
+    expect(tiles.map((tile) => tile.tabIndex)).toEqual([0, -1, -1]);
+    // The dialog opens with the focus on the grid's tab stop.
+    expect(document.activeElement).toBe(tiles[0]);
+    fireEvent.keyDown(tiles[0]!, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(tiles[1]);
+    expect(tiles[1]!.getAttribute("aria-checked")).toBe("true");
+    expect(within(dialog).getByText("b.png", { selector: ".md-name" })).toBeTruthy();
+    fireEvent.keyDown(tiles[1]!, { key: "End" });
+    expect(document.activeElement).toBe(tiles[2]);
+    fireEvent.keyDown(tiles[2]!, { key: "Home" });
+    expect(document.activeElement).toBe(tiles[0]);
+    expect(within(dialog).getAllByRole("radio", { name: /\.png$/ }).map((tile) => tile.tabIndex)).toEqual([0, -1, -1]);
+    fireEvent.keyDown(tiles[0]!, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(tiles[0]);
+  });
+
   test("without the library's work (a panel on its own), nothing is drawn for upload or delete", () => {
     const kit = editorKit({ document: widgetPage() });
     kit.ui.getState().setMedia([item("a", "A")]);
