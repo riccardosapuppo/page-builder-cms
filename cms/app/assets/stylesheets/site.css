@@ -229,7 +229,9 @@ a.sw-btn:not([href]) { cursor: default; }
 
 /* ---------- Accordion ---------- */
 .sw-accordion details { border-top: 1px solid var(--line-color, var(--sw-muted)); }
-.sw-accordion details:last-child { border-bottom: 1px solid var(--line-color, var(--sw-muted)); }
+/* The last question, not the last child: the editor's canvas draws its
+   marks as divs inside the block, after the questions. */
+.sw-accordion details:last-of-type { border-bottom: 1px solid var(--line-color, var(--sw-muted)); }
 .sw-accordion summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 19px; font-weight: 600; font-stretch: 115%; list-style: none; cursor: pointer; }
 .sw-accordion summary::-webkit-details-marker { display: none; }
 .sw-accordion summary::after { content: ""; width: 14px; height: 14px; flex: none; background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat, linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 2px 14px no-repeat; }
