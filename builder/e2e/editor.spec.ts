@@ -186,14 +186,32 @@ test.describe("in a 1280 by 800 window", () => {
     expect(await page.screenshot({ clip: inside })).toEqual(withLine);
   });
 
-  test("a long address gives way before the page's title in the top bar", async ({ page, request }) => {
+  test("in the top bar a long address gives way before the page's title, all of it", async ({ page, request }) => {
     const { id, slug } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
     await open(page, id);
-    const title = page.locator(".tb-page-title");
-    await expect(title).toHaveText("Spring series");
+    await expect(page.locator(".tb-page-title")).toHaveText("Spring series");
     await expect(page.locator(".tb-page-path")).toHaveText(`/${slug}`);
     // Every letter of the title shows; the address is the one cut short.
-    expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    expect(await page.locator(".tb-page-path").evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    // The words' own width, to the fraction of a pixel: a box a quarter
+    // of a pixel too narrow already ends its text in an ellipsis, which
+    // scrollWidth, rounded to whole pixels, can miss.
+    const whole = (selector: string) => page.locator(selector).evaluate((element) => {
+      const words = document.createRange();
+      words.selectNodeContents(element);
+      return words.getBoundingClientRect().width <= element.getBoundingClientRect().width + 0.01;
+    });
+    expect(await whole(".tb-page-title")).toBe(true);
+    expect(await whole(".tb-page-path")).toBe(false);
+
+    // A title too long for the bar is cut in its turn, inside the page
+    // switch, with no address showing at all.
+    const long = await makePage(request, "Every swim of the long winter series", [section("s", "Here", [column("c", [])])]);
+    await open(page, long.id);
+    await expect(page.locator(".tb-page-title")).toHaveText("Every swim of the long winter series");
+    expect(await whole(".tb-page-title")).toBe(false);
+    const name = (await page.locator(".tb-page-name").boundingBox())!;
+    const titleBox = (await page.locator(".tb-page-title").boundingBox())!;
+    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(name.x + name.width + 0.01);
+    expect(await page.locator(".tb-page-path").evaluate((element) => element.getBoundingClientRect().left >= element.parentElement!.getBoundingClientRect().right - 0.01)).toBe(true);
   });
 });

@@ -96,8 +96,10 @@ export function TopBar() {
           onClick={() => setMenu(menu === "pages" ? null : "pages")}
         >
           <Icon name="page" />
-          <span className="tb-page-title">{current ? title : "Pages"}</span>
-          {current && !current.home && <span className="tb-page-path">/{current.slug}</span>}
+          <span className="tb-page-name">
+            <span className="tb-page-title">{current ? title : "Pages"}</span>
+            {current && !current.home && <span className="tb-page-path">/{current.slug}</span>}
+          </span>
           <Icon name="chevron-down" className="i i-xs" />
         </button>
         {menu === "pages" && (

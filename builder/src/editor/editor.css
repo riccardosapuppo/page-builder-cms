@@ -107,10 +107,13 @@ body {
 .tb-mark:hover, .tb-page:hover, .tb-mark[aria-expanded="true"], .tb-page[aria-expanded="true"] { background: var(--key); }
 .tb-page { display: inline-flex; align-items: center; gap: 6px; height: 36px; min-width: 0; padding: 0 8px; margin-right: 4px; border-radius: var(--r-control); white-space: nowrap; }
 .tb-page > .i:first-child { color: var(--steel); }
-.tb-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
-/* Short of room, the address gives way first, then the title: "Sp…"
-   beside a whole "/spring-series" named the page by the lesser half. */
-.tb-page-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1000; color: var(--steel); }
+/* Short of room, the address gives way first, all of it, and only then
+   the title: "Sp…" beside a whole "/spring-series" named the page by the
+   lesser half. The title never shrinks, but it is never wider than the
+   room the two share; the address takes what is left. */
+.tb-page-name { display: flex; align-items: baseline; min-width: 0; overflow: hidden; }
+.tb-page-title { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
+.tb-page-path { min-width: 0; padding-left: 6px; overflow: hidden; text-overflow: ellipsis; color: var(--steel); }
 .tb-page > .i-xs { color: var(--steel); }
 .chip { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .chip-draft { gap: 6px; background: var(--key); color: var(--steel); margin-right: 4px; white-space: nowrap; }
