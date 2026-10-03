@@ -7,12 +7,14 @@ import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { entryCaps, GROUP_NOTES, KEY_GROUPS, KEYMAP, type Cap } from "./keymap.ts";
 
+// An arrow is drawn, and named in text a screen reader reads: a kbd may
+// not carry an aria-label of its own (it has no role that takes one).
 export function KeyCaps({ caps, small = false }: { caps: readonly Cap[]; small?: boolean }) {
   return (
     <>
       {caps.map((cap, index) => "text" in cap
         ? <kbd key={index} className={small ? "kc" : undefined}>{cap.text}</kbd>
-        : <kbd key={index} className={small ? "kc" : undefined} aria-label={cap.name}><Icon name={`arrow-${cap.arrow}`} className="i i-key" /></kbd>)}
+        : <kbd key={index} className={small ? "kc" : undefined}><Icon name={`arrow-${cap.arrow}`} className="i i-key" /><span className="visually-hidden">{cap.name}</span></kbd>)}
     </>
   );
 }
