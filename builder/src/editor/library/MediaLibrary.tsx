@@ -585,7 +585,8 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
 }
 
 // Delete, asked twice: the question takes the focus on its safe answer,
-// and Keep it gives the focus back to Delete.
+// and Keep it gives the focus back to Delete. Esc in the question is Keep
+// it: it takes back the question, not the whole library around it.
 function DeleteControl({ filename, deleting, said, onAsk, onKeep, onDelete }: { filename: string; deleting: "asking" | "working" | null; said: string | null; onAsk: () => void; onKeep: () => void; onDelete: () => void }) {
   const keep = useRef<HTMLButtonElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
@@ -598,7 +599,11 @@ function DeleteControl({ filename, deleting, said, onAsk, onKeep, onDelete }: { 
   return (
     <div className="md-delete">
       {deleting === "asking" ? (
-        <div className="md-confirm" role="group" aria-label={`Delete ${filename}`}>
+        <div className="md-confirm" role="group" aria-label={`Delete ${filename}`} onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.stopPropagation();
+          onKeep();
+        }}>
           <p>Delete it from the library for good? The CMS keeps it while a page or a kept version shows it.</p>
           <div className="md-confirm-buttons">
             <button ref={keep} className="btn btn-small btn-secondary" type="button" onClick={onKeep}>Keep it</button>

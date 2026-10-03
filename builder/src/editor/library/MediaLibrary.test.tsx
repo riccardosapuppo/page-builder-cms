@@ -223,6 +223,26 @@ describe("looking after the library", () => {
     expect(lib.asked.deletes).toEqual(["tea", "jetty"]);
   });
 
+  test("Esc in the delete question takes the question back, not the library: the focus back on Delete from library, nothing deleted", () => {
+    const lib = library([item("tea", "Tea")]);
+    const kit = editorKit({ document: widgetPage(), media: lib.make });
+    let closed = 0;
+    kit.render(<MediaLibrary purpose={{ kind: "manage" }} onClose={() => { closed += 1; }} />);
+    const dialog = screen.getByRole("dialog", { name: "Media library" });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "tea.png" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete from library" }));
+    const keep = within(within(dialog).getByRole("group", { name: "Delete tea.png" })).getByRole("button", { name: "Keep it" });
+    expect(document.activeElement).toBe(keep);
+    fireEvent.keyDown(keep, { key: "Escape" });
+    expect(closed).toBe(0);
+    expect(within(dialog).queryByRole("group", { name: "Delete tea.png" })).toBeNull();
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Delete from library" }));
+    expect(lib.asked.deletes).toEqual([]);
+    // Esc anywhere else still closes the library.
+    fireEvent.keyDown(within(dialog).getByRole("button", { name: "Delete from library" }), { key: "Escape" });
+    expect(closed).toBe(1);
+  });
+
   test("a delete whose answer never came says so, and the image stays", async () => {
     const lib = library([item("tea", "Tea")]);
     const kit = editorKit({ document: widgetPage(), media: lib.make });
