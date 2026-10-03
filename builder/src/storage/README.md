@@ -17,7 +17,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 
 ## The interface
 
-`StorageAdapter` has every operation of the plan: pages (list, create,
+`StorageAdapter` has every operation of the full system: pages (list, create,
 read, set the next address or the home mark), the draft (read, save at a
 revision), publish, schedule, versions (list, read, "Save version",
 restore), the media library (list, upload, alt text, delete), the site

@@ -33,8 +33,9 @@ the tests' editor, whose proxy points at a CMS on 3901, links to 3901.
 The other ways, and why not:
 - **Passing the pages through the proxy too** (`/preview`, every slug):
   the published pages' addresses are any slug, so the proxy would have to
-  take every path that is not the editor's, which is the fallback rule 27
-  forbids (a missing editor file would come back as the CMS's page).
+  take every path that is not the editor's: a fallback, which the
+  editor's serving rules forbid, since a missing editor file must be a 404
+  and would come back as the CMS's page.
 - **Reading the origin from the API's answers**: the API writes paths,
   on purpose, so its answers stay right behind any proxy that keeps the
   `Host` (the editor's proxy is one); an absolute address in them would be

@@ -25,8 +25,8 @@ One folder per widget, named as its `type` in the schema: `heading/`,
 - `a11y.ts`: its accessibility test (below).
 
 `panels.ts` lists the panels by type, apart from `registry.ts`: the render
-contract and the rule-9 check load the registry and have no use for the
-editor's controls.
+contract and the random-page agreement check load the registry and have
+no use for the editor's controls.
 
 Each folder's `a11y.ts` is the widget's accessibility test, as data
 (`a11y.ts` here has its shape): cases, each a block's props and what a
@@ -64,8 +64,8 @@ approved design's (read from `design/index.html`), and drawn as that
 symbol's markup with no warning from React; every new widget a
 valid block, and a page holding one of each a valid page. The contract
 test checks each widget's traps exist, in a fixture, with its type, and
-the rule-9 check saves one of each new widget to the CMS and compares the
-page it serves with React's.
+the random-page agreement check saves one of each new widget to the CMS
+and compares the page it serves with React's.
 
 ## Adding a widget
 

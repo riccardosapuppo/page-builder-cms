@@ -1,5 +1,5 @@
-// The rule-9 generator on its own, without a server: every page it makes is
-// valid (it throws otherwise), uses what it was made to use, and draws in
+// The agreement check's page generator on its own, without a server:
+// every page it makes is valid (it throws otherwise), uses what it was made to use, and draws in
 // React without an error and through the safety check.
 // @vitest-environment node
 import fc from "fast-check";
@@ -13,7 +13,7 @@ import { safetyProblems } from "./render-safety.ts";
 const resolver = (id: string) => (id === "lib-1" ? { src: "/rails/active_storage/blobs/proxy/x/a.png", width: 3, height: 2 } : null);
 
 // 80 pages, drawn by React's development build: about 20 s on a busy
-// machine. The rule-9 check is where the pages are many.
+// machine. The random-page agreement check is where the pages are many.
 test("80 generated pages are valid, hold every block type, and draw safely", () => {
   const seen = new Set<string>();
   let maps = 0;

@@ -1,6 +1,7 @@
 // The safety check of a rendered page, run on the React render of every
-// contract fixture and every rule-9 document, and on the server's goldens:
-// what a page must never carry, whatever its document holds.
+// contract fixture and every page of the agreement check, and on the
+// server's goldens: what a page must never carry, whatever its document
+// holds.
 //
 // - no <script>, in any namespace, and none of the elements that load or
 //   run something of their own (style, base, object, embed, link, meta,

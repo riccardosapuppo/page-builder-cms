@@ -1,5 +1,5 @@
-// How the render contract and the rule-9 check compare two renders of a
-// page: the server's HTML (a golden, or a page it serves) and the React
+// How the render contract and the random-page agreement check compare two
+// renders of a page: the server's HTML (a golden, or a page it serves) and the React
 // renderer's. Each is parsed by parse5, an HTML parser that is neither
 // side's, as a browser would parse it inside the page's <main>; then the
 // two trees are written out in one canonical form, one node a line, and

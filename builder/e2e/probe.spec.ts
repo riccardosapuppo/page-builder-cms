@@ -1,4 +1,4 @@
-// The probe the plan moved to the start of stage 2: before any editor code
+// The probe moved to the start of stage 2: before any editor code
 // relies on it, show that from a browser, on the editor development
 // server's origin, through its proxy, a draft is saved and an image is
 // uploaded with Active Storage's direct upload, to a real CMS.

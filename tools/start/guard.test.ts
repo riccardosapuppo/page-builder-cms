@@ -2,7 +2,7 @@
 //
 // The version check of tools/start.cjs, which must run on any Node and so
 // cannot import a library, held to semver, the implementation npm itself
-// uses (rule 45: two implementations written together err together), on
+// uses (two implementations written together err together), on
 // every engines range of the repository's package.json files and on
 // versions from Node 10 to 30. The range is read from package.json at run
 // time, so the guard and the declared requirement cannot drift apart.

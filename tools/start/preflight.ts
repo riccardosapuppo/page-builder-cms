@@ -86,7 +86,7 @@ export function checkPorts(ports: Port[]): string[] {
   const problems: string[] = [];
   for (const { port, what, variable } of ports) {
     try {
-      // Rule 132: ask the system who listens; a test bind on 127.0.0.1
+      // Ask the system who listens: a test bind on 127.0.0.1
       // succeeds on Windows while another program holds 0.0.0.0.
       const found = listeners(port);
       if (found.length) problems.push(`Port ${port}, for ${what}, is taken by ${describeListeners(found)}: stop that program, or choose another port with ${variable}.`);

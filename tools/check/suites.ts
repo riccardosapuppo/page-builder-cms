@@ -386,7 +386,7 @@ export const SUITES: Suite[] = [
   },
   {
     name: "editor-rails",
-    what: "the editor against a CMS of its own: storage battery, rule 9, canvas parity (Vitest, project rails)",
+    what: "the editor against a CMS of its own: storage battery, the random-page agreement check, canvas parity (Vitest, project rails)",
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)]]));

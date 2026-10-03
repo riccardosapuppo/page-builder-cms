@@ -1,5 +1,6 @@
-// What the rule-9 check (render-agreement.rails.test.tsx) and its planted
-// faults (render-agreement-plants.rails.test.tsx) share: a page of their own
+// What the random-page agreement check (render-agreement.rails.test.tsx)
+// and its planted faults (render-agreement-plants.rails.test.tsx) share: a
+// page of their own
 // on the CMS the run started, two library images, and the comparison of the
 // page the CMS serves with the React render of the same document.
 //
@@ -41,7 +42,7 @@ export interface Agreement {
 
 export const oneColumn = (children: unknown[]) => ({
   schemaVersion: 1,
-  title: "Rule 9",
+  title: "Random page",
   sections: [{ id: "s", type: "section", props: {}, style: { base: {} }, children: [{ id: "c", type: "column", props: {}, style: { base: {} }, children }] }],
 });
 
@@ -61,7 +62,7 @@ export async function startAgreement(cms: string, name: string): Promise<Agreeme
     library.push(outcome.value);
   }
   const slug = `${name}-${run}`;
-  const created = await adapter.createPage({ title: "Rule 9", slug });
+  const created = await adapter.createPage({ title: "Random page", slug });
   if (!created.ok) throw new Error(`the page was refused: ${JSON.stringify(created.problem)}`);
   const pageId = created.value.page.id;
   const previewPath = created.value.links.preview;

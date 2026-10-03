@@ -1,6 +1,7 @@
-// npm run check:serving, from builder/ (rule 27 of the project's prompt,
-// PIANO section 8). Checks over plain HTTP, and in headless Chromium, how
-// the editor's shell and the published pages are served:
+// npm run check:serving, from builder/. Checks over plain HTTP, and in
+// headless Chromium, how the editor's shell and the published pages are
+// served, so no browser keeps an old editor and the published pages stay
+// script-free and cacheable on purpose:
 //
 // The editor's shell, on the development server (what npm start runs) and
 // on `vite preview` of a build made for the check:

@@ -1,8 +1,9 @@
 // The editor's twins of the server's render rules, run beside the server's
 // own on the same generated values: the URL policy (policy.ts and
 // cms/app/models/render_policy.rb) and rich text (rich-text.tsx and
-// cms/app/helpers/rich_text_helper.rb). Unlike rule 9, which saves pages
-// and so only meets what the schema accepts, this hands both sides values
+// cms/app/helpers/rich_text_helper.rb). Unlike the random-page agreement
+// check, which saves pages and so only meets what the schema accepts, this
+// hands both sides values
 // the schema refuses: hostile addresses, numbers out of range or written as
 // strings, rich text with unknown nodes and marks. Ruby runs
 // ../../test/ruby/twins.rb with the CMS's gems; nothing else of the CMS.

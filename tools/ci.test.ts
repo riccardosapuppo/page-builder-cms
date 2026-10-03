@@ -1,8 +1,8 @@
 // node --test tools/ci.test.ts
 //
-// .github/workflows/ci.yml read as GitHub reads it, before it is pushed
-// (rule 81): it parses as YAML and holds no control character, every job
-// has a time limit, and every command it runs exists where it runs it: the
+// .github/workflows/ci.yml read as GitHub reads it, before it is pushed:
+// it parses as YAML and holds no control character, every job has a time
+// limit, and every command it runs exists where it runs it: the
 // npm scripts in the package.json of the step's folder, the lockfile npm ci
 // needs, the files node and bin/ are given. A workflow whose command does
 // not exist fails on GitHub only after a push; here it fails first.

@@ -1,4 +1,4 @@
-// The mark at the size it is seen at (rule 48): the editor's favicon, as
+// The mark at the size it is seen at: the editor's favicon, as
 // the browser serves it, drawn by Chromium at 16 and 32 pixels on a light
 // and a dark tab, and its pixels read back. What must survive:
 // - it fills its tile: what differs from the tab spans at least 10 of 16

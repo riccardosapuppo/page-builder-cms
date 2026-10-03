@@ -10,7 +10,7 @@
 // Exits 0 when every suite passed, 1 when one failed, and 2 when none
 // failed but some could not run here (no Ruby, no Chromium, a port taken):
 // those are listed at the end, because a suite that did not run says
-// nothing, and must never read as passed (rule 68).
+// nothing, and must never read as passed.
 //
 // Before and after the suites it checks that cms/public/assets is absent:
 // a production build left there (assets:precompile) would be served in

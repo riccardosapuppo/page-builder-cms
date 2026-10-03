@@ -5,10 +5,10 @@
 // - Every line either prints is passed on with the name of the server in
 //   front, and the last lines are kept for the sentence that says why one
 //   stopped.
-// - Ready means answering for itself (rule 53): the CMS's /up and its page
+// - Ready means answering for itself: the CMS's /up and its page
 //   list; the editor's own index and, through its proxy, the same page list
 //   the CMS gave. Then the system is asked who listens on each port, which
-//   must be the child started here, on 127.0.0.1 alone (rule 57): a server
+//   must be the child started here, on 127.0.0.1 alone: a server
 //   left running by someone else answers like ours would.
 // - Stopping kills each child's whole tree (taskkill /T /F on Windows, the
 //   process group elsewhere: ../lib/processes.ts) and then asks the system

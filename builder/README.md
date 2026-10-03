@@ -71,7 +71,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run lint:plants` | Shows the fence firing: `build/lint-fence.test.ts`. |
 | `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, `test/setup-dom.ts`), then the "contract" project. Each test file runs in the one project its name says (`*.rails.test.*`, `*.contract.test.*`, any other `*.test.*` in "unit"); `build/projects.test.ts` asks Vitest and fails on a file in none. |
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
-| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, at least 1, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
+| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from the widget panel, move, edit text and properties, publish, open the served page); the focus after every command; every key of the keyboard map and the "?" window that lists them; the block's menu from the keyboard; axe with no serious or critical finding on the editor in twenty states, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish and Site style. |
 | `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports; prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. |
@@ -104,7 +104,7 @@ default the origin of an absolute `VITE_API_BASE`, else
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
 | `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers. |
-| `test/` | The Vitest setup; `env.ts`, which reads a run's seed or count from the environment; and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For storage: the fake clock. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the rule-9 pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |
+| `test/` | The Vitest setup; `env.ts`, which reads a run's seed or count from the environment; and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For storage: the fake clock. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the agreement check's random pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |
 
 ## What the checks hold
 
@@ -189,8 +189,9 @@ default the origin of an absolute `VITE_API_BASE`, else
     page drew in a median of 70.8 ms with other work keeping the CPU 93%
     busy, and of 35.9 ms in a later run on a less busy machine, both on
     2 October 2026: an order of magnitude, not a measure);
-  - rule 9: random valid pages saved through the API and compared with the
-    preview the CMS serves, and a published page (on 2 October 2026, 300
+  - the random-page agreement check: random valid pages saved through
+    the API and compared with the preview the CMS serves, and a
+    published page (on 2 October 2026, 300
     pages with seed 7 agreed, 26527 nodes, in 117.5 s, and the same in
     119.1 s in a later run; the default run, 60 pages, 4952 nodes, took
     25.7 s and later 30.8 s; four faults planted in the renderer were each

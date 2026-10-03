@@ -3,9 +3,9 @@
 // Where Bundler writes the gems' launchers, asked of Bundler itself in an
 // application folder of the test's own: an empty Gemfile, so nothing is
 // installed and nothing outside the folder is written.
-// - The planted case of rule 128: one launchers' folder written in
+// - The planted case: one launchers' folder written in
 //   .bundle/config, another in the environment, and Bundler asked which
-//   one it takes. The two prototypes of the plan disagreed about it, so
+//   one it takes. Two earlier prototypes disagreed about it, so
 //   the answer is printed, and the routine must not depend on it: it
 //   writes the same folder in both places.
 // - What each place does alone, and what Bundler takes with neither (on a

@@ -82,7 +82,7 @@ test("the fixtures hold every block type, and every widget's traps, of that widg
   }
 });
 
-// The probe the plan moved from stage 1 ("ActionView parity on 500
+// The probe moved here from stage 1 ("ActionView parity on 500
 // blocks"): the 500-block page, through the same comparison, and how long
 // React takes to draw it.
 // It renders the page 35 times: 1.9 s in one run, and 7.8 s in another

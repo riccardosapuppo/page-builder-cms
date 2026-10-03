@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 //
-// The rule-9 check can fail. Each fault below is planted in the React
-// renderer, one at a time, and the same check (render-agreement.rails.test.tsx)
+// The random-page agreement check can fail. Each fault below is planted in
+// the React renderer, one at a time, and the same check
+// (render-agreement.rails.test.tsx)
 // run on it must find a document that disagrees, within 40 documents of the
 // default seed: a map address written with toFixed, data-style with its keys
 // unsorted, a plain text's last line breaks dropped, an empty paragraph not
@@ -73,14 +74,14 @@ vi.mock("../src/render/rich-text.tsx", async (importOriginal) => {
 });
 
 const cms = inject("cmsUrl");
-const SEED = wholeNumberFromEnv("RULE9_SEED", 20261002);
+const SEED = wholeNumberFromEnv("AGREEMENT_SEED", 20261002);
 let cmsPage: Agreement;
 
 beforeAll(async () => {
   cmsPage = await startAgreement(cms, "rule-nine-plants");
 }, 120_000);
 
-test.each(["toFixed", "unsorted", "breaks", "paragraphs"] as const)("with the fault %s planted, rule 9 finds a page that disagrees", async (fault) => {
+test.each(["toFixed", "unsorted", "breaks", "paragraphs"] as const)("with the fault %s planted, the agreement check finds a page that disagrees", async (fault) => {
   plant.current = fault;
   try {
     let tried = 0;
@@ -98,7 +99,7 @@ test.each(["toFixed", "unsorted", "breaks", "paragraphs"] as const)("with the fa
     expect(failure, "the plant went unnoticed").not.toBeNull();
     const cause = failure!.cause instanceof Error ? failure!.cause.message : String(failure!.cause);
     expect(cause).toMatch(/^preview: the trees differ at node \d+, in block /);
-    console.log(`rule 9 plant ${fault}: found after ${tried} document(s): ${cause.split("\n")[0]}`);
+    console.log(`agreement check, plant ${fault}: found after ${tried} document(s): ${cause.split("\n")[0]}`);
   } finally {
     plant.current = "none";
   }

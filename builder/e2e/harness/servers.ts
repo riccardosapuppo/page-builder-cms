@@ -7,11 +7,11 @@
 //   tools/check-production.ts does for production. Nothing it writes
 //   touches the development or test databases or storage/.
 // - The editor's Vite server runs with its proxy pointed at that CMS.
-// - Each waits for the server to answer for itself (rule 53): the CMS's
+// - Each waits for the server to answer for itself: the CMS's
 //   /up and an API read on the empty database; the editor's index page and,
 //   through its proxy, the same API read. Then the system is asked who
 //   listens on the port, which must be the process started here and no
-//   other (rule 57): a server left running by someone else answers like
+//   other: a server left running by someone else answers like
 //   ours would.
 // - Stopping kills the whole tree (taskkill /T /F on Windows, the process
 //   group elsewhere: ../../../tools/lib/processes.ts), shows the port

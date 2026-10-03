@@ -31,8 +31,9 @@ widgets import its helpers. Nothing here talks to a server.
   `null`. It is injected because the answer depends on where the editor
   runs; the page's own answer is Active Storage's proxy route with a signed
   id, which only the CMS can make. The media library's `url` (the redirect
-  route) serves the same bytes (shown by the rule-9 check), so the canvas
-  can use it: the image is the same, its address is not.
+  route) serves the same bytes (shown by the random-page agreement
+  check), so the canvas can use it: the image is the same, its address is
+  not.
 - **`ctx.useDecoration(block)`**, the canvas's only way in: a hook called
   once in each block's render, returning attributes and handlers for the
   block's root, a `ref`, and what to draw inside it after the block's
@@ -80,7 +81,7 @@ widgets import its helpers. Nothing here talks to a server.
 | The render contract, `render.contract.test.tsx` | `npm run test:contract` (and `npm test`) | Every fixture of `contract/fixtures` against the server's golden, after the goldens are shown current against the manifest; the safety check on both sides; the 500-block page and its time. React's production build. |
 | Its plants, `contract-plants.test.tsx`, `../../test/*.test.ts` | `npm test` | A stale, missing or orphan golden; eleven differences planted in a golden; a policy that lets every link through; twenty pieces of markup a page must not carry. |
 | The canvas, `canvas.test.tsx` | `npm test` | React DOM builds the tree the contract compared; the decoration reaches the root only; a change redraws its path and no more. |
-| Rule 9, `../../test/render-agreement.rails.test.tsx` and its plants | `npm run test:rails` | Random valid pages saved through the API and compared with the preview the CMS serves, then a published page. `RULE9_RUNS` (60) and `RULE9_SEED` (20261002) set the run. |
+| The random-page agreement check, `../../test/render-agreement.rails.test.tsx` and its plants | `npm run test:rails` | Random valid pages saved through the API and compared with the preview the CMS serves, then a published page. `AGREEMENT_RUNS` (60) and `AGREEMENT_SEED` (20261002) set the run. |
 | The twins, `twins.rails.test.ts` | `npm run test:rails` | `policy.ts` and `rich-text.tsx` against the CMS's own `RenderPolicy` and `RichTextHelper`, in Ruby, on values the schema refuses too. |
 | Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 390 (the two previews) against the CMS's preview at those window widths: every element's box and computed style. |
 

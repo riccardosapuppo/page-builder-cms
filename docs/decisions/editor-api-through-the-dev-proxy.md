@@ -64,9 +64,8 @@ The other ways, and why not:
    origin asked, which is right for one origin and would be wrong behind a
    proxy that changed the `Host`.
 4. **Two servers to run** in development. The tests start their own
-   ([builder/e2e/harness](../../builder/e2e/harness/servers.ts)); one
-   command for both, `npm start`, is the plan's next step and not written
-   yet.
+   ([builder/e2e/harness](../../builder/e2e/harness/servers.ts)); for
+   everyone else one command, `npm start` (`tools/start`), starts both.
 
 The browser-only demo of stage 6 has no CMS at all: its storage adapter
 keeps everything in the browser, and none of this applies to it.

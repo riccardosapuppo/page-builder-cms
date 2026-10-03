@@ -1,7 +1,7 @@
 // Every widget's panel, by type: each one lives in its widget's folder,
 // next to its definition (./<widget>/panel.tsx). Kept apart from
-// registry.ts, which the render contract and the rule-9 check load: the
-// renderer has no use for the editor's controls.
+// registry.ts, which the render contract and the random-page agreement
+// check load: the renderer has no use for the editor's controls.
 import type { WidgetPanel } from "../editor/panels/types.ts";
 import type { WidgetType } from "../shared/document.ts";
 import { panel as accordion } from "./accordion/panel.tsx";

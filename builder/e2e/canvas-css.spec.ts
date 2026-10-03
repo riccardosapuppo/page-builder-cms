@@ -2,7 +2,7 @@
 // which imports the CMS's own site.css and tokens.css, applied in the
 // editor's page to page roots at the editor's three preview widths. The
 // layout must follow the width of the page root, not of the window (the
-// container queries the plan chose so the canvas needs no iframe), the
+// container queries chosen so the canvas needs no iframe), the
 // values must be those of schema/tokens.json, and the fonts must load from
 // where the repository keeps them.
 import { readFileSync } from "node:fs";

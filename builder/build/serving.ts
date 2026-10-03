@@ -1,5 +1,6 @@
-// How Vite's own servers send the editor's shell (rule 27 of the project's
-// prompt; check:serving, e2e/serving/check-serving.ts, holds them to it):
+// How Vite's own servers send the editor's shell, so a browser never keeps
+// an old editor after a new one is out (check:serving,
+// e2e/serving/check-serving.ts, holds them to it):
 // - the editor's page (its index.html) is never stored and never
 //   revalidated: "no-store, no-cache, must-revalidate, max-age=0", with no
 //   ETag and no Last-Modified, and a conditional request gets the page, not

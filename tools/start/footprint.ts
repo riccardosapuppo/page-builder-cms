@@ -1,6 +1,6 @@
 // What npm start changes outside the repository, measured: the smoke run
 // lists these places before it installs anything and again after it has
-// stopped, and says what changed (rule 128: "what it does not touch" is a
+// stopped, and says what changed ("what it does not touch" is a
 // measurement, not a promise).
 // - Folders where launchers land on the PATH: the user's WindowsApps on
 //   Windows (where RubyInstaller points Bundler), RubyGems' bin folders,

@@ -1,5 +1,5 @@
-// Random page documents for the rule-9 check (render-agreement.rails.test.ts):
-// valid by the schema, and chosen to be hard on two renderers that must
+// Random page documents for the random-page agreement check
+// (render-agreement.rails.test.ts): valid by the schema, and chosen to be hard on two renderers that must
 // agree. The text holds markup, entities, quotes, line breaks, runs of
 // spaces, invisible characters, emoji, combining marks and right-to-left
 // script; the addresses use every form and character the schema allows;

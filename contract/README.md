@@ -78,7 +78,7 @@ valid, and a test says so.
   the canvas and the page two addresses for one map, and
   `builder/src/render/policy.test.ts` (fixed values, these two among them),
   `twins.rails.test.ts` there (thousands of numbers through Ruby itself)
-  and the rule-9 check would fail.
+  and the random-page agreement check would fail.
 - No text a visitor reads names a provider. The video card says "Loads a
   video from the provider when you click", as the approved design does;
   the provider's id stays in the document and in `data-provider`. A test
@@ -149,8 +149,9 @@ a median of 1383 ms. Other programs had the CPU 93% busy when sampled
 right after: an order of magnitude again. Its 3691 nodes were the same as
 the golden's.
 
-The rule-9 check (`builder/test/render-agreement.rails.test.tsx`) does the
-same for random valid pages, saved through the API and compared with the
+The random-page agreement check
+(`builder/test/render-agreement.rails.test.tsx`) does the same for random
+valid pages, saved through the API and compared with the
 preview the CMS serves; there the line breaks of the page's layout and
 view around the sections are left out too.
 
