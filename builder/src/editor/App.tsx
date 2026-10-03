@@ -121,20 +121,46 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     return list;
   }, [adapter]);
 
+  // The latest page asked for: an earlier request still loading gives way.
+  const opening = useRef(0);
   const openPage = useCallback(async (id: number): Promise<string | null> => {
+    const ticket = ++opening.current;
     const previous = live.current.autosave;
-    if (previous) {
-      const settled = await previous.flush();
-      if (settled.warnOnClose) return "This page has changes the server has not saved yet: it stays open until they are saved.";
-    }
+    const kept = "This page has changes the server has not saved yet: it stays open until they are saved.";
+    // Whether the page being left has every edit on the server: text still
+    // in a field is handed over first, so it counts.
+    const left = (): boolean => {
+      ui.getState().pending.deliver();
+      return !previous || !previous.getSnapshot().warnOnClose;
+    };
+    // Saves what waits for its pause or is on its way, until nothing does;
+    // false when the server has not taken it all.
+    const save = async (): Promise<boolean> => {
+      while (previous && !left()) {
+        const settled = await previous.flush();
+        if (settled.warnOnClose) return false;
+      }
+      return true;
+    };
+    if (!(await save())) return kept;
+    if (opening.current !== ticket) return null;
     let page;
     try {
       page = await adapter.getPage(id);
     } catch (error) {
-      return `The page could not be opened: ${describe(error)}`;
+      return opening.current === ticket ? `The page could not be opened: ${describe(error)}` : null;
     }
+    if (opening.current !== ticket) return null;
     const opened = openDocument(page.draft.document);
     if (!opened.ok) return `The page could not be opened: ${opened.errors[0]?.message ?? "its document is not valid"}.`;
+    // The page being left stayed open while the next one loaded, and the
+    // person may have edited it meanwhile: those edits are saved too. The
+    // last look (left) and the switch below run with no await between
+    // them, so no edit can fall in between.
+    while (!left()) {
+      if (!(await save())) return opening.current === ticket ? kept : null;
+      if (opening.current !== ticket) return null;
+    }
 
     live.current.unsubscribe();
     previous?.dispose();

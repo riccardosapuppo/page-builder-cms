@@ -11,7 +11,8 @@
 //   is open: the banner, Publish paused, Reload taking the other writer's
 //   page, Keep mine saving this tab's over it;
 // - words typed and not handed over yet when the tab is asked to close;
-// - a 422 whose fix was typed while the refused save travelled.
+// - a 422 whose fix was typed while the refused save travelled;
+// - an edit made on the page being left while the next page loads.
 import type { Page, Request } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, type DraftBlock } from "./helpers/site.ts";
@@ -126,6 +127,34 @@ test("a save answered 422 while the fix was typed: the fix is sent once the refu
   await expect(text).toHaveValue("Fixed words");
   await expect(text).not.toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("button", { name: "Publish", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+});
+
+test("an edit made on the open page while the next page loads is saved before the next page opens", async ({ page, request }) => {
+  const alpha = await makePage(request, "Alpha leaving", [section("sa", "Story", [column("ca", [heading("ha", "Alpha words")])])]);
+  const beta = await makePage(request, "Beta arriving", [section("sb", "Story", [column("cb", [heading("hb", "Beta words")])])]);
+  await open(page, alpha.id);
+  // The next page arrives only once the edit below is made: its save is
+  // then still waiting for its pause.
+  let arrive = () => {};
+  const edited = new Promise<void>((done) => {
+    arrive = done;
+  });
+  await page.route(`**/api/pages/${beta.id}`, async (route) => {
+    if (route.request().method() === "GET") await edited;
+    await route.fallback();
+  });
+  await page.getByRole("button", { name: /^Switch page/ }).click();
+  await page.getByRole("menu", { name: "Pages" }).getByRole("menuitem", { name: /Beta arriving/ }).click();
+  // Alpha is still on the canvas, and takes an edit.
+  await block(page, "ha").click();
+  const text = page.getByRole("textbox", { name: "Text" });
+  await text.fill("Alpha, edited while Beta was on its way");
+  await text.blur();
+  arrive();
+  await expect(block(page, "hb")).toBeVisible({ timeout: 15_000 });
+  const alphaText = (await draftOf(request, alpha.id)).document.sections[0]!.children[0]!.children[0]!.props.text;
+  expect(alphaText).toBe("Alpha, edited while Beta was on its way");
+  await saved(page);
 });
 
 test("a save the network loses is retried with the same saveId: the countdown, the toast, Retry now, then Saved", { tag: "@a11y" }, async ({ page, request }) => {
