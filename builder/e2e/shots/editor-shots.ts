@@ -2,7 +2,7 @@
 //
 // Photographs the editor in the states the approved design's shots show
 // (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
-// publish.png, site-style.png, history.png, save-states.png, and design/shots-extra/
+// publish.png, site-style.png, history.png, save-states.png, media.png, and design/shots-extra/
 // advanced.png, context.png, app-menu.png and about.png), plus the widget
 // panel, the phone preview, a save retrying, and a text written on the
 // canvas with its link's field (text, text-link), headless, in two windows: 1280 by 800, and
@@ -17,8 +17,9 @@
 // Fails on a console error, a page error, or a request that leaves the two
 // servers. Exits 2 on a missing argument.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { repoRoot } from "../../build/paths.ts";
 import { moveOnto, pickUp, settledTextEditor } from "../helpers/canvas.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../harness/servers.ts";
@@ -55,7 +56,9 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   });
   page.on("pageerror", (error) => problems.push(`${label}: page error: ${error.message}`));
   page.on("request", (request) => {
-    if (!allowed.some((origin) => request.url().startsWith(origin))) problems.push(`${label}: request outside the servers: ${request.url()}`);
+    // An image made ready for upload is shown from the editor's own blob:
+    // address, which never leaves the browser.
+    if (!allowed.some((origin) => request.url().startsWith(origin) || request.url().startsWith(`blob:${origin}`))) problems.push(`${label}: request outside the servers: ${request.url()}`);
   });
   const away = () => page.mouse.move(window.width - 6, window.height - 6);
   const shoot = async (name: string) => {
@@ -183,6 +186,40 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.getByRole("menu", { name: "Publish options" }).waitFor();
   await away();
   await shoot("publish");
+  await page.keyboard.press("Escape");
+
+  // #media: the hero's image selected, Replace image; the buoy picture
+  // uploaded with no alt text yet, chosen, its field asking for the text;
+  // the rock pools on their way, their bytes held back for the shot. Then
+  // both go on and are deleted, so the library is as the seed has it.
+  await page.locator('.canvas [data-block-id="hero-image"]').click();
+  await page.getByRole("tab", { name: "Content" }).click();
+  await page.getByRole("button", { name: "Replace image" }).click();
+  const library = page.getByRole("dialog", { name: "Media library" });
+  const files = library.getByLabel("Images to upload");
+  await files.setInputFiles({ name: "buoy-line.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "cms", "db", "seed_images", "g-buoys.png")) });
+  await library.getByRole("radio", { name: "buoy-line.png, no alt text" }).waitFor();
+  let release = () => {};
+  const held = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route("**/rails/active_storage/disk/**", async (route) => {
+    if (route.request().method() === "PUT") await held;
+    await route.fallback();
+  });
+  await files.setInputFiles({ name: "rock-pools.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "cms", "db", "seed_images", "g-rockpools.png")) });
+  await library.getByRole("progressbar", { name: "Uploading rock-pools.png" }).waitFor();
+  await library.getByText(/^Uploading, /).waitFor();
+  await away();
+  await shoot("media");
+  release();
+  await library.getByRole("radio", { name: "rock-pools.png, no alt text" }).waitFor({ timeout: 60_000 });
+  await page.unroute("**/rails/active_storage/disk/**");
+  const listed = await (await fetch(`${cmsUrl}/api/media`)).json() as { media: Array<{ id: string; filename: string }> };
+  for (const item of listed.media.filter((m) => m.filename === "buoy-line.png" || m.filename === "rock-pools.png")) {
+    const gone = await fetch(`${cmsUrl}/api/media/${item.id}`, { method: "DELETE", headers: { accept: "application/json" } });
+    if (gone.status !== 204) throw new Error(`deleting the shot's ${item.filename} answered ${gone.status}`);
+  }
   await page.keyboard.press("Escape");
 
   // #site-style: Primary open, Harbour chosen; then back to Sea, so the
