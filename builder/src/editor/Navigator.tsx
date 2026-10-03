@@ -84,14 +84,12 @@ export function Navigator() {
   const items = useRef(new Map<string, HTMLLIElement>());
 
   // A block selected anywhere opens the rows down to it, once, when it is
-  // selected. Selected from outside the tree (the canvas, its keys, a new
-  // block), it also closes the others: design/shots/advanced.png and
-  // drag.png show only the selection's path open, and the selected row
-  // itself stays open if it was. Selected in the tree itself, by a click
-  // or an arrow, the rows stay as the person left them, so they do not
-  // move under the keys. A row closed by hand afterwards stays closed.
-  // Adjusted while drawing, as React does state that follows a value from
-  // outside.
+  // selected, and closes the others: design/shots/advanced.png and
+  // drag.png show only the selection's path open; the selected row itself
+  // stays open if it was. Selected by the tree's own arrows, the rows stay
+  // as they are, so they never move under the keys. A row closed by hand
+  // afterwards stays closed. Adjusted while drawing, as React does state
+  // that follows a value from outside.
   const [chosenHere, setChosenHere] = useState<string | null>(null);
   if (selection !== seen) {
     setSeen(selection);
@@ -122,8 +120,8 @@ export function Navigator() {
   const errorsOn = useMemo(() => new Set(serverErrors.map((e) => e.blockId)), [serverErrors]);
   const tabStop = rows.some((r) => r.block.id === active) ? active : (rows[0]?.block.id ?? null);
 
-  const choose = (id: string, focus = true) => {
-    setChosenHere(id);
+  const choose = (id: string, focus = true, byKey = false) => {
+    setChosenHere(byKey ? id : null);
     store.getState().select(id);
     ui.setState({ tray: "edit", notice: null });
     setActive(id);
@@ -172,7 +170,7 @@ export function Navigator() {
     }
     event.preventDefault();
     event.stopPropagation();
-    if (target) choose(target.block.id);
+    if (target) choose(target.block.id, true, true);
   };
 
   if (!open) {
