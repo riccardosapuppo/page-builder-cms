@@ -134,8 +134,10 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.getByRole("button", { name: "Desktop" }).click();
 
   // design/shots-extra/app-menu.png: the mark's menu, opened from the
-  // keyboard; then About, from it.
+  // keyboard; then About, from it. The heading's Content tab under them,
+  // as in the design, not the Advanced tab an earlier shot left open.
   await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await page.getByRole("tab", { name: "Content" }).click();
   await page.getByRole("button", { name: "Page Builder CMS menu" }).focus();
   await page.keyboard.press("Enter");
   await page.getByRole("menu", { name: "Page Builder CMS" }).waitFor();
