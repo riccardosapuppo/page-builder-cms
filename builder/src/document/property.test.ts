@@ -5,7 +5,11 @@
 // inverse gives back the same page, byte for byte, with every removed key
 // absent again; redoing it gives the same page with the same ids; a
 // refused command changes nothing; and a whole session undone through the
-// store gives back the first page, and redone, the last.
+// store gives back the first page, and redone, the last. Among the
+// commands, the texts the canvas's text editor hands over, written as
+// TipTap writes them (../../test/document-arbitraries.ts, editorText):
+// each must be taken, kept in one form, and undone to the very text the
+// page stored, in whatever form it was stored.
 //
 // Seeded: a failure prints the seed and the path that replays it, as
 // DOC_PROPERTY_SEED=<seed> DOC_PROPERTY_PATH=<path> npm test -- src/document/property.test.ts
@@ -15,10 +19,11 @@ import { newTally, runSettings, sessionProperty, type Implementation } from "../
 import * as clipboard from "./clipboard.ts";
 import * as commands from "./commands.ts";
 import * as reducer from "./reducer.ts";
+import * as richText from "./rich-text.ts";
 import * as tree from "./tree.ts";
 import * as store from "../store/editor-store.ts";
 
-const real: Implementation = { commands, reducer, clipboard, tree, store };
+const real: Implementation = { commands, reducer, richText, clipboard, tree, store };
 
 // 300 sessions of up to 25 commands: about 10 s on a busy machine.
 test("random sessions keep every promise of the commands", { timeout: 180_000 }, () => {
@@ -32,7 +37,8 @@ test("random sessions keep every promise of the commands", { timeout: 180_000 },
   const kinds = ["insert", "delete", "move", "duplicate", "paste", "props", "style", "columnWidths", "columns", "page", "items"];
   for (const kind of kinds) expect(tally.applied[kind] ?? 0, `${kind} applied`).toBeGreaterThan(0);
   for (const reason of ["nesting", "full", "empty"]) expect(tally.refused[reason] ?? 0, `refused for ${reason}`).toBeGreaterThan(0);
+  expect(tally.texts, "texts handed over by the editor").toBeGreaterThan(0);
   const applied = Object.values(tally.applied).reduce((a, b) => a + b, 0);
   expect(applied / tally.commands).toBeGreaterThan(0.5);
-  console.log(`property: ${tally.commands} commands, ${applied} applied ${JSON.stringify(tally.applied)}, refused ${JSON.stringify(tally.refused)}`);
+  console.log(`property: ${tally.commands} commands, ${applied} applied (${tally.texts} texts from the editor) ${JSON.stringify(tally.applied)}, refused ${JSON.stringify(tally.refused)}`);
 });

@@ -59,6 +59,7 @@ async function load(plants: readonly Plant[]): Promise<Implementation> {
   return {
     commands: await import(/* @vite-ignore */ at("document/commands.ts")),
     reducer: await import(/* @vite-ignore */ at("document/reducer.ts")),
+    richText: await import(/* @vite-ignore */ at("document/rich-text.ts")),
     clipboard: await import(/* @vite-ignore */ at("document/clipboard.ts")),
     tree: await import(/* @vite-ignore */ at("document/tree.ts")),
     store: await import(/* @vite-ignore */ at("store/editor-store.ts")),
@@ -117,7 +118,29 @@ const MUTANTS: Array<{ name: string; plants: Plant[]; expect: RegExp }> = [
   {
     name: "a key put back at the end of its object instead of where it was",
     plants: [{ file: "document/ops.ts", search: "return withKey(object, op.key, op.after, op.at);", replace: "return withKey(object, op.key, op.after);" }],
-    expect: /keys in another order/,
+    // Seen as the order of the keys an undo gives back, or, when the key
+    // was added at the end, as the undo's own step finding it out of place.
+    expect: /keys in another order|undoing .* was refused: .* is not at \d+/,
+  },
+  {
+    // The text editor's own reading of the stored text (marks reordered, a
+    // link's nulls dropped) taken for the text to put back on undo.
+    name: "a text command whose undo puts back the editor's reading of the stored text, not the text itself",
+    plants: [{
+      file: "document/rich-text.ts",
+      search: "  return makeSetProps(doc, id, { doc: next as unknown as Json });",
+      replace: "  const made = makeSetProps(doc, id, { doc: next as unknown as Json });\n  if (made.ok) for (const op of made.command.ops) if (op.op === \"set\" && \"before\" in op) (op as { before: unknown }).before = richTextFromEditor(op.before);\n  return made;",
+    }],
+    expect: /Changed Text.*(must be possible here, and was refused|did not give back the same page)/,
+  },
+  {
+    name: "a text command that keeps the link's attributes as the editor wrote them",
+    plants: [{
+      file: "document/rich-text.ts",
+      search: "found.set(\"link\", { type: \"link\", attrs: { href: mark.attrs.href } });",
+      replace: "found.set(\"link\", { type: \"link\", attrs: { ...mark.attrs } } as Mark);",
+    }],
+    expect: /Changed Text.*(must be possible here, and was refused|another form than the canonical one)/,
   },
 ];
 

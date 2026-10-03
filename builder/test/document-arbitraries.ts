@@ -17,7 +17,7 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -26,6 +26,7 @@ import type * as Clipboard from "../src/document/clipboard.ts";
 import type * as Commands from "../src/document/commands.ts";
 import type { Json } from "../src/document/json.ts";
 import type * as Reducer from "../src/document/reducer.ts";
+import type * as RichText from "../src/document/rich-text.ts";
 import type * as Tree from "../src/document/tree.ts";
 import type * as Store from "../src/store/editor-store.ts";
 
@@ -33,6 +34,7 @@ import type * as Store from "../src/store/editor-store.ts";
 export interface Implementation {
   commands: typeof Commands;
   reducer: typeof Reducer;
+  richText: typeof RichText;
   clipboard: typeof Clipboard;
   tree: typeof Tree;
   store: typeof Store;
@@ -63,23 +65,63 @@ const imageRef = fc.record({
   text: fc.oneof({ weight: 4, arbitrary: line.map((alt) => ({ alt })) }, { weight: 1, arbitrary: fc.constant({ decorative: true as const }) }),
 }).map(({ source, text }) => ({ ...source, ...text }));
 
-const marks = fc.subarray([
-  { type: "bold" },
-  { type: "italic" },
-  { type: "link", attrs: { href: "https://swims.example.org/join" } },
-] as AnyObject[], { minLength: 0, maxLength: 3 });
+// Rich text as a page may store it: every form the schema takes, not only
+// the one the editor writes (marks in any order, a link with the nulls the
+// schema allows, a numbered list starting at 1 or with no attributes, a
+// line break with marks), so a text command's undo is held to the stored
+// form, whatever it is.
+const storedLink = fc.constantFrom(...HREFS).chain((href) => fc.constantFrom<AnyObject>(
+  { type: "link", attrs: { href } },
+  { type: "link", attrs: { href, target: null, rel: null, class: null } },
+  { type: "link", attrs: { href, target: "_blank", rel: "noopener noreferrer nofollow" } },
+));
+const marks = storedLink.chain((link) => fc.shuffledSubarray([{ type: "bold" }, { type: "italic" }, link] as AnyObject[], { minLength: 0, maxLength: 3 }));
 const inline = fc.oneof(
   { weight: 5, arbitrary: fc.record({ text: line, marks }).map(({ text, marks: m }) => compact({ type: "text", text, marks: m.length > 0 ? m : undefined })) },
-  { weight: 1, arbitrary: fc.constant({ type: "hardBreak" }) },
+  { weight: 1, arbitrary: fc.constantFrom<AnyObject>({ type: "hardBreak" }, { type: "hardBreak", marks: [{ type: "italic" }] }) },
 );
 const richParagraph = fc.array(inline, { maxLength: 3 }).map((content) => (content.length > 0 ? { type: "paragraph", content } : { type: "paragraph" }));
-const listItem = richParagraph.map((p) => ({ type: "listItem", content: [p] }));
-const richBlock = fc.oneof(
-  { weight: 4, arbitrary: richParagraph },
-  { weight: 1, arbitrary: fc.array(listItem, { minLength: 1, maxLength: 3 }).map((content) => ({ type: "bulletList", content })) },
-  { weight: 1, arbitrary: fc.record({ start: fc.integer({ min: 1, max: 9 }), content: fc.array(listItem, { minLength: 1, maxLength: 3 }) }).map(({ start, content }) => ({ type: "orderedList", attrs: { start }, content })) },
+const orderedAttrs = fc.option(fc.record({ start: fc.integer({ min: 1, max: 9 }), type: fc.option(fc.constantFrom(...ORDERED_LIST_STYLES), { nil: undefined }) }).map(compact), { nil: undefined });
+// A list two deep at most: an item's paragraph, then maybe a list of its own.
+const flatList = (item: fc.Arbitrary<AnyObject>) => fc.oneof(
+  fc.array(item, { minLength: 1, maxLength: 3 }).map((content) => ({ type: "bulletList", content })),
+  fc.record({ attrs: orderedAttrs, content: fc.array(item, { minLength: 1, maxLength: 3 }) }).map(({ attrs, content }) => compact({ type: "orderedList", attrs, content })),
 );
+const leafItem = richParagraph.map((p) => ({ type: "listItem", content: [p] }));
+const listItem = fc.record({ p: richParagraph, inner: fc.option(flatList(leafItem), { nil: undefined, freq: 3 }) })
+  .map(({ p, inner }) => ({ type: "listItem", content: inner ? [p, inner] : [p] }));
+const richBlock = fc.oneof({ weight: 4, arbitrary: richParagraph }, { weight: 2, arbitrary: flatList(listItem) });
 const richDoc = fc.array(richBlock, { minLength: 1, maxLength: 3 }).map((content) => ({ type: "doc", content }));
+
+// Rich text as the canvas's text editor hands it over (TipTap's getJSON()):
+// a link with every attribute TipTap has, title included; a numbered list
+// with start and type always written, and whatever a paste brought (start
+// 0, a type of "disc"); marks in its ranking; tabs and control characters
+// pasted as text; a run longer than the schema's longest; an empty doc.
+// The text command must turn each into a text the schema takes.
+const EDITOR_TEXTS = [...LINES, "Tab\tafter", "Bell\u0007and\u0085next", "w".repeat(10003)] as const;
+const editorLink = fc.constantFrom(...HREFS).map((href) => ({ type: "link", attrs: { href, target: "_blank", rel: "noopener noreferrer nofollow", class: null, title: null } }));
+const editorMarks = editorLink.chain((link) => fc.shuffledSubarray([link, { type: "bold" }, { type: "italic" }] as AnyObject[], { minLength: 0, maxLength: 3 }));
+const editorInline = fc.oneof(
+  { weight: 6, arbitrary: fc.record({ text: fc.constantFrom(...EDITOR_TEXTS), marks: editorMarks }).map(({ text, marks: m }) => compact({ type: "text", text, marks: m.length > 0 ? m : undefined })) },
+  { weight: 1, arbitrary: editorMarks.map((m) => compact({ type: "hardBreak", marks: m.length > 0 ? m : undefined })) },
+);
+const editorParagraph = fc.array(editorInline, { maxLength: 4 }).map((content) => (content.length > 0 ? { type: "paragraph", content } : { type: "paragraph" }));
+const editorList = (item: fc.Arbitrary<AnyObject>) => fc.oneof(
+  fc.array(item, { minLength: 1, maxLength: 3 }).map((content) => ({ type: "bulletList", content })),
+  fc.record({
+    start: fc.oneof(fc.constant(1), fc.integer({ min: -2, max: 12 }), fc.constant(250000)),
+    type: fc.constantFrom(null, "1", "a", "A", "i", "I", "disc"),
+    content: fc.array(item, { minLength: 1, maxLength: 3 }),
+  }).map(({ start, type, content }) => ({ type: "orderedList", attrs: { start, type }, content })),
+);
+const editorLeafItem = editorParagraph.map((p) => ({ type: "listItem", content: [p] }));
+const editorItem = fc.record({ p: editorParagraph, inner: fc.option(editorList(editorLeafItem), { nil: undefined, freq: 3 }) })
+  .map(({ p, inner }) => ({ type: "listItem", content: inner ? [p, inner] : [p] }));
+export const editorText: fc.Arbitrary<AnyObject> = fc.oneof(
+  { weight: 12, arbitrary: fc.array(fc.oneof({ weight: 3, arbitrary: editorParagraph }, { weight: 1, arbitrary: editorList(editorItem) }), { minLength: 1, maxLength: 4 }).map((content) => ({ type: "doc", content })) },
+  { weight: 1, arbitrary: fc.constant({ type: "doc", content: [] }) },
+);
 
 // Valid props for each widget type.
 export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
@@ -191,7 +233,9 @@ export type Intent =
   | { kind: "widths"; pick: number; preset: number }
   | { kind: "count"; pick: number; count: number }
   | { kind: "page"; variant: number; value: number }
-  | { kind: "items"; pick: number; action: "insert" | "remove" | "move" | "set"; index: number; other: number; item: number };
+  | { kind: "items"; pick: number; action: "insert" | "remove" | "move" | "set"; index: number; other: number; item: number }
+  // The canvas's text editor handing a text over, as TipTap writes it.
+  | { kind: "text"; pick: number; doc: AnyObject };
 
 const n = fc.nat({ max: 1000 });
 
@@ -209,6 +253,7 @@ export const intent: fc.Arbitrary<Intent> = fc.oneof(
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("count" as const), pick: n, count: fc.integer({ min: 1, max: 5 }) }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("page" as const), variant: n, value: n }) },
   { weight: 3, arbitrary: fc.record({ kind: fc.constant("items" as const), pick: n, action: fc.constantFrom("insert" as const, "remove" as const, "move" as const, "set" as const), index: n, other: n, item: n }) },
+  { weight: 3, arbitrary: fc.record({ kind: fc.constant("text" as const), pick: n, doc: editorText }) },
 );
 
 const at = <T>(list: readonly T[], k: number): T | undefined => (list.length === 0 ? undefined : list[k % list.length]);
@@ -340,6 +385,14 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
         }
       }
     }
+    case "text": {
+      // Whatever the editor writes, the text command makes a text the
+      // schema takes: the page must take it.
+      const texts = blocks.filter((b) => b.block.type === "text");
+      const picked = at(texts, wish.pick);
+      if (!picked) return null;
+      return { made: impl.richText.makeTextEdit(doc, picked.block.id, wish.doc), mustAccept: true };
+    }
   }
 }
 
@@ -385,9 +438,11 @@ export interface Tally {
   applied: Record<string, number>;
   refused: Record<string, number>;
   commands: number;
+  // Texts the editor handed over that the page took.
+  texts: number;
 }
 
-export const newTally = (): Tally => ({ applied: {}, refused: {}, commands: 0 });
+export const newTally = (): Tally => ({ applied: {}, refused: {}, commands: 0, texts: 0 });
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
@@ -431,6 +486,7 @@ export function session(impl: Implementation, start: PageDocument, wishes: reado
       continue;
     }
     tally.applied[command.kind] = (tally.applied[command.kind] ?? 0) + 1;
+    if (wish.kind === "text") tally.texts += 1;
     const after = deepFreeze(applied.document);
 
     // Every result is a valid page, by the application rules and the schema.
@@ -453,6 +509,12 @@ export function session(impl: Implementation, start: PageDocument, wishes: reado
       else if (!isDeepStrictEqual(redone.document, after)) fail(`redoing ${command.label} did not give the same page`);
     }
     if (!isDeepStrictEqual(c.invertCommand(inverse), command)) fail(`the inverse of the inverse of ${command.label} is not the command`);
+    // A text the editor handed over is kept in the one form the text
+    // command makes: made again from what was kept, it is the same.
+    if (wish.kind === "text" && command.subject) {
+      const kept = (impl.tree.locate(after, command.subject.id)?.block.props as { doc?: unknown } | undefined)?.doc;
+      if (!isDeepStrictEqual(impl.richText.richTextFromEditor(kept), kept)) fail(`${command.label} kept a text in another form than the canonical one`);
+    }
     // The focus is a block of the page.
     if (applied.focus && !impl.tree.hasBlock(after, applied.focus.id)) fail(`${command.label} focused ${applied.focus.id}, which is not on the page`);
     accepted.push(command);
