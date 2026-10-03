@@ -11,7 +11,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
-import { block, childIds, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
+import { block, childIds, grip, moveOnto, pickUp, settledTextEditor } from "./helpers/canvas.ts";
 import { column, draftOf, expect, heading, makePage, open, section, test, widget, type DraftBlock } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -61,7 +61,7 @@ async function openText(page: Page, id = "t") {
   await block(page, id).click();
   await expect(block(page, id)).toHaveAttribute("data-editor-selected", "true");
   await block(page, id).locator("p").first().click();
-  await expect(editor(page, id)).toBeFocused();
+  await settledTextEditor(page, id);
 }
 
 test("the editor opens where the text was clicked, and lays the text out as the page does", async ({ page, request }) => {

@@ -80,3 +80,20 @@ export function caption(page: Page): Locator {
 export function grip(page: Page): Locator {
   return page.locator(".canvas .ov-bar [data-grip]");
 }
+
+// The text editor open in a text block, once it has the focus and
+// ProseMirror is done taking it: for 200 ms after the editor takes the
+// focus, ProseMirror reads a caret at the very start of the text as one
+// the browser put there by itself and puts its own back, so a Ctrl+Home
+// pressed at once would be undone (and at 20 ms it may put its own back
+// in any case). A person is never that fast; a test is, so it waits, on
+// the editor's own record of when it took the focus.
+export async function settledTextEditor(page: Page, id: string): Promise<Locator> {
+  const editor = page.locator(`.canvas [data-block-id="${id}"] .rte`);
+  await page.waitForFunction((blockId) => {
+    const dom = document.querySelector(`.canvas [data-block-id="${blockId}"] .rte`) as (Element & { editor?: { view?: { input?: { lastFocus?: number } } } }) | null;
+    const lastFocus = dom?.editor?.view?.input?.lastFocus;
+    return dom !== null && document.activeElement === dom && typeof lastFocus === "number" && Date.now() - lastFocus > 250;
+  }, id);
+  return editor;
+}

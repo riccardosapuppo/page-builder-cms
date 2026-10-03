@@ -19,7 +19,7 @@
 import { chromium, type Browser, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { moveOnto, pickUp } from "../helpers/canvas.ts";
+import { moveOnto, pickUp, settledTextEditor } from "../helpers/canvas.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../harness/servers.ts";
 
@@ -99,7 +99,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   const lead = page.locator('.canvas [data-block-id="hero-text"]');
   await lead.click();
   await lead.locator("p").click({ position: { x: 4, y: 10 } });
-  await page.locator(".canvas .rte").waitFor();
+  await settledTextEditor(page, "hero-text");
   await page.keyboard.press("Control+Home");
   for (let i = 0; i < 10; i += 1) await page.keyboard.press("Shift+ArrowRight");
   await page.locator(".canvas .ov-bar").getByRole("button", { name: "Bold" }).click();
