@@ -17,8 +17,12 @@ renderer and the twelve widgets' definitions, held to the server's pages
 (`src/editor/`): the shell of the approved design, the page switch, the
 widget panel, the canvas with its marks and the device widths, the
 property panels (Content, Style, Advanced) with each widget's Content in
-its folder, and the navigator. Drag and drop, the keyboard map,
-publishing and site style come next in this stage.
+its folder, and the navigator; drag and drop on the canvas and from the
+widget panel, by mouse and by keyboard, with one drop indicator and a
+live region saying where the block will go; one keyboard map, which the
+"?" window lists; the focus placed after every command; and the block's
+menu (copy, paste, duplicate, delete). Publishing and site style come
+next in this stage.
 
 ## Before you start
 
@@ -44,6 +48,7 @@ npm test
 npm run test:contract
 npm run test:rails
 npm run e2e
+npm run check:a11y
 npm run shots:editor -- <folder>
 npm run build
 npm run preview
@@ -63,7 +68,8 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, at least 1, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
-| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, style, advanced, empty) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
+| `npm run check:a11y` | The same, only the tests tagged `@a11y`: the focus after every command, every key of the keyboard map and the "?" window that lists them, the block's menu from the keyboard. Axe is not run yet. |
+| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, context menu, shortcuts, style, advanced, drag, empty) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 
