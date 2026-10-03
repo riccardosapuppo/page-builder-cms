@@ -40,7 +40,10 @@ widgets import its helpers. Nothing here talks to a server.
   block's root, a `ref`, and what to draw inside it after the block's
   content (the floating bar, an empty column's drop zone). The page's own
   attributes win over any of the same name, and nothing replaces a
-  block's content. Without it, the render is the page's.
+  block's content but one thing: `editing`, the editor in a text block's
+  place while it is written on the canvas, which only the text widget's
+  renderer calls (given the page's drawing, shown while the editor
+  loads). Without it, the render is the page's.
 - **`width`** sets the page root's width: the editor's previews,
   `PREVIEW_WIDTHS` of `../shared/preview-widths.ts` (from
   `schema/tokens.json`), lay it out as a tablet at 768 and as a phone at
@@ -77,7 +80,8 @@ widgets import its helpers. Nothing here talks to a server.
   nest in the order they are stored, the first innermost.
 - **A change redraws only its path**: pages are never changed in place
   (`../document`), every block is memoised on its object, and a text block
-  keeps its rendered text for as long as its document object is the same.
+  keeps its rendered text for as long as its document object is the same;
+  only the one text being edited is drawn by its editor instead.
 
 ## The checks
 

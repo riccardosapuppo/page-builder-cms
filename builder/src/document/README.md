@@ -22,6 +22,7 @@ session through the store as well.
 | `clipboard.ts` | Copy and paste of a block as text, read back like anything from outside. |
 | `ids.ts` | Where new ids come from, and fresh ids for a copy. |
 | `labels.ts` | The words of the history and the drop announcements, in en-US. |
+| `rich-text.ts` | The text widget's document as the canvas's text editor hands it over, made into one canonical form the schema takes (`richTextFromEditor`: marks bold, italic, link, a link's href alone, a numbered list's start from 2 and its type a, A, i or I, no marks on a line break, control characters as spaces, a half of a UTF-16 pair alone as U+FFFD, runs with the same marks joined and cut at the schema's 10000 characters), and `makeTextEdit`, the command that keeps it. |
 | `upgrade.ts` | The twin of the server's upgrade of an older `schemaVersion`, and `openDocument`, what a stored page goes through before the editor loads it. |
 | `json.ts` | Equality, copies and key placement for JSON values, where an absent key is not a key holding `undefined`. |
 
@@ -38,6 +39,7 @@ is about, and its steps. The makers:
 | `makeDuplicate` | duplicate | "Duplicated Hero" |
 | `makePaste`, with `pasteTarget` | paste | "Pasted Quote into Column 1 in Hero" |
 | `makeSetProps` | props | "Changed Button text in Join", "Changed Quote in Members’ words", "Renamed section to Questions" |
+| `makeTextEdit` (`rich-text.ts`), a text written on the canvas | props | "Changed Text in Hero" |
 | `makeSetStyle` | style | "Set Space inside to L on tablet, Column 1 in Hero", "Cleared Alignment on tablet, Column 1 in Hero" |
 | `makeSetColumnWidths` | columnWidths | "Set the column widths of Hero to 3:2", "Set equal column widths in Hero" |
 | `makeSetColumnCount` | columns | "Changed Hero to 3 columns" |
@@ -130,7 +132,12 @@ be taken again on an idle machine before any of them is quoted.
   byte for byte and with every removed key absent; redoing gives the same
   page with the same ids; the command survives JSON. A refusal changes
   nothing, and a command valid on any page must be accepted. The whole
-  session, undone through the store, gives back the first page. The seed is
+  session, undone through the store, gives back the first page. Among the
+  commands, texts handed over as TipTap writes them (`editorText`: every
+  link attribute and a title, list starts of 0 and 250000, tabs, a run over
+  10000 characters), onto pages whose stored texts take every form the
+  schema allows: each must be taken, kept in the canonical form, and
+  undone to the stored text exactly. The seed is
   fixed; a failure prints the seed and path that replay it:
   `DOC_PROPERTY_SEED=<seed> DOC_PROPERTY_PATH=<path> npm test -- src/document/property.test.ts`
   (`DOC_PROPERTY_RUNS` sets the number of sessions, 300 by default).
@@ -141,7 +148,9 @@ be taken again on an idle machine before any of them is quoted.
   ids when applied; an emptied override object left behind; a reducer that
   does not validate the container a change touches; column widths that
   outlive a change in the number of columns; a key put back at the end of
-  its object instead of where it was.
+  its object instead of where it was; a text command whose undo puts back
+  the editor's reading of the stored text rather than the text itself; a
+  text command that keeps a link's attributes as the editor wrote them.
 - `replace.test.ts`: `makeReplacePage` on random pairs of valid pages,
   which share ids: applied, it gives the other page byte for byte, title
   and description with it; undone, the first; redone, the other again.
