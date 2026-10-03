@@ -30,7 +30,7 @@ random block ids.
 | `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx`. The Style tab edits the device the canvas previews (design/shots/style.png): the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
 | `device-style.ts` | A block's style per device as the page's container queries apply it: a tablet or a phone shows its own value, else the base, a phone never the tablet's; the devices a block has values of its own on; "back to desktop" as the key taken out, never the desktop's value written in its place |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar (at the block's top left corner, at the right one where the left would cover the words above, and while a text is written under the block where both would and below is free), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
 | `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out |
 | `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own, and a text the page refuses keeps the command from running; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
 | `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each widget panel tile as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the live region (`DragLayer.tsx`) |
@@ -50,14 +50,30 @@ until it works, and the "?" window lists no key for it.
 
 Each of these is a choice, kept for a reason, and open to the design's
 owner to undo:
-- **"?" window:** an Adding group (Enter on a widget panel tile adds it
-  after the selection) and a second sentence under Moving. A Text group
-  lists the keys inside a text being written (bold, italic, link, Esc to
-  leave), with a note on Ctrl+Z there; Enter, "Edit the text of a block",
-  also goes to the first field of a widget whose words are in its panel.
-  The Text group's note also says that Delete and Backspace delete
-  letters there, and which keys work while typing. The window is
-  the keymap written out, so every key that works is in it.
+- **"?" window:** the design's two rows of three groups, and a third the
+  design does not draw: a Text group, two columns wide, listing the keys
+  inside a text being written (bold, italic, link, Esc to leave) with a
+  note on Ctrl+Z there, on Delete and Backspace deleting letters and on
+  the keys that work while typing; and an Adding group (Enter on a widget
+  panel tile adds it after the selection). The window is the keymap
+  written out, so every key that works is in it; laid out so, it keeps
+  inside a window 800 pixels tall (690 there). Enter, "Edit the text of a
+  block", also goes to the first field of a widget whose words are in its
+  panel. Its keys stand 8 pixels from their words, not 12, so "Select the
+  parent column or section" keeps to one line as in the design.
+- **Style tab:** Background offers the palette's six slots in the design's
+  order, and Slate, which the design does not draw, last; Text color,
+  which the design does not draw either, comes after Alignment. A
+  column's text sizes are the design's three, Small, Body and Large (a
+  step it already holds is listed too, so it shows); a heading, a text or
+  a quote offers the type scale's seven. A setting the block leaves unset
+  shows the value in use checked, as the design draws None and Body: a
+  section's or a column's None, a button's Accent, the level's size for a
+  heading, a quote's Heading 3, a column's Body, Top and Left, and for a
+  widget its column's size and alignment; not a colour, which the band
+  around the block decides. A column's two alignments are the design's one
+  Alignment field; when the two come from different places (one the
+  tablet's own, say), each says where beside its name.
 - **Style tab on a tablet or a phone:** where the desktop sets nothing,
   the override says "the theme’s default", and the ruler stands on the
   theme's step where the theme has one on every width (a column's None
@@ -73,6 +89,11 @@ owner to undo:
   Column 2 in See the bay"), where the design says "to Column 2". The
   caption is the live region a screen reader hears, and a page has a
   Column 2 in most sections.
+- **Top bar:** a bar a few pixels short of room for every word draws the
+  save state closer to its neighbours (2 pixels on its right instead of
+  8, none on its left instead of 6) before History and Preview give up
+  their words; the save state takes the room of "Saving…" when it says
+  "Saved", so a save moves nothing.
 - **Site style:** a "Saved for every page" line under the panel's title,
   where the style's own save shows (the top bar's word is the page's);
   a chevron on Primary and Accent, which open to their tones; contrast
@@ -82,7 +103,12 @@ owner to undo:
   open, the block's own bar (grip, name, duplicate, delete) also carries
   bold, italic and link, between thin rules, a button that is on drawn
   graphite with the bar's yellow; the link's field opens under the block
-  in the panel's field style. The text widget's Content tab has no text
+  in the panel's field style. The bar keeps the design's rule, the right
+  corner where the left one would cover the block above; while a text is
+  written it may also stand under the block, its link field under it,
+  where both top corners would cover words and a place below would not.
+  Where every place covers something (a heading as wide as its column
+  above, a button below), it stays in the top corner that covers less. The text widget's Content tab has no text
   field: its words are written on the page, and the tab opens the editor
   there and says how.
 - **The empty page's panel** has no "Show in the site menu" toggle: the
@@ -97,14 +123,16 @@ owner to undo:
   does not draw. Keep mine keeps the page it saves over as a version
   named "Before Keep mine", so that choice, like Reload, can be undone
   from History, as the design's save states say.
-- **Media library:** the button that places the chosen images says what
-  placing does ("Add image", "Replace image", "Add images", "Add
-  section"), where the design says "Use image". The drop tile names the
+- **Media library:** replacing an image, its button says "Use image", as
+  the design does; adding one (a tile, a gallery's Add images, the empty
+  page's pictures), it says what placing does ("Add image", "Add images",
+  "Add section"), which the design does not draw. The drop tile names the
   formats the CMS takes, JPEG, PNG, WebP and GIF, where the design lists
   SVG, which the CMS refuses; and it says the size an image is sent at.
   The footer's line goes on to say that the CMS makes no smaller copies,
-  so each image is resized here first. Under the alt text a hint says
-  where the text goes; with nothing chosen, the details say so and offer
+  so each image is resized here first. Opened from the mark's menu, to
+  look after the library, a hint under the alt text says where the text
+  goes; with nothing chosen, the details say so and offer
   an image from another site by its address; a refused upload stays in
   the grid with its reason; the chosen image's details end with Delete
   from library. The mark's menu has a Media library item.
@@ -181,7 +209,7 @@ saying why; a delete the CMS refuses naming the page; axe on the open
 library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
-(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty-six states,
+(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty-seven states, at 1440 by 900 and at 1280 by 800,
 among them a text being written and its link's field, a tablet's
 override, the history and its name field, the media library; and on the
 published page), `widgets.spec.ts` (each widget's accessibility
