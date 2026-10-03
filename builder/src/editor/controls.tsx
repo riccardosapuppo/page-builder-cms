@@ -62,27 +62,59 @@ export function useServerErrors(blockId: string | null | undefined, field: strin
 
 // ------------------------------------------------------- field frame
 
-interface FieldFrameProps {
+// What a setting's value is to the device previewed, beside its label
+// (design/shots/style.png): "From desktop", "Tablet only", "Theme
+// default", or a Reset button.
+export interface ScopeProps {
+  scope?: ReactNode;
+  // The scope names the device's own value: drawn darker, with its glyph.
+  scopeDevice?: boolean | undefined;
+  // What a pointer resting on the scope is told.
+  scopeTitle?: string | undefined;
+  // Under the control, while a tablet or a phone is previewed.
+  note?: FieldNote | undefined;
+}
+
+// What a change does on the device previewed ("then": "A change here
+// applies to tablets only."), or the device's own value with its way back
+// ("override"). Its words describe the control to a screen reader.
+export interface FieldNote {
+  kind: "then" | "override";
+  icon: IconName;
+  text: ReactNode;
+  // A button after the words: the override's Remove.
+  action?: ReactNode;
+}
+
+interface FieldFrameProps extends ScopeProps {
   id: string;
   label: ReactNode;
   // A label element for a native input; a span named by aria-labelledby
   // for a group.
   labelFor?: boolean;
-  scope?: ReactNode;
   hint?: ReactNode;
   errors: readonly string[];
   children: ReactNode;
   className?: string;
 }
 
-export function FieldFrame({ id, label, labelFor = true, scope, hint, errors, children, className }: FieldFrameProps) {
+export function FieldFrame({ id, label, labelFor = true, scope, scopeDevice, scopeTitle, note, hint, errors, children, className }: FieldFrameProps) {
   const labelElement = labelFor
     ? <label className="label" htmlFor={id} id={`${id}-label`}>{label}</label>
     : <span className="label" id={`${id}-label`}>{label}</span>;
+  const scopeElement = scope ? <span className={`scope${scopeDevice ? " scope-device" : ""}`} title={scopeTitle}>{scope}</span> : null;
   return (
     <div className={`field${errors.length > 0 ? " field-error" : ""}${className ? ` ${className}` : ""}`}>
-      {scope ? <div className="label-row">{labelElement}<span className="scope">{scope}</span></div> : labelElement}
+      {scopeElement ? <div className="label-row">{labelElement}{scopeElement}</div> : labelElement}
       {children}
+      {note?.kind === "then" && <p className="scope-then" id={`${id}-note`}><Icon name={note.icon} /><span>{note.text}</span></p>}
+      {note?.kind === "override" && (
+        <div className="override">
+          <Icon name={note.icon} />
+          <p id={`${id}-note`}>{note.text}</p>
+          {note.action}
+        </div>
+      )}
       {hint && <p className="hint" id={`${id}-hint`}>{hint}</p>}
       <ErrorList id={`${id}-error`} errors={errors} />
     </div>
@@ -98,8 +130,8 @@ export function ErrorList({ id, errors }: { id: string; errors: readonly string[
   );
 }
 
-export function describedBy(id: string, hint: unknown, errors: readonly string[]): string | undefined {
-  const ids = [hint ? `${id}-hint` : null, errors.length > 0 ? `${id}-error` : null].filter((x): x is string => x !== null);
+export function describedBy(id: string, hint: unknown, errors: readonly string[], note?: unknown): string | undefined {
+  const ids = [note ? `${id}-note` : null, hint ? `${id}-hint` : null, errors.length > 0 ? `${id}-error` : null].filter((x): x is string => x !== null);
   return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
@@ -311,7 +343,7 @@ function useRadioKeys<T extends string | number>(choices: readonly Choice<T>[], 
   return { refs, onKeyDown, tabStop };
 }
 
-interface RadioFieldProps<T extends string | number> {
+interface RadioFieldProps<T extends string | number> extends ScopeProps {
   label: string;
   choices: readonly Choice<T>[];
   // null: none chosen (the theme's default applies).
@@ -320,13 +352,12 @@ interface RadioFieldProps<T extends string | number> {
   blockId: string | null;
   field: string;
   hint?: ReactNode;
-  scope?: ReactNode;
   // seg: a segmented row (.seg); swatches: colour circles; steps: tiles.
   look?: "seg" | "seg-icons" | "swatches" | "steps" | "choices";
   rules?: FieldRules;
 }
 
-export function RadioField<T extends string | number>({ label, choices, value, onChange, blockId, field, hint, scope, look = "seg", rules }: RadioFieldProps<T>) {
+export function RadioField<T extends string | number>({ label, choices, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules }: RadioFieldProps<T>) {
   const id = useId();
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
@@ -339,8 +370,8 @@ export function RadioField<T extends string | number>({ label, choices, value, o
   const { refs, onKeyDown, tabStop } = useRadioKeys(choices, value, choose);
   const className = look === "seg" ? "seg seg-text" : look === "seg-icons" ? "seg seg-icons" : look;
   return (
-    <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} errors={errors}>
-      <div className={className} role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy(id, hint, errors)} aria-invalid={errors.length > 0 ? true : undefined}>
+    <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
+      <div className={className} role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy(id, hint, errors, note)} aria-invalid={errors.length > 0 ? true : undefined}>
         {choices.map((choice, index) => {
           const checked = choice.value === value;
           const iconOnly = choice.icon !== undefined && (look === "seg-icons");
@@ -381,7 +412,7 @@ export function RadioField<T extends string | number>({ label, choices, value, o
 
 // ------------------------------------------------------------ ruler
 
-interface RulerFieldProps {
+interface RulerFieldProps extends ScopeProps {
   label: string;
   // The steps in order; labels as the ruler prints them.
   steps: ReadonlyArray<{ value: string; label: string; name: string }>;
@@ -390,14 +421,16 @@ interface RulerFieldProps {
   blockId: string | null;
   field: string;
   hint?: ReactNode;
-  scope?: ReactNode;
   // Said for no value: the theme's default applies.
   unsetText?: string;
+  // The desktop's step, marked with a ring, while a device's own value
+  // is shown (design/shots/style.png).
+  ring?: string | null;
 }
 
 // A spacing scale, None to XXL, as a slider: arrows step along it, a click
 // takes the nearest step.
-export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, unsetText = "Theme default" }: RulerFieldProps) {
+export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, ring = null, unsetText = "Theme default" }: RulerFieldProps) {
   const id = useId();
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
@@ -412,20 +445,21 @@ export function RulerField({ label, steps, value, onChange, blockId, field, hint
     setRefusal(error ? refusalAt(error, field) : null);
   };
   const current = index >= 0 ? steps[index] : undefined;
+  const ringAt = ring === null ? -1 : steps.findIndex((s) => s.value === ring);
   return (
-    <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} errors={errors}>
+    <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
       <div
         className={`ruler${steps.length > 7 ? " ruler-wide" : ""}`}
         role="slider"
         tabIndex={0}
         aria-labelledby={`${id}-label`}
-        aria-describedby={describedBy(id, hint, errors)}
+        aria-describedby={describedBy(id, hint, errors, note)}
         aria-invalid={errors.length > 0 ? true : undefined}
         aria-valuemin={0}
         aria-valuemax={gaps}
         aria-valuenow={index >= 0 ? index : undefined}
         aria-valuetext={current ? current.name : unsetText}
-        style={{ "--steps": gaps, "--v": Math.max(index, 0) } as CSSProperties}
+        style={{ "--steps": gaps, "--v": Math.max(index, 0), ...(ringAt >= 0 ? { "--inherit": ringAt } : {}) } as CSSProperties}
         onKeyDown={(event) => {
           const from = index < 0 ? -1 : index;
           let next: number | null = null;
@@ -447,6 +481,7 @@ export function RulerField({ label, steps, value, onChange, blockId, field, hint
         <span className="ruler-ticks" aria-hidden="true">
           {steps.map((step, i) => <i key={step.value} style={{ "--t": gaps === 0 ? 0 : i / gaps } as CSSProperties} />)}
         </span>
+        {ringAt >= 0 && <span className="ruler-ghost" aria-hidden="true" data-step={steps[ringAt]!.value} />}
         {index >= 0 && <span className="ruler-thumb" aria-hidden="true" />}
         <span className="ruler-nums" aria-hidden="true">
           {steps.map((step, i) => <b key={step.value} className={i === index ? "on" : undefined}>{step.label}</b>)}

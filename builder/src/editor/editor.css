@@ -227,6 +227,16 @@ body {
 .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .label-row .label { margin-bottom: 4px; }
 .scope { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--steel); white-space: nowrap; }
+/* A tablet's or a phone's own value, and what a change does while one is
+   previewed (design/styles.css, .scope-device, .scope-then, .override). */
+.scope-device { color: var(--graphite); font-weight: 600; }
+.scope-device .i { width: 14px; height: 14px; stroke-width: 2; align-self: center; }
+.scope-then { display: flex; align-items: flex-start; gap: 5px; margin-top: 6px; color: var(--steel); font-size: 12px; line-height: 16px; }
+.scope-then .i { width: 14px; height: 14px; margin-top: 1px; stroke-width: 2; flex: none; }
+.override { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 6px 8px; margin-top: 8px; padding: 8px 10px 10px; border-radius: var(--r-control); background: var(--key); font-size: 12px; line-height: 16px; }
+.override > .i { margin-top: -2px; }
+.override p { color: var(--graphite); }
+.override .btn { grid-column: 2; justify-self: start; }
 .pair { display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 12px; }
 .pair .label { font-weight: 500; color: var(--graphite); margin-bottom: 6px; }
 .input { display: block; width: 100%; min-height: 34px; padding: 7px 10px; background: var(--white); border: 1px solid var(--rule); border-radius: var(--r-field); color: var(--graphite); line-height: 18px; }
@@ -243,6 +253,7 @@ textarea.input { resize: vertical; }
 .error .i { width: 16px; height: 16px; stroke-width: 1.875; }
 .note { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: var(--r-control); background: var(--key); font-size: 12px; line-height: 16px; }
 .note .i { margin-top: -2px; color: var(--steel); }
+.device-note .i { color: var(--graphite); }
 .check { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 12px; line-height: 16px; cursor: pointer; }
 .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--graphite); flex: none; }
 
@@ -259,6 +270,8 @@ textarea.input { resize: vertical; }
 .ruler-nums b { display: flex; justify-content: center; width: 0; font-weight: 500; white-space: nowrap; }
 .ruler-nums b.on { color: var(--graphite); font-weight: 700; }
 .ruler-thumb { position: absolute; left: calc(var(--rp) + (100% - 2 * var(--rp)) * var(--v) / var(--steps)); transform: translateX(-50%); top: 9px; width: 14px; height: 17px; background: var(--graphite); clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%); }
+/* The desktop's step, while a device's own is shown: a ring on the line. */
+.ruler-ghost { position: absolute; left: calc(var(--rp) + (100% - 2 * var(--rp)) * var(--inherit) / var(--steps)); transform: translateX(-50%); top: 16px; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: var(--plate); border: 2px solid var(--steel); }
 .ruler:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
 .ruler-wide .ruler-nums { font-size: 11px; }
 
