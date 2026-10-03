@@ -166,6 +166,12 @@ reads `getSnapshot()` and `subscribe(listener)` (the shape React's
 - `flush()` sends what waits at once and resolves on the first phase that
   is neither `waiting` nor `saving`: publishing goes ahead only on
   `saved`.
+- `adopt(draft)` takes as the draft one this tab's own request has just
+  put on the server, as a restore answers with it: the next save starts
+  from its revision, where it would otherwise meet a conflict of its own
+  making. It refuses while a save is in flight; the editor calls it only
+  once a flush has found nothing waiting (`reload()` is `getDraft()` and
+  the same step).
 
 Four faults planted one at a time each failed `autosave.test.ts`: queued
 edits sent from the first revision, a new `saveId` on a retry, a second

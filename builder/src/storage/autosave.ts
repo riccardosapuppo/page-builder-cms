@@ -118,6 +118,11 @@ export interface Autosave {
   // Conflict: takes the server's draft, dropping this tab's unsaved edits,
   // and gives it to the caller to put in the store.
   reload(): Promise<Draft>;
+  // Takes as the draft one this tab's own request has just put on the
+  // server (a restore answers with it), as reload() takes the one it reads:
+  // the next save starts from its revision. Called with nothing in flight
+  // and nothing waiting, it drops no edit; the caller makes sure of both.
+  adopt(draft: Draft): void;
   // Conflict: saves this tab's document over the server's draft.
   overwrite(): void;
   // Stops the timers and ignores any answer still to come. A save in
@@ -364,6 +369,25 @@ export function createAutosave(options: AutosaveOptions): Autosave {
     emit();
   }
 
+  // The server's draft becomes this tab's: the next save starts from its
+  // revision, and the edits this tab had not saved are dropped with its
+  // document.
+  function takeDraft(draft: Draft): void {
+    clearEditTimers();
+    retryTimer = clear(retryTimer);
+    retryAt = null;
+    revision = draft.revision;
+    savedAt = draft.updatedAt;
+    latest = draft.document;
+    settled = edits;
+    outstanding = null;
+    outcomeUnknown = false;
+    stop = null;
+    failure = null;
+    retries = 0;
+    emit();
+  }
+
   function refused(why: Failure): void {
     stop = { phase: "refused" };
     failure = why;
@@ -431,22 +455,14 @@ export function createAutosave(options: AutosaveOptions): Autosave {
     async reload() {
       if (inFlight !== null) throw new Error("reload() waits for the save in flight to be answered");
       const draft = await adapter.getDraft(pageId);
-      if (disposed) return draft;
-      clearEditTimers();
-      retryTimer = clear(retryTimer);
-      retryAt = null;
-      revision = draft.revision;
-      savedAt = draft.updatedAt;
-      latest = draft.document;
-      // The edits this tab had not saved are dropped with its document.
-      settled = edits;
-      outstanding = null;
-      outcomeUnknown = false;
-      stop = null;
-      failure = null;
-      retries = 0;
-      emit();
+      if (!disposed) takeDraft(draft);
       return draft;
+    },
+
+    adopt(draft) {
+      if (disposed) return;
+      if (inFlight !== null) throw new Error("adopt() waits for the save in flight to be answered");
+      takeDraft(draft);
     },
 
     overwrite() {

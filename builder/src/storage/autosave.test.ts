@@ -325,6 +325,41 @@ describe("the autosave, on a fake clock", () => {
     expect(clock.pending).toBe(0);
   });
 
+  test("a draft this tab's own restore put on the server is adopted: the next edit is saved from its revision, with no conflict", async () => {
+    const { clock, cms, autosave, now } = setup();
+    autosave.edit(page("Before"));
+    await clock.advance(1_100);
+    expect(now()).toMatchObject({ phase: "saved", revision: 1 });
+    // The restore, as the CMS makes it: the revision goes up and no save id
+    // took it there.
+    cms.revision += 1;
+    cms.lastSaveId = null;
+    cms.document = page("Restored");
+    autosave.adopt({ revision: cms.revision, lastSaveId: null, updatedAt: "2026-10-02T09:00:00.000Z", document: cms.document });
+    expect(now()).toMatchObject({ phase: "saved", revision: 2, savedAt: "2026-10-02T09:00:00.000Z", unsavedEdits: 0, warnOnClose: false, conflict: null });
+    // The store puts the restored document in: no edit.
+    autosave.edit(cms.document);
+    await clock.advance(10_000);
+    expect(cms.received).toHaveLength(1);
+    autosave.edit(page("Restored, then edited"));
+    await clock.advance(1_100);
+    expect(cms.received.map((r) => [r.title, r.revision])).toEqual([["Before", 0], ["Restored, then edited", 2]]);
+    expect(now()).toMatchObject({ phase: "saved", revision: 3 });
+    expect(cms.document.title).toBe("Restored, then edited");
+  });
+
+  test("adopt refuses while a save is in flight, and leaves the save to finish", async () => {
+    const { clock, cms, autosave, now } = setup();
+    cms.latencyMs = 1_000;
+    autosave.edit(page("Travelling"));
+    await clock.advance(1_000);
+    expect(now().phase).toBe("saving");
+    expect(() => autosave.adopt({ revision: 5, lastSaveId: null, updatedAt: "2026-10-02T09:00:00.000Z", document: page("Elsewhere") })).toThrow(/in flight/);
+    await clock.advance(1_000);
+    expect(now()).toMatchObject({ phase: "saved", revision: 1, unsavedEdits: 0 });
+    expect(cms.document.title).toBe("Travelling");
+  });
+
   test("an unknown outcome, then a conflict: the conflict is definite and the retrying stops", async () => {
     const { clock, cms, autosave, now } = setup();
     cms.next("no-network");
