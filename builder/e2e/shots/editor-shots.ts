@@ -1,9 +1,10 @@
 // node e2e/shots/editor-shots.ts <folder>
 //
 // Photographs the editor in the states the approved design's shots show
-// (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png
-// and design/shots-extra/advanced.png and context.png), plus the widget
-// panel and the phone preview, headless, in two windows: 1280 by 800, and
+// (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
+// publish.png, site-style.png, save-states.png, and design/shots-extra/
+// advanced.png, context.png, app-menu.png and about.png), plus the widget
+// panel, the phone preview and a save retrying, headless, in two windows: 1280 by 800, and
 // 1440 by 900, the size the design itself was shot at, whose canvas is
 // wide enough for the page's desktop layout (832, past the 800 where it
 // starts). The shots of the larger window go in <folder>/1440.
@@ -45,8 +46,11 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   mkdirSync(window.folder, { recursive: true });
   const page = await browser.newPage({ viewport: { width: window.width, height: window.height }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
   const label = `${window.width}x${window.height}`;
+  const cmsUrl = allowed[0]!;
   page.on("console", (message) => {
-    if (message.type() === "error") problems.push(`${label}: console error: ${message.text()}`);
+    // The conflict and the dropped save the save-states shots make on
+    // purpose leave the browser's own lines.
+    if (message.type() === "error" && !/status of 409 \(Conflict\)|net::ERR_INTERNET_DISCONNECTED/.test(message.text())) problems.push(`${label}: console error: ${message.text()}`);
   });
   page.on("pageerror", (error) => problems.push(`${label}: page error: ${error.message}`));
   page.on("request", (request) => {
@@ -127,6 +131,80 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await row(page, "Hero").click();
   await away();
   await shoot("phone");
+  await page.getByRole("button", { name: "Desktop" }).click();
+
+  // design/shots-extra/app-menu.png: the mark's menu, opened from the
+  // keyboard; then About, from it.
+  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menu", { name: "Page Builder CMS" }).waitFor();
+  await away();
+  await shoot("app-menu");
+  // By the keyboard too, so the Close button shows the focus ring.
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.getByRole("dialog", { name: "About" }).waitFor();
+  await away();
+  await shoot("about");
+  await page.keyboard.press("Escape");
+
+  // #publish: the hero's heading selected, its Content tab, the Publish
+  // menu open.
+  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await page.getByRole("tab", { name: "Content" }).click();
+  await page.getByRole("button", { name: "More publish options" }).click();
+  await page.getByRole("menu", { name: "Publish options" }).waitFor();
+  await away();
+  await shoot("publish");
+  await page.keyboard.press("Escape");
+
+  // #site-style: Primary open, Harbour chosen; then back to Sea, so the
+  // other shots show the site as the seed has it.
+  await page.getByRole("button", { name: "Site style", exact: true }).click();
+  const style = page.getByRole("complementary", { name: "Site style" });
+  await style.getByRole("button", { name: /^Primary/ }).click();
+  await style.getByRole("radio", { name: "Harbour" }).click();
+  await style.getByText("Saved for every page").waitFor();
+  await style.getByRole("radio", { name: "Harbour" }).focus();
+  await away();
+  await shoot("site-style");
+  await style.getByRole("button", { name: "Reset to Sea" }).click();
+  await style.getByText("Saved for every page").waitFor();
+  await style.getByRole("button", { name: "Close site style" }).click();
+
+  // #save-states: the page saved elsewhere while this tab edits it, the
+  // banner across the window; Reload settles it (the other save left the
+  // page as it was). Then a save the network drops: its countdown and
+  // toast; Retry now once the network is back.
+  const pageId = new URL(page.url()).searchParams.get("page");
+  const draft = await (await fetch(`${cmsUrl}/api/pages/${pageId}/draft`)).json() as { revision: number; document: unknown };
+  const elsewhere = await fetch(`${cmsUrl}/api/pages/${pageId}/draft`, { method: "PUT", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ revision: draft.revision, saveId: `shots-elsewhere-${window.width}`, document: draft.document }) });
+  if (!elsewhere.ok) throw new Error(`the save from elsewhere answered ${elsewhere.status}`);
+  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await page.getByRole("tab", { name: "Content" }).click();
+  const text = page.getByRole("textbox", { name: "Text" });
+  await text.fill("Swim at slack water, together");
+  await text.blur();
+  await page.getByRole("alert").waitFor();
+  await away();
+  await shoot("save-states");
+  await page.getByRole("alert").getByRole("button", { name: "Reload" }).click();
+  await page.getByRole("alert").waitFor({ state: "detached" });
+
+  await page.route("**/api/pages/*/draft", (route) => (route.request().method() === "PUT" ? route.abort("internetdisconnected") : route.fallback()));
+  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await text.fill("Swim at slack water, together");
+  await text.blur();
+  await page.getByRole("group", { name: "Not saved" }).waitFor();
+  await away();
+  await shoot("retrying");
+  await page.unroute("**/api/pages/*/draft");
+  // Back as the seed has it, and saved.
+  await text.fill("Swim at slack water");
+  await text.blur();
+  await page.getByRole("button", { name: "Retry now" }).click();
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
 
   // #empty: a new page, nothing on it yet; made the first time, opened the
   // second.
