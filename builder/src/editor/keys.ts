@@ -159,11 +159,10 @@ export function useEditorKeys(): void {
   });
   useEffect(() => {
     const table = handlers(env, () => latest.current);
-    const onKeyDown = (event: KeyboardEvent) => {
+    const handle = (event: KeyboardEvent, typing: boolean) => {
       if (event.defaultPrevented || event.isComposing) return;
       // A block picked up with the keyboard: the drag library's keys.
       if (env.store.getState().drag !== null) return;
-      const typing = isTyping(event.target);
       const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
       for (const entry of entriesFor(press, typing)) {
         if (entry.via !== "keymap" || !inScope(entry.scope, event.target, typing)) continue;
@@ -173,6 +172,16 @@ export function useEditorKeys(): void {
           return;
         }
       }
+    };
+    // Typing, the keys are looked for on their way down to the text: the
+    // text editor cancels every Enter and Esc for itself (ProseMirror does),
+    // so Ctrl+Shift+Enter would never come back up to publish. Cancelled
+    // here, the text editor leaves the press alone.
+    const onTypingKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event.target)) handle(event, true);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTyping(event.target)) handle(event, false);
     };
     const onCopy = (event: ClipboardEvent) => {
       if (!inScope("selection", document.activeElement) || env.store.getState().selection === null) return;
@@ -191,10 +200,12 @@ export function useEditorKeys(): void {
       }
       pasteText(env, text, regionOf(document.activeElement));
     };
+    document.addEventListener("keydown", onTypingKeyDown, true);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("copy", onCopy);
     document.addEventListener("paste", onPaste);
     return () => {
+      document.removeEventListener("keydown", onTypingKeyDown, true);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("copy", onCopy);
       document.removeEventListener("paste", onPaste);

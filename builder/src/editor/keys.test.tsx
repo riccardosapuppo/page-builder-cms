@@ -152,18 +152,23 @@ test("in a text written on the canvas, Delete, Backspace and Ctrl+D are the text
   });
   kit.render(<div className="app"><Canvas /><EditorKeys /><ShortcutsDialog /></div>);
   // The text being written, as the canvas's text editor makes it: an
-  // editable element in the block's place.
+  // editable element in the block's place, which cancels every Enter and
+  // Esc for itself, as ProseMirror does.
   const text = document.createElement("div");
   text.setAttribute("contenteditable", "true");
   text.tabIndex = 0;
   text.className = "rte";
+  text.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === "Escape") event.preventDefault();
+  });
   root("t1").append(text);
   act(() => text.focus());
-  for (const [key, mods] of [["Delete", {}], ["Backspace", {}], ["d", { ctrlKey: true }], ["ArrowDown", {}], ["?", { shiftKey: true }], ["Escape", {}]] as const) {
+  for (const [key, mods] of [["Delete", {}], ["Backspace", {}], ["d", { ctrlKey: true }], ["ArrowDown", {}], ["?", { shiftKey: true }]] as const) {
     const passed = fireEvent.keyDown(text, { key, ...mods });
     // Not taken from the text: the browser's own (or the text editor's).
     expect(passed, key).toBe(true);
   }
+  fireEvent.keyDown(text, { key: "Escape" });
   expect(kit.store.getState().past).toHaveLength(0);
   expect(kit.store.getState().selection).toBe("t1");
   expect(kit.ui.getState().shortcutsOpen).toBe(false);
