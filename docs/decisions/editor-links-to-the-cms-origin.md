@@ -54,3 +54,10 @@ The other ways, and why not:
 `npm test` from `builder/` runs `src/storage/config.test.ts`: the default,
 `VITE_CMS_ORIGIN` with a path, an absolute API base, and a value that is
 not an http address, refused with its name.
+
+`npm run e2e` from `builder/` runs `e2e/publish.spec.ts` and
+`e2e/keyboard.spec.ts` on the editor's development server (4901), whose
+proxy points at a CMS of the run's own (3901): Preview, and the live page
+from the Publish menu, open tabs on `http://127.0.0.1:3901`, the preview
+showing the draft and never indexed, the live page the published words.
+On 3 October 2026 both passed.
