@@ -8,7 +8,7 @@ import type { BlockRenderProps } from "../../render/context.ts";
 import { linkHref } from "../../render/policy.ts";
 import { styleClasses, visibilityClasses } from "../../render/style.ts";
 
-const LEVEL_SIZES = { 1: "heading-1", 2: "heading-2", 3: "heading-3", 4: "large" } as const;
+export const LEVEL_SIZES = { 1: "heading-1", 2: "heading-2", 3: "heading-3", 4: "large" } as const;
 
 export function HeadingRender({ block, decoration }: BlockRenderProps) {
   const props = blockProps(block);

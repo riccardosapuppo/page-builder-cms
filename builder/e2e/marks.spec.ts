@@ -116,14 +116,16 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
   await page.getByRole("button", { name: /^Select Column/ }).click();
   await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
   await page.getByRole("tab", { name: "Style" }).click();
-  await alignment.getByRole("radio", { name: "Center" }).click();
+  // A column's alignment is the horizontal half of its Alignment field.
+  const columnAlignment = page.getByRole("radiogroup", { name: "Horizontal alignment" });
+  await columnAlignment.getByRole("radio", { name: "Center" }).click();
   await expect.poll(pillX).toBeGreaterThan(left + 50);
   const pill = (await button.locator(":scope > .sw-btn").boundingBox())!;
   await page.mouse.move(pill.x + pill.width / 2, pill.y + pill.height / 2);
   await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
   expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
   const centered = await pillX();
-  await alignment.getByRole("radio", { name: "Center" }).press("ArrowRight");
+  await columnAlignment.getByRole("radio", { name: "Center" }).press("ArrowRight");
   await expect.poll(pillX).toBeGreaterThan(centered + 50);
   await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
   expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);

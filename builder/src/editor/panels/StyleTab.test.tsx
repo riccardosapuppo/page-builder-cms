@@ -18,7 +18,7 @@ test("each type shows the settings it accepts and no other", () => {
   const { container, rerender } = kit.render(<BlockPanel id="image" />);
   expect(NAMES(container)).toEqual(["Crop"]);
   rerender(<BlockPanel id="button" />);
-  expect(NAMES(container)).toEqual(["Background", "Text color", "Alignment"]);
+  expect(NAMES(container)).toEqual(["Background", "Alignment", "Text color"]);
   rerender(<BlockPanel id="video" />);
   expect(NAMES(container)).toEqual([]);
   expect(screen.getByText("This widget has no style settings of its own.")).toBeTruthy();
@@ -28,7 +28,9 @@ test("a column's settings come in the approved design's order: space, then backg
   const kit = editorKit({ document: page(), selection: "c1" });
   kit.ui.getState().setPanelTab("style");
   const { container } = kit.render(<BlockPanel id="c1" />);
-  expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Text color", "Alignment", "Vertical alignment"]);
+  expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Alignment", "Text color"]);
+  // The design's Alignment: vertical, then horizontal, side by side.
+  expect([...container.querySelectorAll(".pair .label")].map((e) => e.textContent)).toEqual(["Vertical alignment", "Horizontal alignment"]);
 });
 
 test("a choice sets the base value, in the site's colours, and Reset takes it out", () => {
@@ -79,8 +81,9 @@ test("previewing a tablet, the tab edits the tablet's values, each said as the t
   expect(space.getAttribute("aria-valuetext")).toBe("L");
   expect(fieldOf("Space inside").querySelector(".ruler-ghost")?.getAttribute("data-step")).toBe("m");
   expect(describedText(space)).toBe("Tablet override: L on all four sides. Desktop and phone use M, marked with a ring.");
-  // Alignment: Center of its own; the desktop sets none.
-  expect(scopeOf("Alignment")).toBe("Tablet only");
+  // Alignment: Center of its own; the desktop sets none. The vertical one
+  // is the desktop's: each says its own beside its name.
+  expect([...fieldOf("Alignment").querySelectorAll(".pair .scope")].map((e) => e.textContent)).toEqual(["From desktop", "Tablet only"]);
   expect(within(fieldOf("Alignment")).getByRole("radio", { name: "Center" }).getAttribute("aria-checked")).toBe("true");
   expect(fieldOf("Alignment").querySelector(".override p")?.textContent).toBe("Tablet override: Center. Desktop and phone use the theme’s default.");
   // Space between: set nowhere, the theme's own L, said as the theme's.
@@ -135,4 +138,37 @@ test("previewing a phone, the tab edits the phone's values, which never take the
   rerender(<BlockPanel id="h1" />);
   expect(scopeOf("Text size")).toBe("Phone only");
   expect(fieldOf("Text size").querySelector(".override p")?.textContent).toBe("Phone override: Heading 1. Desktop and tablet use Display.");
+});
+
+test("a setting the block leaves unset checks the value in use, as the design does: None and Body for a column, the column's for its text, the desktop's on a tablet", () => {
+  const kit = editorKit({ document: page(), selection: "c2" });
+  kit.ui.setState({ panelTab: "style" });
+  const { rerender } = kit.render(<BlockPanel id="c2" />);
+  const checked = (label: string) => within(fieldOf(label)).getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true").map((r) => r.getAttribute("aria-label") ?? r.textContent);
+  const names = (label: string) => within(fieldOf(label)).getAllByRole("radio").map((r) => (r.getAttribute("aria-label") ?? r.textContent ?? "").split(",")[0]);
+  expect(checked("Background")).toEqual(["None"]);
+  expect(checked("Text size in this column")).toEqual(["Body"]);
+  // The swatches in the design's order, then Slate; a column's text sizes are the design's three.
+  expect(names("Background")).toEqual(["None", "Background", "Soft", "Primary", "Accent", "Text", "Muted"]);
+  expect(names("Text size in this column")).toEqual(["Small", "Body", "Large"]);
+  expect(within(fieldOf("Alignment")).getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true").map((r) => r.getAttribute("aria-label"))).toEqual(["Top", "Left"]);
+  // Choosing the value in use sets nothing; another one sets it.
+  fireEvent.click(within(fieldOf("Background")).getByRole("radio", { name: "None" }));
+  expect(kit.block("c2")?.style).toEqual({ base: {} });
+  fireEvent.click(within(fieldOf("Text size in this column")).getByRole("radio", { name: "Large" }));
+  expect(kit.block("c2")?.style).toEqual({ base: { textSize: "large" } });
+
+  // On a tablet the desktop's value is the one in use.
+  act(() => kit.ui.setState({ preview: "tablet" }));
+  expect(scopeOf("Text size in this column")).toBe("From desktop");
+  expect(checked("Text size in this column")).toEqual(["Large"]);
+  expect(checked("Background")).toEqual(["None"]);
+
+  // A text takes its column's size; a heading its level's.
+  act(() => kit.store.getState().select("t1"));
+  rerender(<BlockPanel id="t1" />);
+  expect(checked("Text size")).toEqual(["Body"]);
+  act(() => kit.store.getState().select("q1"));
+  rerender(<BlockPanel id="q1" />);
+  expect(checked("Text size")).toEqual(["Heading 3"]);
 });

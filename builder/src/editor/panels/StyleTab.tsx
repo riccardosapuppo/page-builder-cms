@@ -16,13 +16,15 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { REMOVE } from "../../document/commands.ts";
 import { STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
-  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, PALETTE_SLOTS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, VERTICAL_ALIGN_TOKENS,
-  type Block, type BlockType, type PaletteSlot, type StyleTokens,
+  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, VERTICAL_ALIGN_TOKENS,
+  type Block, type BlockType, type Device, type PaletteSlot, type StyleTokens,
 } from "../../shared/document.ts";
+import { locate } from "../../document/tree.ts";
+import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
 import { COLUMN_GAP_DEFAULT, slotLabel, slotTone } from "../../shared/site-tokens.ts";
 import { afterRender } from "../act.ts";
-import { RadioField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
-import { useUi } from "../context.tsx";
+import { RadioField, RadioPairField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
+import { useEditor, useUi } from "../context.tsx";
 import { backToDesktop, deviceOf, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
 import { Icon } from "../icons.tsx";
 import { useBlockCommands } from "./hooks.ts";
@@ -53,7 +55,9 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
 // The order the tab lists its settings in, the approved design's (the
 // #style state: Space inside, Space between, Background, Text size,
 // Alignment): space first, then colour, then type, then placement.
-const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "color", "align", "verticalAlign", "aspect"];
+// Alignment, a column's two in one field, vertical first; then the text
+// colour, which the design does not draw.
+const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "verticalAlign", "align", "color", "aspect"];
 
 const ALIGN_ICONS = { left: "align-left", center: "align-center", right: "align-right" } as const;
 const VALIGN_ICONS = { top: "valign-top", middle: "valign-middle", bottom: "valign-bottom" } as const;
@@ -103,15 +107,76 @@ function elsewhereWords(style: unknown, key: StyleKey): string | undefined {
 
 // The control of the field a click came from, for the focus to go back to
 // once the button it came from is gone: the ruler, or the radio chosen.
+// A field drawn anew (two alignments joined into one) is found again by
+// its label.
 function focusFieldOf(event: MouseEvent<HTMLElement>): void {
   const field = event.currentTarget.closest(".field");
-  afterRender(() => field?.querySelector<HTMLElement>("[role=slider], [role=radio][tabindex='0']")?.focus());
+  const label = field?.querySelector(":scope > .label, :scope > .label-row > .label")?.textContent ?? null;
+  const tray = field?.closest(".tray-left") ?? document;
+  afterRender(() => {
+    const now = field?.isConnected ? field : [...tray.querySelectorAll(".field")].find((f) => f.querySelector(":scope > .label, :scope > .label-row > .label")?.textContent === label);
+    now?.querySelector<HTMLElement>("[role=slider], [role=radio][tabindex='0']")?.focus();
+  });
+}
+
+// The value a setting the block leaves unset is in use with, where the
+// page's stylesheet gives one whatever surrounds the block: checked in
+// its field, as the design draws None and Body. A background is a
+// section's or a column's none, a button's accent; a text size the level's
+// for a heading, the quote's own, a column's body, and for a text the one
+// its column shows; an alignment its column's, else left; a column's
+// content at its top; an image its own shape. A colour depends on the
+// band around the block, so none is checked for it.
+function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle: unknown): string | null {
+  switch (key) {
+    case "background":
+      return block.type === "section" || block.type === "column" ? "none" : block.type === "button" ? "accent" : null;
+    case "textSize":
+      if (block.type === "heading") return LEVEL_SIZES[block.props.level];
+      if (block.type === "quote") return "heading-3";
+      if (block.type === "column") return "body";
+      if (block.type === "text") return shownValue(columnStyle, device, "textSize") ?? "body";
+      return null;
+    case "align":
+      return block.type === "column" ? "left" : (shownValue(columnStyle, device, "align") ?? "left");
+    case "verticalAlign":
+      return "top";
+    case "aspect":
+      return "original";
+    default:
+      return null;
+  }
+}
+
+// The swatches in the design's order: None, the light tones, the
+// colours, the ink; then the slot the design does not draw, Slate.
+const SWATCH_ORDER: readonly PaletteSlot[] = ["background", "soft", "primary", "accent", "text", "muted"];
+// A column's text sizes are the running text's (the design's three);
+// another step it holds already is listed too, so it shows.
+const COLUMN_STEPS: readonly string[] = ["small", "body", "large"];
+const ALIGN_CHOICES = ALIGN_TOKENS.map((t) => ({ value: t as string, label: tokenName(t), icon: ALIGN_ICONS[t] }));
+const VALIGN_CHOICES = VERTICAL_ALIGN_TOKENS.map((t) => ({ value: t as string, label: tokenName(t), icon: VALIGN_ICONS[t] }));
+
+interface Setting {
+  label: string;
+  value: string | null;
+  field: string;
+  set: (next: string) => ReturnType<ReturnType<typeof useBlockCommands>["setStyle"]>;
+  scoping: ScopeProps;
+  hint: ReactNode;
+  ring: string | null;
 }
 
 export function StyleTab({ block }: { block: Block }) {
   const commands = useBlockCommands(block.id);
   const preview = useUi((u) => u.preview);
   const siteStyle = useUi((u) => u.siteStyle);
+  // The column a widget stands in: what it takes on when it sets nothing.
+  const columnStyle = useEditor((s) => {
+    const found = locate(s.document, block.id);
+    const parent = found?.parentId ? locate(s.document, found.parentId)?.block : undefined;
+    return parent?.type === "column" ? parent.style : undefined;
+  });
   const keys = (STYLE_KEYS_BY_TYPE[block.type] as readonly (keyof StyleTokens)[])
     .filter((k): k is StyleKey => k !== "visibility")
     .sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
@@ -123,6 +188,64 @@ export function StyleTab({ block }: { block: Block }) {
     return { value: slot, label: `${slotLabel(slot)}, ${tone.label}`, color: tone.hex };
   };
 
+  const settingOf = (key: StyleKey): Setting => {
+    const label = labelOf(block.type, key);
+    const base = shownValue(style, "base", key);
+    const value = shownValue(style, device, key);
+    const field = `/style/${device}/${key}`;
+    const set = (next: string) => commands.setStyle(device, { [key]: next } as Parameters<typeof commands.setStyle>[1]);
+    if (device === "base") {
+      return {
+        label, value, field, set, ring: null, hint: elsewhereWords(style, key),
+        scoping: {
+          scope: base === null
+            ? "Theme default"
+            : <button className="btn btn-small btn-quiet" type="button" aria-label={`Reset ${label}`} onClick={() => commands.setStyle("base", { [key]: REMOVE })}>Reset</button>,
+        },
+      };
+    }
+    const words = DEVICE_WORDS[device];
+    const own = ownValue(style, device, key);
+    if (own === null) {
+      return {
+        label, value, field, set, ring: null, hint: undefined,
+        scoping: {
+          scope: "From desktop",
+          scopeTitle: `${words.name}s use the desktop value until you change it here`,
+          note: { kind: "then", icon: device, text: `A change here applies to ${words.plural} only.` },
+        },
+      };
+    }
+    const desktop = base ?? themeStep(block.type, key);
+    return {
+      label, value, field, set, ring: desktop, hint: undefined,
+      scoping: {
+        scope: <><Icon name={device} />{words.name} only</>,
+        scopeDevice: true,
+        note: {
+          kind: "override",
+          icon: device,
+          text: overrideWords(key, device, own, desktop, ownValue(style, words.other, key)),
+          action: (
+            <button
+              className="btn btn-small btn-secondary"
+              type="button"
+              aria-label={`Remove the ${device} override of ${label}`}
+              onClick={(event) => {
+                if (commands.setStyle(device, backToDesktop(key)) === null) focusFieldOf(event);
+              }}
+            >
+              Remove
+            </button>
+          ),
+        },
+      },
+    };
+  };
+
+  // A column's two alignments, one field (./controls.tsx, RadioPairField).
+  const paired = keys.includes("verticalAlign") && keys.includes("align") ? [settingOf("verticalAlign"), settingOf("align")] as const : null;
+
   return (
     <>
       {device !== "base" && (
@@ -133,56 +256,26 @@ export function StyleTab({ block }: { block: Block }) {
       )}
       {keys.length === 0 && <p className="hint">This widget has no style settings of its own.</p>}
       {keys.map((key) => {
-        const label = labelOf(block.type, key);
-        const base = shownValue(style, "base", key);
-        const value = shownValue(style, device, key);
-        const field = `/style/${device}/${key}`;
-        const set = (next: string) => commands.setStyle(device, { [key]: next } as Parameters<typeof commands.setStyle>[1]);
-        let scoping: ScopeProps;
-        let hint: ReactNode;
-        let ring: string | null = null;
-        if (device === "base") {
-          scoping = {
-            scope: base === null
-              ? "Theme default"
-              : <button className="btn btn-small btn-quiet" type="button" aria-label={`Reset ${label}`} onClick={() => commands.setStyle("base", { [key]: REMOVE })}>Reset</button>,
-          };
-          hint = elsewhereWords(style, key);
-        } else {
-          const words = DEVICE_WORDS[device];
-          const own = ownValue(style, device, key);
-          if (own === null) {
-            scoping = {
-              scope: "From desktop",
-              scopeTitle: `${words.name}s use the desktop value until you change it here`,
-              note: { kind: "then", icon: device, text: `A change here applies to ${words.plural} only.` },
-            };
-          } else {
-            const desktop = base ?? themeStep(block.type, key);
-            ring = desktop;
-            scoping = {
-              scope: <><Icon name={device} />{words.name} only</>,
-              scopeDevice: true,
-              note: {
-                kind: "override",
-                icon: device,
-                text: overrideWords(key, device, own, desktop, ownValue(style, words.other, key)),
-                action: (
-                  <button
-                    className="btn btn-small btn-secondary"
-                    type="button"
-                    aria-label={`Remove the ${device} override of ${label}`}
-                    onClick={(event) => {
-                      if (commands.setStyle(device, backToDesktop(key)) === null) focusFieldOf(event);
-                    }}
-                  >
-                    Remove
-                  </button>
-                ),
-              },
-            };
-          }
+        // A column's two alignments as one field, as the design draws
+        // them: drawn where the vertical one stands.
+        if (key === "align" && paired) return null;
+        if (key === "verticalAlign" && paired) {
+          const [v, h] = paired;
+          return (
+            <RadioPairField
+              key="alignment"
+              label="Alignment"
+              blockId={block.id}
+              hint={v.hint || h.hint ? <>{v.hint}{v.hint && h.hint ? " " : null}{h.hint}</> : undefined}
+              parts={[
+                { label: "Vertical alignment", choices: VALIGN_CHOICES, value: v.value, inUse: inUseOf(block, "verticalAlign", device, columnStyle), onChange: v.set, field: v.field, look: "seg-icons", ...v.scoping },
+                { label: "Horizontal alignment", choices: ALIGN_CHOICES, value: h.value, inUse: inUseOf(block, "align", device, columnStyle), onChange: h.set, field: h.field, look: "seg-icons", ...h.scoping },
+              ]}
+            />
+          );
         }
+        const { label, value, field, set, scoping, hint, ring } = settingOf(key);
+        const inUse = inUseOf(block, key, device, columnStyle);
         const common = { label, blockId: block.id, field, hint, ...scoping };
         switch (key) {
           case "spaceInside":
@@ -197,20 +290,21 @@ export function StyleTab({ block }: { block: Block }) {
                 key={key}
                 {...common}
                 look="swatches"
-                choices={BACKGROUND_TOKENS.map((token) => (token === "none" ? { value: token, label: "None" } : swatch(token)))}
+                choices={[{ value: "none", label: "None" }, ...SWATCH_ORDER.filter((slot) => (BACKGROUND_TOKENS as readonly string[]).includes(slot)).map(swatch)]}
                 value={value}
+                inUse={inUse}
                 onChange={set}
               />
             );
           case "color":
-            return <RadioField key={key} {...common} look="swatches" choices={PALETTE_SLOTS.map(swatch)} value={value} onChange={set} />;
+            return <RadioField key={key} {...common} look="swatches" choices={SWATCH_ORDER.map(swatch)} value={value} inUse={inUse} onChange={set} />;
           case "textSize":
             return (
               <RadioField
                 key={key}
                 {...common}
                 look="steps"
-                choices={TYPE_STEPS.map((step) => {
+                choices={(block.type === "column" ? [...COLUMN_STEPS, ...(value !== null && !COLUMN_STEPS.includes(value) ? [value] : [])] : TYPE_STEPS).map((step) => {
                   const sample = STEP_SAMPLES[step]!;
                   return {
                     value: step,
@@ -219,15 +313,16 @@ export function StyleTab({ block }: { block: Block }) {
                   };
                 })}
                 value={value}
+                inUse={inUse}
                 onChange={set}
               />
             );
           case "align":
-            return <RadioField key={key} {...common} look="seg-icons" choices={ALIGN_TOKENS.map((t) => ({ value: t, label: tokenName(t), icon: ALIGN_ICONS[t] }))} value={value} onChange={set} />;
+            return <RadioField key={key} {...common} look="seg-icons" choices={ALIGN_CHOICES} value={value} inUse={inUse} onChange={set} />;
           case "verticalAlign":
-            return <RadioField key={key} {...common} look="seg-icons" choices={VERTICAL_ALIGN_TOKENS.map((t) => ({ value: t, label: tokenName(t), icon: VALIGN_ICONS[t] }))} value={value} onChange={set} />;
+            return <RadioField key={key} {...common} look="seg-icons" choices={VALIGN_CHOICES} value={value} inUse={inUse} onChange={set} />;
           case "aspect":
-            return <RadioField key={key} {...common} look="seg" choices={ASPECT_TOKENS.map((t) => ({ value: t, label: tokenName(t) }))} value={value} onChange={set} hint={hint ?? "Crops the image to this shape; Original keeps its own."} />;
+            return <RadioField key={key} {...common} look="seg" choices={ASPECT_TOKENS.map((t) => ({ value: t, label: tokenName(t) }))} value={value} inUse={inUse} onChange={set} hint={hint ?? "Crops the image to this shape; Original keeps its own."} />;
           default:
             return null;
         }

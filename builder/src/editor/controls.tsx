@@ -107,16 +107,20 @@ export function FieldFrame({ id, label, labelFor = true, scope, scopeDevice, sco
     <div className={`field${errors.length > 0 ? " field-error" : ""}${className ? ` ${className}` : ""}`}>
       {scopeElement ? <div className="label-row">{labelElement}{scopeElement}</div> : labelElement}
       {children}
-      {note?.kind === "then" && <p className="scope-then" id={`${id}-note`}><Icon name={note.icon} /><span>{note.text}</span></p>}
-      {note?.kind === "override" && (
-        <div className="override">
-          <Icon name={note.icon} />
-          <p id={`${id}-note`}>{note.text}</p>
-          {note.action}
-        </div>
-      )}
+      {note && <NoteView id={`${id}-note`} note={note} />}
       {hint && <p className="hint" id={`${id}-hint`}>{hint}</p>}
       <ErrorList id={`${id}-error`} errors={errors} />
+    </div>
+  );
+}
+
+function NoteView({ id, note }: { id: string; note: FieldNote }) {
+  if (note.kind === "then") return <p className="scope-then" id={id}><Icon name={note.icon} /><span>{note.text}</span></p>;
+  return (
+    <div className="override">
+      <Icon name={note.icon} />
+      <p id={id}>{note.text}</p>
+      {note.action}
     </div>
   );
 }
@@ -343,22 +347,69 @@ function useRadioKeys<T extends string | number>(choices: readonly Choice<T>[], 
   return { refs, onKeyDown, tabStop };
 }
 
-interface RadioFieldProps<T extends string | number> extends ScopeProps {
-  label: string;
+type RadioLook = "seg" | "seg-icons" | "swatches" | "steps" | "choices";
+
+interface RadioGroupProps<T extends string | number> {
   choices: readonly Choice<T>[];
-  // null: none chosen (the theme's default applies).
+  // The value set, or null when none is (the theme's default applies).
   value: T | null;
-  onChange: (value: T) => CommandError | null;
-  blockId: string | null;
-  field: string;
-  hint?: ReactNode;
-  // seg: a segmented row (.seg); swatches: colour circles; steps: tiles.
-  look?: "seg" | "seg-icons" | "swatches" | "steps" | "choices";
-  rules?: FieldRules;
+  // The value in use when none is set (the theme's, or the desktop's on a
+  // device): checked as the design draws it, and choosing it again sets
+  // nothing.
+  inUse?: T | null | undefined;
+  choose: (value: T) => void;
+  look: RadioLook;
+  labelledBy: string;
+  describedBy?: string | undefined;
+  invalid: boolean;
 }
 
-export function RadioField<T extends string | number>({ label, choices, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules }: RadioFieldProps<T>) {
-  const id = useId();
+// One radio group, its keys a native group's: the arrows move the choice.
+function RadioGroup<T extends string | number>({ choices, value, inUse = null, choose, look, labelledBy, describedBy: described, invalid }: RadioGroupProps<T>) {
+  const shown = value ?? inUse;
+  const { refs, onKeyDown, tabStop } = useRadioKeys(choices, shown, choose);
+  const className = look === "seg" ? "seg seg-text" : look === "seg-icons" ? "seg seg-icons" : look;
+  return (
+    <div className={className} role="radiogroup" aria-labelledby={labelledBy} aria-describedby={described} aria-invalid={invalid ? true : undefined}>
+      {choices.map((choice, index) => {
+        const checked = choice.value === shown;
+        const iconOnly = choice.icon !== undefined && (look === "seg-icons");
+        return (
+          <button
+            key={String(choice.value)}
+            ref={(element) => {
+              refs.current[index] = element;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            aria-label={iconOnly || look === "swatches" || choice.content ? choice.label : undefined}
+            title={choice.title ?? (iconOnly || look === "swatches" ? choice.label : undefined)}
+            tabIndex={index === tabStop ? 0 : -1}
+            className={look === "swatches" && choice.color === undefined ? "sw-none" : undefined}
+            style={choice.color ? ({ "--c": choice.color } as CSSProperties) : undefined}
+            onClick={() => {
+              if (!checked) choose(choice.value);
+            }}
+            onKeyDown={(event) => onKeyDown(event, index)}
+          >
+            {look === "swatches"
+              ? checked && <span className="pick-check" aria-hidden="true"><Icon name="check" /></span>
+              : choice.content ?? (
+                <>
+                  {choice.icon && <Icon name={choice.icon} />}
+                  {!iconOnly && choice.label}
+                </>
+              )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// A choice made, and what the page or the server said of it, for a field.
+function useChoice<T extends string | number>(onChange: (value: T) => CommandError | null, blockId: string | null, field: string, rules: FieldRules | undefined) {
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
   const server = useServerErrors(blockId, field, rules);
@@ -367,45 +418,78 @@ export function RadioField<T extends string | number>({ label, choices, value, o
     const error = onChange(next);
     setRefusal(error ? refusalAt(error, field, rules) : null);
   };
-  const { refs, onKeyDown, tabStop } = useRadioKeys(choices, value, choose);
-  const className = look === "seg" ? "seg seg-text" : look === "seg-icons" ? "seg seg-icons" : look;
+  return { errors, choose };
+}
+
+interface RadioFieldProps<T extends string | number> extends ScopeProps {
+  label: string;
+  choices: readonly Choice<T>[];
+  // null: none chosen (the theme's default applies).
+  value: T | null;
+  // The value in use when none is set, checked in its place.
+  inUse?: T | null | undefined;
+  onChange: (value: T) => CommandError | null;
+  blockId: string | null;
+  field: string;
+  hint?: ReactNode;
+  // seg: a segmented row (.seg); swatches: colour circles; steps: tiles.
+  look?: RadioLook;
+  rules?: FieldRules;
+}
+
+export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules }: RadioFieldProps<T>) {
+  const id = useId();
+  const { errors, choose } = useChoice(onChange, blockId, field, rules);
   return (
     <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
-      <div className={className} role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy(id, hint, errors, note)} aria-invalid={errors.length > 0 ? true : undefined}>
-        {choices.map((choice, index) => {
-          const checked = choice.value === value;
-          const iconOnly = choice.icon !== undefined && (look === "seg-icons");
+      <RadioGroup choices={choices} value={value} inUse={inUse} choose={choose} look={look} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, errors, note)} invalid={errors.length > 0} />
+    </FieldFrame>
+  );
+}
+
+// Two settings under one label, side by side, each its own group with its
+// own name (the design's Alignment: vertical, then horizontal). Where the
+// two say the same of their values (both the theme's, both the
+// desktop's), that is said once, beside the label; otherwise each says its
+// own beside its name, and its note under the pair. The pair stays one
+// field either way, so a choice made in it keeps the focus where it is.
+export interface PairPart<T extends string | number> extends ScopeProps {
+  label: string;
+  choices: readonly Choice<T>[];
+  value: T | null;
+  inUse?: T | null | undefined;
+  onChange: (value: T) => CommandError | null;
+  field: string;
+  look: RadioLook;
+}
+
+export function RadioPairField<T extends string | number>({ label, parts, blockId, hint }: { label: string; parts: readonly [PairPart<T>, PairPart<T>]; blockId: string | null; hint?: ReactNode }) {
+  const id = useId();
+  const first = useChoice(parts[0].onChange, blockId, parts[0].field, undefined);
+  const second = useChoice(parts[1].onChange, blockId, parts[1].field, undefined);
+  const errors = [...first.errors, ...second.errors];
+  const [a, b] = parts;
+  const shared = typeof a.scope === "string" && a.scope === b.scope;
+  const scoping: ScopeProps = shared ? { scope: a.scope, scopeTitle: a.scopeTitle, note: a.note } : {};
+  return (
+    <FieldFrame id={id} label={label} labelFor={false} hint={hint} {...scoping} errors={errors}>
+      <div className="pair">
+        {parts.map((part, index) => {
+          const own = index === 0 ? first : second;
+          const noteId = shared ? (a.note ? `${id}-note` : null) : (part.note ? `${id}-${index}-note` : null);
+          const described = [noteId, hint ? `${id}-hint` : null, own.errors.length > 0 ? `${id}-error` : null].filter((x): x is string => x !== null).join(" ");
           return (
-            <button
-              key={String(choice.value)}
-              ref={(element) => {
-                refs.current[index] = element;
-              }}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              aria-label={iconOnly || look === "swatches" || choice.content ? choice.label : undefined}
-              title={choice.title ?? (iconOnly || look === "swatches" ? choice.label : undefined)}
-              tabIndex={index === tabStop ? 0 : -1}
-              className={look === "swatches" && choice.color === undefined ? "sw-none" : undefined}
-              style={choice.color ? ({ "--c": choice.color } as CSSProperties) : undefined}
-              onClick={() => {
-                if (!checked) choose(choice.value);
-              }}
-              onKeyDown={(event) => onKeyDown(event, index)}
-            >
-              {look === "swatches"
-                ? checked && <span className="pick-check" aria-hidden="true"><Icon name="check" /></span>
-                : choice.content ?? (
-                  <>
-                    {choice.icon && <Icon name={choice.icon} />}
-                    {!iconOnly && choice.label}
-                  </>
-                )}
-            </button>
+            <div key={part.field}>
+              <div className="label-row">
+                <span className="label" id={`${id}-${index}-label`}>{part.label}</span>
+                {!shared && part.scope && <span className={`scope${part.scopeDevice ? " scope-device" : ""}`} title={part.scopeTitle}>{part.scope}</span>}
+              </div>
+              <RadioGroup choices={part.choices} value={part.value} inUse={part.inUse} choose={own.choose} look={part.look} labelledBy={`${id}-${index}-label`} describedBy={described === "" ? undefined : described} invalid={own.errors.length > 0} />
+            </div>
           );
         })}
       </div>
+      {!shared && parts.map((part, index) => part.note && <NoteView key={part.field} id={`${id}-${index}-note`} note={part.note} />)}
     </FieldFrame>
   );
 }
