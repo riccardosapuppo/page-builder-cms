@@ -76,7 +76,7 @@ export default defineConfig({
       ...validatorSource().runtimeModules.map((path) => `${path}.js`),
       "@tiptap/core", "@tiptap/extension-bold", "@tiptap/extension-document", "@tiptap/extension-hard-break", "@tiptap/extension-italic",
       "@tiptap/extension-link", "@tiptap/extension-list", "@tiptap/extension-paragraph", "@tiptap/extension-text",
-      "@tiptap/extensions/undo-redo", "@tiptap/pm/history",
+      "@tiptap/extensions/undo-redo", "@tiptap/pm/history", "@tiptap/pm/model", "@tiptap/pm/state",
     ],
   },
   build: {
