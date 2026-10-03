@@ -288,6 +288,30 @@ test.describe("with the keyboard", () => {
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(after);
   });
 
+  test("a section moves only between sections: no key takes it into a column", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Keys sections");
+    await select(page, "a");
+    await page.keyboard.press("Alt+ArrowUp");
+    await page.keyboard.press("Alt+ArrowUp");
+    await expect(block(page, "s1")).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(caption(page).locator("strong")).toHaveText("First is where it was.");
+    // Across, a section has nowhere to go: the columns beside it are no place for it.
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowDown");
+    await expect(caption(page).locator("strong")).toHaveText("First will move to the page, after Second.");
+    // Past the last section, nothing further: not into Second's columns.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowLeft");
+    await expect(caption(page).locator("strong")).toHaveText("First will move to the page, after Second.");
+    await page.keyboard.press("Space");
+    const after = [["s2", [["c3", ["e"]], ["c4", []]]], ["s1", [["c1", ["a", "b", "c"]], ["c2", ["d"]]]]];
+    await expect.poll(() => canvasShape(page)).toEqual(after);
+    await expect(block(page, "s1")).toBeFocused();
+    await saved(page);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(after);
+  });
+
   test("Esc puts the block back, with the focus on it, and changes nothing", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Keys cancel");
     await select(page, "a");
