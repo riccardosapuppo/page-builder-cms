@@ -67,8 +67,17 @@ export default defineConfig({
   preview: { host: "127.0.0.1", port, strictPort: true },
   optimizeDeps: {
     // The compiled validator imports ajv's runtime helpers from a virtual
-    // module, which the dependency scan does not read.
-    include: validatorSource().runtimeModules.map((path) => `${path}.js`),
+    // module, which the dependency scan does not read. The text editor's
+    // packages are imported only by the chunk loaded when a text is first
+    // edited (src/editor/rich/): found then, they would be bundled anew and
+    // the page told to reload, losing that first edit; named here, they are
+    // bundled when the server starts.
+    include: [
+      ...validatorSource().runtimeModules.map((path) => `${path}.js`),
+      "@tiptap/core", "@tiptap/extension-bold", "@tiptap/extension-document", "@tiptap/extension-hard-break", "@tiptap/extension-italic",
+      "@tiptap/extension-link", "@tiptap/extension-list", "@tiptap/extension-paragraph", "@tiptap/extension-text",
+      "@tiptap/extensions/undo-redo", "@tiptap/pm/history",
+    ],
   },
   build: {
     sourcemap: true,
