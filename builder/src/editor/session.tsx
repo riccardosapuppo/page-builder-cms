@@ -4,7 +4,7 @@
 // address, preview it, publish it, settle a conflict), and the site style's
 // one way to the server. Given to the interface through a context, so a
 // panel or a test can be drawn with a session of its own making.
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
 import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, SiteStyleChange } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
@@ -74,6 +74,13 @@ export function useSession(): Session {
 // listener in a test of its own).
 export function useOptionalSession(): Session | null {
   return useContext(SessionContext);
+}
+
+// The site's pages as addresses a link field offers to choose from: "/"
+// for the home page, "/<slug>" for the others, each named by its title.
+export function usePageLinks(): Array<{ value: string; label: string }> {
+  const pages = useOptionalSession()?.pages;
+  return useMemo(() => (pages ?? []).map((page) => ({ value: page.home ? "/" : `/${page.slug}`, label: page.title })), [pages]);
 }
 
 // A session with nothing open and every operation doing nothing, for a

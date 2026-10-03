@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import { describedText, editorKit, widgetPage } from "../../../test/editor-kit.tsx";
 import { COMMIT_AFTER_MS } from "../../editor/controls.tsx";
 import { BlockPanel } from "../../editor/panels/EditPanel.tsx";
+import type { Session } from "../../editor/session.tsx";
 
 test("text, level and link change the heading, each by its own command", async () => {
   const kit = editorKit({ document: widgetPage(), selection: "heading" });
@@ -36,6 +37,19 @@ test("text, level and link change the heading, each by its own command", async (
   fireEvent.change(link, { target: { value: "" } });
   fireEvent.blur(link);
   expect(kit.block("heading")?.props).not.toHaveProperty("href");
+});
+
+test("the link field offers the site's pages to choose from, each by its address and title", () => {
+  const pages = [
+    { id: 1, title: "Slack Water", slug: "slack-water", home: true },
+    { id: 2, title: "Winter series", slug: "winter-series", home: false },
+  ] as unknown as Session["pages"];
+  const kit = editorKit({ document: widgetPage(), selection: "heading", session: { pages } });
+  kit.render(<BlockPanel id="heading" />);
+  const link = screen.getByLabelText("Link");
+  expect(link.getAttribute("placeholder")).toBe("Paste a link or choose a page");
+  const list = document.getElementById(link.getAttribute("list") ?? "");
+  expect([...(list?.querySelectorAll("option") ?? [])].map((o) => [o.value, o.textContent])).toEqual([["/", "Slack Water"], ["/winter-series", "Winter series"]]);
 });
 
 test("a link the rules refuse stays in the field, said as a sentence, and the page keeps the old one", () => {

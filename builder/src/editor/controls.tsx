@@ -126,9 +126,13 @@ interface TextFieldProps {
   prefix?: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  // Values to choose from as the person types (a one-line field): the
+  // browser's own list, each value with its name (a page's address, its
+  // title). Anything else can still be typed.
+  suggestions?: ReadonlyArray<{ value: string; label: string }>;
 }
 
-export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled }: TextFieldProps) {
+export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled, suggestions }: TextFieldProps) {
   const { clock, ui } = useEnv();
   const id = useId();
   const [draft, setDraft] = useState(value);
@@ -230,15 +234,19 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
         type="text"
         className={icon || prefix ? undefined : "input"}
         spellCheck={rules?.kind === "href" || rules?.kind === "anchor" || rules?.kind === "slug" ? false : undefined}
+        list={suggestions && suggestions.length > 0 ? `${id}-list` : undefined}
         {...common}
         onKeyDown={(event) => {
           if (event.key === "Enter") commit();
         }}
       />
     );
+    const listed = suggestions && suggestions.length > 0
+      ? <datalist id={`${id}-list`}>{suggestions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</datalist>
+      : null;
     control = icon || prefix
-      ? <div className="input input-icon">{icon && <Icon name={icon} />}{prefix && <span className="input-prefix" aria-hidden="true">{prefix}</span>}{input}</div>
-      : input;
+      ? <div className="input input-icon">{icon && <Icon name={icon} />}{prefix && <span className="input-prefix" aria-hidden="true">{prefix}</span>}{input}{listed}</div>
+      : <>{input}{listed}</>;
   }
   return <FieldFrame id={id} label={label} hint={hint} errors={errors}>{control}</FieldFrame>;
 }

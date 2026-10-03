@@ -2,10 +2,12 @@
 // and alignment are the Style tab's.
 import { TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
+import { usePageLinks } from "../../editor/session.tsx";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 
 function ButtonContent({ block }: ContentProps<"button">) {
   const commands = useBlockCommands(block.id);
+  const pages = usePageLinks();
   return (
     <>
       <TextField
@@ -20,7 +22,8 @@ function ButtonContent({ block }: ContentProps<"button">) {
         label="Link"
         icon="link"
         value={block.props.href}
-        placeholder="Paste a link or a page’s address"
+        placeholder="Paste a link or choose a page"
+        suggestions={pages}
         blockId={block.id}
         field="/props/href"
         rules={{ kind: "href", maxLength: 2048 }}
