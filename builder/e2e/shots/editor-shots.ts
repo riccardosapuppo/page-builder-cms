@@ -1,12 +1,12 @@
 // node e2e/shots/editor-shots.ts <folder>
 //
 // Photographs the editor in the states the approved design's shots show
-// (design/shots/editor.png, empty.png, style.png and
-// design/shots-extra/advanced.png), plus the widget panel and the phone
-// preview, headless, in two windows: 1280 by 800, and 1440 by 900, the
-// size the design itself was shot at, whose canvas is wide enough for the
-// page's desktop layout (832, past the 800 where it starts). The shots of
-// the larger window go in <folder>/1440.
+// (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png
+// and design/shots-extra/advanced.png and context.png), plus the widget
+// panel and the phone preview, headless, in two windows: 1280 by 800, and
+// 1440 by 900, the size the design itself was shot at, whose canvas is
+// wide enough for the page's desktop layout (832, past the 800 where it
+// starts). The shots of the larger window go in <folder>/1440.
 //
 // It starts a CMS and an editor server of its own (../harness/servers.ts)
 // on E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), puts the example
@@ -17,6 +17,7 @@
 import { chromium, type Browser, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { moveOnto, pickUp } from "../helpers/canvas.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../harness/servers.ts";
 
@@ -69,6 +70,23 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.locator('.canvas [data-block-id="hero-button"]').hover();
   await shoot("editor");
 
+  // #context: the heading's menu, opened by a right click on it, low on
+  // its second line, where the design's pointer stands.
+  const title = page.locator('.canvas [data-block-id="hero-heading"] h1');
+  const titleBox = await title.boundingBox();
+  if (!titleBox) throw new Error("the hero's heading is not on screen");
+  await title.click({ button: "right", position: { x: titleBox.width * 0.64, y: titleBox.height * 0.84 } });
+  await page.getByRole("menu", { name: "Heading actions" }).waitFor();
+  await shoot("context");
+  await page.keyboard.press("Escape");
+
+  // #shortcuts: the "?" window, over the same page.
+  await page.keyboard.press("?");
+  await page.getByRole("dialog", { name: "Keyboard shortcuts" }).waitFor();
+  await away();
+  await shoot("shortcuts");
+  await page.keyboard.press("Escape");
+
   // #style: the tablet width, the hero's first column, its Style tab.
   await away();
   await page.getByRole("button", { name: "Tablet" }).click();
@@ -87,6 +105,22 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // The widget panel, the Join section still selected.
   await page.getByRole("tab", { name: "Add" }).click();
   await shoot("add");
+
+  // #drag: the Quote tile held over See the bay's second column, after
+  // its text, then the pointer on the line where it would land, as in the
+  // design (the line is the new block's own place, so it stays there);
+  // then Esc, and nothing changed.
+  await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
+  await moveOnto(page, page.locator('.canvas [data-block-id="meet-text"]'), "bottom");
+  await page.locator(".live-caption:not(.live-caption-quiet)").waitFor();
+  const line = await page.locator(".canvas .drop-slot").boundingBox();
+  if (!line) throw new Error("no drop indicator on screen");
+  await page.mouse.move(line.x + line.width * 0.7, line.y + line.height / 2, { steps: 6 });
+  await page.getByText("Quote will be added to Column 2 in See the bay, after Text.").waitFor();
+  await shoot("drag");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  await page.getByRole("tab", { name: "Add" }).click();
 
   // The phone preview of the home page, the hero selected.
   await page.getByRole("button", { name: "Phone" }).click();
