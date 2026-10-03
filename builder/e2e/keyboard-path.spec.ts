@@ -11,7 +11,7 @@
 // live page from the Publish menu; and the page the CMS serves, at a
 // desktop's width and at a tablet's, holds every change. At each step the
 // focus is where the step leaves it.
-import type { Locator, Page } from "@playwright/test";
+import type { FileChooser, Locator, Page } from "@playwright/test";
 import { block, selectedText, settledTextEditor } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
 import { cms, column, draftOf, expect, makePage, section, test, unique, widget, heading } from "./helpers/site.ts";
@@ -29,6 +29,33 @@ async function tabTo(page: Page, target: Locator, options: { back?: boolean; mos
   throw new Error(`${most} presses of ${options.back ? "Shift+Tab" : "Tab"} did not reach ${target}`);
 }
 
+// The system's file chooser, watched from the moment the test starts.
+// Playwright turns its interception on when the first listener is added,
+// without waiting for the browser to take it: a listener added just
+// before the key that opens the chooser can come after the key, and the
+// chooser then never arrives. Each call takes the next chooser, failing
+// after `within` rather than at the test's own timeout.
+function fileChoosers(page: Page): (within?: number) => Promise<FileChooser> {
+  const arrived: FileChooser[] = [];
+  const waiting: Array<(chooser: FileChooser) => void> = [];
+  page.on("filechooser", (chooser) => {
+    const next = waiting.shift();
+    if (next) next(chooser);
+    else arrived.push(chooser);
+  });
+  return (within = 15_000) => {
+    const ready = arrived.shift();
+    if (ready) return Promise.resolve(ready);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`no file chooser opened within ${within} ms`)), within);
+      waiting.push((chooser) => {
+        clearTimeout(timer);
+        resolve(chooser);
+      });
+    });
+  };
+}
+
 const focusedBlock = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.blockId ?? null);
 const order = (page: Page) => page.locator('.canvas [data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType));
 
@@ -36,6 +63,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   test.setTimeout(180_000);
   const notes = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Tide notes" }] }] };
   const { id, slug } = await makePage(request, "By keys", [section("s", "Story", [column("c", [heading("a", "Alpha"), widget("t", "text", { doc: notes }), widget("b", "quote", { text: "Bravo" })])])]);
+  const nextChooser = fileChoosers(page);
   await page.goto(`/?page=${id}`);
   await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
 
@@ -155,9 +183,8 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(library).toBeVisible();
   const name = `${unique("by-keys")}.png`;
   await tabTo(page, library.getByRole("button", { name: "Upload images" }));
-  const choosing = page.waitForEvent("filechooser");
   await page.keyboard.press("Enter");
-  await (await choosing).setFiles({ name, mimeType: "image/png", buffer: png(600, 400, (x) => (x < 300 ? [30, 110, 90] : [230, 200, 140])) });
+  await (await nextChooser()).setFiles({ name, mimeType: "image/png", buffer: png(600, 400, (x) => (x < 300 ? [30, 110, 90] : [230, 200, 140])) });
   await expect(library.getByRole("radio", { name: `${name}, no alt text` })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
   const ALT = "Two swimmers by the harbour wall";
   const alt = library.getByRole("textbox", { name: /^Alt text/ });
