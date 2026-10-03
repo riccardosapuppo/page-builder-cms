@@ -6,7 +6,7 @@
 // What the design draws here and the editor does not have yet is not drawn
 // (no control that does nothing): undo, redo and the history come with
 // stage 3.
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon, Mark } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps } from "./keymap.ts";
@@ -38,9 +38,10 @@ export function TopBar() {
   const current = session.current;
   const siteStyleOpen = tray === "site-style";
   const toggleSiteStyle = (open: boolean) => ui.getState().setTray(open ? "site-style" : "edit");
+  const bar = useLeftRoom();
 
   return (
-    <header className="topbar chrome">
+    <header ref={bar} className="topbar chrome">
       <div className="tb-left">
         <button
           ref={markButton}
@@ -151,6 +152,49 @@ export function TopBar() {
       {creating && <NewPageDialog onClose={() => setCreating(false)} />}
     </header>
   );
+}
+
+// The bar's three groups share it evenly, so the device switch sits in the
+// middle (editor.css, .topbar). When the left group needs more than half,
+// for a long chip ("Published, 3 changes not live") beside the page's
+// title, it takes it from the room the right group does not use, and the
+// switch moves right; only past that does the page switch shorten, its
+// address first, then its title. CSS cannot weigh one group's need against
+// the other's, so the bar is measured with each group at its natural
+// width, and the left group's floor, --tb-left-min, is the smaller of its
+// need and what the other two leave it. Measured again whenever the bar's
+// width or anything drawn in it changes.
+function useLeftRoom(): RefObject<HTMLElement | null> {
+  const bar = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = bar.current;
+    if (!element) return undefined;
+    const measure = () => {
+      const [left, center, right] = Array.from(element.children) as HTMLElement[];
+      if (!left || !center || !right) return;
+      const shared = element.style.gridTemplateColumns;
+      element.style.gridTemplateColumns = "max-content max-content max-content";
+      const need = left.getBoundingClientRect().width;
+      const middle = center.getBoundingClientRect().width;
+      const others = right.getBoundingClientRect().width;
+      element.style.gridTemplateColumns = shared;
+      const style = getComputedStyle(element);
+      const inside = element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0) - 2 * (parseFloat(style.columnGap) || 0);
+      const floor = Math.max(0, Math.min(Math.ceil(need), Math.floor(inside - middle - Math.ceil(others))));
+      const value = `${floor}px`;
+      if (element.style.getPropertyValue("--tb-left-min") !== value) element.style.setProperty("--tb-left-min", value);
+    };
+    measure();
+    const resized = new ResizeObserver(measure);
+    resized.observe(element);
+    const changed = new MutationObserver(measure);
+    changed.observe(element, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+    };
+  }, []);
+  return bar;
 }
 
 // The open page's title as the document holds it now.

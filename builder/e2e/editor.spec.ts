@@ -206,29 +206,78 @@ test.describe("in a 1280 by 800 window", () => {
     expect(await page.screenshot({ clip: inside })).toEqual(withLine);
   });
 
+  // Whether every letter of an element's words shows: their own width, to
+  // the fraction of a pixel, against the box's. A box a quarter of a pixel
+  // too narrow already ends its text in an ellipsis, which scrollWidth,
+  // rounded to whole pixels, can miss.
+  const whole = (page: Page, selector: string) => page.locator(selector).evaluate((element) => {
+    const words = document.createRange();
+    words.selectNodeContents(element);
+    return words.getBoundingClientRect().width <= element.getBoundingClientRect().width + 0.01;
+  });
+  // Whether an element lies inside the top bar, Publish's arrow included.
+  const inBar = (page: Page, selector: string) => page.locator(selector).evaluate((element) => {
+    const bar = element.closest(".topbar")!.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    return box.left >= bar.left - 0.01 && box.right <= bar.right + 0.01;
+  });
+
+  // The browser's own line for the save the network drops below.
+  test.describe("with a save the network drops", () => {
+    test.use({ allowConsole: /net::ERR_INTERNET_DISCONNECTED/ });
+
+    test("a published page's title stays whole beside its changes not live, and while a save is retried", async ({ page, request }) => {
+      const { id } = await makePage(request, "Slack Water", [section("s", "Here", [column("c", [heading("h", "First words")])])]);
+      expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+      // Three saves after the live version: the chip's longest form short of
+      // two-digit counts.
+      for (let n = 0; n < 3; n++) {
+        const draft = await draftOf(request, id);
+        const document = { schemaVersion: 1, title: "Slack Water", sections: [section("s", "Here", [column("c", [heading("h", `Words ${n}`)])])] };
+        expect((await request.put(`${cms()}/api/pages/${id}/draft`, { data: { revision: draft.revision, saveId: unique("bar"), document } })).status()).toBe(200);
+      }
+      await open(page, id);
+      await expect(page.locator(".topbar .chip")).toHaveText("Published, 3 changes not live");
+      expect(await whole(page, ".tb-page-title")).toBe(true);
+      expect(await inBar(page, ".tb-right > :last-child")).toBe(true);
+
+      // A save that cannot reach the CMS: the save state's longest words.
+      await page.route("**/api/pages/*/draft", (route) => (route.request().method() === "PUT" ? route.abort("internetdisconnected") : route.fallback()));
+      await page.locator('.canvas [data-block-id="h"]').click();
+      const text = page.getByRole("textbox", { name: "Text" });
+      await text.fill("Words kept in the tab");
+      await text.blur();
+      await expect(page.locator(".topbar .save-state")).toHaveText(/^Not saved, retrying in \d+ s$/);
+      expect(await whole(page, ".tb-page-title")).toBe(true);
+      expect(await inBar(page, ".tb-right > :last-child")).toBe(true);
+      await page.unroute("**/api/pages/*/draft");
+    });
+  });
+
   test("in the top bar a long address gives way before the page's title, all of it", async ({ page, request }) => {
-    const { id, slug } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
+    const { id } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
+    // An address as long as an address may be, 64 characters: longer than
+    // the room the bar has left for it.
+    const slug = `${unique("spring")}-every-weekend-morning-at-the-harbour-wall`.slice(0, 64).replace(/-+$/, "");
+    expect((await request.patch(`${cms()}/api/pages/${id}`, { data: { slug } })).status()).toBe(200);
     await open(page, id);
     await expect(page.locator(".tb-page-title")).toHaveText("Spring series");
     await expect(page.locator(".tb-page-path")).toHaveText(`/${slug}`);
     // Every letter of the title shows; the address is the one cut short.
-    // The words' own width, to the fraction of a pixel: a box a quarter
-    // of a pixel too narrow already ends its text in an ellipsis, which
-    // scrollWidth, rounded to whole pixels, can miss.
-    const whole = (selector: string) => page.locator(selector).evaluate((element) => {
-      const words = document.createRange();
-      words.selectNodeContents(element);
-      return words.getBoundingClientRect().width <= element.getBoundingClientRect().width + 0.01;
-    });
-    expect(await whole(".tb-page-title")).toBe(true);
-    expect(await whole(".tb-page-path")).toBe(false);
+    expect(await whole(page, ".tb-page-title")).toBe(true);
+    expect(await whole(page, ".tb-page-path")).toBe(false);
 
     // A title too long for the bar is cut in its turn, inside the page
     // switch, with no address showing at all.
-    const long = await makePage(request, "Every swim of the long winter series", [section("s", "Here", [column("c", [])])]);
+    const longTitle = "Every swim of the long winter series, from the first frost on the slipway to the thaw";
+    const long = await makePage(request, "Every swim", [section("s", "Here", [column("c", [])])]);
+    const draft = await draftOf(request, long.id);
+    const retitled = await request.put(`${cms()}/api/pages/${long.id}/draft`, { data: { revision: draft.revision, saveId: unique("long"), document: { schemaVersion: 1, title: longTitle, sections: [section("s", "Here", [column("c", [])])] } } });
+    expect(retitled.status()).toBe(200);
     await open(page, long.id);
-    await expect(page.locator(".tb-page-title")).toHaveText("Every swim of the long winter series");
-    expect(await whole(".tb-page-title")).toBe(false);
+    await expect(page.locator(".tb-page-title")).toHaveText(longTitle);
+    expect(await whole(page, ".tb-page-title")).toBe(false);
+    expect(await inBar(page, ".tb-right > :last-child")).toBe(true);
     const name = (await page.locator(".tb-page-name").boundingBox())!;
     const titleBox = (await page.locator(".tb-page-title").boundingBox())!;
     expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(name.x + name.width + 0.01);
