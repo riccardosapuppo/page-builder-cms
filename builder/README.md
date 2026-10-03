@@ -5,9 +5,9 @@ Vite, that builds pages and saves them to the CMS (`../cms/`) through its
 JSON API. It is a package of its own, with its own `package.json` and
 lockfile.
 
-**Stage 2, its first half.** What is here is what the interface will
-stand on, each part with its tests: the pinned toolchain, the document's types
-and its validator, the published page's CSS and fonts, the fence around
+**Stage 2.** What the interface stands on, each part with its tests:
+the pinned toolchain, the document's types and its validator, the
+published page's CSS and fonts, the fence around
 the code that talks to the server, the test harness; the page as data
 and every change to it as a command with its inverse (`src/document/`),
 the store with undo, redo and drag and drop (`src/store/`); the storage
@@ -32,11 +32,11 @@ published page and on the canvas.
 
 - **Node** `^22.13.0 || ^24.0.0 || >=26.0.0` (`engines`, the narrowest of
   the toolchain's: Vitest 5's), and npm.
-- For `npm run test:rails` and `npm run e2e` only: **Ruby** on the PATH and
-  the CMS's gems installed ([../cms/README.md](../cms/README.md)), and for
-  `npm run e2e` Playwright 1.62.1's Chromium (revision 1234) in
-  Playwright's cache. These tests start a CMS of their own; nothing needs
-  to be running.
+- For the commands that start a CMS of their own (`npm run test:rails`,
+  `e2e`, `check:a11y`, `check:serving` and `shots:editor`) only: **Ruby**
+  on the PATH and the CMS's gems installed
+  ([../cms/README.md](../cms/README.md)), and Playwright 1.62.1's Chromium
+  (revision 1234) in Playwright's cache. Nothing needs to be running.
 
 ## Commands
 
@@ -98,7 +98,7 @@ default the origin of an absolute `VITE_API_BASE`, else
 | [`src/shared/`](src/shared/README.md) | What comes from the rest of the repository: the document's types, the validator, the published page's CSS, the editor's font. Every other folder imports from here. |
 | [`src/document/`](src/document/README.md) | The tree, the commands with their inverses, the reducer, migrations: pure functions. |
 | [`src/store/`](src/store/README.md) | The vanilla zustand store that runs the reducer, the selection, the history. |
-| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, renderer, icon, and its panel with the panel's test; its accessibility test comes with the editor's accessibility checks. `registry.ts` lists the definitions, `panels.ts` the panels. |
+| [`src/widgets/<widget>/`](src/widgets/README.md) | Each widget's definition, renderer, icon, its panel with the panel's test, and its accessibility test (`a11y.ts`, run by `npm run check:a11y`). `registry.ts` lists the definitions, `panels.ts` the panels. |
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
@@ -139,12 +139,15 @@ default the origin of an absolute `VITE_API_BASE`, else
 - **The bundle check**, after every `npm run build`, parses the
   JavaScript it wrote and fails on a call of `eval`, `Function` or
   `require`, and on a missing validator, font or licence. The build of
-  2 October 2026 printed: `bundle check: 1 JavaScript file(s), 371.7 KiB,
-  parsed; eval() 0, Function() 0, new Function() 0, require() 0; validator
-  in assets/index-YT-ML5cR.js; fonts with their licence: 4/4` (358.7 KiB
-  before `validateBlock` was added). With `new Function` planted in
-  `src/main.tsx`, the build failed: the minifier had made it `Function()`,
-  which the check counted.
+  3 October 2026, with the interface, printed: `bundle check: 2 JavaScript
+  file(s), 702.9 KiB, parsed; eval() 0, Function() 0, new Function() 0,
+  require() 0; validator in assets/index-CQM1kcnj.js; fonts with their
+  licence: 4/4` (371.7 KiB on 2 October, before the interface; the second
+  file is `@rails/activestorage`, loaded when an image is uploaded). The
+  main file is one chunk of 704 kB, 185 kB gzipped, and Vite warns that it
+  is over its 500 kB: the editor is not yet split or loaded on demand.
+  With `new Function` planted in `src/main.tsx`, the build failed: the
+  minifier had made it `Function()`, which the check counted.
 - **The published page's CSS** is the CMS's own `site.css` and
   `tokens.css`, imported where they are (`src/shared/site.css`); its fonts
   come from `../cms/app/assets/fonts`, the editor's from `../design/fonts`,
@@ -191,7 +194,9 @@ default the origin of an absolute `VITE_API_BASE`, else
     pages with seed 7 agreed, 26527 nodes, in 117.5 s, and the same in
     119.1 s in a later run; the default run, 60 pages, 4952 nodes, took
     25.7 s and later 30.8 s; four faults planted in the renderer were each
-    found within 39 pages);
+    found within 39 pages. On 3 October, with the generator held to the
+    schema's new rules on marks and anchors, the default run drew 4411
+    nodes, in 6.9 s on the virtual machine of the root README);
   - the twins: the URL policy and rich text against the CMS's own Ruby on
     values the schema refuses too (57000 policy answers and 1500 rich
     texts the same);
@@ -199,7 +204,9 @@ default the origin of an absolute `VITE_API_BASE`, else
     headless Chromium at 1280, 900 and the editor's two previews, 768 and
     390 (`src/shared/preview-widths.ts`, from `schema/tokens.json`), every
     element's box and computed style, to 1/64 of a pixel (536 elements on
-    a responsive page, 2152 on three random pages, the same).
+    a responsive page and 2152 on three random pages, the same, on
+    2 October 2026; 536 and 1468 on 3 October, the random pages drawn by
+    the generator as it is now).
 - **The packages**: every version exact; one `playwright-core`, 1.62.1;
   every `@tiptap` package at 3.31.3 and every `@dnd-kit` one at 0.5.0; and
   every installed package accepts the lowest Node of each line the editor
