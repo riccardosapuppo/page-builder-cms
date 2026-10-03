@@ -14,6 +14,7 @@ import { TYPE_NAMES } from "../document/labels.ts";
 import { WIDGET_TYPES, type ImageRef, type WidgetType } from "../shared/document.ts";
 import { validateBlockSchema, validateDocument } from "../shared/validate.ts";
 import { WidgetIcon } from "./icon.tsx";
+import { WIDGET_A11Y } from "./a11y-all.ts";
 import { LAYOUT, WIDGETS } from "./registry.ts";
 import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type IconData, type InputOf, type WidgetDefinition } from "./types.ts";
 
@@ -129,4 +130,19 @@ test("a new widget's props are its own: changing one never changes the next", ()
     expect(make()).not.toBe(make());
     expect(make()).toEqual(make());
   }
+});
+
+test("every widget has its accessibility test, each case a valid block of its type", () => {
+  expect(WIDGET_A11Y.map((test) => test.type)).toEqual(WIDGETS.map((widget) => widget.type));
+  const blocks = WIDGET_A11Y.flatMap((test) => {
+    expect(test.cases.length, test.type).toBeGreaterThan(0);
+    return test.cases.map((c, index) => ({ id: `${test.type}-${index}`, type: test.type, props: c.props, children: [], style: { base: {} } }));
+  });
+  const page = {
+    schemaVersion: 1,
+    title: "Every case",
+    sections: [{ id: "s", type: "section", props: {}, style: { base: {} }, children: [{ id: "c", type: "column", props: {}, style: { base: {} }, children: blocks }] }],
+  };
+  const result = validateDocument(page);
+  expect(result.valid ? [] : result.errors).toEqual([]);
 });
