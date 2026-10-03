@@ -88,6 +88,19 @@ export function grip(page: Page): Locator {
 // pressed at once would be undone (and at 20 ms it may put its own back
 // in any case). A person is never that fast; a test is, so it waits, on
 // the editor's own record of when it took the focus.
+// The words selected in the text editor open in a text block, as the editor
+// itself holds them (not the browser's selection): ProseMirror reads a
+// selection the browser's own keys made (Shift and an arrow) on the
+// browser's next selectionchange event, which a test's next key may beat.
+// A person's next key comes later; a test waits for the editor to have it.
+export async function selectedText(page: Page, id: string): Promise<string | null> {
+  return page.evaluate((blockId) => {
+    const dom = document.querySelector(`.canvas [data-block-id="${blockId}"] .rte`) as (Element & { editor?: { state: { selection: { from: number; to: number }; doc: { textBetween(from: number, to: number): string } } } }) | null;
+    const state = dom?.editor?.state;
+    return state ? state.doc.textBetween(state.selection.from, state.selection.to) : null;
+  }, id);
+}
+
 export async function settledTextEditor(page: Page, id: string): Promise<Locator> {
   const editor = page.locator(`.canvas [data-block-id="${id}"] .rte`);
   await page.waitForFunction((blockId) => {
