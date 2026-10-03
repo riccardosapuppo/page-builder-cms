@@ -27,7 +27,7 @@ random block ids.
 | `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added |
 | `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx` |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths); the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill); the empty page's invitation and its ready-made sections |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill); the empty page's invitation and its ready-made sections |
 | `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it |
 | `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field is handed over first, as a command of its own; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
 | `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each widget panel tile as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the live region (`DragLayer.tsx`) |
@@ -77,9 +77,12 @@ the clipboard are Chromium's, against a CMS of the run's own:
 `../../e2e/editor.spec.ts` (the shell; sections anchored with the
 editor's own ids, which hold an underscore no anchor can; the theme's
 header and footer, locked; and in a 1280 by 800 window the pages drawn
-smaller to fit, a stacked column's tab and the page's title kept whole),
+smaller to fit, the editor's own controls and words on them kept at
+their size and in their place, a stacked column's tab and the page's
+title kept whole),
 `drag.spec.ts` (every drop by mouse and by keyboard, Space with the
-button held, refused drops, Esc, a drag on a page drawn smaller),
+button held, refused drops, Esc, a drag on a page drawn smaller, its
+words at their size),
 `focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
 (every key of the map, and the "?" window listing them), `menu.spec.ts`
 (the block's menu), `marks.spec.ts` (the canvas's marks leaving the

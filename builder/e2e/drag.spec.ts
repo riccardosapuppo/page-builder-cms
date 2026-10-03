@@ -43,6 +43,14 @@ test.describe("on a page drawn smaller to fit a 1280 window", () => {
     await pickUp(page, grip(page));
     await moveOnto(page, block(page, "c2"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Quote will move to Column 2 in First, after Divider.");
+    // The drag's own words on the page keep their size: the dragged block's
+    // name on its line, the target column's name, the shaded section's note.
+    const drawnAt = (selector: string) => page.locator(`.canvas ${selector}`).first().evaluate((element) => {
+      const shown = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return [Number((shown.width / parseFloat(style.width)).toFixed(3)), Number((shown.height / parseFloat(style.height)).toFixed(3))];
+    });
+    for (const words of [".drop-label", ".ov-drop-target > .ov-label", ".veil-note"]) expect(await drawnAt(words), words).toEqual([1, 1]);
     await page.mouse.up();
     const after = [["s1", [["c1", ["a", "c"]], ["c2", ["d", "b"]]]], ["s2", [["c3", ["e"]], ["c4", []]]]];
     await expect.poll(() => canvasShape(page)).toEqual(after);

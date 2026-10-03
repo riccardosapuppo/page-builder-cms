@@ -563,6 +563,28 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .drop-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px var(--mark-key); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
 [data-drag-row] > .drop-slot .drop-label { top: 12px; transform: none; }
 
+/* A page drawn smaller to fit (Canvas.tsx, fitPreview) draws its marks
+   smaller with it, since they hang from its blocks. The editor's own
+   controls and words among them are drawn back up by the inverse of that
+   scale, each from the point it hangs by, so they keep the design's size
+   and their place: the selection's bar, the section's and the column's
+   tabs, the names, the dimension badges, the drag's labels and notes, an
+   empty column's words, the empty page's invitation. The lines and
+   outlines stay with the blocks they surround. */
+.frame[data-scale] .ov-bar { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
+.frame[data-scale] :is(.col, .sec) > .ov-hover .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .sec > .ov-drop-target > .ov-label { transform-origin: 0 0; }
+.frame[data-scale] .ov-section .ov-tab { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); transform-origin: 50% 50%; }
+.frame[data-scale] .ov-col .ov-tab { transform: translateY(100%) scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] :is(.ov-dim-v, .ov-pad) span { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] .drop-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
+.frame[data-scale] [data-drag-row] > .drop-slot .drop-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] .veil-note { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] .col-empty { font-size: calc(12px * var(--canvas-unscale)); line-height: calc(16px * var(--canvas-unscale)); }
+.frame[data-scale] .invite { zoom: var(--canvas-unscale); }
+
 /* What follows the pointer: the tile of what is dragged, tilted. */
 .drag-overlay { pointer-events: none; }
 .drag-ghost { position: absolute; width: 0; height: 0; pointer-events: none; }

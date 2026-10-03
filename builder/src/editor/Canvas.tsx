@@ -486,7 +486,11 @@ export function Canvas() {
 
   const shown = width ?? measured;
   const dragClass = dragType === null ? "" : ` canvas-drag canvas-drag-${dragType === "section" || dragType === "column" ? dragType : "widget"}`;
-  const frameStyle: CSSProperties | undefined = width === undefined ? undefined : { width: `${width}px`, ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: "0 0" } : {}) };
+  // A page drawn smaller also says by how much to draw the editor's own
+  // controls and words on it back up to their size (editor.css).
+  const frameStyle: CSSProperties | undefined = width === undefined
+    ? undefined
+    : { width: `${width}px`, ...(scale < 1 ? ({ transform: `scale(${scale})`, transformOrigin: "0 0", "--canvas-unscale": String(1 / scale) } as CSSProperties) : {}) };
   return (
     <main
       ref={bench}
