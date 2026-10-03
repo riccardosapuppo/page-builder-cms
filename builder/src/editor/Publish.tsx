@@ -61,7 +61,7 @@ export function PreviewButton() {
   const keys = entry("preview");
   return (
     <a
-      className="btn btn-secondary"
+      className="btn btn-secondary tb-word-btn"
       href={href}
       target="_blank"
       rel="noopener"
@@ -76,7 +76,9 @@ export function PreviewButton() {
         session.preview();
       }}
     >
-      <Icon name="eye" />Preview
+      {/* The word gives way to the icon when the top bar is short of room
+          (./TopBar.tsx, useLeftRoom). */}
+      <Icon name="eye" /><span className="tb-word">Preview</span>
     </a>
   );
 }

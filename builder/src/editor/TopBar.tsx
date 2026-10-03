@@ -161,32 +161,47 @@ export function TopBar() {
 // address first, then its title. CSS cannot weigh one group's need against
 // the other's, so the bar is measured with each group at its natural
 // width, and the left group's floor, --tb-left-min, is the smaller of its
-// need and what the other two leave it. Measured again whenever the bar's
-// width or anything drawn in it changes.
+// need and what the other two leave it. Before the page switch shortens,
+// the right group gives up the words it can do without (History's and
+// Preview's; history.css, .tb-tight), each keeping its icon and its name
+// for a screen reader. Measured again whenever the bar's width or anything
+// drawn in it changes.
 function useLeftRoom(): RefObject<HTMLElement | null> {
   const bar = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element) return undefined;
+    let changed: MutationObserver | null = null;
     const measure = () => {
       const [left, center, right] = Array.from(element.children) as HTMLElement[];
       if (!left || !center || !right) return;
       const shared = element.style.gridTemplateColumns;
       element.style.gridTemplateColumns = "max-content max-content max-content";
-      const need = left.getBoundingClientRect().width;
-      const middle = center.getBoundingClientRect().width;
-      const others = right.getBoundingClientRect().width;
-      element.style.gridTemplateColumns = shared;
       const style = getComputedStyle(element);
       const inside = element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0) - 2 * (parseFloat(style.columnGap) || 0);
+      // Every word first; the right group tight only if the left would
+      // otherwise be cut.
+      element.classList.remove("tb-tight");
+      const need = left.getBoundingClientRect().width;
+      const middle = center.getBoundingClientRect().width;
+      let others = right.getBoundingClientRect().width;
+      const tight = Math.ceil(need) > Math.floor(inside - middle - Math.ceil(others));
+      if (tight) {
+        element.classList.add("tb-tight");
+        others = right.getBoundingClientRect().width;
+      }
+      element.style.gridTemplateColumns = shared;
       const floor = Math.max(0, Math.min(Math.ceil(need), Math.floor(inside - middle - Math.ceil(others))));
       const value = `${floor}px`;
       if (element.style.getPropertyValue("--tb-left-min") !== value) element.style.setProperty("--tb-left-min", value);
+      // The bar was just measured as it now is: the class measuring set and
+      // took back is no change to answer.
+      changed?.takeRecords();
     };
     measure();
     const resized = new ResizeObserver(measure);
     resized.observe(element);
-    const changed = new MutationObserver(measure);
+    changed = new MutationObserver(measure);
     changed.observe(element, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
     return () => {
       resized.disconnect();
@@ -232,14 +247,16 @@ function HistoryButtons() {
         <Icon name="redo" />
       </button>
       <button
-        className="btn btn-quiet"
+        className="btn btn-quiet tb-word-btn"
         type="button"
         data-history=""
         aria-pressed={open}
-        title="This session's changes and the page's versions"
+        title="History: this session's changes and the page's versions"
         onClick={() => env.ui.getState().setHistoryOpen(!open)}
       >
-        <Icon name="history" />History
+        {/* The word gives way to the icon when the bar is short of room
+            (useLeftRoom), so the page's title keeps its own. */}
+        <Icon name="history" /><span className="tb-word">History</span>
       </button>
     </>
   );
