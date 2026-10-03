@@ -239,8 +239,9 @@ function DimensionLine({ dimension }: { dimension: Dimension }) {
 // They are placed again whenever either box changes size, and whenever
 // the pill may move with neither changing: an alignment, the button's own
 // or the one it takes on from its column (text-align), comes as a class
-// on the root or on a block around it, up to the page root.
-function hug(mark: HTMLElement | null): (() => void) | undefined {
+// on the root or on a block around it, up to the page root. Each time,
+// `then` follows (the hover outline places its name).
+function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefined {
   const root = mark?.parentElement;
   const pill = root?.querySelector<HTMLElement>(":scope > .sw-btn");
   if (!mark || !root || !pill) return undefined;
@@ -249,6 +250,7 @@ function hug(mark: HTMLElement | null): (() => void) | undefined {
     mark.style.setProperty("--hug-y", `${pill.offsetTop}px`);
     mark.style.setProperty("--hug-w", `${pill.offsetWidth}px`);
     mark.style.setProperty("--hug-h", `${pill.offsetHeight}px`);
+    then?.();
   };
   place();
   const resized = new ResizeObserver(place);
@@ -264,6 +266,46 @@ function hug(mark: HTMLElement | null): (() => void) | undefined {
     restyled.disconnect();
   };
 }
+
+// A hovered block's name stands beside its outline, at its middle, as the
+// design draws it, unless there it would pass the canvas's right edge: a
+// block as wide as a page that fills the canvas (the tablet page's
+// stacked columns) leaves it no room, and the name would be cut there
+// and make the canvas scroll sideways. It then stands above the outline,
+// at its right end (editor.css, data-label-side). The side is chosen from
+// where the name is drawn beside, before the browser paints, and chosen
+// again when the outline or the canvas changes size, or when a button's
+// outline moves with its pill.
+function labelSide(mark: HTMLElement): void {
+  const label = mark.querySelector<HTMLElement>(":scope > .ov-label");
+  const canvas = mark.closest<HTMLElement>(".canvas");
+  if (!label || !canvas) return;
+  delete mark.dataset.labelSide;
+  const edge = canvas.getBoundingClientRect().left + canvas.clientLeft + canvas.clientWidth;
+  if (label.getBoundingClientRect().right > edge) mark.dataset.labelSide = "above";
+}
+
+// The hover outline's ref: its name's side, after a button's outline is
+// placed on its pill.
+function hoverMark(hugs: boolean) {
+  return (mark: HTMLElement | null): (() => void) | undefined => {
+    if (!mark) return undefined;
+    const place = () => labelSide(mark);
+    const unhug = hugs ? hug(mark, place) : undefined;
+    place();
+    const resized = new ResizeObserver(place);
+    resized.observe(mark);
+    const canvas = mark.closest(".canvas");
+    if (canvas) resized.observe(canvas, { box: "border-box" });
+    return () => {
+      unhug?.();
+      resized.disconnect();
+    };
+  };
+}
+
+const hoverPlain = hoverMark(false);
+const hoverHug = hoverMark(true);
 
 // The drop indicator, one for the mouse and the keyboard: a line with the
 // block's name where it will land, or, alone in its container, the frame
@@ -333,7 +375,7 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
         </div>
       )}
       {relation !== "selected" && hovered && (
-        <div className={`ov ov-hover${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined} aria-hidden="true"><span className="ov-label">{name}</span></div>
+        <div className={`ov ov-hover${hugs ? " ov-hug" : ""}`} ref={hugs ? hoverHug : hoverPlain} aria-hidden="true"><span className="ov-label">{name}</span></div>
       )}
       {relation === "around" && (
         <div className="ov ov-section">

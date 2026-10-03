@@ -7,8 +7,9 @@
 // sections anchored with the editor's own ids take none of them; the
 // theme's header and footer are drawn around the page, locked; in a
 // smaller window, the page is drawn smaller to fit while the editor's own
-// controls and words on it keep their size, and a stacked column's tab and
-// the page's title stay whole.
+// controls and words on it keep their size, a hovered block's name stays
+// inside the canvas, and a stacked column's tab and the page's title stay
+// whole.
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
@@ -319,15 +320,23 @@ test.describe("in a 1280 by 800 window", () => {
       await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
       const scale = Number(await frame.getAttribute("data-scale"));
 
-      // A hovered block's name, beside its outline, at its middle.
+      // A hovered block's name: on the desktop page, beside its outline,
+      // at its middle; on the tablet page, where the right column is as
+      // wide as the page, above the outline at its right end.
       await page.locator(at('[data-block-id="h2"]')).hover();
       const label = '[data-block-id="h2"] > .ov-hover > .ov-label';
       expect(await drawn(label), device).toEqual({ w: 1, h: 1, text: 12 });
       const outline = await box('[data-block-id="h2"] > .ov-hover');
       const name = await box(label);
-      // 6 past the inside of its 1.5 line.
-      expect(near(name.x, outline.x + outline.width + 4.5 * scale), device).toBe(true);
-      expect(near(name.y + name.height / 2, outline.y + outline.height / 2), device).toBe(true);
+      if (device === "Desktop") {
+        // 6 past the inside of its 1.5 line.
+        expect(near(name.x, outline.x + outline.width + 4.5 * scale), device).toBe(true);
+        expect(near(name.y + name.height / 2, outline.y + outline.height / 2), device).toBe(true);
+      } else {
+        // 3 above the inside of its 1.5 line, its end on the line's end.
+        expect(near(name.x + name.width, outline.x + outline.width), device).toBe(true);
+        expect(near(name.y + name.height, outline.y - 1.5 * scale), device).toBe(true);
+      }
 
       await page.locator(at('[data-block-id="h1"]')).click();
       await page.mouse.move(1270, 790);
@@ -379,6 +388,89 @@ test.describe("in a 1280 by 800 window", () => {
       const smaller = Number(scale.toFixed(3));
       expect(await drawn('[data-block-id="c5"] > .col-empty'), device).toEqual({ w: smaller, h: smaller, text: 12 });
     }
+  });
+
+  // A hovered block's name stands beside it, past its right edge, as the
+  // design draws it. A block as wide as a page that fills the canvas (the
+  // tablet page's stacked columns) leaves it no room there: the name would
+  // be cut at the canvas's edge and make the canvas scroll sideways. There
+  // it stands above the block's outline instead, at its right end, whole
+  // and at its size.
+  test("a hovered block's name stays inside the canvas: beside the block where it has room, above its right end where it has none", async ({ page, request }) => {
+    const text = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Bring a hat." }] }] };
+    const { id } = await makePage(request, "Names", [section("s", "Two", [
+      column("c1", [heading("h1", "Left")]),
+      column("c2", [
+        heading("h2", "Right side heading"),
+        widget("t", "text", { doc: text }),
+        widget("acc", "accordion", { items: [{ question: "Is it cold?", answer: "Bring a hat." }] }),
+        widget("ib", "iconbox", { icon: "info", title: "Warm", text: "Bring a hat." }),
+        { ...widget("b", "button", { label: "Join", href: "/join" }), style: { base: { align: "right" } } },
+      ]),
+    ])]);
+    await open(page, id);
+    const frame = page.locator(".canvas .frame");
+    const device = (name: string) => page.getByRole("group", { name: "Device" }).getByRole("button", { name }).click();
+    // Where each block's name is when it is hovered: beside its outline at
+    // its middle (6 past the inside of its 1.5 line), above it at its right
+    // end (3 above the inside of its line), or elsewhere; whether the name
+    // is whole inside the canvas, scrollbar aside, and drawn at its size;
+    // and how far the canvas then scrolls sideways.
+    const sides = async (targets: readonly string[]) => {
+      const found: Record<string, string> = {};
+      for (const target of targets) {
+        const { width, height } = page.viewportSize()!;
+        await page.mouse.move(width - 10, height - 10);
+        await block(page, target).hover();
+        await expect(block(page, target).locator(":scope > .ov-hover"), target).toHaveCount(1);
+        const seen = await block(page, target).evaluate((root) => {
+          const canvas = root.closest(".canvas")!;
+          const bench = canvas.getBoundingClientRect();
+          const left = bench.left + canvas.clientLeft;
+          const outline = root.querySelector(":scope > .ov-hover")!.getBoundingClientRect();
+          const label = root.querySelector(":scope > .ov-hover > .ov-label")!;
+          const name = label.getBoundingClientRect();
+          const scale = Number(root.closest(".frame")!.getAttribute("data-scale") ?? "1");
+          const near = (a: number, b: number) => Math.abs(a - b) < 1;
+          const side = near(name.left, outline.right + 4.5 * scale) && near(name.top + name.height / 2, outline.top + outline.height / 2) ? "beside"
+            : near(name.right, outline.right) && near(name.bottom, outline.top - 1.5 * scale) ? "above" : "elsewhere";
+          return {
+            side,
+            inside: name.left >= left - 0.01 && name.right <= left + canvas.clientWidth + 0.01,
+            sideways: canvas.scrollWidth - canvas.clientWidth,
+            size: Number((name.height / parseFloat(getComputedStyle(label).height)).toFixed(3)),
+          };
+        });
+        expect({ target, ...seen }).toEqual({ target, side: expect.stringMatching(/^(beside|above)$/), inside: true, sideways: 0, size: 1 });
+        found[target] = seen.side;
+      }
+      return found;
+    };
+    const all = ["h1", "h2", "t", "acc", "ib", "b"] as const;
+    const each = (side: string) => Object.fromEntries(all.map((target) => [target, side]));
+
+    // The desktop page, drawn smaller: the columns side by side, the
+    // page's margin beside the right one. The button's name is beside its
+    // pill, which its alignment puts at the column's right end.
+    await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
+    expect(await sides(all)).toEqual(each("beside"));
+    // The tablet page, drawn smaller: the columns stacked, each block as
+    // wide as the page. A name as short as "Text" still has room; the
+    // button's, "Button", has under a pixel to spare: whichever side it
+    // takes, it is whole and the canvas does not scroll.
+    await device("Tablet");
+    await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
+    expect(await sides(all)).toMatchObject({ h1: "above", h2: "above", t: "beside", acc: "above", ib: "above" });
+    // The phone page, whole, with the canvas's room beside it.
+    await device("Phone");
+    await expect(frame).not.toHaveAttribute("data-scale");
+    expect(await sides(all)).toEqual(each("beside"));
+    // A window just wide enough for the tablet page whole: a long name
+    // still has no room beside a block as wide as the page, a short one has.
+    await page.setViewportSize({ width: 1400, height: 800 });
+    await device("Tablet");
+    await expect(frame).not.toHaveAttribute("data-scale");
+    expect(await sides(all)).toMatchObject({ t: "beside", acc: "above" });
   });
 
   test("the empty page's invitation keeps its size on a page drawn smaller", async ({ page, request }) => {

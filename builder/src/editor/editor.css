@@ -404,6 +404,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-label { position: absolute; padding: 3px 6px; border-radius: 3px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
 .ov-hover .ov-label { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
 .col > .ov-hover .ov-label, .sec > .ov-hover .ov-label { left: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
+/* With no room beside the block before the canvas's right edge (a block as
+   wide as a page that fills the canvas; Canvas.tsx, labelSide), the name
+   stands above the outline, at its right end, rather than be cut there. */
+.ov-hover[data-label-side="above"] .ov-label { left: auto; right: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
 /* A button's root is as wide as its column, as on the published page; its
    outline and frame hug the pill it draws instead (Canvas.tsx, hug). */
 .ov-hover.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 4px); top: calc(var(--hug-y, 0px) - 4px); width: calc(var(--hug-w, 100%) + 8px); height: calc(var(--hug-h, 100%) + 8px); }
@@ -575,6 +579,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
 .frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] :is(.col, .sec) > .ov-hover .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .ov-hover[data-label-side="above"] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 100% 100%; }
 .frame[data-scale] .sec > .ov-drop-target > .ov-label { transform-origin: 0 0; }
 .frame[data-scale] .ov-section .ov-tab { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); transform-origin: 50% 50%; }
 .frame[data-scale] .ov-col .ov-tab { transform: translateY(100%) scale(var(--canvas-unscale)); transform-origin: 0 0; }
