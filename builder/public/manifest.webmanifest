@@ -1,0 +1,14 @@
+{
+  "name": "Page Builder CMS",
+  "short_name": "Page Builder",
+  "description": "The page editor of Page Builder CMS.",
+  "lang": "en-US",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#DCE0E5",
+  "theme_color": "#F4F5F7",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
