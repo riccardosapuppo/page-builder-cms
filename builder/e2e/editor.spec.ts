@@ -473,6 +473,81 @@ test.describe("in a 1280 by 800 window", () => {
     expect(await sides(all)).toMatchObject({ t: "beside", acc: "above" });
   });
 
+  // The block just under the selection, hovered on the tablet page drawn
+  // smaller: its name stands above its outline, in the gap where the
+  // selection's frame and its corner run, and is drawn over them, whole,
+  // rather than struck through by the frame's line.
+  test("a hovered block's name above its outline is drawn over the selection's frame", async ({ page, request }) => {
+    const { id } = await makePage(request, "Over", [section("s", "One", [column("c", [heading("h1", "Selected first"), heading("h2", "Hovered under it")])])]);
+    await open(page, id);
+    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    await expect(page.locator(".canvas .frame")).toHaveAttribute("data-scale", /^0\.8/);
+    await block(page, "h1").click();
+    await block(page, "h2").hover();
+    await expect(block(page, "h2").locator(":scope > .ov-hover")).toHaveAttribute("data-label-side", "above");
+    const name = (await block(page, "h2").locator(":scope > .ov-hover > .ov-label").boundingBox())!;
+    const selected = block(page, "h1").locator(":scope > .ov-sel");
+    const frame = (await selected.boundingBox())!;
+    // The frame's bottom line and its corner run through the name: what
+    // could hide it is there.
+    expect(frame.y + frame.height, "the frame's bottom against the name").toBeGreaterThan(name.y);
+    expect(frame.y + frame.height - 2, "the frame's bottom against the name").toBeLessThan(name.y + name.height);
+    expect(frame.x + frame.width, "the frame's right end against the name").toBeGreaterThan(name.x);
+    // Inside its border, the name looks the same with the frame hidden.
+    const inside = { x: name.x + 2, y: name.y + 2, width: name.width - 4, height: name.height - 4 };
+    const shown = await page.screenshot({ clip: inside });
+    await selected.evaluate((element) => { (element as HTMLElement).style.visibility = "hidden"; });
+    expect(await page.screenshot({ clip: inside })).toEqual(shown);
+  });
+
+  // The window changes size while the pointer stays on a block: the page
+  // is drawn at a new scale a moment after the canvas changes size, and
+  // the hovered name takes its side again for the page as it is then
+  // drawn, not for the moment between. Each block is taller than the
+  // pointer's travel, so the pointer is still on it after the change.
+  test("a hovered block's name takes its side again when the window changes size under a still pointer", async ({ page, request }) => {
+    const items = Array.from({ length: 7 }, (_, n) => ({ question: `Question ${n + 1}?`, answer: "An answer." }));
+    const words = { type: "doc", content: Array.from({ length: 9 }, (_, n) => ({ type: "paragraph", content: [{ type: "text", text: `Line ${n + 1} of the notes.` }] })) };
+    const { id } = await makePage(request, "Resized", [section("s", "One", [column("c", [widget("acc", "accordion", { items }), widget("t", "text", { doc: words })])])]);
+    await open(page, id);
+    const frame = page.locator(".canvas .frame");
+    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    // The name's side, whether it is whole inside the canvas, and how far
+    // the canvas scrolls sideways, two frames after the page settles.
+    const seen = (target: string) => block(page, target).evaluate(async (root) => {
+      for (let n = 0; n < 2; n += 1) await new Promise((done) => requestAnimationFrame(done));
+      const canvas = root.closest(".canvas")!;
+      const left = canvas.getBoundingClientRect().left + canvas.clientLeft;
+      const mark = root.querySelector(":scope > .ov-hover");
+      if (!mark) return { side: "none", inside: false, sideways: canvas.scrollWidth - canvas.clientWidth };
+      const name = mark.querySelector(":scope > .ov-label")!.getBoundingClientRect();
+      return {
+        side: (mark as HTMLElement).dataset.labelSide ?? "beside",
+        inside: name.left >= left - 0.01 && name.right <= left + canvas.clientWidth + 0.01,
+        sideways: canvas.scrollWidth - canvas.clientWidth,
+      };
+    });
+
+    // A long name, above the accordion on the tablet page drawn smaller;
+    // in a window wide enough for the page whole, still above: beside, it
+    // would pass the canvas's edge.
+    await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
+    await block(page, "acc").hover();
+    expect(await seen("acc")).toEqual({ side: "above", inside: true, sideways: 0 });
+    await page.setViewportSize({ width: 1400, height: 800 });
+    await expect(frame).not.toHaveAttribute("data-scale");
+    expect(await seen("acc")).toEqual({ side: "above", inside: true, sideways: 0 });
+
+    // A short name, beside the text on the tablet page whole; back in the
+    // smaller window, beside it still, where it has room.
+    await page.mouse.move(1390, 790);
+    await block(page, "t").hover();
+    expect(await seen("t")).toEqual({ side: "beside", inside: true, sideways: 0 });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
+    expect(await seen("t")).toEqual({ side: "beside", inside: true, sideways: 0 });
+  });
+
   test("the empty page's invitation keeps its size on a page drawn smaller", async ({ page, request }) => {
     const { id } = await makePage(request, "Invited", []);
     await page.goto(`/?page=${id}`);

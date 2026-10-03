@@ -295,8 +295,10 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
 // and make the canvas scroll sideways. It then stands above the outline,
 // at its right end (editor.css, data-label-side). The side is chosen from
 // where the name is drawn beside, before the browser paints, and chosen
-// again when the outline or the canvas changes size, or when a button's
-// outline moves with its pill.
+// again when the outline or the canvas changes size, when a button's
+// outline moves with its pill, and when the page is drawn at a new scale:
+// a window that changes size changes the canvas's first, and the scale
+// only once React draws it, which no size the observer sees changes.
 function labelSide(mark: HTMLElement): void {
   const label = mark.querySelector<HTMLElement>(":scope > .ov-label");
   const canvas = mark.closest<HTMLElement>(".canvas");
@@ -318,9 +320,13 @@ function hoverMark(hugs: boolean) {
     resized.observe(mark);
     const canvas = mark.closest(".canvas");
     if (canvas) resized.observe(canvas, { box: "border-box" });
+    const rescaled = new MutationObserver(place);
+    const frame = mark.closest(".frame");
+    if (frame) rescaled.observe(frame, { attributes: true, attributeFilter: ["style", "data-scale"] });
     return () => {
       unhug?.();
       resized.disconnect();
+      rescaled.disconnect();
     };
   };
 }
