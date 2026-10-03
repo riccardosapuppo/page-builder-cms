@@ -210,15 +210,6 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     };
   }, [adapter, address, attempt, openPage, ui]);
 
-  // Closing the tab while edits are only here asks first.
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (live.current.autosave?.getSnapshot().warnOnClose) event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
-
   useEffect(() => () => {
     live.current.unsubscribe();
     live.current.autosave?.dispose();
@@ -389,6 +380,21 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       }
     })();
   }, [adapter, ui]);
+
+  // Closing the tab while edits are only here asks first: the page's
+  // edits, text typed in a field and not handed over yet (handed over
+  // now, so the autosave counts it), and a site style on its way to the
+  // CMS or waiting behind the one that is.
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      ui.getState().pending.deliver();
+      const style = styleQueue.current;
+      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
+      if (unsaved) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [ui]);
 
   const session = useMemo<Session>(() => ({
     pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishing, styleSave,

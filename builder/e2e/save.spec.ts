@@ -9,16 +9,19 @@
 //   on its own and is answered as saved, one revision, no conflict;
 // - a conflict made by a second writer through the API while the editor
 //   is open: the banner, Publish paused, Reload taking the other writer's
-//   page, Keep mine saving this tab's over it.
+//   page, Keep mine saving this tab's over it;
+// - words typed and not handed over yet when the tab is asked to close;
+// - a 422 whose fix was typed while the refused save travelled.
 import type { Page, Request } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, type DraftBlock } from "./helpers/site.ts";
 
 test.use({
   viewport: { width: 1440, height: 900 },
   // The browser's own lines for the failures these tests make: a request
-  // the network drops, and the CMS's 409 to a save made on an old revision.
-  allowConsole: /net::ERR_INTERNET_DISCONNECTED|net::ERR_CONNECTION_RESET|status of 409 \(Conflict\)/,
+  // the network drops, the CMS's 409 to a save made on an old revision,
+  // and the 422 a test answers in the CMS's place.
+  allowConsole: /net::ERR_INTERNET_DISCONNECTED|net::ERR_CONNECTION_RESET|status of 409 \(Conflict\)|status of 422 \(Unprocessable (Content|Entity)\)/,
 });
 
 const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words")])])];
@@ -70,6 +73,59 @@ test("on a slowed network the save shows Saving… while it travels, closing the
   await saved(page);
   expect(await asksBeforeClosing(page)).toBe(false);
   expect(await headingText(request, id)).toBe("Slow words");
+});
+
+test("words typed in a field and not handed over yet: closing the tab asks first, and the words are saved", async ({ page, request }) => {
+  const { id } = await makePage(request, "Closing while typing", fixture());
+  await open(page, id);
+  await block(page, "h").click();
+  const field = await page.getByRole("textbox", { name: "Text" }).elementHandle();
+  // The words are typed and the tab is asked to close in one go, inside
+  // the field's pause: nothing has handed them over yet.
+  const asked = await page.evaluate((element) => {
+    const text = element as HTMLTextAreaElement;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(text, "Typed just before closing");
+    text.dispatchEvent(new Event("input", { bubbles: true }));
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  }, field);
+  expect(asked).toBe(true);
+  // Asking handed the words over: they are saved like any edit.
+  await saved(page);
+  expect(await headingText(request, id)).toBe("Typed just before closing");
+});
+
+test("a save answered 422 while the fix was typed: the fix is sent once the refusal lands, and saved", async ({ page, request }) => {
+  const { id } = await makePage(request, "Fixed while refused", fixture());
+  await open(page, id);
+  const sent: string[] = [];
+  await page.route(DRAFT, async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    const body = JSON.parse(route.request().postData() ?? "{}") as { document: { sections: DraftBlock[] } };
+    sent.push(String(body.document.sections[0]!.children[0]!.children[0]!.props.text));
+    if (sent.length > 1) return route.fallback();
+    // The first save is refused, three seconds later, as a value the
+    // editor could not foresee.
+    await new Promise((done) => setTimeout(done, 3_000));
+    return route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "invalid_document", message: "The document is not valid.", errors: [{ pointer: "/document/sections/0/children/0/children/0/props/text", keyword: "pattern", blockPointer: "/document/sections/0/children/0/children/0", message: "is refused by the server" }] }),
+    });
+  });
+  await retitle(page, "Refused words");
+  await expect.poll(() => sent.length).toBe(1);
+  // While the refused save travels, the words change again.
+  await retitle(page, "Fixed words");
+  await saved(page);
+  expect(sent).toEqual(["Refused words", "Fixed words"]);
+  expect(await headingText(request, id)).toBe("Fixed words");
+  await block(page, "h").click();
+  const text = page.getByRole("textbox", { name: "Text" });
+  await expect(text).toHaveValue("Fixed words");
+  await expect(text).not.toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).not.toHaveAttribute("aria-disabled", "true");
 });
 
 test("a save the network loses is retried with the same saveId: the countdown, the toast, Retry now, then Saved", { tag: "@a11y" }, async ({ page, request }) => {

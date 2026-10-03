@@ -67,3 +67,42 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     expect(put.status()).toBe(200);
   }
 });
+
+test("a tone chosen while the one before is on its way: closing the tab asks first, and the CMS ends with the last tone", async ({ page, request }) => {
+  const before = await siteStyle(request);
+  try {
+    const { id } = await makePage(request, "Styled twice", [section("s", "Story", [column("c", [heading("h", "Two tones")])])]);
+    await open(page, id);
+    // Every site-style save takes three seconds on its way to the CMS.
+    await page.route("**/api/site-style", async (route) => {
+      if (route.request().method() === "PUT") await new Promise((done) => setTimeout(done, 3_000));
+      await route.fallback();
+    });
+    await page.getByRole("button", { name: "Site style", exact: true }).click();
+    const panel = page.getByRole("complementary", { name: "Site style" });
+    await panel.getByRole("button", { name: /^Primary/ }).click();
+    await panel.getByRole("radio", { name: "Harbour" }).click();
+    // Kelp waits behind Harbour, which is on its way.
+    await panel.getByRole("radio", { name: "Kelp" }).click();
+    const asksBeforeClosing = () => page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(await asksBeforeClosing()).toBe(true);
+    // The browser's own question, answered "stay".
+    const asked = page.waitForEvent("dialog");
+    void page.close({ runBeforeUnload: true });
+    const dialog = await asked;
+    expect(dialog.type()).toBe("beforeunload");
+    await dialog.dismiss();
+    expect(page.isClosed()).toBe(false);
+
+    await expect(panel.getByRole("status")).toHaveText("Saved for every page", { timeout: 15_000 });
+    expect((await siteStyle(request)).palette.primary).toBe("site-kelp");
+    expect(await asksBeforeClosing()).toBe(false);
+  } finally {
+    const put = await request.put(`${cms()}/api/site-style`, { data: { palette: before.palette, typeScale: before.typeScale } });
+    expect(put.status()).toBe(200);
+  }
+});
