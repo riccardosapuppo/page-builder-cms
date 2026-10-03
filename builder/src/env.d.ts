@@ -4,6 +4,10 @@ interface ImportMetaEnv {
   // server's proxy; an absolute address points at another server, which
   // must then allow this origin by CORS (src/storage/config.ts).
   readonly VITE_API_BASE?: string;
+  // The CMS's own origin, where its pages open (the draft's preview, the
+  // live page): http://127.0.0.1:3900 by default; the development server
+  // takes it from CMS_URL (src/storage/config.ts).
+  readonly VITE_CMS_ORIGIN?: string;
 }
 
 interface ImportMeta {

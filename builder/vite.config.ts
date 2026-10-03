@@ -25,6 +25,13 @@ import { documentValidator, validatorSource } from "./build/validator.ts";
 const port = Number(process.env.BUILDER_PORT ?? 4900);
 const cmsUrl = process.env.CMS_URL ?? "http://127.0.0.1:3900";
 if (!Number.isInteger(port) || port <= 0) throw new Error(`BUILDER_PORT must be a port number, not "${process.env.BUILDER_PORT}"`);
+// The preview and the live page open on the CMS itself, which is where
+// the proxy sends /api: unless the build says otherwise (VITE_CMS_ORIGIN,
+// or an absolute VITE_API_BASE, src/storage/config.ts), the editor links
+// to the CMS_URL it was started with. Set before Vite reads the VITE_
+// variables, which it does after loading this file.
+const absoluteApi = /^https?:\/\//i.test(process.env.VITE_API_BASE?.trim() ?? "");
+if (!process.env.VITE_CMS_ORIGIN?.trim() && !absoluteApi && process.env.CMS_URL) process.env.VITE_CMS_ORIGIN = new URL(cmsUrl).origin;
 
 // changeOrigin false keeps the browser's Host (127.0.0.1:<port>): the CMS
 // takes writes only from its own origin, which through this proxy is the
