@@ -673,10 +673,17 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .search-keys { width: 260px; margin: 0; }
 .keys-body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 40px; padding: 4px 24px 28px; }
 .keys-group h3 { margin: 14px 0 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--steel); }
-.keys-group dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
+/* The design's 12 px between words and keys, but 8: at its font's size in
+   this browser, "Select the parent column or section" needs a pixel more
+   than the design's column leaves it, and would take two lines. */
+.keys-group dl > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; }
 .keys-group dt { line-height: 17px; }
 .keys-group dd { display: flex; gap: 4px; flex: none; margin: 0; }
 .keys-group .hint { margin-top: 8px; }
+/* The Text group, under the design's rows: two columns wide, its entries
+   side by side in them. */
+.keys-group-wide { grid-column: span 2; }
+.keys-group-wide dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
 kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--rule); border-bottom-width: 2.5px; border-radius: 5px; background: var(--plate); color: var(--graphite); font: 600 12px/1 var(--font-ui); }
 kbd .i-key { width: 14px; height: 14px; stroke-width: 2.15; }
 .keys { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; flex: none; }

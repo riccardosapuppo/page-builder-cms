@@ -36,9 +36,11 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
   expect(report.serious, state).toEqual([]);
 }
 
-test("the editor has no serious or critical axe finding, in any of its states", { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Twenty-six states, each read by axe whole.
+// The design's window, and the smallest the editor is made for.
+for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) test(`the editor has no serious or critical axe finding, in any of its states, at ${size.width} by ${size.height}`, { tag: "@a11y" }, async ({ page, request, context }) => {
+  // Twenty-seven states, each read by axe whole.
   test.setTimeout(240_000);
+  await page.setViewportSize(size);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const { id } = await makePage(request, "Every widget", everyWidget());
   await open(page, id);

@@ -1,6 +1,9 @@
 // The keyboard shortcuts window (design/shots/shortcuts.png), drawn from
 // the keymap itself (./keymap.ts): its groups, each entry's words and
 // keys, and a search over the words. Opened by "?" or from the mark's menu.
+// The design's two rows of three groups, then a third: the keys of a text
+// being written across two columns, its entries side by side, and Adding,
+// so the window keeps to a window 800 pixels tall.
 import { useId, useState } from "react";
 import { Dialog } from "./dialog.tsx";
 import { useEnv, useUi } from "./context.tsx";
@@ -49,7 +52,7 @@ function ShortcutsWindow() {
       note={<p className="hint">On a Mac, use Cmd where this list says Ctrl, and Option where it says Alt.</p>}
     >
       {groups.map(({ group, entries }) => (
-        <section className="keys-group" key={group} aria-labelledby={`${searchId}-${group}`}>
+        <section className={`keys-group${group === "Text" ? " keys-group-wide" : ""}`} key={group} aria-labelledby={`${searchId}-${group}`}>
           <h3 id={`${searchId}-${group}`}>{group}</h3>
           <dl>
             {entries.map((entry) => (

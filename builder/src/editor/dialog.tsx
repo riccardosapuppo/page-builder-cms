@@ -32,6 +32,7 @@ const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textar
 export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   useLayoutEffect(() => {
     close.current = onClose;
@@ -65,6 +66,37 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
       if (before?.isConnected) before.focus();
     };
   }, []);
+
+  // A body that scrolls with nothing in it to focus (a list to read, in a
+  // window shorter than it): the keyboard scrolls it once it takes the
+  // focus, so it does, as a region named by the dialog. Asked again when
+  // its size or its content changes.
+  useLayoutEffect(() => {
+    const element = body.current;
+    if (!element) return undefined;
+    const check = () => {
+      const reachable = element.scrollHeight > element.clientHeight + 1 && element.querySelector(FOCUSABLE) === null;
+      if (reachable === (element.getAttribute("tabindex") === "0")) return;
+      if (reachable) {
+        element.setAttribute("tabindex", "0");
+        element.setAttribute("role", "region");
+        element.setAttribute("aria-label", title);
+      } else {
+        element.removeAttribute("tabindex");
+        element.removeAttribute("role");
+        element.removeAttribute("aria-label");
+      }
+    };
+    check();
+    const resized = new ResizeObserver(check);
+    resized.observe(element);
+    const changed = new MutationObserver(check);
+    changed.observe(element, { childList: true, subtree: true });
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+    };
+  }, [title]);
 
   // Outside .app, which is inert while the dialog is open.
   return createPortal(
@@ -110,7 +142,7 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
               {tools}
               <button className="ibtn" type="button" aria-label={closeLabel} onClick={() => close.current()}><Icon name="close" /></button>
             </header>
-            <div className={`dlg-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{children}</div>
+            <div ref={body} className={`dlg-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{children}</div>
             {footer && <footer className="dlg-foot">{footer}</footer>}
             {note && <footer className="dlg-foot dlg-foot-note">{note}</footer>}
           </>

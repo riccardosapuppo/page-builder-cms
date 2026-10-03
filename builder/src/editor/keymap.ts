@@ -61,7 +61,10 @@ export interface Chord {
 
 // In the approved window's order, with two groups it does not have: Text,
 // the keys inside a text being edited, after Editing; Adding after Publish.
-export const KEY_GROUPS = ["Selection", "Moving", "Editing", "Text", "History", "Publish", "Adding", "This list"] as const;
+// In the order the "?" window lays them out (./ShortcutsDialog.tsx): the
+// approved design's two rows of three, then the Text and Adding groups
+// the design does not draw.
+export const KEY_GROUPS = ["Selection", "Moving", "Editing", "History", "Publish", "This list", "Text", "Adding"] as const;
 export type KeyGroup = (typeof KEY_GROUPS)[number];
 
 export interface KeyEntry {
@@ -133,7 +136,7 @@ function typingWords(): string {
 
 // What the window says under a group.
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
-  Moving: "While you move a block, the editor reads out where it will land. A column moves along its section with the side arrows, and to another section with the others.",
+  Moving: "While you move a block, the editor reads out where it will land.",
   Text: `While you write in a text on the page. There Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the panel’s fields.`,
   Adding: "Enter on a tile of the Add panel, or drag the tile onto the page.",
 };
