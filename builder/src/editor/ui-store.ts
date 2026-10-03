@@ -57,6 +57,10 @@ export interface UiState {
   shortcutsOpen: boolean;
   // The About window (./AboutDialog.tsx) is open.
   aboutOpen: boolean;
+  // The right tray shows the history (./HistoryPanel.tsx) instead of the
+  // navigator, and its "Save version" asks for a name.
+  historyOpen: boolean;
+  namingVersion: boolean;
   // The block this tab copied last, as the clipboard carries it: what the
   // block's menu pastes when the browser will not read the clipboard.
   copied: string | null;
@@ -83,6 +87,9 @@ export interface UiState {
   say(notice: string | null, link?: NoticeLink | null): void;
   setShortcutsOpen(open: boolean): void;
   setAboutOpen(open: boolean): void;
+  // Closing the history closes its name field too.
+  setHistoryOpen(open: boolean): void;
+  setNamingVersion(naming: boolean): void;
   setBlockMenu(menu: BlockMenuAt | null): void;
 }
 
@@ -103,6 +110,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     noticeLink: null,
     shortcutsOpen: false,
     aboutOpen: false,
+    historyOpen: false,
+    namingVersion: false,
     copied: null,
     blockMenu: null,
     dragMode: null,
@@ -121,6 +130,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     say: (notice, link = null) => set({ notice, noticeLink: notice === null ? null : link }),
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     setAboutOpen: (aboutOpen) => set({ aboutOpen }),
+    setHistoryOpen: (historyOpen) => set(historyOpen ? { historyOpen } : { historyOpen, namingVersion: false }),
+    setNamingVersion: (namingVersion) => set({ namingVersion }),
     setBlockMenu: (blockMenu) => set({ blockMenu }),
   }));
 }
