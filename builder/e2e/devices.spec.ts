@@ -118,6 +118,38 @@ test("a tablet's and a phone's own space, set in the Style tab, is what the canv
   await expect.poll(stored).toBe(JSON.stringify({ base: { spaceInside: "s" }, phone: { spaceInside: "xs" } }));
 });
 
+// A section's space above and below has nine steps, the theme's seven and
+// the two section steps, in the tray's width: each step's name stands
+// apart from the next, read as a person reads them, on every device.
+test("a section's rulers print their nine steps apart, none touching the next", async ({ page, request }) => {
+  const { id } = await makePage(request, "Nine steps", fixture());
+  await open(page, id);
+  await page.locator('.tree [data-row-id="s"] > .t-row').click();
+  await page.getByRole("tab", { name: "Style" }).click();
+  // The room between each printed name and the next, in pixels, measured
+  // on the words themselves, ruler by ruler.
+  const gaps = () => page.locator(".tray-left .ruler-nums").evaluateAll((rows) => rows.map((row) => {
+    const boxes = [...row.querySelectorAll("b")].map((label) => {
+      const words = document.createRange();
+      words.selectNodeContents(label);
+      const box = words.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+    });
+    return boxes.slice(1).map((box, n) => {
+      const before = boxes[n]!;
+      const apart = box.top >= before.bottom || before.top >= box.bottom;
+      return apart ? Infinity : Math.round((box.left - before.right) * 10) / 10;
+    });
+  }));
+  for (const name of ["Desktop", "Tablet", "Phone"] as const) {
+    await device(page, name);
+    const found = await gaps();
+    // Space above, space below, space between columns.
+    expect(found.filter((row) => row.length === 8), name).toHaveLength(2);
+    expect(Math.min(...found.flat()), `${name}: the closest two names`).toBeGreaterThanOrEqual(4);
+  }
+});
+
 test("a block hidden on phones leaves the phone's canvas and the phone's page, and stays on the tablet's", { tag: "@a11y" }, async ({ page, request }) => {
   const { id } = await makePage(request, "Hidden on phones", fixture());
   await open(page, id);

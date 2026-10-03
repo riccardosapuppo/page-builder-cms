@@ -273,7 +273,12 @@ textarea.input { resize: vertical; }
 /* The desktop's step, while a device's own is shown: a ring on the line. */
 .ruler-ghost { position: absolute; left: calc(var(--rp) + (100% - 2 * var(--rp)) * var(--inherit) / var(--steps)); transform: translateX(-50%); top: 16px; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: var(--plate); border: 2px solid var(--steel); }
 .ruler:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
-.ruler-wide .ruler-nums { font-size: 11px; }
+/* A section's nine steps share the tray's width, 26 px apart: the two
+   section steps' names ("Sec S", "Sec L") would touch their neighbours on
+   one line, so a name of two words takes two lines, the ruler a line more. */
+.ruler-wide { height: 60px; }
+.ruler-wide .ruler-nums { font-size: 11px; line-height: 13px; }
+.ruler-wide .ruler-nums b { white-space: normal; text-align: center; }
 
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .swatches button { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
