@@ -2,10 +2,12 @@
 // Chromium, does what the "?" window says it does: every chord of every
 // entry. The exercises are a table keyed by the map's actions, so an entry
 // added without one does not compile, and the run checks it pressed them
-// all. The "?" window lists the very same entries.
+// all. The "?" window lists the very same entries. And in a text being
+// written the typing keys are the text's, but for the entries that work
+// while typing.
 import type { Page } from "@playwright/test";
 import { entryCaps, KEYMAP, type KeyAction } from "../src/editor/keymap.ts";
-import { block, caption, childIds } from "./helpers/canvas.ts";
+import { block, caption, childIds, settledTextEditor } from "./helpers/canvas.ts";
 import { cms, column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -20,6 +22,14 @@ const fixture = () => [
 ];
 
 const text = (page: Page) => page.locator('.canvas [data-block-id="t"] .rte');
+
+// ProseMirror takes a caret the keys moved from the browser's next
+// selection event, and until then deletes from where it last saw it: the
+// next key waits for it, as a person's hand would.
+const caretAt = (page: Page, id: string, at: number) => page.waitForFunction(([blockId, pos]) => {
+  const dom = document.querySelector(`.canvas [data-block-id="${blockId}"] .rte`) as (Element & { editor?: { state: { selection: { from: number; empty: boolean } } } }) | null;
+  return dom?.editor?.state.selection.empty === true && dom.editor.state.selection.from === pos;
+}, [id, at] as const);
 
 // The page the run makes, for the exercises that open it on the CMS.
 let opened = { id: 0, slug: "" };
@@ -235,6 +245,64 @@ async function press(page: Page, pressed: Set<string>, keys: string) {
   await page.keyboard.press(keys);
   pressed.add(keys.toLowerCase());
 }
+
+test("in a text being written, Delete, Backspace and Ctrl+D change letters, never the block; keeping a version, previewing and publishing still work", { tag: "@a11y" }, async ({ page, request }) => {
+  const made = await makePage(request, "Typing keys", fixture());
+  await open(page, made.id);
+  await block(page, "t").click();
+  await page.keyboard.press("Enter");
+  const rte = await settledTextEditor(page, "t");
+  // Enter puts the caret at the end: Backspace takes the last letter.
+  await page.keyboard.press("Backspace");
+  await expect(rte).toHaveText("Tang");
+  await page.keyboard.press("Control+Home");
+  await caretAt(page, "t", 1);
+  await page.keyboard.press("Delete");
+  await expect(rte).toHaveText("ang");
+  await page.keyboard.press("Control+d");
+  await expect(rte).toBeFocused();
+  await expect(rte).toHaveText("ang");
+  // The block is where it was, alone in its column, and still being written.
+  expect(await childIds(page, "c3")).toEqual(["t"]);
+  expect(await childIds(page, "c2")).toEqual(["d"]);
+
+  // Ctrl+S: the history, its name field taking the focus; the text, handed
+  // over as the editor closed, is in the version.
+  await page.keyboard.press("Control+s");
+  const history = page.getByRole("complementary", { name: "History" });
+  const name = history.getByRole("textbox", { name: /^Name/ });
+  await expect(name).toBeFocused();
+  await expect(page.locator(".canvas .rte")).toHaveCount(0);
+  await page.keyboard.type("Mid-sentence");
+  await page.keyboard.press("Enter");
+  await expect(history.getByRole("listitem").filter({ hasText: "Mid-sentence" })).toBeVisible();
+  const versions = (await (await page.request.get(`${cms()}/api/pages/${made.id}/versions`)).json()) as { versions: Array<{ name: string | null; id: number }> };
+  expect(versions.versions[0]?.name).toBe("Mid-sentence");
+  await history.getByRole("button", { name: "Close history" }).click();
+
+  // Publish and preview from inside the text: what was typed a moment ago
+  // goes with them, and the text stays open under the caret.
+  await block(page, "t").click();
+  await settledTextEditor(page, "t");
+  await page.keyboard.press("Control+End");
+  await caretAt(page, "t", 4);
+  await page.keyboard.type("o!");
+  await page.keyboard.press("Control+Shift+Enter");
+  await expect(page.locator(".chip")).toHaveText("Published");
+  await expect(rte).toBeFocused();
+  const live = await page.request.get(`${cms()}/${made.slug}`);
+  expect(await live.text()).toContain("ango!");
+  await page.keyboard.type("?");
+  await expect(rte).toHaveText("ango!?");
+  const opening = page.context().waitForEvent("page");
+  await page.keyboard.press("Control+Alt+p");
+  const tab = await opening;
+  await tab.waitForURL(`${cms()}/preview/${made.id}`);
+  await expect(tab.getByText("ango!?")).toBeVisible();
+  await tab.close();
+  // The "?" went into the text: the window did not open.
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toHaveCount(0);
+});
 
 test("every entry of the keyboard map does what the window says, by every one of its keys", { tag: "@a11y" }, async ({ page, request, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
