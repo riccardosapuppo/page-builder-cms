@@ -241,7 +241,7 @@ export const SUITES: Suite[] = [
       const why = packages(builderRoot, "builder");
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("lint"), { cwd: builderRoot });
-      return readOxlint(step.output, step.code, 280);
+      return readOxlint(step.output, step.code, 325);
     },
   },
   {
@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 517);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 623);
     },
   },
   {
@@ -399,7 +399,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 82);
+      return why ? notRun(why) : playwright(ctx, "e2e", 106);
     },
   },
   {
@@ -409,7 +409,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "check:a11y")) return failed("", "builder/package.json has no check:a11y script");
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "check:a11y", 25);
+      return why ? notRun(why) : playwright(ctx, "check:a11y", 34);
     },
   },
   {
