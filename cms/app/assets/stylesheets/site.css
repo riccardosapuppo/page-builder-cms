@@ -98,6 +98,10 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
 /* ---------- Rich text ---------- */
 /* The editor shows every space the author typed (ProseMirror's pre-wrap), so the page does too. */
 .w-text p { white-space: pre-wrap; }
+/* An empty paragraph is a line tall, and so is the line a break ends a
+   paragraph with, as the editor draws them while the text is written: an
+   empty character after the paragraph's last one makes that line. */
+.w-text p::after { content: "\200B"; }
 .w-text > * + * { margin-top: .75em; }
 .w-text :is(ul, ol) { padding-left: 1.4em; }
 .w-text li + li, .w-text li > * + * { margin-top: .3em; }

@@ -430,6 +430,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    the bracketed frame say where the typing goes, not a focus ring. */
 .canvas .w-text > .rte > * + * { margin-top: .75em; }
 .canvas .rte { white-space: pre-wrap; overflow-wrap: break-word; outline: none; cursor: text; }
+/* ProseMirror makes an empty paragraph's line, and the line after a break
+   that ends one, with a break of its own: the page's empty character after
+   each paragraph (site.css) would make a second. */
+.canvas .rte p::after { content: none; }
 /* Its buttons on the block's bar: bold, italic, link, between thin rules;
    one that is on is graphite with the bar's yellow on it. */
 .ov-format { display: contents; }

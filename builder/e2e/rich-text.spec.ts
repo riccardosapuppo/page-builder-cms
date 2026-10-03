@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block, childIds, grip, moveOnto, pickUp, settledTextEditor } from "./helpers/canvas.ts";
-import { column, draftOf, expect, heading, makePage, open, section, test, widget, type DraftBlock } from "./helpers/site.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, section, test, widget, type DraftBlock } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -87,6 +87,57 @@ test("the editor opens where the text was clicked, and lays the text out as the 
   await expect(editor(page).locator("strong")).toHaveText("first light!");
   // The page's other texts keep the page's drawing: one editor at a time.
   await expect(page.locator(".canvas .rte")).toHaveCount(1);
+});
+
+// Where each word of a text stands, from the first word's line, and how
+// tall the text is: in the window's pixels, rounded to a quarter.
+async function wordLines(page: Page, selector: string, words: readonly string[]): Promise<Record<string, number>> {
+  return page.evaluate(({ scope, wanted }) => {
+    const root = document.querySelector(scope) as HTMLElement;
+    const quarter = (n: number) => Math.round(n * 4) / 4;
+    const out: Record<string, number> = { height: quarter(root.getBoundingClientRect().height) };
+    const tops: Record<string, number> = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const word = (node.textContent ?? "").trim();
+      if (!wanted.includes(word)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      tops[word] = range.getBoundingClientRect().top;
+    }
+    const first = tops[wanted[0]!] ?? 0;
+    for (const word of wanted) if (word in tops) out[word] = quarter(tops[word]! - first);
+    return out;
+  }, { scope: selector, wanted: [...words] });
+}
+
+test("empty paragraphs, a break ending a paragraph and an empty list item stand alike on the canvas, while written, and on the page served", async ({ page, request, browser }) => {
+  const words = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"];
+  const doc = {
+    type: "doc",
+    content: [
+      p(t("Alpha")), p(), p(),
+      p(t("Bravo"), { type: "hardBreak" }),
+      p(t("Charlie")),
+      { type: "bulletList", content: [{ type: "listItem", content: [p()] }, { type: "listItem", content: [p(t("Delta"), { type: "hardBreak" })] }] },
+      p(t("Echo")),
+    ],
+  };
+  const { id } = await makePage(request, "Empty lines", [section("s", "Story", [column("c1", [widget("t", "text", { doc }), heading("h", "After")])])]);
+  await open(page, id);
+  const scope = '.canvas [data-block-id="t"]';
+  const canvas = await wordLines(page, scope, words);
+  await openText(page);
+  const editing = await wordLines(page, scope, words);
+  // The editor draws each empty paragraph, and the line after each break
+  // that ends one, a line tall: the canvas and the page do the same.
+  expect(editing).toEqual(canvas);
+  await page.keyboard.press("Escape");
+  const width = await page.locator(".canvas .site").evaluate((e) => e.getBoundingClientRect().width);
+  const served = await browser.newPage({ viewport: { width: Math.round(width), height: 900 } });
+  await served.goto(`${cms()}/preview/${id}`);
+  expect(await wordLines(served, '[data-block-id="t"]', words)).toEqual(canvas);
+  await served.close();
 });
 
 test("text typed and the same block dragged at once: the text stays, as a step of its own before the move", async ({ page, request }) => {
