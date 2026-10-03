@@ -3,10 +3,12 @@
 // - both edit, one saves first, the other's save gets the CMS's 409: its
 //   conflict bar, saving and Publish paused, the server keeping the first
 //   tab's words; Reload takes the server's draft, after which that tab
-//   saves again with no conflict;
-// - the other choice, Keep mine, saves that tab's page over the first one's
-//   with the revision the conflict named; the first tab, now behind, meets
-//   the conflict in turn on its next edit;
+//   saves again with no conflict, and the reload is a step of the history
+//   that tab can go back past;
+// - the other choice, Keep mine, keeps the first tab's page as a version,
+//   then saves the second tab's over it with the revision the conflict
+//   named; the first tab, now behind, meets the conflict in turn on its
+//   next edit;
 // - an unknown outcome in a tab whose save the network drops: the toast,
 //   the countdown, closing the tab asks first; the other tab saves
 //   meanwhile; the very same save (same saveId) sent again meets the
@@ -108,6 +110,16 @@ test("two tabs edit the same page: the one that saves second gets the conflict b
     const draft = await draftOf(request, id);
     expect(draft.revision).toBe(before + 1);
     expect(await headingText(request, id)).toBe("The second tab, after reloading");
+
+    // The reload is a step of this session: going back to before it brings
+    // the second tab's own words back, and saves them.
+    await second.getByRole("button", { name: "History" }).click();
+    const steps = second.getByRole("complementary", { name: "History" }).getByRole("list", { name: "This session" }).getByRole("button");
+    await expect(steps.locator(".hist-what")).toHaveText(["Changed Heading in Story", "Reloaded the page saved in another tab", "Changed Heading in Story"]);
+    await steps.nth(2).click();
+    await expect(words(second)).toHaveText("Words from the second tab");
+    await saved(second);
+    expect(await headingText(request, id)).toBe("Words from the second tab");
     expect(other.errors).toEqual([]);
   } finally {
     await other.context.close();
@@ -139,6 +151,14 @@ test("Keep mine saves the second tab's page over the first one's at the revision
     expect(sent.map((s) => s.revision)).toEqual([afterFirst - 1, afterFirst]);
     expect(await headingText(request, id)).toBe("Words from the second tab");
     await expect(publishButton(second)).not.toHaveAttribute("aria-disabled", "true");
+    // The page saved over is kept as a version first: Restore can bring it
+    // back.
+    await expect(second.locator(".notice")).toHaveText("Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+    const listed = ((await (await request.get(`${cms()}/api/pages/${id}/versions`)).json()) as { versions: Array<{ number: number; reason: string; name: string | null }> }).versions;
+    const keptBefore = listed.find((v) => v.name === "Before Keep mine");
+    expect(keptBefore).toMatchObject({ reason: "manual" });
+    const keptDocument = (await (await request.get(`${cms()}/api/pages/${id}/versions/${keptBefore!.number}`)).json()) as { document: { sections: Array<{ children: Array<{ children: Array<{ props: { text: string } }> }> }> } };
+    expect(keptDocument.document.sections[0]!.children[0]!.children[0]!.props.text).toBe("Words from the first tab");
 
     // The first tab is behind now: its next edit is the one refused.
     await retitle(first, "The first tab again");

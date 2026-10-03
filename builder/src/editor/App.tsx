@@ -23,6 +23,7 @@
 // state's banner and toast (./SaveStatus.tsx) and About.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
+import { makeReplacePage } from "../document/commands.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
@@ -380,11 +381,18 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     ui.setState({ serverErrors: [], hover: null });
   }, [store, ui]);
 
-  // The conflict, settled the person's way: the server's draft replaces
-  // this tab's, or this tab's is saved over it.
+  // The conflict, settled the person's way, and either way undone from the
+  // history, as the approved design says. Reload: the server's draft
+  // replaces this tab's page as one step of this session, so Undo brings
+  // this tab's page back, the steps before it still there. Keep mine: the
+  // server's draft is kept as a version first, so Restore brings it back,
+  // then this tab's page is saved over it.
   const reload = useCallback(async () => {
     const saving = live.current.autosave;
     if (!saving) return;
+    // Words still in a field are part of this tab's page, which the step
+    // keeps for undo.
+    ui.getState().pending.deliver();
     let draft;
     try {
       draft = await saving.reload();
@@ -397,14 +405,50 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       ui.getState().say(`The page on the server could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`);
       return;
     }
-    putDraft(taken.document);
-    ui.getState().say(`Reloaded: this is the page as it is on the server. ${UNDO_AGAIN}`);
-  }, [putDraft, ui]);
+    const made = makeReplacePage(store.getState().document, taken.document, "Reloaded the page saved in another tab");
+    if (!made.ok) {
+      ui.setState({ serverErrors: [], hover: null });
+      ui.getState().say("Reloaded: the page on the server is the same as this tab's.");
+      return;
+    }
+    live.current.adopting = true;
+    let outcome;
+    try {
+      outcome = store.getState().dispatch(made.command);
+    } finally {
+      live.current.adopting = false;
+    }
+    if (!outcome.ok) {
+      // A step the page refuses (it cannot happen to a page the server
+      // holds, but if it does): the server's page all the same.
+      putDraft(taken.document);
+      ui.getState().say(`Reloaded: this is the page as it is on the server. ${UNDO_AGAIN}`);
+      return;
+    }
+    ui.setState({ serverErrors: [], hover: null });
+    ui.getState().say("Reloaded: this is the page as it is on the server. Undo brings this tab’s page back.");
+  }, [putDraft, store, ui]);
 
-  const keepMine = useCallback(() => {
-    live.current.autosave?.overwrite();
-    ui.getState().say("Keeping this tab's page: it is saved over the one on the server.");
-  }, [ui]);
+  const keepMine = useCallback(async () => {
+    const page = opened.current;
+    const saving = live.current.autosave;
+    if (!page || !saving || saving.getSnapshot().phase !== "conflict") return;
+    let outcome;
+    try {
+      outcome = await adapter.saveVersion(page.id, { name: KEPT_BEFORE_OVERWRITE });
+    } catch (error) {
+      outcome = { ok: false as const, why: describe(error) };
+    }
+    if ("why" in outcome || !outcome.ok) {
+      const why = "why" in outcome ? outcome.why : outcome.problem.errors[0]?.message ?? outcome.problem.message;
+      ui.getState().say(`Nothing was saved over the other page: it could not be kept as a version first (${why}). Choose again.`);
+      return;
+    }
+    if (live.current.autosave !== saving) return;
+    saving.overwrite();
+    if (ui.getState().historyOpen) loadVersions();
+    ui.getState().say(`Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “${KEPT_BEFORE_OVERWRITE}”.`);
+  }, [adapter, loadVersions, ui]);
 
   // "Save version": the CMS keeps its draft, so what waits is saved first,
   // and the version holds what the canvas shows.
@@ -592,6 +636,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
 // Why the undo history is empty after the page on the canvas was replaced
 // by one from the server.
 const UNDO_AGAIN = "Undo starts again from here: its steps belonged to the page that was replaced.";
+
+// The name of the version Keep mine keeps of the page it saves over.
+export const KEPT_BEFORE_OVERWRITE = "Before Keep mine";
 
 // The autosave takes the restored draft, unless a save went out after all
 // (it refuses then): the caller falls back on the conflict's way.

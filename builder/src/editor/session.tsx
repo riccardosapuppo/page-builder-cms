@@ -66,7 +66,7 @@ export interface Session {
   // The draft moved on the server: take the server's (reload), or save
   // this tab's over it (keepMine).
   reload(): Promise<void>;
-  keepMine(): void;
+  keepMine(): Promise<void> | void;
   // The site style: the canvas follows at once, the server after.
   saveSiteStyle(change: SiteStyleChange): void;
   // The open page's versions (./HistoryPanel.tsx), read again by

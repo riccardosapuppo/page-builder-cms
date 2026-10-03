@@ -51,6 +51,8 @@ class FakeSite {
   readonly saves: DraftSave[] = [];
   readonly publishes: Array<{ id: number; revision: number | undefined }> = [];
   readonly styles: SiteStyleChange[] = [];
+  // The versions "Save version" kept: the name and the draft's document.
+  readonly versions: Array<{ id: number; name: string | null; document: PageDocument }> = [];
   refuseNext: FieldError[] | null = null;
   refuseStyle = false;
   style = tokenStyle();
@@ -104,6 +106,10 @@ class FakeSite {
         if (request.revision !== undefined && request.revision !== d.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: d.revision, lastSaveId: null } };
         d.published = { slug: d.slug, versionNumber: 1, draftRevision: d.revision, publishedAt: T };
         return { ok: true, value: { published: d.published, version: { number: 1, reason: "publish", name: null, restoredFrom: null, createdAt: T, published: true }, links: this.links(id) } };
+      },
+      saveVersion: async (id, request = {}) => {
+        this.versions.push({ id, name: request.name ?? null, document: structuredClone(this.drafts.get(id)!.document) });
+        return { ok: true, value: { number: this.versions.length, reason: "manual", name: request.name ?? null, restoredFrom: null, createdAt: T, published: false } };
       },
       saveDraft: async (id, save) => {
         this.saves.push(save);
@@ -270,7 +276,7 @@ test("Preview opens a tab at once, and sends it to the CMS's preview once the ed
   expect(site.drafts.get(1)!.document.sections[0]!.props.label).toBe("Spring");
 });
 
-test("a conflict stops saving until the person chooses: Reload takes the server's page, Keep mine saves this one over it", async () => {
+test("a conflict stops saving until the person chooses: Reload takes the server's page, Keep mine saves this one over it, and either is undone from the history", async () => {
   const { site, env, clock } = start(1);
   await screen.findByRole("tree", { name: "Navigator" });
   const theirs = page();
@@ -289,8 +295,18 @@ test("a conflict stops saving until the person chooses: Reload takes the server'
   const sent = site.saves.length;
   await act(() => clock.advance(10_000));
   expect(site.saves).toHaveLength(sent);
+  // It is a step of this session, the steps before it kept: undone, this
+  // tab's page comes back and is saved, from the server's revision.
+  expect(env.ui.getState().notice).toBe("Reloaded: this is the page as it is on the server. Undo brings this tab’s page back.");
+  expect(env.store.getState().past.map((e) => e.command.label)).toEqual(["Renamed section to Mine", "Reloaded the page saved in another tab"]);
+  act(() => void env.store.getState().undo());
+  expect(env.store.getState().document.sections[0]!.props.label).toBe("Mine");
+  await act(() => clock.advance(1_000));
+  expect(site.drafts.get(1)!.document.sections[0]!.props.label).toBe("Mine");
+  expect(screen.queryByRole("alert")).toBeNull();
 
-  // Again, and this time this tab's page wins.
+  // Again, and this time this tab's page wins; theirs is kept as a version
+  // first, for Restore to bring back.
   site.savedElsewhere(1, theirs);
   relabel("Mine again");
   await act(() => clock.advance(1_000));
@@ -298,6 +314,8 @@ test("a conflict stops saving until the person chooses: Reload takes the server'
   await waitFor(() => expect(site.drafts.get(1)!.document.sections[0]!.props.label).toBe("Mine again"));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(site.saves.at(-1)!.revision).toBe(site.drafts.get(1)!.revision - 1);
+  expect(site.versions.map((v) => [v.name, v.document.sections[0]!.props.label])).toEqual([["Before Keep mine", "Theirs"]]);
+  expect(env.ui.getState().notice).toBe("Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
 });
 
 test("a site style change shows on the canvas at once and goes to the CMS; refused, the canvas goes back", async () => {

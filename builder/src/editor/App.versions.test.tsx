@@ -177,8 +177,9 @@ test("an edit made while the restore travels is not dropped: its save meets the 
 
   await act(async () => fireEvent.click(within(banner).getByRole("button", { name: "Reload" })));
   await waitFor(() => expect(firstLabel(env.store.getState().document)).toBe("First"));
-  expect(env.ui.getState().notice).toBe("Reloaded: this is the page as it is on the server. Undo starts again from here: its steps belonged to the page that was replaced.");
-  expect(env.store.getState().past).toEqual([]);
+  expect(env.ui.getState().notice).toBe("Reloaded: this is the page as it is on the server. Undo brings this tab’s page back.");
+  // The words typed meanwhile are a step away.
+  expect(env.store.getState().past.map((e) => e.command.label)).toEqual(["Renamed section to Typed meanwhile", "Reloaded the page saved in another tab"]);
 });
 
 test("nothing is restored while this tab's save cannot be confirmed: a conflict is settled first", async () => {

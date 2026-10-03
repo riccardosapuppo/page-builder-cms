@@ -424,6 +424,23 @@ export function makeSetPage(doc: PageDocument, updates: { title?: string; descri
   return made("page", label, null, ops);
 }
 
+// The whole page given way to another one, as a reload after a conflict
+// takes the server's: every section out, every section of the other page
+// in, its title and description. One command, so its inverse puts this
+// page back as it was and undo can bring it back. `label` says where the
+// other page came from.
+export function makeReplacePage(doc: PageDocument, next: PageDocument, label: string): Made {
+  if (sameJson(doc, next)) return refuse(refusal("nothing", "The page is the same already."));
+  const ops: Op[] = [];
+  for (let index = doc.sections.length - 1; index >= 0; index -= 1) {
+    ops.push({ op: "remove", at: { parentId: null, index }, block: copyJson(doc.sections[index]!) as Block });
+  }
+  next.sections.forEach((section, index) => ops.push({ op: "insert", at: { parentId: null, index }, block: copyJson(section) as Block }));
+  const updates: Updates = { title: next.title, description: next.description ?? REMOVE };
+  ops.push(...keySteps(null, [], doc as unknown as Record<string, unknown>, updates, Object.keys(DOCUMENT_KEYS)).ops);
+  return made("page", label, null, ops);
+}
+
 // ---------------------------------------------------------------- items
 
 // The lists of a widget's props whose items have commands of their own: a
