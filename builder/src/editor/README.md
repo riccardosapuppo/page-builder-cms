@@ -27,23 +27,23 @@ random block ids.
 | `AboutDialog.tsx` | About: the mark, the version (the package's, held to the repository's) and "Developed by Riccardo Sapuppo" |
 | `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added (images from the media library, below) |
 | `library/` | The media library (design/shots/media.png), opened by every image tile, Replace image, a gallery's Add images and the picture beside text, and from the mark's menu to look after the library itself. A search, three filters (all, on this page, missing alt text), the count. Uploads (`service.ts`, through the storage adapter only): one at a time, each drawn again first in the browser (`resize.ts`: the EXIF orientation applied, at most 2400 px on the long side, proportions kept, in its own format, the camera's notes left behind; an image that moves goes up as it is), with its progress and a way to stop it; what the browser or the CMS refuses keeps its reason (`files.ts`). No image is placed without alt text or the decorative mark: the button says why it waits and leads to the field. Placing is one command born with the mediaId, the alt text copied in and kept as the library's proposal (PIANO, section 5). Delete, asked twice, after the edits waiting are saved; one the CMS refuses names the pages and kept versions that show the image (`words.ts`). The footer says the CMS makes no smaller copies (`capabilities.imageVariants`) |
-| `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx` |
+| `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx`. The Style tab edits the device the canvas previews (design/shots/style.png): the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
+| `device-style.ts` | A block's style per device as the page's container queries apply it: a tablet or a phone shows its own value, else the base, a phone never the tablet's; the devices a block has values of its own on; "back to desktop" as the key taken out, never the desktop's value written in its place |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
 | `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end; the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
-| `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it |
+| `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out |
 | `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
 | `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each widget panel tile as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the live region (`DragLayer.tsx`) |
 | `rich/` | Rich text on the canvas: TipTap with exactly the schema's nodes and marks, the link cut to its href and held to the URL policy and the schema (`extensions.ts`, `link-check.ts`); a paste cut to what the schema allows (`paste.ts`); the editor as the canvas makes it (`setup.ts`), loaded on demand with TipTap in a chunk of its own (`TextEditor.tsx`, through `tools.ts`); one text being edited and its two histories (`text-session.ts`: the typing becomes ONE command of the page when the person pauses or leaves the text, before any other command and at a drag's start, and TipTap's history is closed there, so Ctrl+Z in the text is TipTap's and outside it the page's); its buttons and link field on the block's bar (`FormatBar.tsx`) |
-| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor takes its keys from it, and the "?" window lists it; the arrows' order through the page |
+| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor and the text editor take their keys from it, every title and `aria-keyshortcuts` names its keys from it (a test reads the source for a key written anywhere else), and the "?" window lists it; the arrows' order through the page. While the person types (a field, a text on the canvas) the typing keys are the text's: only the entries marked `typing` work there (Save a named version, Preview, Publish now), looked for before the text editor cancels Enter; a chord with Alt counts there by the key it types, never with AltGr |
 | `BlockMenu.tsx`, `Menu.tsx`, `clipboard.ts` | The block's menu (right click, or the menu key): copy, paste, duplicate, delete; copy and paste through the browser's clipboard events, so a copied block is on the system clipboard as text |
 | `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, tabs, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
 | `icons.tsx`, `editor.css` | The design's icons and stylesheet; the design's resets of bare elements are kept off the canvas |
 
 ## Not here yet
 
-Tablet and phone overrides
-are stage 3; scheduling a publish is stage 4. The top bar draws no control for any of them until it works, and
-the "?" window lists no key for them.
+Scheduling a publish is stage 4. The top bar draws no control for it
+until it works, and the "?" window lists no key for it.
 
 ## Where it departs from the approved design, on purpose
 
@@ -53,8 +53,18 @@ owner to undo:
   after the selection) and a second sentence under Moving. A Text group
   lists the keys inside a text being written (bold, italic, link, Esc to
   leave), with a note on Ctrl+Z there; Enter, "Edit the text of a block",
-  also goes to the first field of a widget whose words are in its panel. The window is
+  also goes to the first field of a widget whose words are in its panel.
+  The Text group's note also says that Delete and Backspace delete
+  letters there, and which keys work while typing. The window is
   the keymap written out, so every key that works is in it.
+- **Style tab on a tablet or a phone:** where the desktop sets nothing,
+  the override says "the theme’s default", and the ruler stands on the
+  theme's step where the theme has one on every width (a column's None
+  inside, its L between widgets). A phone override names the tablet's own
+  value when it has one ("tablets have their own, L"). On the desktop, a
+  setting a device overrides says so under it ("Tablets have their own:
+  L."). The Advanced tab says, under its switches, why a block hidden on
+  the device previewed is gone from the canvas.
 - **Drag caption:** it names the section as well as the column ("to
   Column 2 in See the bay"), where the design says "to Column 2". The
   caption is the live region a screen reader hears, and a page has a
@@ -101,7 +111,10 @@ One test file per panel, next to it, drives its controls and checks the
 page and the command that changed it, and lays the server's 422 on the
 store as the shell does, then finds it on the field it names; the
 canvas, the widget panel, the navigator, the top bar, the history panel
-(in strict mode where an effect matters), the shell (on an adapter of the
+(in strict mode where an effect matters), the style per device
+(`device-style.test.ts`: "back to desktop" on random styles of every
+block, with the desktop's value written in its place planted to see the
+check fail), the shell (on an adapter of the
 test's own and a fake clock; `App.versions.test.tsx` on one that keeps
 versions by the CMS's rules: a restore with an edit waiting, an edit
 typed while it travels), the command runner, the
@@ -123,7 +136,15 @@ canvas, a stacked column's tab and the page's title kept whole),
 button held, refused drops, Esc, a drag on a page drawn smaller, its
 words at their size),
 `focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
-(every key of the map, and the "?" window listing them), `rich-text.spec.ts`
+(every key of the map, and the "?" window listing them; in a text being
+written, Delete, Backspace and Ctrl+D changing letters and never the
+block, and a version kept, a publish and a preview from inside the text,
+each with what was just typed), `devices.spec.ts` (a tablet's and a
+phone's own space set in the Style tab, the canvas at 768 and 390 and the
+page the CMS serves in windows of those widths showing the same; Remove
+leaving the draft with no tablet part, the focus on the ruler, undo and
+redo; a block hidden on phones gone from the phone's canvas and page and
+still on the tablet's), `rich-text.spec.ts`
 (a text opened where it was clicked and laid out as the page lays it out;
 typing and a drag of the same block at once, the text a step before the
 move; undo and redo inside the text and outside it to the CMS's very
