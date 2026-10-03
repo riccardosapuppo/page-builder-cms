@@ -174,11 +174,15 @@ export function TopBar() {
 // address first, then its title. CSS cannot weigh one group's need against
 // the other's, so the bar is measured with each group at its natural
 // width, and the left group's floor, --tb-left-min, is the smaller of its
-// need and what the other two leave it. Before the page switch shortens,
-// the right group gives up the words it can do without (History's and
-// Preview's; history.css, .tb-tight), each keeping its icon and its name
-// for a screen reader. Measured again whenever the bar's width or anything
-// drawn in it changes.
+// need and what the other two leave it. The page's address gives way
+// first; before the page's title would, the save state draws closer to
+// its neighbours (.tb-snug, a dozen pixels), and only then does the right
+// group give up the words it can do without (History's and Preview's;
+// history.css, .tb-tight), each keeping its icon and its name for a
+// screen reader. The
+// save state takes the same room saying Saved as saying Saving… (editor.css),
+// so a save does not move the bar. Measured again whenever the bar's width
+// or anything drawn in it changes.
 function useLeftRoom(): RefObject<HTMLElement | null> {
   const bar = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -193,15 +197,29 @@ function useLeftRoom(): RefObject<HTMLElement | null> {
       const style = getComputedStyle(element);
       const inside = element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0) - 2 * (parseFloat(style.columnGap) || 0);
       // Every word first; the right group tight only if the left would
-      // otherwise be cut.
-      element.classList.remove("tb-tight");
+      // otherwise be cut past the page's address, which gives way first.
+      element.classList.remove("tb-tight", "tb-snug");
       const need = left.getBoundingClientRect().width;
+      const path = left.querySelector<HTMLElement>(".tb-page-path");
+      let core = need;
+      if (path) {
+        const shown = path.style.display;
+        path.style.display = "none";
+        core = left.getBoundingClientRect().width;
+        path.style.display = shown;
+      }
       const middle = center.getBoundingClientRect().width;
       let others = right.getBoundingClientRect().width;
-      const tight = Math.ceil(need) > Math.floor(inside - middle - Math.ceil(others));
-      if (tight) {
-        element.classList.add("tb-tight");
+      const short = () => Math.ceil(core) > Math.floor(inside - middle - Math.ceil(others));
+      // A few pixels short: the save state draws closer to its neighbours
+      // first (history.css, .tb-snug); more, and the words go.
+      if (short()) {
+        element.classList.add("tb-snug");
         others = right.getBoundingClientRect().width;
+        if (short()) {
+          element.classList.replace("tb-snug", "tb-tight");
+          others = right.getBoundingClientRect().width;
+        }
       }
       element.style.gridTemplateColumns = shared;
       const floor = Math.max(0, Math.min(Math.ceil(need), Math.floor(inside - middle - Math.ceil(others))));

@@ -154,3 +154,31 @@ test("versions from the screen: Save version with a name, Restore, a restore und
   expect(report.serious, "the history panel with versions").toEqual([]);
   expect(report.passes).toBeGreaterThan(5);
 });
+
+test("at 1280 wide, with a published page's long chip, a save moves nothing in the top bar, and History and Preview keep their words", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { id } = await makePage(request, "Slack Water", fixture());
+  expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+  await open(page, id);
+  for (let n = 1; n <= 7; n += 1) {
+    await retitle(page, `Words ${n}`);
+    await saved(page);
+  }
+  await expect(page.locator(".topbar .chip")).toHaveText("Published, 7 changes not live");
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  const where = () => undo.evaluate((e) => Math.round(e.getBoundingClientRect().x));
+  const words = () => page.locator(".topbar .tb-word").evaluateAll((e) => e.map((w) => w.getBoundingClientRect().width > 10));
+  const before = await where();
+  expect(await words()).toEqual([true, true]);
+  // The next save held a moment on its way: Saving… then Saved.
+  await page.route("**/api/pages/*/draft", async (route) => {
+    if (route.request().method() === "PUT") await new Promise((done) => setTimeout(done, 1500));
+    await route.fallback();
+  });
+  await retitle(page, "Words 8");
+  await expect(page.locator(".topbar .save-state")).toHaveText("Saving…");
+  expect(await where()).toBe(before);
+  expect(await words()).toEqual([true, true]);
+  await saved(page);
+  expect(await where()).toBe(before);
+});

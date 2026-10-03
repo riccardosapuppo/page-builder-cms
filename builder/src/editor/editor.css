@@ -146,6 +146,12 @@ body {
 .ibtn-small { width: 24px; height: 24px; }
 
 .save-state { display: inline-flex; align-items: center; gap: 6px; margin: 0 8px 0 6px; color: var(--steel); font-weight: 500; white-space: nowrap; }
+/* Saved and Saving… take turns on every autosave: the word takes the room
+   of the longer, so the bar around it never moves (TopBar.tsx, useLeftRoom). */
+.save-state:not(.save-warn, .save-err) { display: inline-grid; grid-template-columns: auto auto; column-gap: 6px; }
+.save-state:not(.save-warn, .save-err) > * { grid-row: 1; grid-column: 1; }
+.save-state:not(.save-warn, .save-err) > span { grid-column: 2; }
+.save-state:not(.save-warn, .save-err)::after { content: "Saving…"; grid-row: 1; grid-column: 2; visibility: hidden; }
 .save-warn { color: var(--warn); }
 .save-err { color: var(--err); }
 .spin { animation: none; }
