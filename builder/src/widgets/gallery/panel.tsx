@@ -65,6 +65,7 @@ interface ItemProps {
 
 function GalleryItem({ blockId, item, index, count, commands }: ItemProps) {
   const media = useUi((u) => u.media);
+  const looking = useUi((u) => item.mediaId !== undefined && u.mediaLooking.has(item.mediaId));
   const shown = useMemo(() => blockImage(item, mediaResolver(media)), [item, media]);
   const [describing, setDescribing] = useState(false);
   const decorative = item.decorative === true && !describing;
@@ -81,7 +82,7 @@ function GalleryItem({ blockId, item, index, count, commands }: ItemProps) {
           <button className="ibtn ibtn-small" type="button" aria-label={`Remove image ${n}`} title="Remove" disabled={count === 1} onClick={() => commands.removeItem(index)}><Icon name="trash" className="i i-xs" /></button>
         </span>
       </div>
-      {shown ? <img className="item-thumb" src={shown.src} alt="" /> : <p className="hint">Not in the media library any more.</p>}
+      {shown ? <img className="item-thumb" src={shown.src} alt="" /> : <p className="hint">{looking ? "Looking for it in the media library…" : "Not in the media library any more."}</p>}
       <ServerErrors blockId={blockId} fields={[`${at}/mediaId`, `${at}/url`]} rules={{ kind: "imageUrl" }} />
       <TextField
         label={`Alt text, image ${n}`}

@@ -45,6 +45,9 @@ export interface UiState {
   panelTab: PanelTab;
   navigatorOpen: boolean;
   media: ReadonlyMap<string, MediaItem>;
+  // Images a page names that the library did not have, while it is read
+  // again for them (./library/service.ts, ensure).
+  mediaLooking: ReadonlySet<string>;
   siteStyle: SiteStyle | null;
   // The theme's header and footer, drawn around the page on the canvas.
   site: Site | null;
@@ -110,6 +113,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     panelTab: initial.panelTab ?? "content",
     navigatorOpen: initial.navigatorOpen ?? true,
     media: new Map(),
+    mediaLooking: new Set(),
     siteStyle: initial.siteStyle ?? null,
     site: initial.site ?? null,
     serverErrors: [],

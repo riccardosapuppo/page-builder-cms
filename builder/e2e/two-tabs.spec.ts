@@ -16,7 +16,9 @@
 // - a restore made in one tab is a change the other is told about.
 import type { Browser, BrowserContext, Page, Request } from "@playwright/test";
 import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState } from "./helpers/heading.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
+import { block } from "./helpers/canvas.ts";
+import { png } from "./helpers/images.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, unique } from "./helpers/site.ts";
 
 const VIEWPORT = { width: 1440, height: 900 };
 test.use({
@@ -231,6 +233,40 @@ test("a version restored in one tab is a change the other tab is told about, and
     await inConflict(second);
     await banner(second).getByRole("button", { name: "Reload" }).click();
     await expect(words(second)).toHaveText("First words");
+    expect(other.errors).toEqual([]);
+  } finally {
+    await other.context.close();
+  }
+});
+
+test("an image uploaded and placed in one tab is drawn in the other once it reloads the page", async ({ page: first, browser, baseURL, request }) => {
+  const { id } = await makePage(request, "Two tabs, an image", fixture());
+  const other = await secondTab(browser, baseURL!);
+  const second = other.page;
+  try {
+    await open(first, id);
+    await open(second, id);
+    // The first tab places an image it uploads.
+    await block(first, "h").click();
+    await first.getByRole("tab", { name: "Add" }).click();
+    await first.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }).click();
+    const library = first.getByRole("dialog", { name: "Media library" });
+    const name = `${unique("across")}.png`;
+    await library.getByLabel("Images to upload").setInputFiles({ name, mimeType: "image/png", buffer: png(400, 300, () => [230, 140, 40]) });
+    await expect(library.getByRole("radio", { name: `${name}, no alt text` })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+    await library.getByRole("textbox", { name: /^Alt text/ }).fill("An orange block");
+    await library.getByRole("button", { name: "Add image" }).click();
+    await saved(first);
+
+    // The second tab, which read the library before that image was in it.
+    await retitle(second, "Words from the second tab");
+    await inConflict(second);
+    await banner(second).getByRole("button", { name: "Reload" }).click();
+    const image = second.locator('.canvas [data-block-type="image"]');
+    await expect(image.getByRole("img", { name: "An orange block" })).toBeVisible();
+    await image.click();
+    await expect(second.locator(".tray-left img.thumb-wide")).toBeVisible();
+    await expect(second.getByText("The image is not in the media library any more.")).toHaveCount(0);
     expect(other.errors).toEqual([]);
   } finally {
     await other.context.close();

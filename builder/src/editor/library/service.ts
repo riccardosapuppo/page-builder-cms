@@ -52,6 +52,11 @@ export interface MediaService {
   dismiss(key: string): void;
   // Reads the library again; resolves with why it could not, or null.
   refresh(): Promise<string | null>;
+  // A page taken from the server (a reload, another page, a restore, the
+  // draft another tab saved) may show images this tab has not seen: any of
+  // these ids the library does not have sends it to be read again, once
+  // per id, the ids listed in the interface's `mediaLooking` meanwhile.
+  ensure(ids: ReadonlySet<string>): void;
   setAlt(id: string, alt: string): Promise<AltOutcome>;
   remove(id: string): Promise<RemoveOutcome>;
   // An upload is waiting, being made ready or on its way.
@@ -120,6 +125,32 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
     } catch (error) {
       return `The library could not be read again: ${describe(error)}`;
     }
+  };
+
+  // The ids a read was made for, and whether one is under way and another
+  // is wanted after it.
+  const asked = new Set<string>();
+  let reading = false;
+  let again = false;
+  const look = async (): Promise<void> => {
+    reading = true;
+    do {
+      again = false;
+      const why = await refresh();
+      // A read that failed confirms nothing: those ids may be asked again.
+      if (why) for (const id of ui.getState().mediaLooking) asked.delete(id);
+    } while (again);
+    reading = false;
+    ui.setState({ mediaLooking: new Set() });
+  };
+  const ensure = (ids: ReadonlySet<string>): void => {
+    const media = ui.getState().media;
+    const missing = [...ids].filter((id) => !media.has(id) && !asked.has(id));
+    if (missing.length === 0) return;
+    for (const id of missing) asked.add(id);
+    ui.setState({ mediaLooking: new Set([...ui.getState().mediaLooking, ...missing]) });
+    if (reading) again = true;
+    else void look();
   };
 
   async function send(key: string, job: Job): Promise<void> {
@@ -216,6 +247,7 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
       if (entries().find((e) => e.key === key)?.phase === "failed") forget(key);
     },
     refresh,
+    ensure,
     async setAlt(id, alt) {
       let outcome;
       try {

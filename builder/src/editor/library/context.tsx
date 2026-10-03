@@ -7,13 +7,24 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { useEnv } from "../context.tsx";
 import type { Prepare } from "./resize.ts";
+import { mediaIdsOn } from "./on-page.ts";
 import { createMediaService, type MediaAdapter, type MediaService, type UploadEntry } from "./service.ts";
 
 const MediaContext = createContext<MediaService | null>(null);
 
 export function MediaProvider({ adapter, prepare, children }: { adapter: MediaAdapter; prepare?: Prepare; children: ReactNode }) {
-  const { ui } = useEnv();
+  const { store, ui } = useEnv();
   const service = useMemo(() => createMediaService({ adapter, ui, ...(prepare ? { prepare } : {}) }), [adapter, prepare, ui]);
+  // Every page the store takes (opened, reloaded, restored, the draft of
+  // another tab), and every change: an image the library does not have
+  // sends it to be read again, so an image placed in another tab is drawn
+  // here, and is said to be gone only once a fresh read agrees.
+  useEffect(() => {
+    service.ensure(mediaIdsOn(store.getState().document));
+    return store.subscribe((state, before) => {
+      if (state.document !== before.document) service.ensure(mediaIdsOn(state.document));
+    });
+  }, [service, store]);
   // Closing the tab while an image is on its way asks first.
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {

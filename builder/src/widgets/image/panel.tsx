@@ -25,6 +25,8 @@ export function imageUpdates(next: ImageRef): Updates {
 function ImageContent({ block }: ContentProps<"image">) {
   const commands = useBlockCommands(block.id);
   const media = useUi((u) => u.media);
+  // An image this tab has not seen yet, while the library is read again.
+  const looking = useUi((u) => block.props.mediaId !== undefined && u.mediaLooking.has(block.props.mediaId));
   const shown = useMemo(() => blockImage(block.props, mediaResolver(media)), [block.props, media]);
   const [picking, setPicking] = useState(false);
   // Turning "Decorative" off needs alt text before the page can take it:
@@ -36,7 +38,7 @@ function ImageContent({ block }: ContentProps<"image">) {
     <>
       <div className="field">
         <span className="label">Image</span>
-        {shown ? <img className="thumb-wide" src={shown.src} alt="" /> : <p className="hint">The image is not in the media library any more.</p>}
+        {shown ? <img className="thumb-wide" src={shown.src} alt="" /> : <p className="hint">{looking ? "Looking for the image in the media library…" : "The image is not in the media library any more."}</p>}
         <button className="btn btn-secondary btn-block" type="button" onClick={() => setPicking(true)}>Replace image</button>
         <ServerErrors blockId={block.id} fields={["/props/mediaId", "/props/url"]} rules={{ kind: "imageUrl" }} />
       </div>

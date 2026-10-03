@@ -246,3 +246,33 @@ describe("alt text and deleting", () => {
     expect(rig().service.imageVariants).toBe(false);
   });
 });
+
+describe("images a page names that the library has not got", () => {
+  test("are looked for with one read of the library, said as looked for meanwhile, and one gone is not asked for again", async () => {
+    const r = rig([item("here")]);
+    // The CMS has an image another tab uploaded; "gone" it has not.
+    r.listWith([item("other"), item("here")]);
+    r.service.ensure(new Set(["here", "other", "gone"]));
+    expect([...r.ui.getState().mediaLooking]).toEqual(["other", "gone"]);
+    await settle();
+    expect(r.listed()).toBe(1);
+    expect(r.ids()).toEqual(["other", "here"]);
+    expect([...r.ui.getState().mediaLooking]).toEqual([]);
+    r.service.ensure(new Set(["here", "other", "gone"]));
+    await settle();
+    expect(r.listed()).toBe(1);
+  });
+
+  test("ids met while a read is on its way are read for once it is done", async () => {
+    const r = rig([]);
+    r.listWith([item("a"), item("b")]);
+    r.service.ensure(new Set(["a"]));
+    r.service.ensure(new Set(["b"]));
+    expect([...r.ui.getState().mediaLooking]).toEqual(["a", "b"]);
+    await settle();
+    await settle();
+    expect(r.listed()).toBe(2);
+    expect(r.ids()).toEqual(["a", "b"]);
+    expect([...r.ui.getState().mediaLooking]).toEqual([]);
+  });
+});
