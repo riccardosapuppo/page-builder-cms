@@ -286,9 +286,11 @@ function LiveCaption() {
   const mode = useUi((u) => u.dragMode);
   const said = useUi((u) => u.dragSaid);
   const moving = session !== null && mode !== null;
+  // A tile of the widget panel adds a block; a block of the page moves.
+  const adding = session !== null && !draggedOf(session).fromPage;
   const help = mode === "keyboard"
     ? "The arrows move it, Space drops it here, Esc puts it back."
-    : `Release to drop it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
+    : `Release to ${adding ? "add" : "drop"} it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
   // One element for the life of the editor, so a screen reader follows it.
   return (
     <p className={`live-caption chrome${moving ? "" : " live-caption-quiet"}`} role="status" aria-live="polite">

@@ -14,6 +14,8 @@ import { page } from "../../../test/document-page.ts";
 import { Canvas } from "../Canvas.tsx";
 import { Navigator } from "../Navigator.tsx";
 import { BlockPanel } from "../panels/EditPanel.tsx";
+import { WIDGETS } from "../../widgets/registry.ts";
+import { newWidget } from "../../widgets/types.ts";
 import { beginDrag, DragLayer, dropSentence } from "./DragLayer.tsx";
 
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
@@ -54,6 +56,20 @@ test("the dragged block is drawn as a line where it would land, its column frame
   expect(line?.textContent).toBe("Quote");
   expect(line?.previousElementSibling?.getAttribute("data-row-id")).toBe("h1");
   expect(document.querySelector('.tree [data-row-id="c1"] > .t-row')?.classList.contains("t-target")).toBe(true);
+});
+
+test("a tile of the widget panel is added, not moved: the live region says so", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<DragLayer><div className="app"><Canvas /></div></DragLayer>);
+  const divider = WIDGETS.find((w) => w.type === "divider")!;
+  act(() => {
+    kit.ui.setState({ dragMode: "pointer" });
+    kit.store.getState().startDrag({ kind: "palette", block: newWidget(divider as never, "new-divider", undefined as never) });
+  });
+  act(() => kit.store.getState().dragOver({ parentId: "c1", index: 1 }));
+  const caption = document.querySelector(".live-caption")!;
+  expect(caption.querySelector("strong")?.textContent).toBe("Divider will be added to Column 1 in Hero, after Heading.");
+  expect(caption.querySelector("span")?.textContent).toBe("Release to add it. Shaded areas cannot hold widgets. Esc cancels.");
 });
 
 test("over nothing that can take it, the live region says why; the block's own place keeps it", () => {

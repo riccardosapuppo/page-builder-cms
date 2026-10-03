@@ -95,9 +95,14 @@ test.describe("with the mouse", () => {
   test("a tile of the widget panel dropped between two widgets, and a section tile below the last section", async ({ page, request }) => {
     const { id } = await startPage(page, request, "From the panel");
     await page.getByRole("tab", { name: "Add" }).click();
-    await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
+    const tile = page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" });
+    await expect(tile).not.toHaveCSS("outline-style", "dashed");
+    await pickUp(page, tile);
     await moveOnto(page, block(page, "a"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Quote will be added to Column 1 in First, after Heading.");
+    await expect(caption(page).locator("span")).toHaveText("Release to add it. Shaded areas cannot hold widgets. Esc cancels.");
+    // The tile it came from leaves its dashed place in the panel.
+    await expect(tile).toHaveCSS("outline-style", "dashed");
     await page.mouse.up();
     await expect.poll(async () => ((await canvasShape(page)) as Array<[string, Array<[string, string[]]>]>)[0]![1][0]![1].length).toBe(4);
     const added = page.locator('.canvas [data-block-id="c1"] > [data-block-type="quote"]').first();

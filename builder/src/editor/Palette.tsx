@@ -37,9 +37,12 @@ function Tile({ id, make, className, label, title, popup, onClick, children }: {
   children: ReactNode;
 }) {
   const data: SourceData | null = make ? { kind: "tile", make } : null;
-  const { ref } = useDraggable({ id, ...(data ? { data } : {}), disabled: data === null, sensors: TILE_SENSORS });
+  const { ref, isDragSource } = useDraggable({ id, ...(data ? { data } : {}), disabled: data === null, sensors: TILE_SENSORS });
+  // While its block is dragged, the tile leaves a dashed place in the panel
+  // (design/shots/drag.png), so the person sees what they took.
+  const classes = [className, isDragSource ? "is-sel" : null].filter(Boolean).join(" ") || undefined;
   return (
-    <button ref={ref} className={className} type="button" aria-label={label} title={title} aria-haspopup={popup ? "dialog" : undefined} onClick={onClick}>
+    <button ref={ref} className={classes} type="button" aria-label={label} title={title} aria-haspopup={popup ? "dialog" : undefined} data-draggable={data ? "" : undefined} onClick={onClick}>
       {children}
     </button>
   );
