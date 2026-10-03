@@ -5,19 +5,12 @@
 // that is saved but not live, and the chip counts it, until the next
 // publish.
 import type { Page } from "@playwright/test";
-import { block } from "./helpers/canvas.ts";
+import { retitle } from "./helpers/heading.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words")])])];
-
-async function retitle(page: Page, words: string) {
-  await block(page, "h").click();
-  const text = page.getByRole("textbox", { name: "Text" });
-  await text.fill(words);
-  await text.blur();
-}
 
 // A tab the editor opens, once it has reached the address it is sent to.
 async function tabOpenedBy(page: Page, action: () => Promise<void>, url: string) {

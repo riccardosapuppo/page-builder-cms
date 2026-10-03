@@ -13,8 +13,9 @@
 // - words typed and not handed over yet when the tab is asked to close;
 // - a 422 whose fix was typed while the refused save travelled;
 // - an edit made on the page being left while the next page loads.
-import type { Page, Request } from "@playwright/test";
+import type { Request } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
+import { asksBeforeClosing, headingText, retitle, saveState } from "./helpers/heading.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, type DraftBlock } from "./helpers/site.ts";
 
 test.use({
@@ -28,26 +29,6 @@ test.use({
 const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words")])])];
 
 const DRAFT = "**/api/pages/*/draft";
-
-// Types new words into the heading's Text field and leaves the field, which
-// hands the text over as a command.
-async function retitle(page: Page, words: string) {
-  await block(page, "h").click();
-  const text = page.getByRole("textbox", { name: "Text" });
-  await text.fill(words);
-  await text.blur();
-}
-
-const saveState = (page: Page) => page.locator(".topbar .save-state");
-const headingText = async (request: Parameters<typeof draftOf>[0], id: number) => (await draftOf(request, id)).document.sections[0]!.children[0]!.children[0]!.props.text;
-
-// Whether closing the tab now would ask first: the editor's beforeunload
-// listener, asked the way the browser asks it.
-const asksBeforeClosing = (page: Page) => page.evaluate(() => {
-  const event = new Event("beforeunload", { cancelable: true });
-  window.dispatchEvent(event);
-  return event.defaultPrevented;
-});
 
 const saveIdOf = (request: Request) => (JSON.parse(request.postData() ?? "{}") as { saveId?: string }).saveId;
 

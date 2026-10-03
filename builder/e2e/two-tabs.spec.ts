@@ -15,7 +15,7 @@
 //   conflict, which is definite, and Keep mine settles it;
 // - a restore made in one tab is a change the other is told about.
 import type { Browser, BrowserContext, Page, Request } from "@playwright/test";
-import { block } from "./helpers/canvas.ts";
+import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState } from "./helpers/heading.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
 
 const VIEWPORT = { width: 1440, height: 900 };
@@ -51,26 +51,8 @@ async function secondTab(browser: Browser, baseURL: string): Promise<{ context: 
   return { context, page, errors };
 }
 
-async function retitle(page: Page, words: string) {
-  await block(page, "h").click();
-  const text = page.getByRole("textbox", { name: "Text" });
-  await text.fill(words);
-  await text.blur();
-}
-
-// The heading's words on the canvas, without the name the selection's
-// bar adds beside them.
-const words = (page: Page) => block(page, "h").getByRole("heading");
-const saveState = (page: Page) => page.locator(".topbar .save-state");
 const banner = (page: Page) => page.getByRole("alert");
 const publishButton = (page: Page) => page.getByRole("button", { name: "Publish", exact: true });
-const headingText = async (request: Parameters<typeof draftOf>[0], id: number) => (await draftOf(request, id)).document.sections[0]!.children[0]!.children[0]!.props.text;
-
-const asksBeforeClosing = (page: Page) => page.evaluate(() => {
-  const event = new Event("beforeunload", { cancelable: true });
-  window.dispatchEvent(event);
-  return event.defaultPrevented;
-});
 
 // The conflict as the tab that lost the race shows it.
 async function inConflict(page: Page) {

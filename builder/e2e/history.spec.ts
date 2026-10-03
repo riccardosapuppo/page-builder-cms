@@ -12,25 +12,13 @@
 import type { Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
+import { headingText, headingWords as words, retitle } from "./helpers/heading.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words"), widget("d", "divider", {})])])];
 
-// Types new words into the heading's Text field and leaves the field,
-// which hands them over as a command.
-async function retitle(page: Page, words: string) {
-  await block(page, "h").click();
-  const text = page.getByRole("textbox", { name: "Text" });
-  await text.fill(words);
-  await text.blur();
-}
-
-// The heading's words on the canvas, without the name the selection's
-// bar adds beside them.
-const words = (page: Page) => block(page, "h").getByRole("heading");
-const headingText = async (request: Parameters<typeof draftOf>[0], id: number) => (await draftOf(request, id)).document.sections[0]!.children[0]!.children[0]!.props.text;
 const history = (page: Page) => page.getByRole("complementary", { name: "History" });
 const steps = (page: Page) => history(page).getByRole("list", { name: "This session" }).getByRole("button");
 const versionRows = (page: Page) => history(page).getByRole("list", { name: "Versions" }).getByRole("listitem");
