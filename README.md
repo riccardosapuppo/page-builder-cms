@@ -248,11 +248,11 @@ suites; `--only` and `--skip` take those names.
 On 3 October 2026, on the virtual machine of "Before you start", with
 `CMS_PORT`, `BUILDER_PORT` and `PRODUCTION_CHECK_PORT` set to 3901 and
 4901 so that every server it started was on the test ports, the whole
-run took 10 minutes and ended `RESULT: 25 passed, 1 could not run here`:
+run took 11 minutes and ended `RESULT: 25 passed, 1 could not run here`:
 bundler-audit, for want of its database. Among its counts: 501 unit
 tests and the render contract's 22, 214 corpus files with no
 disagreement, 234 Rails runs with 198 API answers held to the
-description, 44 tests against a CMS of their own, 63 browser tests and
+description, 44 tests against a CMS of their own, 64 browser tests and
 25 accessibility tests, 40 serving checks and 35 of the production boot.
 
 The Vitest projects are made to hold on a busy machine without hiding a
