@@ -13,6 +13,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
 import { PendingText } from "./pending.ts";
+import type { TextEditing, TextTools } from "./rich/tools.ts";
 
 export const PREVIEWS = ["desktop", "tablet", "phone"] as const;
 export type Preview = (typeof PREVIEWS)[number];
@@ -71,9 +72,15 @@ export interface UiState {
   // the drag itself), and the live region's last word on a drag that ended.
   dragMode: "pointer" | "keyboard" | null;
   dragSaid: string;
-  // The text typed in a panel's field and not handed over yet. The same
-  // object for the life of the store: holding text draws nothing.
+  // The text typed in a panel's field or in a text on the canvas and not
+  // handed over yet. The same object for the life of the store: holding
+  // text draws nothing.
   pending: PendingText;
+  // The text block edited on the canvas, and where its caret started; the
+  // state and commands of its editor, for the formatting buttons on the
+  // block's bar (./rich/tools.ts).
+  editingText: TextEditing | null;
+  textTools: TextTools | null;
 
   setHover(id: string | null): void;
   setPreview(preview: Preview): void;
@@ -117,6 +124,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     dragMode: null,
     dragSaid: "",
     pending: new PendingText(),
+    editingText: null,
+    textTools: null,
 
     setHover: (hover) => set({ hover }),
     setPreview: (preview) => set({ preview }),
