@@ -333,8 +333,11 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* The page starts right under the width rule, with the site's header, as
    the design draws it: the first section's floating bar and its tab go
    over the header. */
-.frame { margin: 0 28px 32px; background: var(--white); border-radius: 4px; }
-.frame-fixed { margin: 0 auto 32px; }
+.frame-fit { margin: 0 28px 32px; }
+.frame-fit.frame-fixed { margin: 0 auto 32px; }
+/* A page drawn smaller to fit (Canvas.tsx, fitPreview) is scaled from its
+   top left corner; the box around it takes its scaled size. */
+.frame { background: var(--white); border-radius: 4px; }
 /* The theme's header and footer (render/theme.tsx), locked: inert, and,
    while a block is dragged, shaded as no place for it. */
 .canvas .site [data-theme-part] { position: relative; }
@@ -348,10 +351,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .wrule-line { position: absolute; left: 0; right: 0; top: 6px; height: 14px; border-left: 2px solid var(--graphite); border-right: 2px solid var(--graphite); }
 .wrule-line::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: var(--graphite); }
 .wrule-label { position: absolute; left: 50%; top: 3px; transform: translateX(-50%); padding: 0 10px; background: var(--alloy); font-size: 12px; line-height: 20px; font-weight: 600; white-space: nowrap; }
-.wrule-notch { position: absolute; top: 12px; left: calc(var(--x) * 1px); width: 2px; height: 13px; margin-left: -1px; background: var(--graphite); }
+.wrule-notch { position: absolute; top: 12px; left: calc(var(--x) * var(--s, 1) * 1px); width: 2px; height: 13px; margin-left: -1px; background: var(--graphite); }
 .wrule-notch span { position: absolute; left: 1px; top: 14px; transform: translateX(-50%); color: var(--graphite); font-size: 12px; line-height: 14px; font-weight: 500; white-space: nowrap; }
 /* a name that would run past the end of the rule stops at the end instead */
-.wrule-notch-end span { left: auto; right: calc((var(--x) - var(--w)) * 1px); transform: none; }
+.wrule-notch-end span { left: auto; right: calc((var(--x) - var(--w)) * var(--s, 1) * 1px); transform: none; }
 
 /* The published page's rules that speak to a whole window, undone on the
    bench: a short page is as tall as its sections, not as the window. */

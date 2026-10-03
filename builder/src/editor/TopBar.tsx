@@ -17,10 +17,10 @@ import { changes, SaveState, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useSession, type OpenPage } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { PREVIEWS, type Preview } from "./ui-store.ts";
-import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
+import { DESKTOP_MIN, PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 
 const PREVIEW_LABELS: Readonly<Record<Preview, { name: string; title: string; icon: "desktop" | "tablet" | "phone" }>> = {
-  desktop: { name: "Desktop", title: "Desktop: the canvas at its full width", icon: "desktop" },
+  desktop: { name: "Desktop", title: `Desktop: the canvas at its full width, drawn smaller when that is under ${DESKTOP_MIN}`, icon: "desktop" },
   tablet: { name: "Tablet", title: `Tablet: the canvas at ${PREVIEW_WIDTHS.tablet} wide`, icon: "tablet" },
   phone: { name: "Phone", title: `Phone: the canvas at ${PREVIEW_WIDTHS.phone} wide`, icon: "phone" },
 };

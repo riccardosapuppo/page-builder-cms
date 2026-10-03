@@ -35,7 +35,7 @@ import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/p
 import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
-import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
+import { fitPreview } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
 import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
@@ -274,7 +274,10 @@ export function Canvas() {
   const siteStyle = useUi((u) => u.siteStyle);
   const site = useUi((u) => u.site);
   const frame = useRef<HTMLDivElement>(null);
+  const bench = useRef<HTMLElement>(null);
+  const fit = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState(0);
+  const [room, setRoom] = useState(0);
 
   // The selected block, the drag's source: its element is given to it by
   // the block itself (SourceRef).
@@ -290,16 +293,51 @@ export function Canvas() {
   // The context's hook must stay the same function: the library's lookup
   // is the only part that changes, and only when the library does.
   const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), useDecoration }), [media]);
-  const width = preview === "desktop" ? undefined : PREVIEW_WIDTHS[preview];
+  const { width, scale } = fitPreview(preview, room);
 
+  // The room the canvas has for the page: its own width (its border box,
+  // which its scrollbar does not change), less the page's margins and a
+  // scrollbar's width, so a page scaled to fit never makes the canvas
+  // scroll sideways, whether or not it scrolls down.
+  useLayoutEffect(() => {
+    const element = bench.current;
+    if (!element) return undefined;
+    const measure = () => setRoom(Math.floor(element.getBoundingClientRect().width) - FRAME_ROOM);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  // The page's own width, as the width rule names it, when it fills the
+  // canvas: its layout width, which a scale would not change.
   useLayoutEffect(() => {
     const element = frame.current;
     if (!element) return undefined;
-    setMeasured(Math.round(element.getBoundingClientRect().width));
-    const observer = new ResizeObserver(() => setMeasured(Math.round(element.getBoundingClientRect().width)));
+    setMeasured(element.offsetWidth);
+    const observer = new ResizeObserver(() => setMeasured(element.offsetWidth));
     observer.observe(element);
     return () => observer.disconnect();
   }, [preview]);
+
+  // A page scaled to fit takes the room of its scaled size: the box around
+  // it is as tall as the page drawn smaller, kept so as the page grows.
+  useLayoutEffect(() => {
+    const outer = fit.current;
+    const inner = frame.current;
+    if (!outer || !inner) return undefined;
+    if (scale === 1) {
+      outer.style.height = "";
+      return undefined;
+    }
+    const place = () => {
+      outer.style.height = `${inner.offsetHeight * scale}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [scale]);
 
   // The page's links, buttons and disclosures take no focus on the canvas:
   // Tab goes from block to block's tab stop, not through the page's links.
@@ -319,7 +357,8 @@ export function Canvas() {
     if (origin === null) return undefined;
     const element = frame.current?.querySelector<HTMLElement>(`[data-block-id="${origin}"]`);
     if (!element) return undefined;
-    element.style.minHeight = `${element.getBoundingClientRect().height}px`;
+    // Its layout height, which a page scaled to fit does not change.
+    element.style.minHeight = `${element.offsetHeight}px`;
     return () => {
       element.style.minHeight = "";
     };
@@ -343,8 +382,10 @@ export function Canvas() {
 
   const shown = width ?? measured;
   const dragClass = dragType === null ? "" : ` canvas-drag canvas-drag-${dragType === "section" || dragType === "column" ? dragType : "widget"}`;
+  const frameStyle: CSSProperties | undefined = width === undefined ? undefined : { width: `${width}px`, ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: "0 0" } : {}) };
   return (
     <main
+      ref={bench}
       className={`canvas${dragClass}`}
       aria-label="Page canvas"
       aria-describedby="canvas_keys"
@@ -358,52 +399,55 @@ export function Canvas() {
           sections their anchors as ids, and an ARIA reference takes the
           first element with its id. */}
       <p id="canvas_keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
-      <WidthRule preview={preview} width={shown} fixed={width !== undefined} />
+      <WidthRule preview={preview} width={shown} fixed={width !== undefined} scale={scale} />
       <SourceRef.Provider value={source.ref}>
-        <div
-          ref={frameRef}
-          className={`frame${width !== undefined ? " frame-fixed" : ""}${pageMark?.kind === "shut" ? " frame-shut" : ""}`}
-          style={width !== undefined ? ({ width: `${width}px` } as CSSProperties) : undefined}
-          onClickCapture={(event) => {
-            const element = event.target instanceof Element ? event.target : null;
-            if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
-            // A link or a disclosure of the page does nothing on the canvas.
-            event.preventDefault();
-            // The theme's header and footer are inert, so a click on them
-            // reaches the page around them: it says why nothing happens.
-            const part = themePartAt(event.currentTarget, event.clientX, event.clientY);
-            if (part) {
-              ui.getState().say(`The site's ${part} is the theme's, the same on every page: it is not edited here.`);
-              return;
-            }
-            pick(event.target);
-          }}
-          onContextMenu={(event) => {
-            const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
-            const id = element?.dataset.blockId;
-            if (!id || store.getState().drag) return;
-            openBlockMenu(env, event, id, "canvas");
-          }}
-          onFocus={(event) => {
-            const element = event.target;
-            if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined || store.getState().drag) return;
-            if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
-          }}
-          onPointerOver={(event) => {
-            if (store.getState().drag) return;
-            const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
-            const id = element?.dataset.blockId ?? null;
-            if (ui.getState().hover !== id) ui.getState().setHover(id);
-          }}
-          onPointerLeave={() => ui.getState().setHover(null)}
-        >
-          {document.sections.length === 0 ? (
-            <>
-              {site && <ThemeAround siteStyle={siteStyle}><SiteHeader site={site} locked /></ThemeAround>}
-              <Invite />
-              {site && <ThemeAround siteStyle={siteStyle}><SiteFooter site={site} locked /></ThemeAround>}
-            </>
-          ) : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
+        <div ref={fit} className={`frame-fit${width !== undefined ? " frame-fixed" : ""}`} style={width === undefined ? undefined : { width: `${width * scale}px` }}>
+          <div
+            ref={frameRef}
+            className={`frame${pageMark?.kind === "shut" ? " frame-shut" : ""}`}
+            style={frameStyle}
+            data-scale={scale < 1 ? scale.toFixed(4) : undefined}
+            onClickCapture={(event) => {
+              const element = event.target instanceof Element ? event.target : null;
+              if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
+              // A link or a disclosure of the page does nothing on the canvas.
+              event.preventDefault();
+              // The theme's header and footer are inert, so a click on them
+              // reaches the page around them: it says why nothing happens.
+              const part = themePartAt(event.currentTarget, event.clientX, event.clientY);
+              if (part) {
+                ui.getState().say(`The site's ${part} is the theme's, the same on every page: it is not edited here.`);
+                return;
+              }
+              pick(event.target);
+            }}
+            onContextMenu={(event) => {
+              const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+              const id = element?.dataset.blockId;
+              if (!id || store.getState().drag) return;
+              openBlockMenu(env, event, id, "canvas");
+            }}
+            onFocus={(event) => {
+              const element = event.target;
+              if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined || store.getState().drag) return;
+              if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
+            }}
+            onPointerOver={(event) => {
+              if (store.getState().drag) return;
+              const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+              const id = element?.dataset.blockId ?? null;
+              if (ui.getState().hover !== id) ui.getState().setHover(id);
+            }}
+            onPointerLeave={() => ui.getState().setHover(null)}
+          >
+            {document.sections.length === 0 ? (
+              <>
+                {site && <ThemeAround siteStyle={siteStyle}><SiteHeader site={site} locked /></ThemeAround>}
+                <Invite />
+                {site && <ThemeAround siteStyle={siteStyle}><SiteFooter site={site} locked /></ThemeAround>}
+              </>
+            ) : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
+          </div>
         </div>
       </SourceRef.Provider>
     </main>
@@ -428,26 +472,32 @@ function themePartAt(frame: Element, x: number, y: number): "header" | "footer" 
 
 // The canvas's width as a dimension line, notched where the page changes
 // layout, each notch named under it (design/styles.css, .wrule).
-function WidthRule({ preview, width, fixed }: { preview: keyof typeof PREVIEW_NAMES; width: number; fixed: boolean }) {
+// A page drawn smaller to fit keeps its true width in the words, and its
+// notches where they fall on the page as drawn.
+function WidthRule({ preview, width, fixed, scale }: { preview: keyof typeof PREVIEW_NAMES; width: number; fixed: boolean; scale: number }) {
   const notches = [
     { x: LAYOUT_BREAKPOINTS.phone, label: "Tablet layout" },
     { x: LAYOUT_BREAKPOINTS.tablet, label: "Desktop layout" },
-  ].filter((n) => width > 0 && n.x < width);
+  ].filter((n) => width > 0 && n.x <= width);
   return (
     <div
       className={`wrule${fixed ? " frame-fixed" : ""}`}
-      style={fixed ? { width: `${width}px` } : undefined}
+      style={fixed ? { width: `${width * scale}px` } : undefined}
       aria-hidden="true"
-      title={`The page changes layout at ${LAYOUT_BREAKPOINTS.phone} (tablet) and ${LAYOUT_BREAKPOINTS.tablet} (desktop)`}
+      title={`The page changes layout at ${LAYOUT_BREAKPOINTS.phone} (tablet) and ${LAYOUT_BREAKPOINTS.tablet} (desktop)${scale < 1 ? `. It is drawn at ${Math.round(scale * 100)}% to fit the canvas.` : ""}`}
     >
       <span className="wrule-line" />
       {notches.map((n) => (
-        <span key={n.x} className={`wrule-notch${n.x + 60 > width ? " wrule-notch-end" : ""}`} style={{ "--x": n.x, "--w": width } as CSSProperties}><span>{n.label}</span></span>
+        <span key={n.x} className={`wrule-notch${n.x + 60 > width ? " wrule-notch-end" : ""}`} style={{ "--x": n.x, "--w": width, "--s": scale } as CSSProperties}><span>{n.label}</span></span>
       ))}
-      <span className="wrule-label">{PREVIEW_NAMES[preview]}{width > 0 ? `, ${width} wide` : ""}</span>
+      <span className="wrule-label">{PREVIEW_NAMES[preview]}{width > 0 ? `, ${width} wide` : ""}{scale < 1 ? `, drawn at ${Math.round(scale * 100)}%` : ""}</span>
     </div>
   );
 }
+
+// The canvas's room for the page: its width less the page's margins (28
+// each side, editor.css .frame-fit) and a thin scrollbar's width.
+const FRAME_ROOM = 2 * 28 + 12;
 
 // ------------------------------------------------------- the empty page
 

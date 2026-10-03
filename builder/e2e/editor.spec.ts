@@ -218,14 +218,58 @@ test("the theme's header and footer are drawn around the page, locked, and the n
   await expect(block(page, "h")).toHaveAttribute("data-editor-selected", "true");
 });
 
-// A smaller window, 1280 by 800: the canvas gives the page 672, so the
-// columns stack, and the top bar has less room.
+// A smaller window, 1280 by 800: the canvas has 660 for the page, so the
+// desktop and tablet pages are drawn smaller to fit, and the top bar has
+// less room.
 test.describe("in a 1280 by 800 window", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("the desktop page keeps its desktop layout, drawn smaller; the tablet page is drawn whole; neither scrolls sideways", async ({ page, request }) => {
+    const { id } = await makePage(request, "Fitted", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+    await open(page, id);
+    const canvas = page.locator(".canvas");
+    const rule = page.locator(".wrule-label");
+    const frame = page.locator(".canvas .frame");
+    const sideways = () => canvas.evaluate((element) => element.scrollWidth - element.clientWidth);
+    const inside = async () => {
+      const box = (await frame.boundingBox())!;
+      const bench = (await canvas.boundingBox())!;
+      return box.x >= bench.x && box.x + box.width <= bench.x + bench.width;
+    };
+
+    // Desktop: 800 wide, the page's desktop layout, two columns side by side.
+    await expect(rule).toHaveText(/^Desktop, 800 wide, drawn at 8\d%$/);
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "800px");
+    const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;
+    const second = (await page.locator('.canvas [data-block-id="c2"]').boundingBox())!;
+    expect(Math.abs(second.y - first.y)).toBeLessThan(1);
+    expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+    expect(await sideways()).toBe(0);
+    expect(await inside()).toBe(true);
+    // The rule spans the page as drawn, its last notch at its end.
+    const ruleBox = (await page.locator(".wrule").boundingBox())!;
+    const frameBox = (await frame.boundingBox())!;
+    expect(Math.abs(ruleBox.width - frameBox.width)).toBeLessThan(1);
+    await expect(page.locator(".wrule-notch span")).toHaveText(["Tablet layout", "Desktop layout"]);
+
+    // Tablet: 768 wide, whole, drawn smaller.
+    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    await expect(rule).toHaveText(/^Tablet, 768 wide, drawn at 8\d%$/);
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "768px");
+    expect(await sideways()).toBe(0);
+    expect(await inside()).toBe(true);
+
+    // Phone: 390 wide, with room enough: not scaled.
+    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Phone" }).click();
+    await expect(rule).toHaveText("Phone, 390 wide");
+    await expect(frame).not.toHaveAttribute("data-scale");
+  });
 
   test("the tab of the selection's column is drawn whole, over the next column's line", async ({ page, request }) => {
     const { id } = await makePage(request, "Stacked", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
     await open(page, id);
+    // The tablet page, where the columns stack.
+    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
     await page.locator('.canvas [data-block-id="h1"]').click();
     await page.mouse.move(1270, 790);
     const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;

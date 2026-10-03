@@ -33,6 +33,24 @@ async function select(page: Page, id: string) {
   await expect(block(page, id)).toHaveAttribute("data-editor-selected", "true");
 }
 
+test.describe("on a page drawn smaller to fit a 1280 window", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("a widget moves to another column, the pointer and the page in step", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Scaled");
+    await expect(page.locator(".canvas .frame")).toHaveAttribute("data-scale", /^0\.8/);
+    await select(page, "b");
+    await pickUp(page, grip(page));
+    await moveOnto(page, block(page, "c2"), "bottom");
+    await expect(caption(page).locator("strong")).toHaveText("Quote will move to Column 2 in First, after Divider.");
+    await page.mouse.up();
+    const after = [["s1", [["c1", ["a", "c"]], ["c2", ["d", "b"]]]], ["s2", [["c3", ["e"]], ["c4", []]]]];
+    await expect.poll(() => canvasShape(page)).toEqual(after);
+    await saved(page);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(after);
+  });
+});
+
 test.describe("with the mouse", () => {
   test("a widget moves down its column, as one command the CMS keeps", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Reorder");
