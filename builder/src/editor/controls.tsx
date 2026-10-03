@@ -423,6 +423,9 @@ interface RulerFieldProps extends ScopeProps {
   hint?: ReactNode;
   // Said for no value: the theme's default applies.
   unsetText?: string;
+  // The theme's own step where none is set, when the theme has one on
+  // every width: drawn where the value would be, and said as the theme's.
+  theme?: string | null;
   // The desktop's step, marked with a ring, while a device's own value
   // is shown (design/shots/style.png).
   ring?: string | null;
@@ -430,13 +433,16 @@ interface RulerFieldProps extends ScopeProps {
 
 // A spacing scale, None to XXL, as a slider: arrows step along it, a click
 // takes the nearest step.
-export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, ring = null, unsetText = "Theme default" }: RulerFieldProps) {
+export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, theme = null, ring = null, unsetText = "Theme default" }: RulerFieldProps) {
   const id = useId();
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
   const server = useServerErrors(blockId, field);
   const errors = refusal ? [refusal, ...server] : server;
-  const index = value === null ? -1 : steps.findIndex((s) => s.value === value);
+  const set = value === null ? -1 : steps.findIndex((s) => s.value === value);
+  const themeAt = value === null && theme !== null ? steps.findIndex((s) => s.value === theme) : -1;
+  // Where the thumb stands: the value, else the theme's step.
+  const index = set >= 0 ? set : themeAt;
   const gaps = steps.length - 1;
   const choose = (next: number) => {
     const step = steps[Math.min(gaps, Math.max(0, next))];
@@ -445,6 +451,7 @@ export function RulerField({ label, steps, value, onChange, blockId, field, hint
     setRefusal(error ? refusalAt(error, field) : null);
   };
   const current = index >= 0 ? steps[index] : undefined;
+  const valueText = !current ? unsetText : set >= 0 ? current.name : `${current.name}, the theme’s default`;
   const ringAt = ring === null ? -1 : steps.findIndex((s) => s.value === ring);
   return (
     <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
@@ -458,7 +465,7 @@ export function RulerField({ label, steps, value, onChange, blockId, field, hint
         aria-valuemin={0}
         aria-valuemax={gaps}
         aria-valuenow={index >= 0 ? index : undefined}
-        aria-valuetext={current ? current.name : unsetText}
+        aria-valuetext={valueText}
         style={{ "--steps": gaps, "--v": Math.max(index, 0), ...(ringAt >= 0 ? { "--inherit": ringAt } : {}) } as CSSProperties}
         onKeyDown={(event) => {
           const from = index < 0 ? -1 : index;

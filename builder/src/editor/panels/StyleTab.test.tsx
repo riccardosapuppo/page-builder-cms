@@ -83,6 +83,9 @@ test("previewing a tablet, the tab edits the tablet's values, each said as the t
   expect(scopeOf("Alignment")).toBe("Tablet only");
   expect(within(fieldOf("Alignment")).getByRole("radio", { name: "Center" }).getAttribute("aria-checked")).toBe("true");
   expect(fieldOf("Alignment").querySelector(".override p")?.textContent).toBe("Tablet override: Center. Desktop and phone use the theme’s default.");
+  // Space between: set nowhere, the theme's own L, said as the theme's.
+  expect(scopeOf("Space between widgets")).toBe("From desktop");
+  expect(within(fieldOf("Space between widgets")).getByRole("slider").getAttribute("aria-valuetext")).toBe("L, the theme’s default");
   // Background: the desktop's, until changed here.
   expect(scopeOf("Background")).toBe("From desktop");
   expect(fieldOf("Background").querySelector(".scope")?.getAttribute("title")).toBe("Tablets use the desktop value until you change it here");

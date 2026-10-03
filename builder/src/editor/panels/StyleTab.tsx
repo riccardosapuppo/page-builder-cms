@@ -187,7 +187,7 @@ export function StyleTab({ block }: { block: Block }) {
         switch (key) {
           case "spaceInside":
           case "spaceBetween":
-            return <RulerField key={key} {...common} steps={spaceSteps(SPACE_TOKENS)} value={value} ring={ring} onChange={set} />;
+            return <RulerField key={key} {...common} steps={spaceSteps(SPACE_TOKENS)} value={value} theme={themeStep(block.type, key)} ring={ring} onChange={set} />;
           case "spaceAbove":
           case "spaceBelow":
             return <RulerField key={key} {...common} steps={spaceSteps(SECTION_SPACE_TOKENS)} value={value} ring={ring} onChange={set} />;
