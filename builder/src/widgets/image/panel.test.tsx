@@ -37,7 +37,7 @@ test("Replace image puts another image and its own alt text in one change", () =
   const dialog = screen.getByRole("dialog", { name: "Media library" });
   fireEvent.change(within(dialog).getByLabelText("Image address"), { target: { value: "https://images.example.org/jetty.jpg" } });
   fireEvent.change(within(dialog).getByLabelText(/^Alt text/), { target: { value: "The jetty in winter" } });
-  fireEvent.click(within(dialog).getByRole("button", { name: "Replace image" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Use image" }));
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(kit.block("image")?.props).toEqual({ url: "https://images.example.org/jetty.jpg", alt: "The jetty in winter" });
   expect(kit.store.getState().past).toHaveLength(1);
@@ -50,7 +50,7 @@ test("an address the rules refuse is said in the dialog, and nothing changes", (
   const dialog = screen.getByRole("dialog", { name: "Media library" });
   fireEvent.change(within(dialog).getByLabelText("Image address"), { target: { value: "http://images.example.org/plain.jpg" } });
   fireEvent.change(within(dialog).getByLabelText(/^Alt text/), { target: { value: "Plain" } });
-  fireEvent.click(within(dialog).getByRole("button", { name: "Replace image" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Use image" }));
   expect(within(dialog).getByText(/Address: Use an https:\/\/ address/)).toBeTruthy();
   expect(kit.block("image")?.props).toMatchObject({ url: "https://images.example.org/bay.jpg" });
 });

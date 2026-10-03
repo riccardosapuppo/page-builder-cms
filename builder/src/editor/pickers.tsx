@@ -18,7 +18,8 @@ import { MediaLibrary } from "./library/MediaLibrary.tsx";
 
 interface ImagePickerProps {
   // What placing the images does, on the library's button: "Add image",
-  // "Replace image", "Add images", "Add section".
+  // "Use image" (the design's, replacing an image), "Add images", "Add
+  // section".
   confirm: string;
   // Several images (a gallery) or one.
   multiple?: boolean;

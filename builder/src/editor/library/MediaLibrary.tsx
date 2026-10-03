@@ -562,9 +562,10 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
   const needed = picking && chosen && !decorative && !hasAlt(alt);
   const saveWords = altSave?.phase === "saving" ? "Saving…" : altSave?.phase === "saved" ? "Saved in the library." : null;
   const errors = [needed ? ALT_NEEDED : null, altSave?.phase === "failed" ? altSave.message : null].filter((e): e is string => e !== null);
-  const hint = picking
-    ? "Copied into the page with the image, and kept in the library for the next time."
-    : "Proposed whenever the image is placed. Images already on pages keep their own.";
+  // Choosing, the field is the design's, with no line under it but the
+  // alt text kept; looking after the library, it says what the text is for.
+  const words = picking ? null : "Proposed whenever the image is placed. Images already on pages keep their own.";
+  const hint = words !== null || saveWords !== null ? <>{words}{words !== null && saveWords !== null ? " " : null}{saveWords && <span className="md-saved">{saveWords}</span>}</> : null;
   return (
     <>
       <img className="md-preview" src={item.url} alt="" />
@@ -592,7 +593,7 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
             }
           }}
         />
-        <p className="hint" id={`${id}-alt-hint`}>{hint}{saveWords && <> <span className="md-saved">{saveWords}</span></>}</p>
+        {hint && <p className="hint" id={`${id}-alt-hint`}>{hint}</p>}
         <ErrorList id={`${id}-alt-error`} errors={errors} />
       </div>
       {picking && (

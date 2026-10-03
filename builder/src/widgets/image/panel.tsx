@@ -78,7 +78,7 @@ function ImageContent({ block }: ContentProps<"image">) {
       </div>
       {picking && (
         <ImagePicker
-          confirm="Replace image"
+          confirm="Use image"
           onClose={() => setPicking(false)}
           onPick={([next]) => {
             if (!next) return null;
