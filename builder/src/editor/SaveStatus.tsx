@@ -110,8 +110,10 @@ export function SaveState() {
   return (
     <span className={said.className} role="status" title={said.title}>
       <Icon name={said.icon} className={said.icon === "spinner" ? "i spin" : "i"} />
-      {said.heard ? said.text : <span aria-hidden="true">{said.text}</span>}
-      {said.more && <span aria-hidden="true">{said.more}</span>}
+      <span>
+        {said.heard ? said.text : <span aria-hidden="true">{said.text}</span>}
+        {said.more && <span aria-hidden="true">{said.more}</span>}
+      </span>
     </span>
   );
 }
