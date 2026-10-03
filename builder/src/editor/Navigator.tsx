@@ -84,14 +84,26 @@ export function Navigator() {
   const items = useRef(new Map<string, HTMLLIElement>());
 
   // A block selected anywhere opens the rows down to it, once, when it is
-  // selected: a row closed by hand afterwards stays closed. Adjusted while
-  // drawing, as React does state that follows a value from outside.
+  // selected. Selected from outside the tree (the canvas, its keys, a new
+  // block), it also closes the others: design/shots/advanced.png and
+  // drag.png show only the selection's path open, and the selected row
+  // itself stays open if it was. Selected in the tree itself, by a click
+  // or an arrow, the rows stay as the person left them, so they do not
+  // move under the keys. A row closed by hand afterwards stays closed.
+  // Adjusted while drawing, as React does state that follows a value from
+  // outside.
+  const [chosenHere, setChosenHere] = useState<string | null>(null);
   if (selection !== seen) {
     setSeen(selection);
     if (selection !== null) {
-      const ancestors: string[] = [];
-      for (let up = locate(doc, selection)?.parentId ?? null; up !== null; up = locate(doc, up)?.parentId ?? null) ancestors.push(up);
-      if (ancestors.some((id) => !expanded.has(id))) setExpanded(new Set([...expanded, ...ancestors]));
+      const path = new Set<string>();
+      for (let up = locate(doc, selection)?.parentId ?? null; up !== null; up = locate(doc, up)?.parentId ?? null) path.add(up);
+      if (selection === chosenHere) {
+        if ([...path].some((id) => !expanded.has(id))) setExpanded(new Set([...expanded, ...path]));
+      } else {
+        if (expanded.has(selection)) path.add(selection);
+        if (path.size !== expanded.size || [...path].some((id) => !expanded.has(id))) setExpanded(path);
+      }
       setActive(selection);
     }
   }
@@ -111,6 +123,7 @@ export function Navigator() {
   const tabStop = rows.some((r) => r.block.id === active) ? active : (rows[0]?.block.id ?? null);
 
   const choose = (id: string, focus = true) => {
+    setChosenHere(id);
     store.getState().select(id);
     ui.setState({ tray: "edit", notice: null });
     setActive(id);

@@ -30,10 +30,16 @@ const afterRender = (run: () => void): void => {
 // The canvas's element for a block, focused and brought into view, once
 // React has drawn it. Block ids are the schema's letters, digits, "_" and
 // "-", safe inside a quoted attribute selector as they are.
+// A focus asked for on a canvas or a tree that has gone by the time it
+// runs (another page opened, the editor drawn again) is not carried over
+// to the one that took its place, where a block may have the same id.
+const stillThere = (part: Element | null): boolean => part === null || part.isConnected;
+
 export function focusBlock(id: string): void {
+  const canvas = document.querySelector(".canvas");
   afterRender(() => {
     const element = document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`);
-    if (!element) return;
+    if (!element || !stillThere(canvas)) return;
     element.focus({ preventScroll: true });
     element.scrollIntoView?.({ block: "nearest" });
   });
@@ -42,7 +48,9 @@ export function focusBlock(id: string): void {
 // The navigator's row for a block. The navigator opens the rows down to a
 // block when it is selected, in the same render, so the row is there.
 export function focusRow(id: string): void {
+  const tree = document.querySelector(".tree");
   afterRender(() => {
+    if (!stillThere(tree)) return;
     document.querySelector<HTMLElement>(`.tree [data-row-id="${id}"]`)?.focus();
   });
 }

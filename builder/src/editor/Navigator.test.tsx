@@ -34,6 +34,20 @@ test("a block selected elsewhere opens the rows down to it and is selected here"
   expect(screen.getAllByRole("treeitem").filter((i) => i.tabIndex === 0)).toHaveLength(1);
 });
 
+test("a block selected elsewhere closes the rows off its path, as the design shows; one chosen here leaves them open", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<Navigator />);
+  act(() => kit.store.getState().select("b1"));
+  act(() => kit.store.getState().select("q1"));
+  expect(rows()).toEqual([
+    "1 Hero closed", "1 Join open", "2 Column 1 open", "3 Divider", "3 Quote: Cold, then glad.", "3 Gallery: 2 images",
+  ]);
+  // Chosen in the tree itself, the rows stay as they were.
+  fireEvent.click(within(item("Hero")).getByText("Hero"));
+  expect(kit.store.getState().selection).toBe("hero");
+  expect(rows().slice(0, 2)).toEqual(["1 Hero closed", "1 Join open"]);
+});
+
 test("a row chosen here selects its block, and the arrows move along the rows shown", () => {
   const kit = editorKit({ document: page() });
   kit.render(<Navigator />);

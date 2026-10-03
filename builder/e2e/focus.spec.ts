@@ -32,6 +32,9 @@ test("after a delete, the focus is on the block now in its place, else the one b
   await page.keyboard.press("Delete");
   await expect(block(page, "c2")).toBeFocused();
   // From the navigator, the focus stays in the tree, on the neighbour's row.
+  // (The tree shows the selection's path: a's row is there once a is
+  // selected.)
+  await block(page, "a").click();
   await row(page, "a").click();
   await expect(row(page, "a")).toBeFocused();
   await page.keyboard.press("Delete");
