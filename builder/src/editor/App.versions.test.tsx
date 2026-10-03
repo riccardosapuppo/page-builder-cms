@@ -8,6 +8,8 @@
 // - an edit made while the restore travels is not dropped: its save meets
 //   the conflict, the banner asks, and Reload takes the restored page;
 // - nothing is restored while the save cannot be confirmed;
+// - a restore or a version whose answer never comes says it may have been
+//   made, and nothing on the page moves;
 // - "Save version" sends the edit waiting first, so the version holds it.
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -16,7 +18,7 @@ import { counter, page } from "../../test/document-page.ts";
 import { FakeClock } from "../../test/fake-clock.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
-import type { DraftSave, Page, SiteStyle, StorageAdapter, Version } from "../storage/adapter.ts";
+import { StorageError, type DraftSave, type Page, type SiteStyle, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE } from "./App.tsx";
 import { createUiStore } from "./ui-store.ts";
@@ -97,10 +99,10 @@ class VersionSite {
   }
 }
 
-async function start(site = new VersionSite()) {
+async function start(site = new VersionSite(), adapter: StorageAdapter = site.adapter()) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
-  render(<App env={env} adapter={site.adapter()} address={{ read: () => 1, write: () => {} }} cmsOrigin="http://127.0.0.1:3900" tabs={{ open: () => true }} />);
+  render(<App env={env} adapter={adapter} address={{ read: () => 1, write: () => {} }} cmsOrigin="http://127.0.0.1:3900" tabs={{ open: () => true }} />);
   await screen.findByRole("tree", { name: "Navigator" });
   act(() => env.ui.getState().setHistoryOpen(true));
   const versions = await screen.findByRole("list", { name: "Versions" });
@@ -191,6 +193,24 @@ test("nothing is restored while this tab's save cannot be confirmed: a conflict 
   expect(site.restores).toEqual([]);
   expect(env.ui.getState().notice).toBe("Not restored: the page was changed in another tab. Choose Reload or Keep mine first.");
   expect(firstLabel(env.store.getState().document)).toBe("Mine");
+});
+
+test("a restore or a version whose answer never comes says it may have been made, and the page stays as it is", async () => {
+  const site = new VersionSite();
+  const adapter = site.adapter();
+  const lost = () => Promise.reject(new StorageError({ kind: "unknown", cause: "network", status: null, message: "Failed to fetch" }));
+  const { env } = await start(site, { ...adapter, restoreVersion: lost, saveVersion: lost });
+  await act(async () => fireEvent.click(restoreButton(/^Restore: Saved, First draft/)));
+  expect(env.ui.getState().notice).toBe("No answer from the CMS about the restore (Failed to fetch): it may have been made. If it was, the editor asks you to choose before it saves this page again.");
+  expect(firstLabel(env.store.getState().document)).toBe("Hero");
+  expect(restoreButton(/^Restore: Saved, First draft/).textContent).toBe("Restore");
+
+  fireEvent.click(screen.getByRole("button", { name: "Save version" }));
+  const name = screen.getByRole("textbox", { name: /^Name/ });
+  await act(async () => fireEvent.submit(name.closest("form")!));
+  await waitFor(() => expect(screen.getByText("No answer from the CMS (Failed to fetch): the version may have been kept. The list below shows what it has.")).toBeTruthy());
+  // The field stays, with what was typed, to try again.
+  expect(screen.getByRole("textbox", { name: /^Name/ })).toBeTruthy();
 });
 
 test("Save version sends the edit waiting first, so the version holds what the canvas shows, and the list shows it under its name", async () => {
