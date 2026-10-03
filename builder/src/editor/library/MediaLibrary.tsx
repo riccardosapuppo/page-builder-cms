@@ -6,8 +6,9 @@
 //
 // Opened for a block (an Image, a gallery's images, a picture beside text,
 // Replace image), it hands the chosen images over as ImageRefs, each with
-// its alt text or the mark that it is decorative: the schema's rule, and
-// the PROMPT's, that no image is placed without one or the other. The alt
+// its alt text or the mark that it is decorative: the schema's rule
+// ($defs/imageRef in ../../../../schema/block-document.schema.json), and
+// the editor's, that no image is placed without one or the other. The alt
 // text written here is the library's (the text it proposes next time), and
 // is copied into the block when the image is placed. Opened from the app
 // menu, it looks after the library itself: upload, alt text, delete.

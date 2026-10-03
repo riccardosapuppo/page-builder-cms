@@ -211,7 +211,7 @@ export const SUITES: Suite[] = [
   },
   {
     name: "tools-tests",
-    what: "the tools' own tests: npm start's parts, this check's readers, the CI file (node --test)",
+    what: "the tools' own tests: npm start's parts, this check's readers, the CI file, no reference to a document the repository does not hold (node --test)",
     async run(ctx) {
       const why = first(packages(repoRoot, "the repository root"), ruby());
       if (why) return notRun(why);

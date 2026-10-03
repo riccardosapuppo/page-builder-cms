@@ -8,7 +8,8 @@
 // where the canvas finds an image by its id. An upload adds its image
 // there once the CMS has it, and never touches the page: an image enters
 // a page only when the person places it, as one command born with its
-// mediaId (PIANO, section 7). Uploads go on with the library closed, and
+// mediaId, so the page never holds an image the CMS has not taken.
+// Uploads go on with the library closed, and
 // the tab warns before it closes while one is on its way (./context.tsx).
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { isStorageError, type MediaItem, type MediaUse, type StorageAdapter } from "../../storage/adapter.ts";

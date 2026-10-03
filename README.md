@@ -235,7 +235,9 @@ itself.
   and in a browser the published page's layout, colours, reflow and
   focus rings. `npm run test:tools` runs the tools' own tests: how they
   read, from netstat, ss or lsof, who listens on a port, npm start's
-  parts, the check's readers, and the CI file.
+  parts, the check's readers, the CI file, and that no tracked file cites
+  a planning document the repository does not hold, or a rule by its
+  number (`tools/references.test.ts`).
   `tools/probes/` holds the probe of a risky assumption, run before the
   code that relies on it. Playwright 1.62.1 drives Chromium headless for
   the ones that need a browser.

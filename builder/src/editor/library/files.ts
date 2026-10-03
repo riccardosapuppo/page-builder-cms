@@ -136,7 +136,7 @@ export function renamed(name: string, type: ImageType): string {
 }
 
 // The sentence for an upload the CMS refused (a 422 at the file, or at
-// another field), said as the CMS's: rule 33, who refused and why. `sent`
+// another field), said as the CMS's: a refusal says who refused and why. `sent`
 // is the size of what was sent, after the editor made it ready.
 export function uploadRefusal(problem: Invalid, sent: { size: number; type: string }): string {
   const error = problem.errors.find((e) => e.pointer === "/file") ?? problem.errors[0];

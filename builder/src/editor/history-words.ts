@@ -1,8 +1,9 @@
 // The words of the history panel (./HistoryPanel.tsx), in the editor's one
 // locale, en-US: when a step or a version happened, as a person reads a
 // time ("Today, 10:46 AM"), and what a version is, from what the CMS keeps
-// of it: why it was made, when, and the name given to it (PIANO, the
-// model). No author: the CMS has no people, so nothing is "by you".
+// of it: why it was made, when, and the name given to it (the Version of
+// ../../../cms/openapi.yaml). No author: the CMS has no people, so nothing
+// is "by you".
 //
 // Plain functions of their arguments, the clock's time among them, so the
 // tests give the time and the time zone they mean.
