@@ -174,14 +174,14 @@ export function Navigator() {
     <aside className="tray tray-right chrome" aria-label="Navigator">
       <section className="view">
         <div className="tray-head tray-head-title">
-          <h2 id="navigator-title"><Icon name="tree" />Navigator</h2>
+          <h2 id="navigator_title"><Icon name="tree" />Navigator</h2>
           <button className="ibtn" type="button" aria-label="Collapse navigator" aria-expanded="true" title="Collapse navigator" onClick={() => ui.getState().setNavigatorOpen(false)}><Icon name="panel-right" /></button>
         </div>
         <div className="tray-body tray-body-tight">
           {sections === 0 ? (
             <p className="t-empty">No sections yet. Each section you add shows up here, with its columns and widgets inside.</p>
           ) : (
-            <ul className="tree" role="tree" aria-labelledby="navigator-title">
+            <ul className="tree" role="tree" aria-labelledby="navigator_title">
               {doc.sections.map((section) => (
                 <TreeItem
                   key={section.id}

@@ -4,8 +4,8 @@
 // narrow the page root and the page lays out by its own width; the
 // navigator and the canvas select together; a 422 from the CMS shows on
 // the field it names; an empty page and a new one invite a first section;
-// in a smaller window, a stacked column's tab and the page's title stay
-// whole.
+// sections anchored with the editor's own ids take none of them; in a
+// smaller window, a stacked column's tab and the page's title stay whole.
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
@@ -160,6 +160,26 @@ test("a new page, made from the page switch, invites its first section, which th
   const draft = await draftOf(request, newId);
   expect(draft.document.sections).toHaveLength(1);
   expect(draft.document.sections[0]!.children).toHaveLength(2);
+});
+
+test("sections anchored with the editor's own ids leave its names and ids alone", async ({ page, request }) => {
+  // The canvas gives each section its anchor as an id, as the published
+  // page does; these were the ids of the editor's own chrome.
+  const anchors = ["root", "navigator-title", "canvas-keys", "invite-presets"];
+  const sections = anchors.map((anchor, i) => ({ ...section(`s${i}`, `Band ${i + 1}`, [column(`c${i}`, [heading(`h${i}`, `Band ${i + 1}`)])]), props: { label: `Band ${i + 1}`, anchor } }));
+  const { id } = await makePage(request, "Anchors", sections);
+  await open(page, id);
+  await expect(page.locator('.canvas .site [id="navigator-title"]')).toHaveCount(1);
+
+  // ARIA takes the first element with an id: the navigator and the canvas
+  // keep their own name and description.
+  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
+  await expect(page.getByRole("main", { name: "Page canvas" })).toHaveAccessibleDescription(/^Arrow keys select the next or previous block/);
+  const ids = await page.evaluate(() => [...document.querySelectorAll("[id]")].map((element) => ({ id: element.id, onPage: element.closest(".canvas .site") !== null })));
+  const all = ids.map((entry) => entry.id);
+  expect(all.filter((name, index) => all.indexOf(name) !== index)).toEqual([]);
+  // And no id the editor gives itself is one a section could take.
+  expect(ids.filter((entry) => !entry.onPage && /^[a-z][a-z0-9-]{0,63}$/.test(entry.id)).map((entry) => entry.id)).toEqual([]);
 });
 
 // A smaller window, 1280 by 800: the canvas gives the page 672, so the

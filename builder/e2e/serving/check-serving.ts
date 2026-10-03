@@ -48,7 +48,7 @@ const get = (base: string, path: string, headers: Record<string, string> = {}) =
 async function shellChecks(base: string, label: string, built: boolean): Promise<void> {
   const page = await get(base, "/");
   const html = await page.text();
-  check(page.status === 200 && html.includes('<div id="root">'), `${label}: / is the editor's page`, `status ${page.status}`);
+  check(page.status === 200 && html.includes('<div id="editor_root">'), `${label}: / is the editor's page`, `status ${page.status}`);
   check(page.headers.get("cache-control") === PAGE_CACHE, `${label}: the page is never stored (${PAGE_CACHE})`, page.headers.get("cache-control") ?? "no Cache-Control");
   check(page.headers.get("etag") === null && page.headers.get("last-modified") === null, `${label}: the page has no ETag and no Last-Modified`, `ETag ${page.headers.get("etag")}, Last-Modified ${page.headers.get("last-modified")}`);
   const again = await get(base, "/", { "if-none-match": page.headers.get("etag") ?? 'W/"0-0"', "if-modified-since": new Date().toUTCString() });
@@ -65,7 +65,7 @@ async function shellChecks(base: string, label: string, built: boolean): Promise
   for (const path of ["/no-such-file.js", "/no-such-page", "/assets/no-such-file.js", "/404.html"]) {
     const missing = await get(base, path);
     const body = await missing.text();
-    check(missing.status === 404 && !body.includes('<div id="root">'), `${label}: ${path} is a 404, not the editor's page`, `status ${missing.status}`);
+    check(missing.status === 404 && !body.includes('<div id="editor_root">'), `${label}: ${path} is a 404, not the editor's page`, `status ${missing.status}`);
     if (path.startsWith("/assets/")) check(missing.headers.get("cache-control") !== ASSET_CACHE, `${label}: a missing built file is not kept`, missing.headers.get("cache-control") ?? "");
   }
 

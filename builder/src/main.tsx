@@ -22,8 +22,8 @@ const env = {
 };
 const adapter = createRailsAdapter();
 
-const root = document.getElementById("root");
-if (!root) throw new Error("index.html has no #root");
+const root = document.getElementById("editor_root");
+if (!root) throw new Error("index.html has no #editor_root");
 createRoot(root).render(
   <StrictMode>
     <App env={env} adapter={adapter} />

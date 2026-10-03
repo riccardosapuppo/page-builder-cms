@@ -54,8 +54,10 @@ adapter of the test's own and a fake clock), the command runner, the
 keymap and its listener, and the drag layer's preview and live region
 have theirs here. jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
-`../../e2e/editor.spec.ts` (the shell, and in a 1280 by 800 window a
-stacked column's tab and the page's title kept whole), `drag.spec.ts`
+`../../e2e/editor.spec.ts` (the shell; sections anchored with the
+editor's own ids, which hold an underscore no anchor can; and in a 1280
+by 800 window a stacked column's tab and the page's title kept whole),
+`drag.spec.ts`
 (every drop by mouse and by keyboard, refused drops, Esc), `focus.spec.ts` (the focus
 after every command), `keyboard.spec.ts` (every key of the map, and the
 "?" window listing them), `menu.spec.ts` (the block's menu),

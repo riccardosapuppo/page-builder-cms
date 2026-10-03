@@ -321,13 +321,17 @@ export function Canvas() {
     <main
       className={`canvas${dragClass}`}
       aria-label="Page canvas"
-      aria-describedby="canvas-keys"
+      aria-describedby="canvas_keys"
       tabIndex={-1}
       onClick={(event) => {
         if (event.target === event.currentTarget) pick(null);
       }}
     >
-      <p id="canvas-keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
+      {/* The editor's own ids hold an underscore, which no section anchor
+          can (the schema's pattern): the page drawn here gives its
+          sections their anchors as ids, and an ARIA reference takes the
+          first element with its id. */}
+      <p id="canvas_keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
       <WidthRule preview={preview} width={shown} fixed={width !== undefined} />
       <SourceRef.Provider value={source.ref}>
         <div
@@ -422,8 +426,8 @@ function Invite() {
             </button>
           ))}
         </div>
-        <h3 className="invite-sub" id="invite-presets">Or start from a ready-made section</h3>
-        <div className="invite-presets" role="group" aria-labelledby="invite-presets">
+        <h3 className="invite-sub" id="invite_presets">Or start from a ready-made section</h3>
+        <div className="invite-presets" role="group" aria-labelledby="invite_presets">
           {(Object.keys(PRESET_LABELS) as Preset[]).map((preset) => (
             <button
               key={preset}
