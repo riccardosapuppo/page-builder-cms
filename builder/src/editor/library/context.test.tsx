@@ -3,6 +3,7 @@
 // refused.
 // @vitest-environment jsdom
 import { act, render } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { expect, test } from "vitest";
 import { editorKit, widgetPage } from "../../../test/editor-kit.tsx";
 import type { Invalid, MediaItem, Outcome } from "../../storage/adapter.ts";
@@ -28,15 +29,18 @@ test("the tab asks before it closes while an upload is on its way", async () => 
   const prepare = async (file: File) => ({ ok: true as const, image: { file, width: 10, height: 10, resized: false } });
   const kit = editorKit({ document: widgetPage() });
   const ui = kit.ui;
-  let service: MediaService | null = null;
+  const given: { service: MediaService | null } = { service: null };
   function Grab() {
-    service = useMediaService();
+    const service = useMediaService();
+    useLayoutEffect(() => {
+      given.service = service;
+    });
     return null;
   }
   render(<EditorProvider env={kit.env}><MediaProvider adapter={adapter} prepare={prepare}><Grab /></MediaProvider></EditorProvider>);
   expect(closing()).toBe(false);
   act(() => {
-    service!.upload([new File(["x"], "a.png", { type: "image/png" })]);
+    given.service!.upload([new File(["x"], "a.png", { type: "image/png" })]);
   });
   expect(closing()).toBe(true);
   await act(async () => {
