@@ -9,7 +9,7 @@ import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { Canvas, dimensionOf, relationOf } from "./Canvas.tsx";
+import { Canvas, dimensionOf, relationOf, tabStopOf } from "./Canvas.tsx";
 
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
 
@@ -156,4 +156,38 @@ test("the dimension line names the step the previewed device shows, with the dev
   const phone = root("c1").querySelector(":scope > .ov-pad")!;
   expect(phone.textContent).toBe("M");
   expect(phone.hasAttribute("data-device")).toBe(false);
+});
+
+test("the canvas's one Tab stop is a block the device previewed draws: the selection, else the nearest block around it drawn, else the first section drawn", () => {
+  const doc = page();
+  const hide = (id: string, device: "base" | "tablet" | "phone") => {
+    const visit = (blocks: readonly { id: string; style: Record<string, unknown>; children: readonly unknown[] }[]) => {
+      for (const block of blocks) {
+        if (block.id === id) block.style[device] = { ...(block.style[device] as object | undefined), visibility: "hidden" };
+        visit(block.children as typeof blocks);
+      }
+    };
+    visit(doc.sections as unknown as Parameters<typeof visit>[0]);
+  };
+  hide("h1", "phone");
+  hide("c2", "tablet");
+  expect(tabStopOf(doc, "h1", "desktop")).toBe("h1");
+  expect(tabStopOf(doc, "h1", "phone")).toBe("c1");
+  expect(tabStopOf(doc, "i1", "tablet")).toBe("hero");
+  expect(tabStopOf(doc, "i1", "phone")).toBe("i1");
+  expect(tabStopOf(doc, null, "phone")).toBe("hero");
+  hide("hero", "phone");
+  expect(tabStopOf(doc, "h1", "phone")).toBe("join");
+  expect(tabStopOf(doc, null, "phone")).toBe("join");
+
+  // Drawn: the column around the heading hidden on phones takes the stop.
+  const kit = editorKit({ document: doc, selection: "t1" });
+  act(() => kit.ui.getState().setPreview("phone"));
+  kit.render(<Canvas />);
+  const stops = () => [...document.querySelectorAll<HTMLElement>(".canvas [data-block-id]")].filter((e) => e.tabIndex === 0).map((e) => e.dataset.blockId);
+  expect(stops()).toEqual(["join"]);
+  act(() => kit.store.getState().select("i1"));
+  expect(stops()).toEqual(["join"]);
+  act(() => kit.ui.getState().setPreview("desktop"));
+  expect(stops()).toEqual(["i1"]);
 });

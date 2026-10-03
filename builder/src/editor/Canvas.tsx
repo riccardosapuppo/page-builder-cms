@@ -88,6 +88,26 @@ export function relationOf(doc: PageDocument, selection: string | null, id: stri
   return null;
 }
 
+// The canvas's one Tab stop: the selected block, or, when the device
+// previewed does not draw it (it or a block around it hidden there), the
+// nearest block around it that is drawn; with nothing selected, or nothing
+// around the selection drawn, the first section drawn. Null for a page
+// with no section drawn.
+export function tabStopOf(doc: PageDocument, selection: string | null, preview: Preview): string | null {
+  const device = deviceOf(preview);
+  const hidden = (block: { style?: unknown }) => shownValue(block.style, device, "visibility") === "hidden";
+  const path = selection === null ? null : (locate(doc, selection)?.path ?? null);
+  let stop: string | null = null;
+  let blocks: readonly { id: string; style?: unknown; children: readonly unknown[] }[] = doc.sections;
+  for (const index of path ?? []) {
+    const block = blocks[index];
+    if (!block || hidden(block)) break;
+    stop = block.id;
+    blocks = block.children as typeof blocks;
+  }
+  return stop ?? doc.sections.find((section) => !hidden(section))?.id ?? null;
+}
+
 // The canvas's name for a block (the navigator's): "Hero", "Column 1", "Heading".
 function nameOf(doc: PageDocument, id: string | null): string {
   if (id === null) return "";
@@ -139,6 +159,8 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   const isSource = useStore(store, (s) => id !== null && (s.drag ? draggedOf(s.drag).id === id : s.selection === id));
   const priority = useStore(store, (s) => priorityOf(s, id));
   const device = useStore(ui, (u) => u.preview);
+  // The one Tab stop; while a drag lasts, the block dragged.
+  const tabStop = useStore(store, (s) => id !== null && (s.drag ? draggedOf(s.drag).id === id : tabStopOf(s.document, s.selection, device) === id));
   const dimension = useStore(store, useShallow((s) => (s.drag || id === null || s.selection !== id ? null : dimensionOf(s.document, id, device))));
   const sourceRef = useContext(SourceRef);
   const accept = useAccept(id);
@@ -168,7 +190,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
       role: "group",
       "aria-roledescription": kind,
       "aria-label": name,
-      tabIndex: relation === "selected" || relation === "entry" || isSource ? 0 : -1,
+      tabIndex: tabStop ? 0 : -1,
       "data-editor-selected": relation === "selected" ? "true" : undefined,
       "data-drag-slot": slot ? slot.mode : undefined,
       "data-drag-row": slot?.row ? "true" : undefined,

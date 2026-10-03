@@ -16,13 +16,15 @@ test.use({
   allowConsole: /net::ERR_INTERNET_DISCONNECTED|status of 409 \(Conflict\)/,
 });
 
-// Every case of every widget, half in each of two sections.
+// Every case of every widget, half in each of two sections; and a
+// heading hidden on phones.
 function everyWidget() {
   const blocks = WIDGET_A11Y.flatMap((test) => test.cases.map((c, index) => widget(`${test.type}-${index}`, test.type, c.props)));
   const half = Math.ceil(blocks.length / 2);
+  const wide = { ...widget("wide-only", "heading", { level: 2, text: "Only on wider screens" }), style: { base: {}, phone: { visibility: "hidden" } } };
   return [
     section("first", "First", [column("first-a", blocks.slice(0, half)), column("first-b", [])]),
-    section("second", "Second", [column("second-a", blocks.slice(half))]),
+    section("second", "Second", [column("second-a", [...blocks.slice(half), wide])]),
   ];
 }
 
@@ -79,6 +81,14 @@ test("the editor has no serious or critical axe finding, in any of its states", 
   await clean(page, "the widget panel");
   await page.getByRole("button", { name: "Phone" }).click();
   await clean(page, "the phone preview");
+  // The selection hidden on the phone previewed: the canvas's one Tab stop
+  // is the column around it, drawn there.
+  await page.getByRole("button", { name: "Desktop" }).click();
+  await block(page, "wide-only").click();
+  await page.getByRole("button", { name: "Phone" }).click();
+  await expect(page.locator(".canvas [tabindex=\"0\"]")).toHaveAttribute("data-block-id", "second-a");
+  await expect(page.locator(".canvas [tabindex=\"0\"]")).toBeVisible();
+  await clean(page, "a block hidden on the phone previewed, selected");
   await page.getByRole("button", { name: "Desktop" }).click();
 
   await block(page, "quote-0").click({ button: "right" });
