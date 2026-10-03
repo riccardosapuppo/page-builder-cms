@@ -1,0 +1,167 @@
+// The save states in Chromium, against the run's CMS (design/shots/
+// save-states.png):
+// - a slowed network: "Saving…" while the save travels, and closing the
+//   tab asks first; "Saved" once the CMS has it;
+// - an unknown outcome: the network fails, the top bar counts down to the
+//   next try, the toast says why, and Retry now sends the very same save
+//   (same saveId), which the CMS then keeps;
+// - an answer lost after the CMS stored the save: the same save goes again
+//   on its own and is answered as saved, one revision, no conflict;
+// - a conflict made by a second writer through the API while the editor
+//   is open: the banner, Publish paused, Reload taking the other writer's
+//   page, Keep mine saving this tab's over it.
+import type { Page, Request } from "@playwright/test";
+import { block } from "./helpers/canvas.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
+
+test.use({
+  viewport: { width: 1440, height: 900 },
+  // The browser's own lines for the failures these tests make: a request
+  // the network drops, and the CMS's 409 to a save made on an old revision.
+  allowConsole: /net::ERR_INTERNET_DISCONNECTED|net::ERR_CONNECTION_RESET|status of 409 \(Conflict\)/,
+});
+
+const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words")])])];
+
+const DRAFT = "**/api/pages/*/draft";
+
+// Types new words into the heading's Text field and leaves the field, which
+// hands the text over as a command.
+async function retitle(page: Page, words: string) {
+  await block(page, "h").click();
+  const text = page.getByRole("textbox", { name: "Text" });
+  await text.fill(words);
+  await text.blur();
+}
+
+const saveState = (page: Page) => page.locator(".topbar .save-state");
+const headingText = async (request: Parameters<typeof draftOf>[0], id: number) => (await draftOf(request, id)).document.sections[0]!.children[0]!.children[0]!.props.text;
+
+// Whether closing the tab now would ask first: the editor's beforeunload
+// listener, asked the way the browser asks it.
+const asksBeforeClosing = (page: Page) => page.evaluate(() => {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+});
+
+const saveIdOf = (request: Request) => (JSON.parse(request.postData() ?? "{}") as { saveId?: string }).saveId;
+
+test("on a slowed network the save shows Saving… while it travels, closing the tab asks first, and Saved comes with the CMS's answer", { tag: "@a11y" }, async ({ page, request }) => {
+  const { id } = await makePage(request, "Slow save", fixture());
+  await open(page, id);
+  // Every save takes three seconds on its way to the CMS.
+  await page.route(DRAFT, async (route) => {
+    if (route.request().method() === "PUT") await new Promise((done) => setTimeout(done, 3_000));
+    await route.fallback();
+  });
+  await retitle(page, "Slow words");
+  await expect(saveState(page)).toHaveText("Saving…");
+  expect(await asksBeforeClosing(page)).toBe(true);
+
+  // The browser's own question, answered "stay".
+  const asked = page.waitForEvent("dialog");
+  void page.close({ runBeforeUnload: true });
+  const dialog = await asked;
+  expect(dialog.type()).toBe("beforeunload");
+  await dialog.dismiss();
+  expect(page.isClosed()).toBe(false);
+
+  await saved(page);
+  expect(await asksBeforeClosing(page)).toBe(false);
+  expect(await headingText(request, id)).toBe("Slow words");
+});
+
+test("a save the network loses is retried with the same saveId: the countdown, the toast, Retry now, then Saved", { tag: "@a11y" }, async ({ page, request }) => {
+  const { id } = await makePage(request, "Lost save", fixture());
+  await open(page, id);
+  const before = (await draftOf(request, id)).revision;
+  const sent: string[] = [];
+  let down = true;
+  await page.route(DRAFT, async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    sent.push(saveIdOf(route.request()) ?? "");
+    if (down) return route.abort("internetdisconnected");
+    return route.fallback();
+  });
+  await retitle(page, "Words kept in the tab");
+  await expect(saveState(page)).toHaveText(/^Not saved, retrying in \d+ s$/);
+  const toast = page.getByRole("group", { name: "Not saved" });
+  await expect(toast.locator("p")).toHaveText("Connection lost. Your change is kept in this tab and saved when the connection is back.");
+  expect(await asksBeforeClosing(page)).toBe(true);
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveAttribute("aria-disabled", "true");
+
+  // The connection is back; Retry now sends at once.
+  down = false;
+  const tries = sent.length;
+  await toast.getByRole("button", { name: "Retry now" }).click();
+  await saved(page);
+  await expect(toast).toHaveCount(0);
+  // Every try was the same save.
+  expect(sent.length).toBeGreaterThan(tries);
+  expect(new Set(sent).size).toBe(1);
+  const draft = await draftOf(request, id);
+  expect(draft.revision).toBe(before + 1);
+  expect(draft.document.sections[0]!.children[0]!.children[0]!.props.text).toBe("Words kept in the tab");
+});
+
+test("an answer lost after the CMS kept the save: the same save goes again by itself and is answered as saved, one revision", async ({ page, request }) => {
+  const { id } = await makePage(request, "Lost answer", fixture());
+  await open(page, id);
+  const before = (await draftOf(request, id)).revision;
+  const sent: string[] = [];
+  await page.route(DRAFT, async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    sent.push(saveIdOf(route.request()) ?? "");
+    if (sent.length > 1) return route.fallback();
+    // The CMS stores it; its answer never reaches the editor.
+    await route.fetch();
+    return route.abort("connectionreset");
+  });
+  await retitle(page, "Stored once");
+  await expect(saveState(page)).toHaveText(/^Not saved, retrying/);
+  // The automatic try, two seconds later.
+  await saved(page);
+  expect(sent).toHaveLength(2);
+  expect(sent[1]).toBe(sent[0]);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect((await draftOf(request, id)).revision).toBe(before + 1);
+});
+
+test("a second writer saves through the API: the banner pauses saving and Publish; Reload takes their page, Keep mine saves this one", { tag: "@a11y" }, async ({ page, request }) => {
+  const { id } = await makePage(request, "Two writers", fixture());
+  await open(page, id);
+  const writeElsewhere = async (words: string) => {
+    const draft = await draftOf(request, id);
+    const document = { schemaVersion: 1, title: "Two writers", sections: [section("s", "Story", [column("c", [heading("h", words)])])] };
+    const answer = await request.put(`${cms()}/api/pages/${id}/draft`, { data: { revision: draft.revision, saveId: `elsewhere-${draft.revision}`, document } });
+    expect(answer.status()).toBe(200);
+  };
+
+  await writeElsewhere("Their words");
+  await retitle(page, "My words");
+  const banner = page.getByRole("alert");
+  await expect(banner).toContainText("Changed in another tab. This page was saved in another tab after you opened it. Saving is paused until you choose.");
+  await expect(saveState(page)).toHaveText("Changed in another tab");
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  await expect(publish).toHaveAttribute("aria-disabled", "true");
+  await expect(publish).toHaveAttribute("title", "Publish is paused until you choose Reload or Keep mine.");
+  // Saving waits: the CMS still has theirs.
+  expect(await headingText(request, id)).toBe("Their words");
+
+  await banner.getByRole("button", { name: "Reload" }).click();
+  await expect(banner).toHaveCount(0);
+  await expect(block(page, "h")).toHaveText("Their words");
+  await expect(page.locator(".canvas")).toBeFocused();
+  await expect(saveState(page)).toHaveText("Saved");
+  expect(await headingText(request, id)).toBe("Their words");
+
+  // Again; this time this tab's page wins.
+  await writeElsewhere("Their second words");
+  await retitle(page, "My second words");
+  await banner.getByRole("button", { name: "Keep mine" }).click();
+  await expect(banner).toHaveCount(0);
+  await saved(page);
+  expect(await headingText(request, id)).toBe("My second words");
+  await expect(publish).not.toHaveAttribute("aria-disabled", "true");
+});

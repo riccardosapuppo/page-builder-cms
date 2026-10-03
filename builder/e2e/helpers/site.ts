@@ -18,13 +18,17 @@ export const cms = (): string => {
 
 // Every test ends with no error on the page, none in its console (but the
 // browser's own line for a request the CMS answered 422, which some tests
-// ask for) and no request that went anywhere but the run's two servers.
-export const test = base.extend<{ quiet: void }>({
-  quiet: [async ({ page, baseURL }, use) => {
+// ask for, and the lines a test names in allowConsole: the failures it
+// makes the network have) and no request that went anywhere but the run's
+// two servers.
+export const test = base.extend<{ quiet: void; allowConsole: RegExp | null }>({
+  allowConsole: [null, { option: true }],
+  quiet: [async ({ page, baseURL, allowConsole }, use) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
-      if (message.type() === "error" && !/status of 422/.test(message.text())) errors.push(message.text());
+      const text = message.text();
+      if (message.type() === "error" && !/status of 422/.test(text) && !allowConsole?.test(text)) errors.push(text);
     });
     await page.route("**/*", async (route) => {
       const url = route.request().url();
