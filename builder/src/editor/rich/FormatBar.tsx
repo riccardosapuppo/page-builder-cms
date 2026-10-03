@@ -11,6 +11,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { describedBy, ErrorList } from "../controls.tsx";
 import { Icon } from "../icons.tsx";
+import { ariaKeyShortcuts, entry, entryKeysText } from "../keymap.ts";
 import { usePageLinks } from "../session.tsx";
 import type { TextTools } from "./tools.ts";
 
@@ -20,16 +21,16 @@ export function FormatButtons({ tools }: { tools: TextTools }) {
   return (
     <span className="ov-format" role="group" aria-label="Formatting">
       <span className="ov-sep" aria-hidden="true" />
-      <button type="button" className="ov-fmt ov-fmt-b" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts="Control+B" title="Bold (Ctrl+B)" onMouseDown={keep} onClick={() => tools.run.toggleBold()}>B</button>
-      <button type="button" className="ov-fmt ov-fmt-i" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts="Control+I" title="Italic (Ctrl+I)" onMouseDown={keep} onClick={() => tools.run.toggleItalic()}>I</button>
+      <button type="button" className="ov-fmt ov-fmt-b" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()}>B</button>
+      <button type="button" className="ov-fmt ov-fmt-i" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()}>I</button>
       <button
         type="button"
         className="ov-fmt"
         aria-label={tools.link ? `Link to ${tools.link}` : "Link"}
         aria-pressed={tools.link !== null}
         aria-expanded={tools.linkOpen}
-        aria-keyshortcuts="Control+K"
-        title="Link (Ctrl+K)"
+        aria-keyshortcuts={ariaKeyShortcuts(entry("link"))}
+        title={`Link (${entryKeysText(entry("link"))})`}
         onMouseDown={keep}
         onClick={() => (tools.linkOpen ? tools.run.closeLink(true) : tools.run.openLink())}
       >

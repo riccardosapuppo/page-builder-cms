@@ -24,6 +24,7 @@ import { BulletList, ListItem, ListKeymap, OrderedList } from "@tiptap/extension
 import { Paragraph } from "@tiptap/extension-paragraph";
 import { Text } from "@tiptap/extension-text";
 import { UndoRedo } from "@tiptap/extensions/undo-redo";
+import { entry, proseMirrorKeys, type KeyAction } from "../keymap.ts";
 import { linkAllowed } from "./link-check.ts";
 
 const TextLink = Link.extend({
@@ -49,6 +50,25 @@ const TextLink = Link.extend({
   shouldAutoLink: () => false,
 });
 
+// The keys of a keymap entry the text carries (../keymap.ts), each running
+// the same command: the "?" window lists exactly the keys the text takes.
+function keysOf(action: KeyAction, run: () => boolean): Record<string, () => boolean> {
+  return Object.fromEntries(proseMirrorKeys(entry(action)).map((key) => [key, run]));
+}
+
+// Bold and italic by the keymap's keys only: TipTap's own also take them
+// with Shift, which the window does not list.
+const TextBold = Bold.extend({
+  addKeyboardShortcuts() {
+    return keysOf("bold", () => this.editor.commands.toggleBold());
+  },
+});
+const TextItalic = Italic.extend({
+  addKeyboardShortcuts() {
+    return keysOf("italic", () => this.editor.commands.toggleItalic());
+  },
+});
+
 // The keys the canvas gives the text besides TipTap's own: Ctrl+K opens
 // the link's field, Esc leaves the text (src/editor/keymap.ts lists both).
 export interface TextKeyActions {
@@ -63,21 +83,21 @@ const TextKeys = Extension.create<TextKeyActions>({
   },
   addKeyboardShortcuts() {
     return {
-      "Mod-k": () => {
+      ...keysOf("link", () => {
         this.options.openLink();
         return true;
-      },
-      Escape: () => {
+      }),
+      ...keysOf("leaveText", () => {
         this.options.leave();
         return true;
-      },
+      }),
     };
   },
 });
 
 // The extensions that make nodes or marks, in the order they rank.
 export const SCHEMA_EXTENSIONS: readonly AnyExtension[] = [
-  Document, Paragraph, Text, HardBreak, BulletList, OrderedList, ListItem, Bold, Italic, TextLink,
+  Document, Paragraph, Text, HardBreak, BulletList, OrderedList, ListItem, TextBold, TextItalic, TextLink,
 ];
 
 export function textExtensions(keys?: TextKeyActions): AnyExtension[] {

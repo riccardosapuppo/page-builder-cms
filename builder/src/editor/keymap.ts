@@ -224,6 +224,13 @@ export function ariaKeyShortcuts(entry: KeyEntry): string {
   return entry.chords.map(one).join(" ");
 }
 
+// The keys as the text editor's keymap names them ("Mod-b", "Escape"), for
+// the entries it carries (./rich/extensions.ts): its bold, italic, link
+// and leave are this table's, so the window and the text cannot disagree.
+export function proseMirrorKeys(entry: KeyEntry): string[] {
+  return entry.chords.map((chord) => [chord.mod ? "Mod-" : "", chord.alt ? "Alt-" : "", chord.shift ? "Shift-" : "", chord.key === " " ? "Space" : chord.key].join(""));
+}
+
 // The keyboard codes the drag library's keyboard sensor is given: those of
 // the entries it carries, so the window and the sensor cannot disagree.
 export interface SensorCodes {

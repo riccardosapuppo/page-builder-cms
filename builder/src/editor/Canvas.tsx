@@ -52,6 +52,7 @@ import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/mark
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
 import { useInsert } from "./insert.ts";
+import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
@@ -339,6 +340,13 @@ export function DropIndicator({ mode, label }: { mode: "line" | "frame"; label: 
   );
 }
 
+// The keys the floating bar names, from the keymap (./keymap.ts).
+const BAR_KEYS = {
+  pickUp: entryKeysText(entry("pickUp")),
+  duplicate: entryKeysText(entry("duplicate")),
+  delete: entryKeysText(entry("delete")),
+};
+
 interface MarksProps {
   id: string;
   kind: "section" | "column" | "widget";
@@ -389,11 +397,11 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
         <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
           <div className="ov-bar" role="toolbar" aria-label={name}>
-            <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press Space to pick it up`} title="Drag to move. Or press Space to pick up."><Icon name="grip" /></button>
+            <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press ${BAR_KEYS.pickUp} to pick it up`} title={`Drag to move. Or press ${BAR_KEYS.pickUp} to pick up.`}><Icon name="grip" /></button>
             <span className="ov-name">{kind === "section" ? "Section" : name}</span>
             {tools && <FormatButtons tools={tools} />}
-            <button type="button" aria-label={`Duplicate ${name}`} title="Duplicate (Ctrl+D)" onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
-            <button type="button" aria-label={`Delete ${name}`} title="Delete (Del)" onClick={() => act("delete")}><Icon name="trash" /></button>
+            <button type="button" aria-label={`Duplicate ${name}`} title={`Duplicate (${BAR_KEYS.duplicate})`} aria-keyshortcuts={ariaKeyShortcuts(entry("duplicate"))} onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
+            <button type="button" aria-label={`Delete ${name}`} title={`Delete (${BAR_KEYS.delete})`} aria-keyshortcuts={ariaKeyShortcuts(entry("delete"))} onClick={() => act("delete")}><Icon name="trash" /></button>
           </div>
           {tools?.linkOpen && <LinkField tools={tools} />}
         </div>

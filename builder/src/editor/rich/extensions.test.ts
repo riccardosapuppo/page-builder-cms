@@ -102,6 +102,29 @@ test("Ctrl+B makes the selection bold, and Ctrl+U, a mark the schema does not ha
   expect(editor.getJSON()).toEqual({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Cold", marks: [{ type: "bold" }] }, { type: "text", text: " water" }] }] });
 });
 
+test("the text takes the keymap's keys for bold, italic, link and leaving, and those only", () => {
+  let links = 0;
+  let leaves = 0;
+  const editor = editorOf(textExtensions({ openLink: () => { links += 1; }, leave: () => { leaves += 1; } }));
+  const send = (key: string, mods: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
+    editor.view.dom.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  const marks = () => (editor.getJSON().content?.[0]?.content?.[0]?.marks ?? []).map((m) => m.type);
+  editor.commands.setTextSelection({ from: 1, to: 5 });
+  // With Shift, not the keymap's: TipTap's own bold and italic took it.
+  expect(send("B", { ctrlKey: true, shiftKey: true })).toBe(false);
+  expect(send("I", { ctrlKey: true, shiftKey: true })).toBe(false);
+  expect(marks()).toEqual([]);
+  expect(send("b", { ctrlKey: true })).toBe(true);
+  expect(send("i", { ctrlKey: true })).toBe(true);
+  expect(marks()).toEqual(["bold", "italic"]);
+  expect(send("k", { ctrlKey: true })).toBe(true);
+  expect(send("Escape")).toBe(true);
+  expect([links, leaves]).toEqual([1, 1]);
+});
+
 test("a link takes only an address the URL policy and the schema take", () => {
   const editor = editorOf(textExtensions());
   editor.commands.setTextSelection({ from: 1, to: 5 });

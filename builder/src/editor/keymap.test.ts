@@ -4,6 +4,9 @@
 // telling undo from redo), and while the person types only those that
 // work there; the sensor's codes are the table's own.
 // @vitest-environment node
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { ariaKeyShortcuts, entriesFor, entry, entryCaps, entryKeysText, GROUP_NOTES, KEY_GROUPS, KEYMAP, matches, sensorCodes, type KeyPress } from "./keymap.ts";
 
@@ -81,6 +84,26 @@ test("while the person types, only the entries marked so, each by the key it typ
   expect(actions(press("ö", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual(["preview"]);
   // The window says which ones, from the table.
   expect(GROUP_NOTES.Text).toContain("Save a named version, Preview and Publish now work while you type");
+});
+
+// Keys written by hand anywhere but the keymap, in code and words a person
+// sees (titles, labels, notes), but not in comments: "Ctrl+D", "Shift+Tab".
+function handWritten(source: string): string[] {
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+  return code.match(/\b(?:Ctrl|Control|Cmd|Shift|Alt|Option)\+[A-Za-z?]\w*/g) ?? [];
+}
+
+test("no part of the interface names a key by hand: each takes it from the keymap", () => {
+  const src = fileURLToPath(new URL("..", import.meta.url));
+  const files = readdirSync(src, { recursive: true, encoding: "utf8" })
+    .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !file.endsWith("keymap.ts"));
+  expect(files.length).toBeGreaterThan(100);
+  const found = files.flatMap((file) => handWritten(readFileSync(join(src, file), "utf8")).map((key) => `${file}: ${key}`));
+  expect(found).toEqual([]);
+  // The check finds what it is there to find, and leaves comments alone.
+  expect(handWritten('<button title="Duplicate (Ctrl+D)" />')).toEqual(["Ctrl+D"]);
+  expect(handWritten("const hint = `Press Shift+Tab to go back`; // Ctrl+Z is the text's")).toEqual(["Shift+Tab"]);
+  expect(handWritten("// Ctrl+S opens the history\n/* Alt+P */ const url = \"https://example.org\";")).toEqual([]);
 });
 
 test("the drag library's keys are the table's", () => {
