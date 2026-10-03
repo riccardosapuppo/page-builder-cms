@@ -53,6 +53,19 @@ test("hiding on a tablet or a phone is that device's value, and only where it di
   expect(kit.block("heading")?.style).toEqual({ base: { visibility: "hidden" }, tablet: { visibility: "visible" } });
 });
 
+test("hidden on the device previewed, the tab says the canvas leaves the block out", () => {
+  const kit = editorKit({ document: widgetPage(), selection: "heading" });
+  kit.ui.setState({ panelTab: "advanced", preview: "tablet" });
+  kit.render(<BlockPanel id="heading" />);
+  expect(document.querySelector(".device-note")).toBeNull();
+  fireEvent.click(screen.getByRole("switch", { name: "Hide on tablet" }));
+  expect(kit.block("heading")?.style).toEqual({ base: {}, tablet: { visibility: "hidden" } });
+  expect(screen.getByRole("status").textContent).toBe("Hidden on tablets: the canvas leaves it out while you preview a tablet, as a visitor’s tablet does.");
+  // Shown on phones: nothing to say there.
+  act(() => kit.ui.setState({ preview: "phone" }));
+  expect(document.querySelector(".device-note")).toBeNull();
+});
+
 test("the server's 422 on the anchor shows on the Anchor id field", () => {
   const kit = editorKit({ document: widgetPage(), selection: "widgets" });
   kit.ui.getState().setPanelTab("advanced");

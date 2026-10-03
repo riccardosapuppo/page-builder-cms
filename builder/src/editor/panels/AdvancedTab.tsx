@@ -6,11 +6,15 @@
 // Hiding is a tablet or phone value of the style's visibility. A block
 // shows on a device what that device's value says, else what the base
 // says; so hiding on one device sets that device's value when it differs
-// from the base, and removes it when it would only repeat the base.
+// from the base, and removes it when it would only repeat the base. A
+// block hidden on the device the canvas previews is not drawn there, as
+// on a visitor's device, and the tab says so.
 import { useId } from "react";
 import { REMOVE } from "../../document/commands.ts";
 import type { Block, StyleTokens } from "../../shared/document.ts";
 import { TextField, Toggle } from "../controls.tsx";
+import { useUi } from "../context.tsx";
+import { Icon } from "../icons.tsx";
 import { useBlockCommands } from "./hooks.ts";
 
 export function AdvancedTab({ block }: { block: Block }) {
@@ -24,6 +28,10 @@ export function AdvancedTab({ block }: { block: Block }) {
     return commands.setStyle(device, { visibility: wanted === base ? REMOVE : wanted });
   };
   const what = block.type === "section" ? "sections" : block.type === "column" ? "columns" : "widgets";
+  // Hidden on the device previewed, the block is not on the canvas, as on
+  // a visitor's device: said here, where it is chosen.
+  const preview = useUi((u) => u.preview);
+  const gone = preview !== "desktop" && hidden(preview);
   return (
     <>
       {block.type === "section" && (
@@ -56,6 +64,7 @@ export function AdvancedTab({ block }: { block: Block }) {
         <Toggle label="Hide on tablet" checked={hidden("tablet")} blockId={block.id} field="/style/tablet/visibility" describedById={hintId} onChange={(on) => hide("tablet", on)} />
         <Toggle label="Hide on phone" checked={hidden("phone")} blockId={block.id} field="/style/phone/visibility" describedById={hintId} onChange={(on) => hide("phone", on)} />
         <p className="hint" id={hintId}>Hidden {what} stay in the navigator, grayed out, so you can find them again.</p>
+        {gone && <p className="note device-note" role="status"><Icon name={preview} /><span>Hidden on {preview}s: the canvas leaves it out while you preview a {preview}, as a visitor’s {preview} does.</span></p>}
       </div>
     </>
   );
