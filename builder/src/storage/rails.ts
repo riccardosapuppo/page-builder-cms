@@ -92,6 +92,11 @@ export const RAILS_CAPABILITIES: Capabilities = {
   // in stage 5.
   schedule: false,
   responses: false,
+  // The CMS keeps each file as uploaded: it has no image library to make
+  // variants with (variant_processor :disabled, cms/config/application.rb),
+  // and the battery's upload case reads the same bytes back from an
+  // image's address.
+  imageVariants: false,
 };
 
 export interface RailsAdapterConfig {

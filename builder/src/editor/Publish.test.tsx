@@ -39,7 +39,7 @@ test("Preview is a link to the draft's preview on the CMS, and a plain click goe
 });
 
 test("without publishing in the storage there is no Publish, and Schedule is never drawn", () => {
-  draw({ current: open(), capabilities: { publish: false, schedule: false, responses: false } });
+  draw({ current: open(), capabilities: { publish: false, schedule: false, responses: false, imageVariants: false } });
   expect(screen.queryByRole("button", { name: /Publish/ })).toBeNull();
   expect(screen.queryByRole("button", { name: "More publish options" })).toBeNull();
 

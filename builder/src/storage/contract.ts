@@ -569,7 +569,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       for (const operation of absent) {
         env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "unsupported", operation });
       }
-      env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS].sort());
+      env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants"].sort());
     },
   },
 

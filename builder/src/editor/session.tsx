@@ -113,7 +113,7 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     pages: [],
     current: null,
     autosave: null,
-    capabilities: { publish: true, schedule: false, responses: false },
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
     cmsOrigin: DEFAULT_CMS_ORIGIN,
     publishing: false,
     styleSave: { phase: "idle" },

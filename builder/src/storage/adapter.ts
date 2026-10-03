@@ -343,7 +343,13 @@ export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 // Says which optional operations this adapter has. The editor shows no
 // control for one it lacks, and the adapter refuses it, as unsupported,
 // without asking anyone.
-export type Capabilities = Readonly<Record<OptionalOperation, boolean>>;
+//
+// And one thing the storage does or does not do on its own: imageVariants,
+// whether it makes smaller copies of an uploaded image for the pages to
+// serve. Without them the file is served as it was uploaded, so the editor
+// resizes each image before it goes up, and its media library says so: a
+// visitor's phone gets that file and no smaller one.
+export type Capabilities = Readonly<Record<OptionalOperation, boolean>> & { readonly imageVariants: boolean };
 
 export type Failure =
   // No answer that says what happened: the network failed, the time ran

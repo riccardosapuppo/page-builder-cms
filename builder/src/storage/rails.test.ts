@@ -109,7 +109,7 @@ describe("the Rails adapter's requests", () => {
   test("asks nobody for what its capabilities say it lacks", async () => {
     const { fetch, sent } = fakeFetch();
     const adapter = createRailsAdapter({ fetch });
-    expect(adapter.capabilities).toEqual({ publish: true, schedule: false, responses: false });
+    expect(adapter.capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false });
     expect(await failureOf(adapter.schedulePublish(1, { at: "2026-10-03T08:00:00.000Z" }))).toMatchObject({ kind: "unsupported", operation: "schedule" });
     expect(await failureOf(adapter.cancelScheduledPublish(1))).toMatchObject({ kind: "unsupported", operation: "schedule" });
     expect(await failureOf(adapter.listResponses())).toMatchObject({ kind: "unsupported", operation: "responses" });

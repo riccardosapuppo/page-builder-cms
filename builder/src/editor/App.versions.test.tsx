@@ -65,7 +65,7 @@ class VersionSite {
     const draft = () => ({ revision: this.revision, lastSaveId: this.lastSaveId, updatedAt: T, document: structuredClone(this.document) });
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: false, responses: false },
+      capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
       listPages: async () => [{ id: 1, title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, links: LINKS }],
       getPage: async (): Promise<Page> => ({ page: { id: 1, title: "Winter series", slug: "winter-series", home: false, createdAt: T }, draft: draft(), published: null, links: LINKS }),
       getDraft: async () => draft(),
