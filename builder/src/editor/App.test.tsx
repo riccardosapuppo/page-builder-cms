@@ -54,6 +54,8 @@ class FakeSite {
   // The versions "Save version" kept: the name and the draft's document.
   readonly versions: Array<{ id: number; name: string | null; document: PageDocument }> = [];
   refuseNext: FieldError[] | null = null;
+  // Called as a version is kept, before it answers: another tab at work.
+  onVersion: (() => void) | null = null;
   refuseStyle = false;
   style = tokenStyle();
 
@@ -107,8 +109,16 @@ class FakeSite {
         d.published = { slug: d.slug, versionNumber: 1, draftRevision: d.revision, publishedAt: T };
         return { ok: true, value: { published: d.published, version: { number: 1, reason: "publish", name: null, restoredFrom: null, createdAt: T, published: true }, links: this.links(id) } };
       },
+      listVersions: async (id) => this.versions.flatMap((v, index) => (v.id === id ? [{ number: index + 1, reason: "manual" as const, name: v.name, restoredFrom: null, createdAt: T, published: false }] : [])).reverse(),
+      getVersion: async (id, number) => {
+        const v = this.versions[number - 1]!;
+        return { number, reason: "manual", name: v.name, restoredFrom: null, createdAt: T, published: false, document: structuredClone(v.document) };
+      },
       saveVersion: async (id, request = {}) => {
         this.versions.push({ id, name: request.name ?? null, document: structuredClone(this.drafts.get(id)!.document) });
+        const elsewhere = this.onVersion;
+        this.onVersion = null;
+        elsewhere?.();
         return { ok: true, value: { number: this.versions.length, reason: "manual", name: request.name ?? null, restoredFrom: null, createdAt: T, published: false } };
       },
       saveDraft: async (id, save) => {
@@ -315,7 +325,56 @@ test("a conflict stops saving until the person chooses: Reload takes the server'
   expect(screen.queryByRole("alert")).toBeNull();
   expect(site.saves.at(-1)!.revision).toBe(site.drafts.get(1)!.revision - 1);
   expect(site.versions.map((v) => [v.name, v.document.sections[0]!.props.label])).toEqual([["Before Keep mine", "Theirs"]]);
-  expect(env.ui.getState().notice).toBe("Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+  expect(env.ui.getState().notice).toBe("Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+});
+
+test("Keep mine saves over the page on the server now, keeps each page it saves over once, and says done only once the CMS has it", async () => {
+  const { site, env, clock } = start(1);
+  await screen.findByRole("tree", { name: "Navigator" });
+  const labelled = (label: string) => {
+    const doc = page();
+    doc.sections[0]!.props.label = label;
+    return doc;
+  };
+  const keepMine = async () => {
+    await act(async () => fireEvent.click(within(await screen.findByRole("alert")).getByRole("button", { name: "Keep mine" })));
+    await act(() => clock.advance(1_000));
+  };
+  const kept = () => site.versions.map((v) => v.document.sections[0]!.props.label);
+  const onServer = () => site.drafts.get(1)!.document.sections[0]!.props.label;
+
+  // Another tab saves, this one meets the conflict; a third saves again
+  // before Keep mine is pressed: that third page is the one kept.
+  site.savedElsewhere(1, labelled("Second"));
+  relabel("Mine");
+  await act(() => clock.advance(1_000));
+  site.savedElsewhere(1, labelled("Third"));
+  await keepMine();
+  await waitFor(() => expect(onServer()).toBe("Mine"));
+  expect(kept()).toEqual(["Third"]);
+  expect(env.ui.getState().notice).toBe("Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+
+  // Saved elsewhere again while the version is kept: not saved over, and
+  // said so, never said done; the next Keep mine keeps the newer page too.
+  site.savedElsewhere(1, labelled("Fourth"));
+  relabel("Mine again");
+  await act(() => clock.advance(1_000));
+  site.onVersion = () => site.savedElsewhere(1, labelled("Fifth"));
+  await keepMine();
+  expect(onServer()).toBe("Fifth");
+  expect(env.ui.getState().notice).toBe("Not saved over it yet: the page was saved in another tab again while this one kept it. Choose again: Keep mine keeps that page as a version too.");
+  expect(screen.getByRole("alert").textContent).toContain("Changed in another tab.");
+  await keepMine();
+  await waitFor(() => expect(onServer()).toBe("Mine again"));
+  expect(kept()).toEqual(["Third", "Fourth", "Fifth"]);
+
+  // The page on the server is the newest version already: not kept twice.
+  site.savedElsewhere(1, labelled("Fifth"));
+  relabel("Mine at last");
+  await act(() => clock.advance(1_000));
+  await keepMine();
+  await waitFor(() => expect(onServer()).toBe("Mine at last"));
+  expect(kept()).toEqual(["Third", "Fourth", "Fifth"]);
 });
 
 test("a site style change shows on the canvas at once and goes to the CMS; refused, the canvas goes back", async () => {

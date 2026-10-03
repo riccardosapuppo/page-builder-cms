@@ -137,7 +137,7 @@ test("Keep mine saves the second tab's page over the first one's at the revision
     await expect(publishButton(second)).not.toHaveAttribute("aria-disabled", "true");
     // The page saved over is kept as a version first: Restore can bring it
     // back.
-    await expect(second.locator(".notice")).toHaveText("Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+    await expect(second.locator(".notice")).toHaveText("Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
     const listed = ((await (await request.get(`${cms()}/api/pages/${id}/versions`)).json()) as { versions: Array<{ number: number; reason: string; name: string | null }> }).versions;
     const keptBefore = listed.find((v) => v.name === "Before Keep mine");
     expect(keptBefore).toMatchObject({ reason: "manual" });
@@ -236,6 +236,50 @@ test("a version restored in one tab is a change the other tab is told about, and
     expect(other.errors).toEqual([]);
   } finally {
     await other.context.close();
+  }
+});
+
+test("three tabs: A saves, B and C both meet the conflict; B's Keep mine and then C's each save over the page on the server, each kept once", async ({ page: first, browser, baseURL, request }) => {
+  const { id } = await makePage(request, "Three tabs, keep mine", fixture());
+  const b = await secondTab(browser, baseURL!);
+  const c = await secondTab(browser, baseURL!);
+  try {
+    await open(first, id);
+    await open(b.page, id);
+    await open(c.page, id);
+    await retitle(first, "From A");
+    await saved(first);
+    await retitle(b.page, "From B");
+    await inConflict(b.page);
+    await retitle(c.page, "From C");
+    await inConflict(c.page);
+    const sent: number[] = [];
+    c.page.on("request", (r: Request) => {
+      if (r.method() === "PUT" && r.url().endsWith("/draft")) sent.push((JSON.parse(r.postData() ?? "{}") as { revision: number }).revision);
+    });
+
+    await banner(b.page).getByRole("button", { name: "Keep mine" }).click();
+    await saved(b.page);
+    expect(await headingText(request, id)).toBe("From B");
+    const afterB = (await draftOf(request, id)).revision;
+
+    // C's conflict named A's revision; B has saved since. Keep mine reads
+    // the page on the server first, keeps B's, and saves over it at once.
+    await banner(c.page).getByRole("button", { name: "Keep mine" }).click();
+    await expect(c.page.locator(".notice")).toHaveText("Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “Before Keep mine”.");
+    await expect(banner(c.page)).toHaveCount(0);
+    await saved(c.page);
+    expect(sent).toEqual([afterB]);
+    expect(await headingText(request, id)).toBe("From C");
+    const versions = ((await (await request.get(`${cms()}/api/pages/${id}/versions`)).json()) as { versions: Array<{ number: number; name: string | null }> }).versions;
+    const kept = versions.filter((v) => v.name === "Before Keep mine");
+    const keptWords = await Promise.all(kept.map(async (v) => ((await (await request.get(`${cms()}/api/pages/${id}/versions/${v.number}`)).json()) as { document: { sections: Array<{ children: Array<{ children: Array<{ props: { text: string } }> }> }> } }).document.sections[0]!.children[0]!.children[0]!.props.text));
+    expect(keptWords).toEqual(["From B", "From A"]);
+    expect(b.errors).toEqual([]);
+    expect(c.errors).toEqual([]);
+  } finally {
+    await b.context.close();
+    await c.context.close();
   }
 });
 

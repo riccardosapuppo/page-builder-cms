@@ -123,8 +123,10 @@ export interface Autosave {
   // the next save starts from its revision. Called with nothing in flight
   // and nothing waiting, it drops no edit; the caller makes sure of both.
   adopt(draft: Draft): void;
-  // Conflict: saves this tab's document over the server's draft.
-  overwrite(): void;
+  // Conflict: saves this tab's document over the server's draft: the one
+  // at `revision`, when the caller has read it since (and kept it), else
+  // the one the conflict named.
+  overwrite(revision?: number): void;
   // Stops the timers and ignores any answer still to come. A save in
   // flight is not abandoned: check warnOnClose first.
   dispose(): void;
@@ -465,9 +467,9 @@ export function createAutosave(options: AutosaveOptions): Autosave {
       takeDraft(draft);
     },
 
-    overwrite() {
+    overwrite(over) {
       if (stop?.phase !== "conflict") return;
-      revision = stop.conflict.currentRevision;
+      revision = over ?? stop.conflict.currentRevision;
       stop = null;
       clearEditTimers();
       pump();

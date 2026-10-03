@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
+import { sameJson } from "../document/json.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
@@ -431,25 +432,57 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     ui.getState().say("Reloaded: this is the page as it is on the server. Undo brings this tab’s page back.");
   }, [putDraft, store, ui]);
 
+  // Keep mine: the page on the server now, read first (another tab may have
+  // saved since the conflict was met), is kept as a version, unless the
+  // page's newest version already holds it (Keep mine pressed again, as
+  // the CMS's restore does); then this tab's page is saved over that very
+  // revision. Said done only once the CMS has the save: a page saved on
+  // the server in between meets the conflict again, and is said so.
   const keepMine = useCallback(async () => {
     const page = opened.current;
     const saving = live.current.autosave;
     if (!page || !saving || saving.getSnapshot().phase !== "conflict") return;
-    let outcome;
+    const say = ui.getState().say;
+    let server;
     try {
-      outcome = await adapter.saveVersion(page.id, { name: KEPT_BEFORE_OVERWRITE });
+      server = await adapter.getDraft(page.id);
     } catch (error) {
-      outcome = { ok: false as const, why: describe(error) };
-    }
-    if ("why" in outcome || !outcome.ok) {
-      const why = "why" in outcome ? outcome.why : outcome.problem.errors[0]?.message ?? outcome.problem.message;
-      ui.getState().say(`Nothing was saved over the other page: it could not be kept as a version first (${why}). Choose again.`);
+      say(`Nothing was saved over the other page: it could not be read first (${describe(error)}). Choose again.`);
       return;
     }
-    if (live.current.autosave !== saving) return;
-    saving.overwrite();
+    let keptAlready = false;
+    try {
+      const [newest] = await adapter.listVersions(page.id);
+      if (newest) keptAlready = sameJson((await adapter.getVersion(page.id, newest.number)).document, server.document);
+    } catch {
+      keptAlready = false;
+    }
+    if (!keptAlready) {
+      let outcome;
+      try {
+        outcome = await adapter.saveVersion(page.id, { name: KEPT_BEFORE_OVERWRITE });
+      } catch (error) {
+        outcome = { ok: false as const, why: describe(error) };
+      }
+      if ("why" in outcome || !outcome.ok) {
+        const why = "why" in outcome ? outcome.why : outcome.problem.errors[0]?.message ?? outcome.problem.message;
+        say(`Nothing was saved over the other page: it could not be kept as a version first (${why}). Choose again.`);
+        return;
+      }
+    }
+    if (live.current.autosave !== saving || saving.getSnapshot().phase !== "conflict") return;
+    saving.overwrite(server.revision);
     if (ui.getState().historyOpen) loadVersions();
-    ui.getState().say(`Keeping this tab’s page: it is saved over the one on the server, which is kept in Versions as “${KEPT_BEFORE_OVERWRITE}”.`);
+    say("Keeping this tab’s page: saving it over the one on the server…");
+    const settled = await saving.flush();
+    if (live.current.autosave !== saving) return;
+    if (settled.phase === "saved") {
+      say(`Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “${KEPT_BEFORE_OVERWRITE}”.`);
+    } else if (settled.phase === "conflict") {
+      say("Not saved over it yet: the page was saved in another tab again while this one kept it. Choose again: Keep mine keeps that page as a version too.");
+    } else {
+      say(`This tab’s page is not saved over the other one yet: ${unsavedWhy(settled.phase)}`);
+    }
   }, [adapter, loadVersions, ui]);
 
   // "Save version": the CMS keeps its draft, so what waits is saved first,

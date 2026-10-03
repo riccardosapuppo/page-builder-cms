@@ -302,6 +302,23 @@ describe("the autosave, on a fake clock", () => {
     expect(now()).toMatchObject({ phase: "saved", revision: 2, unsavedEdits: 0, conflict: null });
   });
 
+  test("overwrite at a revision read since the conflict saves over that one; at the conflict's own, it meets the newer save again", async () => {
+    const { clock, cms, autosave, now } = setup();
+    cms.savedElsewhere(page("Theirs"));
+    autosave.edit(page("Mine"));
+    await clock.advance(1_100);
+    expect(now()).toMatchObject({ phase: "conflict", conflict: { currentRevision: 1 } });
+    // A third tab saves after the conflict was met.
+    cms.savedElsewhere(page("Third"));
+    autosave.overwrite();
+    await clock.advance(100);
+    expect(now()).toMatchObject({ phase: "conflict", conflict: { currentRevision: 2 } });
+    autosave.overwrite(2);
+    await clock.advance(100);
+    expect(cms.received.map((r) => [r.title, r.revision])).toEqual([["Mine", 0], ["Mine", 1], ["Mine", 2]]);
+    expect(now()).toMatchObject({ phase: "saved", revision: 3, conflict: null });
+  });
+
   test("a conflict while an edit waits behind the save in flight: the edit is not sent, and reload takes the server's draft", async () => {
     const { clock, cms, autosave, now } = setup();
     cms.latencyMs = 1_000;
