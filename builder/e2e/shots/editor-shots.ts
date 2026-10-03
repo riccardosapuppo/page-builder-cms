@@ -4,7 +4,8 @@
 // (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
 // publish.png, site-style.png, history.png, save-states.png, and design/shots-extra/
 // advanced.png, context.png, app-menu.png and about.png), plus the widget
-// panel, the phone preview and a save retrying, headless, in two windows: 1280 by 800, and
+// panel, the phone preview, a save retrying, and a text written on the
+// canvas with its link's field (text, text-link), headless, in two windows: 1280 by 800, and
 // 1440 by 900, the size the design itself was shot at, whose canvas is
 // wide enough for the page's desktop layout (832, past the 800 where it
 // starts). The shots of the larger window go in <folder>/1440.
@@ -90,6 +91,29 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await away();
   await shoot("shortcuts");
   await page.keyboard.press("Escape");
+
+  // #text: the hero's text written on the canvas, its first two words made
+  // bold from the block's bar, which carries bold, italic and link while
+  // the text is open; then the link's field, refusing an address with its
+  // reason. Undone after, so the shots below show the seed's page.
+  const lead = page.locator('.canvas [data-block-id="hero-text"]');
+  await lead.click();
+  await lead.locator("p").click({ position: { x: 4, y: 10 } });
+  await page.locator(".canvas .rte").waitFor();
+  await page.keyboard.press("Control+Home");
+  for (let i = 0; i < 10; i += 1) await page.keyboard.press("Shift+ArrowRight");
+  await page.locator(".canvas .ov-bar").getByRole("button", { name: "Bold" }).click();
+  await away();
+  await shoot("text");
+  await page.keyboard.press("Control+k");
+  const linkField = page.locator(".canvas .ov-link input");
+  await linkField.fill("swims.example.org/dawn");
+  await linkField.press("Enter");
+  await page.locator(".canvas .ov-link .error").waitFor();
+  await shoot("text-link");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
 
   // #style: the tablet width, the hero's first column, its Style tab.
   await away();

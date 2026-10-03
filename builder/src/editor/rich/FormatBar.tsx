@@ -61,7 +61,7 @@ export function LinkField({ tools }: { tools: TextTools }) {
   const errors = refusal ? [refusal] : [];
   const hint = "A full address (https://…), a page of this site (/join), a section of this page (#join), mailto: or tel:.";
   return (
-    <div className="ov-link" role="group" aria-labelledby={`${id}-label`}>
+    <div className={`ov-link${errors.length > 0 ? " field-error" : ""}`} role="group" aria-labelledby={`${id}-label`}>
       <label className="label" htmlFor={id} id={`${id}-label`}>Link to</label>
       <div className="input input-icon">
         <Icon name="link" />
