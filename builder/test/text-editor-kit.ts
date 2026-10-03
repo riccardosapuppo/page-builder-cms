@@ -6,6 +6,7 @@
 // and the rectangles of a range, which jsdom does not lay out.
 import { createUiStore, type UiStore } from "../src/editor/ui-store.ts";
 import { TextSession } from "../src/editor/rich/text-session.ts";
+import type { WaitingKey } from "../src/editor/rich/tools.ts";
 import type { PageDocument } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
 import { createEditorStore, type EditorStore } from "../src/store/editor-store.ts";
@@ -58,12 +59,13 @@ export interface TextKit {
   close(): void;
 }
 
-export function openTextKit(document: PageDocument = textPage()): TextKit {
+// The keys pressed for the text before its editor was there, if any.
+export function openTextKit(document: PageDocument = textPage(), keys?: readonly WaitingKey[]): TextKit {
   const clock = new FakeClock(Date.UTC(2026, 9, 3, 9));
   const store = createEditorStore({ document, now: () => clock.now() });
   store.getState().select("t");
   const ui = createUiStore();
-  ui.setState({ editingText: { id: "t", at: "end" } });
+  ui.setState({ editingText: keys ? { id: "t", at: "end", keys } : { id: "t", at: "end" } });
   const root = window.document.createElement("div");
   root.dataset.blockId = "t";
   root.tabIndex = 0;

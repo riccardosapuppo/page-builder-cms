@@ -11,7 +11,8 @@ import { editorKit, type Kit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
-import { EditorKeys } from "./keys.ts";
+import { EditorKeys, waitForText } from "./keys.ts";
+import { createUiStore } from "./ui-store.ts";
 import { entryCaps, KEY_GROUPS, KEYMAP } from "./keymap.ts";
 import { Navigator } from "./Navigator.tsx";
 import { BlockPanel } from "./panels/EditPanel.tsx";
@@ -269,6 +270,44 @@ test("Escape closes the block's menu and gives the focus back to the block", asy
   });
   expect(screen.queryByRole("menu")).toBeNull();
   expect(focused()).toBe("i1");
+});
+
+test("keys meant for a text whose editor is on its way wait for it, and never reach the block; Esc gives up; the typing keys still work", () => {
+  const ui = createUiStore();
+  ui.setState({ editingText: { id: "t", at: "end" } });
+  const canvas = document.createElement("div");
+  canvas.className = "canvas";
+  const block = document.createElement("div");
+  block.tabIndex = 0;
+  canvas.append(block);
+  document.body.append(canvas);
+  let taken: boolean | null = null;
+  block.addEventListener("keydown", (event) => {
+    taken = waitForText({ ui }, event);
+  });
+  const key = (name: string, mods: KeyboardEventInit = {}) => {
+    taken = null;
+    const event = new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true, ...mods });
+    block.dispatchEvent(event);
+    return { taken, prevented: event.defaultPrevented };
+  };
+  expect(key("Backspace")).toEqual({ taken: true, prevented: true });
+  expect(key("H", { shiftKey: true })).toEqual({ taken: true, prevented: true });
+  expect(key(" ")).toEqual({ taken: true, prevented: true });
+  // Taken from the block, and not typed: an arrow, a shortcut of the block's.
+  expect(key("ArrowDown")).toEqual({ taken: true, prevented: true });
+  expect(key("d", { ctrlKey: true })).toEqual({ taken: true, prevented: true });
+  expect(ui.getState().editingText?.keys).toEqual([{ key: "Backspace", shift: false }, { key: "H", shift: true }, { key: " ", shift: false }]);
+  // Keeping a version works while the text opens, as while typing.
+  expect(key("s", { ctrlKey: true }).taken).toBe(false);
+  // Once the editor is there, the keys are its own.
+  ui.setState({ textTools: { id: "t", bold: false, italic: false, link: null, linkOpen: false, run: {} as never } });
+  expect(key("Backspace").taken).toBe(false);
+  ui.setState({ textTools: null });
+  expect(key("Escape")).toEqual({ taken: true, prevented: true });
+  expect(ui.getState().editingText).toBeNull();
+  expect(key("Backspace").taken).toBe(false);
+  canvas.remove();
 });
 
 test("with a modal dialog open, the editor behind it takes no key even with the focus lost to the page; Tab and Esc reach the dialog", () => {

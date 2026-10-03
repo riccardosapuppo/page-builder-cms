@@ -136,6 +136,21 @@ test("the text changed from elsewhere closes the editor, the typing handed over 
   expect(k.store.getState().past.map((e) => e.command.label)).toEqual(["Changed Text in Story"]);
 });
 
+test("the keys pressed while the editor was on its way are typed into it as it opens, the focus in it at once", () => {
+  const k = (kit = openTextKit(textPage(), [
+    { key: "!", shift: true }, { key: "Backspace", shift: false }, { key: "?", shift: true }, { key: "Enter", shift: false }, { key: "x", shift: false },
+    { key: "😀", shift: false }, { key: "Backspace", shift: false },
+  ]));
+  expect(document.activeElement).toBe(k.session.editor.view.dom);
+  expect(k.session.editor.getJSON().content).toEqual([
+    { type: "paragraph", content: [{ type: "text", text: "Cold water?" }] },
+    { type: "paragraph", content: [{ type: "text", text: "x" }] },
+  ]);
+  expect(k.ui.getState().editingText).toEqual({ id: "t", at: "end" });
+  // Typed, so handed over as one step at the pause like any typing.
+  expect(k.ui.getState().pending.waiting).toBe(1);
+});
+
 // The words of the text the page holds, and of the one the editor holds.
 const held = (k: TextKit) => JSON.stringify(k.stored());
 // jsdom has no ClipboardEvent: the paste is ProseMirror's own, from its text.

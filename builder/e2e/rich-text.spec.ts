@@ -405,3 +405,25 @@ test("Enter and Tab in a list stop at the depth the page takes, say so, and ever
   for (let level = 0; level <= 14; level += 1) expect(stored).toContain(`"level${level}"`);
   await expect(block(page, "t").locator("ul")).toHaveCount(12);
 });
+
+test("keys pressed right after Enter opens a text are the text's, before its editor's code has arrived and once it has", async ({ page, request }) => {
+  const { id } = await makePage(request, "Quick keys", [section("s", "Story", [column("c1", [heading("h", "Alpha"), widget("t", "text", { doc: { type: "doc", content: [p(t("Tide notes"))] } })])])]);
+  // At once after the text is selected, its editor's code is still on its
+  // way; a second later it has arrived. Each on a page loaded afresh.
+  for (const wait of [0, 1000]) {
+    await open(page, id);
+    await block(page, "h").click();
+    await page.keyboard.press("ArrowDown");
+    if (wait > 0) await page.waitForTimeout(wait);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.type("s and tea");
+    await settledTextEditor(page, "t");
+    await page.keyboard.press("Escape");
+    await expect(block(page, "t").locator("p")).toHaveText("Tide notes and tea");
+    await expect.poll(async () => JSON.stringify(await storedText(request, id))).toContain("Tide notes and tea");
+    // Back to how it was, for the next round.
+    await page.keyboard.press("Control+z");
+    await expect.poll(async () => JSON.stringify(await storedText(request, id))).toContain('"Tide notes"');
+  }
+});

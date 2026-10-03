@@ -57,7 +57,7 @@ import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
-import { LazyTextEditor, preloadTextEditor, startEditing, type TextTools } from "./rich/tools.ts";
+import { preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
 import type { Preview } from "./ui-store.ts";
 
@@ -179,7 +179,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     // While a drag lasts nothing is selected (relation null), so the
     // editor gives way to the page's drawing of the text.
     ...(editing && relation === "selected"
-      ? { editing: (drawn: ReactNode) => <Suspense fallback={drawn}><LazyTextEditor blockId={id} label={textLabel} /></Suspense> }
+      ? { editing: (drawn: ReactNode) => <Suspense fallback={drawn}><TextEditorHost blockId={id} label={textLabel} /></Suspense> }
       : {}),
   };
 }

@@ -53,6 +53,38 @@ export function inScope(scope: Scope, target: EventTarget | null, typing = false
   }
 }
 
+// A key that writes in a text: a character, or Backspace, Delete, Enter
+// and Tab, with no Ctrl, Cmd or Alt (AltGr types a character).
+function writes(event: KeyboardEvent): boolean {
+  const altGraph = event.getModifierState?.("AltGraph") ?? false;
+  if (event.ctrlKey && !altGraph) return false;
+  if (event.metaKey || (event.altKey && !altGraph)) return false;
+  return [...event.key].length === 1 || ["Backspace", "Delete", "Enter", "Tab"].includes(event.key);
+}
+
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock"]);
+
+// A text asked to open whose editor is not there yet, its code on its way
+// (./rich/tools.ts): the keys meant for it are kept for it, and none
+// reaches the block, which still has the focus, where a Backspace would
+// delete the block and a Space pick it up. Esc gives up opening it; the
+// keys that work while typing (keep a version, preview, publish) still do.
+// True when the key was taken here.
+export function waitForText(env: Pick<EditorEnv, "ui">, event: KeyboardEvent): boolean {
+  const { editingText, textTools } = env.ui.getState();
+  if (!editingText || textTools?.id === editingText.id || event.isComposing || MODIFIERS.has(event.key)) return false;
+  const target = event.target instanceof Element ? event.target : null;
+  if (target !== null && target !== document.body && !target.closest(".canvas")) return false;
+  if (isTyping(target) || target?.closest("[role=dialog], [role=menu]")) return false;
+  const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
+  if (entriesFor(press, true).some((entry) => entry.via === "keymap")) return false;
+  if (event.key === "Escape") env.ui.setState({ editingText: null });
+  else if (writes(event)) env.ui.setState({ editingText: { ...editingText, keys: [...(editingText.keys ?? []), { key: event.key, shift: event.shiftKey }] } });
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}
+
 type Handler = (region: Region) => boolean;
 
 // The page session as it is when the key is pressed: it changes as pages
@@ -181,6 +213,7 @@ export function useEditorKeys(): void {
     // so Ctrl+Shift+Enter would never come back up to publish. Cancelled
     // here, the text editor leaves the press alone.
     const onTypingKeyDown = (event: KeyboardEvent) => {
+      if (waitForText(env, event)) return;
       if (isTyping(event.target)) handle(event, true);
     };
     const onKeyDown = (event: KeyboardEvent) => {

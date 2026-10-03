@@ -6,7 +6,14 @@
 // its own (./TextEditor.tsx), loaded the first time a text is edited, or
 // as soon as one is selected; the page's static renderer draws every other
 // text, and this one until the chunk has arrived.
-import { lazy } from "react";
+//
+// Once the chunk is here, a text opens in the same moment it is asked to:
+// nothing waits, so React has no fallback to show and take back (which it
+// does no sooner than 300 ms after showing it). Until then, the keys meant
+// for the text are kept (`TextEditing.keys`, ../keys.ts) and typed into it
+// once it opens, so a letter or a Backspace pressed in between is the
+// text's, never the block's.
+import { createElement, use } from "react";
 import type { EditorEnv } from "../context.tsx";
 
 // Where the caret goes when the editor opens: at a point of the window
@@ -14,9 +21,18 @@ import type { EditorEnv } from "../context.tsx";
 // panel's button).
 export type CaretAt = { x: number; y: number } | "end";
 
+// A key pressed for the text before its editor was there.
+export interface WaitingKey {
+  key: string;
+  shift: boolean;
+}
+
 export interface TextEditing {
   id: string;
   at: CaretAt;
+  // The keys pressed for the text while its editor was on its way, in
+  // order: typed into it when it opens.
+  keys?: readonly WaitingKey[];
 }
 
 export interface TextCommands {
@@ -42,13 +58,32 @@ export interface TextTools {
   run: TextCommands;
 }
 
-const load = () => import("./TextEditor.tsx");
-
-export const LazyTextEditor = lazy(load);
+type EditorModule = typeof import("./TextEditor.tsx");
+// The chunk's promise, marked fulfilled once it is, as React reads a
+// promise it is given: use() then returns the module at once.
+type Loading = Promise<EditorModule> & { status?: string; value?: EditorModule };
+let loading: Loading | null = null;
+const load = (): Loading => {
+  if (loading) return loading;
+  const started: Loading = import("./TextEditor.tsx");
+  started.then((module) => {
+    started.status = "fulfilled";
+    started.value = module;
+  }, () => {});
+  loading = started;
+  return started;
+};
 
 // Starts loading the editor's chunk, so a text selected opens at once.
 export function preloadTextEditor(): void {
   void load();
+}
+
+// The editor in the text's place: at once when the chunk is here, else
+// once it arrives (a Suspense around it draws the text meanwhile).
+export function TextEditorHost(props: { blockId: string; label: string }) {
+  const module = use(load() as Promise<EditorModule>);
+  return createElement(module.default, props);
 }
 
 // Edits a text block on the canvas: it is selected, and the editor opens

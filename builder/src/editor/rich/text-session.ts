@@ -30,6 +30,7 @@
 // would lose it wait (../act.ts) until the text is one the page takes.
 import type { Editor } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
+import { Selection, TextSelection } from "@tiptap/pm/state";
 import type { CommandError } from "../../document/check.ts";
 import { applyCommand } from "../../document/reducer.ts";
 import { makeTextEdit, textLimitWords } from "../../document/rich-text.ts";
@@ -41,7 +42,7 @@ import type { EditorEnv } from "../context.tsx";
 import { COMMIT_AFTER_MS } from "../controls.tsx";
 import { checkLink } from "./link-check.ts";
 import { createTextEditor } from "./setup.ts";
-import type { CaretAt, TextCommands, TextTools } from "./tools.ts";
+import type { CaretAt, TextCommands, TextTools, WaitingKey } from "./tools.ts";
 
 type Env = Pick<EditorEnv, "store" | "ui" | "clock">;
 
@@ -88,6 +89,11 @@ export class TextSession {
     this.#unsubscribe = env.store.subscribe((state) => this.#watch(state));
     this.#publish();
     this.#place(at);
+    const opening = env.ui.getState().editingText;
+    if (opening?.id === id && opening.keys && opening.keys.length > 0) {
+      env.ui.setState({ editingText: { id, at: opening.at } });
+      this.#typeWaiting(opening.keys);
+    }
   }
 
   get stopped(): boolean {
@@ -223,13 +229,50 @@ export class TextSession {
     this.stop(false);
   };
 
+  // The caret where asked, and the focus in the text at once: TipTap's
+  // own focus command waits for the next frame, and a key pressed in
+  // between would go to the block (a Backspace deleting it).
   #place(at: CaretAt): void {
-    if (at === "end") {
-      this.editor.commands.focus("end");
-      return;
+    const { view } = this.editor;
+    const found = at === "end" ? null : view.posAtCoords({ left: at.x, top: at.y });
+    const { doc } = view.state;
+    view.dispatch(view.state.tr.setSelection(found ? TextSelection.near(doc.resolve(found.pos)) : Selection.atEnd(doc)));
+    view.focus();
+  }
+
+  // The keys pressed for the text while its editor was on its way
+  // (../keys.ts), typed into it now, as they would have been.
+  #typeWaiting(keys: readonly WaitingKey[]): void {
+    for (const { key, shift } of keys) {
+      if (this.editor.isDestroyed) return;
+      const { view } = this.editor;
+      if (key === "Enter" || key === "Tab") {
+        this.editor.commands.keyboardShortcut(`${shift ? "Shift-" : ""}${key}`);
+      } else if (key === "Backspace" || key === "Delete") {
+        this.#deleteOne(key === "Backspace" ? -1 : 1);
+      } else {
+        const { from, to } = view.state.selection;
+        const handled = view.someProp("handleTextInput", (handle) => handle(view, from, to, key, () => view.state.tr.insertText(key, from, to)));
+        if (!handled) view.dispatch(view.state.tr.insertText(key, from, to));
+      }
     }
-    const found = this.editor.view.posAtCoords({ left: at.x, top: at.y });
-    this.editor.commands.focus(found ? found.pos : "end");
+  }
+
+  // Backspace or Delete: the text's own keys first (a selection, the
+  // edge of a paragraph or a list item), else the one character before or
+  // after the caret, both halves of a pair at once.
+  #deleteOne(direction: -1 | 1): void {
+    const { view } = this.editor;
+    const before = view.state;
+    this.editor.commands.keyboardShortcut(direction < 0 ? "Backspace" : "Delete");
+    if (!view.state.doc.eq(before.doc) || !view.state.selection.eq(before.selection)) return;
+    const { $from, empty } = view.state.selection;
+    const node = direction < 0 ? $from.nodeBefore : $from.nodeAfter;
+    if (!empty || !node) return;
+    const edge = node.isText ? (direction < 0 ? (node.text ?? "").slice(-2) : (node.text ?? "").slice(0, 2)) : "";
+    const size = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/.test(edge) ? 2 : 1;
+    const at = $from.pos;
+    view.dispatch(direction < 0 ? view.state.tr.delete(at - size, at) : view.state.tr.delete(at, at + size));
   }
 
   #publish(): void {
