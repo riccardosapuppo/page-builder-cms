@@ -83,7 +83,8 @@ button held, refused drops, Esc, a drag on a page drawn smaller),
 `focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
 (every key of the map, and the "?" window listing them), `menu.spec.ts`
 (the block's menu), `marks.spec.ts` (the canvas's marks leaving the
-page's layout alone, a button's hugging its pill, the section's tab,
+page's layout alone, a button's hugging its pill wherever its own or
+its column's alignment moves it, the section's tab,
 the dimension lines), `save.spec.ts` (a slowed network, a save the
 network drops and its same saveId, an answer lost, a second writer
 through the API, words not yet handed over when the tab closes, a 422

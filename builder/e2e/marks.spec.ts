@@ -6,7 +6,8 @@
 // nothing hovered or selected, so they cannot see it; this one measures
 // the real canvas with a block hovered and selected, against the page a
 // visitor gets. A button's marks hug the pill it draws, as the approved
-// design draws them, not the column-wide root around it. The section's
+// design draws them, not the column-wide root around it, and follow the
+// pill where an alignment moves it. The section's
 // tab carries its grip and its +, and the selected block its dimension
 // line, in steps.
 import type { Page } from "@playwright/test";
@@ -76,6 +77,56 @@ test("a button's hover outline and selection frame hug its pill, not its column"
   await button.click();
   await expect(button.locator(":scope > .ov-sel")).toHaveCount(1);
   expect(await around(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+});
+
+// An alignment moves the pill inside its root and changes the size of
+// neither, so nothing that watches sizes sees it: the button's own, set
+// with the frame on it, and its column's, which the button takes on, set
+// with the outline on it.
+test("a button's frame and outline follow its pill when an alignment moves it, the button's own or its column's", async ({ page, request }) => {
+  const { id } = await makePage(request, "Aligned pill", [section("s", "Join", [column("c", [widget("b", "button", { label: "Join a trial swim", href: "https://example.com/join" })])])]);
+  await open(page, id);
+  const button = page.locator('.canvas [data-block-id="b"]');
+  const pillX = async () => (await button.locator(":scope > .sw-btn").boundingBox())!.x;
+  const hugs = async (selector: string, gap: number) => {
+    const pill = (await button.locator(":scope > .sw-btn").boundingBox())!;
+    const box = (await button.locator(selector).boundingBox())!;
+    return [box.x - (pill.x - gap), box.y - (pill.y - gap), box.width - (pill.width + 2 * gap), box.height - (pill.height + 2 * gap)].map((d) => Math.abs(d) <= 1);
+  };
+  const alignment = page.getByRole("radiogroup", { name: "Alignment" });
+
+  await button.click();
+  await expect(button.locator(":scope > .ov-sel")).toHaveCount(1);
+  const left = await pillX();
+  await page.getByRole("tab", { name: "Style" }).click();
+  await alignment.getByRole("radio", { name: "Center" }).click();
+  await expect.poll(pillX).toBeGreaterThan(left + 50);
+  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  const center = await pillX();
+  await alignment.getByRole("radio", { name: "Right" }).click();
+  await expect.poll(pillX).toBeGreaterThan(center + 50);
+  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  await page.getByRole("button", { name: "Reset Alignment" }).click();
+  await expect.poll(pillX).toBe(left);
+  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+
+  // The column's alignment, chosen by the keyboard while the pointer rests
+  // on the button.
+  await button.locator(":scope > .ov-sel .ov-bar").waitFor();
+  await page.getByRole("button", { name: /^Select Column/ }).click();
+  await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
+  await page.getByRole("tab", { name: "Style" }).click();
+  await alignment.getByRole("radio", { name: "Center" }).click();
+  await expect.poll(pillX).toBeGreaterThan(left + 50);
+  const pill = (await button.locator(":scope > .sw-btn").boundingBox())!;
+  await page.mouse.move(pill.x + pill.width / 2, pill.y + pill.height / 2);
+  await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
+  expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
+  const centered = await pillX();
+  await alignment.getByRole("radio", { name: "Center" }).press("ArrowRight");
+  await expect.poll(pillX).toBeGreaterThan(centered + 50);
+  await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
+  expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
 });
 
 const twoSections = () => [

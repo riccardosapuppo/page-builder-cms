@@ -235,8 +235,11 @@ function DimensionLine({ dimension }: { dimension: Dimension }) {
 // A button is drawn as a pill inside a root as wide as its column, as on
 // the published page; its hover outline and selection frame hug the pill
 // (design/shots/editor.png), placed from the pill's box in the root's own
-// layout (offset*, which neither scrolling nor a scaled canvas changes),
-// and placed again whenever either box changes size.
+// layout (offset*, which neither scrolling nor a scaled canvas changes).
+// They are placed again whenever either box changes size, and whenever
+// the pill may move with neither changing: an alignment, the button's own
+// or the one it takes on from its column (text-align), comes as a class
+// on the root or on a block around it, up to the page root.
 function hug(mark: HTMLElement | null): (() => void) | undefined {
   const root = mark?.parentElement;
   const pill = root?.querySelector<HTMLElement>(":scope > .sw-btn");
@@ -248,10 +251,18 @@ function hug(mark: HTMLElement | null): (() => void) | undefined {
     mark.style.setProperty("--hug-h", `${pill.offsetHeight}px`);
   };
   place();
-  const observer = new ResizeObserver(place);
-  observer.observe(root);
-  observer.observe(pill);
-  return () => observer.disconnect();
+  const resized = new ResizeObserver(place);
+  resized.observe(root);
+  resized.observe(pill);
+  const restyled = new MutationObserver(place);
+  for (let element: Element | null = root; element; element = element.parentElement) {
+    restyled.observe(element, { attributes: true, attributeFilter: ["class", "style"] });
+    if (element.classList.contains("site")) break;
+  }
+  return () => {
+    resized.disconnect();
+    restyled.disconnect();
+  };
 }
 
 // The drop indicator, one for the mouse and the keyboard: a line with the
