@@ -4,7 +4,9 @@
 // (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
 // publish.png, site-style.png, history.png, save-states.png, media.png, and design/shots-extra/
 // advanced.png, context.png, app-menu.png and about.png), plus the widget
-// panel, the phone preview, a save retrying, and a text written on the
+// panel, the phone preview with the hero's phone values, the home page as
+// the CMS serves it to a tablet and a phone (served-tablet,
+// served-phone), a save retrying, and a text written on the
 // canvas with its link's field (text, text-link), headless, in two windows: 1280 by 800, and
 // 1440 by 900, the size the design itself was shot at, whose canvas is
 // wide enough for the page's desktop layout (832, past the 800 where it
@@ -123,6 +125,8 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.getByRole("button", { name: "Tablet" }).click();
   await row(page, "Column 1").click();
   await page.getByRole("tab", { name: "Style" }).click();
+  // The undo above saved, as the design's top bar says.
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await away();
   await shoot("style");
 
@@ -153,12 +157,32 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.mouse.up();
   await page.getByRole("tab", { name: "Add" }).click();
 
-  // The phone preview of the home page, the hero selected.
+  // The phone preview of the home page, the hero selected, its Style tab:
+  // the hero's own space above and below on phones.
   await page.getByRole("button", { name: "Phone" }).click();
   await row(page, "Hero").click();
+  await page.getByRole("tab", { name: "Style" }).click();
   await away();
   await shoot("phone");
   await page.getByRole("button", { name: "Desktop" }).click();
+
+  // The same page as the CMS serves it to a tablet and a phone, to set
+  // beside the canvas at 768 (style) and 390 (phone): the page's own
+  // container queries, in a window of that width. Once, in the first
+  // window's folder.
+  if (first) {
+    for (const [name, width, height] of [["served-tablet", 768, 1024], ["served-phone", 390, 844]] as const) {
+      const served = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
+      await served.goto(`${cmsUrl}/`);
+      // The page's pictures load lazily: those on screen, before the shot.
+      await served.waitForFunction(() => [...document.images].filter((image) => image.getBoundingClientRect().top < innerHeight).every((image) => image.complete && image.naturalWidth > 0));
+      await served.evaluate(() => document.fonts.ready.then(() => undefined));
+      await served.screenshot({ path: join(window.folder, `${name}.png`) });
+      await served.close();
+      shots += 1;
+      console.log(`shot ${width}x${height} ${name}.png`);
+    }
+  }
 
   // design/shots-extra/app-menu.png: the mark's menu, opened from the
   // keyboard; then About, from it. The heading's Content tab under them,
