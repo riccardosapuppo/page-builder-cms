@@ -153,7 +153,20 @@ export function PublishButton() {
             <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(keys)} small /></span>
           </button>
           {live && page.published && (
-            <a className="menu-item menu-item-rich menu-link" role="menuitem" tabIndex={-1} href={live} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
+            <a
+              className="menu-item menu-item-rich menu-link"
+              role="menuitem"
+              tabIndex={-1}
+              href={live}
+              target="_blank"
+              rel="noopener"
+              onClick={() => {
+                // The page opens in a tab of its own; the menu goes, and
+                // the focus comes back to the button that opened it.
+                setOpen(false);
+                more.current?.focus();
+              }}
+            >
               <Icon name="external" />
               <span>
                 <strong>View live page</strong>

@@ -70,6 +70,19 @@ test("Publish now publishes through the session; the menu counts the saves not l
   expect(screen.queryByRole("menu")).toBeNull();
 });
 
+test("the live page chosen from the menu leaves the focus on the button that opened the menu", () => {
+  draw({ current: open() });
+  const more = screen.getByRole("button", { name: "More publish options" });
+  fireEvent.click(more);
+  const view = screen.getAllByRole("menuitem")[1]!;
+  view.focus();
+  // The new tab is the browser's; jsdom opens none.
+  view.addEventListener("click", (event) => event.preventDefault(), { once: true });
+  fireEvent.click(view);
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(document.activeElement).toBe(more);
+});
+
 test("a page never published offers no live page, and says where it will be", () => {
   draw({ current: open({ published: null, links: { preview: "/preview/7", live: null } }) });
   fireEvent.click(screen.getByRole("button", { name: "More publish options" }));

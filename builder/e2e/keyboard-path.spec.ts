@@ -207,6 +207,9 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   const opening = page.context().waitForEvent("page");
   await page.keyboard.press("Enter");
   const served = await opening;
+  // The menu is gone, and the focus is back on the button that opened it.
+  await expect(menu).toHaveCount(0);
+  await expect(more).toBeFocused();
   await served.waitForURL(`${cms()}/${slug}`);
   await expect(served.getByRole("heading", { name: "Swim by the keys", level: 3 })).toBeVisible();
   expect(await served.locator('[data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType))).toEqual(["heading", "text", "quote", "image", "divider"]);
@@ -220,6 +223,8 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await served.setViewportSize({ width: 768, height: 900 });
   await expect(served.locator('[data-block-id="c"]')).toHaveCSS("padding-top", "16px");
   await served.close();
+  // Back in the editor, the focus is where the person left it.
+  await expect(more).toBeFocused();
 
   // The CMS's draft is what was published, and the version kept by name
   // is listed.
