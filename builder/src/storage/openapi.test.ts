@@ -17,7 +17,7 @@ import {
   IMAGE_TYPES, VERSION_REASONS,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type InUse, type Invalid, type MediaItem,
   type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
-  type Published, type PublishRequest, type PublishResult, type RestoreResult, type SiteStyle, type SiteStyleChange,
+  type Published, type PublishRequest, type PublishResult, type RestoreResult, type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
   type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId } from "./rails.ts";
@@ -68,6 +68,9 @@ const SITE_STYLE = { palette: obj, typeScale: str, updatedAt: orNull(str), choic
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
+const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj } as const satisfies Shape<Site>;
+const SITE_LINK = { label: str, href: str } as const satisfies Shape<SiteLink>;
+const SITE_FOOTER = { lead: str, text: str } as const satisfies Shape<Site["footer"]>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
 // The refusals, less the member each side names its kind with: the API's
 // `error` code, the interface's `kind`.
@@ -176,6 +179,9 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["SiteStyle's choices", SITE_STYLE_CHOICES, "#/components/schemas/SiteStyle/properties/choices"],
     ["ToneChoice", TONE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/palette/additionalProperties/items"],
     ["TypeScaleChoice", TYPE_SCALE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/typeScales/items"],
+    ["Site", SITE, "#/components/schemas/Site"],
+    ["SiteLink", SITE_LINK, "#/components/schemas/SiteLink"],
+    ["Site's footer", SITE_FOOTER, "#/components/schemas/Site/properties/footer"],
     ["FieldError", FIELD_ERROR, "#/components/schemas/ErrorDetail"],
     ["Conflict", CONFLICT, "#/components/schemas/ConflictError", ["error"]],
     ["Invalid, as a request's", INVALID, "#/components/schemas/InvalidRequestError", ["error"]],
@@ -211,7 +217,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(34);
+    expect(pairs).toHaveLength(37);
   });
 });
 
@@ -231,7 +237,7 @@ describe("the Rails adapter's routes match cms/openapi.yaml", () => {
   );
 
   test("every operation of the API has its route, with the API's method, path and body", () => {
-    expect(operations.length).toBeGreaterThanOrEqual(18);
+    expect(operations.length).toBeGreaterThanOrEqual(19);
     const routes = RAILS_ROUTES as Record<string, { method: string; path: string; body: string }>;
     const differing = operations.filter((op) => {
       const route = routes[op.id];

@@ -36,6 +36,7 @@ import {
   type PublishRequest,
   type PublishResult,
   type RestoreResult,
+  type Site,
   type SiteStyle,
   type SiteStyleChange,
   type StorageAdapter,
@@ -80,6 +81,7 @@ export const RAILS_ROUTES = {
   deleteMedia: { method: "DELETE", path: "/media/{id}", body: "none" },
   getSiteStyle: { method: "GET", path: "/site-style", body: "none" },
   setSiteStyle: { method: "PUT", path: "/site-style", body: "required" },
+  getSite: { method: "GET", path: "/site", body: "none" },
 } as const satisfies Record<string, Route>;
 
 export type OperationId = keyof typeof RAILS_ROUTES;
@@ -322,6 +324,9 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
     },
     async setSiteStyle(style: SiteStyleChange, options) {
       return settle<SiteStyle, Invalid>(await call("setSiteStyle", {}, { palette: style.palette, typeScale: style.typeScale }, options), 200, ["invalid"], "setSiteStyle");
+    },
+    async getSite(options) {
+      return value<Site>(await call("getSite", {}, undefined, options), 200, "getSite");
     },
 
     async listResponses() {

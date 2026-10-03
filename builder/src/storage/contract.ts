@@ -540,6 +540,21 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  // -------------------------------------------------------- the theme
+  {
+    name: "the theme's header and footer are read as every page draws them, the same twice",
+    needs: [],
+    async run(env) {
+      const site = await env.adapter.getSite();
+      env.expect(site.name.length).toBeGreaterThan(0);
+      env.expect(site.menu.every((link) => link.label.length > 0 && link.href.length > 0)).toBe(true);
+      env.expect(site.action === null || (site.action.label.length > 0 && site.action.href.length > 0)).toBe(true);
+      env.expect(typeof site.footer.lead).toBe("string");
+      env.expect(typeof site.footer.text).toBe("string");
+      env.expect(await env.adapter.getSite()).toEqual(site);
+    },
+  },
+
   // ------------------------------------------------------ capabilities
   {
     name: "what the capabilities declare absent is refused as unsupported",

@@ -78,6 +78,7 @@ describe("the Rails adapter's requests", () => {
     ["deleteMedia", (a) => a.deleteMedia("abc_D-9"), "DELETE", "/api/media/abc_D-9", null],
     ["getSiteStyle", (a) => a.getSiteStyle(), "GET", "/api/site-style", null],
     ["setSiteStyle", (a) => a.setSiteStyle({ palette: { primary: "sea" }, typeScale: "balanced" }), "PUT", "/api/site-style", { palette: { primary: "sea" }, typeScale: "balanced" }],
+    ["getSite", (a) => a.getSite(), "GET", "/api/site", null],
   ];
 
   test.each(calls)("%s sends its own method, address and body", async (_name, run, method, path, body) => {

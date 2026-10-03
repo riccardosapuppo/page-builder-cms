@@ -17,11 +17,13 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 
 ## The interface
 
-`StorageAdapter` has every operation of the full system: pages (list, create,
-read, set the next address or the home mark), the draft (read, save at a
-revision), publish, schedule, versions (list, read, "Save version",
-restore), the media library (list, upload, alt text, delete), the site
-style, form answers, and `capabilities`, which says which of the optional
+`StorageAdapter` has every operation of the full system: pages (list,
+create, read, set the next address or the home mark), the draft (read,
+save at a revision), publish, schedule, versions (list, read, "Save
+version", restore), the media library (list, upload, alt text, delete),
+the site style, the theme's header and footer (read only: `getSite`, which
+the canvas draws around the page), form answers, and `capabilities`,
+which says which of the optional
 operations (publish, schedule, responses) this adapter has. The editor
 shows no control for one it lacks; the adapter refuses it as
 `unsupported` without asking anyone. The Rails adapter declares
@@ -89,7 +91,7 @@ id and field (`/props/level`), the way the editor shows them.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 27 cases, each named once, and
+  It first checks the battery holds its 28 cases, each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). It runs in jsdom, whose
   document is on the CMS's origin

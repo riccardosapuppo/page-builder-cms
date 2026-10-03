@@ -195,6 +195,26 @@ export interface SiteStyle {
   };
 }
 
+// ------------------------------------------------------ the theme
+
+// A link of the site's header, its address as the published page writes it.
+export interface SiteLink {
+  label: string;
+  href: string;
+}
+
+// The theme's parts around every page: the same on every page, read only.
+// The published page draws them around its sections, and the canvas draws
+// them there too, locked.
+export interface Site {
+  // The site's name, beside its mark in the header.
+  name: string;
+  menu: SiteLink[];
+  // The header's button; null when there is none.
+  action: SiteLink | null;
+  footer: { lead: string; text: string };
+}
+
 // ---------------------------------------------------- form answers
 
 // Stage 5 (forms): the shape is this interface's guess until the CMS keeps
@@ -406,6 +426,8 @@ export interface StorageAdapter {
 
   getSiteStyle(options?: CallOptions): Promise<SiteStyle>;
   setSiteStyle(style: SiteStyleChange, options?: CallOptions): Promise<Outcome<SiteStyle, Invalid>>;
+  // The theme's header and footer, as every page draws them.
+  getSite(options?: CallOptions): Promise<Site>;
 
   // Capability responses (stage 5): the answers sent from a page's forms,
   // or from every page's.

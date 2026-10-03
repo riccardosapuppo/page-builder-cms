@@ -4,8 +4,9 @@ info:
   version: 0.1.0
   summary: The JSON API the page editor saves and publishes through.
   description: |
-    Pages, their draft and versions, publishing, the media library and the
-    site style of Page Builder CMS. The editor talks to the CMS only through
+    Pages, their draft and versions, publishing, the media library, the
+    site style of Page Builder CMS and, to read, the theme's parts around
+    every page. The editor talks to the CMS only through
     this API, so another server that answers the same way can stand in for
     it.
 
@@ -51,6 +52,8 @@ tags:
     description: The media library.
   - name: site-style
     description: The palette and type scale of the whole site.
+  - name: site
+    description: The theme's parts around every page, read only.
 
 paths:
   /api/pages:
@@ -678,6 +681,30 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/site:
+    get:
+      operationId: getSite
+      summary: Read the theme's parts around every page
+      description: |
+        The site's name, the header's menu and action button, and the
+        footer's line, as every published page draws them around its
+        sections. They are the theme's (the CMS's config/site.yml), the
+        same on every page, and no request changes them. A link whose
+        address the server's link rules refuse is left out, as the
+        published page leaves it out.
+      tags: [site]
+      responses:
+        '200':
+          description: The theme's parts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   parameters:
     PageId:
@@ -1051,6 +1078,45 @@ components:
                     type: string
                   label:
                     type: string
+
+    Site:
+      type: object
+      additionalProperties: false
+      required: [name, menu, action, footer]
+      properties:
+        name:
+          description: The site's name, beside its mark in the header.
+          type: string
+        menu:
+          description: The header's menu, in order.
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteLink'
+        action:
+          description: The header's button; null when there is none.
+          anyOf:
+            - $ref: '#/components/schemas/SiteLink'
+            - type: 'null'
+        footer:
+          type: object
+          additionalProperties: false
+          required: [lead, text]
+          properties:
+            lead:
+              description: The footer's first words, in bold.
+              type: string
+            text:
+              type: string
+    SiteLink:
+      type: object
+      additionalProperties: false
+      required: [label, href]
+      properties:
+        label:
+          type: string
+        href:
+          description: The address as the published page writes it.
+          type: string
 
     ErrorDetail:
       type: object
