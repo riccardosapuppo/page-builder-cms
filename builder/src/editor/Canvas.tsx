@@ -738,7 +738,6 @@ function Invite() {
       </div>
       {picking && (
         <ImagePicker
-          title="Picture beside text"
           confirm="Add section"
           onClose={() => setPicking(false)}
           onPick={([image]) => {

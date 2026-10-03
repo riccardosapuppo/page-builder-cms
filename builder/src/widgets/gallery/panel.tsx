@@ -42,7 +42,6 @@ function GalleryContent({ block }: ContentProps<"gallery">) {
       {adding && (
         <ImagePicker
           multiple
-          title="Add images"
           confirm="Add images"
           onClose={() => setAdding(false)}
           onPick={(refs) => {

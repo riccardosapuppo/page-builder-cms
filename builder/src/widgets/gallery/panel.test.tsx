@@ -37,8 +37,8 @@ test("Add images puts the chosen images at the end, in one change", () => {
   ]);
   kit.render(<BlockPanel id="gallery" />);
   fireEvent.click(screen.getByRole("button", { name: "Add images" }));
-  const dialog = screen.getByRole("dialog", { name: "Add images" });
-  fireEvent.click(within(dialog).getByRole("button", { name: "Rock pools" }));
+  const dialog = screen.getByRole("dialog", { name: "Media library" });
+  fireEvent.click(within(dialog).getByRole("checkbox", { name: "rockpools.png" }));
   fireEvent.click(within(dialog).getByRole("button", { name: "Add images" }));
   expect(items(kit)).toHaveLength(3);
   expect(items(kit)[2]).toEqual({ mediaId: "lib1", alt: "Rock pools" });

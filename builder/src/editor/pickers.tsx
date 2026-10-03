@@ -3,35 +3,22 @@
 // from the moment it exists, and an image is not valid without its source
 // and its alt text, so the widget panel asks first.
 //
-// Images come from the media library the CMS already holds, or from
-// another site's https:// address. Uploading is the media library's, which
-// is not part of this picker.
+// Images come from the media library (./library/MediaLibrary.tsx), where
+// they can also be uploaded, or from another site's https:// address; each
+// with its alt text or the mark that it is decorative.
 import { useId, useState } from "react";
 import type { CommandError } from "../document/check.ts";
 import type { ImageRef, VideoProvider } from "../shared/document.ts";
-import type { MediaItem } from "../storage/adapter.ts";
 import { describedBy, ErrorList } from "./controls.tsx";
-import { useUi } from "./context.tsx";
 import { Dialog } from "./dialog.tsx";
 import { explain } from "./errors.ts";
-import { Icon } from "./icons.tsx";
+import { MediaLibrary } from "./library/MediaLibrary.tsx";
 
 // ------------------------------------------------------------ images
 
-interface Draft {
-  source: { mediaId: string } | { url: string } | null;
-  alt: string;
-  decorative: boolean;
-}
-
-function refOf(draft: Draft): ImageRef | null {
-  if (!draft.source) return null;
-  const text = draft.decorative ? { decorative: true as const } : { alt: draft.alt };
-  return "mediaId" in draft.source ? { mediaId: draft.source.mediaId, ...text } : { url: draft.source.url, ...text };
-}
-
 interface ImagePickerProps {
-  title: string;
+  // What placing the images does, on the library's button: "Add image",
+  // "Replace image", "Add images", "Add section".
   confirm: string;
   // Several images (a gallery) or one.
   multiple?: boolean;
@@ -40,123 +27,8 @@ interface ImagePickerProps {
   onClose: () => void;
 }
 
-export function ImagePicker({ title, confirm, multiple = false, onPick, onClose }: ImagePickerProps) {
-  const media = useUi((u) => u.media);
-  const library = [...media.values()];
-  const id = useId();
-  const [picked, setPicked] = useState<Draft[]>([]);
-  const [address, setAddress] = useState("");
-  const [addressAlt, setAddressAlt] = useState("");
-  const [addressDecorative, setAddressDecorative] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-
-  const isPicked = (item: MediaItem) => picked.some((p) => p.source !== null && "mediaId" in p.source && p.source.mediaId === item.id);
-  const toggle = (item: MediaItem) => {
-    const draft: Draft = { source: { mediaId: item.id }, alt: item.alt, decorative: false };
-    if (multiple) setPicked((list) => (isPicked(item) ? list.filter((p) => !(p.source && "mediaId" in p.source && p.source.mediaId === item.id)) : [...list, draft]));
-    else setPicked(isPicked(item) ? [] : [draft]);
-  };
-  const update = (index: number, change: Partial<Draft>) => setPicked((list) => list.map((p, i) => (i === index ? { ...p, ...change } : p)));
-
-  const submit = () => {
-    const drafts = [...picked];
-    if (address.trim() !== "") drafts.push({ source: { url: address.trim() }, alt: addressAlt, decorative: addressDecorative });
-    const refs = drafts.map(refOf).filter((r): r is ImageRef => r !== null);
-    if (refs.length === 0) {
-      setProblem(multiple ? "Choose at least one image, or give an address." : "Choose an image, or give an address.");
-      return;
-    }
-    if (!multiple && refs.length > 1) {
-      setProblem("Choose one image: from the library or from an address, not both.");
-      return;
-    }
-    const error = onPick(refs);
-    if (!error) return;
-    const finding = error.errors?.[0];
-    if (!finding) {
-      setProblem(error.message);
-      return;
-    }
-    const isUrl = finding.pointer.endsWith("/url");
-    const isAlt = finding.pointer.endsWith("/alt");
-    const sentence = explain(finding.keyword, finding.message, { kind: isUrl ? "imageUrl" : "line", maxLength: isAlt ? 300 : 2048 }, finding.limit);
-    setProblem(`${isAlt ? "Alt text: " : isUrl ? "Address: " : ""}${sentence}`);
-  };
-
-  return (
-    <Dialog
-      title={title}
-      wide
-      onClose={onClose}
-      footer={
-        <>
-          <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="btn btn-dark" type="button" onClick={submit}>{confirm}</button>
-        </>
-      }
-    >
-      <h3 className="group-title" id={`${id}-lib`}>From the media library</h3>
-      {library.length === 0 ? (
-        <p className="hint">The media library has no images yet.</p>
-      ) : (
-        <ul className="media-pick" role={multiple ? "group" : "radiogroup"} aria-labelledby={`${id}-lib`}>
-          {library.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                role={multiple ? undefined : "radio"}
-                aria-checked={multiple ? undefined : isPicked(item)}
-                aria-pressed={multiple ? isPicked(item) : undefined}
-                aria-label={item.alt || item.filename}
-                title={item.filename}
-                onClick={() => toggle(item)}
-              >
-                <img src={item.url} alt="" />
-                {isPicked(item) && <span className="pick-check" aria-hidden="true"><Icon name="check" /></span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {picked.map((draft, index) => {
-        const item = draft.source && "mediaId" in draft.source ? media.get(draft.source.mediaId) : undefined;
-        return (
-          <AltFields
-            key={item?.id ?? index}
-            name={multiple ? `Alt text for ${item?.filename ?? `image ${index + 1}`}` : "Alt text"}
-            alt={draft.alt}
-            decorative={draft.decorative}
-            onAlt={(alt) => update(index, { alt })}
-            onDecorative={(decorative) => update(index, { decorative })}
-          />
-        );
-      })}
-      <h3 className="group-title" style={{ marginTop: 20 }}>Or from another site</h3>
-      <div className="field" style={{ marginTop: 0 }}>
-        <label className="label" htmlFor={`${id}-url`}>Image address</label>
-        <input id={`${id}-url`} className="input" type="text" spellCheck={false} placeholder="https://" value={address} onChange={(e) => setAddress(e.target.value)} />
-      </div>
-      {address.trim() !== "" && (
-        <AltFields name="Alt text" alt={addressAlt} decorative={addressDecorative} onAlt={setAddressAlt} onDecorative={setAddressDecorative} />
-      )}
-      <ErrorList id={`${id}-problem`} errors={problem ? [problem] : []} />
-    </Dialog>
-  );
-}
-
-function AltFields({ name, alt, decorative, onAlt, onDecorative }: { name: string; alt: string; decorative: boolean; onAlt: (alt: string) => void; onDecorative: (decorative: boolean) => void }) {
-  const id = useId();
-  return (
-    <div className="field">
-      <label className="label" htmlFor={id}>{name}</label>
-      <textarea id={id} className="input" rows={2} value={decorative ? "" : alt} disabled={decorative} aria-describedby={`${id}-hint`} onChange={(e) => onAlt(e.target.value)} />
-      <p className="hint" id={`${id}-hint`}>What the image shows, for people who cannot see it.</p>
-      <label className="check">
-        <input type="checkbox" checked={decorative} onChange={(e) => onDecorative(e.target.checked)} />
-        <span>Decorative: it adds nothing to the text, and screen readers skip it</span>
-      </label>
-    </div>
-  );
+export function ImagePicker({ confirm, multiple = false, onPick, onClose }: ImagePickerProps) {
+  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick }} onClose={onClose} />;
 }
 
 // ------------------------------------------------------------ video

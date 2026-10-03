@@ -137,7 +137,6 @@ export function Palette() {
 
       {asking && (asking.needs === "image" || asking.needs === "images") && (
         <ImagePicker
-          title={asking.needs === "image" ? "Add an image" : "Add a gallery"}
           confirm={asking.needs === "image" ? "Add image" : "Add gallery"}
           multiple={asking.needs === "images"}
           onClose={() => setAsking(null)}

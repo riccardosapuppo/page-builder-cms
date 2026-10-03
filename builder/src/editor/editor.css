@@ -542,13 +542,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .menu-pages { top: 50px; left: 48px; width: 320px; max-height: calc(100vh - 80px); overflow: auto; }
 .menu-group { padding: 6px 10px 4px; color: var(--steel); font-size: 12px; font-weight: 600; }
 
-/* Pick an image or a video before the widget can be added. */
-.media-pick { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.media-pick button { position: relative; display: block; width: 100%; padding: 0; border-radius: var(--r-control); overflow: hidden; background: var(--key); aspect-ratio: 4 / 3; }
-.media-pick img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.media-pick button[aria-checked="true"]::after, .media-pick button[aria-pressed="true"]::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px var(--graphite), inset 0 0 0 5px var(--white); }
-.media-pick .pick-check { top: 8px; right: 8px; }
-
 /* ---------- 5. Dragging, the keyboard and the block's menu ---------- */
 /* While a block is dragged (design/shots/drag.png): the dragged block, in
    the store's preview, is the drop indicator; the container it would land

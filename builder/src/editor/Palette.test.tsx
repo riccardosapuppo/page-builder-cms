@@ -73,9 +73,9 @@ test("Image asks for its image first, then adds it with that image", () => {
   kit.ui.getState().setTray("add");
   kit.render(<LeftTray />);
   fireEvent.click(screen.getByRole("button", { name: "Image" }));
-  const dialog = screen.getByRole("dialog", { name: "Add an image" });
+  const dialog = screen.getByRole("dialog", { name: "Media library" });
   fireEvent.change(within(dialog).getByLabelText("Image address"), { target: { value: "https://images.example.org/slipway.jpg" } });
-  fireEvent.change(within(dialog).getByLabelText("Alt text"), { target: { value: "The slipway" } });
+  fireEvent.change(within(dialog).getByLabelText(/^Alt text/), { target: { value: "The slipway" } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Add image" }));
   const column = (kit.doc().sections[1] as SectionBlock).children[0]!;
   expect(column.children.at(-1)).toMatchObject({ type: "image", props: { url: "https://images.example.org/slipway.jpg", alt: "The slipway" } });

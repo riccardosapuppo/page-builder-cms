@@ -1,0 +1,75 @@
+/* The media library (./MediaLibrary.tsx), from the approved design's
+   design/styles.css, section 5 (.dlg-media and the m-* and md-* rules),
+   fitted to the editor's dialog (../dialog.tsx), whose header, body and
+   footer it fills; and what the design does not draw: a refused upload,
+   the address of an image from another site, Delete and its question. */
+
+.dlg-media { width: min(1060px, calc(100vw - 32px)); height: min(692px, calc(100vh - 48px)); }
+.dlg-media .dlg-head { padding-bottom: 12px; }
+.dlg-head h2:has(+ .dlg-count) { flex: none; }
+.dlg-count { flex: 1; color: var(--steel); font-size: 13px; }
+.dlg-toolbar { display: flex; align-items: center; gap: 8px; padding: 0 20px 14px; }
+.dlg-toolbar .search { margin: 0; width: 300px; flex: 0 1 300px; min-width: 160px; }
+.dlg-toolbar .btn:last-child { margin-left: auto; }
+.seg-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--key); color: var(--graphite); font-size: 12px; line-height: 1; }
+.dlg-media .dlg-foot { justify-content: flex-start; padding: 14px 16px 16px 20px; }
+.dlg-media .dlg-foot .hint { margin: 0 auto 0 0; max-width: 470px; }
+.foot-reason { margin-right: 4px; color: var(--steel); font-size: 12px; line-height: 16px; text-align: right; }
+
+/* The body: the toolbar over the grid and the chosen image's details. */
+.dlg-body.media-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.media-note { display: flex; align-items: center; gap: 6px; margin: -4px 20px 12px; color: var(--graphite); font-size: 12px; line-height: 16px; }
+.media-note .i { color: var(--steel); }
+.media-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 316px; }
+.media-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 14px 12px; padding: 4px 16px 16px 20px; overflow: auto; }
+/* The uploads and the images are two lists for a screen reader, one grid
+   on screen. */
+.m-uploads, .m-images { display: contents; }
+.m-uploads { list-style: none; }
+.m-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.m-option { padding: 0; border-radius: var(--r-control); text-align: left; }
+.m-thumb { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-control); overflow: hidden; background: var(--key); }
+.m-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.m-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 20px; font-size: 12px; line-height: 16px; color: var(--graphite); }
+.m-meta > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* chosen: the same mark as every chosen option, an inset ring and a check,
+   inside the tile */
+.m-selected .m-thumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px var(--graphite), inset 0 0 0 5px var(--white); pointer-events: none; }
+.m-selected .m-meta { font-weight: 600; }
+.m-check { position: absolute; top: 10px; right: 10px; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--graphite); color: var(--white); box-shadow: 0 0 0 2px var(--white); }
+.m-check .i { width: 16px; height: 16px; stroke-width: 2.2; }
+/* an image that still needs alt text */
+.m-flag { position: absolute; left: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; border-radius: 4px; background: var(--white); color: var(--err); font-size: 12px; line-height: 16px; font-weight: 600; box-shadow: 0 2px 6px -2px rgb(27 31 36 / .35); }
+.m-flag .i { width: 14px; height: 14px; stroke-width: 2; }
+.m-drop { cursor: pointer; }
+.m-drop .m-thumb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--plate); outline: 1.5px dashed var(--rule); outline-offset: -1.5px; color: var(--graphite); text-align: center; font-weight: 600; }
+.m-drop .m-thumb small { color: var(--steel); font-weight: 400; font-size: 12px; line-height: 16px; padding: 0 12px; }
+.m-drop .m-thumb .i { color: var(--steel); margin-bottom: 4px; }
+/* Files held over the library: the drop zone in the accent, the work in
+   hand. */
+.media-body.is-dropping .m-drop .m-thumb { background: var(--mark); outline-color: var(--mark-line); }
+.m-uploading .m-thumb, .m-failed .m-thumb { display: grid; place-items: center; color: var(--steel); }
+.m-uploading .m-thumb img { position: absolute; inset: 0; opacity: .35; filter: grayscale(1); }
+.m-uploading .m-meta { color: var(--steel); }
+.m-failed .m-thumb { color: var(--err); }
+.m-failed .error { margin-top: 0; }
+.m-progress { height: 4px; border-radius: 2px; background: var(--alloy); overflow: hidden; }
+.m-progress span { display: block; height: 100%; background: var(--graphite); }
+.m-none { grid-column: 1 / -1; color: var(--steel); }
+
+/* The chosen image. */
+.media-details { align-self: start; max-height: 100%; overflow: auto; margin: 0 20px 0 0; padding: 16px; border-radius: 8px; background: var(--key); }
+.md-preview { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-control); background: var(--alloy); }
+.md-name { margin-top: 12px; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.md-meta { margin-top: 2px; color: var(--steel); font-size: 12px; }
+.media-details .field { margin-top: 16px; }
+.req { margin-left: auto; font-weight: 500; color: var(--steel); }
+.md-saved { color: var(--live); }
+.md-none { color: var(--steel); }
+.md-or { margin-top: 20px; }
+.md-delete { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--alloy); }
+.md-delete-btn { margin-left: -10px; color: var(--err); }
+.md-delete-btn > .i { margin-left: 0; }
+.md-confirm p { font-size: 12px; line-height: 16px; }
+.md-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.btn-danger { background: var(--err); color: var(--white); }
