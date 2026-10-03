@@ -42,6 +42,11 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
   small: { size: 12, sans: false, label: "Small" },
 };
 
+// The order the tab lists its settings in, the approved design's (the
+// #style state: Space inside, Space between, Background, Text size,
+// Alignment): space first, then colour, then type, then placement.
+const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "color", "align", "verticalAlign", "aspect"];
+
 const ALIGN_ICONS = { left: "align-left", center: "align-center", right: "align-right" } as const;
 const VALIGN_ICONS = { top: "valign-top", middle: "valign-middle", bottom: "valign-bottom" } as const;
 
@@ -49,7 +54,9 @@ export function StyleTab({ block }: { block: Block }) {
   const commands = useBlockCommands(block.id);
   const preview = useUi((u) => u.preview);
   const siteStyle = useUi((u) => u.siteStyle);
-  const keys = (STYLE_KEYS_BY_TYPE[block.type] as readonly (keyof StyleTokens)[]).filter((k): k is StyleKey => k !== "visibility");
+  const keys = (STYLE_KEYS_BY_TYPE[block.type] as readonly (keyof StyleTokens)[])
+    .filter((k): k is StyleKey => k !== "visibility")
+    .sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
   const style = block.style as { base: StyleTokens; tablet?: StyleTokens; phone?: StyleTokens };
   const device: Device = preview === "desktop" ? "base" : preview;
 

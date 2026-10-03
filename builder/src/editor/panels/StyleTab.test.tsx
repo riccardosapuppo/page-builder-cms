@@ -23,6 +23,13 @@ test("each type shows the settings it accepts and no other", () => {
   expect(screen.getByText("This widget has no style settings of its own.")).toBeTruthy();
 });
 
+test("a column's settings come in the approved design's order: space, then background, then type and placement", () => {
+  const kit = editorKit({ document: page(), selection: "c1" });
+  kit.ui.getState().setPanelTab("style");
+  const { container } = kit.render(<BlockPanel id="c1" />);
+  expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Text color", "Alignment", "Vertical alignment"]);
+});
+
 test("a choice sets the base value, in the site's colours, and Reset takes it out", () => {
   const kit = editorKit({ document: widgetPage(), selection: "button" });
   kit.ui.getState().setPanelTab("style");

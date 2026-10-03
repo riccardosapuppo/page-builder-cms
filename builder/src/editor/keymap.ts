@@ -86,7 +86,7 @@ export const KEYMAP: readonly KeyEntry[] = [
 
   { action: "pickUp", group: "Moving", label: "Pick up the selected block", chords: [SPACE], scope: "canvas", via: "drag" },
   { action: "moveVertically", group: "Moving", label: "Move it up or down", chords: [ARROW_UP, ARROW_DOWN], each: true, scope: "moving", via: "drag" },
-  { action: "moveHorizontally", group: "Moving", label: "Move it to the previous or next column", chords: [ARROW_LEFT, ARROW_RIGHT], each: true, scope: "moving", via: "drag" },
+  { action: "moveHorizontally", group: "Moving", label: "Move it to the next or previous column", chords: [ARROW_LEFT, ARROW_RIGHT], each: true, scope: "moving", via: "drag" },
   { action: "drop", group: "Moving", label: "Drop it here", chords: [SPACE], scope: "moving", via: "drag" },
   { action: "cancelMove", group: "Moving", label: "Cancel and put it back", chords: [ESCAPE], scope: "moving", via: "drag" },
 
