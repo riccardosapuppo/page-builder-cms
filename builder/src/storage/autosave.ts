@@ -20,7 +20,11 @@
 //     it already stored as saved. warnOnClose stays up all along.
 //   Two more ways a save ends, both from the server: invalid (422, the
 //   document is refused, with its fields) and refused (403, 404, 415...).
-//   Neither is retried by itself; the next edit, or retryNow(), sends again.
+//   Neither sends the refused document again by itself; the next edit, or
+//   retryNow() after a refusal, sends again. An edit made while the
+//   refused save travelled is that next edit: it leaves as soon as the
+//   refusal lands (it may be the very fix), and the refusal, which was
+//   about a document no longer shown, is not kept.
 // - The state that asks for a person (conflict, an unknown outcome) is
 //   never cleared by a later attempt: only a definite answer about that
 //   save, or the person's choice, clears it.
@@ -268,7 +272,8 @@ export function createAutosave(options: AutosaveOptions): Autosave {
         if (!landed(ticket)) return;
         if (outcome.ok) saved(save, outcome.value);
         else if (outcome.problem.kind === "conflict") stopped({ phase: "conflict", conflict: outcome.problem });
-        else stopped({ phase: "invalid", problem: outcome.problem });
+        else if (!editedSince(save)) stopped({ phase: "invalid", problem: outcome.problem });
+        else resume();
       },
       (error: unknown) => {
         if (!landed(ticket)) return;
@@ -277,8 +282,13 @@ export function createAutosave(options: AutosaveOptions): Autosave {
           // Anything but a definite refusal, a bug of the adapter's
           // included, may have stored the save: send the same one again.
           unknown(failed ?? { kind: "unknown", cause: "unreadable", status: null, message: error instanceof Error ? error.message : String(error) });
-        } else {
+        } else if (outcomeUnknown || !editedSince(save)) {
+          // After an unknown outcome the same save must go again before
+          // anything newer, and only the person sends it (retryNow, an
+          // edit): sent again by itself it could be refused again, forever.
           refused(failed);
+        } else {
+          resume();
         }
       },
     );
@@ -314,6 +324,26 @@ export function createAutosave(options: AutosaveOptions): Autosave {
     failure = null;
     retries = 0;
     clearEditTimers();
+    emit();
+  }
+
+  // Whether the person edited the page after this save left.
+  function editedSince(save: Outstanding): boolean {
+    return edits > save.edits;
+  }
+
+  // The server refused a save (422, or 403, 404, 415...) of a document the
+  // person has changed since: what it refused is no longer on screen, and
+  // the change may be the fix. Nothing of the refused save can have been
+  // stored, so the newest document leaves as a save of its own, through
+  // the pause if one is running; refused again, it stops as usual, since
+  // no edit then came after it.
+  function resume(): void {
+    outstanding = null;
+    outcomeUnknown = false;
+    failure = null;
+    retries = 0;
+    pump();
     emit();
   }
 

@@ -351,6 +351,59 @@ describe("the autosave, on a fake clock", () => {
     expect(now()).toMatchObject({ phase: "saved", errors: [], unsavedEdits: 0, savedEdits: 2 });
   });
 
+  test("a 422 while the next edit waits behind the refused save: that edit leaves once the refusal lands, and the refusal is not kept", async () => {
+    const { clock, cms, autosave, now } = setup();
+    cms.latencyMs = 3_000;
+    cms.next("invalid");
+    autosave.edit(page("Refused"));
+    await clock.advance(1_000);
+    // The fix is typed while the refused save travels; its pause runs out
+    // with that save still on its way.
+    autosave.edit(page("Fixed"));
+    await clock.advance(2_000);
+    expect(cms.received.map((r) => r.title)).toEqual(["Refused"]);
+    await clock.advance(1_000);
+    expect(cms.received.map((r) => [r.saveId, r.revision, r.title, r.at])).toEqual([["save-1", 0, "Refused", 1_000], ["save-2", 0, "Fixed", 4_000]]);
+    expect(now()).toMatchObject({ phase: "saving", errors: [] });
+    await clock.advance(3_000);
+    expect(cms.document.title).toBe("Fixed");
+    expect(now()).toMatchObject({ phase: "saved", errors: [], unsavedEdits: 0, savedEdits: 2, warnOnClose: false });
+    expect(clock.pending).toBe(0);
+  });
+
+  test("a refusal that lands while the next edit's pause still runs: the edit leaves at the end of its pause", async () => {
+    const { clock, cms, autosave, now } = setup();
+    cms.latencyMs = 3_000;
+    cms.next("refuse");
+    autosave.edit(page("Refused"));
+    await clock.advance(3_500);
+    autosave.edit(page("Again"));
+    await clock.advance(500);
+    // The refusal landed at 4 s; the pause runs to 4.5 s.
+    expect(cms.received).toHaveLength(1);
+    expect(now()).toMatchObject({ phase: "waiting", failure: null });
+    await clock.advance(500);
+    expect(cms.received.map((r) => [r.saveId, r.title, r.at])).toEqual([["save-1", "Refused", 1_000], ["save-2", "Again", 4_500]]);
+    await clock.advance(3_000);
+    expect(now()).toMatchObject({ phase: "saved", unsavedEdits: 0 });
+  });
+
+  test("the newer document refused in turn stops saving, with its own errors: no save is sent twice by itself", async () => {
+    const { clock, cms, autosave, now } = setup();
+    cms.latencyMs = 3_000;
+    cms.next("invalid", "invalid");
+    autosave.edit(page("Refused"));
+    await clock.advance(1_000);
+    autosave.edit(page("Still refused"));
+    await clock.advance(6_000);
+    expect(cms.received.map((r) => r.title)).toEqual(["Refused", "Still refused"]);
+    expect(now()).toMatchObject({ phase: "invalid", unsavedEdits: 2, warnOnClose: true, errors: [{ pointer: "/document/title" }] });
+    await clock.advance(60_000);
+    expect(cms.received).toHaveLength(2);
+    await expect(autosave.flush()).resolves.toMatchObject({ phase: "invalid" });
+    expect(clock.pending).toBe(0);
+  });
+
   test("a refusal after an unknown outcome keeps the outcome unknown, and retryNow sends the same save", async () => {
     const { clock, cms, autosave, now } = setup();
     cms.next("lose-answer", "refuse");

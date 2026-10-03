@@ -147,7 +147,11 @@ reads `getSnapshot()` and `subscribe(listener)` (the shape React's
   server's draft and gives it to the caller, or `overwrite()`, which saves
   this tab's document on top); `invalid` (a 422, with `errors`; the next
   edit saves again); `refused` (a 403, 404, 415...: the next edit or
-  `retryNow()` sends again).
+  `retryNow()` sends again). An edit made while the refused save was on
+  its way counts as that next edit: it leaves once the refusal lands, at
+  the end of its own pause, and the refusal is dropped, since it was
+  about a document the person has already changed. Refused in turn, it
+  stops there: nothing is sent twice by itself.
 - `warnOnClose` is up whenever an edit is not confirmed, or an outcome is
   unknown: the interface asks before the tab closes. `unsavedEdits`,
   `savedAt`, `sentAt` (for "Saving..." after half a second) and `retryAt`
@@ -163,7 +167,9 @@ reads `getSnapshot()` and `subscribe(listener)` (the shape React's
 
 Four faults planted one at a time each failed `autosave.test.ts`: queued
 edits sent from the first revision, a new `saveId` on a retry, a second
-request in flight, a conflict cleared by an edit.
+request in flight, a conflict cleared by an edit. The three tests of an
+edit made while a refused save travelled failed on the autosave as it was
+before them, which kept the refusal and never sent the edit.
 
 Not here yet: the browser case with a slowed network, which needs the
 editor's interface.
