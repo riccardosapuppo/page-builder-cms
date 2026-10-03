@@ -30,11 +30,26 @@ With everything installed and the database prepared, `npm start` was
 ready, both servers answering, in 14.1, 14.2 and 14.4 seconds: three
 runs of `npm start -- --smoke` on 3 October 2026, on a Windows 10
 virtual machine with 8 logical processors and 12 GB of memory, its
-processors 0 to 8% busy before and after each run. How many bytes a
-first install downloads, and how long a first start takes: **to
-measure**. Both need a machine that has installed nothing yet; this one
-had. CI's smoke runs (below) install everything from nothing on Linux
-and Windows.
+processors 0 to 8% busy before and after each run.
+
+A first install and first start, measured the same day on the same
+machine, its processors 0 to 2% busy before and 1 to 5% after: a fresh
+copy of the repository, with download caches of its own, empty
+(`npm_config_cache`, `BUNDLE_USER_CACHE` and `GEM_SPEC_CACHE` pointed at
+empty folders), and `npm start -- --smoke`, with Ruby 3.4.11 and Node
+24.19.0 already there.
+- **Downloaded:** 84.3 MB. The 99 gems' archives, 20.5 MB (Bundler keeps
+  them in `cms/vendor/bundle/ruby/3.4.0/cache`); Bundler's index of the
+  gems, 25.5 MB; the editor's 160 packages, 38.3 MB in npm's cache. The
+  network adapters counted 88.6 MB received over the whole run.
+- **Ready**, both servers answering, after 147.2 seconds: 115 for `bundle
+  install`, which compiles the native extensions of 15 gems, 8 for `npm
+  ci`, 14 for the database and its example site, 6 for the two servers
+  to answer.
+
+Megabytes here are bytes (`du -sb`) divided by 1,048,576; the installed
+sizes above, by `du -sm`, are the disk space taken. CI's smoke runs
+(below) install everything from nothing on Linux and Windows too.
 
 **To develop** (the tests, `npm run check`), add:
 - the root's tools, `npm ci` at the root: 56 MB (TypeScript, Redocly,
