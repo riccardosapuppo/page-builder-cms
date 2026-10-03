@@ -10,13 +10,15 @@
 //   writes the same folder in both places.
 // - What each place does alone, and what Bundler takes with neither (on a
 //   machine-wide RubyInstaller, the user's WindowsApps folder).
-// - configureBundler, the routine npm start runs, on that folder.
+// - configureBundler, the routine npm start runs, on that folder, also
+//   with an older local setting and a BUNDLE_APP_CONFIG that send the gems
+//   elsewhere, and with Bundler answering a folder outside it (planted).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { askRuby, configureBundler, missingPackages, samePath } from "./install.ts";
+import { askRuby, configureBundler, inside, missingPackages, samePath } from "./install.ts";
 
 function app(): string {
   const folder = mkdtempSync(join(tmpdir(), "pbc-bundler-"));
@@ -88,6 +90,83 @@ test("the routine writes the folder inside the application in both places, and B
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
+});
+
+// The routine's result must put both the gems and the launchers inside the
+// application's vendor/bundle, whatever was there before.
+function assertInside(folder: string, bundler: { env: NodeJS.ProcessEnv; bindir: string }): void {
+  const gems = join(folder, "vendor", "bundle");
+  for (const [what, where] of [["gems", askRuby("Bundler.bundle_path", bundler.env, folder)], ["launchers", askRuby("Bundler.system_bindir", bundler.env, folder)], ["bindir", bundler.bindir]] as const) {
+    assert.ok(inside(where, gems), `the ${what} would go to ${where}, outside ${gems}`);
+  }
+}
+
+test("planted: an older local setting sends the gems elsewhere; the routine writes its own first, and both stay inside", () => {
+  const folder = app();
+  const elsewhere = mkdtempSync(join(tmpdir(), "pbc-elsewhere-")).replace(/\\/g, "/");
+  try {
+    mkdirSync(join(folder, ".bundle"));
+    writeFileSync(join(folder, ".bundle", "config"), `---\nBUNDLE_PATH: "${elsewhere}"\n`);
+    // Bundler takes the local setting over the environment's: what the
+    // routine would have met without writing its own first.
+    assert.ok(inside(askRuby("Bundler.bundle_path", { ...bare(), BUNDLE_PATH: join(folder, "vendor", "bundle") }, folder), elsewhere));
+    const bundler = configureBundler(() => undefined, folder);
+    assertInside(folder, bundler);
+    const config = readFileSync(join(folder, ".bundle", "config"), "utf8");
+    assert.match(config, /BUNDLE_PATH: "vendor\/bundle"/);
+    assert.ok(!config.includes(elsewhere), config);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+    rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
+test("planted: BUNDLE_APP_CONFIG sends the local settings to another folder; that folder is left alone, and both stay inside", () => {
+  const folder = app();
+  const other = mkdtempSync(join(tmpdir(), "pbc-appconfig-"));
+  const elsewhere = mkdtempSync(join(tmpdir(), "pbc-elsewhere-")).replace(/\\/g, "/");
+  const planted = `---\nBUNDLE_PATH: "${elsewhere}"\n`;
+  writeFileSync(join(other, "config"), planted);
+  const saved = process.env.BUNDLE_APP_CONFIG;
+  process.env.BUNDLE_APP_CONFIG = other;
+  try {
+    const bundler = configureBundler(() => undefined, folder);
+    assertInside(folder, bundler);
+    assert.equal(readFileSync(join(other, "config"), "utf8"), planted);
+    assert.match(readFileSync(join(folder, ".bundle", "config"), "utf8"), /BUNDLE_PATH: "vendor\/bundle"/);
+  } finally {
+    if (saved === undefined) delete process.env.BUNDLE_APP_CONFIG;
+    else process.env.BUNDLE_APP_CONFIG = saved;
+    rmSync(folder, { recursive: true, force: true });
+    rmSync(other, { recursive: true, force: true });
+    rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
+test("planted: Bundler answers a folder outside the application; the routine stops, for the gems and for the launchers", () => {
+  const folder = app();
+  const outside = join(tmpdir(), "pbc-not-the-app").replace(/\\/g, "/");
+  try {
+    // The gems' folder answered elsewhere.
+    assert.throws(
+      () => configureBundler(() => undefined, folder, (expression, env, cwd) => (expression === "Bundler.bundle_path" ? `${outside}/ruby/3.4.0` : askRuby(expression, env, cwd))),
+      /would install the gems into .*pbc-not-the-app.*nothing was installed/,
+    );
+    // The launchers' folder answered elsewhere.
+    assert.throws(
+      () => configureBundler(() => undefined, folder, (expression, env, cwd) => (expression === "Bundler.system_bindir" ? `${outside}/bin` : askRuby(expression, env, cwd))),
+      /would write the gems' launchers into .*pbc-not-the-app.*nothing was installed/,
+    );
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
+
+test("inside: a folder, its children, and not a folder whose name only starts the same", () => {
+  assert.ok(inside("C:/app/vendor/bundle", "C:/app/vendor/bundle"));
+  assert.ok(inside("C:/app/vendor/bundle/ruby/3.4.0/bin", "C:\\app\\vendor\\bundle"));
+  assert.ok(!inside("C:/app/vendor/bundle-old/ruby", "C:/app/vendor/bundle"));
+  assert.ok(!inside("C:/elsewhere/ruby/3.4.0", "C:/app/vendor/bundle"));
 });
 
 test("missingPackages: absent and other versions named, absent optional ones left out", () => {

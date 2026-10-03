@@ -66,13 +66,18 @@ The gems' launchers (`rails`, `rake`, `puma` and twenty more, each with
 its `.bat` on Windows) go into `cms/vendor/bundle/ruby/<version>/bin`.
 RubyInstaller, installed for all users, points Bundler at the user's
 `AppData/Local/Microsoft/WindowsApps`, a folder on the PATH, unless told
-otherwise. So npm start's install routine writes the folder inside
-`cms/vendor/bundle` both into `cms/.bundle/config` and into the
-environment of every Ruby process it starts, then asks Bundler where it
-will write, and stops unless the answer is that folder. With a different
-folder in each place, Bundler 2.6.9 takes `.bundle/config`
+otherwise. So npm start's install routine writes the gems' folder, then
+the launchers' folder inside `cms/vendor/bundle`, both into
+`cms/.bundle/config` and into the environment of every Ruby process it
+starts (with `BUNDLE_APP_CONFIG` pointed at `cms/.bundle`, so no settings
+file elsewhere is read or rewritten), then asks Bundler where it will
+install the gems and write the launchers, and stops unless both answers
+lie inside `cms/vendor/bundle`. With a different folder in each place,
+Bundler 2.6.9 takes `.bundle/config`
 ([tools/start/install.test.ts](tools/start/install.test.ts) plants the
-two and asks it).
+two and asks it; it also plants an older local setting and a
+`BUNDLE_APP_CONFIG` that send the gems elsewhere, and answers from
+outside that make the routine stop).
 
 A first install fills two download caches outside the repository, as any
 install does: Bundler's (`~/.bundle/cache`, 25.5 MB on this machine after

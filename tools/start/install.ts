@@ -15,8 +15,8 @@
 //   tools start,
 // because the two can disagree about which wins (install.test.ts plants a
 // different value in each and asks Bundler), and then
-// - asks Bundler where it will write the launchers, and refuses to go on
-//   unless the answer is the folder inside cms/vendor/bundle.
+// - asks Bundler where it will install the gems and write the launchers,
+//   and refuses to go on unless both answers lie inside cms/vendor/bundle.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -35,12 +35,20 @@ export interface Bundler {
 
 // Paths as Ruby prints them (forward slashes) and as Node joins them
 // (backslashes on Windows), compared as the file system does.
+function normPath(p: string): string {
+  const slashed = p.replace(/\\/g, "/").replace(/\/+$/, "");
+  return windows ? slashed.toLowerCase() : slashed;
+}
+
 export function samePath(a: string, b: string): boolean {
-  const norm = (p: string) => {
-    const slashed = p.replace(/\\/g, "/").replace(/\/+$/, "");
-    return windows ? slashed.toLowerCase() : slashed;
-  };
-  return norm(a) === norm(b);
+  return normPath(a) === normPath(b);
+}
+
+// Whether a path lies inside a folder, or is it, compared the same way.
+export function inside(path: string, folder: string): boolean {
+  const child = normPath(path);
+  const parent = normPath(folder);
+  return child === parent || child.startsWith(`${parent}/`);
 }
 
 // One Ruby expression's printed value, in cms/, with the environment given.
@@ -56,18 +64,34 @@ function bundle(args: string[], env: NodeJS.ProcessEnv, app: string): void {
   if (ran.status !== 0) throw new Error(`bundle ${args.join(" ")} failed (exit ${ran.status}):\n${lastLines(ran.stdout + ran.stderr)}`);
 }
 
-// Writes the two settings in both places and checks Bundler's answer. The
-// application folder is cms/; the tests give one of their own.
-export function configureBundler(log: (line: string) => void, app = cmsRoot): Bundler {
-  const withPath: NodeJS.ProcessEnv = { ...process.env, BUNDLE_PATH: join(app, GEMS_FOLDER) };
-  // Rule 128: ask the tool where it will write, never deduce it.
-  const bundlePath = askRuby("Bundler.bundle_path", withPath, app);
-  const bindir = `${bundlePath}/bin`;
+// Writes the two settings in both places and checks Bundler's answers. The
+// application folder is cms/; the tests give one of their own, and may
+// stand in for Ruby's answers (ask) to plant a wrong one.
+//
+// - The application's own settings file is the one written and read:
+//   BUNDLE_APP_CONFIG, which can send Bundler's "local" settings to a
+//   folder elsewhere, is pointed at the application's .bundle for every
+//   Ruby process the tools start, so nothing outside it is rewritten.
+// - The gems' folder is written first, so an older local setting that
+//   sends the gems elsewhere (local settings beat the environment) is
+//   replaced before Bundler is asked anything.
+// - Then Bundler is asked where the gems go and where the launchers go,
+//   and both answers must lie inside the application's vendor/bundle; any
+//   other answer stops the routine, with nothing installed.
+export function configureBundler(log: (line: string) => void, app = cmsRoot, ask: typeof askRuby = askRuby): Bundler {
+  const gems = join(app, GEMS_FOLDER);
+  const withPath: NodeJS.ProcessEnv = { ...process.env, BUNDLE_APP_CONFIG: join(app, ".bundle"), BUNDLE_PATH: gems };
   bundle(["config", "set", "--local", "path", GEMS_FOLDER], withPath, app);
+  // Ask the tool where it will write, never deduce it.
+  const bundlePath = ask("Bundler.bundle_path", withPath, app);
+  if (!inside(bundlePath, gems)) {
+    throw new Error(`Bundler says it would install the gems into ${bundlePath}, not inside ${gems} as .bundle/config and the environment say: nothing was installed.`);
+  }
+  const bindir = `${bundlePath}/bin`;
   bundle(["config", "set", "--local", "system_bindir", bindir], withPath, app);
   const env: NodeJS.ProcessEnv = { ...withPath, BUNDLE_SYSTEM_BINDIR: bindir };
-  const answer = askRuby("Bundler.system_bindir", env, app);
-  if (!samePath(answer, bindir)) {
+  const answer = ask("Bundler.system_bindir", env, app);
+  if (!samePath(answer, bindir) || !inside(answer, gems)) {
     throw new Error(`Bundler says it would write the gems' launchers into ${answer}, not into ${bindir} as .bundle/config and the environment say: nothing was installed.`);
   }
   log(`gems: in ${GEMS_FOLDER}, launchers in ${bindir} (.bundle/config and the environment; Bundler agrees)`);
