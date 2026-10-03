@@ -28,6 +28,15 @@ palette and the type scale; the mark as the page's icon, a manifest and
 About. Each widget has its accessibility test, run with axe on the
 published page and on the canvas.
 
+**Stage 3, rich text.** A text block is written where it stands on the
+canvas, in TipTap (`src/editor/rich/`), loaded on demand: bold, italic
+and links from the block's bar or the keys, a link refused at its field
+for what the server would refuse, a paste cut to what the schema allows.
+Its typing becomes one command of the page, kept in one form
+(`src/document/rich-text.ts`), when the person pauses or leaves the text
+and before any other command or drag; inside the text Ctrl+Z is
+TipTap's, outside it the page's.
+
 ## Before you start
 
 - **Node** `^22.13.0 || ^24.0.0 || >=26.0.0` (`engines`, the narrowest of
@@ -75,7 +84,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from the widget panel, move, edit text and properties, publish, open the served page); the focus after every command; every key of the keyboard map and the "?" window that lists them; the block's menu from the keyboard; axe with no serious or critical finding on the editor in twenty states, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish and Site style. |
 | `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports; prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. |
-| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, context menu, shortcuts, style, advanced, drag, empty, save states, publish, site style, About, the mark's menu) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
+| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, context menu, shortcuts, style, advanced, drag, empty, save states, publish, site style, About, the mark's menu) and in the widget panel, the phone preview, and a text written on the canvas with its link's field, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 
@@ -144,8 +153,16 @@ default the origin of an absolute `VITE_API_BASE`, else
   require() 0; validator in assets/index-CQM1kcnj.js; fonts with their
   licence: 4/4` (371.7 KiB on 2 October, before the interface; the second
   file is `@rails/activestorage`, loaded when an image is uploaded). The
-  main file is one chunk of 704 kB, 185 kB gzipped, and Vite warns that it
-  is over its 500 kB: the editor is not yet split or loaded on demand.
+  main file was then one chunk of 704 kB, 185 kB gzipped. The text editor
+  is a chunk of its own, fetched when a text is first selected or edited:
+  the build of 3 October 2026 with it printed `bundle check: 3
+  JavaScript file(s), 1077.8 KiB`, the main file 734.45 kB (194.58 kB
+  gzipped, with the history panel of the same day in it too) and
+  `TextEditor-*.js` 353.93 kB (113.28 kB gzipped), every TipTap and
+  ProseMirror module in the second and none in the first (their source
+  maps list them). A clean copy of `a1688e2`, the end of stage 2, built
+  the same day with the same packages, gave a main file of 714.30 kB,
+  188.80 kB gzipped. Vite still warns the main file is over its 500 kB.
   With `new Function` planted in `src/main.tsx`, the build failed: the
   minifier had made it `Function()`, which the check counted.
 - **The published page's CSS** is the CMS's own `site.css` and
@@ -175,11 +192,23 @@ default the origin of an absolute `VITE_API_BASE`, else
   and the application rules accept, its inverse gives back the same page
   byte for byte with every removed key absent, and redoing it gives the
   same page with the same ids (`src/document/property.test.ts`, 300
-  sessions). `src/document/mutants.test.ts` runs the same sessions on a
-  copy of `src/document` and `src/store` with one fault planted in its
-  source, six faults in all, and each one fails while the unchanged copy
-  passes. What the checks of a change cost on 500 blocks:
+  sessions), the texts the canvas's text editor hands over, written as
+  TipTap writes them, among them. `src/document/mutants.test.ts` runs the
+  same sessions on a copy of `src/document` and `src/store` with one fault
+  planted in its source, eight faults in all, and each one fails while the
+  unchanged copy passes. What the checks of a change cost on 500 blocks:
   `npx vitest run --config build/measure.config.ts`.
+- **The text editor** ([src/editor/README.md](src/editor/README.md)): its
+  nodes, marks and their attributes are the schema's rich text, compared
+  with the schema itself, a planted underline and TipTap's own link (with
+  its title) each failing the comparison (`src/editor/rich/extensions.test.ts`);
+  on random texts, a text kept and read back by the editor is the same
+  text, and random editing in the real editor, handed over after every
+  step, is always taken by the page and undone and redone through the
+  page's history exactly (`src/editor/rich/editor.test.ts`); the two
+  histories' hand-over is tested on the editor in jsdom
+  (`src/editor/rich/text-session.test.ts`) and in Chromium
+  (`e2e/rich-text.spec.ts`).
 - **The renderer** ([src/render/README.md](src/render/README.md)) is held
   to the server's four ways, each shown failing with faults planted:
   - the render contract: every fixture of `../contract` against the
