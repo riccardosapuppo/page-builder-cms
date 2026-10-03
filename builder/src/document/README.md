@@ -42,6 +42,7 @@ is about, and its steps. The makers:
 | `makeSetColumnWidths` | columnWidths | "Set the column widths of Hero to 3:2", "Set equal column widths in Hero" |
 | `makeSetColumnCount` | columns | "Changed Hero to 3 columns" |
 | `makeSetPage` | page | "Changed the page title", "Removed the page description" |
+| `makeReplacePage` (the whole page given way to another: a reload after a conflict takes the server's) | page | the caller's: "Reloaded the page saved in another tab" |
 | `makeInsertItems`, `makeRemoveItem`, `makeMoveItem`, `makeSetItem` | items | "Added 2 images to Gallery in Join", "Removed image 2 from Gallery in Join", "Changed the alt text of image 1 in Gallery in Join" |
 
 What they promise:
@@ -141,6 +142,10 @@ be taken again on an idle machine before any of them is quoted.
   does not validate the container a change touches; column widths that
   outlive a change in the number of columns; a key put back at the end of
   its object instead of where it was.
+- `replace.test.ts`: `makeReplacePage` on random pairs of valid pages,
+  which share ids: applied, it gives the other page byte for byte, title
+  and description with it; undone, the first; redone, the other again.
+  With the description left out of its steps, it failed.
 - `drag.test.ts`, `upgrade.test.ts`, `tree.test.ts`: the drag, the upgrade
   twin (held to the server's `upgrade.rb` and to `schema/corpus/upgrade/`),
   and the small pieces.

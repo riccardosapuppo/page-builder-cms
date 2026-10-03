@@ -24,7 +24,9 @@ React and without reaching into its internals.
   the same media), so the page is the one it was. A new command clears
   `future`. `past` keeps the most recent `historyLimit` commands (200 by
   default). Each entry has the time it was applied, from `now`, the only
-  clock here; the history panel of stage 3 shows them.
+  clock here; the history panel (`../editor/HistoryPanel.tsx`) shows
+  them, newest first, and goes back or forward to any of them by undoing
+  or redoing every step up to it.
 - **Focus and selection** follow each command: `focus` is the reducer's
   (the new block, a deleted block's neighbour, the block an undo touched),
   and the selection moves to it.

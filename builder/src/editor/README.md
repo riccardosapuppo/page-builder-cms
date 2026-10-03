@@ -18,8 +18,9 @@ random block ids.
 
 | File | What it is |
 | --- | --- |
-| `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way, and the site style's changes sent one at a time, a refusal put back |
-| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, the save state, Preview and Publish |
+| `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way (Reload as a step of the session, which Undo takes back; Keep mine after keeping the server's draft as a version, "Before Keep mine"), the page's versions read for the history, "Save version" and restore (each after the edits waiting are saved; the restored draft takes the canvas only when this tab has nothing the restore did not keep, else the conflict bar asks; undo starts again, and the notice says why), and the site style's changes sent one at a time, a refusal put back |
+| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, undo and redo (greyed, and saying so, with nothing to do) and History, the save state, Preview and Publish |
+| `HistoryPanel.tsx`, `history-words.ts`, `history.css` | The history, in the navigator's place: this session's steps newest first, the undone ones on top, any of them a button that undoes or redoes up to it; the draft and the page's versions, named by why, when and their name, with no author, the live one marked; "Save version" with an optional name (Ctrl+S opens it); Restore |
 | `SaveStatus.tsx` | Where the edits are, from the autosave's snapshot: the top bar's word (Saved only when the server has every edit; a countdown to the next try, on the injected clock, never read to a screen reader); the toast of a save whose outcome is unknown, with Retry now; the conflict's banner, an alert, with Reload and Keep mine |
 | `Publish.tsx` | Preview, a link to the draft's preview on the CMS's own origin; the split Publish button and its menu (Publish now, the live page), waiting and saying why on an empty page, a conflict or a save not confirmed; nothing for what the storage lacks (no Schedule before stage 4) |
 | `SiteStylePanel.tsx` | Site style, the one screen that changes the tokens: each slot's curated tones, their contrast in words, back to a new site's tone, the type scale and its steps |
@@ -38,10 +39,8 @@ random block ids.
 
 ## Not here yet
 
-Rich text on the canvas, the undo and redo buttons and the history (their
-keys already work, on the store's history), versions, tablet and phone
-overrides and the media library are stage 3; scheduling a publish is
-stage 4. The top bar draws no control for any of them until it works, and
+Rich text on the canvas, tablet and phone overrides and the media library
+are stage 3; scheduling a publish is stage 4. The top bar draws no control for any of them until it works, and
 the "?" window lists no key for them.
 
 ## Where it departs from the approved design, on purpose
@@ -63,14 +62,26 @@ owner to undo:
 - **The empty page's panel** has no "Show in the site menu" toggle: the
   site's menu is the theme's (`cms/config/site.yml`), which nothing in
   the editor changes yet.
+- **History:** no version says who made it ("Saved", not "Saved by you"):
+  the CMS has no people, and a version's words come from why it was made,
+  when, and its name. A restore says what it copied back ("From “First
+  draft”, Sep 27, 9:15 PM"), and the draft a restore replaced is listed
+  as "Before restoring". With no step yet, "This session" says so in a
+  line. "Save version" opens a name field under it, which the design
+  does not draw. Keep mine keeps the page it saves over as a version
+  named "Before Keep mine", so that choice, like Reload, can be undone
+  from History, as the design's save states say.
 
 ## Checks
 
 One test file per panel, next to it, drives its controls and checks the
 page and the command that changed it, and lays the server's 422 on the
 store as the shell does, then finds it on the field it names; the
-canvas, the widget panel, the navigator, the top bar, the shell (on an
-adapter of the test's own and a fake clock), the command runner, the
+canvas, the widget panel, the navigator, the top bar, the history panel
+(in strict mode where an effect matters), the shell (on an adapter of the
+test's own and a fake clock; `App.versions.test.tsx` on one that keeps
+versions by the CMS's rules: a restore with an edit waiting, an edit
+typed while it travels), the command runner, the
 keymap and its listener, and the drag layer's preview and live region
 have theirs here. jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
@@ -92,7 +103,13 @@ the dimension lines), `save.spec.ts` (a slowed network, a save the
 network drops and its same saveId, an answer lost, a second writer
 through the API, words not yet handed over when the tab closes, a 422
 whose fix was typed meanwhile, a page left while the next one loads),
-`publish.spec.ts`
+`two-tabs.spec.ts` (the same page in two browser contexts: the 409 and
+its bar, Reload and Keep mine each to its end and each undone, a save
+the network drops sent again with its saveId into the conflict, closing
+that tab asking first, a restore in one tab told to the other),
+`history.spec.ts` (undo and redo from the top bar, a step chosen in the
+history, Save version, Restore and its undoing, the live version, axe on
+the panel), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
 (the mark read back at 16 px), `a11y.spec.ts` (axe in twenty states, and
