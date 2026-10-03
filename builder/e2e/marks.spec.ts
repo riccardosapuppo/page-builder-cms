@@ -192,3 +192,50 @@ test("the selected widget's dimension line names its column's Space between, as 
   expect(padding).toBeGreaterThan(0);
   expect(Math.abs((await pad.boundingBox())!.height - padding)).toBeLessThan(1);
 });
+
+// How much of a block's words the selection's bar covers, in square
+// pixels, and where the bar stands.
+async function barOver(page: Page, selected: string, above: string): Promise<{ place: string; covered: number }> {
+  return page.evaluate(({ id, aboveId }) => {
+    const frame = document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"] > .ov-sel`)!;
+    const bar = frame.querySelector(":scope > .ov-bar")!.getBoundingClientRect();
+    const range = document.createRange();
+    let covered = 0;
+    const walker = document.createTreeWalker(document.querySelector(`.canvas [data-block-id="${aboveId}"]`)!, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.parentElement?.closest(".ov")) continue;
+      range.selectNodeContents(node);
+      for (const r of range.getClientRects()) covered += Math.max(0, Math.min(r.right, bar.right) - Math.max(r.left, bar.left)) * Math.max(0, Math.min(r.bottom, bar.bottom) - Math.max(r.top, bar.top));
+    }
+    return { place: frame.dataset.bar ?? "", covered: Math.round(covered) };
+  }, { id: selected, aboveId: above });
+}
+
+test("the selection's bar moves to the right corner where the left one would cover the words above, and under a text being written where both would", async ({ page, request }) => {
+  const text = (words: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] } });
+  const { id } = await makePage(request, "Bar places", [
+    section("s1", "Short", [column("c1", [heading("short", "Swim by the keys"), widget("t1", "text", text("Tide notes"))])]),
+    section("s2", "Long", [column("c2", [{ ...heading("long", "Swim at slack water, twice a week, at first light, when the bay is flat"), props: { level: 1, text: "Swim at slack water, twice a week, at first light, when the bay is flat" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series."))])]),
+  ]);
+  await open(page, id);
+  // A short heading above: the left corner would hide its words, the right one hides none.
+  await block(page, "t1").click();
+  expect(await barOver(page, "t1", "short")).toEqual({ place: "right", covered: 0 });
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await expect.poll(() => barOver(page, "t1", "short")).toEqual({ place: "right", covered: 0 });
+  await page.keyboard.press("Escape");
+  // A heading as wide as its column: both top corners would cover it; the
+  // text being written, last in its column, has room under it.
+  await block(page, "t2").click();
+  expect((await barOver(page, "t2", "long")).place).toMatch(/^(|right)$/);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await expect.poll(() => barOver(page, "t2", "long")).toEqual({ place: "below", covered: 0 });
+  // The link's field opens under the bar.
+  await page.keyboard.press("Control+k");
+  const field = page.locator(".ov-link");
+  await expect(field).toBeVisible();
+  const barBox = (await page.locator('.canvas [data-block-id="t2"] .ov-bar').boundingBox())!;
+  expect((await field.boundingBox())!.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+});

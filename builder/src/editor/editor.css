@@ -419,6 +419,14 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
   font: 600 12px/1 var(--font-ui); pointer-events: auto; white-space: nowrap;
   box-shadow: 0 0 0 1px var(--mark-key), 0 6px 14px -6px color-mix(in srgb, var(--mark) 60%, transparent);
 }
+/* Where the bar stands when the top left corner would cover the block
+   above (Canvas.tsx, placeBar): the top right corner, as the design says;
+   while a text is written, under the block, its link field under the bar,
+   and the dimension line it would cover not drawn. */
+.ov-sel[data-bar~="right"] > .ov-bar { left: auto; right: -8px; }
+.ov-sel[data-bar~="below"] > .ov-bar { bottom: auto; top: calc(100% + 11px); }
+.ov-sel[data-bar~="below"] > .ov-link { top: calc(100% + 51px); }
+.ov-dim-v:has(~ .ov-sel[data-bar~="below"]) { visibility: hidden; }
 .ov-bar button, .ov-grip { display: grid; place-items: center; width: 26px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--on-mark); cursor: pointer; }
 .canvas .site .ov-bar button { pointer-events: auto; }
 .ov-bar button:hover { background: rgb(27 31 36 / .12); }
@@ -635,6 +643,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    empty column's words, the empty page's invitation. The lines and
    outlines stay with the blocks they surround. */
 .frame[data-scale] .ov-bar { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .ov-sel[data-bar="right"] > .ov-bar { transform-origin: 100% 100%; }
+.frame[data-scale] .ov-sel[data-bar="below"] > .ov-bar { transform-origin: 0 0; }
+.frame[data-scale] .ov-sel[data-bar="below right"] > .ov-bar { transform-origin: 100% 0; }
 .frame[data-scale] .ov-link { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
 .frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }

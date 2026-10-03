@@ -310,6 +310,103 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
   };
 }
 
+// The selection's bar stands at the block's top left corner, as the design
+// draws it, and moves to the top right corner when the left one would
+// cover what the block above shows and the right one would not
+// (design/NOTES.md, section 4). While a text is being written, its bar,
+// wider with bold, italic and link, may also stand under the block, the
+// link's field under it, when both top corners would cover something and
+// a place below would not. Where every place covers something, it stays at
+// the top, in the corner that covers less. What a block shows is its words, as their lines lie,
+// and its pictures and buttons; the editor's own marks are not counted.
+// Placed again when the bar, the block or the page changes size, and when
+// the page is drawn at a new scale.
+const BAR_PLACES = ["", "right"] as const;
+const WRITING_PLACES = ["", "right", "below", "below right"] as const;
+const INK = "img, svg, iframe, video, canvas, .sw-btn, hr";
+
+function inkOf(widget: Element, near: DOMRect): DOMRect[] {
+  const rects: DOMRect[] = [];
+  const range = document.createRange();
+  // A document that lays nothing out (a test's) has no line boxes to read.
+  if (typeof range.getClientRects !== "function") return rects;
+  const walker = document.createTreeWalker(widget, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => (node instanceof Element && node.matches(".ov, .ov *, .drop-ui, .drop-ui *") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node instanceof Text) {
+      if (node.data.trim() === "") continue;
+      range.selectNodeContents(node);
+      rects.push(...range.getClientRects());
+    } else if (node instanceof Element && node.matches(INK)) {
+      rects.push(node.getBoundingClientRect());
+    }
+  }
+  return rects.filter((r) => r.width > 0 && r.height > 0 && r.right > near.left && r.left < near.right && r.bottom > near.top && r.top < near.bottom);
+}
+
+const overlap = (a: DOMRect, b: DOMRect): number => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+
+function placeBar(frame: HTMLElement): void {
+  const bar = frame.querySelector<HTMLElement>(":scope > .ov-bar");
+  const own = frame.parentElement;
+  const page = frame.closest(".site");
+  if (!bar || !own || !page) return;
+  const places = frame.dataset.writing === "true" ? WRITING_PLACES : BAR_PLACES;
+  const boxes = places.map((place) => {
+    frame.dataset.bar = place;
+    return bar.getBoundingClientRect();
+  });
+  const near = new DOMRect(Math.min(...boxes.map((b) => b.left)), Math.min(...boxes.map((b) => b.top)), 0, 0);
+  const far = { right: Math.max(...boxes.map((b) => b.right)), bottom: Math.max(...boxes.map((b) => b.bottom)) };
+  const area = new DOMRect(near.left, near.top, far.right - near.left, far.bottom - near.top);
+  const ink = [...page.querySelectorAll<HTMLElement>("[data-block-id]")]
+    .filter((block) => block !== own && !own.contains(block) && !block.contains(own) && block.dataset.blockType !== "section" && block.dataset.blockType !== "column")
+    .flatMap((block) => inkOf(block, area));
+  const covered = boxes.map((box) => ink.reduce((sum, rect) => sum + overlap(box, rect), 0));
+  // The first place that covers nothing; else, at the top, the corner
+  // that covers less (a place below would hide the next block instead).
+  const free = covered.indexOf(0);
+  const best = free >= 0 ? free : (covered[1] ?? Infinity) < (covered[0] ?? Infinity) ? 1 : 0;
+  frame.dataset.bar = places[best] ?? "";
+}
+
+function barMark(frame: HTMLElement): () => void {
+  const place = () => placeBar(frame);
+  place();
+  const resized = new ResizeObserver(place);
+  const bar = frame.querySelector(":scope > .ov-bar");
+  if (bar) resized.observe(bar);
+  if (frame.parentElement) resized.observe(frame.parentElement);
+  const page = frame.closest(".site");
+  if (page) resized.observe(page);
+  const rescaled = new MutationObserver(place);
+  const scaled = frame.closest(".frame");
+  if (scaled) rescaled.observe(scaled, { attributes: true, attributeFilter: ["style", "data-scale"] });
+  rescaled.observe(frame, { attributes: true, attributeFilter: ["data-writing"] });
+  return () => {
+    resized.disconnect();
+    rescaled.disconnect();
+  };
+}
+
+// The selection's frame: placed on a button's pill when it hugs one, and
+// its bar placed.
+function selectionMark(hugs: boolean) {
+  return (frame: HTMLElement | null): (() => void) | undefined => {
+    if (!frame) return undefined;
+    const unhug = hugs ? hug(frame) : undefined;
+    const unplace = barMark(frame);
+    return () => {
+      unhug?.();
+      unplace();
+    };
+  };
+}
+
+const selectionPlain = selectionMark(false);
+const selectionHug = selectionMark(true);
+
 // A hovered block's name stands beside its outline, at its middle, as the
 // design draws it, unless there it would pass the canvas's right edge: a
 // block as wide as a page that fills the canvas (the tablet page's
@@ -422,7 +519,7 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
       )}
       {relation === "selected" && dimension && <DimensionLine dimension={dimension} />}
       {relation === "selected" && (
-        <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? hug : undefined}>
+        <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? selectionHug : selectionPlain} data-writing={tools ? "true" : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
           <div className="ov-bar" role="toolbar" aria-label={name}>
             <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press ${BAR_KEYS.pickUp} to pick it up`} title={`Drag to move. Or press ${BAR_KEYS.pickUp} to pick up.`}><Icon name="grip" /></button>
