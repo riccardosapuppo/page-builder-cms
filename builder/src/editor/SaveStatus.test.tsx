@@ -1,7 +1,7 @@
 // Where the edits are, as the person sees and hears it, from the real
 // autosave on the kit's fake clock and a CMS whose answers the test holds
-// back and gives: "Saving…" only once edits have waited half a second; a
-// countdown to the next try that a screen reader is not read; a toast that
+// back and gives: "Saved" only when it is so; a countdown to the next try
+// that a screen reader is not read; a toast that
 // says why, with Retry now sending the same save at once; the conflict's
 // banner, an alert, with Reload and Keep mine.
 // @vitest-environment jsdom
@@ -71,17 +71,15 @@ const heard = (element: Element) => {
   return copy.textContent;
 };
 
-test("Saving… shows only once edits have waited half a second, and Saved, heard, when the server confirms", async () => {
+test("Saved only when the server has every edit: Saving…, unheard, from the first edit it has not", async () => {
   const { kit, cms, edit } = setUp();
   expect(shown()).toBe("Saved");
   await edit("One");
-  await act(() => kit.clock.advance(499));
-  expect(shown()).toBe("Saved");
-  await act(() => kit.clock.advance(1));
   expect(shown()).toBe("Saving…");
   expect(heard(status())).toBe("");
-  // The debounce (1 s) runs out: the save leaves, still Saving….
-  await act(() => kit.clock.advance(500));
+  expect(status().getAttribute("title")).toBe("Saving your 1 change. Keep editing.");
+  // The pause before a save (1 s) runs out: the save leaves, still Saving….
+  await act(() => kit.clock.advance(1_000));
   expect(cms.sent).toHaveLength(1);
   expect(shown()).toBe("Saving…");
   await act(async () => cms.answer(4));

@@ -1,12 +1,14 @@
 // Where the page's edits are (design/shots/save-states.png), from the
 // autosave's snapshot (../storage/autosave.ts), said in three places:
 //
-// - the top bar's save state: "Saved"; "Saving…", only once edits have
-//   waited half a second, so a quick save does not flicker; "Not saved,
-//   retrying in 8 s", counting down on the injected clock; "Changed in
-//   another tab"; or why the server refused the save. Screen readers hear
-//   "Saved" and "Not saved, retrying" once each, nothing while a save is on
-//   its way, and not the countdown;
+// - the top bar's save state: "Saved" only when the server has every edit;
+//   "Saving…" from the first edit it does not have (the design waits half
+//   a second first, but with the autosave's one-second pause before a save
+//   that half second would show "Saved" over edits that are only in this
+//   tab); "Not saved, retrying in 8 s", counting down on the injected
+//   clock; "Changed in another tab"; or why the server refused the save.
+//   Screen readers hear "Saved" and "Not saved, retrying" once each,
+//   nothing while a save is on its way, and not the countdown;
 // - the conflict banner under the top bar, an alert, with Reload and Keep
 //   mine: saving and publishing wait for the choice;
 // - a toast while a save's outcome is unknown, saying why and offering
@@ -14,16 +16,13 @@
 //
 // The page's save is never mixed with publishing (./Publish.tsx) or with
 // the site style's own save (./SiteStylePanel.tsx).
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Failure } from "../storage/adapter.ts";
 import type { SaveSnapshot } from "../storage/autosave.ts";
 import { placeFocus } from "./act.ts";
 import { useEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { useSession } from "./session.tsx";
-
-// How long edits wait before "Saving…" shows.
-export const SAVING_SHOWS_AFTER_MS = 500;
 
 const NEVER: SaveSnapshot | null = null;
 const noSubscription = () => () => {};
@@ -66,21 +65,6 @@ function useTicking(active: boolean, everyMs: number): number {
   return clock.now();
 }
 
-// Whether edits have been on their way for SAVING_SHOWS_AFTER_MS: each
-// stretch of saving is an object of its own, and the timer marks the one
-// it was set for, so a stretch that ended early marks nothing.
-function useLongBusy(busy: boolean): boolean {
-  const { clock } = useEnv();
-  const stretch = useMemo(() => (busy ? {} : null), [busy]);
-  const [long, setLong] = useState<object | null>(null);
-  useEffect(() => {
-    if (stretch === null) return undefined;
-    const timer = clock.setTimeout(() => setLong(stretch), SAVING_SHOWS_AFTER_MS);
-    return () => clock.clearTimeout(timer);
-  }, [stretch, clock]);
-  return stretch !== null && long === stretch;
-}
-
 interface Said {
   className: string;
   icon: "check" | "spinner" | "warning" | "error";
@@ -92,15 +76,14 @@ interface Said {
   title?: string;
 }
 
-// What a snapshot says once no save is on its way; while one is, before
-// "Saving…" shows, the last such snapshot stays said (normally "Saved").
 function describe(snapshot: SaveSnapshot, now: number): Said {
   switch (snapshot.phase) {
-    case "saved":
     case "waiting":
-    case "saving": {
+    case "saving":
       // The same save sent again after an unknown outcome is still a retry.
       if (snapshot.outcomeUnknown) return { className: "save-state save-warn", icon: "warning", text: "Not saved, retrying", heard: true, title: failureLine(snapshot.failure) };
+      return { className: "save-state", icon: "spinner", text: "Saving…", heard: false, title: `Saving your ${changes(Math.max(1, snapshot.unsavedEdits))}. Keep editing.` };
+    case "saved": {
       const all = snapshot.savedEdits > 0 ? `All ${changes(snapshot.savedEdits)}` : "All changes";
       return { className: "save-state", icon: "check", text: "Saved", heard: true, ...(snapshot.savedAt ? { title: `${all} saved at ${when(snapshot.savedAt)}` } : {}) };
     }
@@ -118,21 +101,12 @@ function describe(snapshot: SaveSnapshot, now: number): Said {
   }
 }
 
-const SAVING: Said = { className: "save-state", icon: "spinner", text: "Saving…", heard: false };
-
 // The top bar's save state.
 export function SaveState() {
   const snapshot = useSaveSnapshot();
-  const busy = snapshot !== null && (snapshot.phase === "waiting" || snapshot.phase === "saving");
-  const long = useLongBusy(busy);
   const now = useTicking(snapshot?.phase === "retrying" && snapshot.retryAt !== null, 1_000);
-  // The last snapshot with no save on its way, kept from render to render.
-  const [settled, setSettled] = useState<SaveSnapshot | null>(snapshot);
-  if (!busy && snapshot !== settled) setSettled(snapshot);
   if (!snapshot) return null;
-  const said = long
-    ? { ...SAVING, title: `Saving your ${changes(Math.max(1, snapshot.unsavedEdits))}. Keep editing.` }
-    : describe(busy && !snapshot.outcomeUnknown && settled ? settled : snapshot, now);
+  const said = describe(snapshot, now);
   return (
     <span className={said.className} role="status" title={said.title}>
       <Icon name={said.icon} className={said.icon === "spinner" ? "i spin" : "i"} />
