@@ -313,7 +313,9 @@ omakase style) and `ruby bin/brakeman` (no warnings).
   shapes.
 - **The header and footer** are the theme's, as the design draws them. Their
   name, menu and footer line are in [config/site.yml](config/site.yml)
-  until the editor can change them.
+  until the editor can change them; `GET /api/site` gives them to the
+  editor, read only, which draws them locked around the page on its
+  canvas.
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -368,6 +370,7 @@ the schema file) each failed it.
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
 | `GET /api/site-style`, `PUT /api/site-style` | the palette and type scale, with their curated values; replace them |
+| `GET /api/site` | the theme's header and footer (name, menu, action button, footer line), read only |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the

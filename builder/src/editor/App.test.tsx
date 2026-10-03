@@ -22,7 +22,9 @@ import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
-const links = (id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, preview: `/preview/${id}`, live: null });
+// The theme around every page, as the CMS answers it.
+const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." } };
+const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
 function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
@@ -89,6 +91,7 @@ class FakeSite {
       getDraft: async (id) => this.page(id).draft,
       listMedia: async () => [],
       getSiteStyle: async () => this.style,
+      getSite: async () => SITE,
       setSiteStyle: async (change) => {
         this.styles.push(change);
         if (this.refuseStyle) return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/palette/primary", keyword: "inclusion", blockPointer: null, message: "must be one of the slot's tones" }] } };

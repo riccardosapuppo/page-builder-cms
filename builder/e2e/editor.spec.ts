@@ -4,12 +4,14 @@
 // narrow the page root and the page lays out by its own width; the
 // navigator and the canvas select together; a 422 from the CMS shows on
 // the field it names; an empty page and a new one invite a first section;
-// sections anchored with the editor's own ids take none of them; in a
+// sections anchored with the editor's own ids take none of them; the
+// theme's header and footer are drawn around the page, locked; in a
 // smaller window, a stacked column's tab and the page's title stay whole.
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
 import type { Page } from "@playwright/test";
+import { block } from "./helpers/canvas.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
 
 const row = (page: Page, name: string) => page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
@@ -180,6 +182,40 @@ test("sections anchored with the editor's own ids leave its names and ids alone"
   expect(all.filter((name, index) => all.indexOf(name) !== index)).toEqual([]);
   // And no id the editor gives itself is one a section could take.
   expect(ids.filter((entry) => !entry.onPage && /^[a-z][a-z0-9-]{0,63}$/.test(entry.id)).map((entry) => entry.id)).toEqual([]);
+});
+
+test("the theme's header and footer are drawn around the page, locked, and the navigator names them", async ({ page, request }) => {
+  const site = (await (await request.get(`${cms()}/api/site`)).json()) as { name: string; footer: { lead: string } };
+  const { id } = await makePage(request, "Framed", [section("s", "Story", [column("c", [heading("h", "Inside the theme")])])]);
+  await open(page, id);
+  const header = page.locator('.canvas [data-theme-part="header"]');
+  const footer = page.locator('.canvas [data-theme-part="footer"]');
+  await expect(header).toContainText(site.name);
+  await expect(footer).toContainText(site.footer.lead);
+  // Locked: inert, so no click, focus or screen reader reaches them.
+  await expect(header).toHaveAttribute("inert", "");
+  await expect(footer).toHaveAttribute("inert", "");
+  // The page starts with its header, right under the width rule; the
+  // sections come between the two.
+  const frame = (await page.locator(".canvas .frame").boundingBox())!;
+  const top = (await header.boundingBox())!;
+  const story = (await page.locator('.canvas [data-block-id="s"]').boundingBox())!;
+  const bottom = (await footer.boundingBox())!;
+  expect(top.y).toBe(frame.y);
+  expect(story.y).toBeGreaterThanOrEqual(top.y + top.height - 0.5);
+  expect(bottom.y).toBeGreaterThanOrEqual(story.y + story.height - 0.5);
+
+  // The navigator: the two locked rows, above and below the tree.
+  const tray = page.getByRole("complementary", { name: "Navigator" });
+  await expect(tray.locator(".t-theme")).toHaveText(["Site header, locked: the same on every page", "Site footer, locked: the same on every page"]);
+  const rows = await tray.locator(".t-theme, .tree").evaluateAll((elements) => elements.map((e) => e.className));
+  expect(rows).toEqual(["t-row t-theme", "tree", "t-row t-theme"]);
+
+  // A click on the header selects nothing and says why.
+  await block(page, "h").click();
+  await page.mouse.click(top.x + top.width / 2, top.y + top.height / 2);
+  await expect(page.locator(".notice")).toContainText("The site's header is the theme's, the same on every page: it is not edited here.");
+  await expect(block(page, "h")).toHaveAttribute("data-editor-selected", "true");
 });
 
 // A smaller window, 1280 by 800: the canvas gives the page 672, so the

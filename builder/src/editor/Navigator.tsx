@@ -11,6 +11,9 @@
 // the block's menu; the editing keys of the keymap (./keys.ts) work on the
 // selected row as on the canvas.
 //
+// Above and below the tree, the theme's header and footer, locked: the
+// same on every page, never selected (the canvas draws them so).
+//
 // While a block is dragged the tree shows the store's preview: the
 // dragged block as a line where it would land, its container marked.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
@@ -73,6 +76,7 @@ export function Navigator() {
   const selection = useEditor((s) => s.selection);
   const open = useUi((u) => u.navigatorOpen);
   const serverErrors = useUi((u) => u.serverErrors);
+  const site = useUi((u) => u.site);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   // The row with the Tab stop: the selection's, else the first.
   const [active, setActive] = useState<string | null>(null);
@@ -178,6 +182,7 @@ export function Navigator() {
           <button className="ibtn" type="button" aria-label="Collapse navigator" aria-expanded="true" title="Collapse navigator" onClick={() => ui.getState().setNavigatorOpen(false)}><Icon name="panel-right" /></button>
         </div>
         <div className="tray-body tray-body-tight">
+          {site && <ThemeRow part="header" />}
           {sections === 0 ? (
             <p className="t-empty">No sections yet. Each section you add shows up here, with its columns and widgets inside.</p>
           ) : (
@@ -202,6 +207,7 @@ export function Navigator() {
               ))}
             </ul>
           )}
+          {site && <ThemeRow part="footer" />}
         </div>
         <p className="nav-foot">{sections} {sections === 1 ? "section" : "sections"}, {widgets} {widgets === 1 ? "widget" : "widgets"}</p>
       </section>
@@ -296,5 +302,15 @@ function TreeItem(props: TreeItemProps) {
         </ul>
       )}
     </li>
+  );
+}
+
+// The theme's header or footer: a row like the tree's, outside it, locked.
+function ThemeRow({ part }: { part: "header" | "footer" }) {
+  const name = part === "header" ? "Site header" : "Site footer";
+  return (
+    <p className="t-row t-theme" title={`${name}: the same on every page. It comes from the site's theme and is not edited here.`}>
+      <Icon name="lock" /><span>{name}</span><span className="visually-hidden">, locked: the same on every page</span>
+    </p>
   );
 }

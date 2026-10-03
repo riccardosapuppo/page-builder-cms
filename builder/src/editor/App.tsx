@@ -1,9 +1,9 @@
 // The editor's shell, on the approved design (design/shots/editor.png): top
 // bar, the widget and property tray on the left, the canvas, the navigator
 // on the right. It holds the page being edited: it reads the site's pages,
-// media library and site style through the storage adapter, opens a page
-// (its draft upgraded and checked, openDocument, before the store takes
-// it), and gives every new document the store makes to the page's
+// media library, site style and theme through the storage adapter, opens a
+// page (its draft upgraded and checked, openDocument, before the store
+// takes it), and gives every new document the store makes to the page's
 // autosave. Nothing here talks to a server but through the adapter.
 //
 // It also publishes: the edits waiting are saved first (flush), then the
@@ -207,18 +207,20 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     return null;
   }, [adapter, address, clock, store, ui]);
 
-  // The site as the editor starts on it: its pages, library and style;
-  // then the page the address names, else the home page, else the first.
+  // The site as the editor starts on it: its pages, library, style and
+  // theme; then the page the address names, else the home page, else the
+  // first.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setStatus({ kind: "loading" });
       try {
-        const [list, media, style] = await Promise.all([adapter.listPages(), adapter.listMedia(), adapter.getSiteStyle()]);
+        const [list, media, style, site] = await Promise.all([adapter.listPages(), adapter.listMedia(), adapter.getSiteStyle(), adapter.getSite()]);
         if (cancelled) return;
         setPages(list);
         ui.getState().setMedia(media);
         ui.getState().setSiteStyle(style);
+        ui.getState().setSite(site);
         const wanted = address.read();
         const first = list.find((p) => p.id === wanted) ?? list.find((p) => p.home) ?? list[0];
         if (!first) {

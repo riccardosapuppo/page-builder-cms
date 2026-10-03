@@ -11,7 +11,7 @@
 // The page document, the selection and the history are not here: they are
 // the editor store's, changed only by its commands.
 import { createStore, type StoreApi } from "zustand/vanilla";
-import type { BlockFieldError, MediaItem, SiteStyle } from "../storage/adapter.ts";
+import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
 import { PendingText } from "./pending.ts";
 
 export const PREVIEWS = ["desktop", "tablet", "phone"] as const;
@@ -45,6 +45,8 @@ export interface UiState {
   navigatorOpen: boolean;
   media: ReadonlyMap<string, MediaItem>;
   siteStyle: SiteStyle | null;
+  // The theme's header and footer, drawn around the page on the canvas.
+  site: Site | null;
   // The last refused save's errors, each on its block and field.
   serverErrors: readonly BlockFieldError[];
   // One sentence about what just happened, or why nothing did, and a link
@@ -76,6 +78,7 @@ export interface UiState {
   setNavigatorOpen(open: boolean): void;
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
+  setSite(site: Site | null): void;
   setServerErrors(errors: readonly BlockFieldError[]): void;
   say(notice: string | null, link?: NoticeLink | null): void;
   setShortcutsOpen(open: boolean): void;
@@ -85,7 +88,7 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "panelTab" | "navigatorOpen" | "siteStyle">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "panelTab" | "navigatorOpen" | "siteStyle" | "site">> = {}): UiStore {
   return createStore<UiState>()((set) => ({
     hover: null,
     preview: initial.preview ?? "desktop",
@@ -94,6 +97,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     navigatorOpen: initial.navigatorOpen ?? true,
     media: new Map(),
     siteStyle: initial.siteStyle ?? null,
+    site: initial.site ?? null,
     serverErrors: [],
     notice: null,
     noticeLink: null,
@@ -112,6 +116,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setNavigatorOpen: (navigatorOpen) => set({ navigatorOpen }),
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
     setSiteStyle: (siteStyle) => set({ siteStyle }),
+    setSite: (site) => set({ site }),
     setServerErrors: (serverErrors) => set({ serverErrors }),
     say: (notice, link = null) => set({ notice, noticeLink: notice === null ? null : link }),
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),

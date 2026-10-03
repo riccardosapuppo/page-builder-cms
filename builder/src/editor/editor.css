@@ -307,6 +307,9 @@ textarea.input { resize: vertical; }
 .tree li:focus-visible > .t-row { outline: 2px solid var(--graphite); outline-offset: -2px; }
 .t-row { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 4px; border-radius: 5px; font-size: 13px; white-space: nowrap; overflow: hidden; cursor: default; }
 .t-row:hover { background: var(--key); }
+/* The theme's header and footer, locked: no hover, steel words. */
+.t-theme { margin: 0; padding-left: 6px; color: var(--steel); }
+.t-theme:hover { background: none; }
 .t-row > .i { color: var(--steel); }
 .t-row > span { flex: none; }
 .t-row em { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-style: normal; font-size: 12px; color: var(--steel); }
@@ -327,12 +330,15 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 
 /* ---------- 3. Canvas: the bench the page sits on ---------- */
 .canvas { grid-column: 2; grid-row: 3; position: relative; min-width: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
-/* The page starts a bar's height below the width rule: the design draws
-   the site's header above the first section, where its floating bar and
-   its tab go; the canvas does not draw that header, so the bench keeps the
-   room. */
-.frame { margin: 40px 28px 32px; background: var(--white); border-radius: 4px; }
-.frame-fixed { margin: 40px auto 32px; }
+/* The page starts right under the width rule, with the site's header, as
+   the design draws it: the first section's floating bar and its tab go
+   over the header. */
+.frame { margin: 0 28px 32px; background: var(--white); border-radius: 4px; }
+.frame-fixed { margin: 0 auto 32px; }
+/* The theme's header and footer (render/theme.tsx), locked: inert, and,
+   while a block is dragged, shaded as no place for it. */
+.canvas .site [data-theme-part] { position: relative; }
+.canvas-drag .site [data-theme-part]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(220 224 229 / .78); }
 
 /* The width rule: the canvas width as a dimension line, notched where the
    page changes layout (tokens.json breakpoints, 560 and 800), each named

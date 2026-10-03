@@ -12,7 +12,8 @@ widgets import its helpers. Nothing here talks to a server.
 | File | What it is | The server's twin |
 | --- | --- | --- |
 | `blocks.tsx` | `PageSections`, the walk of the tree (page > section > column > widget, anything else left out), the section and the column, each block a memoised `BlockView` | `render_document`, `render_blocks`, `_section`, `_column` |
-| `page.tsx` | `PageRoot`, the page root (`.site` > `.sw` > the sections), its width and the site style's data attributes | the layout's `.site`, `site_style_data` |
+| `page.tsx` | `PageRoot`, the page root (`.site` > `.sw` > the sections, with the theme's header and footer when given), its width and the site style's data attributes | the layout's `.site`, `site_style_data` |
+| `theme.tsx` | `SiteHeader` and `SiteFooter`, the theme's parts around every page | the layout's `<header>` and `<footer>`, `site_link` |
 | `block-root.tsx` | `BlockRoot`, every block's root element: classes, `data-block-id`, `data-block-type`, `data-style`, the type's data; and the defensive reading of props | `block_root`, `block_props`, `prop_text` |
 | `style.ts` | A style as classes (`pad-l`, `tablet-pad-l`, `hide-phone`) and as `data-style` | `BlockStyle` |
 | `policy.ts` | The URL policy: links, images, players, maps, anchors | `RenderPolicy` |
@@ -47,8 +48,12 @@ widgets import its helpers. Nothing here talks to a server.
   (`../shared/site.css`) set their container queries on `.site`. The
   canvas passes `landmark={false}`, so the sections sit in a plain block
   instead of a second `<main>` in the editor's page.
-- The site's header and footer are not drawn: they are the server's
-  (`cms/config/site.yml`), and no API gives them.
+- The site's header and footer (`theme.tsx`) are the server's
+  (`cms/config/site.yml`), which `GET /api/site` gives: given them,
+  `PageRoot` draws the header above the sections and the footer below, as
+  the layout does; the canvas draws them locked (`inert`, and
+  `data-theme-part` on each). `../../test/theme.rails.test.tsx` holds
+  their markup to the CMS's own.
 
 ## What it promises
 

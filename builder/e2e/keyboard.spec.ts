@@ -106,6 +106,9 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await block(page, "d").click();
     await press(page, pressed, "Delete");
     await expect(block(page, "d")).toHaveCount(0);
+    // The focus goes to the block now in its place once the page is drawn
+    // again: Backspace is for that block, so it waits for it.
+    await expect.poll(() => focusedId(page)).not.toBeNull();
     await press(page, pressed, "Backspace");
     await expect.poll(async () => (await childIds(page, "c2")).length).toBe(2);
   },

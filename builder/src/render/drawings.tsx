@@ -44,11 +44,14 @@ export function SiteIcon({ name, className }: { name: string; className: string 
 }
 
 // The drawings of the theme itself, the same on every page: BlocksHelper's
-// THEME_SHAPES, the ones the blocks draw.
+// THEME_SHAPES, the ones the blocks and the site's header and footer draw.
 const THEME_SHAPES = {
+  // The site's mark: a sea disc, the sun half risen, the waterline.
+  mark: ["0 0 24 24", [["circle", { cx: "12", cy: "12", r: "11" }], ["path", { class: "sun", d: "M6 13.5a6 6 0 0 1 12 0z" }], ["path", { class: "line", d: "M1 13.5h22" }]]],
   // An opening quotation mark, blocks low and tails rising to the right.
   quote: ["0 0 48 36", [["path", { d: "M2 34h18V17h-8c0-5 2-8 6-9V1C7 3 2 9 2 17zM28 34h18V17h-8c0-5 2-8 6-9V1c-9 2-16 8-16 16z" }]]],
   play: ["0 0 20 20", [["path", { d: "M7 5v10l8-5z" }]]],
+  menu: ["0 0 20 20", [["path", { d: "M3 5.5h14M3 10h14M3 14.5h14" }]]],
 } as const satisfies Record<string, readonly [string, readonly Shape[]]>;
 
 export function ThemeSvg({ name, className }: { name: keyof typeof THEME_SHAPES; className: string }) {

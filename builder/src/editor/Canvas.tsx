@@ -31,7 +31,8 @@ import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../doc
 import { blockName, plural } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
-import { PageRoot } from "../render/page.tsx";
+import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
@@ -271,6 +272,7 @@ export function Canvas() {
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
   const siteStyle = useUi((u) => u.siteStyle);
+  const site = useUi((u) => u.site);
   const frame = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState(0);
 
@@ -367,6 +369,13 @@ export function Canvas() {
             if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
             // A link or a disclosure of the page does nothing on the canvas.
             event.preventDefault();
+            // The theme's header and footer are inert, so a click on them
+            // reaches the page around them: it says why nothing happens.
+            const part = themePartAt(event.currentTarget, event.clientX, event.clientY);
+            if (part) {
+              ui.getState().say(`The site's ${part} is the theme's, the same on every page: it is not edited here.`);
+              return;
+            }
             pick(event.target);
           }}
           onContextMenu={(event) => {
@@ -388,13 +397,33 @@ export function Canvas() {
           }}
           onPointerLeave={() => ui.getState().setHover(null)}
         >
-          {document.sections.length === 0
-            ? <Invite />
-            : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} {...(width === undefined ? {} : { width })} />}
+          {document.sections.length === 0 ? (
+            <>
+              {site && <ThemeAround siteStyle={siteStyle}><SiteHeader site={site} locked /></ThemeAround>}
+              <Invite />
+              {site && <ThemeAround siteStyle={siteStyle}><SiteFooter site={site} locked /></ThemeAround>}
+            </>
+          ) : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
         </div>
       </SourceRef.Provider>
     </main>
   );
+}
+
+// A page root around the theme's header or footer alone, with the site's
+// style, for the empty page: the invitation to add a section sits between
+// them, outside the page's stylesheets' reach.
+function ThemeAround({ siteStyle, children }: { siteStyle: SiteStyleChoice | null; children: ReactNode }) {
+  return <div className="site" {...siteStyleAttributes(siteStyle)}><div className="sw">{children}</div></div>;
+}
+
+// Which of the theme's parts a point of the canvas falls on, if any.
+function themePartAt(frame: Element, x: number, y: number): "header" | "footer" | null {
+  for (const element of frame.querySelectorAll<HTMLElement>("[data-theme-part]")) {
+    const box = element.getBoundingClientRect();
+    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) return element.dataset.themePart === "footer" ? "footer" : "header";
+  }
+  return null;
 }
 
 // The canvas's width as a dimension line, notched where the page changes
