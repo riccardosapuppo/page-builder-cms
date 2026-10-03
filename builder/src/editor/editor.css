@@ -399,6 +399,32 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-bar .i { width: 18px; height: 18px; }
 .ov-name { padding: 0 8px 0 2px; }
 
+/* A text being edited (./rich/). The editor's element stands where the
+   page drew the text's paragraphs, one level down, so the page's space
+   between them (site.css, .w-text > * + *) is given again one level down.
+   TipTap's own stylesheet is not loaded: it turns the page font's
+   ligatures off and wraps spaces its own way, and the text must lay out
+   as on the page; ProseMirror wants only its spaces kept. The caret and
+   the bracketed frame say where the typing goes, not a focus ring. */
+.canvas .w-text > .rte > * + * { margin-top: .75em; }
+.canvas .rte { white-space: pre-wrap; overflow-wrap: break-word; outline: none; cursor: text; }
+/* Its buttons on the block's bar: bold, italic, link, between thin rules;
+   one that is on is graphite with the bar's yellow on it. */
+.ov-format { display: contents; }
+.ov-sep { width: 1px; height: 18px; margin: 0 3px; background: rgb(27 31 36 / .35); }
+.ov-bar .ov-fmt { font: 700 15px/1 var(--font-ui); }
+.ov-bar .ov-fmt-i { font-weight: 500; font-style: italic; }
+.ov-bar .ov-fmt[aria-pressed="true"] { background: var(--graphite); color: var(--mark); }
+/* The link's field, under the block, at the editor's own size. */
+.ov-link {
+  position: absolute; left: -8px; top: calc(100% + 10px); z-index: 9; width: 320px; padding: 12px;
+  border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--white); color: var(--graphite);
+  box-shadow: 0 10px 24px -12px rgb(27 31 36 / .45); font: 500 13px/18px var(--font-ui); white-space: normal; pointer-events: auto;
+}
+.ov-link .hint, .ov-link .error { white-space: normal; }
+.canvas .site .ov-link :is(button, input, label) { pointer-events: auto; }
+.ov-link-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+
 /* Hover: a thinner line, its name beside the block. */
 .ov-hover { inset: -4px; border: 1.5px solid var(--mark); border-radius: 2px; box-shadow: 0 0 0 1px var(--mark-key); }
 .ov-label { position: absolute; padding: 3px 6px; border-radius: 3px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
@@ -576,6 +602,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    empty column's words, the empty page's invitation. The lines and
    outlines stay with the blocks they surround. */
 .frame[data-scale] .ov-bar { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
+.frame[data-scale] .ov-link { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
 .frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] :is(.col, .sec) > .ov-hover .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }

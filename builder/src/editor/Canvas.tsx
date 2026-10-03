@@ -21,14 +21,20 @@
 //
 // The page's own links, buttons and disclosures do nothing here: a click
 // selects the block it falls in, a right click opens its menu.
+//
+// A text block is edited where it stands (./rich/): a click on the text
+// block already selected, or a double click on any, opens its editor with
+// the caret at the click, and Enter opens it at the end. While it is open
+// the block's bar carries the text's bold, italic and link, and the link's
+// field opens under the block.
 import {
-  createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
+  createContext, Suspense, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
   type CSSProperties, type ReactNode,
 } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../document/commands.ts";
-import { blockName, plural, tokenName } from "../document/labels.ts";
+import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
 import { styleValue } from "../render/style.ts";
@@ -49,6 +55,8 @@ import { useInsert } from "./insert.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
+import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
+import { LazyTextEditor, preloadTextEditor, startEditing, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
 
 // How a block stands to the selection, for the marks it draws.
@@ -137,6 +145,15 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     dropRef(element);
     if (isSource) sourceRef?.(element);
   }, [dropRef, isSource, sourceRef]);
+  // A text block: its editor while it is edited, and the editor's chunk
+  // fetched as soon as it is selected.
+  const isText = block.type === "text";
+  const editing = useStore(ui, (u) => isText && id !== null && u.editingText?.id === id);
+  const tools = useStore(ui, (u) => (id !== null && u.textTools?.id === id ? u.textTools : null));
+  const textLabel = useStore(store, (s) => (isText && id !== null ? blockWithPlace(s.document, id) : ""));
+  useEffect(() => {
+    if (isText && relation === "selected") preloadTextEditor();
+  }, [isText, relation]);
 
   if (id === null) return undefined;
   const kind = block.type === "section" ? "section" : block.type === "column" ? "column" : "widget";
@@ -156,7 +173,12 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     },
     after: slot
       ? <DropIndicator mode={slot.mode} label={slot.label} />
-      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} />,
+      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} />,
+    // While a drag lasts nothing is selected (relation null), so the
+    // editor gives way to the page's drawing of the text.
+    ...(editing && relation === "selected"
+      ? { editing: (drawn: ReactNode) => <Suspense fallback={drawn}><LazyTextEditor blockId={id} label={textLabel} /></Suspense> }
+      : {}),
   };
 }
 
@@ -332,9 +354,11 @@ interface MarksProps {
   hug: boolean;
   // The selected block's dimension line, if it has one.
   dimension: Dimension | null;
+  // A text being edited: its formatting buttons and link field.
+  tools: TextTools | null;
 }
 
-function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs, dimension }: MarksProps) {
+function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs, dimension, tools }: MarksProps) {
   const env = useEnv();
   const { store, ui, newId } = env;
   const select = (target: string) => {
@@ -369,9 +393,11 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
           <div className="ov-bar" role="toolbar" aria-label={name}>
             <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press Space to pick it up`} title="Drag to move. Or press Space to pick up."><Icon name="grip" /></button>
             <span className="ov-name">{kind === "section" ? "Section" : name}</span>
+            {tools && <FormatButtons tools={tools} />}
             <button type="button" aria-label={`Duplicate ${name}`} title="Duplicate (Ctrl+D)" onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
             <button type="button" aria-label={`Delete ${name}`} title="Delete (Del)" onClick={() => act("delete")}><Icon name="trash" /></button>
           </div>
+          {tools?.linkOpen && <LinkField tools={tools} />}
         </div>
       )}
       {relation !== "selected" && hovered && (
@@ -487,9 +513,10 @@ export function Canvas() {
 
   // The page's links, buttons and disclosures take no focus on the canvas:
   // Tab goes from block to block's tab stop, not through the page's links.
+  // The text being edited is its editor's to draw, links and all.
   useEffect(() => {
     frame.current?.querySelectorAll<HTMLElement>(".site a[href], .site summary, .site button, .site input, .site textarea, .site select, .site iframe").forEach((element) => {
-      if (!element.closest(".ov")) element.tabIndex = -1;
+      if (!element.closest(".ov, .rte")) element.tabIndex = -1;
     });
   }, [document]);
 
@@ -525,6 +552,10 @@ export function Canvas() {
     store.getState().select(id);
     ui.setState({ tray: "edit", notice: null });
   };
+  // The selection when the pointer went down, before the press focused
+  // (and so selected) the block under it: a click on the text block that
+  // was already selected edits it.
+  const selectedAtPress = useRef<string | null>(null);
 
   const shown = width ?? measured;
   const dragClass = dragType === null ? "" : ` canvas-drag canvas-drag-${dragType === "section" || dragType === "column" ? dragType : "widget"}`;
@@ -557,9 +588,13 @@ export function Canvas() {
             className={`frame${pageMark?.kind === "shut" ? " frame-shut" : ""}`}
             style={frameStyle}
             data-scale={scale < 1 ? scale.toFixed(4) : undefined}
+            onPointerDownCapture={() => {
+              selectedAtPress.current = store.getState().selection;
+            }}
             onClickCapture={(event) => {
               const element = event.target instanceof Element ? event.target : null;
-              if (element?.closest(".ov-bar, .ov-tab, .invite")) return;
+              // The text being edited and its link field take their own clicks.
+              if (element?.closest(".ov-bar, .ov-tab, .invite, .ov-link, .rte")) return;
               // A link or a disclosure of the page does nothing on the canvas.
               event.preventDefault();
               // The theme's header and footer are inert, so a click on them
@@ -570,8 +605,14 @@ export function Canvas() {
                 return;
               }
               pick(event.target);
+              const root = element?.closest<HTMLElement>("[data-block-id]");
+              const id = root?.dataset.blockId;
+              if (id && root.dataset.blockType === "text" && selectedAtPress.current === id) startEditing(env, id, { x: event.clientX, y: event.clientY });
             }}
             onContextMenu={(event) => {
+              // In the text being edited, the browser's own menu (spelling,
+              // paste) rather than the block's.
+              if (event.target instanceof Element && event.target.closest(".rte, .ov-link")) return;
               const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
               const id = element?.dataset.blockId;
               if (!id || store.getState().drag) return;

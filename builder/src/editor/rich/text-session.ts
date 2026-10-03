@@ -193,27 +193,37 @@ export class TextSession {
     ui.setState({ textTools: next });
   }
 
+  // The focus back in the text, at once: TipTap's own focus command waits
+  // for the next frame, and by then the link field that had the focus is
+  // gone and the focus with it, which would close the editor.
+  #focusText(): void {
+    if (!this.editor.isDestroyed) this.editor.view.focus();
+  }
+
   readonly #commands: TextCommands = {
     toggleBold: () => {
-      this.editor.chain().focus().toggleBold().run();
+      this.#focusText();
+      this.editor.chain().toggleBold().run();
     },
     toggleItalic: () => {
-      this.editor.chain().focus().toggleItalic().run();
+      this.#focusText();
+      this.editor.chain().toggleItalic().run();
     },
     openLink: () => {
       this.#linkOpen = true;
       this.#publish();
     },
     closeLink: (focusText) => {
+      if (focusText) this.#focusText();
       this.#linkOpen = false;
       this.#publish();
-      if (focusText) this.editor.commands.focus();
     },
     applyLink: (raw) => {
       const checked = checkLink(raw);
       if (!checked.ok) return checked.reason;
       const { href } = checked;
-      const chain = this.editor.chain().focus().extendMarkRange("link");
+      this.#focusText();
+      const chain = this.editor.chain().extendMarkRange("link");
       if (this.editor.state.selection.empty && !this.editor.isActive("link")) {
         chain.insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
       } else {
@@ -223,7 +233,8 @@ export class TextSession {
       return null;
     },
     removeLink: () => {
-      this.editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      this.#focusText();
+      this.editor.chain().extendMarkRange("link").unsetLink().run();
       this.#commands.closeLink(false);
     },
   };

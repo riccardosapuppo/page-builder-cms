@@ -38,6 +38,11 @@ export interface Decoration {
   // Drawn inside the root after the block's own content: the floating bar,
   // an empty container's drop zone.
   after?: ReactNode;
+  // The block's content while the person edits it on the canvas, in place
+  // of what the page draws: a text block's editor. Given what the page
+  // draws, to show until the editor is there. Only a widget whose content
+  // is rich text calls it; every other block's content is the page's.
+  editing?: (drawn: ReactNode) => ReactNode;
 }
 
 export interface RenderContext {

@@ -1,62 +1,30 @@
-// The text widget's panel: plain paragraphs written in the panel become
-// the widget's document by its props command; formatted text is kept until
-// the person chooses to edit it as plain text; the server's 422 on the
-// document shows on the Text field.
+// The text widget's panel: its Content tab opens the text's editor on the
+// canvas, with the caret at the end, and says how else to get there; the
+// server's 422 on the text's document shows in the panel. The editing
+// itself is the canvas's (../../editor/rich/, e2e/rich-text.spec.ts).
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { describedText, editorKit, widgetPage } from "../../../test/editor-kit.tsx";
-import { makeSetProps } from "../../document/commands.ts";
-import type { Json } from "../../document/json.ts";
 import { BlockPanel } from "../../editor/panels/EditPanel.tsx";
-import type { TextProps } from "../../shared/document.ts";
-import { plainText } from "./plain.ts";
 
-test("paragraphs and line breaks written in the panel become the text's document", () => {
+test("Edit on the page opens the text's editor on the canvas, the caret at the end", () => {
   const kit = editorKit({ document: widgetPage(), selection: "text" });
   kit.render(<BlockPanel id="text" />);
-  const field = screen.getByLabelText("Text");
-  expect((field as HTMLTextAreaElement).value).toBe("Text");
-  fireEvent.change(field, { target: { value: "Meet at the slipway.\nBring tea.\n\nSwims start at slack water." } });
-  fireEvent.blur(field);
-  expect(kit.block("text")?.props).toEqual({
-    doc: {
-      type: "doc",
-      content: [
-        { type: "paragraph", content: [{ type: "text", text: "Meet at the slipway." }, { type: "hardBreak" }, { type: "text", text: "Bring tea." }] },
-        { type: "paragraph", content: [{ type: "text", text: "Swims start at slack water." }] },
-      ],
-    },
-  });
-  expect(kit.lastCommand()).toMatchObject({ kind: "props", label: "Changed Text in Widgets" });
+  const button = screen.getByRole("button", { name: "Edit on the page" });
+  expect(describedText(button)).toBe("Or click the text on the page, or press Enter with it selected. Select words to make them bold, italic or a link; Esc leaves the text.");
+  expect(kit.ui.getState().editingText).toBeNull();
+  fireEvent.click(button);
+  expect(kit.ui.getState().editingText).toEqual({ id: "text", at: "end" });
+  expect(kit.store.getState().selection).toBe("text");
+  // The page itself is not touched by opening the editor.
+  expect(kit.store.getState().past).toEqual([]);
 });
 
-test("formatted text is kept as it is until the person edits it as plain text", () => {
-  const kit = editorKit({ document: widgetPage(), selection: "text" });
-  const formatted = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Cold", marks: [{ type: "bold" }] }, { type: "text", text: " water." }] }] };
-  const made = makeSetProps(kit.doc(), "text", { doc: formatted as unknown as Json });
-  if (!made.ok) throw new Error(made.error.message);
-  kit.store.getState().dispatch(made.command);
-  kit.render(<BlockPanel id="text" />);
-
-  expect(screen.queryByLabelText("Text")).toBeNull();
-  expect(screen.getByText("Cold").tagName).toBe("STRONG");
-  fireEvent.click(screen.getByRole("button", { name: "Edit as plain text" }));
-  const field = screen.getByLabelText("Text");
-  expect((field as HTMLTextAreaElement).value).toBe("Cold water.");
-  // Leaving the field unchanged changes nothing.
-  fireEvent.blur(field);
-  expect(plainText((kit.block("text")!.props as TextProps).doc)).toBeNull();
-  fireEvent.change(field, { target: { value: "Cold water, warm tea." } });
-  fireEvent.blur(field);
-  expect(plainText((kit.block("text")!.props as TextProps).doc)).toBe("Cold water, warm tea.");
-});
-
-test("the server's 422 on the text's document shows on the Text field", () => {
+test("the server's 422 on the text's document shows in the text's panel", () => {
   const kit = editorKit({ document: widgetPage(), selection: "text" });
   kit.render(<BlockPanel id="text" />);
-  act(() => kit.refuse("text", "/props/doc", "pattern", "does not match the pattern"));
-  const field = screen.getByLabelText("Text");
-  expect(field.getAttribute("aria-invalid")).toBe("true");
-  expect(describedText(field)).toContain("Write at least one visible character.");
+  act(() => kit.refuse("text", "/props/doc/content/0/content/0/marks/0/attrs/href", "pattern", "does not match the pattern"));
+  expect(screen.getByText(/The server refused the last save of this widget/)).toBeTruthy();
+  expect(screen.getByText("does not match the pattern")).toBeTruthy();
 });
