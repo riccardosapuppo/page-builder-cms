@@ -636,7 +636,7 @@ function Invite() {
             </button>
           ))}
         </div>
-        <p className="invite-alt"><Icon name="block" className="i i-xs" />Widgets go inside a column, so the section comes first; then add them from Add, on the left.</p>
+        <p className="invite-alt"><Icon name="block" className="i i-xs" />Widgets go inside a column, so the section comes first; then drag them in from Add, on the left.</p>
       </div>
       {picking && (
         <ImagePicker

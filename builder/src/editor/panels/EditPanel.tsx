@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type ComponentType, type KeyboardEv
 import { makeSetPage, REMOVE } from "../../document/commands.ts";
 import type { Block, WidgetBlock } from "../../shared/document.ts";
 import type { FieldError } from "../../storage/adapter.ts";
+import { cmsAddress } from "../../storage/config.ts";
 import { WIDGET_PANELS } from "../../widgets/panels.ts";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
@@ -13,6 +14,7 @@ import { useEditor, useEnv, useRun, useUi } from "../context.tsx";
 import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, placeLine } from "../names.ts";
+import { shownAddress } from "../Publish.tsx";
 import { useSession } from "../session.tsx";
 import { PANEL_TABS, type PanelTab } from "../ui-store.ts";
 import { AdvancedTab } from "./AdvancedTab.tsx";
@@ -93,7 +95,7 @@ function AddressField() {
   const hint = current.home
     ? "This is the home page: visitors find it at the site’s root address, /."
     : live === null
-      ? `Visitors will find the page at /${current.slug} once it is published.`
+      ? shownAddress(cmsAddress(`/${current.slug}`, session.cmsOrigin))
       : live === `/${current.slug}`
         ? `Visitors find the page at ${live}.`
         : `Live at ${live}; the next publish moves it to /${current.slug}, and the old address leads to the new one.`;

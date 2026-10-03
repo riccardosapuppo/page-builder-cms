@@ -27,6 +27,12 @@ test("title and description change the page by the page command", () => {
   expect(kit.lastCommand()?.label).toBe("Removed the page description");
 });
 
+test("a page not published yet shows the address it will have on the CMS, as the design does", () => {
+  const kit = editorKit({ document: page(), session: { current, cmsOrigin: "http://127.0.0.1:3900" } });
+  kit.render(<EditPanel />);
+  expect(describedText(screen.getByLabelText("Address"))).toBe("127.0.0.1:3900/winter-series");
+});
+
 test("the address goes through the adapter, and its refusal shows on the Address field", async () => {
   const asked: string[] = [];
   const kit = editorKit({
