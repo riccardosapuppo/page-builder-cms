@@ -11,10 +11,9 @@
 // read it.
 //
 // Undo and redo are here already, on the store's history: stage 3 adds
-// their buttons and the history panel. Publish, preview and the named
-// version arrive with what they do, and the text of a block is edited on
-// the canvas from stage 3: until then their keys do nothing, so they are
-// not listed.
+// their buttons and the history panel. The named version arrives with the
+// versions, and the text of a block is edited on the canvas from stage 3:
+// until then their keys do nothing, so they are not listed.
 
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
@@ -22,6 +21,7 @@ export type KeyAction =
   | "addTile"
   | "copy" | "paste" | "duplicate" | "delete"
   | "undo" | "redo"
+  | "preview" | "publish"
   | "showShortcuts";
 
 // Where an entry works:
@@ -42,7 +42,9 @@ export interface Chord {
   // KeyboardEvent.key: "ArrowDown", "Delete", "z", "?", " ". Letters are
   // compared without case, since Shift changes them.
   key: string;
-  // KeyboardEvent.code, for the drag library, which reads codes.
+  // KeyboardEvent.code, for the drag library, which reads codes, and for a
+  // letter pressed with Alt, which some keyboards turn into another
+  // character (Option+P is "π" on a Mac).
   code?: string;
   // Ctrl, or Cmd on a Mac.
   mod?: boolean;
@@ -50,8 +52,9 @@ export interface Chord {
   alt?: boolean;
 }
 
-// In the approved window's order; Adding stands where Publish will.
-export const KEY_GROUPS = ["Selection", "Moving", "Editing", "History", "Adding", "This list"] as const;
+// In the approved window's order, with Adding, which it does not have,
+// after Publish.
+export const KEY_GROUPS = ["Selection", "Moving", "Editing", "History", "Publish", "Adding", "This list"] as const;
 export type KeyGroup = (typeof KEY_GROUPS)[number];
 
 export interface KeyEntry {
@@ -97,6 +100,9 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "undo", group: "History", label: "Undo", chords: [{ key: "z", mod: true }], scope: "editor", via: "keymap" },
   { action: "redo", group: "History", label: "Redo", chords: [{ key: "z", mod: true, shift: true }, { key: "y", mod: true }], scope: "editor", via: "keymap" },
 
+  { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", mod: true, alt: true }], scope: "editor", via: "keymap" },
+  { action: "publish", group: "Publish", label: "Publish now", chords: [{ key: "Enter", mod: true, shift: true }], scope: "editor", via: "keymap" },
+
   { action: "showShortcuts", group: "This list", label: "Show keyboard shortcuts", chords: [{ key: "?" }], scope: "editor", via: "keymap" },
 ];
 
@@ -109,6 +115,7 @@ export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
 // The keys of an event, as the chords name them.
 export interface KeyPress {
   key: string;
+  code?: string;
   ctrlKey: boolean;
   metaKey: boolean;
   shiftKey: boolean;
@@ -121,7 +128,10 @@ export function matches(chord: Chord, event: KeyPress): boolean {
   // "?" is Shift and "/" on some keyboards and a key of its own on others.
   if (chord.key === "?") return event.key === "?";
   if (Boolean(chord.shift) !== event.shiftKey) return false;
-  return chord.key.length === 1 ? event.key.toLowerCase() === chord.key.toLowerCase() : event.key === chord.key;
+  if (chord.key.length !== 1) return event.key === chord.key;
+  if (event.key.toLowerCase() === chord.key.toLowerCase()) return true;
+  // With Alt, the key's character may be another one; its place is not.
+  return Boolean(chord.alt && chord.code && event.code === chord.code);
 }
 
 // The entries a key press is, in the table's order.

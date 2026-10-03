@@ -1,10 +1,13 @@
 // The left tray (design/shots/drag.png and editor.png): two tabs, Add,
-// the widget panel, and Edit, the panel of the selection or of the page.
+// the widget panel, and Edit, the panel of the selection or of the page;
+// or, opened from the top bar or the mark's menu, Site style
+// (design/shots/site-style.png), with its own close button.
 import { useId, useRef, type KeyboardEvent } from "react";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { Palette } from "./Palette.tsx";
 import { EditPanel } from "./panels/EditPanel.tsx";
+import { SiteStylePanel } from "./SiteStylePanel.tsx";
 
 const TABS = ["add", "edit"] as const;
 
@@ -20,6 +23,19 @@ export function LeftTray() {
     ui.getState().setTray(next);
     refs.current[TABS.indexOf(next)]?.focus();
   };
+  if (tray === "site-style") {
+    return (
+      <aside className="tray tray-left chrome" aria-label="Site style">
+        <SiteStylePanel
+          onClose={() => {
+            ui.getState().setTray("edit");
+            // The panel goes; the focus goes back to the button that opens it.
+            requestAnimationFrame(() => document.querySelector<HTMLElement>(".topbar [data-site-style]")?.focus());
+          }}
+        />
+      </aside>
+    );
+  }
   return (
     <aside className="tray tray-left chrome" aria-label="Widgets and properties">
       <section className="view">

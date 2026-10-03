@@ -6,7 +6,7 @@
 import type { Page } from "@playwright/test";
 import { entryCaps, KEYMAP, type KeyAction } from "../src/editor/keymap.ts";
 import { block, caption, childIds } from "./helpers/canvas.ts";
-import { column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
+import { cms, column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -16,6 +16,9 @@ const fixture = () => [
     column("c2", [widget("d", "divider", {})]),
   ]),
 ];
+
+// The page the run makes, for the exercises that open it on the CMS.
+let opened = { id: 0, slug: "" };
 
 const selected = (page: Page) => page.locator(".canvas [data-editor-selected=true]").getAttribute("data-block-id");
 const focusedId = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.blockId ?? null);
@@ -117,6 +120,25 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await press(page, pressed, "Control+y");
     await expect.poll(async () => (await childIds(page, "c2")).length).toBe(2);
   },
+  async preview(page, pressed) {
+    // The draft as the CMS serves it, in a tab of its own, on the CMS.
+    const opening = page.context().waitForEvent("page");
+    await press(page, pressed, "Control+Alt+p");
+    const tab = await opening;
+    await tab.waitForURL(`${cms()}/preview/${opened.id}`);
+    await expect(tab).toHaveTitle("Preview: Every key");
+    await expect(tab.getByRole("heading", { name: "Alpha" })).toBeVisible();
+    await tab.close();
+  },
+  async publish(page, pressed) {
+    await block(page, "a").click();
+    await press(page, pressed, "Control+Shift+Enter");
+    await expect(page.locator(".chip")).toHaveText("Published");
+    await expect(page.locator(".notice")).toContainText(`Published: visitors see this page at ${new URL(cms()).host}/${opened.slug}.`);
+    const live = await page.request.get(`${cms()}/${opened.slug}`);
+    expect(live.status()).toBe(200);
+    expect(await live.text()).toContain("Alpha");
+  },
   async showShortcuts(page, pressed) {
     await block(page, "a").click();
     await press(page, pressed, "?");
@@ -151,8 +173,8 @@ async function press(page: Page, pressed: Set<string>, keys: string) {
 
 test("every entry of the keyboard map does what the window says, by every one of its keys", { tag: "@a11y" }, async ({ page, request, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  const { id } = await makePage(request, "Every key", fixture());
-  await open(page, id);
+  opened = await makePage(request, "Every key", fixture());
+  await open(page, opened.id);
   const pressed = new Set<string>();
   const done: KeyAction[] = [];
   for (const entry of KEYMAP) {

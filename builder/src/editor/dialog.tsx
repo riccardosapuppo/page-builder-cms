@@ -21,11 +21,15 @@ interface DialogProps {
   closeLabel?: string;
   // A line under everything, on the footer's tint.
   note?: ReactNode;
+  // A small window with no header bar (the About window): what is drawn
+  // above its title, then the title, the body and the footer, one under
+  // the other; its footer closes it.
+  plain?: { lead: ReactNode };
 }
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
-export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note }: DialogProps) {
+export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -75,14 +79,25 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
           }
         }}
       >
-        <header className="dlg-head">
-          <h2 id={`${id}-title`}>{title}</h2>
-          {tools}
-          <button className="ibtn" type="button" aria-label={closeLabel} onClick={() => close.current()}><Icon name="close" /></button>
-        </header>
-        <div className={`dlg-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{children}</div>
-        {footer && <footer className="dlg-foot">{footer}</footer>}
-        {note && <footer className="dlg-foot dlg-foot-note">{note}</footer>}
+        {plain ? (
+          <>
+            {plain.lead}
+            <h2 id={`${id}-title`}>{title}</h2>
+            {children}
+            {footer}
+          </>
+        ) : (
+          <>
+            <header className="dlg-head">
+              <h2 id={`${id}-title`}>{title}</h2>
+              {tools}
+              <button className="ibtn" type="button" aria-label={closeLabel} onClick={() => close.current()}><Icon name="close" /></button>
+            </header>
+            <div className={`dlg-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{children}</div>
+            {footer && <footer className="dlg-foot">{footer}</footer>}
+            {note && <footer className="dlg-foot dlg-foot-note">{note}</footer>}
+          </>
+        )}
       </div>
     </>,
     document.body,

@@ -8,13 +8,15 @@
 // Copy and paste go through the browser's copy and paste events, which
 // Ctrl+C and Ctrl+V raise wherever the focus is: they carry the system
 // clipboard both ways without asking the person for a permission.
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { makeDelete, makeDuplicate } from "../document/commands.ts";
 import { runCommand, runRedo, runUndo, focusBlock, placeFocus, regionOf, type Region } from "./act.ts";
 import { copySelection, pasteText } from "./clipboard.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
+import { useOptionalSession, type Session } from "./session.tsx";
+import { publishPaused } from "./Publish.tsx";
 
 const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
 
@@ -38,7 +40,9 @@ export function inScope(scope: Scope, target: EventTarget | null): boolean {
 
 type Handler = (region: Region) => boolean;
 
-function handlers(env: EditorEnv): Partial<Record<KeyAction, Handler>> {
+// The page session as it is when the key is pressed: it changes as pages
+// open and saves land, the listener does not.
+function handlers(env: EditorEnv, session: () => Session | null): Partial<Record<KeyAction, Handler>> {
   const { store, ui, newId } = env;
   const select = (id: string | null) => {
     if (id === null) return false;
@@ -84,6 +88,21 @@ function handlers(env: EditorEnv): Partial<Record<KeyAction, Handler>> {
       runRedo(env, region === "panel" ? "canvas" : region);
       return true;
     },
+    preview: () => {
+      const now = session();
+      if (!now?.current) return false;
+      now.preview();
+      return true;
+    },
+    publish: () => {
+      const now = session();
+      if (!now?.current || !now.capabilities.publish) return false;
+      // The same pause the button shows, said instead of done.
+      const why = publishPaused(now.autosave?.getSnapshot() ?? null, store.getState().document.sections.length);
+      if (why) ui.getState().say(why);
+      else if (!now.publishing) void now.publish();
+      return true;
+    },
     showShortcuts: () => {
       ui.getState().setShortcutsOpen(true);
       return true;
@@ -94,8 +113,13 @@ function handlers(env: EditorEnv): Partial<Record<KeyAction, Handler>> {
 // Mounted once, by the shell (EditorKeys).
 export function useEditorKeys(): void {
   const env = useEnv();
+  const session = useOptionalSession();
+  const latest = useRef(session);
+  useLayoutEffect(() => {
+    latest.current = session;
+  });
   useEffect(() => {
-    const table = handlers(env);
+    const table = handlers(env, () => latest.current);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;
       // A block picked up with the keyboard: the drag library's keys.

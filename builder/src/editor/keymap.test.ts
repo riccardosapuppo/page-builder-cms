@@ -40,6 +40,13 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("?"))).toEqual(["showShortcuts"]);
   expect(actions(press("?", { ctrlKey: true }))).toEqual([]);
   expect(matches({ key: "c", mod: true }, press("C", { ctrlKey: true, shiftKey: true }))).toBe(false);
+  expect(actions(press("Enter", { ctrlKey: true, shiftKey: true }))).toEqual(["publish"]);
+  expect(actions(press("Enter", { ctrlKey: true }))).toEqual([]);
+  expect(actions(press("p", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  // Cmd+Option+P on a Mac types "π": the key's place still says P.
+  expect(actions(press("π", { metaKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  expect(actions(press("π", { metaKey: true, code: "KeyP" }))).toEqual([]);
+  expect(actions(press("p", { ctrlKey: true, code: "KeyP" }))).toEqual([]);
 });
 
 test("the drag library's keys are the table's", () => {
@@ -59,4 +66,8 @@ test("the window and the menus name the keys as the design does", () => {
   expect(ariaKeyShortcuts(entry("duplicate"))).toBe("Control+D");
   expect(ariaKeyShortcuts(entry("delete"))).toBe("Delete Backspace");
   expect(ariaKeyShortcuts(entry("pickUp"))).toBe("Space");
+  expect(entryCaps(entry("publish"))).toEqual([{ text: "Ctrl" }, { text: "Shift" }, { text: "Enter" }]);
+  expect(entryCaps(entry("preview"))).toEqual([{ text: "Ctrl" }, { text: "Alt" }, { text: "P" }]);
+  expect(entryKeysText(entry("publish"))).toBe("Ctrl+Shift+Enter");
+  expect(ariaKeyShortcuts(entry("preview"))).toBe("Control+Alt+P");
 });

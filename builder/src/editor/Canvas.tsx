@@ -47,6 +47,7 @@ import { useInsert } from "./insert.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
+import { useOptionalSession } from "./session.tsx";
 
 // How a block stands to the selection, for the marks it draws.
 type Relation =
@@ -397,6 +398,7 @@ function Invite() {
   const { store, newId } = useEnv();
   const { insertMade } = useInsert();
   const [picking, setPicking] = useState(false);
+  const canPublish = useOptionalSession()?.capabilities.publish ?? false;
   const addPreset = (preset: Preset, image?: ImageRef) => {
     const doc = store.getState().document;
     return insertMade(makeInsert(doc, presetSection(doc, preset, newId, image), { parentId: null, index: doc.sections.length }));
@@ -411,6 +413,7 @@ function Invite() {
       <div className="invite-zone">
         <h2>Start this page with a section</h2>
         <p>A section is a band across the page. Pick its columns; you can change them later.</p>
+        {canPublish && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
         <div className="invite-layouts" role="group" aria-label="Add a section">
           {[1, 2, 3, 4].map((n) => (
             <button key={n} type="button" className="layout-btn" onClick={() => insertMade(makeInsertSection(store.getState().document, n, 0, newId))}>

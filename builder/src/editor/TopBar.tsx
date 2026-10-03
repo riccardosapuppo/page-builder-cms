@@ -1,17 +1,19 @@
 // The top bar of the approved design (design/shots/editor.png): the mark
 // and its menu, the open page and the switch to another one, whether the
-// page is live, the device the canvas previews, and where the edits are.
+// page is live, Site style, the device the canvas previews, where the edits
+// are, Preview and Publish.
 //
 // What the design draws here and the editor does not have yet is not drawn
-// (no control that does nothing): undo, redo, history, site style,
-// preview and Publish come with the parts of the editor that do them.
+// (no control that does nothing): undo, redo and the history come with
+// stage 3.
 import { useRef, useState, useSyncExternalStore } from "react";
-import type { SaveSnapshot } from "../storage/autosave.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon, Mark } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
+import { changesNotLive, PreviewButton, PublishButton } from "./Publish.tsx";
+import { changes, SaveState, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useSession, type OpenPage } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { PREVIEWS, type Preview } from "./ui-store.ts";
@@ -23,25 +25,19 @@ const PREVIEW_LABELS: Readonly<Record<Preview, { name: string; title: string; ic
   phone: { name: "Phone", title: `Phone: the canvas at ${PREVIEW_WIDTHS.phone} wide`, icon: "phone" },
 };
 
-// "Sep 28 at 7:02 AM", in the editor's one locale.
-export function when(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return `${day} at ${time}`;
-}
-
 export function TopBar() {
   const session = useSession();
   const { ui } = useEnv();
   const preview = useUi((u) => u.preview);
+  const tray = useUi((u) => u.tray);
   const title = useSessionTitle();
   const [menu, setMenu] = useState<"app" | "pages" | null>(null);
   const [creating, setCreating] = useState(false);
   const markButton = useRef<HTMLButtonElement>(null);
   const pageButton = useRef<HTMLButtonElement>(null);
   const current = session.current;
+  const siteStyleOpen = tray === "site-style";
+  const toggleSiteStyle = (open: boolean) => ui.getState().setTray(open ? "site-style" : "edit");
 
   return (
     <header className="topbar chrome">
@@ -60,15 +56,33 @@ export function TopBar() {
         </button>
         {menu === "app" && (
           <Menu label="Page Builder CMS" className="menu-app" button={markButton} onClose={() => setMenu(null)}>
+            <button
+              className="menu-item"
+              role="menuitem"
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                setMenu(null);
+                toggleSiteStyle(true);
+                // The menu goes; the focus goes to the panel it opened.
+                requestAnimationFrame(() => document.querySelector<HTMLElement>(".site-style [data-autofocus]")?.focus());
+              }}
+            >
+              <Icon name="style" /><span>Site style</span>
+            </button>
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => setMenu("pages")}>
               <Icon name="page" /><span>All pages</span>
             </button>
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); setCreating(true); }}>
+            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); markButton.current?.focus(); setCreating(true); }}>
               <Icon name="plus" /><span>New page…</span>
             </button>
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); ui.getState().setShortcutsOpen(true); }}>
+            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
               <Icon name="keyboard" /><span>Keyboard shortcuts</span>
               <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
+            </button>
+            <hr className="menu-sep" />
+            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setAboutOpen(true); }}>
+              <Icon name="info" /><span>About Page Builder CMS</span>
             </button>
           </Menu>
         )}
@@ -106,12 +120,15 @@ export function TopBar() {
               </button>
             ))}
             {session.pages.length > 0 && <hr className="menu-sep" />}
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); setCreating(true); }}>
+            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); pageButton.current?.focus(); setCreating(true); }}>
               <Icon name="plus" /><span>New page…</span>
             </button>
           </Menu>
         )}
         {current && <PublishedChip page={current} />}
+        <button className="btn btn-quiet" type="button" data-site-style="" aria-pressed={siteStyleOpen} title="The site's palette and type scale, for every page" onClick={() => toggleSiteStyle(!siteStyleOpen)}>
+          <Icon name="style" />Site style
+        </button>
       </div>
 
       <div className="tb-center">
@@ -126,6 +143,8 @@ export function TopBar() {
 
       <div className="tb-right">
         {session.autosave && <SaveState />}
+        <PreviewButton />
+        <PublishButton />
       </div>
       {creating && <NewPageDialog onClose={() => setCreating(false)} />}
     </header>
@@ -138,14 +157,6 @@ function useSessionTitle(): string {
   return useSyncExternalStore(store.subscribe, () => store.getState().document.title);
 }
 
-const NEVER: SaveSnapshot | null = null;
-const noSubscription = () => () => {};
-
-function useSaveSnapshot(): SaveSnapshot | null {
-  const { autosave } = useSession();
-  return useSyncExternalStore(autosave ? autosave.subscribe : noSubscription, autosave ? autosave.getSnapshot : () => NEVER);
-}
-
 // Whether visitors see the page, and how much of it: each save since the
 // draft revision the live version was taken from is a change visitors do
 // not see yet (the CMS's draftRevision), and a new address waits for the
@@ -155,38 +166,15 @@ export function PublishedChip({ page }: { page: OpenPage }) {
   if (!page.published) {
     return <span className="chip chip-draft"><span className="dot-draft" aria-hidden="true" />Not published yet</span>;
   }
-  const revision = snapshot?.revision ?? page.revision;
-  const changes = Math.max(0, revision - page.published.draftRevision);
+  const notLive = changesNotLive(page, snapshot);
   const moved = page.published.slug !== page.slug && !page.home;
   const since = `Published ${when(page.published.publishedAt)}.`;
-  if (changes > 0) {
-    const what = `${changes} ${changes === 1 ? "change" : "changes"}`;
-    return <span className="chip chip-draft" title={`${since} Your ${what} since then are saved but not live yet.`}><span className="dot-part" aria-hidden="true" />Published, {what} not live</span>;
+  if (notLive > 0) {
+    const what = changes(notLive);
+    return <span className="chip chip-draft" title={`${since} Your ${what} since then are saved but not live yet: Publish sends them.`}><span className="dot-part" aria-hidden="true" />Published, {what} not live</span>;
   }
   if (moved) {
-    return <span className="chip chip-draft" title={`${since} The page’s new address, /${page.slug}, is not live yet.`}><span className="dot-part" aria-hidden="true" />Published, new address not live</span>;
+    return <span className="chip chip-draft" title={`${since} The page’s new address, /${page.slug}, is not live yet: Publish sends it.`}><span className="dot-part" aria-hidden="true" />Published, new address not live</span>;
   }
   return <span className="chip chip-draft" title={since}><span className="dot-live" aria-hidden="true" />Published</span>;
-}
-
-// Where the edits are. The server's answers decide: saved means the server
-// has every edit.
-function SaveState() {
-  const snapshot = useSaveSnapshot();
-  if (!snapshot) return null;
-  switch (snapshot.phase) {
-    case "saved":
-      return <span className="save-state" role="status" title={snapshot.savedAt ? `All changes saved at ${when(snapshot.savedAt)}` : undefined}><Icon name="check" />Saved</span>;
-    case "waiting":
-    case "saving":
-      return <span className="save-state" role="status"><Icon name="spinner" className="i spin" />Saving…</span>;
-    case "retrying":
-      return <span className="save-state save-warn" role="status"><Icon name="warning" />Not saved, retrying</span>;
-    case "conflict":
-      return <span className="save-state save-warn" role="status"><Icon name="warning" />Changed in another tab</span>;
-    case "invalid":
-      return <span className="save-state save-err" role="status" title="The server refused a value: it is marked in the navigator and in the panel."><Icon name="error" />Not saved: a value was refused</span>;
-    case "refused":
-      return <span className="save-state save-err" role="status" title={snapshot.failure?.message}><Icon name="error" />Not saved</span>;
-  }
 }

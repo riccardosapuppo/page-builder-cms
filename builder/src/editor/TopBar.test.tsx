@@ -11,7 +11,7 @@ import type { OpenPage } from "./session.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 const live: Published = { slug: "winter-series", versionNumber: 4, draftRevision: 3, publishedAt: "2026-09-28T07:02:00.000Z" };
-const open = (changes: Partial<OpenPage>): OpenPage => ({ id: 1, slug: "winter-series", home: false, published: live, revision: 3, ...changes });
+const open = (changes: Partial<OpenPage>): OpenPage => ({ id: 1, slug: "winter-series", home: false, published: live, revision: 3, links: { preview: "/preview/1", live: "/winter-series" }, ...changes });
 const chip = () => document.querySelector(".chip")?.textContent;
 
 test("the chip counts the saves visitors do not see yet", () => {

@@ -9,7 +9,7 @@ import { page } from "../../../test/document-page.ts";
 import { errorsByBlock } from "../../storage/adapter.ts";
 import { EditPanel } from "./EditPanel.tsx";
 
-const current = { id: 7, slug: "winter-series", home: false, published: null, revision: 3 };
+const current = { id: 7, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
 
 test("title and description change the page by the page command", () => {
   const kit = editorKit({ document: page(), session: { current } });

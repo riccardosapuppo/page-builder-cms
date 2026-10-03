@@ -11,6 +11,7 @@
    inside .site the theme's rules stand as on the published page.
    1. Font and tokens   2. Chrome   3. Canvas   4. Menus and dialogs
    5. Dragging, the keyboard and the block's menu
+   6. Saving, publishing, site style and About
    ========================================================================== */
 
 /* ---------- 1. Font and tokens ---------- */
@@ -80,10 +81,12 @@ body {
 }
 
 /* ---------- 2. Chrome ---------- */
+/* Three rows: the top bar, the conflict banner (empty, so no height, while
+   there is no conflict), and the trays with the canvas. */
 .app {
   display: grid;
   grid-template-columns: var(--tray-left) minmax(0, 1fr) var(--tray-right);
-  grid-template-rows: 52px minmax(0, 1fr);
+  grid-template-rows: 52px auto minmax(0, 1fr);
   height: 100vh;
 }
 .app.nav-closed { grid-template-columns: var(--tray-left) minmax(0, 1fr) 56px; }
@@ -156,8 +159,8 @@ body {
 
 /* Trays */
 .tray { display: flex; flex-direction: column; min-height: 0; background: var(--plate); border-radius: var(--r-tray); overflow: hidden; }
-.tray-left { grid-column: 1; grid-row: 2; margin: 8px 0 8px 8px; }
-.tray-right { grid-column: 3; grid-row: 2; margin: 8px 8px 8px 0; }
+.tray-left { grid-column: 1; grid-row: 3; margin: 8px 0 8px 8px; }
+.tray-right { grid-column: 3; grid-row: 3; margin: 8px 8px 8px 0; }
 .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .tray-head { padding: 12px 12px 4px; }
 .tray-head-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 8px 6px 16px; }
@@ -314,7 +317,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .nav-foot { flex: none; padding: 10px 16px 12px; color: var(--steel); font-size: 12px; line-height: 16px; }
 
 /* ---------- 3. Canvas: the bench the page sits on ---------- */
-.canvas { grid-column: 2; grid-row: 2; position: relative; min-width: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.canvas { grid-column: 2; grid-row: 3; position: relative; min-width: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 /* The page starts a bar's height below the width rule: the design draws
    the site's header above the first section, where its floating bar and
    its tab go; the canvas does not draw that header, so the bench keeps the
@@ -558,3 +561,92 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 /* The block's menu (design/shots-extra/context.png). */
 .menu-context { width: 236px; }
 .menu-item-danger, .menu-item-danger > .i { color: var(--err); }
+
+/* ---------- 6. Saving, publishing, site style and About ---------- */
+/* Preview and the split Publish button (design/shots/publish.png). Publish
+   that waits is the design's split-off: grey, and not pressable. */
+.split { display: inline-flex; gap: 1px; margin-left: 4px; }
+.split-main { border-radius: var(--r-control) 0 0 var(--r-control); padding: 0 16px; }
+.split-more { border-radius: 0 var(--r-control) var(--r-control) 0; padding: 0 6px; }
+.split-more > .i { margin-left: 0; }
+.split-more[aria-expanded="true"] .i { transform: rotate(180deg); }
+.split-off .btn { background: var(--key); color: var(--steel); box-shadow: none; cursor: not-allowed; }
+.tb-right > a.btn { margin-left: 2px; }
+
+.menu-publish { top: 56px; right: 8px; width: 372px; }
+.menu-item-rich strong { font-weight: 600; }
+.menu-item-rich .menu-addr { color: var(--graphite); font-weight: 500; }
+.menu-item-rich > span.keys { flex-direction: row; gap: 3px; margin-top: 0; }
+.menu-link:hover strong { text-decoration: underline; }
+
+/* The conflict, under the top bar and across the window
+   (design/shots/save-states.png). */
+.banner-inplace { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 16px 8px 20px; background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); font-size: 13px; line-height: 18px; z-index: 13; }
+.banner-inplace > .i { color: var(--warn); }
+.banner-inplace p { flex: 1; }
+.banner-inplace strong { font-weight: 700; }
+.banner-actions { display: flex; gap: 6px; flex: none; }
+/* On the amber tint the quiet button takes a graphite edge, so its
+   boundary keeps 3 to 1. */
+.banner-inplace .btn-secondary { border-color: var(--graphite); box-shadow: inset 0 -1px 0 var(--graphite); }
+.banner-inplace .btn:disabled { cursor: progress; }
+
+/* A save whose outcome is unknown: why, and Retry now; at the foot of the
+   canvas's left side, apart from the notice in its middle. */
+.toast { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 8px; background: var(--graphite); color: var(--white); font-size: 12px; line-height: 16px; box-shadow: 0 10px 22px -12px rgb(27 31 36 / .6); }
+.toast-save { position: fixed; left: calc(var(--tray-left) + 24px); bottom: 20px; z-index: 41; width: 332px; }
+.toast strong { font-weight: 700; }
+.toast-busy { color: var(--alloy); white-space: nowrap; }
+
+.notice-link { display: inline-flex; align-items: center; gap: 4px; color: var(--white); font-weight: 600; white-space: nowrap; text-underline-offset: 2px; }
+.notice-link:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+
+.invite .invite-publish { display: flex; align-items: center; gap: 6px; max-width: none; margin-top: 12px; color: var(--graphite); font-size: 13px; line-height: 18px; }
+.invite-publish .i { width: 16px; height: 16px; stroke-width: 1.875; color: var(--steel); }
+
+/* Site style (design/shots/site-style.png). */
+.tray-head-title > div > h2 { font-size: 14px; line-height: 20px; font-weight: 600; }
+.tray-head-title > div > p { color: var(--steel); font-size: 12px; line-height: 16px; }
+.tray-head-title > div > p.style-save:empty { display: none; }
+.tray-head-title > div > p.error { color: var(--err); }
+.slots { list-style: none; padding: 0; display: grid; gap: 2px; margin-bottom: 14px; }
+.slot, .slot-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px; border-radius: var(--r-control); }
+.slot-pick { display: block; padding: 0; }
+.slot-pick > .slot-row { width: 100%; padding: 0 8px; }
+.slot-pick > .slot-row:hover { background: var(--key); }
+.slot-chev { color: var(--steel); }
+.slot-row[aria-expanded="true"] .slot-chev { transform: rotate(180deg); }
+.slot-open { padding: 2px 0 12px; background: var(--key); }
+.slot-open .slot-editor { padding: 0 8px; }
+.slot-chip { width: 28px; height: 28px; border-radius: var(--r-control); background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
+.slot-name { display: flex; flex-direction: column; font-weight: 600; line-height: 16px; }
+.slot-name small { font-size: 12px; font-weight: 400; color: var(--steel); }
+.slot-name .slot-edited { color: var(--graphite); font-weight: 600; }
+.tones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+.tones button { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-size: 12px; line-height: 14px; color: var(--steel); text-align: center; border-radius: 5px; }
+.tones button::before { content: ""; height: 26px; border-radius: 5px; background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
+.tones button.is-on { color: var(--graphite); font-weight: 600; }
+/* Chosen: an inset ring and the check, inside the chip; focus stays the
+   ring outside. */
+.tones button.is-on::before { box-shadow: inset 0 0 0 2px var(--graphite), inset 0 0 0 4px var(--white); }
+.tones button .pick-check { right: -4px; top: -6px; }
+.checks { list-style: none; padding: 0; display: grid; gap: 3px; margin-top: 10px; }
+.checks li { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 16px; color: var(--graphite); }
+.checks .i { width: 16px; height: 16px; stroke-width: 2; flex: none; }
+.checks .pass .i { color: var(--live); }
+.checks .fail .i { color: var(--warn); }
+.slot-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-left: 22px; }
+.scale { list-style: none; padding: 0; margin-top: 8px; }
+.field-tight { margin-top: 0; }
+.scale li { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; min-height: 26px; padding: 0 8px; border-radius: var(--r-control); }
+.scale li:hover { background: var(--key); }
+.scale-aa { font-family: "Archivo", sans-serif; line-height: 1; color: var(--graphite); }
+.scale-aa.serif { font-family: "Source Serif 4", serif; }
+.scale-name { font-weight: 500; }
+.scale-num { font-size: 12px; color: var(--steel); }
+
+/* About (design/shots-extra/about.png). */
+.dlg-about { width: 440px; padding: 28px; align-items: flex-start; gap: 10px; }
+.dlg-about h2 { margin-top: 6px; font-size: 16px; line-height: 22px; font-weight: 600; }
+.about-line { font-size: 14px; line-height: 20px; }
+.dlg-about .btn { margin-top: 10px; }

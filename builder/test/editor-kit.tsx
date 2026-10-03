@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import type { Command } from "../src/document/commands.ts";
 import { locate, pointerOf } from "../src/document/tree.ts";
 import { EditorProvider, type EditorEnv } from "../src/editor/context.tsx";
-import { SessionProvider, type Session } from "../src/editor/session.tsx";
+import { emptySession, SessionProvider, type Session } from "../src/editor/session.tsx";
 import { createUiStore, type UiStore } from "../src/editor/ui-store.ts";
 import type { Block, PageDocument, WidgetType } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -61,15 +61,7 @@ export function editorKit(options: { document: PageDocument; selection?: string 
   if (options.selection) store.getState().select(options.selection);
   const ui = createUiStore();
   const env: EditorEnv = { store, ui, clock, newId: counter("n") };
-  const session: Session = {
-    pages: [],
-    current: null,
-    autosave: null,
-    openPage: async () => null,
-    createPage: async () => null,
-    setSlug: async () => null,
-    ...options.session,
-  };
+  const session: Session = emptySession(options.session);
   return {
     env,
     store,
