@@ -9,7 +9,7 @@ import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { Canvas, relationOf } from "./Canvas.tsx";
+import { Canvas, dimensionOf, relationOf } from "./Canvas.tsx";
 
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
 
@@ -132,4 +132,28 @@ test("how a block stands to the selection", () => {
   expect(relationOf(doc, "h1", "join")).toBeNull();
   expect(relationOf(doc, "hero", "c1")).toBeNull();
   expect(relationOf(doc, null, "hero")).toBe("entry");
+});
+
+test("the dimension line names the step the previewed device shows, with the device's glyph when it is the device's own", () => {
+  // Column 1: M on every device, L of its own on tablets.
+  const doc = page();
+  expect(dimensionOf(doc, "c1", "desktop")).toEqual({ kind: "pad", label: "M", device: null });
+  expect(dimensionOf(doc, "c1", "tablet")).toEqual({ kind: "pad", label: "L", device: "tablet" });
+  // A phone shows the base, never the tablet's value: the page's phone
+  // rules apply under 560 only, its tablet rules from 560 to 800.
+  expect(dimensionOf(doc, "c1", "phone")).toEqual({ kind: "pad", label: "M", device: null });
+  // The heading's gap below is its column's Space between, the theme's L.
+  expect(dimensionOf(doc, "h1", "tablet")).toEqual({ kind: "gap", label: "L", device: null });
+
+  const kit = editorKit({ document: doc, selection: "c1" });
+  kit.ui.setState({ preview: "tablet" });
+  kit.render(<Canvas />);
+  const line = root("c1").querySelector(":scope > .ov-pad")!;
+  expect(line.textContent).toBe("L");
+  expect(line.getAttribute("data-device")).toBe("tablet");
+  expect(line.querySelector("svg")).not.toBeNull();
+  act(() => kit.ui.setState({ preview: "phone" }));
+  const phone = root("c1").querySelector(":scope > .ov-pad")!;
+  expect(phone.textContent).toBe("M");
+  expect(phone.hasAttribute("data-device")).toBe(false);
 });

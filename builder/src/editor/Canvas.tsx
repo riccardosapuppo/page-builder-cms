@@ -37,7 +37,6 @@ import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../doc
 import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
-import { styleValue } from "../render/style.ts";
 import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
@@ -47,6 +46,7 @@ import { COLUMN_GAP_DEFAULT, LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts
 import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
+import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
 import { collisionPriority, SELECTION_SENSORS, SELECTION_SOURCE, useDraggable, useDropTarget } from "./drag/dnd.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
@@ -58,6 +58,7 @@ import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
 import { LazyTextEditor, preloadTextEditor, startEditing, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
+import type { Preview } from "./ui-store.ts";
 
 // How a block stands to the selection, for the marks it draws.
 type Relation =
@@ -186,36 +187,33 @@ function useDecoration(block: RawBlock): Decoration | undefined {
 // the Style tab names (design/shots/editor.png, the "L" under the hero's
 // heading): for a widget, the gap below it to the next widget, its
 // column's Space between; for a column, the space inside it, at its top.
-// The step is the one the previewed device takes: its own, else the
-// tablet's (a phone), else the base. None for the last widget of a column,
-// and for no space at all.
+// The step is the one the previewed device shows (./device-style.ts): its
+// own, else the base; a phone never takes the tablet's. A step that is the
+// device's own carries the device's glyph (design/shots/style.png, the "L"
+// and the tablet on the hero's column). None for the last widget of a
+// column, and for no space at all.
 export interface Dimension {
   kind: "gap" | "pad";
   label: string;
+  // The device whose own value the step is.
+  device: OverrideDevice | null;
 }
 
-const DEVICE_CHAIN: Readonly<Record<string, readonly string[]>> = { desktop: ["base"], tablet: ["tablet", "base"], phone: ["phone", "tablet", "base"] };
-
-export function dimensionOf(doc: PageDocument, id: string, preview: string): Dimension | null {
+export function dimensionOf(doc: PageDocument, id: string, preview: Preview): Dimension | null {
   const found = locate(doc, id);
   if (!found) return null;
-  const step = (style: unknown, key: string): string | null => {
-    for (const device of DEVICE_CHAIN[preview] ?? ["base"]) {
-      const value = styleValue(style, device, key);
-      if (value !== null) return value;
-    }
-    return null;
-  };
+  const device = deviceOf(preview);
+  const ownOn = (style: unknown, key: "spaceInside" | "spaceBetween") => (device !== "base" && ownValue(style, device, key) !== null ? device : null);
   const { block } = found;
   if (block.type === "column") {
-    const value = step(block.style, "spaceInside");
-    return value && value !== "none" ? { kind: "pad", label: tokenName(value) } : null;
+    const value = shownValue(block.style, device, "spaceInside");
+    return value && value !== "none" ? { kind: "pad", label: tokenName(value), device: ownOn(block.style, "spaceInside") } : null;
   }
   if (block.type === "section" || found.parentId === null) return null;
   const column = locate(doc, found.parentId)?.block;
   if (!column || found.index >= column.children.length - 1) return null;
-  const value = step(column.style, "spaceBetween") ?? COLUMN_GAP_DEFAULT;
-  return value !== "none" ? { kind: "gap", label: tokenName(value) } : null;
+  const value = shownValue(column.style, device, "spaceBetween") ?? COLUMN_GAP_DEFAULT;
+  return value !== "none" ? { kind: "gap", label: tokenName(value), device: ownOn(column.style, "spaceBetween") } : null;
 }
 
 // Draws the dimension line from the block's own layout: the gap to the
@@ -248,8 +246,8 @@ const measurePad = measureDimension("pad");
 
 function DimensionLine({ dimension }: { dimension: Dimension }) {
   return (
-    <div className={`ov ${dimension.kind === "gap" ? "ov-dim-v" : "ov-pad ov-pad-top"}`} ref={dimension.kind === "gap" ? measureGap : measurePad} aria-hidden="true">
-      <span>{dimension.label}</span>
+    <div className={`ov ${dimension.kind === "gap" ? "ov-dim-v" : "ov-pad ov-pad-top"}`} ref={dimension.kind === "gap" ? measureGap : measurePad} aria-hidden="true" data-device={dimension.device ?? undefined}>
+      <span>{dimension.label}{dimension.device && <Icon name={dimension.device} />}</span>
     </div>
   );
 }

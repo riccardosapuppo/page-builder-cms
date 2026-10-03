@@ -467,6 +467,8 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-dim-v span, .ov-pad span { position: absolute; left: 18px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
 .ov-dim-v span { top: 9px; }
 .ov-pad-top span { top: 3px; }
+/* A step that is the previewed device's own carries its glyph. */
+.ov-dim-v span .i, .ov-pad span .i { width: 14px; height: 14px; stroke-width: 2; }
 
 .ov-col .ov-tab { left: -1px; bottom: -1px; transform: translateY(100%); border-radius: 0 0 var(--r-control) var(--r-control); }
 /* The tab hangs below its column: where the columns stack (a narrow page),
