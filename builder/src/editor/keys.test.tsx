@@ -134,6 +134,53 @@ test("in a text field the keys are the field's: no block is deleted, no selectio
   expect(kit.ui.getState().shortcutsOpen).toBe(false);
 });
 
+test("in a text written on the canvas, Delete, Backspace and Ctrl+D are the text's; keeping a version, previewing and publishing still work", () => {
+  let previews = 0;
+  let publishes = 0;
+  const kit = editorKit({
+    document: page(),
+    selection: "t1",
+    session: {
+      current: { id: 1, slug: "winter", home: false, published: null, revision: 3, links: { preview: "/preview/1", live: null } } as never,
+      preview: () => {
+        previews += 1;
+      },
+      publish: async () => {
+        publishes += 1;
+      },
+    },
+  });
+  kit.render(<div className="app"><Canvas /><EditorKeys /><ShortcutsDialog /></div>);
+  // The text being written, as the canvas's text editor makes it: an
+  // editable element in the block's place.
+  const text = document.createElement("div");
+  text.setAttribute("contenteditable", "true");
+  text.tabIndex = 0;
+  text.className = "rte";
+  root("t1").append(text);
+  act(() => text.focus());
+  for (const [key, mods] of [["Delete", {}], ["Backspace", {}], ["d", { ctrlKey: true }], ["ArrowDown", {}], ["?", { shiftKey: true }], ["Escape", {}]] as const) {
+    const passed = fireEvent.keyDown(text, { key, ...mods });
+    // Not taken from the text: the browser's own (or the text editor's).
+    expect(passed, key).toBe(true);
+  }
+  expect(kit.store.getState().past).toHaveLength(0);
+  expect(kit.store.getState().selection).toBe("t1");
+  expect(kit.ui.getState().shortcutsOpen).toBe(false);
+
+  expect(fireEvent.keyDown(text, { key: "s", ctrlKey: true })).toBe(false);
+  expect(kit.ui.getState()).toMatchObject({ historyOpen: true, namingVersion: true });
+  expect(fireEvent.keyDown(text, { key: "p", code: "KeyP", ctrlKey: true, altKey: true })).toBe(false);
+  expect(previews).toBe(1);
+  expect(fireEvent.keyDown(text, { key: "Enter", ctrlKey: true, shiftKey: true })).toBe(false);
+  expect(publishes).toBe(1);
+  // AltGr types a letter in the text: not a preview.
+  const altGr = new KeyboardEvent("keydown", { key: "ö", code: "KeyP", ctrlKey: true, altKey: true, bubbles: true, cancelable: true, modifierAltGraph: true } as KeyboardEventInit);
+  text.dispatchEvent(altGr);
+  expect(altGr.defaultPrevented).toBe(false);
+  expect(previews).toBe(1);
+});
+
 test("? opens the window, which lists every entry of the keymap with its keys, and finds them", () => {
   const kit = shell("h1");
   act(() => root("h1").focus());

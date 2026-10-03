@@ -1,9 +1,11 @@
 // The editor's one keydown listener, made from the keymap (./keymap.ts):
 // for each key press it finds the entries the keymap carries, keeps those
-// whose scope the focus is in, and runs the first. The drag library's
-// keyboard sensor carries the moving keys (./drag/DragLayer.tsx), and the
-// browser the keys of a button; while a block is picked up, the sensor has
-// the keyboard to itself.
+// whose scope the focus is in, and runs the first. While the person types
+// (a field, a text on the canvas) only the entries marked `typing` are
+// looked for, so Delete and Ctrl+D are the text's, never the block's. The
+// drag library's keyboard sensor carries the moving keys
+// (./drag/DragLayer.tsx), and the browser the keys of a button; while a
+// block is picked up, the sensor has the keyboard to itself.
 //
 // Copy and paste go through the browser's copy and paste events, which
 // Ctrl+C and Ctrl+V raise wherever the focus is: they carry the system
@@ -22,12 +24,20 @@ import { startEditing } from "./rich/tools.ts";
 
 const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
 
-// Whether the focus is where an entry's scope says. Text fields keep their
-// keys (Ctrl+Z undoes typing there, Delete deletes a letter), and so do
-// menus and dialogs.
-export function inScope(scope: Scope, target: EventTarget | null): boolean {
+// Whether the focus is in something the person types into: a field, or a
+// text written on the canvas.
+export function isTyping(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(EDITABLE) !== null;
+}
+
+// Whether the focus is where an entry's scope says. Text fields and the
+// text written on the canvas keep their keys (Ctrl+Z undoes typing there,
+// Delete deletes a letter), but for the entries that work while typing;
+// menus and dialogs keep theirs.
+export function inScope(scope: Scope, target: EventTarget | null, typing = false): boolean {
   const element = target instanceof Element ? target : null;
-  if (element?.closest(EDITABLE) || element?.closest("[role=dialog], [role=menu]")) return false;
+  if (element?.closest("[role=dialog], [role=menu]")) return false;
+  if (!typing && isTyping(element)) return false;
   switch (scope) {
     case "canvas":
       return Boolean(element?.closest(".canvas"));
@@ -153,8 +163,10 @@ export function useEditorKeys(): void {
       if (event.defaultPrevented || event.isComposing) return;
       // A block picked up with the keyboard: the drag library's keys.
       if (env.store.getState().drag !== null) return;
-      for (const entry of entriesFor(event)) {
-        if (entry.via !== "keymap" || !inScope(entry.scope, event.target)) continue;
+      const typing = isTyping(event.target);
+      const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
+      for (const entry of entriesFor(press, typing)) {
+        if (entry.via !== "keymap" || !inScope(entry.scope, event.target, typing)) continue;
         const run = table[entry.action];
         if (run?.(regionOf(event.target))) {
           event.preventDefault();

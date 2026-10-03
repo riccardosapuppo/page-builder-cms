@@ -33,8 +33,10 @@ export type KeyAction =
 // - tile: a tile of the widget panel;
 // - moving: while a block is picked up with the keyboard;
 // - text: in the text of a text block, edited on the canvas.
-// Never in a text field, a menu or a dialog, which keep their keys, but
-// for the text editor's own.
+// Never in a menu or a dialog, which keep their keys, and never in a text
+// field or a text being written, whose typing keys are the text's (Delete
+// deletes a letter there, not the block), but for the text editor's own
+// keys and the entries marked `typing`.
 export type Scope = "canvas" | "selection" | "editor" | "tile" | "moving" | "text";
 
 // Who carries the entry out: the editor's keydown listener, the drag
@@ -72,6 +74,11 @@ export interface KeyEntry {
   each?: boolean;
   scope: Scope;
   via: Via;
+  // Works while the person types too, in a panel's field or a text on the
+  // canvas: keys no text takes for itself, for what is wanted mid-sentence
+  // (keep a version, preview, publish). The text being typed is handed
+  // over first, as before any command.
+  typing?: boolean;
 }
 
 const ARROW_UP: Chord = { key: "ArrowUp", code: "ArrowUp" };
@@ -109,22 +116,31 @@ export const KEYMAP: readonly KeyEntry[] = [
 
   { action: "undo", group: "History", label: "Undo", chords: [{ key: "z", mod: true }], scope: "editor", via: "keymap" },
   { action: "redo", group: "History", label: "Redo", chords: [{ key: "z", mod: true, shift: true }, { key: "y", mod: true }], scope: "editor", via: "keymap" },
-  { action: "saveVersion", group: "History", label: "Save a named version", chords: [{ key: "s", mod: true }], scope: "editor", via: "keymap" },
+  { action: "saveVersion", group: "History", label: "Save a named version", chords: [{ key: "s", mod: true }], scope: "editor", via: "keymap", typing: true },
 
-  { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", mod: true, alt: true }], scope: "editor", via: "keymap" },
-  { action: "publish", group: "Publish", label: "Publish now", chords: [{ key: "Enter", mod: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", mod: true, alt: true }], scope: "editor", via: "keymap", typing: true },
+  { action: "publish", group: "Publish", label: "Publish now", chords: [{ key: "Enter", mod: true, shift: true }], scope: "editor", via: "keymap", typing: true },
 
   { action: "showShortcuts", group: "This list", label: "Show keyboard shortcuts", chords: [{ key: "?" }], scope: "editor", via: "keymap" },
 ];
 
+// The entries that keep their keys while the person types, in words: "Save
+// a named version, Preview and Publish now".
+function typingWords(): string {
+  const labels = KEYMAP.filter((e) => e.typing).map((e) => e.label);
+  return labels.length < 2 ? labels.join("") : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)!}`;
+}
+
 // What the window says under a group.
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
   Moving: "While you move a block, the editor reads out where it will land. A column moves along its section with the side arrows, and to another section with the others.",
-  Text: "While you write in a text on the page. There Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Shift+Enter starts a new line in the same paragraph.",
+  Text: `While you write in a text on the page. There Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the panel’s fields.`,
   Adding: "Enter on a tile of the Add panel, or drag the tile onto the page.",
 };
 
-// The keys of an event, as the chords name them.
+// The keys of an event, as the chords name them. altGraph: the AltGr key
+// is held, which a keyboard reports as Ctrl and Alt together, and which
+// types a character (AltGr+P is "ö" on some layouts), not a shortcut.
 export interface KeyPress {
   key: string;
   code?: string;
@@ -132,23 +148,31 @@ export interface KeyPress {
   metaKey: boolean;
   shiftKey: boolean;
   altKey: boolean;
+  altGraph?: boolean;
 }
 
-export function matches(chord: Chord, event: KeyPress): boolean {
+// Whether a key press is a chord. Typing (in a text field or a text being
+// written), a chord with Alt is its own key only: the character the
+// press typed, never its place, and never with AltGr, so a letter a
+// keyboard types with AltGr goes into the text instead of opening a
+// preview.
+export function matches(chord: Chord, event: KeyPress, typing = false): boolean {
   if (Boolean(chord.mod) !== (event.ctrlKey || event.metaKey)) return false;
   if (Boolean(chord.alt) !== event.altKey) return false;
+  if (typing && chord.alt && event.altGraph) return false;
   // "?" is Shift and "/" on some keyboards and a key of its own on others.
   if (chord.key === "?") return event.key === "?";
   if (Boolean(chord.shift) !== event.shiftKey) return false;
   if (chord.key.length !== 1) return event.key === chord.key;
   if (event.key.toLowerCase() === chord.key.toLowerCase()) return true;
   // With Alt, the key's character may be another one; its place is not.
-  return Boolean(chord.alt && chord.code && event.code === chord.code);
+  return Boolean(!typing && chord.alt && chord.code && event.code === chord.code);
 }
 
-// The entries a key press is, in the table's order.
-export function entriesFor(event: KeyPress): KeyEntry[] {
-  return KEYMAP.filter((entry) => entry.chords.some((chord) => matches(chord, event)));
+// The entries a key press is, in the table's order; typing, only those
+// that work while the person types.
+export function entriesFor(event: KeyPress, typing = false): KeyEntry[] {
+  return KEYMAP.filter((entry) => (!typing || entry.typing) && entry.chords.some((chord) => matches(chord, event, typing)));
 }
 
 export function entry(action: KeyAction): KeyEntry {

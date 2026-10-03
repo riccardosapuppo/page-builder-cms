@@ -1,10 +1,11 @@
 // The keymap is one table for the "?" window, the keydown listener and the
 // drag library's sensor: every action once, in a group the window shows;
 // a key press finds its entries (Ctrl or Cmd, "?" from any keyboard, Shift
-// telling undo from redo); the sensor's codes are the table's own.
+// telling undo from redo), and while the person types only those that
+// work there; the sensor's codes are the table's own.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { ariaKeyShortcuts, entriesFor, entry, entryCaps, entryKeysText, KEY_GROUPS, KEYMAP, matches, sensorCodes, type KeyPress } from "./keymap.ts";
+import { ariaKeyShortcuts, entriesFor, entry, entryCaps, entryKeysText, GROUP_NOTES, KEY_GROUPS, KEYMAP, matches, sensorCodes, type KeyPress } from "./keymap.ts";
 
 const press = (key: string, mods: Partial<Omit<KeyPress, "key">> = {}): KeyPress => ({ key, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods });
 const actions = (event: KeyPress) => entriesFor(event).map((e) => e.action);
@@ -57,6 +58,29 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("π", { metaKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
   expect(actions(press("π", { metaKey: true, code: "KeyP" }))).toEqual([]);
   expect(actions(press("p", { ctrlKey: true, code: "KeyP" }))).toEqual([]);
+});
+
+test("while the person types, only the entries marked so, each by the key it types and never by AltGr", () => {
+  const typing = (event: KeyPress) => entriesFor(event, true).map((e) => e.action);
+  expect(KEYMAP.filter((e) => e.typing).map((e) => e.action)).toEqual(["saveVersion", "preview", "publish"]);
+  // The text's own keys.
+  for (const key of ["Delete", "Backspace", "ArrowUp", "Enter", "Escape", " ", "?"]) expect(typing(press(key))).toEqual([]);
+  expect(typing(press("d", { ctrlKey: true }))).toEqual([]);
+  expect(typing(press("z", { ctrlKey: true }))).toEqual([]);
+  expect(typing(press("c", { ctrlKey: true }))).toEqual([]);
+  // The keys no text takes.
+  expect(typing(press("s", { ctrlKey: true }))).toEqual(["saveVersion"]);
+  expect(typing(press("Enter", { ctrlKey: true, shiftKey: true }))).toEqual(["publish"]);
+  expect(typing(press("p", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  // AltGr+P types "ö" on one layout and "p" with AltGr on none that needs
+  // the shortcut: in a text, both stay the text's. Off the text, the key's
+  // place still opens the preview.
+  expect(typing(press("ö", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
+  expect(typing(press("p", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
+  expect(typing(press("ö", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual([]);
+  expect(actions(press("ö", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual(["preview"]);
+  // The window says which ones, from the table.
+  expect(GROUP_NOTES.Text).toContain("Save a named version, Preview and Publish now work while you type");
 });
 
 test("the drag library's keys are the table's", () => {
