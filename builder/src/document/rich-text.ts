@@ -15,15 +15,16 @@
 // richTextFromEditor turns any of that into the schema's canonical form:
 // marks bold, italic, link in that order, a link's href alone, a numbered
 // list's start only from 2 and its type only a, A, i or I, a line break
-// without marks, control characters as spaces, a text longer than the
-// schema's 10000 characters in runs of 10000. A text the editor reads from
+// without marks, control characters as spaces, runs side by side with the
+// same marks joined, and a run longer than the schema's 10000 characters
+// cut in runs of 10000. A text the editor reads from
 // the page and gives back untouched comes back the same, when it was
 // stored in that form (../editor/rich/editor.test.ts holds the editor to it
 // on random texts).
 import type { BlockType, InlineNode, ListItem, Mark, PageDocument, Paragraph, RichTextBlock, RichTextDoc } from "../shared/document.ts";
 import { refusal } from "./check.ts";
 import { makeSetProps, type Made } from "./commands.ts";
-import { isObject, type Json } from "./json.ts";
+import { isObject, sameJson, type Json } from "./json.ts";
 import { locate } from "./tree.ts";
 
 // The marks, in the order the canonical form lists them.
@@ -38,9 +39,18 @@ function isControl(code: number, keepLineBreaks: boolean): boolean {
   return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029;
 }
 
+// The text with each of those as a space, and each half of a UTF-16 pair
+// standing alone (typed between the two halves of an emoji, which the
+// editor counts as two places) as U+FFFD, the replacement character: the
+// application rules refuse a string that is not well formed.
+const REPLACEMENT = String.fromCharCode(0xfffd);
+
 function spaced(text: string, keepLineBreaks: boolean): string {
   let out = "";
-  for (const character of text) out += isControl(character.codePointAt(0) ?? 0, keepLineBreaks) ? " " : character;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    out += isControl(code, keepLineBreaks) ? " " : code >= 0xd800 && code <= 0xdfff ? REPLACEMENT : character;
+  }
   return out;
 }
 
@@ -114,15 +124,28 @@ function orderedAttrs(attrs: unknown): { start?: number; type?: "a" | "A" | "i" 
   return Object.keys(out).length > 0 ? out : null;
 }
 
+// A paragraph's line breaks and runs of text. Runs side by side with the
+// same marks are one run, as the editor holds them (it joins them as it
+// reads a text), so a text in this form reads back the same.
 function inlineOf(nodes: unknown): InlineNode[] {
-  return list(nodes).flatMap((node): InlineNode[] => {
-    if (!isObject(node)) return [];
-    if (node.type === "hardBreak") return [{ type: "hardBreak" }];
-    if (node.type !== "text" || typeof node.text !== "string") return [];
+  const joined: Array<{ type: "hardBreak" } | { type: "text"; text: string; marks: Mark[] }> = [];
+  for (const node of list(nodes)) {
+    if (!isObject(node)) continue;
+    if (node.type === "hardBreak") {
+      joined.push({ type: "hardBreak" });
+      continue;
+    }
+    if (node.type !== "text" || typeof node.text !== "string") continue;
     const text = spaced(node.text, false);
-    if (text === "") return [];
+    if (text === "") continue;
     const marks = marksOf(node.marks);
-    return runs(text).map((run) => (marks.length > 0 ? { type: "text", text: run, marks: marks.map((m) => ({ ...m })) } : { type: "text", text: run }));
+    const last = joined.at(-1);
+    if (last?.type === "text" && sameJson(last.marks, marks)) last.text += text;
+    else joined.push({ type: "text", text, marks });
+  }
+  return joined.flatMap((node): InlineNode[] => {
+    if (node.type === "hardBreak") return [node];
+    return runs(node.text).map((run) => (node.marks.length > 0 ? { type: "text", text: run, marks: node.marks.map((m) => ({ ...m })) } : { type: "text", text: run }));
   });
 }
 

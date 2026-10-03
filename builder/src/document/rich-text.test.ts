@@ -65,6 +65,17 @@ test("a line break carries no marks, text loses its control characters, and a lo
   expect(valid(doc(p(text(long))))).toBe(false);
 });
 
+test("runs side by side with the same marks are one run, as the editor reads them; different links stay apart", () => {
+  const link = (href: string) => ({ type: "link", attrs: { href } });
+  const out = richTextFromEditor(doc(p(
+    text("Cold"), text(" water", []), text(", warm", [{ type: "bold" }]), text(" tea", [{ type: "bold" }, { type: "bold" }]),
+    text("one", [link("/a")]), text("two", [link("/b")]), { type: "hardBreak" }, text("after"), text(" break"),
+  )));
+  expect(out).toEqual(doc(p(
+    text("Cold water"), text(", warm tea", [{ type: "bold" }]), text("one", [link("/a")]), text("two", [link("/b")]), { type: "hardBreak" }, text("after break"),
+  )));
+});
+
 test("an empty text is one empty paragraph; what the schema has no node for is left out; a list item starts with a paragraph", () => {
   expect(richTextFromEditor(doc())).toEqual(doc(p()));
   expect(richTextFromEditor({ type: "doc" })).toEqual(doc(p()));
@@ -84,6 +95,14 @@ test("a text in the canonical form comes back the same", () => {
     { type: "orderedList", attrs: { start: 4 }, content: [{ type: "listItem", content: [p(text("Cap")), { type: "bulletList", content: [{ type: "listItem", content: [p()] }] }] }] },
   );
   expect(richTextFromEditor(structuredClone(canonical))).toEqual(canonical);
+});
+
+test("half of a UTF-16 pair standing alone becomes the replacement character, which the rules take", () => {
+  const half = String.fromCharCode(0xd83c);
+  const out = richTextFromEditor(doc(p(text(`wave ${half}a`))));
+  expect(out).toEqual(doc(p(text(`wave ${String.fromCharCode(0xfffd)}a`))));
+  expect(valid(out)).toBe(true);
+  expect(valid(doc(p(text(`wave ${half}a`))))).toBe(false);
 });
 
 test("pasted plain text keeps its line breaks and loses every other control character", () => {
