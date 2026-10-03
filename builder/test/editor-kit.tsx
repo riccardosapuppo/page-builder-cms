@@ -8,6 +8,8 @@ import type { ReactNode } from "react";
 import type { Command } from "../src/document/commands.ts";
 import { locate, pointerOf } from "../src/document/tree.ts";
 import { EditorProvider, type EditorEnv } from "../src/editor/context.tsx";
+import { MediaServiceProvider } from "../src/editor/library/context.tsx";
+import type { MediaService } from "../src/editor/library/service.ts";
 import { emptySession, SessionProvider, type Session } from "../src/editor/session.tsx";
 import { createUiStore, type UiStore } from "../src/editor/ui-store.ts";
 import type { Block, PageDocument, WidgetType } from "../src/shared/document.ts";
@@ -45,6 +47,7 @@ export interface Kit {
   store: EditorStore;
   ui: UiStore;
   clock: FakeClock;
+  media: MediaService | null;
   doc(): PageDocument;
   block(id: string): Block | undefined;
   // The command the last change was made with.
@@ -55,23 +58,35 @@ export interface Kit {
   refuse(id: string, field: string, keyword: string, message: string): void;
 }
 
-export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session> }): Kit {
+// `media`: the media library's work (src/editor/library/service.ts), when
+// the test gives one; without it the library is only chosen from.
+export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session>; media?: (ui: UiStore) => MediaService }): Kit {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const store = createEditorStore({ document: options.document, now: () => clock.now() });
   if (options.selection) store.getState().select(options.selection);
   const ui = createUiStore();
   const env: EditorEnv = { store, ui, clock, newId: counter("n") };
   const session: Session = emptySession(options.session);
+  const media = options.media?.(ui) ?? null;
   return {
     env,
     store,
     ui,
     clock,
+    media,
     doc: () => store.getState().document,
     block: (id) => locate(store.getState().document, id)?.block,
     lastCommand: () => store.getState().past.at(-1)?.command,
     // A wrapper, so a rerender keeps the providers.
-    render: (node) => render(node, { wrapper: ({ children }) => <EditorProvider env={env}><SessionProvider value={session}>{children}</SessionProvider></EditorProvider> }),
+    render: (node) => render(node, {
+      wrapper: ({ children }) => (
+        <EditorProvider env={env}>
+          <SessionProvider value={session}>
+            <MediaServiceProvider value={media}>{children}</MediaServiceProvider>
+          </SessionProvider>
+        </EditorProvider>
+      ),
+    }),
     refuse(id, field, keyword, message) {
       const sent = store.getState().document;
       const found = locate(sent, id);
