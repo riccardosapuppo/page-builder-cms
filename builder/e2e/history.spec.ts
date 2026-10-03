@@ -152,4 +152,5 @@ test("versions from the screen: Save version with a name, Restore, a restore und
 
   const report = await axe(page, { include: ".tray-right" });
   expect(report.serious, "the history panel with versions").toEqual([]);
+  expect(report.passes).toBeGreaterThan(5);
 });

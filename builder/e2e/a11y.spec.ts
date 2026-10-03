@@ -6,8 +6,9 @@
 import type { Page } from "@playwright/test";
 import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import { axe } from "./helpers/axe.ts";
-import { block } from "./helpers/canvas.ts";
-import { cms, column, expect, makePage, open, section, test, widget } from "./helpers/site.ts";
+import { block, settledTextEditor } from "./helpers/canvas.ts";
+import { png } from "./helpers/images.ts";
+import { cms, column, expect, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
 
 test.use({
   viewport: { width: 1440, height: 900 },
@@ -34,7 +35,7 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
 }
 
 test("the editor has no serious or critical axe finding, in any of its states", { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Twenty states, each read by axe whole.
+  // Twenty-six states, each read by axe whole.
   test.setTimeout(240_000);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const { id } = await makePage(request, "Every widget", everyWidget());
@@ -45,6 +46,32 @@ test("the editor has no serious or critical axe finding, in any of its states", 
   await clean(page, "a heading selected, its Content tab");
   await page.getByRole("tab", { name: "Style" }).click();
   await clean(page, "its Style tab");
+
+  // A text written on the canvas: its formatting buttons on the block's
+  // bar, then its link's field under it.
+  await block(page, "text-0").click();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await settledTextEditor(page, "text-0");
+  await clean(page, "a text being written, its formatting buttons");
+  await page.keyboard.press("Control+k");
+  await expect(page.locator(".ov-link input")).toBeFocused();
+  await clean(page, "the text's link field");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".canvas .rte")).toHaveCount(0);
+
+  // A column's own space on a tablet: the override, its ring and Remove.
+  await page.locator('.tree [data-row-id="first-a"] > .t-row').click();
+  await expect(page.getByRole("tablist", { name: "Column 1 properties" })).toBeVisible();
+  await page.getByRole("tab", { name: "Style" }).click();
+  await page.locator(".topbar").getByRole("button", { name: "Tablet", exact: true }).click();
+  const ruler = page.locator(".tray-left .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) }).getByRole("slider");
+  await ruler.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("button", { name: "Remove the tablet override of Space inside" })).toBeVisible();
+  await clean(page, "a tablet's own value in the Style tab");
+  await page.locator(".topbar").getByRole("button", { name: "Desktop", exact: true }).click();
   await page.locator('.tree [data-row-id="first"]').click();
   await page.getByRole("tab", { name: "Advanced" }).click();
   await clean(page, "a section's Advanced tab");
@@ -94,6 +121,29 @@ test("the editor has no serious or critical axe finding, in any of its states", 
   await page.getByRole("button", { name: "More publish options" }).click();
   await clean(page, "the Publish menu, with the live page");
   await page.keyboard.press("Escape");
+
+  // The history: this session's steps and the page's versions, the live
+  // one among them; then "Save version" asking for a name.
+  await page.getByRole("button", { name: "History" }).click();
+  const history = page.getByRole("complementary", { name: "History" });
+  await expect(history.getByRole("listitem").filter({ hasText: "Published" })).not.toHaveCount(0);
+  await clean(page, "the history, with its steps and versions");
+  await history.getByRole("button", { name: "Save version" }).click();
+  await expect(history.getByRole("textbox", { name: /^Name/ })).toBeFocused();
+  await clean(page, "the history's name field");
+  await page.getByRole("button", { name: "Close history" }).click();
+
+  // The media library, from the mark's menu: an image just uploaded and
+  // chosen, with no alt text yet.
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Media library" }).click();
+  const library = page.getByRole("dialog", { name: "Media library" });
+  const name = `${unique("a11y")}.png`;
+  await library.getByLabel("Images to upload").setInputFiles({ name, mimeType: "image/png", buffer: png(40, 30, () => [20, 60, 120]) });
+  await expect(library.getByRole("radio", { name: `${name}, no alt text` })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await clean(page, "the media library, an image chosen with no alt text");
+  await page.keyboard.press("Escape");
+  await expect(library).toHaveCount(0);
 
   await page.getByRole("button", { name: "Site style", exact: true }).click();
   await page.getByRole("button", { name: /^Accent/ }).click();
