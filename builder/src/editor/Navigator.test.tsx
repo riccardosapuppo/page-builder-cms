@@ -4,9 +4,9 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
-import { editorKit } from "../../test/editor-kit.tsx";
+import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
-import { makeSetStyle } from "../document/commands.ts";
+import { makeSetStyle, REMOVE } from "../document/commands.ts";
 import { Navigator } from "./Navigator.tsx";
 
 const item = (name: string) => screen.getByRole("treeitem", { name });
@@ -88,6 +88,35 @@ test("a block hidden on some device is grayed out, and a refused one says so", (
   expect(item("Hero").classList.contains("t-hidden")).toBe(false);
   act(() => kit.refuse("hero", "/props/label", "maxLength", "is too long"));
   expect(screen.getByRole("treeitem", { name: "Hero, refused by the server" })).toBeTruthy();
+});
+
+test("a block with values of its own on a tablet or a phone carries the device's glyph, said as the row's description", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<Navigator />);
+  act(() => kit.store.getState().select("h1"));
+  const flagged = () => screen.getAllByRole("treeitem").flatMap((row) => {
+    const flags = row.querySelector(":scope > .t-row > .t-flags");
+    return flags ? [`${row.getAttribute("aria-label")}: ${row.getAttribute("aria-describedby") === flags.id ? describedText(row) : "not described"} (${flags.querySelectorAll("svg").length})`] : [];
+  });
+  // Column 1 has tablet values (its space inside, its alignment), the
+  // heading a phone one (its size).
+  expect(flagged()).toEqual(["Column 1: Has a tablet override (1)", "Heading: Winter series: Has a phone override (1)"]);
+  const both = makeSetStyle(kit.doc(), "c1", "phone", { align: "left" });
+  if (!both.ok) throw new Error(both.error.message);
+  act(() => {
+    kit.store.getState().dispatch(both.command);
+  });
+  expect(flagged()[0]).toBe("Column 1: Has tablet and phone overrides (2)");
+  // Its values taken back, the flag goes.
+  for (const [device, key] of [["tablet", "spaceInside"], ["tablet", "align"], ["phone", "align"]] as const) {
+    const back = makeSetStyle(kit.doc(), "c1", device, { [key]: REMOVE });
+    if (!back.ok) throw new Error(back.error.message);
+    act(() => {
+      kit.store.getState().dispatch(back.command);
+    });
+  }
+  expect(flagged()).toEqual(["Heading: Winter series: Has a phone override (1)"]);
+  expect(item("Column 1").hasAttribute("aria-describedby")).toBe(false);
 });
 
 test("collapsing the navigator leaves a button that opens it again", () => {

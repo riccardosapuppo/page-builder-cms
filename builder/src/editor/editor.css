@@ -327,6 +327,10 @@ textarea.input { resize: vertical; }
 .t-row > span { flex: none; }
 .t-row em { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-style: normal; font-size: 12px; color: var(--steel); }
 .t-row .t-count { margin-left: auto; padding-left: 8px; }
+/* A block's own values on a tablet or a phone: the device's glyph at the
+   row's end (design/styles.css, .t-flag). */
+.t-flags { display: inline-flex; gap: 2px; margin-left: auto; padding-left: 8px; color: var(--graphite); }
+.t-count ~ .t-flags { margin-left: 0; padding-left: 4px; }
 .t-chev { color: var(--steel); }
 .t-chev-none { visibility: hidden; }
 li[aria-expanded="true"] > .t-row > .t-chev { transform: rotate(90deg); }

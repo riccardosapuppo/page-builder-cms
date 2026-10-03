@@ -14,6 +14,10 @@
 // Above and below the tree, the theme's header and footer, locked: the
 // same on every page, never selected (the canvas draws them so).
 //
+// A block with values of its own on a tablet or a phone carries the
+// device's glyph at the end of its row; one hidden on some device is
+// grayed out.
+//
 // While a block is dragged the tree shows the store's preview: the
 // dragged block as a line where it would land, its container marked.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
@@ -24,6 +28,7 @@ import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
+import { overriddenOn, type OverrideDevice } from "./device-style.ts";
 import { draggedName } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
@@ -54,6 +59,13 @@ function visibleRows(doc: PageDocument, open: ReadonlySet<string>): Row[] {
 function hiddenSomewhere(block: Block): boolean {
   const style = block.style as { base: StyleTokens; tablet?: StyleTokens; phone?: StyleTokens };
   return [style.base.visibility, style.tablet?.visibility, style.phone?.visibility].includes("hidden");
+}
+
+// The flag of a block with values of its own on a tablet or a phone
+// (design/shots/style.png, the tablet beside Column 1), in words for the
+// pointer's hover and a screen reader: the row's name stays the block's.
+function flagWords(devices: readonly OverrideDevice[]): string {
+  return devices.length === 2 ? "Has tablet and phone overrides" : `Has a ${devices[0]} override`;
 }
 
 function countWidgets(doc: PageDocument): number {
@@ -262,6 +274,8 @@ function TreeItem(props: TreeItemProps) {
   const detail = excerpt(block);
   const icon = block.type === "section" ? <Icon name="section" /> : block.type === "column" ? <Icon name="column" /> : <WidgetIcon icon={widgetDefinition(block.type).icon} className="i" />;
   const hidden = hiddenSomewhere(block);
+  const overrides = overriddenOn(block.style);
+  const flagsId = `nav_flags_${block.id}`;
   return (
     <li
       ref={(element) => {
@@ -273,6 +287,7 @@ function TreeItem(props: TreeItemProps) {
       aria-expanded={hasChildren ? isOpen : undefined}
       aria-selected={selection === block.id}
       aria-label={`${detail && block.type !== "section" ? `${name}: ${detail}` : name}${errorsOn.has(block.id) ? ", refused by the server" : ""}`}
+      aria-describedby={overrides.length > 0 ? flagsId : undefined}
       tabIndex={tabStop === block.id ? 0 : -1}
       className={hidden ? "t-hidden" : undefined}
       data-row-id={block.id}
@@ -306,6 +321,12 @@ function TreeItem(props: TreeItemProps) {
           ? <em className="t-count">{detail}</em>
           : detail && <em>{detail}</em>}
         {errorsOn.has(block.id) && <span className="t-count" title="The server refused this block in the last save"><Icon name="error" className="i i-xs" /></span>}
+        {overrides.length > 0 && (
+          <span className="t-flags" id={flagsId} title={flagWords(overrides)}>
+            {overrides.map((device) => <Icon key={device} name={device} className="i i-xs" />)}
+            <span className="visually-hidden">{flagWords(overrides)}</span>
+          </span>
+        )}
       </div>
       {isOpen && (
         <ul role="group">
