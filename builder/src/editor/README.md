@@ -18,8 +18,12 @@ random block ids.
 
 | File | What it is |
 | --- | --- |
-| `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here |
-| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu, the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, the device previewed, the save state |
+| `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way, and the site style's changes sent one at a time, a refusal put back |
+| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, a new page, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, the save state, Preview and Publish |
+| `SaveStatus.tsx` | Where the edits are, from the autosave's snapshot: the top bar's word (Saved only when the server has every edit; a countdown to the next try, on the injected clock, never read to a screen reader); the toast of a save whose outcome is unknown, with Retry now; the conflict's banner, an alert, with Reload and Keep mine |
+| `Publish.tsx` | Preview, a link to the draft's preview on the CMS's own origin; the split Publish button and its menu (Publish now, the live page), waiting and saying why on an empty page, a conflict or a save not confirmed; nothing for what the storage lacks (no Schedule before stage 4) |
+| `SiteStylePanel.tsx` | Site style, the one screen that changes the tokens: each slot's curated tones, their contrast in words, back to a new site's tone, the type scale and its steps |
+| `AboutDialog.tsx` | About: the mark, the version (the package's, held to the repository's) and "Developed by Riccardo Sapuppo" |
 | `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added |
 | `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx` |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
@@ -34,11 +38,10 @@ random block ids.
 
 ## Not here yet
 
-The save state's details, the conflict banner, publishing, preview and
-site style come next in this stage. Rich text on the canvas, the undo and
-redo buttons and the history (their keys already work, on the store's
-history), versions, tablet and phone overrides and the media library are
-stage 3. The top bar draws no control for any of them until it works, and
+Rich text on the canvas, the undo and redo buttons and the history (their
+keys already work, on the store's history), versions, tablet and phone
+overrides and the media library are stage 3; scheduling a publish is
+stage 4. The top bar draws no control for any of them until it works, and
 the "?" window lists no key for them.
 
 ## Checks
@@ -54,7 +57,14 @@ the clipboard are Chromium's, against a CMS of the run's own:
 `../../e2e/editor.spec.ts` (the shell), `drag.spec.ts` (every drop by
 mouse and by keyboard, refused drops, Esc), `focus.spec.ts` (the focus
 after every command), `keyboard.spec.ts` (every key of the map, and the
-"?" window listing them) and `menu.spec.ts` (the block's menu). The ones
-tagged `@a11y` are what `npm run check:a11y` runs. `npm run shots:editor
-<folder>` photographs the editor in the design's states on the example
-site (`../../e2e/shots/editor-shots.ts`).
+"?" window listing them), `menu.spec.ts` (the block's menu),
+`save.spec.ts` (a slowed network, a save the network drops and its same
+saveId, an answer lost, a second writer through the API), `publish.spec.ts`
+(the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
+(the canvas and the published page following a change), `identity.spec.ts`
+(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty states, and
+on the published page), `widgets.spec.ts` (each widget's accessibility
+test) and `keyboard-path.spec.ts` (the whole path with no pointer). The
+ones tagged `@a11y` are what `npm run check:a11y` runs. `npm run
+shots:editor <folder>` photographs the editor in the design's states on
+the example site (`../../e2e/shots/editor-shots.ts`).

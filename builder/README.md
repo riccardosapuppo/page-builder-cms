@@ -20,9 +20,13 @@ property panels (Content, Style, Advanced) with each widget's Content in
 its folder, and the navigator; drag and drop on the canvas and from the
 widget panel, by mouse and by keyboard, with one drop indicator and a
 live region saying where the block will go; one keyboard map, which the
-"?" window lists; the focus placed after every command; and the block's
-menu (copy, paste, duplicate, delete). Publishing and site style come
-next in this stage.
+"?" window lists; the focus placed after every command; the block's
+menu (copy, paste, duplicate, delete); where the edits are (saved,
+saving, retrying with a countdown, the conflict's banner with Reload and
+Keep mine); Preview and Publish, on the CMS's own origin; Site style, the
+palette and the type scale; the mark as the page's icon, a manifest and
+About. Each widget has its accessibility test, run with axe on the
+published page and on the canvas.
 
 ## Before you start
 
@@ -49,6 +53,7 @@ npm run test:contract
 npm run test:rails
 npm run e2e
 npm run check:a11y
+npm run check:serving
 npm run shots:editor -- <folder>
 npm run build
 npm run preview
@@ -68,14 +73,23 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the rule-9 check (`RULE9_RUNS`, 60, at least 1, and `RULE9_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
-| `npm run check:a11y` | The same, only the tests tagged `@a11y`: the focus after every command, every key of the keyboard map and the "?" window that lists them, the block's menu from the keyboard. Axe is not run yet. |
-| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, context menu, shortcuts, style, advanced, drag, empty) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
+| `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from the widget panel, move, edit text and properties, publish, open the served page); the focus after every command; every key of the keyboard map and the "?" window that lists them; the block's menu from the keyboard; axe with no serious or critical finding on the editor in twenty states, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish and Site style. |
+| `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports; prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. |
+| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved design's states (editor, context menu, shortcuts, style, advanced, drag, empty, save states, publish, site style, About, the mark's menu) and in the widget panel and phone preview, at 1280 by 800 and, in `<folder>/1440`, at the design's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 
+The editor's page is sent never stored, with no ETag and no Last-Modified,
+by both servers, and the built files under `assets/` are kept a year by
+`vite preview` (`build/serving.ts`).
+
 `VITE_API_BASE`, read at build time, is where the editor finds the API:
 `/api` by default. An absolute address needs that server to allow the
-editor's origin by CORS (the decision note above).
+editor's origin by CORS (the decision note above). `VITE_CMS_ORIGIN` is
+the CMS's own origin, where the preview and the live page open: by
+default the origin of an absolute `VITE_API_BASE`, else
+`http://127.0.0.1:3900`; `npm run dev` sets it from `CMS_URL`
+([../docs/decisions/editor-links-to-the-cms-origin.md](../docs/decisions/editor-links-to-the-cms-origin.md)).
 
 ## Where things are
 

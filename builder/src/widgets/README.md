@@ -21,12 +21,20 @@ One folder per widget, named as its `type` in the schema: `heading/`,
   drives those controls, checks the page and the command, and finds the
   server's 422 on the field it names. The Style and Advanced tabs are
   the same for every block (`../editor/panels/`), drawn from the style
-  settings the type accepts.
+  settings the type accepts;
+- `a11y.ts`: its accessibility test (below).
 
 `panels.ts` lists the panels by type, apart from `registry.ts`: the render
 contract and the rule-9 check load the registry and have no use for the
-editor's controls. The accessibility test of each widget comes with the
-editor's accessibility checks.
+editor's controls.
+
+Each folder's `a11y.ts` is the widget's accessibility test, as data
+(`a11y.ts` here has its shape): cases, each a block's props and what a
+screen reader must find in it, by role, name and level, or nothing at
+all for a hidden one. `a11y-all.ts` lists them in the panel's order.
+`../../e2e/widgets.spec.ts` publishes every case on a CMS of its own and
+holds the page it serves, and the editor's canvas, to them, with axe
+finding nothing serious or critical (`npm run check:a11y`).
 
 `types.ts` has the definition's type and `newWidget(definition, id,
 input)`, which makes a new block: `{id, type, props, children: [], style:

@@ -179,8 +179,11 @@ itself.
   widget panel, the canvas, the property panels and the navigator; drag
   and drop by mouse and by keyboard, from the canvas and from the widget
   panel; one keyboard map with its "?" window; the focus placed after
-  every command; the block's menu. Publishing, preview and site style are
-  not written yet. Its README has the commands; from here,
+  every command; the block's menu; the save states, with the conflict's
+  Reload and Keep mine; Preview and Publish, opening the CMS's own pages;
+  Site style; the mark as icon, a manifest and About; the accessibility
+  checks (`check:a11y`) and how its shell is served (`check:serving`).
+  Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
   `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
 - [`docs/decisions/`](docs/decisions/): decisions with their cost, each
@@ -271,9 +274,9 @@ again, and workers that cannot start even one at a time make the suite
    Done.
 2. **The editor.** A React and TypeScript app with a widget panel, a canvas
    and a navigator: drag and drop, properties, automatic saving. In
-   progress: what the interface stands on, and the interface up to
-   publishing, are in `builder/` (above); publishing, preview and site
-   style are next.
+   progress: what the interface stands on, and the interface with
+   publishing, preview and site style, are in `builder/` (above); the
+   stage's reviews are next.
 3. **Editing in depth.** Rich text, undo and redo, versions and restore,
    tablet and phone overrides, full keyboard use, image uploads.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled

@@ -399,7 +399,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 4);
+      return why ? notRun(why) : playwright(ctx, "e2e", 61);
     },
   },
   {
@@ -409,22 +409,23 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "check:a11y")) return failed("", "builder/package.json has no check:a11y script");
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "check:a11y", 1);
+      return why ? notRun(why) : playwright(ctx, "check:a11y", 25);
     },
   },
   {
     name: "serving",
     what: "how the editor's shell and the published pages are served (npm run check:serving)",
     async run(ctx) {
-      // Written with the editor's publishing; it may live at the root or
-      // in builder/, and must end with "RESULT: <n> checks passed".
+      // builder/'s e2e/serving/check-serving.ts, written with the editor's
+      // publishing (the root is looked at too); it ends with "RESULT: <n>
+      // checks passed", and exits 2 when its ports are taken.
       const folder = hasScript(repoRoot, "check:serving") ? repoRoot : hasScript(builderRoot, "check:serving") ? builderRoot : null;
       if (!folder) return failed("", "there is no check:serving script, in package.json or builder/package.json");
       const why = first(packages(folder, folder === repoRoot ? "the repository root" : "builder"), ruby(), chromium());
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("check:serving"), { cwd: folder });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 1);
+      return readChecks(step.output, step.code, 40);
     },
   },
   {
