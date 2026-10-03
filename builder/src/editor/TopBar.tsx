@@ -74,9 +74,6 @@ export function TopBar() {
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => setMenu("pages")}>
               <Icon name="page" /><span>All pages</span>
             </button>
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); markButton.current?.focus(); setCreating(true); }}>
-              <Icon name="plus" /><span>New page…</span>
-            </button>
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
               <Icon name="keyboard" /><span>Keyboard shortcuts</span>
               <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>

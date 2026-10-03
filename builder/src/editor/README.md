@@ -19,7 +19,7 @@ random block ids.
 | File | What it is |
 | --- | --- |
 | `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way, and the site style's changes sent one at a time, a refusal put back |
-| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, a new page, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, the save state, Preview and Publish |
+| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, the save state, Preview and Publish |
 | `SaveStatus.tsx` | Where the edits are, from the autosave's snapshot: the top bar's word (Saved only when the server has every edit; a countdown to the next try, on the injected clock, never read to a screen reader); the toast of a save whose outcome is unknown, with Retry now; the conflict's banner, an alert, with Reload and Keep mine |
 | `Publish.tsx` | Preview, a link to the draft's preview on the CMS's own origin; the split Publish button and its menu (Publish now, the live page), waiting and saying why on an empty page, a conflict or a save not confirmed; nothing for what the storage lacks (no Schedule before stage 4) |
 | `SiteStylePanel.tsx` | Site style, the one screen that changes the tokens: each slot's curated tones, their contrast in words, back to a new site's tone, the type scale and its steps |
@@ -43,6 +43,26 @@ keys already work, on the store's history), versions, tablet and phone
 overrides and the media library are stage 3; scheduling a publish is
 stage 4. The top bar draws no control for any of them until it works, and
 the "?" window lists no key for them.
+
+## Where it departs from the approved design, on purpose
+
+Each of these is a choice, kept for a reason, and open to the design's
+owner to undo:
+- **"?" window:** an Adding group (Enter on a widget panel tile adds it
+  after the selection) and a second sentence under Moving. The window is
+  the keymap written out, so every key that works is in it.
+- **Drag caption:** it names the section as well as the column ("to
+  Column 2 in See the bay"), where the design says "to Column 2". The
+  caption is the live region a screen reader hears, and a page has a
+  Column 2 in most sections.
+- **Site style:** a "Saved for every page" line under the panel's title,
+  where the style's own save shows (the top bar's word is the page's);
+  a chevron on Primary and Accent, which open to their tones; contrast
+  ratios cut to one decimal, not rounded ("8.8 to 1" for 8.86), so a
+  ratio never reads above a threshold it misses.
+- **The empty page's panel** has no "Show in the site menu" toggle: the
+  site's menu is the theme's (`cms/config/site.yml`), which nothing in
+  the editor changes yet.
 
 ## Checks
 

@@ -1,8 +1,7 @@
 // About, opened from the mark's menu: the mark, the name with the
 // repository's own version, and who made it; its Close button takes the
 // focus, and Escape or Close gives it back to the menu's button. The mark's
-// menu is the design's: Site style, All pages, Keyboard shortcuts, About
-// (with New page…, which the editor adds).
+// menu is the design's: Site style, All pages, Keyboard shortcuts, About.
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { fireEvent, screen } from "@testing-library/react";
@@ -24,7 +23,7 @@ test("About opens from the mark's menu, says the version and the author, and clo
   kit.render(<><TopBar /><AboutDialog /></>);
   const mark = screen.getByRole("button", { name: "Page Builder CMS menu" });
   fireEvent.click(mark);
-  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Site style", "All pages", "New page…", "Keyboard shortcuts?", "About Page Builder CMS"]);
+  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Site style", "All pages", "Keyboard shortcuts?", "About Page Builder CMS"]);
   fireEvent.click(screen.getByRole("menuitem", { name: "About Page Builder CMS" }));
 
   const dialog = screen.getByRole("dialog", { name: "About" });
