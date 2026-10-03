@@ -130,6 +130,8 @@ body {
 .btn > .i { margin-left: -3px; }
 .btn-quiet { color: var(--graphite); }
 .btn-quiet:hover { background: var(--key); }
+/* A toggle that is on (Site style while its panel is open): held down. */
+.btn-quiet[aria-pressed="true"] { background: var(--graphite); color: var(--white); }
 .btn-secondary { background: var(--plate); color: var(--graphite); border: 1px solid var(--rule); box-shadow: inset 0 -1px 0 var(--rule); }
 .btn-secondary:hover { background: var(--key); }
 .btn-primary { background: var(--mark); color: var(--on-mark); box-shadow: inset 0 -2px 0 rgb(27 31 36 / .28); }

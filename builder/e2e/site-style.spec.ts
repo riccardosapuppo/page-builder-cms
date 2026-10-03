@@ -25,8 +25,13 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     await expect(canvasHeading).toHaveCSS("color", SEA);
 
     const button = page.getByRole("button", { name: "Site style", exact: true });
+    await expect(button).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "true");
+    // Held down while its panel is open, as the design draws it: graphite,
+    // white words (design/shots/site-style.png).
+    await expect(button).toHaveCSS("background-color", "rgb(27, 31, 36)");
+    await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
     const panel = page.getByRole("complementary", { name: "Site style" });
     await panel.getByRole("button", { name: /^Primary/ }).click();
     await panel.getByRole("radio", { name: "Harbour" }).click();
@@ -62,6 +67,9 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     await panel.getByRole("button", { name: "Close site style" }).click();
     await expect(button).toBeFocused();
     await expect(button).toHaveAttribute("aria-pressed", "false");
+    await page.mouse.move(700, 700);
+    await expect(button).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(button).toHaveCSS("color", "rgb(27, 31, 36)");
   } finally {
     const put = await request.put(`${cms()}/api/site-style`, { data: { palette: before.palette, typeScale: before.typeScale } });
     expect(put.status()).toBe(200);
