@@ -54,10 +54,10 @@ export function bytesText(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`;
 }
 
-// What the file says it is, for a sentence: "a text/plain file", or "a
-// file of no known type".
+// What the file says it is, for a sentence: "a file of type text/plain",
+// or "a file of no known type".
 function kindOf(file: { type: string }): string {
-  return file.type === "" ? "a file of no known type" : `a ${file.type} file`;
+  return file.type === "" ? "a file of no known type" : `a file of type ${file.type}`;
 }
 
 // Why the library will not take this file, said before reading a byte of

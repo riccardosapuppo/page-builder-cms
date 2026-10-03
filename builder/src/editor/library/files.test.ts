@@ -12,7 +12,7 @@ test("an SVG, a file of another kind, an empty one and one too big to open are r
   expect(refusalBeforeReading(file("logo.svg", "image/svg+xml"))).toMatch(/^SVG images are not taken: an SVG is a document that can carry script/);
   // Named .svg with no type the browser knows: still an SVG.
   expect(refusalBeforeReading(file("logo.SVG", ""))).toMatch(/^SVG images are not taken/);
-  expect(refusalBeforeReading(file("notes.txt", "text/plain"))).toBe("It is a text/plain file. The library takes JPEG, PNG, WebP and GIF images.");
+  expect(refusalBeforeReading(file("notes.txt", "text/plain"))).toBe("It is a file of type text/plain. The library takes JPEG, PNG, WebP and GIF images.");
   expect(refusalBeforeReading(file("photo", ""))).toBe("It is a file of no known type. The library takes JPEG, PNG, WebP and GIF images.");
   expect(refusalBeforeReading(file("empty.png", "image/png", 0))).toBe("The file is empty.");
   expect(refusalBeforeReading(file("huge.jpg", "image/jpeg", MAX_SOURCE_BYTES + 5 * 1024 * 1024))).toBe("It is 55 MB; the editor opens images up to 50 MB to make them ready.");
