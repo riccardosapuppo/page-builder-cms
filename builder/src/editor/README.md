@@ -28,10 +28,11 @@ random block ids.
 | `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added |
 | `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx` |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end; the empty page's invitation and its ready-made sections |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar, the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end; the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
 | `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it |
-| `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field is handed over first, as a command of its own; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
+| `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
 | `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each widget panel tile as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the live region (`DragLayer.tsx`) |
+| `rich/` | Rich text on the canvas: TipTap with exactly the schema's nodes and marks, the link cut to its href and held to the URL policy and the schema (`extensions.ts`, `link-check.ts`); a paste cut to what the schema allows (`paste.ts`); the editor as the canvas makes it (`setup.ts`), loaded on demand with TipTap in a chunk of its own (`TextEditor.tsx`, through `tools.ts`); one text being edited and its two histories (`text-session.ts`: the typing becomes ONE command of the page when the person pauses or leaves the text, before any other command and at a drag's start, and TipTap's history is closed there, so Ctrl+Z in the text is TipTap's and outside it the page's); its buttons and link field on the block's bar (`FormatBar.tsx`) |
 | `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor takes its keys from it, and the "?" window lists it; the arrows' order through the page |
 | `BlockMenu.tsx`, `Menu.tsx`, `clipboard.ts` | The block's menu (right click, or the menu key): copy, paste, duplicate, delete; copy and paste through the browser's clipboard events, so a copied block is on the system clipboard as text |
 | `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, tabs, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
@@ -39,7 +40,7 @@ random block ids.
 
 ## Not here yet
 
-Rich text on the canvas, tablet and phone overrides and the media library
+Tablet and phone overrides and the media library
 are stage 3; scheduling a publish is stage 4. The top bar draws no control for any of them until it works, and
 the "?" window lists no key for them.
 
@@ -48,7 +49,10 @@ the "?" window lists no key for them.
 Each of these is a choice, kept for a reason, and open to the design's
 owner to undo:
 - **"?" window:** an Adding group (Enter on a widget panel tile adds it
-  after the selection) and a second sentence under Moving. The window is
+  after the selection) and a second sentence under Moving. A Text group
+  lists the keys inside a text being written (bold, italic, link, Esc to
+  leave), with a note on Ctrl+Z there; Enter, "Edit the text of a block",
+  also goes to the first field of a widget whose words are in its panel. The window is
   the keymap written out, so every key that works is in it.
 - **Drag caption:** it names the section as well as the column ("to
   Column 2 in See the bay"), where the design says "to Column 2". The
@@ -59,6 +63,13 @@ owner to undo:
   a chevron on Primary and Accent, which open to their tones; contrast
   ratios cut to one decimal, not rounded ("8.8 to 1" for 8.86), so a
   ratio never reads above a threshold it misses.
+- **Rich text:** the design draws no text being written. While a text is
+  open, the block's own bar (grip, name, duplicate, delete) also carries
+  bold, italic and link, between thin rules, a button that is on drawn
+  graphite with the bar's yellow; the link's field opens under the block
+  in the panel's field style. The text widget's Content tab has no text
+  field: its words are written on the page, and the tab opens the editor
+  there and says how.
 - **The empty page's panel** has no "Show in the site menu" toggle: the
   site's menu is the theme's (`cms/config/site.yml`), which nothing in
   the editor changes yet.
@@ -83,7 +94,9 @@ test's own and a fake clock; `App.versions.test.tsx` on one that keeps
 versions by the CMS's rules: a restore with an edit waiting, an edit
 typed while it travels), the command runner, the
 keymap and its listener, and the drag layer's preview and live region
-have theirs here. jsdom lays nothing out, so the pointer, the keys and
+have theirs here, and so does the text editor in `rich/` (its nodes and
+marks against the schema, the link's check, the paste, its two histories,
+random texts and random editing, on the real editor in jsdom). jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
 `../../e2e/editor.spec.ts` (the shell; sections anchored with the
 editor's own ids, which hold an underscore no anchor can; the theme's
@@ -95,7 +108,14 @@ canvas, a stacked column's tab and the page's title kept whole),
 button held, refused drops, Esc, a drag on a page drawn smaller, its
 words at their size),
 `focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
-(every key of the map, and the "?" window listing them), `menu.spec.ts`
+(every key of the map, and the "?" window listing them), `rich-text.spec.ts`
+(a text opened where it was clicked and laid out as the page lays it out;
+typing and a drag of the same block at once, the text a step before the
+move; undo and redo inside the text and outside it to the CMS's very
+draft; bold, italic and a link from the bar, a refused address and its
+reason; a word processor's paste and a web page copied in the browser,
+as the CMS saves them; the editor's code fetched only once a text is
+selected; axe with the link's field open), `menu.spec.ts`
 (the block's menu), `marks.spec.ts` (the canvas's marks leaving the
 page's layout alone, a button's hugging its pill wherever its own or
 its column's alignment moves it, the section's tab,
