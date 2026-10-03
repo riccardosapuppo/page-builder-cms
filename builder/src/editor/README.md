@@ -65,7 +65,10 @@ owner to undo:
   value when it has one ("tablets have their own, L"). On the desktop, a
   setting a device overrides says so under it ("Tablets have their own:
   L."). The Advanced tab says, under its switches, why a block hidden on
-  the device previewed is gone from the canvas.
+  the device previewed is gone from the canvas. A section's space above
+  and below has nine steps, which the design does not draw: the two
+  section steps print their names on two lines ("Sec" over "S"), so the
+  nine stand apart in the tray's width.
 - **Drag caption:** it names the section as well as the column ("to
   Column 2 in See the bay"), where the design says "to Column 2". The
   caption is the live region a screen reader hears, and a page has a
@@ -125,14 +128,17 @@ marks against the schema, the link's check, the paste, its two histories,
 random texts and random editing, on the real editor in jsdom). The media
 library's are in `library/`: a file's rules, the uploads against a
 storage of the test's own, and the dialog (alt text before an image is
-placed, one command, an upload kept off the page, a refused delete). jsdom lays nothing out, so the pointer, the keys and
+placed, one command, an upload kept off the page, a refused delete, Esc
+in the delete question taking back only the question). jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
 `../../e2e/editor.spec.ts` (the shell; sections anchored with the
 editor's own ids, which hold an underscore no anchor can; the theme's
 header and footer, locked; and in a 1280 by 800 window the pages drawn
 smaller to fit, the editor's own controls and words on them kept at
 their size and in their place, a hovered block's name kept inside the
-canvas, a stacked column's tab and the page's title kept whole),
+canvas, drawn over the frame of a selection just before it and placed
+again when the window's size changes under the pointer, a stacked
+column's tab and the page's title kept whole),
 `drag.spec.ts` (every drop by mouse and by keyboard, Space with the
 button held, refused drops, Esc, a drag on a page drawn smaller, its
 words at their size),
@@ -144,8 +150,9 @@ each with what was just typed), `devices.spec.ts` (a tablet's and a
 phone's own space set in the Style tab, the canvas at 768 and 390 and the
 page the CMS serves in windows of those widths showing the same; Remove
 leaving the draft with no tablet part, the focus on the ruler, undo and
-redo; a block hidden on phones gone from the phone's canvas and page and
-still on the tablet's), `rich-text.spec.ts`
+redo; a section's nine spacing steps printed apart on its rulers; a
+block hidden on phones gone from the phone's canvas and page and still
+on the tablet's), `rich-text.spec.ts`
 (a text opened where it was clicked and laid out as the page lays it out;
 typing and a drag of the same block at once, the text a step before the
 move; undo and redo inside the text and outside it to the CMS's very
@@ -174,9 +181,16 @@ saying why; a delete the CMS refuses naming the page; axe on the open
 library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
-(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty states, and
-on the published page), `widgets.spec.ts` (each widget's accessibility
-test) and `keyboard-path.spec.ts` (the whole path with no pointer). The
+(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty-six states,
+among them a text being written and its link's field, a tablet's
+override, the history and its name field, the media library; and on the
+published page), `widgets.spec.ts` (each widget's accessibility
+test) and `keyboard-path.spec.ts` (the whole path with no pointer:
+insert, move, a heading's text and level, a word made bold in a text on
+the canvas, a column's tablet space, an image uploaded through the
+system's file chooser and placed with its alt text, undo and redo, a
+named version, publish, the live page read at a desktop's and a
+tablet's width). The
 ones tagged `@a11y` are what `npm run check:a11y` runs. `npm run
 shots:editor -- <folder>` photographs the editor in the design's states
 on the example site (`../../e2e/shots/editor-shots.ts`).

@@ -203,6 +203,16 @@ itself.
   Reload and Keep mine; Preview and Publish, opening the CMS's own pages;
   Site style; the mark as icon, a manifest and About; the accessibility
   checks (`check:a11y`) and how its shell is served (`check:serving`).
+  Since stage 3: a text block written where it stands on the canvas, with
+  TipTap loaded only then, its typing one step of the page's history;
+  undo and redo in the top bar and a history panel of the session's steps
+  and the page's versions, with Save version and Restore; either choice
+  of the two-tab conflict undoable from that history; a tablet's and a
+  phone's own style values, set in the Style tab with that device
+  previewed and taken back by Remove; every key the interface names in
+  one keyboard map; and the media library, uploading straight to the CMS
+  each image drawn again in the browser, with its alt text required
+  before it is placed.
   Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
   `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
@@ -307,12 +317,11 @@ again, and workers that cannot start even one at a time make the suite
    rendering of every widget, the media library, and the API description.
    Done.
 2. **The editor.** A React and TypeScript app with a widget panel, a canvas
-   and a navigator: drag and drop, properties, automatic saving. In
-   progress: what the interface stands on, and the interface with
-   publishing, preview and site style, are in `builder/` (above); the
-   stage's reviews are next.
+   and a navigator: drag and drop, properties, automatic saving. Done.
 3. **Editing in depth.** Rich text, undo and redo, versions and restore,
-   tablet and phone overrides, full keyboard use, image uploads.
+   tablet and phone overrides, full keyboard use, image uploads. In
+   progress: each of these is in `builder/` (above), walked by the
+   keyboard alone in a browser test; the stage's reviews are next.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled
    publishing and background jobs, with measurements.
 5. **Forms**, submitted to Rails from published pages.
