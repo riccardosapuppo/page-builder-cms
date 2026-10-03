@@ -22,7 +22,11 @@ const text = (value: string, marks?: unknown[]) => (marks ? { type: "text", text
 // A link as TipTap's getJSON() writes it, with every attribute it has.
 const editorLink = (href: string) => ({ type: "link", attrs: { href, target: "_blank", rel: "noopener noreferrer nofollow", class: null, title: null } });
 
-const textOf = (d: PageDocument, id: string) => (locate(d, id)?.block.props as TextProps).doc;
+const textOf = (d: PageDocument, id: string) => {
+  const found = locate(d, id);
+  if (!found) throw new Error(`no block ${id}`);
+  return (found.block.props as TextProps).doc;
+};
 // Whether a page holding this text passes the schema and the application rules.
 const valid = (rich: unknown) => validateDocument({
   schemaVersion: 1,

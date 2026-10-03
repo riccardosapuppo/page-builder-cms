@@ -30,11 +30,20 @@ import { locate } from "./tree.ts";
 export const MARK_ORDER = ["bold", "italic", "link"] as const satisfies readonly Mark["type"][];
 
 // What the schema refuses in a run of text (lineControls): C0 and C1
-// control characters, and the line and paragraph separators.
-const CONTROLS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
-// The same, but for a line feed and a carriage return, which split pasted
-// plain text into paragraphs before it becomes text.
-const PASTED_CONTROLS = /[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\u009f\u2028\u2029]/g;
+// control characters, and the line and paragraph separators. A pasted
+// plain text keeps its line feeds and carriage returns, which split it
+// into paragraphs before it becomes text.
+function isControl(code: number, keepLineBreaks: boolean): boolean {
+  if (keepLineBreaks && (code === 0x0a || code === 0x0d)) return false;
+  return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029;
+}
+
+function spaced(text: string, keepLineBreaks: boolean): string {
+  let out = "";
+  for (const character of text) out += isControl(character.codePointAt(0) ?? 0, keepLineBreaks) ? " " : character;
+  return out;
+}
+
 // The schema's longest run of text, in characters as it counts them.
 export const MAX_TEXT_RUN = 10000;
 const ORDERED_STYLES: readonly unknown[] = ["a", "A", "i", "I"];
@@ -43,7 +52,7 @@ const MAX_START = 100000;
 // Plain text pasted into the editor, with every character the schema
 // refuses in text made a space; line breaks stay, to split it.
 export function cleanPastedText(text: string): string {
-  return text.replace(PASTED_CONTROLS, " ");
+  return spaced(text, true);
 }
 
 // The editor's JSON as the schema's rich text: what the text widget stores.
@@ -110,7 +119,7 @@ function inlineOf(nodes: unknown): InlineNode[] {
     if (!isObject(node)) return [];
     if (node.type === "hardBreak") return [{ type: "hardBreak" }];
     if (node.type !== "text" || typeof node.text !== "string") return [];
-    const text = node.text.replace(CONTROLS, " ");
+    const text = spaced(node.text, false);
     if (text === "") return [];
     const marks = marksOf(node.marks);
     return runs(text).map((run) => (marks.length > 0 ? { type: "text", text: run, marks: marks.map((m) => ({ ...m })) } : { type: "text", text: run }));
