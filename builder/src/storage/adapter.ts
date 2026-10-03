@@ -144,6 +144,12 @@ export interface ScheduledPublish {
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export type ImageType = (typeof IMAGE_TYPES)[number];
 
+// The largest file an upload may send, 10 MB, and the largest side in
+// pixels the library takes. A larger file is refused at /file before its
+// bytes are sent; the editor uses the numbers to word that refusal.
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_IMAGE_SIDE = 10_000;
+
 export interface MediaItem {
   // The id documents name as mediaId.
   id: string;

@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, VERSION_REASONS,
+  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, VERSION_REASONS,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type InUse, type Invalid, type MediaItem,
   type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
   type Published, type PublishRequest, type PublishResult, type RestoreResult, type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
@@ -203,10 +203,20 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     expect(sortKeys(shape)).toEqual(sortKeys(shapeOf(pointer, without)));
   });
 
-  test("the version reasons, the image types and the codes of an invalid request", () => {
+  test("the version reasons and the image types", () => {
     expect([...VERSION_REASONS]).toEqual(at("#/components/schemas/Version/properties/reason").enum);
     expect([...VERSION_REASONS]).toEqual(at("#/components/schemas/VersionWithDocument/properties/reason").enum);
     expect([...IMAGE_TYPES]).toEqual(at("#/components/schemas/ImageType").enum);
+  });
+
+  test("the largest upload and the largest side an image may have", () => {
+    const blob = follow((follow(at(requestBody("/api/media/direct_uploads", "post"))).properties as Record<string, Node>).blob!);
+    expect(MAX_UPLOAD_BYTES).toBe(follow((blob.properties as Record<string, Node>).byte_size!).maximum);
+    const media = follow(at(requestBody("/api/media", "post"))).properties as Record<string, Node>;
+    expect([follow(media.width!).maximum, follow(media.height!).maximum]).toEqual([MAX_IMAGE_SIDE, MAX_IMAGE_SIDE]);
+  });
+
+  test("the codes of an invalid request", () => {
     const codes = ["InvalidRequestError", "InvalidDocumentError", "DuplicateKeyError"].map((name) => at(`#/components/schemas/${name}/properties/error`).const);
     expect(codes).toEqual([...INVALID_CODES]);
     expect(everyCode).toBe(true);
