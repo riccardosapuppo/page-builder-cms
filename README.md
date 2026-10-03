@@ -216,7 +216,8 @@ itself.
   description, RuboCop, Brakeman and bundler-audit, the production check,
   the editor's checks on Node 22.13.0 (the lowest it declares) and 24,
   the render contract's two halves, the editor against a CMS of its own
-  in a browser with its accessibility tests, the tools' tests on Linux
+  in a browser with its accessibility tests and how its page is served
+  (`check:serving`), the tools' tests on Linux
   and Windows, npm start's refusal of Node 22.13.0 and 18 before any
   install, and npm start in smoke mode on Linux and Windows, from
   nothing, with its real Ctrl+C. It first ran on 2 October 2026, on the

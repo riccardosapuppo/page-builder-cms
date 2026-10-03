@@ -148,7 +148,9 @@ jobs:
   builder-e2e:
     name: Editor against a CMS of its own, in a browser
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Here these four took about 5 minutes; a runner with two processors
+    # starts each CMS more slowly.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -173,6 +175,10 @@ jobs:
       # The keyboard path, focus after every command, axe on the editor,
       # the published page and every widget, and the shortcut window.
       - run: npm run check:a11y
+        working-directory: builder
+      # How the editor's page and the published pages are served: on the
+      # development server and on vite preview of a build, and by the CMS.
+      - run: npm run check:serving
         working-directory: builder
 
   contract:

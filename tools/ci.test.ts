@@ -67,7 +67,7 @@ test("the jobs of stages 1 and 2 are all there", () => {
     assert.ok(workflow.jobs[name], `no job ${name}`);
   }
   const text = JSON.stringify(workflow.jobs);
-  for (const needed of ["npm run check:a11y", "npm start -- --smoke", "npm run check:start-interrupt", "npm run test:contract"]) {
+  for (const needed of ["npm run check:a11y", "npm run check:serving", "npm start -- --smoke", "npm run check:start-interrupt", "npm run test:contract"]) {
     assert.ok(text.includes(needed), `no step runs ${needed}`);
   }
 });
