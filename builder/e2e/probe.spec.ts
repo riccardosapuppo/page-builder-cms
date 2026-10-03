@@ -80,9 +80,12 @@ test("a draft save and a direct upload go from the editor's origin, through its 
   expect(new URL(upload.served.url).origin).toBe(editorOrigin);
   expect(upload.served.contentType).toBe("image/png");
   expect(upload.served.sha256).toBe(upload.sent);
-  // The library on the CMS itself lists the item.
+  // The library on the CMS itself lists the item, found by its id: the
+  // tests of a run share one CMS, and other tests put images in its
+  // library before this one may run.
+  const { id: itemId } = upload.created.body as { id: string };
   const media = await request.get(`${cmsUrl}/api/media`);
-  expect(((await media.json()) as { media: Array<{ alt: string }> }).media.map((m) => m.alt)).toEqual(["A probe image"]);
+  expect(((await media.json()) as { media: Array<{ id: string; alt: string }> }).media.filter((m) => m.id === itemId).map((m) => m.alt)).toEqual(["A probe image"]);
 
   // Active Storage's own first step, on the same server, refuses without a CSRF token.
   const stock = await page.evaluate(() => window.probe.stockDirectUpload());
