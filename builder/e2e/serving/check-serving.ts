@@ -23,7 +23,9 @@
 // E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), and stops them; the build
 // goes to a folder of the system's temporary space, deleted at the end.
 // Ruby with the CMS's gems and Playwright's Chromium are needed. Exits 0
-// when every check passes, 1 when one fails, 2 when it could not run.
+// when every check passes, 1 when one fails (a server that crashes at
+// boot or never answers included), 2 when it could not run (a port taken,
+// no way to see who listens).
 import { mkdtempSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,6 +34,7 @@ import { chromium } from "@playwright/test";
 import { builderRoot } from "../../build/paths.ts";
 import { ASSET_CACHE, PAGE_CACHE } from "../../build/serving.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
+import { CouldNotRun } from "../../../tools/lib/processes.ts";
 import { startBuilder, startCms, type Server } from "../harness/servers.ts";
 
 const results: string[] = [];
@@ -137,17 +140,23 @@ let cms: Server | null = null;
 let editor: Server | null = null;
 let build: string | null = null;
 let couldNotRun: string | null = null;
+// A port taken, or no way to see who listens, is this machine's condition:
+// the check could not run. A server that exits before it is ready, or
+// never answers, is a failure like any other, counted below.
+const noteStart = (what: string, error: unknown): void => {
+  if (error instanceof CouldNotRun) couldNotRun = `${what} did not start: ${error.message.split("\n")[0]}`;
+};
 try {
   try {
     cms = await startCms(cmsPort());
   } catch (error) {
-    couldNotRun = `the CMS did not start: ${(error as Error).message.split("\n")[0]}`;
+    noteStart("the CMS", error);
     throw error;
   }
   try {
     editor = await startBuilder(builderPort(), cms.url);
   } catch (error) {
-    couldNotRun = `the editor's development server did not start: ${(error as Error).message.split("\n")[0]}`;
+    noteStart("the editor's development server", error);
     throw error;
   }
   await shellChecks(editor.url, "development server", false);

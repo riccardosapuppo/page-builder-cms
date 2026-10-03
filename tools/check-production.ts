@@ -26,13 +26,16 @@
 // cms/ installed, and Playwright's Chromium in its cache.
 //
 // Runs on Windows, Linux and macOS. Exits 0 when every check passes, 1
-// when one fails, 2 when the check could not run (the port taken, the
-// server not starting, no way to see who listens).
+// when one fails, 2 when the check could not run here (the port taken, an
+// invalid PRODUCTION_CHECK_PORT, no way to see who listens, no Ruby to
+// start). A precompile that fails, a server that exits at boot or never
+// answers, an API call answered with an error: each is a failure of the
+// CMS, never "could not run".
 import { spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
+import { CouldNotRun, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -79,6 +82,7 @@ function check(ok: boolean, what: string, detail = ""): void {
 
 function rails(args: string[], label: string): void {
   const r = spawnSync("ruby", ["bin/rails", ...args], { cwd: cms, env, encoding: "utf8" });
+  if (r.error) throw new CouldNotRun(`${label}: Ruby could not be started (${r.error.message})`);
   if (r.status !== 0) {
     console.log(`${label} failed (exit ${r.status}):\n${(r.stdout ?? "") + (r.stderr ?? "")}`);
     throw new Error(`${label} failed`);
@@ -152,8 +156,8 @@ try {
   const started = readFileSync(log, "utf8");
   console.log(`server output:\n${started.split(/\r?\n/).filter((l) => /Puma|Listening|Environment|PID|Error|error/.test(l)).map((l) => `  ${l}`).join("\n")}`);
   if (!up) {
-    console.log("the server did not answer /up within 120 s");
-    exitCode = 2;
+    // The CMS's own fault: it crashed at boot, or never came up.
+    check(false, "the server answers /up", main.exitCode !== null ? `it exited (${main.exitCode}) before it answered` : "no answer within 120 s");
   } else {
     const owners = listeners(PORT);
     check(owners.length === 1 && owners[0]!.pid === String(main.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
@@ -213,7 +217,8 @@ try {
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);
-  exitCode = 2;
+  if (error instanceof CouldNotRun) exitCode = 2;
+  else check(false, "the check ran to its end", (error as Error).message);
 } finally {
   for (const child of [refused, main]) {
     if (child) console.log(await stopTree(child));

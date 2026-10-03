@@ -21,7 +21,7 @@ import { spawnSync, type ChildProcess } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { listeners, startTree, stopTree } from "../../../tools/lib/processes.ts";
+import { CouldNotRun, listeners, startTree, stopTree } from "../../../tools/lib/processes.ts";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
 
 const cmsRoot = join(repoRoot, "cms");
@@ -43,7 +43,7 @@ function holders(port: number): string {
 
 function assertFree(port: number, what: string): void {
   const taken = holders(port);
-  if (taken) throw new Error(`port ${port}, for ${what}, is already taken by ${taken}: nothing was started`);
+  if (taken) throw new CouldNotRun(`port ${port}, for ${what}, is already taken by ${taken}: nothing was started`);
 }
 
 function tail(file: string, lines = 30): string {

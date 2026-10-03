@@ -12,6 +12,17 @@ export interface Listener {
 
 const windows = process.platform === "win32";
 
+// A condition of the machine, not a fault of the project: the port is
+// taken, the system cannot say who listens. A check that meets one says it
+// could not run here (exit 2); anything else that stops it is a failure
+// (exit 1), a server that crashes at boot included.
+export class CouldNotRun extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CouldNotRun";
+  }
+}
+
 // Asks the system, not a test bind: on Windows a bind to 127.0.0.1:N
 // succeeds while another process listens on 0.0.0.0:N.
 // - Windows: netstat -a -n -o; a listening line has a remote address of
@@ -24,7 +35,7 @@ export function listeners(port: number): Listener[] {
   if (windows) return fromNetstat(run("netstat", ["-a", "-n", "-o"]), port);
   if (process.platform === "linux" && has("ss")) return fromSs(run("ss", ["-H", "-l", "-t", "-n", "-p"]), port);
   const result = spawnSync("lsof", ["-n", "-P", `-iTCP:${port}`, "-sTCP:LISTEN", "-F", "pn"], { encoding: "utf8" });
-  if (result.error) throw new Error(`cannot tell who listens on ${port}: neither ss nor lsof could be run (${result.error.message})`);
+  if (result.error) throw new CouldNotRun(`cannot tell who listens on ${port}: neither ss nor lsof could be run (${result.error.message})`);
   // lsof exits 1 when nothing listens.
   return fromLsof(result.stdout ?? "", port);
 }
@@ -96,7 +107,7 @@ function has(command: string): boolean {
 
 function run(command: string, args: string[]): string {
   const result = spawnSync(command, args, { encoding: "utf8" });
-  if (result.error) throw new Error(`cannot tell who listens: ${command} could not be run (${result.error.message})`);
+  if (result.error) throw new CouldNotRun(`cannot tell who listens: ${command} could not be run (${result.error.message})`);
   return result.stdout ?? "";
 }
 
