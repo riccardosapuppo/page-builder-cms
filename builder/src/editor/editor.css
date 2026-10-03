@@ -108,7 +108,9 @@ body {
 .tb-page { display: inline-flex; align-items: center; gap: 6px; height: 36px; min-width: 0; padding: 0 8px; margin-right: 4px; border-radius: var(--r-control); white-space: nowrap; }
 .tb-page > .i:first-child { color: var(--steel); }
 .tb-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
-.tb-page-path { color: var(--steel); }
+/* Short of room, the address gives way first, then the title: "Sp…"
+   beside a whole "/spring-series" named the page by the lesser half. */
+.tb-page-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1000; color: var(--steel); }
 .tb-page > .i-xs { color: var(--steel); }
 .chip { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .chip-draft { gap: 6px; background: var(--key); color: var(--steel); margin-right: 4px; white-space: nowrap; }
@@ -398,6 +400,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-section .ov-tab { left: 50%; top: 0; transform: translate(-50%, -50%); }
 
 .ov-col .ov-tab { left: -1px; bottom: -1px; transform: translateY(100%); border-radius: 0 0 var(--r-control) var(--r-control); }
+/* The tab hangs below its column: where the columns stack (a narrow page),
+   that is over the next column's dashed line, drawn later at the same
+   level, which would cross out the tab's name. */
+.ov-col:has(> .ov-tab) { z-index: 6; }
 
 /* An empty column on the canvas: a place to click and, later, to drop. */
 .col-empty { display: grid; place-items: center; min-height: 72px; padding: 12px; border-radius: 4px; outline: 1.5px dashed var(--rule); outline-offset: -1.5px; color: var(--steel); font: 500 12px/16px var(--font-ui); text-align: center; }

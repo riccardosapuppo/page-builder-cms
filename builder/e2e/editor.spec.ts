@@ -3,12 +3,14 @@
 // it where the selection is and the CMS keeps it; the device buttons
 // narrow the page root and the page lays out by its own width; the
 // navigator and the canvas select together; a 422 from the CMS shows on
-// the field it names; an empty page and a new one invite a first section.
+// the field it names; an empty page and a new one invite a first section;
+// in a smaller window, a stacked column's tab and the page's title stay
+// whole.
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
 import type { Page } from "@playwright/test";
-import { cms, column, draftOf, expect, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
 
 const row = (page: Page, name: string) => page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
 
@@ -158,4 +160,40 @@ test("a new page, made from the page switch, invites its first section, which th
   const draft = await draftOf(request, newId);
   expect(draft.document.sections).toHaveLength(1);
   expect(draft.document.sections[0]!.children).toHaveLength(2);
+});
+
+// A smaller window, 1280 by 800: the canvas gives the page 672, so the
+// columns stack, and the top bar has less room.
+test.describe("in a 1280 by 800 window", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("the tab of the selection's column is drawn whole, over the next column's line", async ({ page, request }) => {
+    const { id } = await makePage(request, "Stacked", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+    await open(page, id);
+    await page.locator('.canvas [data-block-id="h1"]').click();
+    await page.mouse.move(1270, 790);
+    const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;
+    const second = (await page.locator('.canvas [data-block-id="c2"]').boundingBox())!;
+    expect(second.y).toBeGreaterThan(first.y + first.height - 1);
+
+    // The tab hangs below the first column, where the second column's
+    // dashed line runs: inside its border (the edge pixels are shared with
+    // the line beside it), the tab looks the same with that line hidden.
+    const box = (await page.getByRole("button", { name: "Select Column 1" }).boundingBox())!;
+    const inside = { x: box.x + 2, y: box.y + 2, width: box.width - 4, height: box.height - 4 };
+    const withLine = await page.screenshot({ clip: inside });
+    await page.locator('.canvas [data-block-id="c2"] > .ov-col').evaluate((line) => { (line as HTMLElement).style.visibility = "hidden"; });
+    expect(await page.screenshot({ clip: inside })).toEqual(withLine);
+  });
+
+  test("a long address gives way before the page's title in the top bar", async ({ page, request }) => {
+    const { id, slug } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
+    await open(page, id);
+    const title = page.locator(".tb-page-title");
+    await expect(title).toHaveText("Spring series");
+    await expect(page.locator(".tb-page-path")).toHaveText(`/${slug}`);
+    // Every letter of the title shows; the address is the one cut short.
+    expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(await page.locator(".tb-page-path").evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  });
 });
