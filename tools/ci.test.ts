@@ -89,6 +89,13 @@ test("every command a step runs exists in the folder it runs in", () => {
       const manifest = JSON.parse(readFileSync(join(repoRoot, folder, "package.json"), "utf8")) as { devDependencies?: Record<string, string> };
       assert.ok(Object.keys(manifest.devDependencies ?? {}).some((p) => p === "playwright" || p === "@playwright/test"), `${where}: Playwright is not a dependency here`);
       checked += 1;
+    } else if (/^node --test /.test(line)) {
+      // Every test file named, none of them a pattern Node would expand
+      // to nothing.
+      const files = line.split(/\s+/).slice(2);
+      assert.ok(files.length > 0, `${where}: no test file named`);
+      for (const file of files) assert.ok(existsSync(join(repoRoot, folder, file)), `${where}: ${file} does not exist`);
+      checked += 1;
     } else if (/^node /.test(line)) {
       const file = line.split(/\s+/)[1]!;
       assert.ok(existsSync(join(repoRoot, folder, file)), `${where}: ${file} does not exist`);
