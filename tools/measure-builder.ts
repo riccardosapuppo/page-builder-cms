@@ -41,7 +41,8 @@
 // the drag went to, as shares (a profiler slows the page, so its
 // milliseconds are not quoted); MEASURE_PROFILE=only runs nothing else.
 // MEASURE_FORMS=build or =dev measures one form only, MEASURE_RUNS_BUILDER
-// sets the runs of each (9).
+// sets the runs of each (9), and MEASURE_DRAG=0 only opens the page, with no
+// drag, to see how steady the openings are over many runs.
 //
 // It waits for the machine to be quiet first, reads how busy it is before
 // and after every run, and stops, exit 2, if it never gets quiet. Headless
@@ -205,6 +206,9 @@ function frames(): void {
 // --- Driving the page -------------------------------------------------------------
 
 const VIEWPORT = { width: 1440, height: 900 };
+// MEASURE_DRAG=0 opens the page only, with no drag and no page of four
+// blocks: many openings in little time, to see how steady they are.
+const dragging = process.env.MEASURE_DRAG !== "0";
 // Where the fixture's pictures that no library holds point (contract/
 // fixtures/large-500.json).
 const OTHER_SITE = "https://images.example.org/";
@@ -396,11 +400,11 @@ async function measureForm(name: string, what: string, preview: string | undefin
 
     for (let i = 0; i < runs; i++) {
       console.log(`${name}: run ${i + 1} of ${runs}, 500 blocks`);
-      const run = await visit(large.id, 500, true);
+      const run = await visit(large.id, 500, dragging);
       form.open.push(run);
       form.large.push(run);
     }
-    for (let i = 0; i < runs; i++) {
+    for (let i = 0; dragging && i < runs; i++) {
       console.log(`${name}: run ${i + 1} of ${runs}, four blocks`);
       form.small.push(await visit(small.id, 4, true));
     }
@@ -520,6 +524,19 @@ function report(forms: Form[], stops: number, underLoad: boolean): void {
     console.log(`| ${f.name} | ${runsOf(t.map((x) => x.task))} | ${runsOf(t.map((x) => x.script))} | ${runsOf(t.map((x) => x.layout))} | ${runsOf(t.map((x) => x.style))} | ${runsOf(t.map((x) => x.layouts))} | ${runsOf(t.map((x) => x.styles))} |`);
   }
   console.log("");
+  console.log("Every run, ms from the start of the navigation until the 500 blocks were in the canvas:");
+  for (const f of forms) console.log(`${f.name}: ${f.open.map((r) => ms(r.opened.blocksAt)).join(", ")}`);
+  if (dragging) reportDrag(forms, stops);
+  console.log("");
+  for (const f of forms) console.log(`${f.name}: runs thrown away because the machine was busy after them, and taken again: ${discardedWords(f.tally)}`);
+  console.log("");
+  const elsewhere = forms.flatMap((f) => [...f.large, ...f.small]).map((r) => r.elsewhere);
+  console.log(`(the page names pictures on another site, which this machine cannot fetch: ${Math.max(...elsewhere)} failed requests in a run, not counted as errors)`);
+  if (underLoad) console.log("UNDER LOAD: the machine was not quiet during this run (or MEASURE_ALLOW_BUSY=1 was given): these numbers are not to be quoted");
+}
+
+function reportDrag(forms: Form[], stops: number): void {
+  console.log("");
   const first = forms[0]!.large[0]!.drag!;
   console.log(`Dragging a block across the page, one run per fresh page: the block held, the page scrolled to ${stops} positions evenly spread over its height (${first.scrollHeight} px), the pointer down the canvas and up again at each. `
     + `Frame interval and pointer latency in ms; per run, then the median of the runs (min to max)`);
@@ -554,13 +571,7 @@ function report(forms: Form[], stops: number, underLoad: boolean): void {
     }
   }
   console.log("");
-  for (const f of forms) console.log(`${f.name}: runs thrown away because the machine was busy after them, and taken again: ${discardedWords(f.tally)}`);
-  console.log("");
   for (const f of forms) console.log(`The live region said, in the first run of ${f.name}, on 500 blocks: ${f.large[0]!.drag!.sentences.map((s) => `"${s}"`).join("; ")}`);
-  const elsewhere = forms.flatMap((f) => [...f.large, ...f.small]).map((r) => r.elsewhere);
-  console.log("");
-  console.log(`(the page names pictures on another site, which this machine cannot fetch: ${Math.max(...elsewhere)} failed requests in a run, not counted as errors)`);
-  if (underLoad) console.log("UNDER LOAD: the machine was not quiet during this run (or MEASURE_ALLOW_BUSY=1 was given): these numbers are not to be quoted");
 }
 
 // --- The run -------------------------------------------------------------------------
@@ -596,7 +607,7 @@ try {
     check(f.open.every((r) => r.opened.blocks === 500),`${f.name}: the canvas held exactly 500 blocks when the first render was taken`, [...new Set(f.open.map((r) => r.opened.blocks))].join(", "));
     check(f.open.every((r) => Number.isFinite(r.opened.pageArrived) && r.opened.pageArrived < r.opened.blocksAt && r.opened.blocksAt <= r.opened.paintedAt), `${f.name}: the data arrived, then the blocks, then the frame after them, every run`);
     check(f.open.every((r) => !r.opened.scripts.some((s) => /TextEditor/.test(s))), `${f.name}: the text editor's code was not loaded to open the page`, f.open[0]!.opened.scripts.filter((s) => /TextEditor/.test(s)).join(", "));
-    for (const [label, list] of [["500 blocks", f.large], ["4 blocks", f.small]] as const) {
+    for (const [label, list] of dragging ? [["500 blocks", f.large], ["4 blocks", f.small]] as const : []) {
       check(list.every((r) => (label === "500 blocks" ? r.drag!.places >= 20 : r.drag!.sentences.length >= 1)), `${f.name}, ${label}: the drag engaged, the live region said where the block would go`,
         label === "500 blocks" ? `${[...new Set(list.map((r) => r.drag!.places))].join(", ")} different places` : `"${list[0]!.drag!.sentences.join('"; "')}"`);
       check(list.every((r) => r.drag!.moves >= 100 && r.drag!.deltas.length > r.drag!.moves && r.drag!.lat.length >= r.drag!.moves - 3 && r.drag!.lat.every((l) => l >= 0 && l < 10_000)), `${f.name}, ${label}: at least 100 pointer moves and a frame for each were timed, a latency for each move, and no latency is negative`,
