@@ -107,7 +107,8 @@ test("edit, publish, visit, revisit, one block changed and published; a publish 
     // visitor gets the page once its time has come, and not before.
     await retitle(page, words("Ebb tides"));
     await saved(page);
-    const due = siteTime(8_000);
+    // Far enough ahead for a slow machine to fill the dialog in time.
+    const due = siteTime(15_000);
     await schedule(page, due);
     await expect(status(page)).toHaveText(`Published, 1 change not live · scheduled for ${due.said}`);
     const waiting = await reader.visit(live);
@@ -130,7 +131,7 @@ test("edit, publish, visit, revisit, one block changed and published; a publish 
     // good.
     await retitle(page, words("Never live"));
     await saved(page);
-    const cancelledAt = siteTime(6_000);
+    const cancelledAt = siteTime(12_000);
     await schedule(page, cancelledAt);
     await expect(status(page)).toHaveText(`Published, 1 change not live · scheduled for ${cancelledAt.said}`);
     await page.getByRole("button", { name: "More publish options" }).click();
