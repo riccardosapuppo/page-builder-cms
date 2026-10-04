@@ -9,7 +9,8 @@
 // insert-col1, and insert-drawer, which the layout shoots at 1280),
 // named as they are, plus the states the editor has that the layout
 // draws elsewhere or not at all: a right click's menu (context), a text's
-// link field (text-link), a drag from Insert (drag-from-insert), the
+// link field (text-link), a drag from Insert (drag-from-insert), a
+// dropped key that asks first, its window open (drop-asks), the
 // hero's own space on phones (phone-spacing), Block edges, the mark's menu
 // and About; and the home page as the CMS serves it to a tablet and a
 // phone (served-tablet, served-phone).
@@ -286,6 +287,17 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("drag-from-insert");
   await page.keyboard.press("Escape");
   await page.mouse.up();
+  // A key that asks first, dropped: the Gallery key released at the same
+  // place, the media library open over the place it keeps; then Esc, and
+  // nothing changed.
+  await pickUp(page, page.getByRole("group", { name: "Media" }).getByRole("button", { name: "Gallery" }));
+  await moveOnto(page, page.locator('.canvas [data-block-id="meet-text"]'), "bottom");
+  await page.getByText("Gallery will be added to Column 2 in See the bay, after Text.").waitFor();
+  await page.mouse.up();
+  await page.getByRole("dialog", { name: "Media library" }).waitFor();
+  await shoot("drop-asks");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "Media library" }).waitFor({ state: "detached" });
   await closeDrawers(page);
 
   // #drag: the hero's button picked up by its clamp's grip and held under
