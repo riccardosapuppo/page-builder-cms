@@ -96,7 +96,7 @@ function describe(snapshot: SaveSnapshot, now: number): Said {
       // The banner is the alert; the top bar only shows it.
       return { className: "save-state save-warn", icon: "warning", text: "Changed in another tab", heard: false };
     case "invalid":
-      return { className: "save-state save-err", icon: "error", text: "Not saved: a value was refused", heard: true, title: "The server refused a value: it is marked in the navigator and in the panel." };
+      return { className: "save-state save-err", icon: "error", text: "Not saved: a value was refused", heard: true, title: "The server refused a value: it is marked in the Outline and in the sidebar." };
     case "refused":
       return { className: "save-state save-err", icon: "error", text: "Not saved", heard: true, ...(snapshot.failure ? { title: snapshot.failure.message } : {}) };
   }
