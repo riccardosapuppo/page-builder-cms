@@ -1,0 +1,1785 @@
+<!doctype html>
+<html lang="en" data-state="editor">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Builder CMS</title>
+<link rel="icon" href="../mark.svg" type="image/svg+xml">
+<!-- The site theme, unchanged: the same file styles the canvas and the published page. -->
+<link rel="stylesheet" href="../theme.css">
+<!-- This page's own block settings, written by the editor. The tablet override
+     lives only here, inside a container query, so canvas and page agree. -->
+<style id="page-css">
+  @container site (560px <= width < 800px) {
+    #hero-c1 { --col-pad: var(--space-l); }
+  }
+</style>
+<!-- An unsaved Site style edit: previewed on the canvas while it saves. -->
+<style id="site-style-edit">
+  [data-state="site-style"] .site { --sw-primary: #1D4E6F; }
+</style>
+<!-- Layout B, "Galley": the editor chrome only. -->
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Icons: the product's own set (one 20-unit grid, 1.5 px stroke), copied from the approved mock. -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="mark" viewBox="0 0 16 16"><path d="M3 10V3h7M13 6v7H6" fill="none" stroke="#FFFFFF" stroke-width="4"/><path d="M3 9V3h6M13 7v6H7" fill="none" stroke="#1B1F24" stroke-width="2"/><rect x="7" y="7" width="2" height="2" style="fill: var(--mark)"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 20 20"><path d="M8 6l4 4-4 4"/></symbol>
+  <symbol id="i-desktop" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="10" rx="1"/><path d="M7 16.75h6M10 13.75v3"/></symbol>
+  <symbol id="i-tablet" viewBox="0 0 20 20"><rect x="4.75" y="2.75" width="10.5" height="14.5" rx="1.5"/><path d="M9 14.5h2"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 20 20"><rect x="6.25" y="3.25" width="7.5" height="13.5" rx="1.5"/><path d="M9.25 14.25h1.5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 20 20"><path d="M7 4.5L3.5 8 7 11.5"/><path d="M3.5 8h8.25a4.25 4.25 0 0 1 0 8.5H9"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 20 20"><path d="M13 4.5L16.5 8 13 11.5"/><path d="M16.5 8H8.25a4.25 4.25 0 0 0 0 8.5H11"/></symbol>
+  <symbol id="i-history" viewBox="0 0 20 20"><path d="M3.75 10a6.25 6.25 0 1 0 1.83-4.42"/><path d="M3.75 3v3.25H7"/><path d="M10 6.5V10l2.5 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 20 20"><path d="M2.5 10S5.25 5 10 5s7.5 5 7.5 5-2.75 5-7.5 5-7.5-5-7.5-5z"/><circle cx="10" cy="10" r="2.25"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 20 20"><g fill="currentColor" stroke="none"><circle cx="7.5" cy="5" r="1.25"/><circle cx="12.5" cy="5" r="1.25"/><circle cx="7.5" cy="10" r="1.25"/><circle cx="12.5" cy="10" r="1.25"/><circle cx="7.5" cy="15" r="1.25"/><circle cx="12.5" cy="15" r="1.25"/></g></symbol>
+  <symbol id="i-copy" viewBox="0 0 20 20"><rect x="7.25" y="7.25" width="9.5" height="9.5" rx="1"/><path d="M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-duplicate" viewBox="0 0 20 20"><rect x="7.25" y="7.25" width="9.5" height="9.5" rx="1"/><path d="M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3M12 9.75v4.5M9.75 12h4.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 20 20"><path d="M3.5 5.5h13M8 5.5v-2h4v2M5.25 5.5l.75 11h8l.75-11M8.5 8.5v5M11.5 8.5v5"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 20 20"><path d="M7 4.25H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-2"/><rect x="7" y="2.75" width="6" height="3" rx=".75"/></symbol>
+  <symbol id="i-close" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></symbol>
+  <symbol id="i-search" viewBox="0 0 20 20"><circle cx="8.75" cy="8.75" r="5.25"/><path d="M12.5 12.5L17 17"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></symbol>
+  <symbol id="i-style" viewBox="0 0 20 20"><rect x="3.25" y="3.25" width="5.5" height="5.5" rx=".75"/><rect x="11.25" y="3.25" width="5.5" height="5.5" rx=".75"/><rect x="3.25" y="11.25" width="5.5" height="5.5" rx=".75"/><circle cx="14" cy="14" r="2.75"/></symbol>
+  <symbol id="i-align-left" viewBox="0 0 20 20"><path d="M3.5 5h13M3.5 8.5h8M3.5 12h13M3.5 15.5h8"/></symbol>
+  <symbol id="i-align-center" viewBox="0 0 20 20"><path d="M3.5 5h13M6 8.5h8M3.5 12h13M6 15.5h8"/></symbol>
+  <symbol id="i-align-right" viewBox="0 0 20 20"><path d="M3.5 5h13M8.5 8.5h8M3.5 12h13M8.5 15.5h8"/></symbol>
+  <symbol id="i-valign-top" viewBox="0 0 20 20"><path d="M3.5 3.75h13"/><rect x="6.25" y="6.25" width="7.5" height="7" rx=".75"/></symbol>
+  <symbol id="i-valign-middle" viewBox="0 0 20 20"><path d="M3 10h3.25M13.75 10H17"/><rect x="6.25" y="6.25" width="7.5" height="7.5" rx=".75"/></symbol>
+  <symbol id="i-valign-bottom" viewBox="0 0 20 20"><path d="M3.5 16.25h13"/><rect x="6.25" y="6.75" width="7.5" height="7" rx=".75"/></symbol>
+  <symbol id="i-link" viewBox="0 0 20 20"><path d="M8.5 11.5l3-3"/><path d="M9.25 5.75l1.5-1.5a3 3 0 0 1 4.25 4.25l-1.5 1.5"/><path d="M10.75 14.25l-1.5 1.5A3 3 0 0 1 5 11.5l1.5-1.5"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 20 20"><rect x="3.25" y="4.25" width="13.5" height="12.5" rx="1"/><path d="M3.25 8.25h13.5M7 2.5V6M13 2.5V6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 6.25V10l2.5 2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><ellipse cx="10" cy="10" rx="2.75" ry="6.75"/><path d="M3.25 10h13.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 20 20"><path d="M11.5 3.5h5v5M16.5 3.5l-7 7"/><path d="M14 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 20 20"><path d="M10 3.25l7.25 13.25H2.75z"/><path d="M10 8v4"/><circle cx="10" cy="14.25" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-error" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 6.25v4.5"/><circle cx="10" cy="13.4" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 9v4.75"/><circle cx="10" cy="6.6" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 20 20"><path d="M10 13V3.75M6.5 7.25L10 3.75l3.5 3.5"/><path d="M3.5 12.5v3a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20"><rect x="4.25" y="8.75" width="11.5" height="8" rx="1"/><path d="M7 8.75V6.5a3 3 0 0 1 6 0v2.25"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 20 20"><rect x="2.25" y="5.25" width="15.5" height="9.5" rx="1"/><path d="M5 8.25h1.5M8.5 8.25H10M12 8.25h1.5M6.5 11.75h7"/></symbol>
+  <symbol id="i-anchor" viewBox="0 0 20 20"><path d="M8 3.5L6.5 16.5M13.5 3.5L12 16.5M4.25 7.5h12.5M3.25 12.5h12.5"/></symbol>
+  <symbol id="i-panel-right" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="1"/><path d="M12.25 3.75v12.5"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="6" height="4" rx=".75"/><path d="M5.75 6.75v8.5h5M5.75 10.25h5"/><rect x="10.75" y="8.25" width="6.5" height="4" rx=".75"/><rect x="10.75" y="13.25" width="6.5" height="4" rx=".75"/></symbol>
+  <symbol id="i-section" viewBox="0 0 20 20"><rect x="2.75" y="5.25" width="14.5" height="9.5" rx="1"/></symbol>
+  <symbol id="i-column" viewBox="0 0 20 20"><rect x="6.25" y="2.75" width="7.5" height="14.5" rx="1"/></symbol>
+  <symbol id="i-page" viewBox="0 0 20 20"><path d="M5 2.75h6.5L15 6.25v11H5z"/><path d="M11.5 2.75v3.5H15"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 20 20"><path d="M5.5 3h9v14l-4.5-3.5L5.5 17z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 20 20"><path d="M7 5v10l8-5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-more" viewBox="0 0 20 20"><g fill="currentColor" stroke="none"><circle cx="5" cy="10" r="1.25"/><circle cx="10" cy="10" r="1.25"/><circle cx="15" cy="10" r="1.25"/></g></symbol>
+  <symbol id="i-spinner" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.25" stroke-opacity=".3"/><path d="M10 3.75A6.25 6.25 0 0 1 16.25 10"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 20 20"><path d="M10 16V4.5M5.5 9L10 4.5 14.5 9"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 20 20"><path d="M10 4v11.5M5.5 11l4.5 4.5 4.5-4.5"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 20 20"><path d="M16 10H4.5M9 5.5L4.5 10 9 14.5"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 20 20"><path d="M4 10h11.5M11 5.5l4.5 4.5-4.5 4.5"/></symbol>
+  <symbol id="i-block" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M5.25 14.75l9.5-9.5"/></symbol>
+  <symbol id="i-bold" viewBox="0 0 20 20"><path d="M6 3.75h4.5a3.13 3.13 0 0 1 0 6.25H6zM6 10h5.25a3.13 3.13 0 0 1 0 6.25H6z"/></symbol>
+  <symbol id="i-italic" viewBox="0 0 20 20"><path d="M8.75 3.75h6.5M4.75 16.25h6.5M12 3.75L8 16.25"/></symbol>
+  <symbol id="i-edges" viewBox="0 0 20 20"><path d="M3.25 6.5V3.25H6.5M13.5 3.25h3.25V6.5M16.75 13.5v3.25H13.5M6.5 16.75H3.25V13.5"/><path d="M9 3.25h2M9 16.75h2M3.25 9v2M16.75 9v2"/></symbol>
+  <symbol id="w-section" viewBox="0 0 20 20"><rect x="2.75" y="4.75" width="14.5" height="10.5" rx="1"/><path d="M7.75 4.75v10.5M12.25 4.75v10.5" stroke-dasharray="1.5 1.5"/></symbol>
+  <symbol id="w-col-1" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="14.5" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-2" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="6.625" height="8.5" rx=".75"/><rect x="10.625" y="5.75" width="6.625" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-3" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="4" height="8.5" rx=".75"/><rect x="8" y="5.75" width="4" height="8.5" rx=".75"/><rect x="13.25" y="5.75" width="4" height="8.5" rx=".75"/></symbol>
+  <symbol id="w-col-4" viewBox="0 0 20 20"><rect x="2.75" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="6.625" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="10.5" y="5.75" width="2.875" height="8.5" rx=".5"/><rect x="14.375" y="5.75" width="2.875" height="8.5" rx=".5"/></symbol>
+  <symbol id="w-heading" viewBox="0 0 20 20"><path d="M5 3.75v12.5M15 3.75v12.5M5 10h10"/></symbol>
+  <symbol id="w-text" viewBox="0 0 20 20"><path d="M3.5 4.75h13M3.5 8.25h13M3.5 11.75h13M3.5 15.25H11"/></symbol>
+  <symbol id="w-image" viewBox="0 0 20 20"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="1"/><circle cx="7.25" cy="8" r="1.5"/><path d="M2.75 14l4.5-3.75 3.5 3 2.5-2 4 3.25"/></symbol>
+  <symbol id="w-button" viewBox="0 0 20 20"><rect x="2.75" y="6.25" width="14.5" height="7.5" rx="3.75"/><path d="M7 10h6"/></symbol>
+  <symbol id="w-divider" viewBox="0 0 20 20"><rect x="4.75" y="3.25" width="10.5" height="3.5" rx=".75"/><path d="M2.75 10h14.5"/><rect x="4.75" y="13.25" width="10.5" height="3.5" rx=".75"/></symbol>
+  <symbol id="w-spacer" viewBox="0 0 20 20"><path d="M2.75 3.25h14.5M2.75 16.75h14.5M10 6v8M7.75 8.25L10 6l2.25 2.25M7.75 11.75L10 14l2.25-2.25"/></symbol>
+  <symbol id="w-gallery" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="6.5" height="6.5" rx=".75"/><rect x="10.75" y="2.75" width="6.5" height="6.5" rx=".75"/><rect x="2.75" y="10.75" width="6.5" height="6.5" rx=".75"/><rect x="10.75" y="10.75" width="6.5" height="6.5" rx=".75"/></symbol>
+  <symbol id="w-video" viewBox="0 0 20 20"><rect x="2.75" y="4.25" width="14.5" height="11.5" rx="1"/><path d="M8.25 7.5v5l4.25-2.5z"/></symbol>
+  <symbol id="w-map" viewBox="0 0 20 20"><path d="M2.75 5.25l4.75-2 5 2 4.75-2v11.5l-4.75 2-5-2-4.75 2z"/><path d="M7.5 3.25v11.5M12.5 5.25v11.5"/></symbol>
+  <symbol id="w-iconbox" viewBox="0 0 20 20"><circle cx="10" cy="6.75" r="3"/><path d="M4.75 12.75h10.5M6.5 16h7"/></symbol>
+  <symbol id="w-quote" viewBox="0 0 20 20"><path d="M3.75 15.75H8a.75 .75 0 0 0 .75-.75V10.75H6c.1-2 .95-3.2 2.75-3.6V4.25C5.25 4.75 3 7.25 3 11.25V15a.75 .75 0 0 0 .75.75z"/><path d="M12 15.75h4.25a.75 .75 0 0 0 .75-.75V10.75h-2.75c.1-2 .95-3.2 2.75-3.6V4.25c-3.5.5-5.75 3-5.75 7V15a.75 .75 0 0 0 .75.75z"/></symbol>
+  <symbol id="s-menu" viewBox="0 0 20 20"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></symbol>
+  <symbol id="w-accordion" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="14.5" height="4" rx=".75"/><rect x="2.75" y="8.75" width="14.5" height="8.5" rx=".75"/><path d="M5.25 12h6M5.25 14.5h4M12.75 4.25l1.25 1 1.25-1"/></symbol>
+  <symbol id="w-form" viewBox="0 0 20 20"><rect x="2.75" y="2.75" width="14.5" height="4" rx=".75"/><rect x="2.75" y="8.25" width="14.5" height="4" rx=".75"/><rect x="2.75" y="13.75" width="7" height="3.5" rx="1.75"/></symbol>
+</svg>
+
+<div class="app">
+
+  <!-- ================= TOP TOOLBAR =================
+       Left: the document tools. Insert, Outline and History open a drawer
+       that floats over the page; Undo and Redo.
+       Middle: the page you are writing, which also switches pages.
+       Right: the save state, Preview, Publish, and the sidebar.
+       How you look at the page (the device, block edges) is in the bottom line. -->
+  <header class="topbar" aria-label="Editor">
+    <div class="tb-left" role="toolbar" aria-label="Page tools">
+      <button class="tb-mark" type="button" popovertarget="app-menu" aria-label="Page Builder CMS menu">
+        <svg class="logo" width="24" height="24" aria-hidden="true"><use href="#mark"/></svg>
+        <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+      </button>
+      <span class="tb-sep" aria-hidden="true"></span>
+      <button class="btn btn-quiet" type="button" aria-pressed="false" aria-controls="drawer-insert" data-sel="insert-drawer-1280 insert-col1" data-go="insert-drawer-1280" title="Browse every block and ready-made section (Alt+Shift+N)">
+        <svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Insert
+      </button>
+      <button class="btn btn-quiet" type="button" aria-pressed="false" aria-controls="drawer-outline" data-sel="structure outline-col1" data-go="structure" title="Outline of the page (Alt+Shift+O)">
+        <svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Outline
+      </button>
+      <button class="btn btn-quiet" type="button" aria-pressed="false" aria-controls="drawer-history" data-sel="history" data-go="history" title="History and versions (Ctrl+S saves a version)">
+        <svg class="i" aria-hidden="true"><use href="#i-history"/></svg>History
+      </button>
+      <span class="tb-sep" aria-hidden="true"></span>
+      <button class="ibtn" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" data-off="empty"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg></button>
+      <button class="ibtn" type="button" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-off="empty"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg></button>
+    </div>
+
+    <div class="tb-center">
+      <div class="pop-anchor">
+        <button class="tb-title" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="pages-pop" data-open="pages" data-go="pages" title="Switch page or create one">
+          <span class="tb-title-row">
+            <svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>
+            <span class="tb-page-title" data-hide="empty">Home</span>
+            <span class="tb-page-title" data-states="empty">Winter series</span>
+            <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+          </span>
+          <span class="tb-status" data-hide="empty" title="Published Sep 28 at 7:02 AM. Your 6 changes since then are saved but not live yet: Publish sends them."><span class="dot-part" aria-hidden="true"></span>Published, 6 changes not live</span>
+          <span class="tb-status" data-states="empty"><span class="dot-draft" aria-hidden="true"></span>Not published yet</span>
+        </button>
+
+        <!-- Pages: switch and create (extra state #pages) -->
+        <div class="pop pop-pages" id="pages-pop" role="dialog" aria-label="Pages" data-states="pages">
+          <label class="search search-inline">
+            <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" placeholder="Find a page" aria-label="Find a page">
+          </label>
+          <ul class="pages-list">
+            <li><a class="page-row is-current" href="#editor" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span><strong>Home</strong><small>slackwater.example</small></span><span class="pr-state"><span class="dot-part" aria-hidden="true"></span>6 changes not live</span></a></li>
+            <li><a class="page-row" href="#empty"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span><strong>Winter series</strong><small>/winter-series</small></span><span class="pr-state"><span class="dot-draft" aria-hidden="true"></span>Not published yet</span></a></li>
+            <li><a class="page-row" href="#pages"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span><strong>Beginners’ course</strong><small>/beginners</small></span><span class="pr-state"><i class="dot-live" aria-hidden="true"></i>Published</span></a></li>
+            <li><a class="page-row" href="#pages"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span><strong>Tide times</strong><small>/tides</small></span><span class="pr-state"><i class="dot-live" aria-hidden="true"></i>Published</span></a></li>
+          </ul>
+          <div class="pop-foot">
+            <button class="btn btn-secondary" type="button" data-focus="pages"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>New page</button>
+            <button class="link" type="button">Manage all pages</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <span class="save-state" role="status" title="All changes saved at 10:46 AM" data-hide="site-style conflict offline"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+      <span class="save-state" role="status" data-states="site-style"><svg class="i spin" aria-hidden="true"><use href="#i-spinner"/></svg>Saving…</span>
+      <span class="save-state save-warn" role="status" data-states="offline"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Not saved, retrying in 8 s</span>
+      <span class="save-state save-warn" role="status" data-states="conflict"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>Changed in another tab</span>
+
+      <button class="btn btn-secondary" type="button" title="Preview (Alt+Shift+P)"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Preview</button>
+
+      <div class="pop-anchor">
+        <div class="split" data-hide="empty conflict offline">
+          <button class="btn btn-primary split-main" type="button" title="Publish now (Ctrl+Shift+Enter)">Publish</button>
+          <button class="btn btn-primary split-more" type="button" aria-label="More publish options" aria-haspopup="menu" aria-expanded="false" aria-controls="publish-menu" data-open="publish" data-go="publish"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+        </div>
+        <div class="split split-off" data-states="conflict offline">
+          <button class="btn split-main" type="button" aria-disabled="true" title="Publish waits until your changes are saved">Publish</button>
+          <button class="btn split-more" type="button" aria-label="More publish options" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+        </div>
+        <div class="split split-off" data-states="empty">
+          <button class="btn split-main" type="button" aria-disabled="true" aria-describedby="publish-why" title="Add a section first. An empty page has nothing to publish.">Publish</button>
+          <button class="btn split-more" type="button" aria-label="More publish options" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+        </div>
+
+        <!-- Publish options: three plain menu items. Schedule… opens its own
+             small dialog (extra state #schedule), so the menu holds no fields. -->
+        <div class="menu menu-publish" id="publish-menu" role="menu" aria-label="Publish options" data-states="publish">
+          <button class="menu-item menu-item-rich" role="menuitem" type="button">
+            <svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>
+            <span><strong>Publish now</strong><small>Visitors see your 6 changes right away.</small></span>
+            <span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">Shift</kbd><kbd class="kc">Enter</kbd></span>
+          </button>
+          <button class="menu-item menu-item-rich" role="menuitem" type="button" aria-haspopup="dialog" data-go="schedule" data-focus="publish">
+            <svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>
+            <span><strong>Schedule…</strong><small>Choose the day and time visitors see your 6 changes.</small></span>
+          </button>
+          <hr class="menu-sep">
+          <a class="menu-item menu-item-rich menu-link" role="menuitem" href="#editor">
+            <svg class="i" aria-hidden="true"><use href="#i-external"/></svg>
+            <span><strong>View live page</strong><small class="menu-addr">slackwater.example</small><small>Published Sep 28 at 7:02 AM. Opens in a new tab.</small></span>
+          </a>
+        </div>
+      </div>
+
+      <button class="ibtn ibtn-side" type="button" aria-pressed="true" aria-controls="sidebar" aria-label="Settings sidebar" title="Show or hide the settings sidebar"><svg class="i" aria-hidden="true"><use href="#i-panel-right"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ================= DRAWERS (left, one at a time, opened from the top toolbar) =================
+       Insert floats over the page at every window width, so the page keeps
+       its width while you browse; a selected block whose margin it covers
+       gets its clamp on its right side. Outline and History push the page,
+       as in layout B: you read the page while you use them, so nothing of
+       it hides behind them. Where that leaves the page under 800, it is
+       drawn smaller, as the editor does today. -->
+
+  <!-- Insert: every block and the ready-made sections, to browse. The "+" on
+       the page is the main way to add; this is the catalogue. -->
+  <aside class="drawer drawer-float" id="drawer-insert" aria-label="Insert" data-states="insert-drawer-1280 insert-col1">
+    <header class="drawer-head">
+      <h2>Insert</h2>
+      <button class="ibtn" type="button" aria-label="Close Insert" title="Close (Esc)" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="drawer-tools">
+      <label class="search">
+        <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" placeholder="Search blocks and sections" aria-label="Search blocks and sections" data-focus="insert-drawer-1280 insert-col1">
+      </label>
+      <div class="dtabs" role="tablist" aria-label="Insert">
+        <button role="tab" type="button" aria-selected="true" class="is-on">Blocks</button>
+        <button role="tab" type="button" aria-selected="false">Sections</button>
+      </div>
+      <p class="drawer-where" data-states="insert-drawer-1280">Click to add after <strong>Accordion</strong> in Column 2 of Questions, or drag to any column.</p>
+      <p class="drawer-where" data-states="insert-col1">Click to add after <strong>Heading</strong> in Column 1 of Hero, or drag to any column.</p>
+    </div>
+
+    <div class="drawer-body" role="tabpanel" aria-label="Blocks">
+      <h3 class="group-title">New section, by number of columns</h3>
+      <div class="colpick" role="group" aria-label="Add a section with">
+        <button type="button" title="1 column"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-1"/></svg><span>1</span></button>
+        <button type="button" title="2 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-2"/></svg><span>2</span></button>
+        <button type="button" title="3 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-3"/></svg><span>3</span></button>
+        <button type="button" title="4 columns"><svg class="i i-tile" aria-hidden="true"><use href="#w-col-4"/></svg><span>4</span></button>
+      </div>
+
+      <h3 class="group-title">Basic</h3>
+      <div class="bitems">
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-heading"/></svg>Heading</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg>Text</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-image"/></svg>Image</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg>Button</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-divider"/></svg>Divider</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-spacer"/></svg>Spacer</button>
+      </div>
+      <h3 class="group-title">Media</h3>
+      <div class="bitems">
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-gallery"/></svg>Gallery</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-video"/></svg>Video</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-map"/></svg>Map</button>
+      </div>
+      <h3 class="group-title">Content</h3>
+      <div class="bitems">
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-iconbox"/></svg>Icon box</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-quote"/></svg>Quote</button>
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-accordion"/></svg>Accordion</button>
+      </div>
+      <h3 class="group-title">Forms</h3>
+      <div class="bitems">
+        <button class="bitem" type="button" draggable="true"><svg class="i" aria-hidden="true"><use href="#w-form"/></svg>Form</button>
+      </div>
+    </div>
+
+    <p class="drawer-foot">On the page, the round <span class="ins-glyph" role="img" aria-label="plus"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></span> buttons add right where they sit, and offer only what fits there.</p>
+  </aside>
+
+  <!-- Outline: the page's structure as a list -->
+  <aside class="drawer drawer-push" id="drawer-outline" aria-label="Outline" data-states="structure outline-col1">
+    <header class="drawer-head">
+      <h2>Outline</h2>
+      <button class="ibtn" type="button" aria-label="Close Outline" title="Close (Esc)" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="drawer-tools">
+      <div class="dtabs" role="tablist" aria-label="Outline">
+        <button role="tab" type="button" aria-selected="true" class="is-on">Blocks</button>
+        <button role="tab" type="button" aria-selected="false" title="Only the headings, in order: check the page reads well">Headings</button>
+      </div>
+    </div>
+    <div class="drawer-body drawer-body-tree">
+      <ul class="tree" role="tree" aria-label="Page structure">
+        <li class="t-row t-theme" role="treeitem" title="The same on every page. Edit it in Site style."><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site header</span><em>Every page</em></li>
+        <li role="treeitem" aria-expanded="false" data-hide="outline-col1"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Hero</span><em class="t-count">2 columns</em><svg class="i i-xs t-flag" role="img" aria-label="Has a tablet override"><title>Has a tablet override</title><use href="#i-tablet"/></svg></div></li>
+        <!-- outline-col1: Hero open, the heading of its first column selected -->
+        <li role="treeitem" aria-expanded="true" data-states="outline-col1">
+          <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Hero</span><em class="t-count">2 columns</em><svg class="i i-xs t-flag" role="img" aria-label="Has a tablet override"><title>Has a tablet override</title><use href="#i-tablet"/></svg></div>
+          <ul role="group" class="t-group">
+            <li role="treeitem" aria-expanded="true">
+              <div class="t-row t-l1"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 1</span><em class="t-count">3 widgets</em></div>
+              <ul role="group" class="t-group t-group-2">
+                <li class="t-row t-l2 is-sel" role="treeitem" aria-selected="true" tabindex="0" data-focus="outline-col1"><svg class="i" aria-hidden="true"><use href="#w-heading"/></svg><span>Heading</span><em>Swim at slack water</em><button class="t-more" type="button" aria-label="Heading options" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></li>
+                <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg><span>Text</span><em>Dawn swims, beginners’…</em></li>
+                <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg><span>Button</span><em>Join a trial swim</em></li>
+              </ul>
+            </li>
+            <li role="treeitem" aria-expanded="false">
+              <div class="t-row t-l1"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 2</span><em class="t-count">1 widget</em></div>
+            </li>
+          </ul>
+        </li>
+        <li role="treeitem" aria-expanded="false"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>What we do</span><em class="t-count">3 columns</em></div></li>
+        <li role="treeitem" aria-expanded="false"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Gallery</span><em class="t-count">1 column</em></div></li>
+        <li role="treeitem" aria-expanded="false" data-states="outline-col1"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>See the bay</span><em class="t-count">2 columns</em></div></li>
+        <li role="treeitem" aria-expanded="true" data-hide="outline-col1">
+          <div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>See the bay</span><em class="t-count">2 columns</em></div>
+          <ul role="group" class="t-group">
+            <li role="treeitem" aria-expanded="false">
+              <div class="t-row t-l1"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 1</span><em class="t-count">2 widgets</em></div>
+            </li>
+            <li role="treeitem" aria-expanded="true">
+              <div class="t-row t-l1"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Column 2</span><em class="t-count">2 widgets</em></div>
+              <ul role="group" class="t-group t-group-2">
+                <li class="t-row t-l2 is-sel" role="treeitem" aria-selected="true" tabindex="0" data-focus="structure"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg><span>Text</span><em>We meet twenty minutes…</em><button class="t-more" type="button" aria-label="Text options" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></li>
+                <li class="t-row t-l2" role="treeitem"><svg class="i" aria-hidden="true"><use href="#w-map"/></svg><span>Map</span><em>Meeting point</em></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li role="treeitem" aria-expanded="false"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Members’ words</span><em class="t-count">2 columns</em></div></li>
+        <li role="treeitem" aria-expanded="false"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Questions</span><em class="t-count">2 columns</em></div></li>
+        <li role="treeitem" aria-expanded="false"><div class="t-row t-l0"><svg class="i i-xs t-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><svg class="i" aria-hidden="true"><use href="#i-section"/></svg><span>Join</span><em class="t-count">2 columns</em></div></li>
+        <li class="t-row t-theme" role="treeitem" title="The same on every page. Edit it in Site style."><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg><span>Site footer</span><em>Every page</em></li>
+      </ul>
+      <p class="hint hint-pad tree-hint">Drag a row to move that block. Select a row and the page scrolls to it.</p>
+    </div>
+    <p class="drawer-foot drawer-foot-count">7 sections, 21 widgets</p>
+  </aside>
+
+  <!-- History: undo steps and saved versions -->
+  <aside class="drawer drawer-push" id="drawer-history" aria-label="History" data-states="history">
+    <header class="drawer-head">
+      <h2>History</h2>
+      <button class="ibtn" type="button" aria-label="Close History" title="Close (Esc)" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="drawer-body drawer-body-tight">
+      <h3 class="group-title group-title-pad">This session</h3>
+      <ol class="hist">
+        <li class="hist-undone"><span class="hist-what">Deleted Divider</span><span class="hist-when">Undone</span></li>
+        <li class="hist-now"><span class="hist-what">Added Quote to Column 2 in See the bay</span><span class="hist-when">Today, 10:46 AM</span></li>
+        <li><span class="hist-what">Moved Button in Hero</span><span class="hist-when">Today, 10:44 AM</span></li>
+        <li><span class="hist-what">Set Space inside to L on tablet, Column 1 in Hero</span><span class="hist-when">Today, 10:41 AM</span></li>
+        <li><span class="hist-what">Changed Button text in Join</span><span class="hist-when">Today, 10:38 AM</span></li>
+        <li><span class="hist-what">Renamed section to Questions</span><span class="hist-when">Today, 10:36 AM</span></li>
+      </ol>
+      <p class="hint hint-pad hint-keys">Select an action to go back to it. <span class="keys-inline"><kbd class="kc">Ctrl</kbd><kbd class="kc">Z</kbd></span> steps back one.</p>
+
+      <div class="hist-versions-head">
+        <h3 class="group-title">Versions</h3>
+        <button class="btn btn-small btn-secondary" type="button" title="Save version (Ctrl+S)" data-focus="history"><svg class="i" aria-hidden="true"><use href="#i-bookmark"/></svg>Save version</button>
+      </div>
+      <ul class="versions">
+        <li class="ver ver-draft">
+          <span class="ver-kind">Current draft</span>
+          <span class="ver-name">6 changes not published yet</span>
+          <span class="ver-when">Today, 10:46 AM</span>
+        </li>
+        <li class="ver">
+          <div><span class="ver-kind">Saved by you</span><span class="ver-name">Before the winter series</span><span class="ver-when">Today, 10:20 AM</span></div>
+          <button class="btn btn-small btn-secondary" type="button">Restore</button>
+        </li>
+        <li class="ver">
+          <div><span class="ver-kind">Autosaved</span><span class="ver-when">Today, 9:58 AM</span></div>
+          <button class="btn btn-small btn-secondary" type="button">Restore</button>
+        </li>
+        <li class="ver ver-live">
+          <div><span class="ver-kind"><i class="dot-live" aria-hidden="true"></i>Published by you</span><span class="ver-when">Sep 28, 7:02 AM</span></div>
+          <button class="btn btn-small btn-secondary" type="button">Restore</button>
+        </li>
+        <li class="ver">
+          <div><span class="ver-kind">Saved by you</span><span class="ver-name">First draft</span><span class="ver-when">Sep 27, 9:15 PM</span></div>
+          <button class="btn btn-small btn-secondary" type="button">Restore</button>
+        </li>
+      </ul>
+      <p class="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
+    </div>
+  </aside>
+
+  <!-- ================= CANVAS: the page, as long as it is =================
+       The selected block's tools sit in the page's margin, in a vertical
+       graphite clamp held to the block's left edge (every block gets the
+       same clamp, whatever its height); in a gutter under 48 the clamp is
+       28 wide and centred, with no tie; while the Insert drawer covers the
+       left margin it goes to the block's right side. The round "+" buttons
+       add right where they sit: the selected block's bottom edge, the seam
+       below the selection's section (any seam under the pointer), an empty
+       column. The canvas is one Tab stop: Up and Down select the previous
+       and next block, Tab goes on to the clamp, then to the sidebar. -->
+  <main class="canvas" id="canvas" aria-label="Page">
+
+    <div class="banner-inplace" role="alert" data-states="conflict">
+      <svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>
+      <p><strong>Changed in another tab.</strong> This page was saved in another tab after you opened it. Saving is paused until you choose.</p>
+      <div class="banner-actions"><button class="btn btn-small btn-dark" type="button" data-focus="conflict">Reload</button><button class="btn btn-small btn-secondary" type="button">Keep mine</button></div>
+    </div>
+
+    <div class="frame" id="frame" data-hide="empty">
+      <div class="site" id="site">
+        <div class="sw">
+
+          <header class="sw-header theme-part">
+            <div class="sw-inner sw-header-row">
+              <a class="sw-brand" href="#top">
+                <svg class="sw-brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+                <span>Slack Water</span>
+              </a>
+              <nav class="sw-nav" aria-label="Main">
+                <div class="sw-nav-links" id="site-menu">
+                  <a href="#swims">Swims</a>
+                  <a href="#gallery">Gallery</a>
+                  <a href="#meet">Meet us</a>
+                  <a href="#questions">Questions</a>
+                </div>
+                <a class="sw-btn sw-btn-small" href="#join">Join</a>
+                <button class="sw-menu" type="button" aria-expanded="false" aria-controls="site-menu"><svg aria-hidden="true"><use href="#s-menu"/></svg>Menu</button>
+              </nav>
+            </div>
+            <div class="ov ov-veil ov-veil-locked" data-states="drag" aria-hidden="true"></div>
+          </header>
+
+          <!-- Hero -->
+          <section class="sec sec-hero" id="top">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols cols-hero" style="--n:2">
+              <div class="col col-hero" id="hero-c1">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <!-- Column 1 selected (style, tablet): a column moves left and right -->
+                <div class="ov ov-sel" data-states="style tablet" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                <div class="clamp" role="toolbar" aria-orientation="vertical" aria-label="Column 1 tools" data-states="style tablet">
+                  <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Column 1: block menu" title="Column 1, in Hero. Block menu"><svg class="i" aria-hidden="true"><use href="#i-column"/></svg></button>
+                  <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move, or press Space to pick up" title="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                  <button type="button" tabindex="-1" aria-label="Move left" aria-disabled="true" title="Already the first column"><svg class="i" aria-hidden="true"><use href="#i-arrow-left"/></svg></button>
+                  <button type="button" tabindex="-1" aria-label="Move right" title="Move right"><svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+                  <hr>
+                  <button type="button" tabindex="-1" aria-label="More: copy, paste, duplicate, insert, delete" aria-haspopup="menu" title="More"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                </div>
+                <div class="ov ov-pad ov-pad-top" data-states="tablet" aria-hidden="true"><span>L<svg class="i"><use href="#i-tablet"/></svg></span></div>
+
+                <div class="w w-hero-h">
+                  <h1 class="sw-display">Swim at slack water</h1>
+                  <!-- Heading selected -->
+                  <div class="ov ov-sel" data-states="editor add publish shortcuts phone insert-col1 outline-col1" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <!-- The clamp: the block's toolbar, in the page's margin. From the
+                       top: the yellow head (the block's type; it opens the block
+                       menu), drag, move up, move down, and More. In insert-col1 the
+                       floating Insert drawer covers the left margin, so the clamp
+                       goes to the block's right side: here the 32 gutter, so it is
+                       the narrow clamp, centred. -->
+                  <div class="clamp" role="toolbar" aria-orientation="vertical" aria-label="Heading tools" data-states="editor add publish shortcuts phone insert-col1 outline-col1">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Heading: block menu" title="Heading, in Column 1 of Hero. Block menu"><svg class="i" aria-hidden="true"><use href="#w-heading"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move, or press Space to pick up" title="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" aria-disabled="true" title="Already the first block in Column 1"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" title="Move down"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More: copy, paste, duplicate, insert, delete" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu" data-open="more" data-go="more" title="More (or right-click the block)"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                    <!-- More: the same items as the right-click menu (extra state #more) -->
+                    <div class="menu menu-more" id="more-menu" role="menu" aria-label="Heading actions" data-states="more">
+                      <button class="menu-item" role="menuitem" type="button" data-focus="more"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">C</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-paste"/></svg><span>Paste after</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">V</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-duplicate"/></svg><span>Duplicate</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">D</kbd></span></button>
+                      <hr class="menu-sep">
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>Insert before</span></button>
+                      <button class="menu-item" role="menuitem" type="button" data-go="add"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>Insert after</span><span class="keys"><kbd class="kc">+</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button" data-go="style"><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Select Column 1</span><span class="keys"><kbd class="kc">Alt</kbd><kbd class="kc"><svg class="i i-key" role="img" aria-label="Up arrow"><use href="#i-arrow-up"/></svg></kbd></span></button>
+                      <hr class="menu-sep">
+                      <button class="menu-item menu-item-danger" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg><span>Delete</span><span class="keys"><kbd class="kc">Del</kbd></span></button>
+                    </div>
+                  </div>
+                  <!-- "+" on the selected block's bottom edge: adds a block right after it -->
+                  <button class="ins ins-after" type="button" tabindex="-1" aria-label="Add a block after Heading" title="Add a block after Heading (+)" data-go="add" data-states="editor publish shortcuts phone outline-col1"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                  <!-- insert-col1: where a click in the Insert drawer lands (the drawer's yellow line replaces the "+") -->
+                  <div class="ins-point ins-point-right" data-states="insert-col1" aria-hidden="true"><span class="ins-line"></span><span class="ins-label"><svg class="i i-xs"><use href="#i-plus"/></svg>A click in Insert lands here</span></div>
+                </div>
+
+                <!-- add: the "+" under Heading was pressed. The column opens the
+                     yellow insertion line there, and a small picker beside it
+                     offers only what fits in a column: blocks. -->
+                <div class="ins-slot-wrap" data-states="add">
+                  <div class="ins-slot" aria-hidden="true"><span class="ins-slot-line"></span><span class="ins-slot-label">New block</span></div>
+                  <button class="ins is-open" type="button" aria-label="Add a block after Heading" aria-expanded="true" aria-controls="picker-w"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                  <div class="picker picker-w" id="picker-w" role="dialog" aria-label="Add a block after Heading">
+                    <div class="picker-head">
+                      <label class="search">
+                        <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+                        <input type="search" placeholder="Search blocks" aria-label="Search blocks" data-focus="add">
+                      </label>
+                    </div>
+                    <p class="picker-sub" id="pw-sub">Blocks that go in a column</p>
+                    <div class="pkeys" role="group" aria-labelledby="pw-sub">
+                      <button class="pkey" type="button"><svg class="i" aria-hidden="true"><use href="#w-heading"/></svg>Heading</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg>Text</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-image"/></svg>Image</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg>Button</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-divider"/></svg>Divider</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-spacer"/></svg>Spacer</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-gallery"/></svg>Gallery</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-video"/></svg>Video</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-map"/></svg>Map</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-iconbox"/></svg>Icon box</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-quote"/></svg>Quote</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-accordion"/></svg>Accordion</button>
+                      <button class="pkey" type="button" tabindex="-1"><svg class="i" aria-hidden="true"><use href="#w-form"/></svg>Form</button>
+                    </div>
+                    <div class="picker-foot">
+                      <p>Lands on the yellow line, after <strong>Heading</strong>.</p>
+                      <p class="picker-keys">Arrows choose, <kbd class="kc">Enter</kbd> adds, <kbd class="kc">Esc</kbd> closes</p>
+                      <button class="link" type="button" data-go="insert-drawer-1280">Browse everything in Insert</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- drag: the column opens a gap where the Button will land -->
+                <div class="drop-slot" data-states="drag" aria-hidden="true">
+                  <span class="drop-line"></span>
+                  <span class="drop-label">Button</span>
+                  <span class="drag-ghost">
+                    <span class="ghost"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg><span>Button</span></span>
+                    <svg class="cursor" viewBox="0 0 20 20"><path d="M4 2.5v13.25l3.4-3.1 2.35 5.1 2.3-1.05-2.3-5h4.75z"/></svg>
+                  </span>
+                </div>
+
+                <div class="w">
+                  <p class="sw-lead">Dawn swims, beginners’ courses and a winter series, timed to the one quiet hour the tide gives us.</p>
+                </div>
+
+                <div class="w w-btn">
+                  <a class="sw-btn" href="#join">Join a trial swim</a>
+                  <div class="ov ov-lifted" data-states="drag" aria-hidden="true"><span>Moving</span></div>
+                  <!-- small-block: a short block (54 tall) gets the same clamp as
+                       every other block. The clamp runs on below it, in the
+                       margin, where nothing else sits: one block is selected at a
+                       time. Its moves stay one click. -->
+                  <div class="ov ov-sel" data-states="small-block" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <div class="clamp" role="toolbar" aria-orientation="vertical" aria-label="Button tools" data-states="small-block">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="button-menu" data-open="block-menu" data-go="block-menu" aria-label="Button: block menu" title="Button, in Column 1 of Hero. Block menu"><svg class="i" aria-hidden="true"><use href="#w-button"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move, or press Space to pick up" title="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" title="Move up"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" aria-disabled="true" title="Already the last block in Column 1"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More: copy, paste, duplicate, insert, delete" aria-haspopup="menu" title="More (or right-click the block)"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                    <!-- The head's block menu: the block's whole list, the moves first,
+                         then everything in More (extra state #block-menu). It is
+                         what Shift+F10 opens from the keyboard. -->
+                    <div class="menu menu-more menu-block menu-up" id="button-menu" role="menu" aria-label="Button: block menu" data-states="block-menu">
+                      <button class="menu-item" role="menuitem" type="button" data-focus="block-menu"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg><span>Move up</span></button>
+                      <button class="menu-item" role="menuitem" type="button" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg><span>Move down</span><small class="mi-why">Last in Column 1</small></button>
+                      <hr class="menu-sep">
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">C</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-paste"/></svg><span>Paste after</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">V</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-duplicate"/></svg><span>Duplicate</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">D</kbd></span></button>
+                      <hr class="menu-sep">
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>Insert before</span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>Insert after</span><span class="keys"><kbd class="kc">+</kbd></span></button>
+                      <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-column"/></svg><span>Select Column 1</span><span class="keys"><kbd class="kc">Alt</kbd><kbd class="kc"><svg class="i i-key" role="img" aria-label="Up arrow"><use href="#i-arrow-up"/></svg></kbd></span></button>
+                      <hr class="menu-sep">
+                      <button class="menu-item menu-item-danger" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg><span>Delete</span><span class="keys"><kbd class="kc">Del</kbd></span></button>
+                    </div>
+                  </div>
+                  <button class="ins ins-after" type="button" tabindex="-1" aria-label="Add a block after Button" title="Add a block after Button (+)" data-states="small-block"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                </div>
+              </div>
+
+              <div class="col col-hero-img">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <figure class="sw-figure sw-hero-img"><img src="../img/hero-dawn.svg" alt="The bay at dawn at slack water, with a line of buoys and three swimmers"></figure>
+                  <div class="ov ov-sel" data-states="media" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <!-- the gutter on its left is 32: the narrow clamp, centred, no tie -->
+                  <div class="clamp clamp-narrow" role="toolbar" aria-orientation="vertical" aria-label="Image tools" data-states="media">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Image: block menu"><svg class="i" aria-hidden="true"><use href="#w-image"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" aria-disabled="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- The seam between Hero and What we do: "+" adds a section here.
+                 It shows below the section that holds the selection, and on
+                 any seam the pointer is over (seam-hover). -->
+            <button class="ins ins-sec" type="button" tabindex="-1" aria-label="Add a section after Hero" title="Add a section after Hero" data-go="insert-at-seam" data-states="editor publish shortcuts style tablet small-block phone insert-col1 outline-col1"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <!-- insert-at-seam: the seam "+" was pressed. A yellow line across the
+                 page, and a picker that offers only sections. -->
+            <div class="seam" data-states="insert-at-seam" aria-hidden="true"><span class="seam-line"></span><span class="seam-label">New section</span></div>
+            <button class="ins ins-sec is-open ins-seam-open" type="button" aria-label="Add a section after Hero" aria-expanded="true" aria-controls="picker-s" data-states="insert-at-seam"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <div class="picker picker-s" id="picker-s" role="dialog" aria-labelledby="ps-title" data-states="insert-at-seam">
+              <div class="picker-head picker-head-title">
+                <h2 id="ps-title">Add a section after Hero</h2>
+                <label class="search search-small">
+                  <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+                  <input type="search" placeholder="Search sections" aria-label="Search sections">
+                </label>
+              </div>
+              <p class="picker-sub" id="ps-cols">Columns</p>
+              <div class="layouts" role="group" aria-labelledby="ps-cols">
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:1"><i></i></span>1 column</button>
+                <button type="button" class="layout-btn" data-focus="insert-at-seam" data-go="new-section"><span class="layout-pic" style="--n:2"><i></i><i></i></span>2 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:3"><i></i><i></i><i></i></span>3 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:4"><i></i><i></i><i></i><i></i></span>4 columns</button>
+              </div>
+              <p class="picker-sub" id="ps-ready">Ready-made</p>
+              <div class="pick-presets" role="group" aria-labelledby="ps-ready">
+                <button type="button" class="preset"><span class="preset-pic preset-intro" aria-hidden="true"><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i><i class="pp-b"></i></span><span class="preset-name">Heading and intro</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-split" aria-hidden="true"><i class="pp-img"></i><span><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i></span></span><span class="preset-name">Picture beside text</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-three" aria-hidden="true"><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span></span><span class="preset-name">Three icon boxes</span></button>
+              </div>
+              <div class="picker-foot">
+                <p>Lands on the yellow line, between <strong>Hero</strong> and <strong>What we do</strong>.</p>
+                <p class="picker-keys"><kbd class="kc">Esc</kbd> closes without adding anything</p>
+                <button class="link" type="button" data-go="insert-drawer-1280">More in Insert</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- new-section: the 2-column section just added at that seam. Each
+               empty column holds a large "+" that offers the blocks. -->
+          <section class="sec sec-new" data-states="new-section" data-scroll="new-section">
+            <div class="ov ov-sel ov-sel-sec" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+            <div class="clamp clamp-in" role="toolbar" aria-orientation="vertical" aria-label="Section tools">
+              <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Section: block menu" title="New section, 2 columns. Block menu"><svg class="i" aria-hidden="true"><use href="#i-section"/></svg></button>
+              <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+              <button type="button" tabindex="-1" aria-label="Move up"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+              <button type="button" tabindex="-1" aria-label="Move down"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+              <hr>
+              <button type="button" tabindex="-1" aria-label="More" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+            </div>
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col">
+                <button class="ins-empty" type="button" data-focus="new-section" data-go="add">
+                  <span class="ins ins-big" aria-hidden="true"><svg class="i"><use href="#i-plus"/></svg></span>
+                  <span>Add a block to Column 1</span>
+                  <small>Or drag one here from Insert</small>
+                </button>
+              </div>
+              <div class="col">
+                <button class="ins-empty" type="button" data-go="add">
+                  <span class="ins ins-big" aria-hidden="true"><svg class="i"><use href="#i-plus"/></svg></span>
+                  <span>Add a block to Column 2</span>
+                  <small>Or drag one here from Insert</small>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- What we do -->
+          <section class="sec sec-what" id="swims" data-scroll="narrow-gutter">
+            <div class="ov ov-veil" data-states="drag" aria-hidden="true"></div>
+            <div class="sw-inner cols" style="--n:3">
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path class="fill" d="M9 25a11 11 0 0 1 22 0z"/><path d="M4 25h32M8 30h24M13 35h14M20 7v5M8.5 12.5l3 3M31.5 12.5l-3 3"/></svg>
+                    <div><h3>Dawn swims</h3><p>Twice a week, at first light, when the bay is flat.</p></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="M3 31c9-7 21-11 34-13M4 36h32"/><circle class="fill" cx="10" cy="27.5" r="4"/><circle class="fill" cx="21.5" cy="23" r="3.2"/><circle class="fill" cx="31.5" cy="20" r="2.4"/></svg>
+                    <div><h3>Beginners’ course</h3><p>Four sessions from the shallows to the buoy line.</p></div>
+                  </div>
+                  <!-- narrow-gutter: Icon box selected in the second column. The
+                       gutter on its left is 32, under the 48 the full clamp and
+                       its tie need: the clamp is 28 wide, centred in the gutter,
+                       with no tie, so it never covers the column beside it. -->
+                  <div class="ov ov-sel" data-states="narrow-gutter" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <div class="clamp clamp-narrow" role="toolbar" aria-orientation="vertical" aria-label="Icon box tools" data-states="narrow-gutter">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Icon box: block menu" title="Icon box, in Column 2 of What we do. Block menu" data-focus="narrow-gutter"><svg class="i" aria-hidden="true"><use href="#w-iconbox"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move, or press Space to pick up" title="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" aria-disabled="true" title="Already the first block in Column 2"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" aria-disabled="true" title="Already the last block in Column 2"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More: copy, paste, duplicate, insert, delete" aria-haspopup="menu" title="More (or right-click the block)"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                  </div>
+                  <button class="ins ins-after" type="button" tabindex="-1" aria-label="Add a block after Icon box" title="Add a block after Icon box (+)" data-states="narrow-gutter"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                </div>
+              </div>
+              <div class="col col-what">
+                <div class="ov ov-drop" data-states="drag" aria-hidden="true"></div>
+                <div class="w">
+                  <div class="sw-iconbox">
+                    <svg class="sw-icon" viewBox="0 0 40 40" aria-hidden="true"><path class="fill" d="M9 17h19v11a6 6 0 0 1-6 6h-7a6 6 0 0 1-6-6z"/><path d="M28 20h2.5a3.5 3.5 0 0 1 0 7H28M14 12c-1.5-2 1.5-3 0-5.5M19 12c-1.5-2 1.5-3 0-5.5M24 12c-1.5-2 1.5-3 0-5.5"/></svg>
+                    <div><h3>Winter series</h3><p>Short, cold, and followed by very hot tea.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="ins ins-sec" type="button" tabindex="-1" aria-label="Add a section after What we do" title="Add a section after What we do" data-states="narrow-gutter"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </section>
+
+          <!-- Gallery -->
+          <section class="sec sec-gallery" id="gallery">
+            <div class="sw-inner cols" style="--n:1">
+              <div class="col">
+                <div class="w"><h2 class="sw-h2">From the water</h2></div>
+                <div class="w">
+                  <ul class="sw-gallery">
+                    <li><img src="../img/g-horizon.svg" alt="A flat horizon at first light"></li>
+                    <li><img src="../img/g-caps.svg" alt="Three swim caps at the waterline"></li>
+                    <li><img src="../img/g-buoys.svg" alt="The buoy line across the bay"></li>
+                    <li><img src="../img/g-slipway.svg" alt="The slipway running into the water"></li>
+                    <li><img src="../img/g-rockpools.svg" alt="Rock pools at low water"></li>
+                    <li><img src="../img/g-wake.svg" alt="A swimmer’s wake on still water"></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- seam-hover: nothing selected, the pointer is over the seam between
+                 Gallery and See the bay. The seam shows a hairline across the
+                 page and its "+"; the pointer's tip names what it adds. -->
+            <div class="seam-hover" data-states="seam-hover" aria-hidden="true"><span class="seam-hair"></span></div>
+            <button class="ins ins-sec is-hover" type="button" tabindex="-1" aria-label="Add a section between Gallery and See the bay" data-go="insert-at-seam" data-states="seam-hover"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <span class="seam-tip" data-states="seam-hover" aria-hidden="true">Add a section between Gallery and See the bay</span>
+            <!-- (an SVG ignores the hidden attribute's property, so the pointer sits in a span) -->
+            <span class="seam-cursor" data-states="seam-hover" aria-hidden="true"><svg class="cursor" viewBox="0 0 20 20"><path d="M4 2.5v13.25l3.4-3.1 2.35 5.1 2.3-1.05-2.3-5h4.75z"/></svg></span>
+          </section>
+
+          <!-- See the bay: video + map -->
+          <section class="sec sec-meet" id="meet" data-scroll="structure text-editing seam-hover">
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col" data-valign="end">
+                <div class="w"><h2 class="sw-h2">See the bay before you join</h2></div>
+                <div class="w">
+                  <div class="sw-embed sw-video">
+                    <button class="sw-embed-load" type="button">
+                      <span class="sw-embed-media"><img src="../img/poster.svg" alt=""><span class="sw-play-dot" aria-hidden="true"><svg class="i"><use href="#i-play"/></svg></span></span>
+                      <span class="sw-embed-bar"><strong>Watch a dawn swim</strong><small>Loads a video from the provider when you click.</small></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col col-meet-2" data-valign="end">
+                <div class="w">
+                  <p data-hide="text-editing">We meet twenty minutes before slack water, whatever the clock says. Bring a bright cap, goggles and something warm for afterwards.</p>
+                  <!-- text-editing: the words are being written. "a bright cap" is
+                       selected and was just made bold. -->
+                  <p class="is-writing" data-states="text-editing">We meet twenty minutes before slack water, whatever the clock says. Bring <strong class="txt-sel">a bright cap</strong><span class="caret" aria-hidden="true"></span>, goggles and something warm for afterwards.</p>
+                  <!-- structure: Text selected, with the same clamp as every block -->
+                  <div class="ov ov-sel" data-states="structure" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <div class="clamp" role="toolbar" aria-orientation="vertical" aria-label="Text tools" data-states="structure">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Text: block menu" title="Text, in Column 2 of See the bay. Block menu"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move, or press Space to pick up" title="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" aria-disabled="true" title="Already the first block in Column 2"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" title="Move down"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More: copy, paste, duplicate, insert, delete" aria-haspopup="menu" title="More (or right-click the block)"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                  </div>
+                  <button class="ins ins-after" type="button" tabindex="-1" aria-label="Add a block after Text" title="Add a block after Text (+)" data-states="structure"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                  <!-- text-editing: while the words are written, Up, Down and Space
+                       belong to the text, so the clamp's moving keys give their
+                       place to Bold, Italic and Link. Esc gives them back. -->
+                  <div class="ov ov-sel ov-sel-writing" data-states="text-editing" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <div class="clamp clamp-text" role="toolbar" aria-orientation="vertical" aria-label="Text formatting" data-states="text-editing">
+                    <span class="clamp-head clamp-head-static" role="img" aria-label="Text, being written" title="Text, being written. Esc to finish"><svg class="i" aria-hidden="true"><use href="#w-text"/></svg></span>
+                    <button type="button" aria-label="Bold" aria-pressed="true" title="Bold (Ctrl+B)" data-focus="text-editing"><svg class="i i-strong" aria-hidden="true"><use href="#i-bold"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Italic" aria-pressed="false" title="Italic (Ctrl+I)"><svg class="i i-strong" aria-hidden="true"><use href="#i-italic"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Link" title="Link the selected words (Ctrl+K)"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></button>
+                  </div>
+                </div>
+                <div class="w">
+                  <div class="sw-embed sw-map">
+                    <span class="sw-embed-media"><img src="../img/map.svg" alt=""><span class="sw-map-pin" aria-hidden="true"></span></span>
+                    <div class="sw-embed-bar sw-embed-bar-row">
+                      <p><strong>Meeting point:</strong> the slipway at the north end of the beach</p>
+                      <button class="sw-btn sw-btn-small" type="button">Load map</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="ins ins-sec" type="button" tabindex="-1" aria-label="Add a section after See the bay" title="Add a section after See the bay" data-states="structure"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </section>
+
+          <!-- Members' words -->
+          <section class="sec sec-quote">
+            <div class="sw-inner cols cols-quote" style="--n:2">
+              <div class="col col-quote">
+                <div class="w">
+                  <figure class="sw-quote">
+                    <svg class="sw-quote-mark" viewBox="0 0 48 36" aria-hidden="true"><path d="M2 34h18V17h-8c0-5 2-8 6-9V1C7 3 2 9 2 17zM28 34h18V17h-8c0-5 2-8 6-9V1c-9 2-16 8-16 16z"/></svg>
+                    <blockquote><p>I came for the cold water and stayed for the tea.</p></blockquote>
+                    <figcaption>A member since last winter</figcaption>
+                  </figure>
+                </div>
+              </div>
+              <div class="col">
+                <div class="w"><figure class="sw-figure sw-quote-img"><img src="../img/m-tea.svg" alt="A flask and two cups of tea on a rock after a swim" width="800" height="600"></figure></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Questions -->
+          <section class="sec sec-faq" id="questions" data-scroll="insert-drawer-1280">
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col">
+                <div class="w"><h2 class="sw-h2">Before your first swim</h2></div>
+                <div class="w"><p>Ask us anything at the slipway, or <a href="#join">send a request below</a> and we will answer by email.</p></div>
+              </div>
+              <div class="col">
+                <div class="w">
+                  <div class="sw-accordion">
+                    <details open><summary>How cold is it?</summary><p>Between 8 and 18 degrees depending on the month. We shorten swims in winter.</p></details>
+                    <details><summary>Do I need a wetsuit?</summary><p>No. Many members swim without one; the course covers both.</p></details>
+                    <details><summary>What if the sea is rough?</summary><p>We cancel by 6 am and post it on this page.</p></details>
+                  </div>
+                  <!-- insert-drawer-1280: Accordion selected; the drawer's blocks land
+                       on the yellow line after it -->
+                  <div class="ov ov-sel" data-states="insert-drawer-1280" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+                  <div class="clamp" role="toolbar" aria-orientation="vertical" aria-label="Accordion tools" data-states="insert-drawer-1280">
+                    <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Accordion: block menu"><svg class="i" aria-hidden="true"><use href="#w-accordion"/></svg></button>
+                    <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move up" aria-disabled="true" title="Already the first block in Column 2"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+                    <button type="button" tabindex="-1" aria-label="Move down" aria-disabled="true" title="Already the last block in Column 2"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+                    <hr>
+                    <button type="button" tabindex="-1" aria-label="More" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+                  </div>
+                  <div class="ins-point ins-point-end" data-states="insert-drawer-1280" aria-hidden="true"><span class="ins-line"></span><span class="ins-label"><svg class="i i-xs"><use href="#i-plus"/></svg>A click in Insert lands here</span></div>
+                </div>
+              </div>
+            </div>
+            <button class="ins ins-sec" type="button" tabindex="-1" aria-label="Add a section after Questions" title="Add a section after Questions" data-states="insert-drawer-1280"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </section>
+
+          <!-- Join -->
+          <section class="sec sec-join" id="join" data-scroll="section">
+            <div class="ov ov-sel ov-sel-sec" data-states="section" aria-hidden="true"><i class="br br-tl"></i><i class="br br-tr"></i><i class="br br-bl"></i><i class="br br-br"></i></div>
+            <!-- a section's clamp sits inside its own margin, where the blocks' clamps sit -->
+            <div class="clamp clamp-in" role="toolbar" aria-orientation="vertical" aria-label="Section tools" data-states="section">
+              <button class="clamp-head" type="button" aria-haspopup="menu" aria-label="Section Join: block menu" title="Section Join, 2 columns. Block menu"><svg class="i" aria-hidden="true"><use href="#i-section"/></svg></button>
+              <button class="clamp-grip" type="button" tabindex="-1" aria-label="Drag to move"><svg class="i" aria-hidden="true"><use href="#i-grip"/></svg></button>
+              <button type="button" tabindex="-1" aria-label="Move up" title="Move up"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
+              <button type="button" tabindex="-1" aria-label="Move down" aria-disabled="true" title="Already the last section"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></button>
+              <hr>
+              <button type="button" tabindex="-1" aria-label="More" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+            </div>
+            <div class="sw-inner cols" style="--n:2">
+              <div class="col">
+                <div class="w"><h2 class="sw-h2">Join a trial swim</h2></div>
+                <div class="w"><p>Tell us a little about your swimming. We reply within two days with the next trial date and what to bring.</p></div>
+              </div>
+              <div class="col">
+                <div class="w">
+                  <form class="sw-form" onsubmit="return false">
+                    <div class="sw-field"><label for="f-name">Name</label><input id="f-name" type="text" autocomplete="name"></div>
+                    <div class="sw-field"><label for="f-email">Email</label><input id="f-email" type="email" autocomplete="email"></div>
+                    <div class="sw-field"><label for="f-notes">Anything we should know?</label><textarea id="f-notes" rows="3"></textarea></div>
+                    <label class="sw-check"><input type="checkbox" required><span>I can swim 200 meters without stopping <em>(required)</em></span></label>
+                    <button class="sw-btn sw-btn-primary" type="submit">Send request</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <!-- the seam after the last section: a section can follow it -->
+            <button class="ins ins-sec" type="button" tabindex="-1" aria-label="Add a section after Join" title="Add a section after Join" data-states="section"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </section>
+
+          <footer class="sw-footer theme-part">
+            <div class="sw-inner sw-footer-row">
+              <svg class="sw-brand-mark sw-brand-mark-inv" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+              <p><strong>Slack Water swimming club.</strong> Tide times are a guide, not a promise.</p>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <!-- A new, empty page -->
+    <div class="frame frame-empty" data-states="empty">
+      <div class="site">
+        <div class="sw">
+          <header class="sw-header theme-part">
+            <div class="sw-inner sw-header-row">
+              <a class="sw-brand" href="#top">
+                <svg class="sw-brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+                <span>Slack Water</span>
+              </a>
+              <nav class="sw-nav" aria-label="Main">
+                <div class="sw-nav-links"><a href="#swims">Swims</a><a href="#gallery">Gallery</a><a href="#meet">Meet us</a><a href="#questions">Questions</a></div>
+                <a class="sw-btn sw-btn-small" href="#join">Join</a>
+                <button class="sw-menu" type="button" aria-expanded="false"><svg aria-hidden="true"><use href="#s-menu"/></svg>Menu</button>
+              </nav>
+            </div>
+          </header>
+          <!-- the page's first seam, open: the section picker, laid out on the page -->
+          <div class="invite">
+            <div class="invite-zone">
+              <div class="invite-title">
+                <span class="ins ins-sec is-static" aria-hidden="true"><svg class="i"><use href="#i-plus"/></svg></span>
+                <h2>Start this page with a section</h2>
+              </div>
+              <p>A section is a band across the page. Pick its columns; you can change them later.</p>
+              <div class="invite-layouts" role="group" aria-label="Add a section">
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:1"><i></i></span>1 column</button>
+                <button type="button" class="layout-btn" data-focus="empty"><span class="layout-pic" style="--n:2"><i></i><i></i></span>2 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:3"><i></i><i></i><i></i></span>3 columns</button>
+                <button type="button" class="layout-btn"><span class="layout-pic" style="--n:4"><i></i><i></i><i></i><i></i></span>4 columns</button>
+              </div>
+              <h3 class="invite-sub">Or start from a ready-made section</h3>
+              <div class="invite-presets" role="group" aria-label="Ready-made sections">
+                <button type="button" class="preset"><span class="preset-pic preset-intro" aria-hidden="true"><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i><i class="pp-b"></i></span><span class="preset-name">Heading and intro</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-split" aria-hidden="true"><i class="pp-img"></i><span><i class="pp-h"></i><i class="pp-t"></i><i class="pp-t pp-short"></i></span></span><span class="preset-name">Picture beside text</span></button>
+                <button type="button" class="preset"><span class="preset-pic preset-three" aria-hidden="true"><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span><span><i class="pp-dot"></i><i class="pp-t"></i></span></span><span class="preset-name">Three icon boxes</span></button>
+              </div>
+              <ul class="invite-notes">
+                <li id="publish-why"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>Publish turns on once the page has a section. An empty page has nothing to publish.</span></li>
+                <li><svg class="i" aria-hidden="true"><use href="#i-block"/></svg><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span class="ins-glyph" role="img" aria-label="plus"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></span> that offers them.</span></li>
+              </ul>
+            </div>
+          </div>
+          <footer class="sw-footer theme-part">
+            <div class="sw-inner sw-footer-row">
+              <svg class="sw-brand-mark sw-brand-mark-inv" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path class="sun" d="M6 13.5a6 6 0 0 1 12 0z"/><path class="line" d="M1 13.5h22"/></svg>
+              <p><strong>Slack Water swimming club.</strong> Tide times are a guide, not a promise.</p>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <!-- offline: the connection dropped; the changes are kept in this tab -->
+    <div class="toast toast-float" role="status" data-states="offline">
+      <svg class="i" aria-hidden="true"><use href="#i-warning"/></svg>
+      <p><strong>Connection lost.</strong> Your 6 changes are kept in this tab and saved when the connection is back.</p>
+      <button class="btn btn-small btn-light" type="button" data-focus="offline">Retry now</button>
+    </div>
+  </main>
+
+  <!-- ================= BOTTOM LINE: where you are, and how you look at the page =================
+       Left: the selection's path, each step a button (or, while a block
+       moves, where it will land). Right: block edges, the device switch in
+       one click, and the page's width, always shown. -->
+  <footer class="statusbar" aria-label="Status">
+    <nav class="crumbs" aria-label="Selection" data-states="editor add publish shortcuts phone insert-col1 outline-col1">
+      <ol>
+        <li><button type="button" class="crumb" title="Select nothing: edit the page"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Hero</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 1</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Heading</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="narrow-gutter">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">What we do</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 2</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Icon box</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="small-block">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Hero</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 1</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Button</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="style tablet">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Hero</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location" data-focus="tablet">Column 1</button></li>
+      </ol>
+      <span class="crumbs-hint">Select inside: <span class="keys-inline"><kbd class="kc">Alt</kbd><kbd class="kc"><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></span></span>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="structure text-editing">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">See the bay</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 2</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Text</button></li>
+      </ol>
+      <span class="crumbs-hint" data-states="text-editing">Writing. <span class="keys-inline"><kbd class="kc">Esc</kbd></span> to finish</span>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="insert-drawer-1280">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Questions</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 2</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Accordion</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="media">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Hero</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb">Column 2</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Image</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="section">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">Join</button></li>
+      </ol>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="new-section">
+      <ol>
+        <li><button type="button" class="crumb"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+        <li><svg class="i i-xs crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg><button type="button" class="crumb" aria-current="location">New section</button></li>
+      </ol>
+      <span class="crumbs-hint">Select inside: <span class="keys-inline"><kbd class="kc">Alt</kbd><kbd class="kc"><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></span></span>
+    </nav>
+    <nav class="crumbs" aria-label="Selection" data-states="history site-style empty page-tab insert-at-seam seam-hover">
+      <ol>
+        <li><button type="button" class="crumb" aria-current="location"><svg class="i i-xs" aria-hidden="true"><use href="#i-page"/></svg>Page</button></li>
+      </ol>
+      <span class="crumbs-hint" data-hide="empty insert-at-seam seam-hover">Nothing selected. Click a block, or press <span class="keys-inline"><kbd class="kc"><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></span> on the page.</span>
+      <span class="crumbs-hint" data-states="seam-hover">Nothing selected. Point between two sections to add one there.</span>
+    </nav>
+    <p class="live" role="status" aria-live="polite" data-states="drag"><strong>Button will move to Column 1 of Hero, after Heading.</strong><span>Release, or press Space, to drop it. Esc cancels.</span></p>
+
+    <div class="sb-view">
+      <button class="sb-edges" type="button" aria-pressed="false" aria-label="Block edges" title="Show the edges of every block, sections and columns too" data-hide="drag empty"><svg class="i" aria-hidden="true"><use href="#i-edges"/></svg><span class="sb-edges-word">Block edges</span></button>
+      <div class="devices" role="radiogroup" aria-label="Look at the page on" data-hide="drag">
+        <button type="button" role="radio" aria-checked="true" data-device="desktop" data-go="editor" title="Desktop: the full width of the canvas (Alt+Shift+1)"><svg class="i" aria-hidden="true"><use href="#i-desktop"/></svg>Desktop</button>
+        <button type="button" role="radio" aria-checked="false" data-device="tablet" data-go="tablet" title="Tablet, 768 wide (Alt+Shift+2)"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>Tablet<span class="dev-w">768</span></button>
+        <button type="button" role="radio" aria-checked="false" data-device="phone" data-go="phone" title="Phone, 390 wide (Alt+Shift+3)"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg>Phone<span class="dev-w">390</span></button>
+      </div>
+      <p class="sb-width" title="The page changes layout at 560 (tablet) and 800 (desktop)"><span id="width-readout">Page 1088 wide, desktop layout</span></p>
+    </div>
+  </footer>
+
+  <!-- ================= SIDEBAR: Page and Block ================= -->
+  <aside class="sidebar" id="sidebar" aria-label="Settings">
+
+    <div class="sb-tabs" data-hide="site-style">
+      <div role="tablist" aria-label="Settings">
+        <button role="tab" type="button" aria-selected="false" aria-controls="panel-page" data-sel="history empty page-tab insert-at-seam seam-hover" class="sb-tab">Page</button>
+        <button role="tab" type="button" aria-selected="true" aria-controls="panel-block" data-sel="editor add structure style drag tablet publish media shortcuts text-editing small-block insert-drawer-1280 new-section phone section narrow-gutter insert-col1 outline-col1" class="sb-tab">Block</button>
+      </div>
+      <button class="ibtn" type="button" aria-label="Hide the sidebar" title="Hide the sidebar"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+
+    <!-- Block: Heading -->
+    <section class="sb-panel" id="panel-block" role="tabpanel" aria-label="Heading settings" data-states="editor add publish shortcuts phone insert-col1 outline-col1">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-heading"/></svg></span>
+        <div><strong>Heading</strong><span>The title of the page, in Hero, column 1</span></div>
+      </div>
+      <p class="device-note" data-states="phone"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg><span>Editing for <strong>phone</strong>. Changes to its look apply to phones only. The words are the same everywhere.</span></p>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-h-text"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Text</span></button>
+          <div class="grp-body" id="g-h-text">
+            <div class="field field-first">
+              <label class="label" for="h-text">Text</label>
+              <textarea id="h-text" class="input" data-focus="editor editor-1280 phone" rows="2">Swim at slack water</textarea>
+            </div>
+            <div class="field">
+              <span class="label" id="h-level">Level</span>
+              <div class="seg seg-text" role="radiogroup" aria-labelledby="h-level">
+                <button type="button" role="radio" aria-checked="true" class="is-on">H1</button>
+                <button type="button" role="radio" aria-checked="false">H2</button>
+                <button type="button" role="radio" aria-checked="false">H3</button>
+                <button type="button" role="radio" aria-checked="false">H4</button>
+              </div>
+              <p class="hint">Use one H1 per page. It is the title search engines and screen readers announce.</p>
+            </div>
+            <div class="field">
+              <label class="label" for="h-link">Link</label>
+              <div class="input input-icon">
+                <svg class="i" aria-hidden="true"><use href="#i-link"/></svg>
+                <input id="h-link" type="text" placeholder="Paste a link or choose a page">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Size and color</span><span class="grp-sum"><i class="sum-dot" style="--c:#1E5B4C" aria-hidden="true"></i>Display, Sea</span></button>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Left</span></button>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button>
+        </div>
+        <p class="sb-foot-hint">Closed groups show their current value. Colors and sizes come from <button class="link link-inline" type="button" data-go="site-style">Site style</button>.</p>
+      </div>
+    </section>
+
+    <!-- Block: Column 1 on desktop, with one tablet override (style) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Column 1 settings" data-states="style">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-column"/></svg></span>
+        <div><strong>Column 1</strong><span>In Hero, 2 columns</span></div>
+      </div>
+      <div class="sb-body sb-body-dense">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-c-space"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Spacing</span><span class="grp-sum grp-sum-dev"><svg class="i i-xs" role="img" aria-label="Has a tablet override"><use href="#i-tablet"/></svg>Tablet differs</span></button>
+          <div class="grp-body" id="g-c-space">
+            <div class="field field-first">
+              <div class="label-row"><span class="label" id="c-pad">Space inside</span><span class="scope">Desktop and phone</span></div>
+              <div class="ruler" role="slider" aria-labelledby="c-pad" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0" aria-valuetext="None on desktop and phone. Tablet uses L." tabindex="0" data-focus="style" style="--v:0; --inherit:4">
+                <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="ruler-ghost" aria-hidden="true"></span>
+                <span class="ruler-thumb" aria-hidden="true"></span>
+                <span class="ruler-nums" aria-hidden="true"><b class="on">None</b><b>XS</b><b>S</b><b>M</b><b class="dev">L</b><b>XL</b><b>XXL</b></span>
+              </div>
+              <div class="override">
+                <svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>
+                <p><strong>Tablet: L</strong> on all four sides, for tablets only. The ring on the scale marks it.</p>
+                <button class="btn btn-small btn-secondary" type="button">Remove</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="label-row"><span class="label" id="c-gap">Space between widgets</span><span class="scope">Every device</span></div>
+              <div class="ruler" role="slider" aria-labelledby="c-gap" aria-valuemin="0" aria-valuemax="6" aria-valuenow="4" aria-valuetext="L on every device" tabindex="0" style="--v:4">
+                <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="ruler-thumb" aria-hidden="true"></span>
+                <span class="ruler-nums" aria-hidden="true"><b>None</b><b>XS</b><b>S</b><b>M</b><b class="on">L</b><b>XL</b><b>XXL</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-c-bg"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Background</span></button>
+          <div class="grp-body" id="g-c-bg">
+            <div class="swatches" role="radiogroup" aria-label="Background">
+              <button type="button" role="radio" aria-checked="true" class="sw-none is-on" title="None" aria-label="None"><span class="pick-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span></button>
+              <button type="button" role="radio" aria-checked="false" style="--c:#FFFFFF" title="Paper" aria-label="Paper"></button>
+              <button type="button" role="radio" aria-checked="false" style="--c:#E6EFEA" title="Shallows" aria-label="Shallows"></button>
+              <button type="button" role="radio" aria-checked="false" style="--c:#1E5B4C" title="Sea" aria-label="Sea"></button>
+              <button type="button" role="radio" aria-checked="false" style="--c:#F2A541" title="Buoy" aria-label="Buoy"></button>
+              <button type="button" role="radio" aria-checked="false" style="--c:#14302A" title="Ink" aria-label="Ink"></button>
+            </div>
+          </div>
+        </div>
+        <!-- The column's two type settings, as the real editor has them: the
+             seven steps of the type scale, and the text color from the palette -->
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-c-ts"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Text size and color</span></button>
+          <div class="grp-body" id="g-c-ts">
+            <div class="field field-first">
+              <div class="label-row"><span class="label" id="c-ts">Text size in this column</span><span class="scope">Every device</span></div>
+              <div class="steps steps-7" role="radiogroup" aria-labelledby="c-ts">
+                <button type="button" role="radio" aria-checked="false" aria-label="Display"><span class="sans" style="font-size:20px">Aa</span>Display</button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Heading 1"><span class="sans" style="font-size:18px">Aa</span>H1</button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Heading 2"><span class="sans" style="font-size:16px">Aa</span>H2</button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Heading 3"><span class="sans" style="font-size:14px">Aa</span>H3</button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Large"><span style="font-size:17px">Aa</span>Large</button>
+                <button type="button" role="radio" aria-checked="true" class="is-on" aria-label="Body"><span style="font-size:14px">Aa</span>Body</button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Small"><span style="font-size:12px">Aa</span>Small</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="label-row"><span class="label" id="c-color">Text color</span><span class="scope">Theme default</span></div>
+              <div class="swatches" role="radiogroup" aria-labelledby="c-color">
+                <button type="button" role="radio" aria-checked="false" style="--c:#14302A" title="Text, Ink" aria-label="Text, Ink"></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#FFFFFF" title="Background, Paper" aria-label="Background, Paper"></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#1E5B4C" title="Primary, Sea" aria-label="Primary, Sea"></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#F2A541" title="Accent, Buoy" aria-label="Accent, Buoy"></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#E6EFEA" title="Soft, Shallows" aria-label="Soft, Shallows"></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#4E625B" title="Muted, Slate" aria-label="Muted, Slate"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false" aria-controls="g-c-al"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Top, left</span></button>
+          <div class="grp-body" id="g-c-al" hidden>
+            <div class="pair">
+              <div>
+                <span class="label" id="c-va">Up and down</span>
+                <div class="seg seg-icons" role="radiogroup" aria-labelledby="c-va">
+                  <button type="button" role="radio" aria-checked="true" class="is-on" aria-label="Top" title="Top"><svg class="i" aria-hidden="true"><use href="#i-valign-top"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" aria-label="Middle" title="Middle"><svg class="i" aria-hidden="true"><use href="#i-valign-middle"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" aria-label="Bottom" title="Bottom"><svg class="i" aria-hidden="true"><use href="#i-valign-bottom"/></svg></button>
+                </div>
+              </div>
+              <div>
+                <span class="label" id="c-ha">Left and right</span>
+                <div class="seg seg-icons" role="radiogroup" aria-labelledby="c-ha">
+                  <button type="button" role="radio" aria-checked="true" class="is-on" aria-label="Left" title="Left"><svg class="i" aria-hidden="true"><use href="#i-align-left"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" aria-label="Center" title="Center"><svg class="i" aria-hidden="true"><use href="#i-align-center"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" aria-label="Right" title="Right"><svg class="i" aria-hidden="true"><use href="#i-align-right"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Block: Column 1 while editing for tablet (tablet) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Column 1 settings, tablet" data-states="tablet">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-column"/></svg></span>
+        <div><strong>Column 1</strong><span>In Hero, 2 columns</span></div>
+      </div>
+      <p class="device-note"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg><span>Editing for <strong>tablet</strong>. Changes you make now apply to tablets only.</span></p>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-t-space"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Spacing</span><span class="grp-sum grp-sum-dev" title="Has a tablet override"><svg class="i i-xs" role="img" aria-label="Has a tablet override"><use href="#i-tablet"/></svg></span></button>
+          <div class="grp-body" id="g-t-space">
+            <div class="field field-first">
+              <div class="label-row"><span class="label" id="t-pad">Space inside</span><span class="scope scope-device"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>Tablet only</span></div>
+              <div class="ruler" role="slider" aria-labelledby="t-pad" aria-valuemin="0" aria-valuemax="6" aria-valuenow="4" aria-valuetext="L, tablet only. Desktop and phone use None." tabindex="0" style="--v:4; --inherit:0">
+                <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="ruler-ghost" aria-hidden="true"></span>
+                <span class="ruler-thumb" aria-hidden="true"></span>
+                <span class="ruler-nums" aria-hidden="true"><b>None</b><b>XS</b><b>S</b><b>M</b><b class="on">L</b><b>XL</b><b>XXL</b></span>
+              </div>
+              <div class="override">
+                <svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>
+                <p><strong>Tablet override: L</strong> on all four sides. Desktop and phone use None, marked with a ring.</p>
+                <button class="btn btn-small btn-secondary" type="button">Remove</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="label-row"><span class="label" id="t-gap">Space between widgets</span><span class="scope" title="Tablets use the desktop value until you change it here">From desktop</span></div>
+              <div class="ruler" role="slider" aria-labelledby="t-gap" aria-valuemin="0" aria-valuemax="6" aria-valuenow="4" aria-valuetext="L, from desktop. A change here applies to tablets only." tabindex="0" style="--v:4">
+                <span class="ruler-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="ruler-thumb" aria-hidden="true"></span>
+                <span class="ruler-nums" aria-hidden="true"><b>None</b><b>XS</b><b>S</b><b>M</b><b class="on">L</b><b>XL</b><b>XXL</b></span>
+              </div>
+              <p class="scope-then"><svg class="i" aria-hidden="true"><use href="#i-tablet"/></svg>A change here applies to tablets only.</p>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Background</span><span class="grp-sum">None, from desktop</span></button>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Text size and color</span><span class="grp-sum">Body, Ink, from desktop</span></button>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Top left, from desktop</span></button>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Block: Text in See the bay (add) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Text settings" data-states="structure text-editing">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-text"/></svg></span>
+        <div><strong>Text</strong><span>In See the bay, column 2</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-x-text"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Text</span></button>
+          <div class="grp-body" id="g-x-text">
+            <p class="hint hint-first" data-hide="text-editing">Type on the page to change the words. Select some words to make them bold, italic or a link.</p>
+            <ul class="write-keys" data-states="text-editing" aria-label="While you write">
+              <li><svg class="i i-strong" aria-hidden="true"><use href="#i-bold"/></svg><span>Bold</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">B</kbd></span></li>
+              <li><svg class="i i-strong" aria-hidden="true"><use href="#i-italic"/></svg><span>Italic</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">I</kbd></span></li>
+              <li><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span>Link</span><span class="keys"><kbd class="kc">Ctrl</kbd><kbd class="kc">K</kbd></span></li>
+            </ul>
+            <p class="hint" data-states="text-editing">While you write, these three sit in the clamp beside the text. <kbd class="kc">Esc</kbd> finishes and gives the clamp back its moving keys.</p>
+          </div>
+        </div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Size and color</span><span class="grp-sum"><i class="sum-dot" style="--c:#14302A" aria-hidden="true"></i>Body, Ink</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Left</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: Icon box in What we do (narrow-gutter) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Icon box settings" data-states="narrow-gutter">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-iconbox"/></svg></span>
+        <div><strong>Icon box</strong><span>In What we do, column 2</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-ib"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Icon box</span></button>
+          <div class="grp-body" id="g-ib">
+            <div class="field field-first">
+              <label class="label" for="ib-title">Title</label>
+              <input id="ib-title" class="input" type="text" value="Beginners’ course">
+            </div>
+            <div class="field">
+              <label class="label" for="ib-text">Text</label>
+              <textarea id="ib-text" class="input" rows="2">Four sessions from the shallows to the buoy line.</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Text color</span><span class="grp-sum">Theme default</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Left</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: Accordion in Questions (insert-drawer-1280) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Accordion settings" data-states="insert-drawer-1280">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-accordion"/></svg></span>
+        <div><strong>Accordion</strong><span>In Questions, column 2</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Questions</span><span class="grp-sum">3, the first open</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Line color</span><span class="grp-sum"><i class="sum-dot" style="--c:#1E5B4C" aria-hidden="true"></i>Primary, Sea</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: Button in Hero (small-block) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Button settings" data-states="small-block">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-button"/></svg></span>
+        <div><strong>Button</strong><span>In Hero, column 1</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-b-btn"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Button</span></button>
+          <div class="grp-body" id="g-b-btn">
+            <div class="field field-first">
+              <label class="label" for="b-text">Words on the button</label>
+              <input id="b-text" class="input" type="text" value="Join a trial swim" data-focus="small-block">
+            </div>
+            <div class="field">
+              <label class="label" for="b-link">Goes to</label>
+              <div class="input input-icon"><svg class="i" aria-hidden="true"><use href="#i-anchor"/></svg><input id="b-link" type="text" value="Join, on this page"></div>
+              <p class="hint">A page of your site, a section on this page, or a web address.</p>
+            </div>
+          </div>
+        </div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Colors</span><span class="grp-sum"><i class="sum-dot" style="--c:#F2A541" aria-hidden="true"></i>Buoy, Ink text</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Alignment</span><span class="grp-sum">Left</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: the new, empty section (new-section) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Section settings" data-states="new-section">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-section"/></svg></span>
+        <div><strong>Section</strong><span>New, 2 columns, both empty</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Columns</span><span class="grp-sum">2, equal</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Background</span><span class="grp-sum"><i class="sum-dot sum-dot-none" aria-hidden="true"></i>None</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Spacing</span><span class="grp-sum">Theme default</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Name and link</span><span class="grp-sum">No label yet</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: Image (media, behind the library) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Image settings" data-states="media">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-image"/></svg></span>
+        <div><strong>Image</strong><span>In Hero, column 2</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-i-img"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Image</span></button>
+          <div class="grp-body" id="g-i-img">
+            <img class="thumb-wide" src="../img/hero-dawn.svg" alt="">
+            <button class="btn btn-secondary btn-block" type="button">Replace image</button>
+            <div class="field">
+              <label class="label" for="i-alt">Alt text</label>
+              <textarea id="i-alt" class="input" rows="3">The bay at dawn at slack water, with a line of buoys and three swimmers</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shape</span><span class="grp-sum">Original</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+      </div>
+    </section>
+
+    <!-- Block: Section Join (extra state #section): the settings that were "advanced" -->
+    <section class="sb-panel" role="tabpanel" aria-label="Section settings" data-states="section">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#i-section"/></svg></span>
+        <div><strong>Section</strong><span>Join, 2 columns</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Columns</span><span class="grp-sum">2, equal</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Background</span><span class="grp-sum"><i class="sum-dot sum-dot-none" aria-hidden="true"></i>None</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Spacing</span><span class="grp-sum">Theme default</span></button></div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-s-show"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span></button>
+          <div class="grp-body" id="g-s-show">
+            <label class="toggle"><input type="checkbox" role="switch"><span class="toggle-ui" aria-hidden="true"></span><span>Hide on tablet</span></label>
+            <label class="toggle"><input type="checkbox" role="switch"><span class="toggle-ui" aria-hidden="true"></span><span>Hide on phone</span></label>
+            <p class="hint">Hidden sections stay in the outline, grayed out, so you can find them again.</p>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-s-name"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Name and link</span></button>
+          <div class="grp-body" id="g-s-name">
+            <div class="field field-first">
+              <label class="label" for="a-label">Section label</label>
+              <input id="a-label" class="input" type="text" value="Join" data-focus="section">
+              <p class="hint">Only you see it, in the outline, the breadcrumb and history.</p>
+            </div>
+            <div class="field">
+              <label class="label" for="a-anchor">Anchor id</label>
+              <div class="input input-icon"><svg class="i" aria-hidden="true"><use href="#i-anchor"/></svg><input id="a-anchor" type="text" value="join"></div>
+              <p class="hint">Links to #join scroll to this section.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Block while moving (drag) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Button settings" data-states="drag">
+      <div class="blk-head">
+        <span class="ed-icon"><svg class="i i-tile" aria-hidden="true"><use href="#w-button"/></svg></span>
+        <div><strong>Button</strong><span>Moving, from Hero, column 1</span></div>
+      </div>
+      <div class="sb-body sb-body-muted">
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false" aria-disabled="true"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Button</span><span class="grp-sum">Join a trial swim</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false" aria-disabled="true"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Colors</span><span class="grp-sum"><i class="sum-dot" style="--c:#F2A541" aria-hidden="true"></i>Buoy, Ink text</span></button></div>
+        <div class="grp"><button class="grp-head" type="button" aria-expanded="false" aria-disabled="true"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Shown on</span><span class="grp-sum">Every device</span></button></div>
+        <p class="sb-foot-hint">Settings wait while you move the block. Drop it, or press Esc.</p>
+      </div>
+    </section>
+
+    <!-- Page: Home (history) -->
+    <section class="sb-panel" id="panel-page" role="tabpanel" aria-label="Page settings" data-states="history page-tab insert-at-seam seam-hover">
+      <div class="blk-head">
+        <span class="ed-icon ed-icon-page"><svg class="i i-tile" aria-hidden="true"><use href="#i-page"/></svg></span>
+        <div><strong>Home</strong><span>slackwater.example, the first page visitors see</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-p-title"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Title and address</span></button>
+          <div class="grp-body" id="g-p-title">
+            <div class="field field-first">
+              <label class="label" for="ph-title">Title</label>
+              <input id="ph-title" class="input" type="text" value="Home" data-focus="page-tab">
+              <p class="hint">Shown in the browser tab and in search results.</p>
+            </div>
+            <div class="field">
+              <span class="label">Address</span>
+              <p class="addr-fixed"><svg class="i i-xs" aria-hidden="true"><use href="#i-lock"/></svg>slackwater.example</p>
+              <p class="hint">The home page always lives at your site’s own address.</p>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-p-search"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Search results</span></button>
+          <div class="grp-body" id="g-p-search">
+            <label class="label" for="ph-desc">Description</label>
+            <textarea id="ph-desc" class="input" rows="3">Open-water swimming on the north bay: dawn swims, a beginners’ course and a winter series.</textarea>
+            <p class="hint">Search engines show it under the title. 90 of 160 characters.</p>
+          </div>
+        </div>
+        <!-- The site menu is not page data today: it comes from the CMS's
+             configuration, and nothing in the editor changes it. MIX.md asks
+             for the switch, so it is drawn, marked as later, new CMS work. -->
+        <div class="grp" data-hide="page-tab"><button class="grp-head" type="button" aria-expanded="false"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Site menu</span><span class="later">Comes later</span></button></div>
+        <div class="grp" data-states="page-tab">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-p-menu"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Site menu</span><span class="later">Comes later</span></button>
+          <div class="grp-body" id="g-p-menu">
+            <label class="toggle toggle-later"><input type="checkbox" role="switch" disabled aria-describedby="ph-menu-later ph-menu-hint"><span class="toggle-ui" aria-hidden="true"></span><span>Show in the site menu</span></label>
+            <p class="hint" id="ph-menu-hint">Visitors reach the home page from the site’s name in the header, so it needs no link of its own. Turn on to add one anyway.</p>
+            <p class="later-note" id="ph-menu-later">New work in the CMS, not part of rearranging the editor: today the site’s menu comes from the site’s settings file.</p>
+          </div>
+        </div>
+        <button class="sb-link" type="button" data-go="site-style">
+          <svg class="i" aria-hidden="true"><use href="#i-style"/></svg>
+          <span><strong>Site style</strong><small>Palette and type scale for every page</small></span>
+          <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Page: the new, empty page (empty) -->
+    <section class="sb-panel" role="tabpanel" aria-label="Page settings" data-states="empty">
+      <div class="blk-head">
+        <span class="ed-icon ed-icon-page"><svg class="i i-tile" aria-hidden="true"><use href="#i-page"/></svg></span>
+        <div><strong>Winter series</strong><span>A new page, not published yet</span></div>
+      </div>
+      <div class="sb-body">
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-e-title"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Title and address</span></button>
+          <div class="grp-body" id="g-e-title">
+            <div class="field field-first">
+              <label class="label" for="p-title">Title</label>
+              <input id="p-title" class="input" type="text" value="Winter series">
+              <p class="hint">Shown in the browser tab and in search results.</p>
+            </div>
+            <div class="field">
+              <label class="label" for="p-addr">Address</label>
+              <div class="input input-icon"><span class="input-prefix" aria-hidden="true">/</span><input id="p-addr" type="text" value="winter-series"></div>
+              <p class="hint">slackwater.example/winter-series</p>
+            </div>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-e-search"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Search results</span></button>
+          <div class="grp-body" id="g-e-search">
+            <label class="label" for="p-desc">Description</label>
+            <textarea id="p-desc" class="input" rows="3" placeholder="One or two sentences about this page"></textarea>
+            <p class="hint">Search engines show it under the title. Up to 160 characters.</p>
+          </div>
+        </div>
+        <div class="grp">
+          <button class="grp-head" type="button" aria-expanded="true" aria-controls="g-e-menu"><svg class="i i-xs grp-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg><span class="grp-name">Site menu</span><span class="later">Comes later</span></button>
+          <div class="grp-body" id="g-e-menu">
+            <label class="toggle toggle-later"><input type="checkbox" role="switch" disabled aria-describedby="p-menu-later p-menu-hint"><span class="toggle-ui" aria-hidden="true"></span><span>Show in the site menu</span></label>
+            <p class="hint" id="p-menu-hint">Turn on to add “Winter series” to the menu in the site header.</p>
+            <p class="later-note" id="p-menu-later">New work in the CMS, not part of rearranging the editor: today the site’s menu comes from the site’s settings file.</p>
+          </div>
+        </div>
+        <button class="sb-link" type="button" data-go="site-style">
+          <svg class="i" aria-hidden="true"><use href="#i-style"/></svg>
+          <span><strong>Site style</strong><small>Palette and type scale for every page</small></span>
+          <svg class="i i-xs" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Site style: a level below Page, with a way back -->
+    <section class="sb-panel" aria-labelledby="ss-title" data-states="site-style">
+      <div class="ss-head">
+        <button class="btn btn-quiet btn-back" type="button" data-go="history"><svg class="i" aria-hidden="true"><use href="#i-arrow-left"/></svg>Page</button>
+        <button class="ibtn" type="button" aria-label="Close site style" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="ss-title">
+        <h2 id="ss-title">Site style</h2>
+        <p>Applies to every page of your site.</p>
+      </div>
+      <div class="sb-body">
+        <h3 class="group-title">Palette</h3>
+        <ul class="slots">
+          <li class="slot" title="Ink, #14302A"><span class="slot-chip" style="--c:#14302A"></span><span class="slot-name">Text<small>Ink</small></span></li>
+          <li class="slot" title="Paper, #FFFFFF"><span class="slot-chip" style="--c:#FFFFFF"></span><span class="slot-name">Background<small>Paper</small></span></li>
+          <li class="slot slot-open">
+            <div class="slot-row" title="Harbour, #1D4E6F"><span class="slot-chip" style="--c:#1D4E6F"></span><span class="slot-name">Primary<small>Harbour</small><small class="slot-edited">Edited, was Sea</small></span></div>
+            <div class="slot-editor">
+              <div class="tones" role="radiogroup" aria-label="Primary color">
+                <button type="button" role="radio" aria-checked="false" style="--c:#1E5B4C" title="Sea, #1E5B4C"><span>Sea</span></button>
+                <button type="button" role="radio" aria-checked="true" class="is-on" style="--c:#1D4E6F" title="Harbour, #1D4E6F" data-focus="site-style"><span>Harbour</span><span class="pick-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#3B5A23" title="Kelp, #3B5A23"><span>Kelp</span></button>
+                <button type="button" role="radio" aria-checked="false" style="--c:#4A4F57" title="Basalt, #4A4F57"><span>Basalt</span></button>
+              </div>
+              <ul class="checks" aria-label="Contrast checks">
+                <li class="pass"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Button text on it: 8.9 to 1, easy to read</li>
+                <li class="pass"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Links on the background: 8.9 to 1, easy to read</li>
+              </ul>
+              <div class="slot-actions"><button class="btn btn-small btn-secondary" type="button">Reset to Sea</button></div>
+            </div>
+          </li>
+          <li class="slot" title="Buoy, #F2A541"><span class="slot-chip" style="--c:#F2A541"></span><span class="slot-name">Accent<small>Buoy</small></span></li>
+          <li class="slot" title="Shallows, #E6EFEA"><span class="slot-chip" style="--c:#E6EFEA"></span><span class="slot-name">Soft<small>Shallows</small></span></li>
+          <li class="slot" title="Slate, #4E625B"><span class="slot-chip" style="--c:#4E625B"></span><span class="slot-name">Muted<small>Slate</small></span></li>
+        </ul>
+
+        <h3 class="group-title">Type scale</h3>
+        <div class="seg seg-text seg-fill" role="radiogroup" aria-label="Contrast between sizes">
+          <button type="button" role="radio" aria-checked="false">Gentle</button>
+          <button type="button" role="radio" aria-checked="true" class="is-on">Balanced</button>
+          <button type="button" role="radio" aria-checked="false">Strong</button>
+        </div>
+        <ul class="scale">
+          <li title="76 px in a wide window"><span class="scale-aa" style="font-size:26px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Display</span><span class="scale-num">76</span></li>
+          <li title="56 px in a wide window"><span class="scale-aa" style="font-size:23px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Heading 1</span><span class="scale-num">56</span></li>
+          <li title="42 px in a wide window"><span class="scale-aa" style="font-size:20px;font-stretch:125%;font-weight:700">Aa</span><span class="scale-name">Heading 2</span><span class="scale-num">42</span></li>
+          <li title="32 px in a wide window"><span class="scale-aa" style="font-size:17px;font-stretch:125%;font-weight:600">Aa</span><span class="scale-name">Heading 3</span><span class="scale-num">32</span></li>
+          <li title="24 px in a wide window"><span class="scale-aa serif" style="font-size:16px">Aa</span><span class="scale-name">Large text</span><span class="scale-num">24</span></li>
+          <li title="18 px in a wide window"><span class="scale-aa serif" style="font-size:14px">Aa</span><span class="scale-name">Body</span><span class="scale-num">18</span></li>
+          <li title="14 px in a wide window"><span class="scale-aa serif" style="font-size:12px">Aa</span><span class="scale-name">Small</span><span class="scale-num">14</span></li>
+        </ul>
+        <p class="hint">Balanced: each size is about a third larger than the next. Sizes in a wide window; a narrower one shrinks them all together.</p>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<!-- ============ APP MENU (popover) ============ -->
+<div class="menu menu-app" id="app-menu" popover role="menu" aria-label="Page Builder CMS">
+  <button class="menu-item" role="menuitem" type="button" data-go="site-style" data-first><svg class="i" aria-hidden="true"><use href="#i-style"/></svg><span>Site style</span></button>
+  <button class="menu-item" role="menuitem" type="button" data-go="pages"><svg class="i" aria-hidden="true"><use href="#i-page"/></svg><span>All pages</span></button>
+  <button class="menu-item" role="menuitem" type="button" data-go="shortcuts"><svg class="i" aria-hidden="true"><use href="#i-keyboard"/></svg><span>Keyboard shortcuts</span><span class="keys"><kbd class="kc">?</kbd></span></button>
+  <hr class="menu-sep">
+  <button class="menu-item" role="menuitem" type="button"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>About Page Builder CMS</span></button>
+</div>
+
+<div class="scrim" data-states="media shortcuts schedule" aria-hidden="true"></div>
+
+<!-- ============ MEDIA LIBRARY ============ -->
+<div class="dialog dlg-media" role="dialog" aria-modal="true" aria-labelledby="media-title" data-states="media">
+  <header class="dlg-head">
+    <h2 id="media-title">Media library</h2>
+    <p class="dlg-count">10 images, 2 without alt text, 1 uploading</p>
+    <button class="ibtn" type="button" aria-label="Close media library" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="dlg-toolbar">
+    <label class="search search-inline">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <input type="search" placeholder="Search by name or alt text" aria-label="Search images">
+    </label>
+    <div class="seg seg-text" role="radiogroup" aria-label="Show">
+      <button type="button" role="radio" aria-checked="true" class="is-on">All images</button>
+      <button type="button" role="radio" aria-checked="false">On this page</button>
+      <button type="button" role="radio" aria-checked="false">Missing alt text <span class="seg-count">2</span></button>
+    </div>
+    <button class="btn btn-secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Upload images</button>
+  </div>
+  <div class="dlg-body media-body">
+    <!-- the upload in progress is not an image to choose yet: it sits before the list, with its own Cancel -->
+    <div class="media-grid">
+      <div class="m-item m-uploading">
+        <div class="m-thumb"><img src="../img/g-rockpools.svg" alt=""></div>
+        <div class="m-progress" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Uploading rock-pools.jpg"><span style="width:64%"></span></div>
+        <div class="m-meta"><span>Uploading, 64%</span><button class="ibtn ibtn-small" type="button" aria-label="Cancel upload"><svg class="i i-xs" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+      </div>
+      <ul class="media-options" role="listbox" aria-label="Images">
+      <li class="m-item m-selected" role="option" aria-selected="true">
+        <div class="m-thumb"><img src="../img/g-buoys.svg" alt=""><span class="m-check" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span><span class="m-flag"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg>No alt text</span></div>
+        <div class="m-meta"><span>buoy-line.jpg</span></div>
+      </li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/hero-dawn.svg" alt=""></div><div class="m-meta"><span>hero-dawn.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/g-horizon.svg" alt=""></div><div class="m-meta"><span>first-light.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/g-caps.svg" alt=""></div><div class="m-meta"><span>swim-caps.webp</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/g-slipway.svg" alt=""></div><div class="m-meta"><span>slipway.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/g-wake.svg" alt=""></div><div class="m-meta"><span>wake.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/m-tea.svg" alt=""></div><div class="m-meta"><span>tea-after.png</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/m-winter.svg" alt=""><span class="m-flag"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg>No alt text</span></div><div class="m-meta"><span>winter-jetty.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/poster.svg" alt=""></div><div class="m-meta"><span>dawn-swim-still.jpg</span></div></li>
+      <li class="m-item" role="option" aria-selected="false"><div class="m-thumb"><img src="../img/map.svg" alt=""></div><div class="m-meta"><span>beach-plan.png</span></div></li>
+      <li class="m-item m-drop" aria-hidden="true"><div class="m-thumb"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg><span>Drop images here</span><small>JPG, PNG, WebP or GIF. Sent at 2400 px and 10 MB at most</small></div></li>
+    </ul>
+    </div>
+    <aside class="media-details" aria-label="Selected image">
+      <img class="md-preview" src="../img/g-buoys.svg" alt="">
+      <p class="md-name">buoy-line.jpg</p>
+      <p class="md-meta">1600 × 1200, 84 KB. Added Sep 12.</p>
+      <div class="field field-error">
+        <label class="label" for="md-alt">Alt text <span class="req">required</span></label>
+        <textarea id="md-alt" class="input" rows="3" aria-invalid="true" aria-describedby="md-alt-err" placeholder="What does the image show?" data-focus="media"></textarea>
+        <p class="error" id="md-alt-err"><svg class="i" aria-hidden="true"><use href="#i-error"/></svg><span>Add alt text to use this image. Describe what it shows, for example: “Orange buoys marking the course across the bay”.</span></p>
+      </div>
+      <label class="check"><input type="checkbox"><span>This image is decorative. Screen readers skip it and no alt text is needed.</span></label>
+    </aside>
+  </div>
+  <footer class="dlg-foot">
+    <p class="hint">Images you upload are available on every page.</p>
+    <p class="foot-reason" id="use-why">Add alt text to use this image.</p>
+    <button class="btn btn-secondary" type="button" data-go="editor">Cancel</button>
+    <button class="btn btn-primary" type="button" aria-disabled="true" aria-describedby="use-why">Use image</button>
+  </footer>
+</div>
+
+<!-- ============ SCHEDULE (from Publish > Schedule…) ============
+     A small dialog of its own, not fields inside a menu. -->
+<div class="dialog dlg-schedule" role="dialog" aria-modal="true" aria-labelledby="sch-title" aria-describedby="sch-desc" data-states="schedule">
+  <header class="dlg-head">
+    <h2 id="sch-title">Schedule your changes</h2>
+    <button class="ibtn" type="button" aria-label="Close" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="dlg-body sch-body">
+    <p id="sch-desc">Visitors see your 6 changes from the day and time you choose. Until then the live page stays as it is, and you can go on editing.</p>
+    <div class="schedule-fields">
+      <div class="field">
+        <label class="label" for="s-date">Date</label>
+        <div class="input input-icon" data-focus="schedule"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><input id="s-date" type="text" value="Sun, Oct 4, 2026"></div>
+      </div>
+      <div class="field">
+        <label class="label" for="s-time">Time</label>
+        <div class="input input-icon"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg><input id="s-time" type="text" value="6:15 AM"></div>
+      </div>
+    </div>
+    <p class="tz"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>In your site’s time <strong>(UTC+1)</strong>, the same for every visitor.</span><button class="link" type="button">Change</button></p>
+    <p class="hint">Changes you make after scheduling wait for the next publish.</p>
+  </div>
+  <footer class="dlg-foot">
+    <button class="btn btn-secondary" type="button" data-go="editor">Cancel</button>
+    <button class="btn btn-primary" type="button">Schedule for Oct 4 at 6:15 AM</button>
+  </footer>
+</div>
+
+<!-- ============ SHORTCUTS ============
+     The real editor's keys, plus the few this layout adds. No Ctrl+Alt:
+     on an Italian keyboard that is AltGr, which types characters. -->
+<div class="dialog dlg-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title" data-states="shortcuts">
+  <header class="dlg-head">
+    <h2 id="keys-title">Keyboard shortcuts</h2>
+    <label class="search search-inline search-keys">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <input class="is-focus-in" type="search" placeholder="Find a shortcut" aria-label="Find a shortcut" data-focus="shortcuts">
+    </label>
+    <button class="ibtn" type="button" aria-label="Close keyboard shortcuts" data-go="editor"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="dlg-body keys-body">
+    <div class="keys-col">
+      <section class="keys-group">
+        <h3>Selection</h3>
+        <dl>
+          <div><dt>Select the next block</dt><dd><kbd><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></dd></div>
+          <div><dt>Select the previous block</dt><dd><kbd><svg class="i i-key" role="img" aria-label="Up arrow"><use href="#i-arrow-up"/></svg></kbd></dd></div>
+          <div><dt>Select the parent column or section</dt><dd><kbd>Alt</kbd><kbd><svg class="i i-key" role="img" aria-label="Up arrow"><use href="#i-arrow-up"/></svg></kbd></dd></div>
+          <div><dt>Select the first block inside</dt><dd><kbd>Alt</kbd><kbd><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></dd></div>
+          <div><dt>Clear the selection</dt><dd><kbd>Esc</kbd></dd></div>
+          <div><dt>Go to the block’s clamp, then the sidebar</dt><dd><kbd>Tab</kbd></dd></div>
+        </dl>
+      </section>
+      <section class="keys-group">
+        <h3>Editing</h3>
+        <dl>
+          <div><dt>Edit the text of a block</dt><dd><kbd>Enter</kbd></dd></div>
+          <div><dt>Open the block menu</dt><dd><kbd>Shift</kbd><kbd>F10</kbd></dd></div>
+          <div><dt>Copy</dt><dd><kbd>Ctrl</kbd><kbd>C</kbd></dd></div>
+          <div><dt>Paste after the selection</dt><dd><kbd>Ctrl</kbd><kbd>V</kbd></dd></div>
+          <div><dt>Duplicate</dt><dd><kbd>Ctrl</kbd><kbd>D</kbd></dd></div>
+          <div><dt>Delete</dt><dd><kbd>Del</kbd></dd></div>
+        </dl>
+      </section>
+    </div>
+    <div class="keys-col">
+      <section class="keys-group">
+        <h3>Moving</h3>
+        <dl>
+          <div><dt>Pick up the selected block</dt><dd><kbd>Space</kbd></dd></div>
+          <div><dt>Move it up or down</dt><dd><kbd><svg class="i i-key" role="img" aria-label="Up arrow"><use href="#i-arrow-up"/></svg></kbd><kbd><svg class="i i-key" role="img" aria-label="Down arrow"><use href="#i-arrow-down"/></svg></kbd></dd></div>
+          <div><dt>Move it to the next or previous column</dt><dd><kbd><svg class="i i-key" role="img" aria-label="Left arrow"><use href="#i-arrow-left"/></svg></kbd><kbd><svg class="i i-key" role="img" aria-label="Right arrow"><use href="#i-arrow-right"/></svg></kbd></dd></div>
+          <div><dt>Drop it here</dt><dd><kbd>Space</kbd></dd></div>
+          <div><dt>Cancel and put it back</dt><dd><kbd>Esc</kbd></dd></div>
+        </dl>
+        <p class="hint">While a block moves, the bottom line says where it will land, and screen readers hear the same sentence.</p>
+      </section>
+      <section class="keys-group">
+        <h3>Text, while you write</h3>
+        <dl>
+          <div><dt>Bold</dt><dd><kbd>Ctrl</kbd><kbd>B</kbd></dd></div>
+          <div><dt>Italic</dt><dd><kbd>Ctrl</kbd><kbd>I</kbd></dd></div>
+          <div><dt>Link the selected words</dt><dd><kbd>Ctrl</kbd><kbd>K</kbd></dd></div>
+          <div><dt>Leave the text</dt><dd><kbd>Esc</kbd></dd></div>
+        </dl>
+      </section>
+    </div>
+    <div class="keys-col">
+      <section class="keys-group">
+        <h3>Adding and looking</h3>
+        <dl>
+          <div><dt>Add after the selection</dt><dd><kbd>+</kbd></dd></div>
+          <div><dt>Open Insert</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>N</kbd></dd></div>
+          <div><dt>Open the outline</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>O</kbd></dd></div>
+          <div><dt>Look at it on desktop</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>1</kbd></dd></div>
+          <div><dt>On tablet, 768 wide</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>2</kbd></dd></div>
+          <div><dt>On phone, 390 wide</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>3</kbd></dd></div>
+        </dl>
+      </section>
+      <section class="keys-group">
+        <h3>History</h3>
+        <dl>
+          <div><dt>Undo</dt><dd><kbd>Ctrl</kbd><kbd>Z</kbd></dd></div>
+          <div><dt>Redo</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></dd></div>
+          <div><dt>Save a named version</dt><dd><kbd>Ctrl</kbd><kbd>S</kbd></dd></div>
+        </dl>
+      </section>
+      <section class="keys-group">
+        <h3>Publish</h3>
+        <dl>
+          <div><dt>Preview</dt><dd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>P</kbd></dd></div>
+          <div><dt>Publish now</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></dd></div>
+          <div><dt>Show this list</dt><dd><kbd>?</kbd></dd></div>
+        </dl>
+      </section>
+    </div>
+  </div>
+  <footer class="dlg-foot dlg-foot-note">
+    <p class="hint">On a Mac, use Cmd where this list says Ctrl, and Option where it says Alt. The Alt and Shift keys go by the key’s place, so they work on any keyboard layout and never type a character.</p>
+  </footer>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

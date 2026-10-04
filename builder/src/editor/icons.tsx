@@ -3,7 +3,8 @@
 // SVG drawer. One 20-unit grid; the chrome's stylesheet sets the stroke,
 // the fill and the size by class (.i, .i-xs). A group's fill and stroke
 // are written on each of its shapes. icons.test.ts holds every one to the
-// design's symbol of the same name.
+// design's symbol of the same name, or, for the few the approved layout
+// adds, to the layout's.
 import { shapeElements, type Shape } from "../render/drawings.tsx";
 
 export interface IconShapes {
@@ -63,6 +64,9 @@ export const ICONS = {
   anchor: { viewBox: "0 0 20 20", shapes: [["path", { d: "M8 3.5L6.5 16.5M13.5 3.5L12 16.5M4.25 7.5h12.5M3.25 12.5h12.5" }]] },
   "panel-right": { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "3.75", width: "14.5", height: "12.5", rx: "1" }], ["path", { d: "M12.25 3.75v12.5" }]] },
   tree: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "2.75", width: "6", height: "4", rx: ".75" }], ["path", { d: "M5.75 6.75v8.5h5M5.75 10.25h5" }], ["rect", { x: "10.75", y: "8.25", width: "6.5", height: "4", rx: ".75" }], ["rect", { x: "10.75", y: "13.25", width: "6.5", height: "4", rx: ".75" }]] },
+  // The approved layout's (design/layout/index.html): the bottom line's
+  // Block edges.
+  edges: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.25 6.5V3.25H6.5M13.5 3.25h3.25V6.5M16.75 13.5v3.25H13.5M6.5 16.75H3.25V13.5" }], ["path", { d: "M9 3.25h2M9 16.75h2M3.25 9v2M16.75 9v2" }]] },
   section: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "5.25", width: "14.5", height: "9.5", rx: "1" }]] },
   column: { viewBox: "0 0 20 20", shapes: [["rect", { x: "6.25", y: "2.75", width: "7.5", height: "14.5", rx: "1" }]] },
   question: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M8 8.25a2 2 0 1 1 2.75 1.85c-.45.2-.75.6-.75 1.1v.55" }], ["circle", { cx: "10", cy: "13.6", r: ".9", ...DOT }]] },
