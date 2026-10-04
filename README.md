@@ -359,7 +359,7 @@ How a number is taken:
   (exit 2) if the machine does not settle in fifteen minutes, rather than
   measure. Each run is taken after a quiet reading and read again after it;
   a run the machine was busy after is thrown away and taken again, and
-  the tables say how many were. The ranges of load below are those
+  the text beside each table says how many were. The ranges of load below are those
   readings, before and after the runs kept. A virtual machine cannot see
   what its host is doing: the load is the guest's own, and it is read
   between the runs, not during them. `MEASURE_ALLOW_BUSY=1` measures
@@ -376,13 +376,16 @@ How a number is taken:
   that the drag was engaged and saved nothing, that the editor's text
   chunk was not loaded to open the page. `npm run test:tools` runs the
   tests of the tools themselves, among them one that reads this section
-  and fails if a command in it does not exist.
+  and fails if a command in it does not exist. The measurements are not
+  part of `npm run check`, which does not wait for a quiet machine: those
+  tests are.
 
 ### A published page, on the server
 
 `npm run measure:server`, on 4 October 2026 from 16:06 to 16:09 UTC, the
-machine 3% then 2% busy before it, no run thrown away. The CMS in production mode, Solid
-Cache on its own SQLite database, one visit at a time over one connection:
+machine 3% then 2% busy before it, no run thrown away. The CMS in
+production mode, Solid Cache on its own SQLite database, one visit at a
+time over one connection:
 
 | One visit | The application (X-Runtime), ms | The client, to the last byte, ms | Runs | Load before and after the runs |
 | --- | --- | --- | --- | --- |
@@ -411,7 +414,7 @@ one visit each):
   the preview does, and also makes the 501 keys, asks for them in 88
   reads that find nothing, and writes them in 88 writes: 382 ms against
   105. That is the price of the first visit after a deploy, or after the
-  cache is emptied; the visits after it cost what the rows below say.
+  cache is emptied; the visits after it cost what the rows above say.
 - **A warm visit is one read.** 3.98 ms in the application, 2.27 for a 304
   that reads nothing: a difference of 1.7 ms, and 211 KB more on the wire.
   Neither costs the client more than the health check does (15.2 ms),
@@ -431,11 +434,11 @@ one visit each):
 ### The editor, in the browser
 
 `npm run measure:builder`, on 4 October 2026 from 16:09 to 16:31 UTC, the
-machine 2% then 5% busy before it, no run thrown away. Headless Chromium at 1440 by 900,
-against the e2e CMS, in two forms of the editor: the production build
-served by `vite preview`, and the development server `npm start` runs.
-Nine runs of each, every run in a browser context of its own with nothing
-cached.
+machine 2% then 5% busy before it, no run thrown away. Headless Chromium
+at 1440 by 900, against the e2e CMS, in two forms of the editor: the
+production build served by `vite preview`, and the development server
+`npm start` runs. Nine runs of each, every run in a browser context of its
+own with nothing cached.
 
 Opening the page of 500 blocks, in ms from the start of the navigation:
 
@@ -492,7 +495,7 @@ is 96 ms of main thread for a pointer move, against 2.9.
 **These numbers are bad and are left as they are.** The 500-block page
 takes about 1.2 s to open, 0.9 s of it after its data has arrived, and a
 drag across it takes the pointer's moves at about ten a second, with a
-latency of 61 ms in the middle and 176 at the 95th percentile where the
+latency of 61 ms at the median and 176 at the 95th percentile where the
 baseline gives 30 and 34. The development server is worse on both.
 `MEASURE_PROFILE=only npm run measure:builder` (16:37 UTC) profiles one
 run on an unminified build and says where the JavaScript's time went. A
@@ -505,10 +508,10 @@ profiler slows the page, so only the shares are to be read:
   layout). React's render of the 500 blocks is 12.6%, and inserting the
   elements about 9%.
 - **Dragging:** 41.4% of the sampled time is in `overDrawer`
-  (`builder/src/editor/drag/dnd.ts`), which every one of the 500 blocks, as
-  a drop target, runs at every pointer move to ask whether the pointer is
+  (`builder/src/editor/drag/dnd.ts`), which each of the 500 blocks, as a
+  drop target, runs at every pointer move to ask whether the pointer is
   over a drawer, and which looks the drawers up with
-  `document.querySelectorAll(".drawer")` each time. 31.2% is the drag
+  `document.querySelectorAll(".drawer")` every time. 31.2% is the drag
   library's position observer measuring the targets again (`updateShape`),
   and 12 to 13% React rendering what changed. Looking the drawers up once
   per move, not once per block, would take the first of these away. This
