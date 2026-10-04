@@ -2,7 +2,8 @@
 // the draft as the CMS serves it, on the CMS's own origin, never indexed;
 // Publish puts it live and the Publish menu's link opens the page the CMS
 // serves, which holds the published words and no script; an edit after
-// that is saved but not live, and the chip counts it, until the next
+// that is saved but not live, and the line under the page's title counts
+// it, until the next
 // publish.
 import type { Page } from "@playwright/test";
 import { retitle } from "./helpers/heading.ts";
@@ -26,7 +27,7 @@ test("the preview shows the draft on the CMS; Publish puts it live; the live pag
   const { id, slug } = await makePage(request, "Going live", fixture());
   const live = `${cms()}/${slug}`;
   await open(page, id);
-  await expect(page.locator(".topbar .chip")).toHaveText("Not published yet");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Not published yet");
   expect((await request.get(live)).status()).toBe(404);
 
   // The edit is still waiting when Preview is pressed: it is sent first.
@@ -38,7 +39,7 @@ test("the preview shows the draft on the CMS; Publish puts it live; the live pag
 
   const publish = page.getByRole("button", { name: "Publish", exact: true });
   await publish.click();
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
   await expect(page.locator(".notice")).toContainText(`Published: visitors see this page at ${new URL(cms()).host}/${slug}.`);
 
   await page.getByRole("button", { name: "More publish options" }).click();
@@ -54,13 +55,13 @@ test("the preview shows the draft on the CMS; Publish puts it live; the live pag
   // Saved but not live: the chip counts it, the live page keeps its words.
   await retitle(page, "Newer words");
   await saved(page);
-  await expect(page.locator(".topbar .chip")).toHaveText("Published, 1 change not live");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published, 1 change not live");
   expect(await (await request.get(live)).text()).toContain("Draft words");
 
   await page.getByRole("button", { name: "More publish options" }).click();
   await expect(menu.getByRole("menuitem", { name: /Publish now/ })).toContainText("Visitors see your 1 change right away.");
   await menu.getByRole("menuitem", { name: /Publish now/ }).click();
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
   const after = await (await request.get(live)).text();
   expect(after).toContain("Newer words");
   expect(after).not.toContain("Draft words");
@@ -76,5 +77,5 @@ test("an empty page cannot be published, and says why", async ({ page, request }
   await expect(publish).toHaveAccessibleDescription("Add a section first. An empty page has nothing to publish.");
   await expect(page.getByText("Publish turns on once the page has a section.")).toBeVisible();
   await publish.click({ force: true });
-  await expect(page.locator(".topbar .chip")).toHaveText("Not published yet");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Not published yet");
 });

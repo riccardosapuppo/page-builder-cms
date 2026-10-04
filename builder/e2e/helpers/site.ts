@@ -103,6 +103,16 @@ export async function outlineRow(page: Page, name: string): Promise<Locator> {
   return page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
 }
 
+// The site style, from the sidebar's Page tab, a level below it.
+export async function openSiteStyle(page: Page): Promise<Locator> {
+  const sidebar = page.getByRole("complementary", { name: "Settings" });
+  await sidebar.getByRole("tab", { name: "Page" }).click();
+  await sidebar.getByRole("button", { name: "Site style", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Site style" });
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
 // The device, from the bottom line.
 export function device(page: Page, name: "Desktop" | "Tablet" | "Phone"): Locator {
   return page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: new RegExp(`^${name}`) });

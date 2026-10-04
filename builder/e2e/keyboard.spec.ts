@@ -8,7 +8,7 @@
 import type { Page } from "@playwright/test";
 import { entryCaps, KEYMAP, type KeyAction } from "../src/editor/keymap.ts";
 import { block, caption, childIds, settledTextEditor } from "./helpers/canvas.ts";
-import { cms, column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
+import { cms, column, device, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -95,11 +95,12 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   },
   async addTile(page, pressed) {
     await block(page, "b").click();
-    await page.getByRole("tab", { name: "Add" }).click();
-    await page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Spacer" }).focus();
+    const insert = await drawer(page, "Insert");
+    await insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Spacer" }).focus();
     await press(page, pressed, "Enter");
     await expect.poll(async () => (await childIds(page, "c1")).length).toBe(3);
     await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(1)).toHaveAttribute("data-block-type", "spacer");
+    await insert.getByRole("button", { name: "Close Insert" }).click();
   },
   async editText(page, pressed) {
     await block(page, "t").click();
@@ -111,6 +112,16 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await block(page, "a").click();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("textbox", { name: "Text" })).toBeFocused();
+  },
+  async blockMenu(page, pressed) {
+    // The browser's context menu key, on the block with the focus.
+    await block(page, "a").click();
+    await press(page, pressed, "Shift+F10");
+    const menu = page.getByRole("menu", { name: "Heading actions" });
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(block(page, "a")).toBeFocused();
   },
   async copy(page, pressed) {
     await block(page, "c").click();
@@ -198,7 +209,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   async preview(page, pressed) {
     // The draft as the CMS serves it, in a tab of its own, on the CMS.
     const opening = page.context().waitForEvent("page");
-    await press(page, pressed, "Control+Alt+p");
+    await press(page, pressed, "Alt+Shift+P");
     const tab = await opening;
     await tab.waitForURL(`${cms()}/preview/${opened.id}`);
     await expect(tab).toHaveTitle("Preview: Every key");
@@ -208,11 +219,53 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   async publish(page, pressed) {
     await block(page, "a").click();
     await press(page, pressed, "Control+Shift+Enter");
-    await expect(page.locator(".chip")).toHaveText("Published");
+    await expect(page.locator(".tb-status")).toHaveText("Published");
     await expect(page.locator(".notice")).toContainText(`Published: visitors see this page at ${new URL(cms()).host}/${opened.slug}.`);
     const live = await page.request.get(`${cms()}/${opened.slug}`);
     expect(live.status()).toBe(200);
     expect(await live.text()).toContain("Alpha");
+  },
+  async openInsert(page, pressed) {
+    // From the selected block: Insert opens on its search; Esc closes it,
+    // the focus back on the block; the chord again, from the page, too.
+    await block(page, "a").click();
+    await press(page, pressed, "Alt+Shift+N");
+    const insert = page.getByRole("complementary", { name: "Insert" });
+    await expect(insert.getByRole("searchbox", { name: "Search blocks and sections" })).toBeFocused();
+    await expect(page.locator(".topbar [data-drawer=insert]")).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
+    await expect(insert).toHaveCount(0);
+    await expect(block(page, "a")).toBeFocused();
+  },
+  async openOutline(page, pressed) {
+    // The outline opens on the selected block's row; the chord, pressed
+    // there, closes it again, the focus back on the block.
+    await press(page, pressed, "Alt+Shift+O");
+    await expect(page.getByRole("complementary", { name: "Outline" })).toBeVisible();
+    await expect(page.locator('.tree [data-row-id="a"]')).toBeFocused();
+    await page.keyboard.press("Alt+Shift+O");
+    await expect(page.getByRole("complementary", { name: "Outline" })).toHaveCount(0);
+    await expect(block(page, "a")).toBeFocused();
+  },
+  async deviceDesktop(page, pressed) {
+    await device(page, "Phone").click();
+    await block(page, "a").focus();
+    await press(page, pressed, "Alt+Shift+1");
+    await expect(device(page, "Desktop")).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".canvas .site")).not.toHaveCSS("width", "390px");
+  },
+  async deviceTablet(page, pressed) {
+    await press(page, pressed, "Alt+Shift+2");
+    await expect(device(page, "Tablet")).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "768px");
+    // The focus stays where it was.
+    await expect(block(page, "a")).toBeFocused();
+  },
+  async devicePhone(page, pressed) {
+    await press(page, pressed, "Alt+Shift+3");
+    await expect(device(page, "Phone")).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "390px");
+    await page.keyboard.press("Alt+Shift+1");
   },
   async showShortcuts(page, pressed) {
     await block(page, "a").click();
@@ -288,14 +341,14 @@ test("in a text being written, Delete, Backspace and Ctrl+D change letters, neve
   await caretAt(page, "t", 4);
   await page.keyboard.type("o!");
   await page.keyboard.press("Control+Shift+Enter");
-  await expect(page.locator(".chip")).toHaveText("Published");
+  await expect(page.locator(".tb-status")).toHaveText("Published");
   await expect(rte).toBeFocused();
   const live = await page.request.get(`${cms()}/${made.slug}`);
   expect(await live.text()).toContain("ango!");
   await page.keyboard.type("?");
   await expect(rte).toHaveText("ango!?");
   const opening = page.context().waitForEvent("page");
-  await page.keyboard.press("Control+Alt+p");
+  await page.keyboard.press("Alt+Shift+P");
   const tab = await opening;
   await tab.waitForURL(`${cms()}/preview/${made.id}`);
   await expect(tab.getByText("ango!?")).toBeVisible();

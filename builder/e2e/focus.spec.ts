@@ -1,9 +1,9 @@
 // Where the focus goes after each command, in Chromium: after a delete to
 // the neighbour, after an insert to the new block, after an undo to the
 // block the undo touched; each by the keyboard and by the mouse, on the
-// canvas or on the navigator, whichever the person was on.
+// canvas or on the outline, whichever the person was on.
 import { block, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
-import { column, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
+import { column, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -35,6 +35,7 @@ test("after a delete, the focus is on the block now in its place, else the one b
   // (The tree shows the selection's path: a's row is there once a is
   // selected.)
   await block(page, "a").click();
+  await drawer(page, "Outline");
   await row(page, "a").click();
   await expect(row(page, "a")).toBeFocused();
   await page.keyboard.press("Delete");
@@ -45,11 +46,17 @@ test("after an insert, a paste or a duplicate, the focus is on the new block", {
   const { id } = await makePage(request, "Focus insert", fixture());
   await open(page, id);
   await block(page, "a").click();
-  await page.getByRole("tab", { name: "Add" }).click();
-  await page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Spacer" }).click();
+  const insert = await drawer(page, "Insert");
+  await insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Spacer" }).click();
   const spacer = page.locator('.canvas [data-block-id="c1"] > [data-block-type="spacer"]');
   await expect(spacer).toBeFocused();
   await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(1)).toHaveAttribute("data-block-type", "spacer");
+  // Insert stays open, a catalogue. Closed from its own button, which the
+  // click gave the focus, the focus goes back to where it was before
+  // Insert opened, its key in the top bar; the new block stays selected.
+  await insert.getByRole("button", { name: "Close Insert" }).click();
+  await expect(page.locator(".topbar").getByRole("button", { name: "Insert", exact: true })).toBeFocused();
+  await expect(spacer).toHaveAttribute("data-editor-selected", "true");
 
   await block(page, "b").click();
   await page.keyboard.press("Control+d");
@@ -57,8 +64,8 @@ test("after an insert, a paste or a duplicate, the focus is on the new block", {
   await expect(quotes).toHaveCount(2);
   await expect(quotes.nth(1)).toBeFocused();
 
-  // A dropped tile is an insert too.
-  await page.getByRole("tab", { name: "Add" }).click();
+  // A block dropped from Insert is an insert too.
+  await drawer(page, "Insert");
   await pickUp(page, page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }));
   await moveOnto(page, block(page, "c2"), "bottom");
   await page.mouse.up();

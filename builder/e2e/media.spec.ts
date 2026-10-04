@@ -14,7 +14,7 @@ import type { Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
 import { noisePng, png, pngSize, withOrientation } from "./helpers/images.ts";
-import { cms, column, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, drawer, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -59,7 +59,7 @@ test("an image uploaded, described and placed is published, and the served page 
   });
 
   await block(page, "h").click();
-  await page.getByRole("tab", { name: "Add" }).click();
+  await drawer(page, "Insert");
   await page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }).click();
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page).getByText(/^Images you upload are available on every page\. The CMS makes no smaller copies of them, so each is resized here first, to 2400 px at most on its long side\.$/)).toBeVisible();
@@ -98,11 +98,11 @@ test("an image uploaded, described and placed is published, and the served page 
   await expect(placed).toBeVisible();
   expect(await placed.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(2400);
   // One step in the history, and the library keeps the text for next time.
-  await page.getByRole("button", { name: "History" }).click();
-  const steps = page.getByRole("complementary", { name: "History" }).getByRole("list", { name: "This session" }).getByRole("button");
+  const history = await drawer(page, "History");
+  const steps = history.getByRole("list", { name: "This session" }).getByRole("button");
   await expect(steps).toHaveCount(1);
   await expect(steps.first()).toContainText(/^Added Image/);
-  await page.getByRole("button", { name: "Close history" }).click();
+  await history.getByRole("button", { name: "Close History" }).click();
   await expect.poll(async () => (await libraryItem(page, name))?.alt).toBe(ALT);
 
   // Undo takes it off; redo puts back the same image.
@@ -113,7 +113,7 @@ test("an image uploaded, described and placed is published, and the served page 
   await saved(page);
 
   await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
   const served = await page.context().newPage();
   await served.goto(`${cms()}/${slug}`);
   const image = served.getByRole("img", { name: ALT });

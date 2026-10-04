@@ -125,7 +125,7 @@ test("an edit made on the open page while the next page loads is saved before th
     await route.fallback();
   });
   await page.getByRole("button", { name: /^Switch page/ }).click();
-  await page.getByRole("menu", { name: "Pages" }).getByRole("menuitem", { name: /Beta arriving/ }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^Beta arriving/ }).click();
   // Alpha is still on the canvas, and takes an edit.
   await block(page, "ha").click();
   const text = page.getByRole("textbox", { name: "Text" });

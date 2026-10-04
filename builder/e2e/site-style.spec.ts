@@ -24,15 +24,16 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     const canvasHeading = page.locator('.canvas [data-block-id="h"] h2');
     await expect(canvasHeading).toHaveCSS("color", SEA);
 
-    const button = page.getByRole("button", { name: "Site style", exact: true });
-    await expect(button).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    // Nothing selected: the sidebar's Page tab, and the way to the site
+    // style at its foot, one click.
+    const button = page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Site style", exact: true });
+    await expect(page.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
     await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-    // Held down while its panel is open, as the design draws it: graphite,
-    // white words (design/shots/site-style.png).
-    await expect(button).toHaveCSS("background-color", "rgb(27, 31, 36)");
-    await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
+    // A level below Page, in the sidebar's place; the focus in it.
     const panel = page.getByRole("complementary", { name: "Site style" });
+    await expect(panel).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Settings" })).toHaveCount(0);
+    await expect(panel.locator(":focus")).toHaveCount(1);
     await panel.getByRole("button", { name: /^Primary/ }).click();
     await panel.getByRole("radio", { name: "Harbour" }).click();
     await expect(canvasHeading).toHaveCSS("color", HARBOUR);
@@ -59,17 +60,16 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     await expect(visitor.getByRole("heading", { name: "In the site's colours" })).toHaveCSS("color", HARBOUR);
     await visitor.close();
 
-    // Back to a new site's tone; the panel closes back to its button.
+    // Back to a new site's tone; the panel closes back to the Page tab, the
+    // focus on the way in.
     await panel.getByRole("button", { name: "Reset to Sea" }).click();
     await expect(canvasHeading).toHaveCSS("color", SEA);
     await expect(panel.getByRole("status")).toHaveText("Saved for every page");
     expect((await siteStyle(request)).palette.primary).toBe("site-sea");
     await panel.getByRole("button", { name: "Close site style" }).click();
+    await expect(panel).toHaveCount(0);
     await expect(button).toBeFocused();
-    await expect(button).toHaveAttribute("aria-pressed", "false");
-    await page.mouse.move(700, 700);
-    await expect(button).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-    await expect(button).toHaveCSS("color", "rgb(27, 31, 36)");
+    await expect(page.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
   } finally {
     const put = await request.put(`${cms()}/api/site-style`, { data: { palette: before.palette, typeScale: before.typeScale } });
     expect(put.status()).toBe(200);
@@ -86,7 +86,7 @@ test("a tone chosen while the one before is on its way: closing the tab asks fir
       if (route.request().method() === "PUT") await new Promise((done) => setTimeout(done, 3_000));
       await route.fallback();
     });
-    await page.getByRole("button", { name: "Site style", exact: true }).click();
+    await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Site style", exact: true }).click();
     const panel = page.getByRole("complementary", { name: "Site style" });
     await panel.getByRole("button", { name: /^Primary/ }).click();
     await panel.getByRole("radio", { name: "Harbour" }).click();

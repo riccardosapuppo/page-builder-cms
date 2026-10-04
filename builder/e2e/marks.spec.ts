@@ -219,7 +219,12 @@ test("the selection's bar moves to the right corner where the left one would cov
     section("s1", "Short", [column("c1", [heading("short", "Swim by the keys"), widget("t1", "text", text("Tide notes"))])]),
     section("s2", "Long", [column("c2", [{ ...heading("long", "Swim at slack water, twice a week, at first light, when the bay is flat"), props: { level: 1, text: "Swim at slack water, twice a week, at first light, when the bay is flat" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series."))])]),
   ]);
+  // A page 832 wide, whose long heading's lines reach its column's right
+  // end: in a 1440 window the page is 1088, and the heading's last line
+  // leaves the right corner free.
+  await page.setViewportSize({ width: 1184, height: 900 });
   await open(page, id);
+  await expect(page.locator(".statusbar .sb-width")).toHaveText("Page 832 wide, desktop layout");
   // A short heading above: the left corner would hide its words, the right one hides none.
   await block(page, "t1").click();
   expect(await barOver(page, "t1", "short")).toEqual({ place: "right", covered: 0 });
@@ -274,12 +279,12 @@ test("a text being written never has its bar over the words above, even where th
 });
 
 // Where a written text's bar, its caret and the canvas's view stand, top
-// and bottom: the view under the sticky width rule, to the canvas's edge.
+// and bottom: the view from the canvas's top edge to its bottom one.
 async function inView(page: Page, id: string): Promise<{ bar: boolean; caret: boolean; scrollTop: number }> {
   return page.evaluate((id) => {
     const canvas = document.querySelector<HTMLElement>(".canvas")!;
     const view = canvas.getBoundingClientRect();
-    const top = canvas.querySelector(".wrule")!.getBoundingClientRect().bottom;
+    const top = view.top + canvas.clientTop;
     const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
     const bar = document.querySelector(`.canvas [data-block-id="${id}"] > .ov-sel > .ov-bar`)!.getBoundingClientRect();
     const selection = document.getSelection()!;
@@ -298,6 +303,8 @@ test("a text written at the canvas's bottom edge has its bar under it brought in
     section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims, beginners' courses and a winter series."))])]),
     section("s3", "Tall", [column("c3", [{ ...heading("h3", long), props: { level: 1, text: long } }, widget("t3", "text", paragraphs(...tall))])]),
   ]);
+  // A page 832 wide, as in the test above, so the bar stands under the text.
+  await page.setViewportSize({ width: 1184, height: 900 });
   await open(page, id);
   // The heading at the canvas's bottom edge, the text under it out of view;
   // the arrow key brings the text in, room kept for a bar above it only.

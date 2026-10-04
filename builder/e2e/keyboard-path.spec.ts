@@ -1,16 +1,18 @@
 // The whole path by the keyboard alone, in Chromium, against the run's
 // CMS: no click, no pointer, only keys (and the system's file chooser,
 // which the upload button opens). From the editor's page: Tab to the
-// canvas and select a heading; to the widget panel, and add a divider
-// after it with Enter; pick the divider up with Space and move it with the
-// arrows; edit the heading's text and level in its panel; write in a text
-// block on the canvas and make a word bold; give its column a tablet's own
-// space in the Style tab, the canvas previewing a tablet; upload an image
-// in the media library, give it its alt text and place it; undo and redo
-// the placing; keep a named version; publish with the shortcut; open the
-// live page from the Publish menu; and the page the CMS serves, at a
-// desktop's width and at a tablet's, holds every change. At each step the
-// focus is where the step leaves it.
+// canvas and select a heading; open Insert with its chord, and add a
+// divider after the heading with Enter; pick the divider up with Space and
+// move it with the arrows; edit the heading's text and level in the
+// sidebar; write in a text block on the canvas and make a word bold; look
+// at a tablet from the bottom line's devices and give the column a
+// tablet's own space in the Style tab; follow the selection's path in the
+// bottom line and the Outline; upload an image in the media library from
+// Insert, give it its alt text and place it; undo and redo the placing;
+// keep a named version; publish with the shortcut; open the live page from
+// the Publish menu; and the page the CMS serves, at a desktop's width and
+// at a tablet's, holds every change. At each step the focus is where the
+// step leaves it.
 import type { FileChooser, Locator, Page } from "@playwright/test";
 import { block, selectedText, settledTextEditor } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
@@ -65,7 +67,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   const { id, slug } = await makePage(request, "By keys", [section("s", "Story", [column("c", [heading("a", "Alpha"), widget("t", "text", { doc: notes }), widget("b", "quote", { text: "Bravo" })])])]);
   const nextChooser = fileChoosers(page);
   await page.goto(`/?page=${id}`);
-  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
 
   // The canvas's tab stop is its first section; Alt+Down goes inside it.
   await tabTo(page, page.locator('.canvas [data-block-id="s"]'));
@@ -74,12 +76,13 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect.poll(() => focusedBlock(page)).toBe("a");
   await expect(block(page, "a")).toHaveAttribute("data-editor-selected", "true");
 
-  // The widget panel: back to the tabs, the arrow to Add, on to the tile.
-  await tabTo(page, page.getByRole("tab", { name: "Edit" }), { back: true });
-  await page.keyboard.press("ArrowLeft");
-  await expect(page.getByRole("tab", { name: "Add" })).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Add" })).toHaveAttribute("aria-selected", "true");
-  await tabTo(page, page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }));
+  // Insert, by its chord: its search takes the focus; Tab on to the
+  // Divider key; Enter adds it after the selection.
+  await page.keyboard.press("Alt+Shift+N");
+  const insert = page.getByRole("complementary", { name: "Insert" });
+  await expect(insert.getByRole("searchbox", { name: "Search blocks and sections" })).toBeFocused();
+  await expect(insert.locator(".drawer-where")).toHaveText("Click to add after Heading in Column 1 of Story, or drag to any column.");
+  await tabTo(page, insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }));
   await page.keyboard.press("Enter");
   const added = page.locator('.canvas [data-block-id="c"] > [data-block-type="divider"]');
   await expect(added).toHaveCount(1);
@@ -87,6 +90,10 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   // Inserted after the selection, and the focus on it.
   await expect.poll(() => focusedBlock(page)).toBe(divider);
   await expect.poll(() => order(page)).toEqual(["heading", "divider", "text", "quote"]);
+  // The chord again, from the page, closes Insert; the focus stays.
+  await page.keyboard.press("Alt+Shift+N");
+  await expect(insert).toHaveCount(0);
+  await expect.poll(() => focusedBlock(page)).toBe(divider);
 
   // Move it: Space picks it up, Down twice moves it past the text and the
   // quote, Space drops.
@@ -98,11 +105,12 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect.poll(() => order(page)).toEqual(["heading", "text", "quote", "divider"]);
   await expect.poll(() => focusedBlock(page)).toBe(divider);
 
-  // Edit the heading: Up to it, then its panel's Text and Level.
+  // Edit the heading: Up to it, then on to the sidebar, its Text and
+  // Level.
   for (let n = 0; n < 3; n += 1) await page.keyboard.press("ArrowUp");
   await expect.poll(() => focusedBlock(page)).toBe("a");
-  const text = page.getByRole("textbox", { name: "Text" });
-  await tabTo(page, text, { back: true });
+  const text = page.getByRole("complementary", { name: "Settings" }).getByRole("textbox", { name: "Text" });
+  await tabTo(page, text);
   await page.keyboard.press("Control+a");
   await page.keyboard.type("Swim by the keys");
   await page.keyboard.press("Enter");
@@ -119,7 +127,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   // to the text, Enter opens it with the caret at its end; the last word
   // typed is made bold (Ctrl+Shift+Left selects it, Ctrl+B); Esc leaves
   // the text, which is handed over, and the focus is on its block.
-  await tabTo(page, block(page, "a"));
+  await tabTo(page, block(page, "a"), { back: true });
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => focusedBlock(page)).toBe("t");
   await page.keyboard.press("Enter");
@@ -139,20 +147,25 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(block(page, "t").locator("strong")).toHaveText("swimmers");
   await expect(block(page, "t").locator("p")).toHaveText("Tide notes for swimmers");
 
-  // A tablet's own space inside the column: Alt+Up to the column, back to
-  // the device switch for Tablet, on to the Style tab and its ruler.
+  // A tablet's own space inside the column: Alt+Up to the column, on past
+  // the sidebar to the bottom line's devices, the arrow to Tablet; back to
+  // the Style tab and its ruler.
   await page.keyboard.press("Alt+ArrowUp");
   await expect.poll(() => focusedBlock(page)).toBe("c");
-  const devices = page.getByRole("group", { name: "Device" });
-  await tabTo(page, devices.getByRole("button", { name: "Tablet" }), { back: true });
-  await page.keyboard.press("Enter");
-  await expect(devices.getByRole("button", { name: "Tablet" })).toHaveAttribute("aria-pressed", "true");
-  await tabTo(page, page.getByRole("tab", { name: "Content" }));
+  const crumbs = page.getByRole("navigation", { name: "Selection" }).getByRole("button");
+  await expect(crumbs).toHaveText(["Page", "Story", "Column 1"]);
+  const devices = page.getByRole("radiogroup", { name: "Look at the page on" });
+  await tabTo(page, devices.getByRole("radio", { name: /^Desktop/ }));
+  await page.keyboard.press("ArrowRight");
+  await expect(devices.getByRole("radio", { name: /^Tablet/ })).toBeFocused();
+  await expect(devices.getByRole("radio", { name: /^Tablet/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".statusbar .sb-width")).toHaveText("Page 768 wide, tablet layout");
+  await tabTo(page, page.getByRole("tab", { name: "Content" }), { back: true });
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Style" })).toBeFocused();
   await expect(page.getByRole("tab", { name: "Style" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".device-note")).toHaveText("Editing for tablet. Changes you make now apply to tablets only.");
-  const spaceInside = page.locator(".tray-left .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) });
+  const spaceInside = page.locator(".sidebar .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) });
   const ruler = spaceInside.getByRole("slider");
   await tabTo(page, ruler);
   await expect(ruler).toHaveAttribute("aria-valuetext", "None, the theme’s default");
@@ -161,22 +174,34 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(ruler).toBeFocused();
   await expect(spaceInside.locator(".scope")).toHaveText("Tablet only");
   await expect(block(page, "c")).toHaveCSS("padding-top", "16px");
-  // Back to the desktop, where the column has none.
-  await tabTo(page, devices.getByRole("button", { name: "Desktop" }), { back: true });
-  await page.keyboard.press("Enter");
-  await expect(devices.getByRole("button", { name: "Desktop" })).toHaveAttribute("aria-pressed", "true");
+  // Back to the desktop, by its chord, where the column has none; the
+  // focus stays on the ruler.
+  await page.keyboard.press("Alt+Shift+1");
+  await expect(devices.getByRole("radio", { name: /^Desktop/ })).toHaveAttribute("aria-checked", "true");
   await expect(block(page, "c")).toHaveCSS("padding-top", "0px");
+  await expect(ruler).toBeFocused();
+
+  // The Outline, by its chord: on the column's row; Right opens it and
+  // goes into its first widget, which the canvas selects; the chord again
+  // closes it.
+  await page.keyboard.press("Alt+Shift+O");
+  const column1 = page.locator('.tree [data-row-id="c"]');
+  await expect(column1).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator('.tree [data-row-id="a"]')).toBeFocused();
+  await expect(block(page, "a")).toHaveAttribute("data-editor-selected", "true");
+  await page.keyboard.press("Alt+Shift+O");
+  await expect(page.getByRole("complementary", { name: "Outline" })).toHaveCount(0);
 
   // An image after the quote: to the column's quote on the canvas, the
-  // Image tile, then in the media library Upload images, the file chosen
-  // in the system's chooser, its alt text, Add image.
-  await tabTo(page, block(page, "c"));
-  await page.keyboard.press("Alt+ArrowDown");
+  // Image key in Insert, then in the media library Upload images, the file
+  // chosen in the system's chooser, its alt text, Add image.
+  await tabTo(page, block(page, "a"), { back: true });
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => focusedBlock(page)).toBe("b");
-  await tabTo(page, page.getByRole("tab", { name: "Edit" }), { back: true });
-  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Alt+Shift+N");
   await tabTo(page, page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }));
   await page.keyboard.press("Enter");
   const library = page.getByRole("dialog", { name: "Media library" });
@@ -219,7 +244,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
 
   // Publish, by its shortcut, from wherever the focus is.
   await page.keyboard.press("Control+Shift+Enter");
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
 
   // The live page, from the Publish menu: Enter opens it, the arrows go
   // down it, Enter on the link opens the page in a tab of its own.

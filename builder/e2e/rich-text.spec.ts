@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block, childIds, grip, moveOnto, pickUp, settledTextEditor } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, section, test, widget, type DraftBlock } from "./helpers/site.ts";
+import { cms, column, draftOf, drawer, expect, heading, makePage, open, section, test, widget, type DraftBlock } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -431,8 +431,8 @@ test("keys pressed right after Enter opens a text are the text's, before its edi
 test("a text left for another block before its editor's code arrives is waited for no more: the keys are that block's, and the text chosen again is only selected", async ({ page, request }) => {
   const { id } = await makePage(request, "Left early", [section("s", "Story", [column("c1", [heading("h", "Alpha"), widget("t", "text", { doc: { type: "doc", content: [p(t("Tide notes"))] } }), heading("h2", "Beta"), heading("h3", "Gamma")])])]);
   // The editor's code held back until the other block is chosen, on the
-  // canvas and then in the navigator, each on a page loaded afresh.
-  for (const where of ["canvas", "navigator"] as const) {
+  // canvas and then in the outline, each on a page loaded afresh.
+  for (const where of ["canvas", "outline"] as const) {
     let release = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -442,6 +442,9 @@ test("a text left for another block before its editor's code arrives is waited f
       await route.continue();
     });
     await open(page, id);
+    // The outline floats over the canvas's left; the column's blocks stand
+    // clear of it.
+    if (where === "outline") await drawer(page, "Outline");
     await block(page, "h").click();
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");

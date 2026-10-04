@@ -1,33 +1,44 @@
 // The editor's shell in Chromium, against the run's own CMS through the
-// editor's proxy: a page opens on the canvas; Enter on a widget tile adds
-// it where the selection is and the CMS keeps it; the device buttons
-// narrow the page root and the page lays out by its own width; the
-// navigator and the canvas select together; a 422 from the CMS shows on
-// the field it names; an empty page and a new one invite a first section;
-// sections anchored with the editor's own ids take none of them; the
-// theme's header and footer are drawn around the page, locked; in a
-// smaller window, the page is drawn smaller to fit while the editor's own
-// controls and words on it keep their size, a hovered block's name stays
-// inside the canvas, and a stacked column's tab and the page's title stay
-// whole.
+// editor's proxy, in the approved layout's frame: a page opens on the
+// canvas; Enter on a block in Insert adds it where the selection is and
+// the CMS keeps it, Insert saying where first; the bottom line's devices
+// narrow the page root and the page lays out by its own width, which the
+// bottom line says; the Outline and the canvas select together, and so do
+// the bottom line's steps; the drawers float, one at a time, the page
+// keeping its width; the sidebar's tabs follow the selection; a 422 from
+// the CMS shows on the field it names; an empty page and a new one invite a
+// first section; sections anchored with the editor's own ids take none of
+// them; the theme's header and footer are drawn around the page, locked;
+// the page as wide as the layout promises, measured with the scrollbar
+// shown; in a smaller window, the page is drawn smaller to fit while the
+// editor's own controls and words on it keep their size, a hovered block's
+// name stays inside the canvas, and a stacked column's tab and the page's
+// title stay whole.
 //
 // Each test makes its own pages through the API, under addresses of its
 // own, since the tests of a run share one CMS.
-import type { Page } from "@playwright/test";
+import { chromium, type Page } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, device, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
 
-const row = (page: Page, name: string) => page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
+const row = async (page: Page, name: string) => {
+  await drawer(page, "Outline");
+  return page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
+};
+const width = (page: Page) => page.locator(".statusbar .sb-width");
 
-// The approved design's window: the canvas gives the page 832, wide
-// enough for the page's desktop layout.
+// The approved layout's window: the canvas gives the page 1088, its
+// desktop layout.
 test.use({ viewport: { width: 1440, height: 900 } });
 
-test("Enter on a widget tile adds it after the selected block, focused, and the CMS keeps it", async ({ page, request }) => {
+test("Enter on a block in Insert adds it after the selected block, focused, and the CMS keeps it", async ({ page, request }) => {
   const { id } = await makePage(request, "Tiles", [section("s", "Tiles", [column("c", [widget("h", "heading", { level: 2, text: "Before the quote" }), widget("b", "button", { label: "After", href: "#" })])])]);
   await open(page, id);
   await page.locator('.canvas [data-block-id="h"]').click();
-  await page.getByRole("tab", { name: "Add" }).click();
+  const insert = await drawer(page, "Insert");
+  // It says where a click puts the block, and takes the focus on its search.
+  await expect(insert.locator(".drawer-where")).toHaveText("Click to add after Heading in Column 1 of Tiles, or drag to any column.");
+  await expect(insert.getByRole("searchbox", { name: "Search blocks and sections" })).toBeFocused();
   const tile = page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" });
   await tile.focus();
   await page.keyboard.press("Enter");
@@ -37,7 +48,10 @@ test("Enter on a widget tile adds it after the selected block, focused, and the 
   await expect(blocks.nth(1)).toHaveAttribute("data-block-type", "quote");
   await expect(blocks.nth(1)).toBeFocused();
   await expect(page.getByRole("toolbar", { name: "Quote" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Edit" })).toHaveAttribute("aria-selected", "true");
+  // Its settings in the sidebar's Block tab; Insert still open, saying the
+  // next block goes after the new one.
+  await expect(page.getByRole("tab", { name: "Block", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(insert.locator(".drawer-where")).toHaveText("Click to add after Quote in Column 1 of Tiles, or drag to any column.");
   await saved(page);
   const draft = await draftOf(request, id);
   expect(draft.document.sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "button"]);
@@ -46,7 +60,7 @@ test("Enter on a widget tile adds it after the selected block, focused, and the 
   await expect(page.locator('.canvas [data-block-id="c"] > [data-block-type="quote"]')).toHaveCount(1);
 });
 
-test("the device buttons narrow the page root, and the page lays out by its own width", async ({ page, request }) => {
+test("the bottom line's devices narrow the page root, the page lays out by its own width, and the bottom line says it", async ({ page, request }) => {
   const { id } = await makePage(request, "Widths", [section("s", "Two", [column("c1", [widget("t1", "heading", { level: 2, text: "Left" })]), column("c2", [widget("t2", "heading", { level: 2, text: "Right" })])])]);
   await open(page, id);
   const site = page.locator(".canvas .site");
@@ -57,31 +71,39 @@ test("the device buttons narrow the page root, and the page lays out by its own 
     return { width: Math.round(s!.width), sideBySide: Math.abs(a!.y - b!.y) < 1 && b!.x > a!.x };
   };
 
-  // 1440 wide: the canvas gives the page 832, past the 800 of the desktop layout.
-  await expect(page.locator(".wrule-label")).toHaveText("Desktop, 832 wide");
-  expect(await layout()).toEqual({ width: 832, sideBySide: true });
+  // 1440 wide: the canvas gives the page 1088, past the 800 of the desktop
+  // layout (the scrollbar's gutter kept, whether or not it draws).
+  await expect(width(page)).toHaveText("Page 1088 wide, desktop layout");
+  expect(await layout()).toEqual({ width: 1088, sideBySide: true });
+  await expect(device(page, "Desktop")).toHaveAttribute("aria-checked", "true");
 
-  await page.getByRole("button", { name: "Tablet" }).click();
-  await expect(page.getByRole("button", { name: "Tablet" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".wrule-label")).toHaveText("Tablet, 768 wide");
+  await device(page, "Tablet").click();
+  await expect(device(page, "Tablet")).toHaveAttribute("aria-checked", "true");
+  await expect(device(page, "Desktop")).toHaveAttribute("aria-checked", "false");
+  await expect(width(page)).toHaveText("Page 768 wide, tablet layout");
   expect(await layout()).toEqual({ width: 768, sideBySide: false });
 
-  await page.getByRole("button", { name: "Phone" }).click();
-  await expect(page.locator(".wrule-label")).toHaveText("Phone, 390 wide");
+  // One Tab stop, the arrows along it.
+  await page.keyboard.press("ArrowRight");
+  await expect(device(page, "Phone")).toBeFocused();
+  await expect(width(page)).toHaveText("Page 390 wide, phone layout");
   expect(await layout()).toEqual({ width: 390, sideBySide: false });
   // The window did not change: only the page root's container did.
   expect(page.viewportSize()).toEqual({ width: 1440, height: 900 });
 });
 
-test("the navigator and the canvas select the same block, both ways", async ({ page, request }) => {
+test("the Outline and the canvas select the same block, both ways, and so do the bottom line's steps", async ({ page, request }) => {
   const { id } = await makePage(request, "Both ways", [section("s", "Story", [column("c", [widget("h", "heading", { level: 2, text: "Title" }), widget("q", "quote", { text: "Cold, then glad." })])])]);
   await open(page, id);
 
   await page.locator('.canvas [data-block-id="q"]').click();
+  await drawer(page, "Outline");
   await expect(page.getByRole("treeitem", { name: "Quote: Cold, then glad." })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("treeitem", { name: "Story" })).toHaveAttribute("aria-expanded", "true");
+  // Opened, the Outline gives the focus to the selection's row.
+  await expect(page.getByRole("treeitem", { name: "Quote: Cold, then glad." })).toBeFocused();
 
-  await row(page, "Column 1").click();
+  await (await row(page, "Column 1")).click();
   await expect(page.locator('.canvas [data-block-id="c"]')).toHaveAttribute("data-editor-selected", "true");
   await expect(page.getByRole("toolbar", { name: "Column 1" })).toBeVisible();
 
@@ -90,6 +112,47 @@ test("the navigator and the canvas select the same block, both ways", async ({ p
   await expect(page.locator('.canvas [data-block-id="h"]')).toHaveAttribute("data-editor-selected", "true");
   await expect(page.getByRole("treeitem", { name: "Heading: Title" })).toBeFocused();
   await expect(page.getByRole("textbox", { name: "Text" })).toHaveValue("Title");
+
+  // The bottom line: the path down to the heading, each step selecting.
+  const crumbs = page.getByRole("navigation", { name: "Selection" }).getByRole("button");
+  await expect(crumbs).toHaveText(["Page", "Story", "Column 1", "Heading"]);
+  await expect(crumbs.last()).toHaveAttribute("aria-current", "location");
+  await crumbs.nth(1).click();
+  await expect(page.locator('.canvas [data-block-id="s"]')).toHaveAttribute("data-editor-selected", "true");
+  await expect(page.getByRole("treeitem", { name: "Story" })).toHaveAttribute("aria-selected", "true");
+  await expect(crumbs).toHaveText(["Page", "Story"]);
+  // The page: nothing selected, the sidebar's Page tab.
+  await crumbs.first().click();
+  await expect(page.locator(".canvas [data-editor-selected=true]")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("navigation", { name: "Selection" })).toContainText("Nothing selected.");
+});
+
+test("the drawers float over the canvas, one at a time, and the page keeps its width; Esc closes one, the focus back where it was", async ({ page, request }) => {
+  const { id } = await makePage(request, "Floating", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+  await open(page, id);
+  const site = page.locator(".canvas .site");
+  const before = (await site.boundingBox())!;
+  await block(page, "h2").click();
+  for (const name of ["Insert", "Outline", "History"] as const) {
+    const box = await drawer(page, name);
+    await expect(page.locator(".drawer")).toHaveCount(1);
+    await expect(page.locator(".topbar").getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
+    // Over the canvas's left, above the bottom line; the page as it was.
+    const over = (await box.boundingBox())!;
+    const canvas = (await page.locator(".canvas").boundingBox())!;
+    expect(over.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(over.y + over.height).toBeLessThanOrEqual(canvas.y + canvas.height + 0.5);
+    expect(over.x + over.width).toBeGreaterThan(before.x);
+    expect(await site.boundingBox()).toEqual(before);
+    await expect(width(page)).toHaveText("Page 1088 wide, desktop layout");
+  }
+  // History took the focus, on Save version; Esc gives it back to the key
+  // that opened it.
+  await expect(page.getByRole("button", { name: "Save version" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".drawer")).toHaveCount(0);
+  await expect(page.locator(".topbar").getByRole("button", { name: "History", exact: true })).toBeFocused();
 });
 
 test("a field's edit is saved, and the CMS's 422 on a value shows on that value's field", async ({ page, request }) => {
@@ -118,6 +181,7 @@ test("a field's edit is saved, and the CMS's 422 on a value shows on that value'
   const imageField = page.locator(".field").filter({ has: page.getByRole("button", { name: "Replace image" }) });
   await expect(imageField.locator(".error")).toHaveText("The media library has no item nosuchimage.");
   await expect(alt).not.toHaveAttribute("aria-invalid", "true");
+  await drawer(page, "Outline");
   await expect(page.getByRole("treeitem", { name: "Image: The bay at dawn, refused by the server" })).toBeVisible();
   expect(rewritten).toBe(1);
 
@@ -150,10 +214,17 @@ test("a new page, made from the page switch, invites its first section, which th
   await open(page, id);
   const title = unique("Fresh page");
   await page.getByRole("button", { name: /^Switch page/ }).click();
-  await page.getByRole("menuitem", { name: "New page…" }).click();
+  const pages = page.getByRole("dialog", { name: "Pages" });
+  // The pages window: a search over the site's pages, this one marked.
+  await expect(pages.getByRole("searchbox", { name: "Find a page" })).toBeFocused();
+  await expect(pages.locator(".page-row[aria-current=page]")).toContainText("Somewhere");
+  await pages.getByRole("button", { name: "New page" }).click();
+  await expect(pages).toHaveCount(0);
   await page.getByRole("dialog", { name: "New page" }).getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create page" }).click();
   await expect(page.getByRole("heading", { name: "Start this page with a section" })).toBeVisible();
+  await expect(page.locator(".tb-status")).toHaveText("Not published yet");
+  await drawer(page, "Outline");
   await expect(page.getByText("No sections yet.", { exact: false })).toBeVisible();
   const newId = Number(new URL(page.url()).searchParams.get("page"));
   expect(newId).not.toBe(id);
@@ -176,9 +247,10 @@ test("sections anchored with the editor's own ids leave its names and ids alone"
   await open(page, id);
   await expect(page.locator('.canvas .site [id="navigator-title"]')).toHaveCount(1);
 
-  // ARIA takes the first element with an id: the navigator and the canvas
+  // ARIA takes the first element with an id: the Outline and the canvas
   // keep their own name and description.
-  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
+  await drawer(page, "Outline");
+  await expect(page.getByRole("complementary", { name: "Outline" })).toBeVisible();
   await expect(page.getByRole("main", { name: "Page canvas" })).toHaveAccessibleDescription(/^Arrow keys select the next or previous block/);
   const ids = await page.evaluate(() => [...document.querySelectorAll("[id]")].map((element) => ({ id: element.id, onPage: element.closest(".canvas .site") !== null })));
   const all = ids.map((entry) => entry.id);
@@ -187,7 +259,7 @@ test("sections anchored with the editor's own ids leave its names and ids alone"
   expect(ids.filter((entry) => !entry.onPage && /^[a-z][a-z0-9-]{0,63}$/.test(entry.id)).map((entry) => entry.id)).toEqual([]);
 });
 
-test("the theme's header and footer are drawn around the page, locked, and the navigator names them", async ({ page, request }) => {
+test("the theme's header and footer are drawn around the page, locked, and the Outline names them", async ({ page, request }) => {
   const site = (await (await request.get(`${cms()}/api/site`)).json()) as { name: string; footer: { lead: string } };
   const { id } = await makePage(request, "Framed", [section("s", "Story", [column("c", [heading("h", "Inside the theme")])])]);
   await open(page, id);
@@ -198,7 +270,7 @@ test("the theme's header and footer are drawn around the page, locked, and the n
   // Locked: inert, so no click, focus or screen reader reaches them.
   await expect(header).toHaveAttribute("inert", "");
   await expect(footer).toHaveAttribute("inert", "");
-  // The page starts with its header, right under the width rule; the
+  // The page starts with its header, a little under the top bar; the
   // sections come between the two.
   const frame = (await page.locator(".canvas .frame").boundingBox())!;
   const top = (await header.boundingBox())!;
@@ -208,8 +280,8 @@ test("the theme's header and footer are drawn around the page, locked, and the n
   expect(story.y).toBeGreaterThanOrEqual(top.y + top.height - 0.5);
   expect(bottom.y).toBeGreaterThanOrEqual(story.y + story.height - 0.5);
 
-  // The navigator: the two locked rows, above and below the tree.
-  const tray = page.getByRole("complementary", { name: "Navigator" });
+  // The Outline: the two locked rows, above and below the tree.
+  const tray = await drawer(page, "Outline");
   await expect(tray.locator(".t-theme")).toHaveText(["Site header, locked: the same on every page", "Site footer, locked: the same on every page"]);
   const rows = await tray.locator(".t-theme, .tree").evaluateAll((elements) => elements.map((e) => e.className));
   expect(rows).toEqual(["t-row t-theme", "tree", "t-row t-theme"]);
@@ -221,17 +293,50 @@ test("the theme's header and footer are drawn around the page, locked, and the n
   await expect(block(page, "h")).toHaveAttribute("data-editor-selected", "true");
 });
 
-// A smaller window, 1280 by 800: the canvas has 660 for the page, so the
-// desktop and tablet pages are drawn smaller to fit, and the top bar has
-// less room.
+// The page as wide as the approved layout promises, measured as a Windows
+// browser draws it: with its scrollbar shown, which a headless browser
+// hides unless told not to. 1088 wide at 1440, the desktop layout at 1280,
+// whichever drawer is open.
+test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desktop layout at 1280, a drawer open or not", async ({ request, baseURL }) => {
+  const { id } = await makePage(request, "Widths shown", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+  const barred = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  try {
+    for (const [windowWidth, windowHeight, least] of [[1440, 900, 1088], [1280, 800, 800]] as const) {
+      const shown = await barred.newPage({ viewport: { width: windowWidth, height: windowHeight }, baseURL: baseURL!, locale: "en-US" });
+      await open(shown, id);
+      const measure = () => shown.evaluate(() => {
+        const canvas = document.querySelector<HTMLElement>(".canvas")!;
+        const frame = document.querySelector<HTMLElement>(".canvas .frame")!;
+        return { bar: canvas.offsetWidth - canvas.clientWidth, page: frame.offsetWidth, scaled: frame.hasAttribute("data-scale"), sideways: canvas.scrollWidth - canvas.clientWidth };
+      });
+      const plain = await measure();
+      // The scrollbar is there, or the check below would mean nothing.
+      expect(plain.bar, `${windowWidth}: the scrollbar's width`).toBeGreaterThanOrEqual(6);
+      expect(plain.page, `${windowWidth}: the page's width`).toBeGreaterThanOrEqual(least);
+      expect(plain.scaled, `${windowWidth}: drawn smaller`).toBe(false);
+      expect(plain.sideways).toBe(0);
+      await expect(shown.locator(".statusbar .sb-width")).toHaveText(`Page ${plain.page} wide, desktop layout`);
+      console.log(`${windowWidth} by ${windowHeight}, the scrollbar ${plain.bar} wide: the page is ${plain.page} wide`);
+      for (const name of ["Insert", "Outline", "History"] as const) {
+        await drawer(shown, name);
+        expect(await measure(), `${windowWidth}, ${name} open`).toEqual(plain);
+      }
+      await shown.close();
+    }
+  } finally {
+    await barred.close();
+  }
+});
+
+// A smaller window, 1280 by 800: the canvas still has 928 for the page,
+// its desktop layout whole, and the top bar has less room.
 test.describe("in a 1280 by 800 window", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("the desktop page keeps its desktop layout, drawn smaller; the tablet page is drawn whole; neither scrolls sideways", async ({ page, request }) => {
+  test("the desktop page keeps its desktop layout whole; the tablet page too; neither scrolls sideways", async ({ page, request }) => {
     const { id } = await makePage(request, "Fitted", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
     await open(page, id);
     const canvas = page.locator(".canvas");
-    const rule = page.locator(".wrule-label");
     const frame = page.locator(".canvas .frame");
     const sideways = () => canvas.evaluate((element) => element.scrollWidth - element.clientWidth);
     const inside = async () => {
@@ -240,39 +345,38 @@ test.describe("in a 1280 by 800 window", () => {
       return box.x >= bench.x && box.x + box.width <= bench.x + bench.width;
     };
 
-    // Desktop: 800 wide, the page's desktop layout, two columns side by side.
-    await expect(rule).toHaveText(/^Desktop, 800 wide, drawn at 8\d%$/);
-    await expect(page.locator(".canvas .site")).toHaveCSS("width", "800px");
+    // Desktop: 928 wide, the page's desktop layout, two columns side by side.
+    await expect(width(page)).toHaveText("Page 928 wide, desktop layout");
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "928px");
+    await expect(frame).not.toHaveAttribute("data-scale");
     const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;
     const second = (await page.locator('.canvas [data-block-id="c2"]').boundingBox())!;
     expect(Math.abs(second.y - first.y)).toBeLessThan(1);
     expect(second.x).toBeGreaterThan(first.x + first.width - 1);
     expect(await sideways()).toBe(0);
     expect(await inside()).toBe(true);
-    // The rule spans the page as drawn, its last notch at its end.
-    const ruleBox = (await page.locator(".wrule").boundingBox())!;
-    const frameBox = (await frame.boundingBox())!;
-    expect(Math.abs(ruleBox.width - frameBox.width)).toBeLessThan(1);
-    await expect(page.locator(".wrule-notch span")).toHaveText(["Tablet layout", "Desktop layout"]);
 
-    // Tablet: 768 wide, whole, drawn smaller.
-    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
-    await expect(rule).toHaveText(/^Tablet, 768 wide, drawn at 8\d%$/);
+    // Tablet: 768 wide, whole.
+    await device(page, "Tablet").click();
+    await expect(width(page)).toHaveText("Page 768 wide, tablet layout");
     await expect(page.locator(".canvas .site")).toHaveCSS("width", "768px");
+    await expect(frame).not.toHaveAttribute("data-scale");
     expect(await sideways()).toBe(0);
     expect(await inside()).toBe(true);
 
-    // Phone: 390 wide, with room enough: not scaled.
-    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Phone" }).click();
-    await expect(rule).toHaveText("Phone, 390 wide");
-    await expect(frame).not.toHaveAttribute("data-scale");
+    // The sidebar hidden: the canvas takes its room, the page wider.
+    await device(page, "Desktop").click();
+    await page.getByRole("button", { name: "Settings sidebar" }).click();
+    await expect(width(page)).toHaveText("Page 1232 wide, desktop layout");
+    await page.getByRole("button", { name: "Settings sidebar" }).click();
+    await expect(width(page)).toHaveText("Page 928 wide, desktop layout");
   });
 
   test("the tab of the selection's column is drawn whole, over the next column's line", async ({ page, request }) => {
     const { id } = await makePage(request, "Stacked", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
     await open(page, id);
     // The tablet page, where the columns stack.
-    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    await device(page, "Tablet").click();
     await page.locator('.canvas [data-block-id="h1"]').click();
     await page.mouse.move(1270, 790);
     const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;
@@ -287,6 +391,48 @@ test.describe("in a 1280 by 800 window", () => {
     const withLine = await page.screenshot({ clip: inside });
     await page.locator('.canvas [data-block-id="c2"] > .ov-col').evaluate((line) => { (line as HTMLElement).style.visibility = "hidden"; });
     expect(await page.screenshot({ clip: inside })).toEqual(withLine);
+  });
+
+});
+
+// A window under 1150 or so, 1024 by 768: the canvas has 672 for the page,
+// so the desktop and tablet pages are drawn smaller to fit.
+test.describe("drawn smaller, in a 1024 by 768 window", () => {
+  test.use({ viewport: { width: 1024, height: 768 } });
+
+  test("the desktop page keeps its desktop layout, drawn smaller; the tablet page is drawn whole; neither scrolls sideways", async ({ page, request }) => {
+    const { id } = await makePage(request, "Fitted smaller", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+    await open(page, id);
+    const canvas = page.locator(".canvas");
+    const frame = page.locator(".canvas .frame");
+    const sideways = () => canvas.evaluate((element) => element.scrollWidth - element.clientWidth);
+    const inside = async () => {
+      const box = (await frame.boundingBox())!;
+      const bench = (await canvas.boundingBox())!;
+      return box.x >= bench.x && box.x + box.width <= bench.x + bench.width;
+    };
+
+    // Desktop: 800 wide, the page's desktop layout, two columns side by side.
+    await expect(width(page)).toHaveText(/^Page 800 wide, desktop layout, drawn at 8\d%$/);
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "800px");
+    const first = (await page.locator('.canvas [data-block-id="c1"]').boundingBox())!;
+    const second = (await page.locator('.canvas [data-block-id="c2"]').boundingBox())!;
+    expect(Math.abs(second.y - first.y)).toBeLessThan(1);
+    expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+    expect(await sideways()).toBe(0);
+    expect(await inside()).toBe(true);
+
+    // Tablet: 768 wide, whole, drawn smaller.
+    await device(page, "Tablet").click();
+    await expect(width(page)).toHaveText(/^Page 768 wide, tablet layout, drawn at 8\d%$/);
+    await expect(page.locator(".canvas .site")).toHaveCSS("width", "768px");
+    expect(await sideways()).toBe(0);
+    expect(await inside()).toBe(true);
+
+    // Phone: 390 wide, with room enough: not scaled.
+    await device(page, "Phone").click();
+    await expect(width(page)).toHaveText("Page 390 wide, phone layout");
+    await expect(frame).not.toHaveAttribute("data-scale");
   });
 
   // The page drawn smaller draws its marks smaller too, since they hang
@@ -315,8 +461,9 @@ test.describe("in a 1280 by 800 window", () => {
     });
     const near = (a: number, b: number) => Math.abs(a - b) < 1;
 
-    for (const device of ["Desktop", "Tablet"]) {
-      await page.getByRole("group", { name: "Device" }).getByRole("button", { name: device }).click();
+    const pick = device;
+    for (const device of ["Desktop", "Tablet"] as const) {
+      await pick(page, device).click();
       await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
       const scale = Number(await frame.getAttribute("data-scale"));
 
@@ -339,7 +486,7 @@ test.describe("in a 1280 by 800 window", () => {
       }
 
       await page.locator(at('[data-block-id="h1"]')).click();
-      await page.mouse.move(1270, 790);
+      await page.mouse.move(1014, 758);
       await expect(page.locator(at('[data-block-id="h1"] > .ov-sel'))).toHaveCount(1);
 
       // The bar: its buttons 26 square, its name in 12 px words, its
@@ -410,7 +557,7 @@ test.describe("in a 1280 by 800 window", () => {
     ])]);
     await open(page, id);
     const frame = page.locator(".canvas .frame");
-    const device = (name: string) => page.getByRole("group", { name: "Device" }).getByRole("button", { name }).click();
+    const choose = (name: "Desktop" | "Tablet" | "Phone") => device(page, name).click();
     // Where each block's name is when it is hovered: beside its outline at
     // its middle (6 past the inside of its 1.5 line), above it at its right
     // end (3 above the inside of its line), or elsewhere; whether the name
@@ -450,25 +597,28 @@ test.describe("in a 1280 by 800 window", () => {
     const each = (side: string) => Object.fromEntries(all.map((target) => [target, side]));
 
     // The desktop page, drawn smaller: the columns side by side, the
-    // page's margin beside the right one. The button's name is beside its
+    // page's margin beside the right one, where short names have room and
+    // the accordion's, a long one, has not. The button's name is beside its
     // pill, which its alignment puts at the column's right end.
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
-    expect(await sides(all)).toEqual(each("beside"));
+    expect(await sides(all)).toEqual({ ...each("beside"), acc: "above" });
     // The tablet page, drawn smaller: the columns stacked, each block as
-    // wide as the page. A name as short as "Text" still has room; the
-    // button's, "Button", has under a pixel to spare: whichever side it
-    // takes, it is whole and the canvas does not scroll.
-    await device("Tablet");
+    // wide as the page, which fills the canvas but for its 19 of margin. No
+    // name has room beside a block there, not even one as short as "Text";
+    // the button's, whichever side it takes, is whole and the canvas does
+    // not scroll.
+    await choose("Tablet");
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
-    expect(await sides(all)).toMatchObject({ h1: "above", h2: "above", t: "beside", acc: "above", ib: "above" });
+    expect(await sides(all)).toMatchObject({ h1: "above", h2: "above", t: "above", acc: "above", ib: "above" });
     // The phone page, whole, with the canvas's room beside it.
-    await device("Phone");
+    await choose("Phone");
     await expect(frame).not.toHaveAttribute("data-scale");
     expect(await sides(all)).toEqual(each("beside"));
-    // A window just wide enough for the tablet page whole: a long name
-    // still has no room beside a block as wide as the page, a short one has.
-    await page.setViewportSize({ width: 1400, height: 800 });
-    await device("Tablet");
+    // A window just wide enough for the tablet page whole (780 of room): a
+    // long name still has no room beside a block as wide as the page, a
+    // short one has.
+    await page.setViewportSize({ width: 1132, height: 800 });
+    await choose("Tablet");
     await expect(frame).not.toHaveAttribute("data-scale");
     expect(await sides(all)).toMatchObject({ t: "beside", acc: "above" });
   });
@@ -480,7 +630,7 @@ test.describe("in a 1280 by 800 window", () => {
   test("a hovered block's name above its outline is drawn over the selection's frame", async ({ page, request }) => {
     const { id } = await makePage(request, "Over", [section("s", "One", [column("c", [heading("h1", "Selected first"), heading("h2", "Hovered under it")])])]);
     await open(page, id);
-    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    await device(page, "Tablet").click();
     await expect(page.locator(".canvas .frame")).toHaveAttribute("data-scale", /^0\.8/);
     await block(page, "h1").click();
     await block(page, "h2").hover();
@@ -511,7 +661,7 @@ test.describe("in a 1280 by 800 window", () => {
     const { id } = await makePage(request, "Resized", [section("s", "One", [column("c", [widget("acc", "accordion", { items }), widget("t", "text", { doc: words })])])]);
     await open(page, id);
     const frame = page.locator(".canvas .frame");
-    await page.getByRole("group", { name: "Device" }).getByRole("button", { name: "Tablet" }).click();
+    await device(page, "Tablet").click();
     // The name's side, whether it is whole inside the canvas, and how far
     // the canvas scrolls sideways, two frames after the page settles.
     const seen = (target: string) => block(page, target).evaluate(async (root) => {
@@ -534,18 +684,20 @@ test.describe("in a 1280 by 800 window", () => {
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
     await block(page, "acc").hover();
     expect(await seen("acc")).toEqual({ side: "above", inside: true, sideways: 0 });
-    await page.setViewportSize({ width: 1400, height: 800 });
+    await page.setViewportSize({ width: 1132, height: 768 });
     await expect(frame).not.toHaveAttribute("data-scale");
     expect(await seen("acc")).toEqual({ side: "above", inside: true, sideways: 0 });
 
     // A short name, beside the text on the tablet page whole; back in the
-    // smaller window, beside it still, where it has room.
-    await page.mouse.move(1390, 790);
+    // smaller window, where the page drawn smaller leaves it less room
+    // than its name, above it: the side is taken again for the page as it
+    // is then drawn.
+    await page.mouse.move(1122, 758);
     await block(page, "t").hover();
     expect(await seen("t")).toEqual({ side: "beside", inside: true, sideways: 0 });
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize({ width: 1024, height: 768 });
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
-    expect(await seen("t")).toEqual({ side: "beside", inside: true, sideways: 0 });
+    expect(await seen("t")).toEqual({ side: "above", inside: true, sideways: 0 });
   });
 
   test("the empty page's invitation keeps its size on a page drawn smaller", async ({ page, request }) => {
@@ -557,10 +709,15 @@ test.describe("in a 1280 by 800 window", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(frame).not.toHaveAttribute("data-scale");
     const whole = await sizes();
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize({ width: 1024, height: 768 });
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
     expect(await sizes()).toEqual(whole);
   });
+});
+
+// The top bar in a 1280 by 800 window: less room for its words.
+test.describe("the top bar, in a 1280 by 800 window", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
 
   // Whether every letter of an element's words shows: their own width, to
   // the fraction of a pixel, against the box's. A box a quarter of a pixel
@@ -593,8 +750,9 @@ test.describe("in a 1280 by 800 window", () => {
         expect((await request.put(`${cms()}/api/pages/${id}/draft`, { data: { revision: draft.revision, saveId: unique("bar"), document } })).status()).toBe(200);
       }
       await open(page, id);
-      await expect(page.locator(".topbar .chip")).toHaveText("Published, 3 changes not live");
+      await expect(page.locator(".topbar .tb-status")).toHaveText("Published, 3 changes not live");
       expect(await whole(page, ".tb-page-title")).toBe(true);
+      expect(await whole(page, ".tb-status")).toBe(true);
       expect(await inBar(page, ".tb-right > :last-child")).toBe(true);
 
       // A save that cannot reach the CMS: the save state's longest words.
@@ -610,22 +768,10 @@ test.describe("in a 1280 by 800 window", () => {
     });
   });
 
-  test("in the top bar a long address gives way before the page's title, all of it", async ({ page, request }) => {
-    const { id } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
-    // An address as long as an address may be, 64 characters: longer than
-    // the room the bar has left for it.
-    const slug = `${unique("spring")}-every-weekend-morning-at-the-harbour-wall`.slice(0, 64).replace(/-+$/, "");
-    expect((await request.patch(`${cms()}/api/pages/${id}`, { data: { slug } })).status()).toBe(200);
-    await open(page, id);
-    await expect(page.locator(".tb-page-title")).toHaveText("Spring series");
-    await expect(page.locator(".tb-page-path")).toHaveText(`/${slug}`);
-    // Every letter of the title shows; the address is the one cut short.
-    expect(await whole(page, ".tb-page-title")).toBe(true);
-    expect(await whole(page, ".tb-page-path")).toBe(false);
-
-    // A title too long for the bar is cut in its turn, inside the page
-    // switch, with no address showing at all.
-    const longTitle = "Every swim of the long winter series, from the first frost on the slipway to the thaw";
+  test("a title too long for the top bar is cut inside the page switch, never the line under it or the keys on either side", async ({ page, request }) => {
+    // A title of every word, as long as a title may be, 120 characters: far
+    // longer than the room the bar has for it.
+    const longTitle = "Every swim of the long winter series, from the first frost on the slipway to the thaw, at slack water and at first light";
     const long = await makePage(request, "Every swim", [section("s", "Here", [column("c", [])])]);
     const draft = await draftOf(request, long.id);
     const retitled = await request.put(`${cms()}/api/pages/${long.id}/draft`, { data: { revision: draft.revision, saveId: unique("long"), document: { schemaVersion: 1, title: longTitle, sections: [section("s", "Here", [column("c", [])])] } } });
@@ -633,10 +779,24 @@ test.describe("in a 1280 by 800 window", () => {
     await open(page, long.id);
     await expect(page.locator(".tb-page-title")).toHaveText(longTitle);
     expect(await whole(page, ".tb-page-title")).toBe(false);
+    expect(await whole(page, ".tb-status")).toBe(true);
+    // Every key of both sides whole and inside the bar: the left side's
+    // last (Redo) and the right side's last (the sidebar's).
     expect(await inBar(page, ".tb-right > :last-child")).toBe(true);
-    const name = (await page.locator(".tb-page-name").boundingBox())!;
+    expect(await inBar(page, ".tb-left > :last-child")).toBe(true);
+    const switcher = (await page.locator(".tb-title").boundingBox())!;
     const titleBox = (await page.locator(".tb-page-title").boundingBox())!;
-    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(name.x + name.width + 0.01);
-    expect(await page.locator(".tb-page-path").evaluate((element) => element.getBoundingClientRect().left >= element.parentElement!.getBoundingClientRect().right - 0.01)).toBe(true);
+    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(switcher.x + switcher.width + 0.01);
+    const left = (await page.locator(".tb-left").boundingBox())!;
+    const right = (await page.locator(".tb-right").boundingBox())!;
+    expect(switcher.x).toBeGreaterThanOrEqual(left.x + left.width - 0.01);
+    expect(switcher.x + switcher.width).toBeLessThanOrEqual(right.x + 0.01);
+    // A short title stands in the bar's middle.
+    const { id } = await makePage(request, "Spring series", [section("s", "Here", [column("c", [])])]);
+    await open(page, id);
+    await expect(page.locator(".tb-page-title")).toHaveText("Spring series");
+    expect(await whole(page, ".tb-page-title")).toBe(true);
+    const middle = (await page.locator(".tb-title").boundingBox())!;
+    expect(Math.abs(middle.x + middle.width / 2 - 640)).toBeLessThan(2);
   });
 });

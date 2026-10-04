@@ -18,7 +18,7 @@ import type { Browser, BrowserContext, Page, Request } from "@playwright/test";
 import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState } from "./helpers/heading.ts";
 import { block } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, unique } from "./helpers/site.ts";
+import { cms, column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique } from "./helpers/site.ts";
 
 const VIEWPORT = { width: 1440, height: 900 };
 test.use({
@@ -97,8 +97,7 @@ test("two tabs edit the same page: the one that saves second gets the conflict b
 
     // The reload is a step of this session: going back to before it brings
     // the second tab's own words back, and saves them.
-    await second.getByRole("button", { name: "History" }).click();
-    const steps = second.getByRole("complementary", { name: "History" }).getByRole("list", { name: "This session" }).getByRole("button");
+    const steps = (await drawer(second, "History")).getByRole("list", { name: "This session" }).getByRole("button");
     await expect(steps.locator(".hist-what")).toHaveText(["Changed Heading in Story", "Reloaded the page saved in another tab", "Changed Heading in Story"]);
     await steps.nth(2).click();
     await expect(words(second)).toHaveText("Words from the second tab");
@@ -222,9 +221,8 @@ test("a version restored in one tab is a change the other tab is told about, and
     await open(second, id);
     await retitle(first, "Later words");
     await saved(first);
-    await first.getByRole("button", { name: "History" }).click();
     // The page's first version: the save that made it, with its first words.
-    await first.getByRole("complementary", { name: "History" }).getByRole("button", { name: /^Restore: Autosaved, / }).click();
+    await (await drawer(first, "History")).getByRole("button", { name: /^Restore: Autosaved, / }).click();
     await expect(words(first)).toHaveText("First words");
     expect(await headingText(request, id)).toBe("First words");
 
@@ -292,7 +290,7 @@ test("an image uploaded and placed in one tab is drawn in the other once it relo
     await open(second, id);
     // The first tab places an image it uploads.
     await block(first, "h").click();
-    await first.getByRole("tab", { name: "Add" }).click();
+    await drawer(first, "Insert");
     await first.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }).click();
     const library = first.getByRole("dialog", { name: "Media library" });
     const name = `${unique("across")}.png`;
@@ -309,7 +307,7 @@ test("an image uploaded and placed in one tab is drawn in the other once it relo
     const image = second.locator('.canvas [data-block-type="image"]');
     await expect(image.getByRole("img", { name: "An orange block" })).toBeVisible();
     await image.click();
-    await expect(second.locator(".tray-left img.thumb-wide")).toBeVisible();
+    await expect(second.locator(".sidebar img.thumb-wide")).toBeVisible();
     await expect(second.getByText("The image is not in the media library any more.")).toHaveCount(0);
     expect(other.errors).toEqual([]);
   } finally {

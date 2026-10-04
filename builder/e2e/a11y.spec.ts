@@ -8,7 +8,7 @@ import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import { axe } from "./helpers/axe.ts";
 import { block, settledTextEditor } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
-import { cms, column, expect, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, device, drawer, expect, makePage, open, openSiteStyle, section, test, unique, widget } from "./helpers/site.ts";
 
 test.use({
   viewport: { width: 1440, height: 900 },
@@ -38,7 +38,7 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
 
 // The design's window, and the smallest the editor is made for.
 for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) test(`the editor has no serious or critical axe finding, in any of its states, at ${size.width} by ${size.height}`, { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Twenty-seven states, each read by axe whole.
+  // Thirty-two states, each read by axe whole.
   test.setTimeout(240_000);
   await page.setViewportSize(size);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -65,33 +65,54 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.keyboard.press("Escape");
   await expect(page.locator(".canvas .rte")).toHaveCount(0);
 
+  // The Outline, both its tabs; a column chosen in it.
+  await drawer(page, "Outline");
+  await clean(page, "the Outline drawer");
+  await page.getByRole("tab", { name: "Headings" }).click();
+  await expect(page.getByRole("list", { name: "Headings" })).toBeVisible();
+  await clean(page, "the Outline's headings");
+  await page.getByRole("tab", { name: "Blocks" }).click();
   // A column's own space on a tablet: the override, its ring and Remove.
   await page.locator('.tree [data-row-id="first-a"] > .t-row').click();
   await expect(page.getByRole("tablist", { name: "Column 1 properties" })).toBeVisible();
   await page.getByRole("tab", { name: "Style" }).click();
-  await page.locator(".topbar").getByRole("button", { name: "Tablet", exact: true }).click();
-  const ruler = page.locator(".tray-left .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) }).getByRole("slider");
+  await device(page, "Tablet").click();
+  const ruler = page.locator(".sidebar .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) }).getByRole("slider");
   await ruler.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("button", { name: "Remove the tablet override of Space inside" })).toBeVisible();
   await clean(page, "a tablet's own value in the Style tab");
-  await page.locator(".topbar").getByRole("button", { name: "Desktop", exact: true }).click();
+  await device(page, "Desktop").click();
   await page.locator('.tree [data-row-id="first"]').click();
   await page.getByRole("tab", { name: "Advanced" }).click();
   await clean(page, "a section's Advanced tab");
-  await page.getByRole("tab", { name: "Add" }).click();
-  await clean(page, "the widget panel");
-  await page.getByRole("button", { name: "Phone" }).click();
+  await drawer(page, "Insert");
+  await clean(page, "the Insert drawer");
+  await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();
+  await clean(page, "the Insert drawer's ready-made sections");
+  await page.getByRole("button", { name: "Close Insert" }).click();
+  await device(page, "Phone").click();
   await clean(page, "the phone preview");
   // The selection hidden on the phone previewed: the canvas's one Tab stop
   // is the column around it, drawn there.
-  await page.getByRole("button", { name: "Desktop" }).click();
+  await device(page, "Desktop").click();
   await block(page, "wide-only").click();
-  await page.getByRole("button", { name: "Phone" }).click();
+  await device(page, "Phone").click();
   await expect(page.locator(".canvas [tabindex=\"0\"]")).toHaveAttribute("data-block-id", "second-a");
   await expect(page.locator(".canvas [tabindex=\"0\"]")).toBeVisible();
   await clean(page, "a block hidden on the phone previewed, selected");
-  await page.getByRole("button", { name: "Desktop" }).click();
+  await device(page, "Desktop").click();
+
+  // Every block's edges, and the page's own settings in the sidebar.
+  await page.getByRole("button", { name: "Block edges" }).click();
+  await page.getByRole("tab", { name: "Page" }).click();
+  await clean(page, "Block edges on, the sidebar's Page tab");
+  await page.getByRole("button", { name: "Block edges" }).click();
+  // The sidebar hidden, the canvas taking its room.
+  await page.getByRole("button", { name: "Settings sidebar" }).click();
+  await expect(page.getByRole("complementary", { name: "Settings" })).toHaveCount(0);
+  await clean(page, "the sidebar hidden");
+  await page.getByRole("button", { name: "Settings sidebar" }).click();
 
   await block(page, "quote-0").click({ button: "right" });
   await expect(page.getByRole("menu")).toBeVisible();
@@ -120,7 +141,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
 
   await page.getByRole("button", { name: /^Switch page/ }).click();
   await clean(page, "the page switch");
-  await page.getByRole("menuitem", { name: "New page…" }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: "New page" }).click();
   await clean(page, "the New page window");
   await page.keyboard.press("Escape");
 
@@ -128,7 +149,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "the Publish menu, before a publish");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
   await clean(page, "published, with the notice and its link");
   await page.getByRole("button", { name: "More publish options" }).click();
   await clean(page, "the Publish menu, with the live page");
@@ -136,14 +157,13 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
 
   // The history: this session's steps and the page's versions, the live
   // one among them; then "Save version" asking for a name.
-  await page.getByRole("button", { name: "History" }).click();
-  const history = page.getByRole("complementary", { name: "History" });
+  const history = await drawer(page, "History");
   await expect(history.getByRole("listitem").filter({ hasText: "Published" })).not.toHaveCount(0);
   await clean(page, "the history, with its steps and versions");
   await history.getByRole("button", { name: "Save version" }).click();
   await expect(history.getByRole("textbox", { name: /^Name/ })).toBeFocused();
   await clean(page, "the history's name field");
-  await page.getByRole("button", { name: "Close history" }).click();
+  await page.getByRole("button", { name: "Close History" }).click();
 
   // The media library, from the mark's menu: an image just uploaded and
   // chosen, with no alt text yet.
@@ -157,7 +177,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.keyboard.press("Escape");
   await expect(library).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Site style", exact: true }).click();
+  await openSiteStyle(page);
   await page.getByRole("button", { name: /^Accent/ }).click();
   await clean(page, "Site style, a slot open");
   await page.getByRole("button", { name: "Close site style" }).click();

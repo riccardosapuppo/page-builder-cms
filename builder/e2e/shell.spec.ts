@@ -11,10 +11,13 @@ test("the editor's page loads its shell without an error", async ({ page }) => {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto("/");
+  // The approved layout's frame: the top bar, the sidebar with its two
+  // tabs, the bottom line with the devices; no drawer open.
   await expect(page.getByRole("button", { name: "Page Builder CMS menu" })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Device" })).toBeVisible();
-  await expect(page.getByRole("tablist", { name: "Panel" })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Navigator" })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Look at the page on" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Settings" })).toBeVisible();
+  await expect(page.locator(".drawer")).toHaveCount(0);
   // Whatever pages the run has made so far, the canvas's place shows a
   // page or says why there is none, and is no longer opening one.
   await expect(page.getByRole("main", { name: "Page canvas" })).not.toHaveAttribute("aria-busy", "true");

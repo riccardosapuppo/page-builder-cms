@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { tokensFile } from "../build/paths.ts";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
+import { cms, column, device as deviceKey, draftOf, drawer, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -25,8 +25,8 @@ const fixture = () => [
 ];
 
 const padding = (target: Locator) => target.evaluate((element) => getComputedStyle(element).paddingTop);
-const field = (page: Page, label: string) => page.locator(".tray-left .field").filter({ has: page.locator(".label", { hasText: new RegExp(`^${label}$`) }) });
-const device = (page: Page, name: "Desktop" | "Tablet" | "Phone") => page.locator(".topbar").getByRole("button", { name, exact: true }).click();
+const field = (page: Page, label: string) => page.locator(".sidebar .field").filter({ has: page.locator(".label", { hasText: new RegExp(`^${label}$`) }) });
+const device = (page: Page, name: "Desktop" | "Tablet" | "Phone") => deviceKey(page, name).click();
 
 // The column's padding on the page the CMS serves the draft as, in a
 // window of that width: the published page's own container queries.
@@ -67,8 +67,11 @@ test("a tablet's and a phone's own space, set in the Style tab, is what the canv
   await expect(block(page, "c")).toHaveCSS("padding-top", px("l"));
   await expect(page.locator('.canvas [data-block-id="c"] > .ov-pad')).toHaveText("L");
   await expect(page.locator('.canvas [data-block-id="c"] > .ov-pad')).toHaveAttribute("data-device", "tablet");
-  // The navigator flags the column.
+  // The outline flags the column. It floats over the canvas: the page
+  // keeps its width under it.
+  await drawer(page, "Outline");
   await expect(page.locator('.tree [data-row-id="c"] > .t-row > .t-flags')).toHaveAttribute("title", "Has a tablet override");
+  await expect(block(page, "c")).toHaveCSS("padding-top", px("l"));
 
   // The phone: never the tablet's L, the desktop's S; then its own XS.
   await device(page, "Phone");
@@ -124,11 +127,12 @@ test("a tablet's and a phone's own space, set in the Style tab, is what the canv
 test("a section's rulers print their nine steps apart, none touching the next", async ({ page, request }) => {
   const { id } = await makePage(request, "Nine steps", fixture());
   await open(page, id);
+  await drawer(page, "Outline");
   await page.locator('.tree [data-row-id="s"] > .t-row').click();
   await page.getByRole("tab", { name: "Style" }).click();
   // The room between each printed name and the next, in pixels, measured
   // on the words themselves, ruler by ruler.
-  const gaps = () => page.locator(".tray-left .ruler-nums").evaluateAll((rows) => rows.map((row) => {
+  const gaps = () => page.locator(".sidebar .ruler-nums").evaluateAll((rows) => rows.map((row) => {
     const boxes = [...row.querySelectorAll("b")].map((label) => {
       const words = document.createRange();
       words.selectNodeContents(label);
@@ -164,7 +168,8 @@ test("a block hidden on phones leaves the phone's canvas and the phone's page, a
   await expect(hide).toBeChecked();
   await expect(hide).toBeFocused();
   await expect(block(page, "b")).toBeHidden();
-  await expect(page.locator(".tray-left .device-note")).toHaveText("Hidden on phones: the canvas leaves it out while you preview a phone, as a visitor’s phone does.");
+  await expect(page.locator(".sidebar .device-note")).toHaveText("Hidden on phones: the canvas leaves it out while you preview a phone, as a visitor’s phone does.");
+  await drawer(page, "Outline");
   const row = page.locator('.tree [data-row-id="b"]');
   await expect(row).toHaveClass(/t-hidden/);
   await expect(row.locator(":scope > .t-row > .t-flags")).toHaveAttribute("title", "Has a phone override");

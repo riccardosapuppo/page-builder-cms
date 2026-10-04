@@ -1,5 +1,5 @@
-// Undo, redo, the history panel and the page's versions, in Chromium,
-// against the run's CMS (design/shots/history.png):
+// Undo, redo, the History drawer and the page's versions, in Chromium,
+// against the run's CMS (design/layout/shots/history.png):
 // - the top bar's undo and redo, the focus on the block the step touched;
 //   a step chosen in the history brings the page back to right after it,
 //   and the CMS saves that page;
@@ -58,9 +58,11 @@ test("undo and redo from the top bar, and a step chosen in the history, bring th
   await expect(words(page)).toHaveText("Second words");
   await expect(redo).toHaveAttribute("aria-disabled", "true");
 
-  await page.getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(history(page)).toBeVisible();
-  await expect(page.getByRole("tree", { name: "Navigator" })).toHaveCount(0);
+  // One drawer at a time; it takes the focus, on Save version.
+  await expect(page.locator(".drawer")).toHaveCount(1);
+  await expect(history(page).getByRole("button", { name: "Save version" })).toBeFocused();
   await expect(steps(page).locator(".hist-what")).toHaveText(["Changed Heading in Story", "Deleted Divider in Story"]);
   await expect(steps(page).first()).toHaveAttribute("aria-current", "step");
   await expect(steps(page).first().locator(".hist-when")).toHaveText(/^Today, \d{1,2}:\d{2} [AP]M$/);
@@ -79,20 +81,26 @@ test("undo and redo from the top bar, and a step chosen in the history, bring th
   expect(await headingText(request, id)).toBe("First words");
   expect((await draftOf(request, id)).document.sections[0]!.children[0]!.children.map((w) => w.id)).toEqual(["h"]);
 
-  const report = await axe(page, { include: ".tray-right" });
-  expect(report.serious, "the history panel").toEqual([]);
+  const report = await axe(page, { include: ".drawer-history" });
+  expect(report.serious, "the history drawer").toEqual([]);
   expect(report.passes).toBeGreaterThan(5);
 
-  // Closing it gives the navigator back, the focus on the History button.
-  await history(page).getByRole("button", { name: "Close history" }).click();
-  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "History" })).toBeFocused();
+  // Closing it gives the focus back to where it was when it opened: the
+  // History key; Esc does the same.
+  await history(page).getByRole("button", { name: "Close History" }).click();
+  await expect(history(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "History", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(history(page)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(history(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "History", exact: true })).toBeFocused();
 });
 
 test("versions from the screen: Save version with a name, Restore, a restore undone by the version kept before it, and the live version marked", { tag: "@a11y" }, async ({ page, request }) => {
   const { id } = await makePage(request, "Versions", fixture());
   await open(page, id);
-  await page.getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
   // The page's first save kept an automatic version.
   await expect(versionRows(page).locator(".ver-kind")).toHaveText(["Current draft", "Autosaved"]);
   await expect(versionRows(page).first()).toContainText("Not published yet");
@@ -144,18 +152,18 @@ test("versions from the screen: Save version with a name, Restore, a restore und
 
   // A publish is a version, the live one, marked so.
   await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(page.locator(".topbar .chip")).toHaveText("Published");
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
   await expect(versionRows(page).nth(1).locator(".ver-kind")).toHaveText("Published, live now");
   await expect(versionRows(page).nth(1).locator(".dot-live")).toHaveCount(1);
   await expect(versionRows(page).first()).toContainText("The same as the live page");
   expect((await versionsOf(page, id))[0]).toMatchObject({ reason: "publish", published: true });
 
-  const report = await axe(page, { include: ".tray-right" });
-  expect(report.serious, "the history panel with versions").toEqual([]);
+  const report = await axe(page, { include: ".drawer-history" });
+  expect(report.serious, "the history drawer with versions").toEqual([]);
   expect(report.passes).toBeGreaterThan(5);
 });
 
-test("at 1280 wide, with a published page's long chip, a save moves nothing in the top bar, and History and Preview keep their words", async ({ page, request }) => {
+test("at 1280 wide, with a published page's long line under its title, a save moves nothing in the top bar, and the drawers' keys and Preview keep their words", async ({ page, request }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const { id } = await makePage(request, "Slack Water", fixture());
   expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
@@ -164,12 +172,13 @@ test("at 1280 wide, with a published page's long chip, a save moves nothing in t
     await retitle(page, `Words ${n}`);
     await saved(page);
   }
-  await expect(page.locator(".topbar .chip")).toHaveText("Published, 7 changes not live");
-  const undo = page.getByRole("button", { name: "Undo", exact: true });
-  const where = () => undo.evaluate((e) => Math.round(e.getBoundingClientRect().x));
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published, 7 changes not live");
+  // The title in the middle, beside the save state's side: where it stands.
+  const title = page.locator(".topbar .tb-title");
+  const where = () => title.evaluate((e) => Math.round(e.getBoundingClientRect().x));
   const words = () => page.locator(".topbar .tb-word").evaluateAll((e) => e.map((w) => w.getBoundingClientRect().width > 10));
   const before = await where();
-  expect(await words()).toEqual([true, true]);
+  expect(await words()).toEqual([true, true, true, true]);
   // The next save held a moment on its way: Saving… then Saved.
   await page.route("**/api/pages/*/draft", async (route) => {
     if (route.request().method() === "PUT") await new Promise((done) => setTimeout(done, 1500));
@@ -178,7 +187,7 @@ test("at 1280 wide, with a published page's long chip, a save moves nothing in t
   await retitle(page, "Words 8");
   await expect(page.locator(".topbar .save-state")).toHaveText("Saving…");
   expect(await where()).toBe(before);
-  expect(await words()).toEqual([true, true]);
+  expect(await words()).toEqual([true, true, true, true]);
   await saved(page);
   expect(await where()).toBe(before);
 });

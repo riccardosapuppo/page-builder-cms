@@ -1,13 +1,14 @@
 // Drag and drop in Chromium, with the mouse and with the keyboard, against
 // the run's own CMS: a widget reordered in its column, moved to another
-// column and another section, dropped into an empty column; tiles of the
-// widget panel dropped on the page; drops the page refuses; a drag
+// column and another section, dropped into an empty column; blocks of the
+// Insert drawer dropped on the page; drops the page refuses; a drag
 // cancelled with Esc. Each drop is one command, which the CMS keeps; a
 // cancelled or refused one leaves the page and its draft as they were.
-// The live region says where the block will go all along.
+// The live region, in the bottom line, says where the block will go all
+// along.
 import type { Page } from "@playwright/test";
 import { block, canvasShape, caption, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
-import { column, draftOf, expect, heading, makePage, open, saved, section, shape, test, widget } from "./helpers/site.ts";
+import { column, draftOf, drawer, expect, heading, makePage, open, saved, section, shape, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -33,8 +34,10 @@ async function select(page: Page, id: string) {
   await expect(block(page, id)).toHaveAttribute("data-editor-selected", "true");
 }
 
-test.describe("on a page drawn smaller to fit a 1280 window", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+// In a 1280 window the page keeps its desktop layout whole; under 1150 or
+// so the canvas has less than 800 for it, and it is drawn smaller.
+test.describe("on a page drawn smaller to fit a 1024 window", () => {
+  test.use({ viewport: { width: 1024, height: 768 } });
 
   test("a widget moves to another column, the pointer and the page in step", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Scaled");
@@ -118,16 +121,16 @@ test.describe("with the mouse", () => {
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(after);
   });
 
-  test("a tile of the widget panel dropped between two widgets, and a section tile below the last section", async ({ page, request }) => {
+  test("a block from Insert dropped between two widgets, and a section below the last section", async ({ page, request }) => {
     const { id } = await startPage(page, request, "From the panel");
-    await page.getByRole("tab", { name: "Add" }).click();
+    await drawer(page, "Insert");
     const tile = page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" });
     await expect(tile).not.toHaveCSS("outline-style", "dashed");
     await pickUp(page, tile);
     await moveOnto(page, block(page, "a"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Quote will be added to Column 1 in First, after Heading.");
     await expect(caption(page).locator("span")).toHaveText("Release, or press Space, to add it. Shaded areas cannot hold widgets. Esc cancels.");
-    // The tile it came from leaves its dashed place in the panel.
+    // The key it came from leaves its dashed place in the drawer.
     await expect(tile).toHaveCSS("outline-style", "dashed");
     await page.mouse.up();
     await expect.poll(async () => ((await canvasShape(page)) as Array<[string, Array<[string, string[]]>]>)[0]![1][0]![1].length).toBe(4);
@@ -137,8 +140,8 @@ test.describe("with the mouse", () => {
     await expect(added).toBeFocused();
     await expect(caption(page)).toHaveText("Added Quote to Column 1 in First.");
 
-    await page.getByRole("tab", { name: "Add" }).click();
-    await pickUp(page, page.getByRole("button", { name: "2 columns" }));
+    // Insert stays open, a catalogue.
+    await pickUp(page, (await drawer(page, "Insert")).getByRole("button", { name: "2 columns" }));
     await moveOnto(page, block(page, "s2"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("A section with 2 columns will be added to the page, after Second.");
     await page.mouse.up();
@@ -151,7 +154,7 @@ test.describe("with the mouse", () => {
 
   test("Space, with the button still held, drops the tile where the caption says, once", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Space drops");
-    await page.getByRole("tab", { name: "Add" }).click();
+    await drawer(page, "Insert");
     await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
     await moveOnto(page, block(page, "a"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Quote will be added to Column 1 in First, after Heading.");
@@ -161,6 +164,28 @@ test.describe("with the mouse", () => {
     await expect.poll(() => canvasShape(page)).toEqual([["s1", [["c1", ["a", expect.any(String), "b", "c"]], ["c2", ["d"]]]], ["s2", [["c3", ["e"]], ["c4", []]]]]);
     await saved(page);
     expect((await draftOf(request, id)).document.sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "quote", "button"]);
+  });
+
+  test("over the drawer, which floats over the page, a key of Insert is on nothing of the page", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Over the drawer");
+    const insert = await drawer(page, "Insert");
+    const tile = insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" });
+    await tile.scrollIntoViewIfNeeded();
+    // Where the pointer stops once the drag starts (./helpers/canvas.ts,
+    // pickUp), Column 1 runs under the drawer, well inside its edges: it
+    // could take a divider, were it not hidden.
+    const box = (await tile.boundingBox())!;
+    const column = (await block(page, "c1").boundingBox())!;
+    const at = { x: box.x + box.width / 2 + 8, y: box.y + box.height / 2 + 8 };
+    expect(at.x - column.x).toBeGreaterThan(8);
+    expect(at.y - column.y).toBeGreaterThan(8);
+    expect(column.y + column.height - at.y).toBeGreaterThan(8);
+    await pickUp(page, tile);
+    await expect(caption(page).locator("strong")).toHaveText("Nowhere to drop it here. Widgets go inside a column.");
+    await page.mouse.up();
+    await expect(caption(page)).toHaveText("Divider was not added: There is nowhere to drop it.");
+    await expect.poll(() => canvasShape(page)).toEqual(START);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
   });
 
   test("a widget released where widgets cannot go stays where it was, and the editor says why", async ({ page, request }) => {
@@ -182,6 +207,7 @@ test.describe("with the mouse", () => {
   test("a column refused by a section that holds four already", async ({ page, request }) => {
     const full = section("s3", "Four", [0, 1, 2, 3].map((n) => column(`k${n}`, [widget(`w${n}`, "divider", {})])));
     const { id } = await startPage(page, request, "Full", [...fixture(), full]);
+    await drawer(page, "Outline");
     await page.getByRole("treeitem", { name: "First" }).locator(":scope > .t-row > .t-chev").click();
     await page.getByRole("treeitem", { name: "Column 2", exact: true }).first().locator(":scope > .t-row").click();
     await expect(block(page, "c2")).toHaveAttribute("data-editor-selected", "true");
@@ -196,7 +222,11 @@ test.describe("with the mouse", () => {
 
   test("a section dragged over a column goes between sections, never into the column", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Sections");
+    const outline = await drawer(page, "Outline");
     await page.getByRole("treeitem", { name: "First" }).locator(":scope > .t-row").click();
+    // The section's bar stands at its left end, under the floating Outline:
+    // closed, the grip is in reach.
+    await outline.getByRole("button", { name: "Close Outline" }).click();
     await pickUp(page, grip(page));
     await moveOnto(page, block(page, "c4"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("First will move to the page, after Second.");
@@ -367,10 +397,34 @@ test.describe("with the keyboard", () => {
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
   });
 
-  test("Enter on a tile adds the widget, which the keys then move", async ({ page, request }) => {
+  // A frame put back into the page loads at once, closed disclosure or
+  // not, and React puts the video back when a block lands before it in
+  // the drag's preview: the canvas keeps no address in it. Any request
+  // outside the run's servers fails the test (helpers/site.ts).
+  test("a block moved past a video never loads the provider's player on the canvas", async ({ page, request }) => {
+    const asked: string[] = [];
+    page.on("request", (sent) => {
+      if (!sent.url().startsWith("http://127.0.0.1")) asked.push(sent.url());
+    });
+    await startPage(page, request, "Past a video", [section("s", "Watch", [column("c", [widget("v", "video", { provider: "youtube", videoId: "dawn-swim01", title: "A dawn swim" }), heading("h", "Under the video")])])]);
+    await expect(block(page, "v").locator("iframe")).toHaveCount(1);
+    await expect(block(page, "v").locator("iframe")).not.toHaveAttribute("src");
+    await select(page, "h");
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowUp");
+    await expect(caption(page).locator("strong")).toHaveText("Heading will move to Column 1 in Watch, at the top.");
+    await page.waitForTimeout(500);
+    await page.keyboard.press("Space");
+    await expect.poll(() => canvasShape(page)).toEqual([["s", [["c", ["h", "v"]]]]]);
+    await page.waitForTimeout(500);
+    await expect(block(page, "v").locator("iframe")).not.toHaveAttribute("src");
+    expect(asked).toEqual([]);
+  });
+
+  test("Enter on a block in Insert adds the widget, which the keys then move", async ({ page, request }) => {
     await startPage(page, request, "Keys tile");
     await select(page, "c");
-    await page.getByRole("tab", { name: "Add" }).click();
+    await drawer(page, "Insert");
     await page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }).press("Enter");
     const added = page.locator('.canvas [data-block-id="c1"] > [data-block-type="divider"]');
     await expect(added).toBeFocused();

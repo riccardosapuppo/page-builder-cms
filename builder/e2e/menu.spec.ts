@@ -7,7 +7,7 @@
 // let the page read the clipboard, the menu's Paste takes the block this
 // tab copied last.
 import { block, childIds } from "./helpers/canvas.ts";
-import { column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
+import { column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -106,7 +106,8 @@ test("the menu key opens the menu on the focused block; Escape closes it, the fo
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await expect(block(page, "a")).toBeFocused();
-  // The menu key on a row of the navigator opens it too.
+  // The menu key on a row of the outline opens it too.
+  await drawer(page, "Outline");
   await page.getByRole("treeitem", { name: "First" }).focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menu", { name: "First actions" })).toBeVisible();
