@@ -105,7 +105,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
   smaller; it reads the real width from the page).
 - **The clamp** (also in A): see section 4.
 
-## 4. The changes MIX.md asked for, item by item
+## 4. The changes the mix's brief asked for, item by item
 
 1. **Adding on the page** (from A), as above. B's **Insert drawer floats**
    over the page at every window width, never pushes it, and stops above the
@@ -114,7 +114,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
    Questions, or drag to any column") and the page shows that yellow line
    (`insert-drawer-1280`). Insert in the top bar is as quiet as Outline and
    History: it is the catalogue, the "+" is the way.
-   **Only Insert floats.** MIX.md asks it of Insert alone; for Outline and
+   **Only Insert floats.** The mix's brief asks it of Insert alone; for Outline and
    History it is silent, so B decides: they push the page. A floating
    Outline would cover the left 288 of the canvas, which is the whole left
    margin where a first-column block keeps its clamp, and the clamp is where
@@ -145,7 +145,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
      between columns is set to L or less) cannot hold a clamp: it goes out to
      the nearest page margin, level with the block's top, with no tie (not
      drawn; listed in section 10).
-   - **Every block gets the same clamp, whatever its height.** MIX.md asked
+   - **Every block gets the same clamp, whatever its height.** The mix's brief asked
      for a short version under about 120 tall. Measured on this page, that is
      9 of the 21 blocks at 1440 and 10 at 1280 (every h2, the hero text and
      button, the Questions and Join texts), and the Hero heading is 133 tall
@@ -156,7 +156,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
      where nothing else sits (one block is selected at a time) (`small-block`:
      the 54-tall button). It never flips: the margin runs to the foot of the
      page, and the canvas scrolls to show the whole clamp when a block is
-     selected. This is the one place the mix departs from MIX.md; the short
+     selected. This is the one place the mix departs from the mix's brief; the short
      version can come back as a CSS rule if the owner wants it.
    - **Bold, italic and link while writing** (`text-editing`): my call is
      the clamp itself. While words are being written, Up, Down and Space
@@ -184,7 +184,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
 6. **Page settings in the sidebar's Page tab** (`page-tab`): title, address,
    search description; **Site style one click below** ("Site style, palette
    and type scale for every page"), with a way back. **Show in the site
-   menu** is drawn, as MIX.md asks, but **marked "Comes later"** and switched
+   menu** is drawn, as the mix's brief asks, but **marked "Comes later"** and switched
    off: today the site's menu is not page data, it comes from the CMS's
    configuration (`cms/config/site.yml`), and nothing in the editor changes
    it. It is new CMS work, priced apart in section 8. Title, address and
@@ -214,7 +214,7 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
 - **"/" in an empty line, and "Turn into"** (B): they need new commands in
   the real editor; they come later. The clamp's head opens the block menu,
   not "Turn into"; no "/" hint anywhere.
-- **The short clamp** (MIX.md): see 4.2; every block keeps its moves.
+- **The short clamp** (the mix's brief): see 4.2; every block keeps its moves.
 - **"Link to this block" on widgets**: the real editor gives an anchor to
   sections only (`AdvancedTab.tsx`). Sections keep it, in "Name and link";
   headings, texts and accordions no longer show it.
@@ -351,7 +351,7 @@ The brief's 13, in `shots/` (1440×900; `editor-1280` at 1280×800):
 | `empty` | A new page: the section picker laid out on the page, with the seam's "+"; the site-menu switch marked "Comes later" | 2 columns |
 | `shortcuts` | The real keys, and the ones the mix adds | the search |
 
-Extras, in `shots-extra/`: the six of MIX.md, `text-editing`,
+Extras, in `shots-extra/`: the six of the mix's brief, `text-editing`,
 `small-block` (now the full clamp on the 54-tall button, running on below
 it), `insert-at-seam`, `insert-drawer-1280` (1280×800), `page-tab`,
 `schedule`; then `block-menu` (the head's menu, with the moves), `more`
@@ -395,7 +395,7 @@ review:
   top scrolls away (the clamp should stick to the top of the canvas while
   its block is in view).
 - **Two menus overlap**: the head's menu is More plus the moves. It may be
-  simpler to make the head's menu the only one; I kept More because MIX.md
+  simpler to make the head's menu the only one; I kept More because the mix's brief
   asks for it and right-click users expect it.
 - **"+" as a key** relies on the canvas being in focus mode for screen
   readers (it already takes the arrows); and Alt+Shift chords are checked
