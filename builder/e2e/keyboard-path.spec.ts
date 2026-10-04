@@ -3,8 +3,10 @@
 // which the upload button opens). From the editor's page: Tab to the
 // canvas and select a heading; open Insert with its chord, and add a
 // divider after the heading with Enter; pick the divider up with Space and
-// move it with the arrows; edit the heading's text and level in the
-// sidebar; write in a text block on the canvas and make a word bold; look
+// move it with the arrows; add a button after the quote from the page,
+// with the "+" key and its picker, and move it up from its clamp; edit
+// the heading's text and level in its Text group in the sidebar; write in
+// a text block on the canvas and make a word bold; look
 // at a tablet from the bottom line's devices, open a closed group of the
 // column's with Enter, and give the column a tablet's own space in its
 // Spacing group; follow the selection's path in the
@@ -62,7 +64,7 @@ function fileChoosers(page: Page): (within?: number) => Promise<FileChooser> {
 const focusedBlock = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.blockId ?? null);
 const order = (page: Page) => page.locator('.canvas [data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType));
 
-test("insert, move, write, style a tablet, upload an image, undo, keep a version, publish and open the live page, by the keyboard alone", { tag: "@a11y" }, async ({ page, request }) => {
+test("insert from Insert and from the page's +, move, write, style a tablet, upload an image, undo, keep a version, publish and open the live page, by the keyboard alone", { tag: "@a11y" }, async ({ page, request }) => {
   test.setTimeout(180_000);
   const notes = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Tide notes" }] }] };
   const { id, slug } = await makePage(request, "By keys", [section("s", "Story", [column("c", [heading("a", "Alpha"), widget("t", "text", { doc: notes }), widget("b", "quote", { text: "Bravo" })])])]);
@@ -106,9 +108,43 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect.poll(() => order(page)).toEqual(["heading", "text", "quote", "divider"]);
   await expect.poll(() => focusedBlock(page)).toBe(divider);
 
+  // Add on the page: Up to the quote; the "+" key opens the picker after
+  // it, its search taking the focus; typed words narrow it to Button, and
+  // Enter adds one after the quote, the focus on the new block.
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(() => focusedBlock(page)).toBe("b");
+  await page.keyboard.press("+");
+  const picker = page.getByRole("dialog", { name: "Add a block after Quote" });
+  await expect(picker.getByRole("searchbox", { name: "Search blocks" })).toBeFocused();
+  await page.keyboard.type("butt");
+  await expect(picker.getByRole("group").getByRole("button")).toHaveText(["Button"]);
+  await page.keyboard.press("Enter");
+  await expect(picker).toHaveCount(0);
+  const addedButton = page.locator('.canvas [data-block-id="c"] > [data-block-type="button"]');
+  await expect(addedButton).toHaveCount(1);
+  const button = (await addedButton.getAttribute("data-block-id"))!;
+  await expect.poll(() => focusedBlock(page)).toBe(button);
+  await expect.poll(() => order(page)).toEqual(["heading", "text", "quote", "button", "divider"]);
+
+  // Move it from its clamp: Tab goes to the clamp's head, Down along it to
+  // Move up, Enter moves the button above the quote with the focus kept on
+  // the key, and Esc goes back to the block.
+  const tools = page.getByRole("toolbar", { name: "Button tools" });
+  await page.keyboard.press("Tab");
+  await expect(tools.getByRole("button", { name: "Button: block menu" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  const moveUp = tools.getByRole("button", { name: "Move up" });
+  await expect(moveUp).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => order(page)).toEqual(["heading", "text", "button", "quote", "divider"]);
+  await expect(moveUp).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect.poll(() => focusedBlock(page)).toBe(button);
+
   // Edit the heading: Up to it, then on to the sidebar, its Text and
-  // Level.
-  for (let n = 0; n < 3; n += 1) await page.keyboard.press("ArrowUp");
+  // Level in its Text group.
+  for (let n = 0; n < 2; n += 1) await page.keyboard.press("ArrowUp");
   await expect.poll(() => focusedBlock(page)).toBe("a");
   const text = page.getByRole("complementary", { name: "Settings" }).getByRole("textbox", { name: "Text" });
   await tabTo(page, text);
@@ -204,8 +240,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   // Image key in Insert, then in the media library Upload images, the file
   // chosen in the system's chooser, its alt text, Add image.
   await tabTo(page, block(page, "a"), { back: true });
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
+  for (let n = 0; n < 3; n += 1) await page.keyboard.press("ArrowDown");
   await expect.poll(() => focusedBlock(page)).toBe("b");
   await page.keyboard.press("Alt+Shift+N");
   await tabTo(page, page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }));
@@ -228,13 +263,13 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(image.getByRole("img", { name: ALT })).toBeVisible();
   const imageId = (await image.getAttribute("data-block-id"))!;
   await expect.poll(() => focusedBlock(page)).toBe(imageId);
-  await expect.poll(() => order(page)).toEqual(["heading", "text", "quote", "image", "divider"]);
+  await expect.poll(() => order(page)).toEqual(["heading", "text", "button", "quote", "image", "divider"]);
 
   // Undo takes the image off, redo puts the same one back, each from the
   // keyboard on the canvas.
   await page.keyboard.press("Control+z");
   await expect(image).toHaveCount(0);
-  await expect.poll(() => order(page)).toEqual(["heading", "text", "quote", "divider"]);
+  await expect.poll(() => order(page)).toEqual(["heading", "text", "button", "quote", "divider"]);
   await page.keyboard.press("Control+y");
   await expect(image.getByRole("img", { name: ALT })).toBeVisible();
   await expect.poll(() => focusedBlock(page)).toBe(imageId);
@@ -270,7 +305,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(more).toBeFocused();
   await served.waitForURL(`${cms()}/${slug}`);
   await expect(served.getByRole("heading", { name: "Swim by the keys", level: 3 })).toBeVisible();
-  expect(await served.locator('[data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType))).toEqual(["heading", "text", "quote", "image", "divider"]);
+  expect(await served.locator('[data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType))).toEqual(["heading", "text", "button", "quote", "image", "divider"]);
   await expect(served.locator('[data-block-id="t"] strong')).toHaveText("swimmers");
   const live = served.getByRole("img", { name: ALT });
   await expect(live).toBeVisible();
@@ -289,11 +324,11 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   const draft = await draftOf(request, id);
   const kept = draft.document.sections[0]!.children[0]! as unknown as { style: unknown; children: Array<{ type: string; props: Record<string, unknown> }> };
   expect(kept.style).toEqual({ base: {}, tablet: { spaceInside: "m" } });
-  expect(kept.children.map((w) => w.type)).toEqual(["heading", "text", "quote", "image", "divider"]);
+  expect(kept.children.map((w) => w.type)).toEqual(["heading", "text", "button", "quote", "image", "divider"]);
   expect(kept.children[0]!.props).toEqual({ level: 3, text: "Swim by the keys" });
   expect(kept.children[1]!.props).toEqual({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Tide notes for " }, { type: "text", text: "swimmers", marks: [{ type: "bold" }] }] }] } });
-  expect(kept.children[3]!.props).toMatchObject({ alt: ALT });
-  expect(kept.children[3]!.props.mediaId).toEqual(expect.any(String));
+  expect(kept.children[4]!.props).toMatchObject({ alt: ALT });
+  expect(kept.children[4]!.props.mediaId).toEqual(expect.any(String));
   const versions = (await (await request.get(`${cms()}/api/pages/${id}/versions`)).json()) as { versions: Array<{ name: string | null; reason: string }> };
   expect(versions.versions.filter((v) => v.name === "Before the swim").map((v) => v.reason)).toEqual(["manual"]);
 });
