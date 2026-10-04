@@ -109,8 +109,9 @@ ruby bin/rails db:prepare
 ```
 
 `db:drop` deletes the development and test databases; `db:prepare`
-creates the development one, loads the schema and, on a database it has
-just created, runs the seed (`ruby bin/rails db:reset` does both in one).
+creates development's three (the pages, the cache and the queue, as in
+production), loads their schemas and, on a primary database it has just
+created, runs the seed (`ruby bin/rails db:reset` does both in one).
 The images the old database pointed at stay in `storage/`, in its
 two-character folders, as files no row names any more (the nine seed
 images, 182 KB, per seed run); delete those folders too for a clean disk.
@@ -407,12 +408,13 @@ a cached one or a 304, even to a visitor who brings cookies (a browser
 sends 127.0.0.1's cookies to every port), and the layout has no CSRF
 meta tag.
 
-Production and the e2e environment cache in Solid Cache, each in its own
-cache database. Development keeps Rails' default, a memory store with
-caching off until `ruby bin/rails dev:cache` turns it on; the browser
-level works there either way. The tests keep the null store, except the
-cache tests, which put Solid Cache in place on the tests' own cache
-database (`storage/test_cache.sqlite3`) and count its calls.
+Production, the e2e environment and development cache in Solid Cache,
+each in its own cache database (`storage/development_cache.sqlite3` for
+development, which `db:prepare` makes). Development keeps Rails' switch:
+caching is off until `ruby bin/rails dev:cache` turns it on, and the
+browser level works there either way. The tests keep the null store,
+except the cache tests, which put Solid Cache in place on the tests' own
+cache database (`storage/test_cache.sqlite3`) and count its calls.
 
 From the repository root, `node tools/check-production.ts` checks this
 from outside a production server: the headers, a 304, a publish seen at

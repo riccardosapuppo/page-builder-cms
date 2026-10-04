@@ -9,13 +9,18 @@ default: &default
   max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   timeout: 5000
 
-# Development keeps its jobs in a queue database of its own, as production
-# does: Solid Queue runs inside Puma here (config/puma.rb), and a scheduled
-# publish must outlive a restart.
+# Development has production's three databases. Its jobs are in a queue
+# database of its own: Solid Queue runs inside Puma here (config/puma.rb),
+# and a scheduled publish must outlive a restart. Its cache is Solid Cache
+# too, used once `ruby bin/rails dev:cache` turns caching on.
 development:
   primary:
     <<: *default
     database: storage/development.sqlite3
+  cache:
+    <<: *default
+    database: storage/development_cache.sqlite3
+    migrations_paths: db/cache_migrate
   queue:
     <<: *default
     database: storage/development_queue.sqlite3
