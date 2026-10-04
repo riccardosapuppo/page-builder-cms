@@ -38,7 +38,7 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
 
 // The design's window, and the smallest the editor is made for.
 for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) test(`the editor has no serious or critical axe finding, in any of its states, at ${size.width} by ${size.height}`, { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Thirty-two states, each read by axe whole.
+  // Thirty-five states, each read by axe whole.
   test.setTimeout(240_000);
   await page.setViewportSize(size);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -50,14 +50,29 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "a heading selected, its first group open, the others closed with their values");
   for (const name of ["Size and color", "Alignment", "Shown on"]) await openGroup(page, name);
   await clean(page, "every group of the heading open");
+  // Its clamp's block menu; the "+" on its edge, its yellow line and the
+  // picker beside it; the seam's "+" below its section, and its picker.
+  await page.getByRole("button", { name: "Heading: block menu" }).click();
+  await expect(page.getByRole("menu", { name: "Heading: block menu" })).toBeVisible();
+  await clean(page, "the clamp's block menu");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Add a block after Heading" }).click();
+  await expect(page.getByRole("dialog", { name: "Add a block after Heading" })).toBeVisible();
+  await clean(page, "the block picker beside its yellow line");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Add a section after First" }).click();
+  await expect(page.getByRole("dialog", { name: "Add a section after First" })).toBeVisible();
+  await clean(page, "the section picker on a seam");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // A text written on the canvas: its formatting buttons on the block's
-  // bar, then its link's field under it.
+  // A text written on the canvas: bold, italic and link in its clamp,
+  // then its link's field under it.
   await block(page, "text-0").click();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
   await settledTextEditor(page, "text-0");
-  await clean(page, "a text being written, its formatting buttons");
+  await clean(page, "a text being written, bold, italic and link in its clamp");
   await page.keyboard.press("Control+k");
   await expect(page.locator(".ov-link input")).toBeFocused();
   await clean(page, "the text's link field");
@@ -83,7 +98,8 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await expect(page.getByRole("button", { name: "Spacing", exact: true })).toContainText("Tablet differs");
   await clean(page, "a tablet's own value in its Spacing group");
   await device(page, "Desktop").click();
-  await page.locator('.tree [data-row-id="first"]').click();
+  // The section's own row: the middle of its item is a row inside it.
+  await page.locator('.tree [data-row-id="first"] > .t-row').click();
   await openGroup(page, "Shown on");
   await openGroup(page, "Name and link");
   await clean(page, "a section's Shown on and Name and link");
@@ -99,8 +115,10 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await device(page, "Desktop").click();
   await block(page, "wide-only").click();
   await device(page, "Phone").click();
-  await expect(page.locator(".canvas [tabindex=\"0\"]")).toHaveAttribute("data-block-id", "second-a");
-  await expect(page.locator(".canvas [tabindex=\"0\"]")).toBeVisible();
+  // (The selection's clamp keeps its own stop, hidden with its block.)
+  await expect(page.locator(".canvas [data-block-id][tabindex=\"0\"]")).toHaveAttribute("data-block-id", "second-a");
+  await expect(page.locator(".canvas [data-block-id][tabindex=\"0\"]")).toBeVisible();
+  await expect(page.locator(".canvas .clamp")).toBeHidden();
   await clean(page, "a block hidden on the phone previewed, selected");
   await device(page, "Desktop").click();
 

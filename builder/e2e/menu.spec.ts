@@ -1,8 +1,10 @@
-// The block's menu in Chromium (design/shots-extra/context.png): a right
-// click on a block of the canvas, or the menu key on the focused one,
-// opens copy, paste, duplicate and delete with their keys; each does what
-// its key does, and the CMS keeps it; Escape closes the menu with the
-// focus back on the block. Copy writes the system clipboard, so the
+// The block's menus in Chromium (design/layout/shots-extra/more.png and
+// block-menu.png): a right click on a block of the canvas opens More,
+// copy, paste after, duplicate, insert before and after, select its
+// column, delete, with their keys; the menu key on the focused block opens
+// the block menu, the moves first, then the same items. Each does what its
+// key does, and the CMS keeps it; Escape closes the menu with the focus
+// back on the block. Copy writes the system clipboard, so the
 // keyboard's paste takes what the menu copied; where the browser will not
 // let the page read the clipboard, the menu's Paste takes the block this
 // tab copied last.
@@ -18,7 +20,7 @@ const fixture = () => [
   ]),
 ];
 
-test("a right click opens the block's menu, whose items copy, paste, duplicate and delete", async ({ page, request, context }) => {
+test("a right click opens the block's More, whose items copy, paste, duplicate and delete", async ({ page, request, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const { id } = await makePage(request, "Menu", fixture());
   await open(page, id);
@@ -26,7 +28,7 @@ test("a right click opens the block's menu, whose items copy, paste, duplicate a
   await block(page, "b").click({ button: "right" });
   const menu = page.getByRole("menu", { name: "Quote actions" });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole("menuitem")).toHaveText(["CopyCtrlC", "PasteCtrlV", "DuplicateCtrlD", "DeleteDel"]);
+  await expect(menu.getByRole("menuitem")).toHaveText(["CopyCtrlC", "Paste afterCtrlV", "DuplicateCtrlD", "Insert before", "Insert after+", "Select Column 1AltUp arrow", "DeleteDel"]);
   await expect(menu.getByRole("menuitem").first()).toBeFocused();
   // Its ring shows, opened by the mouse too (design/shots-extra/
   // context.png), and goes with the focus.
@@ -92,13 +94,19 @@ test("refused the system clipboard, the menu's Paste takes the block this tab co
   expect((await draftOf(request, id)).document.sections[0]!.children[1]!.children.map((w) => w.type)).toEqual(["divider", "quote"]);
 });
 
-test("the menu key opens the menu on the focused block; Escape closes it, the focus back on the block", { tag: "@a11y" }, async ({ page, request }) => {
+test("the menu key opens the block menu on the focused block; Escape closes it, the focus back on the block", { tag: "@a11y" }, async ({ page, request }) => {
   const { id } = await makePage(request, "Menu keys", fixture());
   await open(page, id);
   await block(page, "a").click();
   await page.keyboard.press("Shift+F10");
-  const menu = page.getByRole("menu", { name: "Heading actions" });
-  await expect(menu.getByRole("menuitem").first()).toBeFocused();
+  const menu = page.getByRole("menu", { name: "Heading: block menu" });
+  // The first block of its column cannot move up: it says so, and the
+  // focus starts on the first item that can be pressed.
+  await expect(menu.getByRole("menuitem", { name: /^Move up/ })).toHaveAttribute("aria-disabled", "true");
+  await expect(menu.getByRole("menuitem", { name: /^Move up/ })).toContainText("First in Column 1");
+  await expect(menu.getByRole("menuitem", { name: "Move down" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem", { name: /^Copy/ })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("menuitem", { name: /^Paste/ })).toBeFocused();
   await page.keyboard.press("End");
@@ -110,7 +118,7 @@ test("the menu key opens the menu on the focused block; Escape closes it, the fo
   await drawer(page, "Outline");
   await page.getByRole("treeitem", { name: "First" }).focus();
   await page.keyboard.press("Shift+F10");
-  await expect(page.getByRole("menu", { name: "First actions" })).toBeVisible();
+  await expect(page.getByRole("menu", { name: "First: block menu" })).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(page.locator(".notice")).toHaveText(/Copied First\./);
 });

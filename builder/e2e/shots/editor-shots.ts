@@ -1,9 +1,11 @@
 // node e2e/shots/editor-shots.ts <folder>
 //
 // Photographs the editor in the states of the approved layout's shots
-// (design/layout/shots: editor, structure, history, tablet, publish,
-// empty, shortcuts; design/layout/shots-extra: insert-drawer, pages,
-// page-tab, conflict, offline), named as they are, plus the states the
+// (design/layout/shots: editor, add, structure, history, tablet, publish,
+// empty, shortcuts; design/layout/shots-extra: more, insert-at-seam,
+// new-section, small-block, block-menu, narrow-gutter, seam-hover,
+// insert-drawer, insert-col1, pages, page-tab, conflict, offline), named
+// as they are, plus the states the
 // editor has that the layout draws elsewhere or not at all: the block's
 // menu, the "?" window, a text written on the canvas with its link's field
 // (text, text-link), the hero's first column's groups on the desktop
@@ -140,16 +142,83 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("shortcuts");
   await page.keyboard.press("Escape");
 
-  // A text written on the canvas, its first two words made bold from the
-  // block's bar, then the link's field refusing an address with its
-  // reason. Undone after, so the shots below show the seed's page.
+  // #more (shots-extra): the heading's clamp, its More open, the same
+  // items as the right click.
+  await heading.click();
+  await page.locator('.canvas [data-block-id="hero-heading"] > .clamp [data-key="more"]').click();
+  await page.getByRole("menu", { name: "Heading actions" }).waitFor();
+  await away();
+  await shoot("more");
+  await page.keyboard.press("Escape");
+
+  // #add: the "+" on the heading's edge pressed: the yellow line opens
+  // under it, the block picker beside it, its search taking the focus.
+  await page.getByRole("button", { name: "Add a block after Heading" }).click();
+  await page.getByRole("dialog", { name: "Add a block after Heading" }).waitFor();
+  await away();
+  await shoot("add");
+  await page.keyboard.press("Escape");
+
+  // #insert-at-seam (shots-extra): nothing selected, the "+" on the seam
+  // below Hero, found by the pointer, pressed: the yellow line across the
+  // page, the section picker above it. Then #new-section: 2 columns added
+  // there, a large "+" in each empty column; undone after.
+  await deselect();
+  const hero = await page.locator('.canvas [data-block-id="hero"]').boundingBox();
+  if (!hero) throw new Error("the hero is not on screen");
+  await page.mouse.move(hero.x + hero.width / 2 - 120, hero.y + hero.height, { steps: 4 });
+  await page.locator('.canvas [data-block-id="hero"] > .ins-sec').click();
+  const sections = page.getByRole("dialog", { name: "Add a section after Hero" });
+  await sections.waitFor();
+  await away();
+  await shoot("insert-at-seam");
+  await sections.getByRole("button", { name: "2 columns" }).click();
+  await page.locator(".canvas .ins-empty").nth(1).waitFor();
+  await away();
+  await shoot("new-section");
+  await page.keyboard.press("Control+z");
+  await page.locator(".canvas .ins-empty").waitFor({ state: "detached" });
+
+  // #small-block (shots-extra): the hero's button selected, the same clamp
+  // as every block's, running on below it; then #block-menu, its head
+  // pressed: the moves, then More's items.
+  await page.locator('.canvas [data-block-id="hero-button"]').click();
+  await away();
+  await shoot("small-block");
+  await page.locator('.canvas [data-block-id="hero-button"] > .clamp .clamp-head').click();
+  await page.getByRole("menu", { name: "Button: block menu" }).waitFor();
+  await shoot("block-menu");
+  await page.keyboard.press("Escape");
+
+  // #narrow-gutter (shots-extra): Beginners' course in What we do, its
+  // narrow clamp in the 32 gutter, the focus on the clamp's head.
+  await page.locator('.canvas [data-block-id="swims-course"]').click();
+  await page.locator('.canvas [data-block-id="swims-course"] > .clamp .clamp-head').focus();
+  await away();
+  await shoot("narrow-gutter");
+
+  // #seam-hover (shots-extra): nothing selected, the pointer over the seam
+  // between Gallery and See the bay: the hairline, the "+" and its tip.
+  await deselect();
+  await page.locator('.canvas [data-block-id="meet"]').evaluate((element) => element.scrollIntoView({ block: "center" }));
+  const meet = await page.locator('.canvas [data-block-id="meet"]').boundingBox();
+  if (!meet) throw new Error("See the bay is not on screen");
+  await page.mouse.move(meet.x + meet.width / 2 - 120, meet.y + 1, { steps: 4 });
+  await page.locator(".canvas .seam-tip").waitFor();
+  await shoot("seam-hover");
+  await away();
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+
+  // A text written on the canvas, its first two words made bold from its
+  // clamp, then the link's field refusing an address with its reason.
+  // Undone after, so the shots below show the seed's page.
   const lead = page.locator('.canvas [data-block-id="hero-text"]');
   await lead.click();
   await lead.locator("p").click({ position: { x: 4, y: 10 } });
   await settledTextEditor(page, "hero-text");
   await page.keyboard.press("Control+Home");
   for (let i = 0; i < 10; i += 1) await page.keyboard.press("Shift+ArrowRight");
-  await page.locator(".canvas .ov-bar").getByRole("button", { name: "Bold" }).click();
+  await page.locator(".canvas").getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Bold" }).click();
   await away();
   await shoot("text");
   await page.keyboard.press("Control+k");
@@ -214,6 +283,16 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("drag");
   await page.keyboard.press("Escape");
   await page.mouse.up();
+  await closeDrawers(page);
+
+  // #insert-col1 (shots-extra): the hero's heading selected, Insert open
+  // over the left of the page: the heading's clamp on its right, in the
+  // gutter, and Insert's yellow line under it, its words at its right end.
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await heading.click();
+  await drawer(page, "Insert");
+  await away();
+  await shoot("insert-col1");
   await closeDrawers(page);
 
   // The phone preview of the home page, the hero selected, its Spacing

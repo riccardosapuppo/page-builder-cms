@@ -47,7 +47,7 @@ test("Enter on a block in Insert adds it after the selected block, focused, and 
   await expect(blocks).toHaveCount(3);
   await expect(blocks.nth(1)).toHaveAttribute("data-block-type", "quote");
   await expect(blocks.nth(1)).toBeFocused();
-  await expect(page.getByRole("toolbar", { name: "Quote" })).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Quote tools" })).toBeVisible();
   // Its settings in the sidebar's Block tab; Insert still open, saying the
   // next block goes after the new one.
   await expect(page.getByRole("tab", { name: "Block", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -105,7 +105,7 @@ test("the Outline and the canvas select the same block, both ways, and so do the
 
   await (await row(page, "Column 1")).click();
   await expect(page.locator('.canvas [data-block-id="c"]')).toHaveAttribute("data-editor-selected", "true");
-  await expect(page.getByRole("toolbar", { name: "Column 1" })).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Column 1 tools" })).toBeVisible();
 
   // The tree's keys move the selection, and the canvas with it.
   await page.keyboard.press("ArrowDown");
@@ -230,7 +230,7 @@ test("a new page, made from the page switch, invites its first section, which th
   expect(newId).not.toBe(id);
 
   await page.getByRole("group", { name: "Add a section" }).getByRole("button", { name: "2 columns" }).click();
-  await expect(page.locator(".canvas .col-empty")).toHaveCount(2);
+  await expect(page.locator(".canvas .ins-empty")).toHaveCount(2);
   await expect(page.getByRole("treeitem", { name: "Section 1" })).toHaveAttribute("aria-selected", "true");
   await saved(page);
   const draft = await draftOf(request, newId);
@@ -372,7 +372,7 @@ test.describe("in a 1280 by 800 window", () => {
     await expect(width(page)).toHaveText("Page 928 wide, desktop layout");
   });
 
-  test("the tab of the selection's column is drawn whole, over the next column's line", async ({ page, request }) => {
+  test("on a page whose columns stack, the selection's clamp runs on beside the next column and is drawn whole, over it", async ({ page, request }) => {
     const { id } = await makePage(request, "Stacked", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
     await open(page, id);
     // The tablet page, where the columns stack.
@@ -383,14 +383,20 @@ test.describe("in a 1280 by 800 window", () => {
     const second = (await page.locator('.canvas [data-block-id="c2"]').boundingBox())!;
     expect(second.y).toBeGreaterThan(first.y + first.height - 1);
 
-    // The tab hangs below the first column, where the second column's
-    // dashed line runs: inside its border (the edge pixels are shared with
-    // the line beside it), the tab looks the same with that line hidden.
-    const box = (await page.getByRole("button", { name: "Select Column 1" }).boundingBox())!;
-    const inside = { x: box.x + 2, y: box.y + 2, width: box.width - 4, height: box.height - 4 };
-    const withLine = await page.screenshot({ clip: inside });
-    await page.locator('.canvas [data-block-id="c2"] > .ov-col').evaluate((line) => { (line as HTMLElement).style.visibility = "hidden"; });
-    expect(await page.screenshot({ clip: inside })).toEqual(withLine);
+    // The short heading's clamp runs on below it, down the margin beside
+    // the second column: each of its keys is the clamp's where it is
+    // drawn, none under the column or its words.
+    const clamp = page.getByRole("toolbar", { name: "Heading tools" });
+    const drawn = (await clamp.boundingBox())!;
+    expect(drawn.y + drawn.height).toBeGreaterThan(second.y);
+    expect(drawn.x + drawn.width).toBeLessThanOrEqual(second.x);
+    const keys = await clamp.getByRole("button").all();
+    expect(keys).toHaveLength(5);
+    for (const key of keys) {
+      const box = (await key.boundingBox())!;
+      const on = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest(".clamp")?.getAttribute("aria-label") ?? null, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      expect(on).toBe("Heading tools");
+    }
   });
 
 });
@@ -437,9 +443,9 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
 
   // The page drawn smaller draws its marks smaller too, since they hang
   // from its blocks; the editor's own controls and words among them keep
-  // their size, each where it hangs: the selection's bar, the section's
-  // and the column's tabs, a hovered block's name, a dimension's badge,
-  // an empty column's words.
+  // their size, each where it hangs: the selection's clamp, the "+" on
+  // its edge and on its section's seam, a hovered block's name, a
+  // dimension's badge, an empty column's "+" and words.
   test("the page drawn smaller keeps the editor's controls and words on it at their size, where they hang", async ({ page, request }) => {
     const { id } = await makePage(request, "Chrome", [
       section("s", "Two", [column("c1", [heading("h1", "Left"), heading("h3", "Below")]), column("c2", [heading("h2", "Right")])]),
@@ -489,38 +495,43 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
       await page.mouse.move(1014, 758);
       await expect(page.locator(at('[data-block-id="h1"] > .ov-sel'))).toHaveCount(1);
 
-      // The bar: its buttons 26 square, its name in 12 px words, its
-      // corner on the frame's corner mark, 11 above the frame.
-      const bar = '[data-block-id="h1"] > .ov-sel > .ov-bar';
-      expect(await drawn(bar), device).toEqual({ w: 1, h: 1, text: 12 });
-      for (const button of await page.locator(at(`${bar} > button`)).all()) {
-        const size = (await button.boundingBox())!;
-        expect([Math.round(size.width), Math.round(size.height)], device).toEqual([26, 26]);
+      // The clamp: its keys at their size, level with the frame. On the
+      // desktop page, in its margin of 51 and the bench's 19, the full
+      // clamp, 14 from the block, its head 34 square and its keys 28; the
+      // tablet page drawn smaller fills the canvas, and its margin, 26 and
+      // the bench's 19, holds the narrow one, keys of 26 and its head 28.
+      const clamp = '[data-block-id="h1"] > .clamp';
+      expect(await drawn(clamp), device).toMatchObject({ w: 1, h: 1 });
+      const full = device === "Desktop";
+      await expect(page.locator(at(clamp)), device).toHaveAttribute("data-size", full ? "full" : "narrow");
+      const keys = await page.locator(at(`${clamp} > button`)).all();
+      expect(keys.length, device).toBe(5);
+      for (const [index, key] of keys.entries()) {
+        const size = (await key.boundingBox())!;
+        expect([Math.round(size.width), Math.round(size.height)], device).toEqual(index === 0 ? (full ? [34, 34] : [28, 28]) : (full ? [28, 28] : [26, 26]));
       }
-      expect((await drawn(`${bar} > .ov-name`)).text, device).toBe(12);
-      const barBox = await box(bar);
-      const corner = await box('[data-block-id="h1"] > .ov-sel > .br-tl');
+      const clampBox = await box(clamp);
+      const heading = await box('[data-block-id="h1"]');
       const frameBox = await box('[data-block-id="h1"] > .ov-sel');
-      expect(near(barBox.x, corner.x), device).toBe(true);
-      expect(near(barBox.y + barBox.height, frameBox.y + 2 * scale - 11 * scale), device).toBe(true);
+      if (full) expect(near(clampBox.x + clampBox.width, heading.x - 14), device).toBe(true);
+      else expect(clampBox.x + clampBox.width, device).toBeLessThanOrEqual(heading.x);
+      expect(near(clampBox.y, frameBox.y), device).toBe(true);
 
-      // The section's tab, centred on the section's top edge, and its grip
-      // and + at their size.
-      const tab = '[data-block-id="s"] > .ov-section > .ov-tab';
-      expect(await drawn(tab), device).toEqual({ w: 1, h: 1, text: 12 });
-      for (const part of [".ov-tab-grip", ".ov-tab-add"]) expect(await drawn(`${tab} > ${part}`), device).toMatchObject({ w: 1, h: 1 });
-      const tabBox = await box(tab);
-      const band = await box('[data-block-id="s"] > .ov-section');
-      expect(near(tabBox.x + tabBox.width / 2, band.x + band.width / 2), device).toBe(true);
-      expect(near(tabBox.y + tabBox.height / 2, band.y), device).toBe(true);
-
-      // The column's tab, hanging under the column's line.
-      const columnTab = '[data-block-id="c1"] > .ov-col > .ov-tab';
-      expect(await drawn(columnTab), device).toEqual({ w: 1, h: 1, text: 12 });
-      const line = await box('[data-block-id="c1"] > .ov-col');
-      const hanging = await box(columnTab);
-      expect(near(hanging.x, line.x - scale), device).toBe(true);
-      expect(near(hanging.y, line.y + line.height + scale), device).toBe(true);
+      // The "+" on the block's edge, 24 across, on the frame's bottom line,
+      // in its middle; the seam's below the section, 32, on its edge.
+      const plus = '[data-block-id="h1"] > .ov-sel > .ins-after';
+      expect(await drawn(plus), device).toMatchObject({ w: 1, h: 1 });
+      const plusBox = await box(plus);
+      expect([Math.round(plusBox.width), Math.round(plusBox.height)], device).toEqual([24, 24]);
+      expect(near(plusBox.x + plusBox.width / 2, frameBox.x + frameBox.width / 2), device).toBe(true);
+      // (inside the frame's line, 2 thick)
+      expect(near(plusBox.y + plusBox.height / 2, frameBox.y + frameBox.height - 2 * scale), device).toBe(true);
+      const seam = '[data-block-id="s"] > .ins-sec';
+      const seamBox = await box(seam);
+      const band = await box('[data-block-id="s"]');
+      expect([Math.round(seamBox.width), Math.round(seamBox.height)], device).toEqual([32, 32]);
+      expect(near(seamBox.x + seamBox.width / 2, band.x + band.width / 2), device).toBe(true);
+      expect(near(seamBox.y + seamBox.height / 2, band.y + band.height), device).toBe(true);
 
       // The dimension's badge, beside its line.
       const badge = '[data-block-id="h1"] > .ov-dim-v > span';
@@ -530,10 +541,13 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
       expect(near(badgeBox.x, dimension.x + 18 * scale), device).toBe(true);
       expect(near(badgeBox.y, dimension.y + 9 * scale), device).toBe(true);
 
-      // An empty column keeps its place on the page, drawn smaller, and its
-      // words at their size.
+      // An empty column's large "+" keeps its place on the page, drawn
+      // smaller, and its sign and words at their size.
       const smaller = Number(scale.toFixed(3));
-      expect(await drawn('[data-block-id="c5"] > .col-empty'), device).toEqual({ w: smaller, h: smaller, text: 12 });
+      expect(await drawn('[data-block-id="c5"] > .ins-empty'), device).toMatchObject({ w: smaller, h: smaller });
+      const big = await box('[data-block-id="c5"] > .ins-empty > .ins-big');
+      expect([Math.round(big.width), Math.round(big.height)], device).toEqual([44, 44]);
+      expect(Math.round((await box('[data-block-id="c5"] > .ins-empty > .ins-empty-name')).height), device).toBe(20);
     }
   });
 

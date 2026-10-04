@@ -169,8 +169,9 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     // The browser's context menu key, on the block with the focus.
     await block(page, "a").click();
     await press(page, pressed, "Shift+F10");
-    const menu = page.getByRole("menu", { name: "Heading actions" });
-    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    // The block menu: the moves first, the first that can be made focused.
+    const menu = page.getByRole("menu", { name: "Heading: block menu" });
+    await expect(menu.getByRole("menuitem", { name: "Move down" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(block(page, "a")).toBeFocused();

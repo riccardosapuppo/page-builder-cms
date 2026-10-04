@@ -204,7 +204,7 @@ test("typing, undo and redo give back exactly the document the CMS held, outside
   expect(await storedText(request, id)).toEqual(typed);
 });
 
-test("bold, italic and a link from the block's bar; a refused address says why on the field; Ctrl+U does nothing", async ({ page, request }) => {
+test("bold, italic and a link from the block's clamp; a refused address says why on the field; Ctrl+U does nothing", async ({ page, request }) => {
   const { id } = await makePage(request, "Format", [section("s", "Story", [column("c1", [widget("t", "text", { doc: { type: "doc", content: [p(t("Swim at slack water"))] } })])])]);
   await open(page, id);
   await openText(page);
@@ -212,8 +212,8 @@ test("bold, italic and a link from the block's bar; a refused address says why o
   await page.keyboard.press("Control+Home");
   for (let i = 0; i < 8; i += 1) await page.keyboard.press("ArrowRight");
   for (let i = 0; i < 5; i += 1) await page.keyboard.press("Shift+ArrowRight");
-  const bar = page.locator('.canvas [data-block-id="t"] .ov-bar');
-  await expect(bar.getByRole("group", { name: "Formatting" })).toBeVisible();
+  const bar = page.locator('.canvas [data-block-id="t"]').getByRole("toolbar", { name: "Text formatting" });
+  await expect(bar).toBeVisible();
   await bar.getByRole("button", { name: "Bold" }).click();
   await expect(bar.getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
   await expect(editor(page)).toBeFocused();
@@ -338,8 +338,9 @@ const NEXT: Array<[string, (page: Page) => Promise<void>, (stored: string) => vo
     await page.mouse.up();
     await expect.poll(() => childIds(page, "c2")).toEqual(["d", "t"]);
   }, () => {}],
-  ["Duplicate on the block's bar", async (page) => {
-    await page.locator('.canvas [data-block-id="t"] .ov-bar').getByRole("button", { name: /^Duplicate / }).click();
+  ["Duplicate in the clamp's More", async (page) => {
+    await page.locator('.canvas [data-block-id="t"]').getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^More/ }).click();
+    await page.getByRole("menu", { name: "Text actions" }).getByRole("menuitem", { name: /^Duplicate/ }).click();
     await expect(page.locator('.canvas [data-block-type="text"]')).toHaveCount(2);
   }, () => {}],
 ];

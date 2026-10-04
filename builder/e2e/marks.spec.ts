@@ -1,17 +1,18 @@
 // The editor's marks on the canvas (the hover outline, the selection's
-// frame and bar) are drawn inside each block's root, after the block's own
-// content. They must leave the page's layout as the published page draws
-// it: a stylesheet rule that counts a block's children (:last-child) would
-// count the marks too. The canvas's other parity checks draw the page with
-// nothing hovered or selected, so they cannot see it; this one measures
-// the real canvas with a block hovered and selected, against the page a
-// visitor gets. A button's marks hug the pill it draws, as the approved
-// design draws them, not the column-wide root around it, and follow the
-// pill where an alignment moves it. The section's
-// tab carries its grip and its +, and the selected block its dimension
-// line, in steps.
+// frame and clamp) are drawn inside each block's root, after the block's
+// own content. They must leave the page's layout as the published page
+// draws it: a stylesheet rule that counts a block's children (:last-child)
+// would count the marks too. The canvas's other parity checks draw the
+// page with nothing hovered or selected, so they cannot see it; this one
+// measures the real canvas with a block hovered and selected, against the
+// page a visitor gets. A button's marks hug the pill it draws, as the
+// approved design draws them, not the column-wide root around it, and
+// follow the pill where an alignment moves it. The seam below the
+// selection's section carries its +, a section's clamp its grip, and the
+// selected block its dimension line, in steps. The clamp keeps to the
+// margin, over no words, while a text is written too.
 import type { Page } from "@playwright/test";
-import { block, caption, moveOnto, pickUp } from "./helpers/canvas.ts";
+import { block, caption, clampFaults, clampPlace, moveOnto, pickUp, selectedText, settledTextEditor } from "./helpers/canvas.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, openGroup, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -112,8 +113,9 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
 
   // The column's alignment, chosen by the keyboard while the pointer rests
   // on the button.
-  await button.locator(":scope > .ov-sel .ov-bar").waitFor();
-  await page.getByRole("button", { name: /^Select Column/ }).click();
+  await button.locator(":scope > .clamp").waitFor();
+  await page.getByRole("toolbar", { name: "Button tools" }).getByRole("button", { name: /^More/ }).click();
+  await page.getByRole("menuitem", { name: /^Select Column/ }).click();
   await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
   await openGroup(page, "Alignment");
   // A column's alignment is the horizontal half of its Alignment field.
@@ -137,14 +139,25 @@ const twoSections = () => [
 ];
 const sectionIds = (page: Page) => page.locator(".canvas .sw-main > [data-block-id]").evaluateAll((elements) => elements.map((e) => e.getAttribute("data-block-id")));
 
-test("the section's tab: its grip, its name and columns, its +, which adds a section after it", async ({ page, request }) => {
-  const { id } = await makePage(request, "Tab", twoSections());
+test("the seam below the selection's section: its +, its yellow line and the section picker, which adds a section after it", async ({ page, request }) => {
+  const { id } = await makePage(request, "Seam", twoSections());
   await open(page, id);
   await block(page, "h").click();
-  const tab = page.locator('.canvas [data-block-id="s1"] > .ov-section > .ov-tab');
-  await expect(tab).toHaveText("Hero 2 columns");
-  await expect(tab.locator("[data-grip] svg")).toHaveCount(1);
-  await tab.getByRole("button", { name: "Add a section after Hero" }).click();
+  // One + on a seam: the one below Hero, which holds the selection.
+  const pluses = page.locator(".canvas .ins-sec");
+  await expect(pluses).toHaveCount(1);
+  const plus = page.locator('.canvas [data-block-id="s1"] > .ins-sec');
+  await expect(plus).toHaveAttribute("aria-label", "Add a section after Hero");
+  const hero = (await block(page, "s1").boundingBox())!;
+  const drawn = (await plus.boundingBox())!;
+  expect(Math.abs(drawn.y + drawn.height / 2 - (hero.y + hero.height))).toBeLessThan(1);
+  expect(Math.abs(drawn.x + drawn.width / 2 - (hero.x + hero.width / 2))).toBeLessThan(1);
+  await plus.click();
+  await expect(plus).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator('.canvas [data-block-id="s1"] > .seam .seam-label')).toHaveText("New section");
+  const picker = page.getByRole("dialog", { name: "Add a section after Hero" });
+  await expect(picker).toContainText("Lands on the yellow line, between Hero and Questions.");
+  await picker.getByRole("button", { name: "1 column" }).click();
   await expect.poll(() => sectionIds(page)).toHaveLength(3);
   const [, added] = await sectionIds(page);
   expect(added).not.toBe("s2");
@@ -155,11 +168,23 @@ test("the section's tab: its grip, its name and columns, its +, which adds a sec
   expect(draft.document.sections.map((s) => [s.id, s.children.length])).toEqual([["s1", 2], [added, 1], ["s2", 1]]);
 });
 
-test("the section's tab's grip drags the section, though a widget inside it is the one selected", async ({ page, request }) => {
-  const { id } = await makePage(request, "Tab drag", twoSections());
+test("a section's clamp sits in its margin, its grip dragging the section", async ({ page, request }) => {
+  const { id } = await makePage(request, "Section drag", twoSections());
   await open(page, id);
+  // The section chosen in the bottom line's path, from a widget in it.
   await block(page, "h").click();
-  await pickUp(page, page.locator('.canvas [data-block-id="s1"] > .ov-section > .ov-tab [data-grip]'));
+  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Hero" }).click();
+  const clamp = page.getByRole("toolbar", { name: "Hero tools" });
+  await expect(clamp).toBeVisible();
+  expect(await clampFaults(page)).toEqual([]);
+  expect(await clampPlace(page)).toEqual({ size: "full", side: "left", tie: "none" });
+  // On the same vertical as its first column's blocks' clamps.
+  const own = (await clamp.boundingBox())!;
+  await block(page, "h").click();
+  const blocks = (await page.getByRole("toolbar", { name: "Heading tools" }).boundingBox())!;
+  expect(Math.abs(own.x - blocks.x)).toBeLessThan(1);
+  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Hero" }).click();
+  await pickUp(page, clamp.locator("[data-grip]"));
   await moveOnto(page, block(page, "s2"), "bottom");
   await expect(caption(page).locator("strong")).toHaveText("Hero will move to the page, after Questions.");
   await page.mouse.up();
@@ -175,6 +200,10 @@ test("the selected widget's dimension line names its column's Space between, as 
   await block(page, "h").click();
   const line = page.locator('.canvas [data-block-id="h"] > .ov-dim-v');
   await expect(line).toHaveText("L");
+  // Clear of the "+" in the middle of the block's bottom edge.
+  const badge = (await line.locator("span").boundingBox())!;
+  const plus = (await page.locator('.canvas [data-block-id="h"] .ins-after').boundingBox())!;
+  expect(badge.x + badge.width < plus.x || plus.x + plus.width < badge.x).toBe(true);
   const above = (await block(page, "h").boundingBox())!;
   const next = (await block(page, "t").boundingBox())!;
   const drawn = (await line.boundingBox())!;
@@ -195,148 +224,232 @@ test("the selected widget's dimension line names its column's Space between, as 
   expect(Math.abs((await pad.boundingBox())!.height - padding)).toBeLessThan(1);
 });
 
-// How much of a block's words the selection's bar covers, in square
-// pixels, and where the bar stands.
-async function barOver(page: Page, selected: string, above: string): Promise<{ place: string; covered: number }> {
-  return page.evaluate(({ id, aboveId }) => {
-    const frame = document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"] > .ov-sel`)!;
-    const bar = frame.querySelector(":scope > .ov-bar")!.getBoundingClientRect();
-    const range = document.createRange();
-    let covered = 0;
-    const walker = document.createTreeWalker(document.querySelector(`.canvas [data-block-id="${aboveId}"]`)!, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (node.parentElement?.closest(".ov")) continue;
-      range.selectNodeContents(node);
-      for (const r of range.getClientRects()) covered += Math.max(0, Math.min(r.right, bar.right) - Math.max(r.left, bar.left)) * Math.max(0, Math.min(r.bottom, bar.bottom) - Math.max(r.top, bar.top));
-    }
-    return { place: frame.dataset.bar ?? "", covered: Math.round(covered) };
-  }, { id: selected, aboveId: above });
-}
+// A section whose columns stand a step apart (its Space between columns).
+const spaced = (id: string, label: string, columns: unknown[], spaceBetween: string) => ({ ...section(id, label, columns), style: { base: { spaceBetween } } });
+const boxOf = async (page: Page, selector: string) => (await page.locator(selector).boundingBox())!;
 
-test("the selection's bar moves to the right corner where the left one would cover the words above, and under a text being written where both would", async ({ page, request }) => {
-  const text = (words: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] } });
-  const { id } = await makePage(request, "Bar places", [
-    section("s1", "Short", [column("c1", [heading("short", "Swim by the keys"), widget("t1", "text", text("Tide notes"))])]),
-    section("s2", "Long", [column("c2", [{ ...heading("long", "Swim at slack water, twice a week, at first light, when the bay is flat"), props: { level: 1, text: "Swim at slack water, twice a week, at first light, when the bay is flat" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series."))])]),
+test("the clamp keeps to the margin: full where it has 48, narrow in a gutter of 28 to 47, out to the page's margin under 28, over no block and no words", async ({ page, request }) => {
+  const { id } = await makePage(request, "Clamp places", [
+    // The theme's own gutter, 48.
+    section("wide", "Wide", [column("w1", [heading("wa", "Swim by the keys"), widget("wb", "button", { label: "Join", href: "#" })]), column("w2", [heading("wc", "Tide notes for the week")])]),
+    // Space between columns XL: a gutter of 32.
+    spaced("narrow", "Narrow", [column("n1", [heading("na", "Dawn swims, twice a week, at first light")]), column("n2", [heading("nb", "Beginners' course")])], "xl"),
+    // L: a gutter of 24, too narrow for any clamp.
+    spaced("tight", "Tight", [column("t1", [heading("ta", "One")]), column("t2", [heading("tb", "Two")]), column("t3", [heading("tc", "Three")])], "l"),
   ]);
-  // A page 832 wide, whose long heading's lines reach its column's right
-  // end: in a 1440 window the page is 1088, and the heading's last line
-  // leaves the right corner free.
-  await page.setViewportSize({ width: 1184, height: 900 });
   await open(page, id);
-  await expect(page.locator(".statusbar .sb-width")).toHaveText("Page 832 wide, desktop layout");
-  // A short heading above: the left corner would hide its words, the right one hides none.
-  await block(page, "t1").click();
-  expect(await barOver(page, "t1", "short")).toEqual({ place: "right", covered: 0 });
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
-  await expect.poll(() => barOver(page, "t1", "short")).toEqual({ place: "right", covered: 0 });
-  await page.keyboard.press("Escape");
-  // A heading as wide as its column: both top corners would cover it; the
-  // text being written, last in its column, has room under it.
-  await block(page, "t2").click();
-  expect((await barOver(page, "t2", "long")).place).toMatch(/^(|right)$/);
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
-  await expect.poll(() => barOver(page, "t2", "long")).toEqual({ place: "below", covered: 0 });
-  // The link's field opens under the bar.
-  await page.keyboard.press("Control+k");
-  const field = page.locator(".ov-link");
-  await expect(field).toBeVisible();
-  const barBox = (await page.locator('.canvas [data-block-id="t2"] .ov-bar').boundingBox())!;
-  expect((await field.boundingBox())!.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+  const at = async (target: string, place: Awaited<ReturnType<typeof clampPlace>>) => {
+    await block(page, target).click();
+    await page.mouse.move(5, 895);
+    await expect.poll(() => clampPlace(page)).toEqual(place);
+    expect(await clampFaults(page), target).toEqual([]);
+  };
+  // A first column's block: the page's margin, the full clamp, tied.
+  await at("wa", { size: "full", side: "left", tie: "on" });
+  const first = await boxOf(page, '.canvas [data-block-id="wa"]');
+  const clamp = await boxOf(page, '.canvas [data-block-id="wa"] > .clamp');
+  expect(Math.abs(clamp.x + clamp.width - (first.x - 14))).toBeLessThan(1);
+  // A short block: the same clamp, running on below it.
+  await at("wb", { size: "full", side: "left", tie: "on" });
+  const button = await boxOf(page, '.canvas [data-block-id="wb"]');
+  expect((await boxOf(page, '.canvas [data-block-id="wb"] > .clamp')).y + 100).toBeGreaterThan(button.y + button.height);
+  // The second column, 48 from the first: the full clamp in the gutter.
+  await at("wc", { size: "full", side: "left", tie: "on" });
+  // 32 from it: the narrow clamp, centred, 2 clear on each side.
+  await at("nb", { size: "narrow", side: "left", tie: "none" });
+  const narrow = await boxOf(page, '.canvas [data-block-id="nb"] > .clamp');
+  expect(Math.round(narrow.width)).toBe(28);
+  expect(Math.abs(narrow.x - ((await boxOf(page, '.canvas [data-block-id="n1"]')).x + (await boxOf(page, '.canvas [data-block-id="n1"]')).width) - 2)).toBeLessThan(1);
+  expect(Math.abs((await boxOf(page, '.canvas [data-block-id="nb"]')).x - (narrow.x + narrow.width) - 2)).toBeLessThan(1);
+  // 24: out to the nearer page margin, level with the block, untied.
+  await at("tb", { size: "full", side: "left", tie: "none" });
+  const out = await boxOf(page, '.canvas [data-block-id="tb"] > .clamp');
+  expect(out.x + out.width).toBeLessThan((await boxOf(page, '.canvas [data-block-id="t1"]')).x);
+  expect(Math.abs(out.y - ((await boxOf(page, '.canvas [data-block-id="tb"]')).y - 6))).toBeLessThan(1);
+  await at("tc", { size: "full", side: "right", tie: "none" });
+  expect((await boxOf(page, '.canvas [data-block-id="tc"] > .clamp')).x).toBeGreaterThan((await boxOf(page, '.canvas [data-block-id="t3"]')).x + (await boxOf(page, '.canvas [data-block-id="t3"]')).width);
+  // A column moves left and right; its clamp keeps the same rules.
+  await block(page, "wc").click();
+  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Column 2" }).click();
+  await expect.poll(() => clampPlace(page)).toEqual({ size: "full", side: "left", tie: "on" });
+  expect(await clampFaults(page)).toEqual([]);
+
+  // The check finds what it is there to find: the clamp laid over its
+  // block, then over the column beside it.
+  await block(page, "nb").click();
+  await expect.poll(() => clampPlace(page)).toMatchObject({ size: "narrow" });
+  await page.locator('.canvas [data-block-id="nb"] > .clamp').evaluate((element) => { (element as HTMLElement).style.left = "20px"; });
+  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: over its own block[\s\S]*Heading tools: over the words "Beginners/);
+  await page.locator('.canvas [data-block-id="nb"] > .clamp').evaluate((element) => { (element as HTMLElement).style.left = "-80px"; });
+  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: reaches 28 px into the column beside it/);
 });
 
-test("a text being written never has its bar over the words above, even where the place under it covers the next block", async ({ page, request }) => {
+test("while a text is written, its clamp carries bold, italic and link in the same margin, over no words, and Esc gives its moves back", async ({ page, request }) => {
   const text = (words: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] } });
-  // Columns a third of the page wide, narrower than the bar of a text being
-  // written: both its top corners cover the heading above. Under the text,
-  // a rule as wide as the column, or a button: every place covers something.
-  const { id } = await makePage(request, "Bar crowded", [
+  // Columns a third of the page wide, a heading above the text, a rule or
+  // a button under it: the clamp stays in the margin all the same.
+  const { id } = await makePage(request, "Clamp crowded", [
     section("s1", "Rule", [column("c1", [heading("h1", "Swim by the keys"), widget("t1", "text", text("Tide notes")), widget("d1", "divider", {})]), column("c2", []), column("c3", [])]),
     section("s2", "Button", [column("c4", [{ ...heading("h2", "Swim at slack water"), props: { level: 1, text: "Swim at slack water" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series.")), widget("b2", "button", { label: "Join a trial swim", href: "#" })]), column("c5", []), column("c6", [])]),
   ]);
   await open(page, id);
-  for (const [selected, above, below] of [["t1", "h1", "d1"], ["t2", "h2", "b2"]] as const) {
+  const tools = page.getByRole("toolbar", { name: "Text tools" });
+  const writing = page.getByRole("toolbar", { name: "Text formatting" });
+  for (const selected of ["t1", "t2"]) {
     await block(page, selected).click();
-    // Selected, not written, the bar keeps to the top, as the design draws it.
-    expect((await barOver(page, selected, above)).place).toMatch(/^(|right)$/);
+    await expect(tools).toBeVisible();
+    const before = (await tools.boundingBox())!;
+    expect(await clampFaults(page)).toEqual([]);
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
-    await expect.poll(async () => (await barOver(page, selected, above)).place).toMatch(/^below( right)?$/);
-    expect((await barOver(page, selected, above)).covered).toBe(0);
-    // The bar is drawn under the block.
-    const bar = (await block(page, selected).locator(".ov-bar").boundingBox())!;
+    await settledTextEditor(page, selected);
+    // The head names the text being written; the moves give their place,
+    // the grip and More stay.
+    await expect(writing.getByRole("img", { name: "Text, being written" })).toBeVisible();
+    expect(await writing.getByRole("button").evaluateAll((keys) => keys.map((key) => key.getAttribute("aria-label")))).toEqual(["Drag to move, or press Space to pick up", "Bold", "Italic", "Link", "More: copy, paste, duplicate, insert, delete"]);
+    const during = (await writing.boundingBox())!;
+    expect([during.x, during.y]).toEqual([before.x, before.y]);
+    expect(await clampFaults(page)).toEqual([]);
+    // The last word made bold from the clamp, the caret kept in the text.
+    await page.keyboard.press("End");
+    for (let i = 0; i < 5; i += 1) await page.keyboard.press("Shift+ArrowLeft");
+    await writing.getByRole("button", { name: "Bold" }).click();
+    await expect(writing.getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
+    await expect(block(page, selected).locator(".rte strong")).toHaveCount(1);
+    await expect(block(page, selected).locator(".rte")).toBeFocused();
+    // From the keyboard: Tab from the text to Bold, Down to Italic, Enter.
+    await page.keyboard.press("Tab");
+    await expect(writing.getByRole("button", { name: "Bold" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(writing.getByRole("button", { name: "Italic" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(block(page, selected).locator(".rte strong em, .rte em strong")).toHaveCount(1);
+    await expect(block(page, selected).locator(".rte")).toBeFocused();
+    // The link's field opens under the block.
+    await page.keyboard.press("Control+k");
+    const field = page.locator(".ov-link");
+    await expect(field).toBeVisible();
     const own = (await block(page, selected).boundingBox())!;
-    expect(bar.y).toBeGreaterThan(own.y + own.height);
-    // There it lies over the rule, or the button: no place was free.
-    const next = (await block(page, below).locator("hr, .sw-btn").first().boundingBox())!;
-    expect(Math.min(bar.x + bar.width, next.x + next.width) - Math.max(bar.x, next.x)).toBeGreaterThan(0);
-    expect(Math.min(bar.y + bar.height, next.y + Math.max(next.height, 1)) - Math.max(bar.y, next.y)).toBeGreaterThan(0);
+    expect((await field.boundingBox())!.y).toBeGreaterThanOrEqual(own.y + own.height);
+    await expect(writing.getByRole("button", { name: "Link" })).toHaveAttribute("aria-expanded", "true");
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("group", { name: "Formatting" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(writing).toHaveCount(0);
+    await expect(tools.getByRole("button", { name: "Move up" })).toBeVisible();
+    await page.keyboard.press("Control+z");
   }
 });
 
-// Where a written text's bar, its caret and the canvas's view stand, top
-// and bottom: the view from the canvas's top edge to its bottom one.
-async function inView(page: Page, id: string): Promise<{ bar: boolean; caret: boolean; scrollTop: number }> {
-  return page.evaluate((id) => {
+// Where a written text's clamp stands against the canvas's view: whether
+// it is all in view, its top from the view's top, and the canvas's scroll.
+async function inView(page: Page): Promise<{ clamp: boolean | null; fromTop: number | null; scrollTop: number }> {
+  return page.evaluate(() => {
     const canvas = document.querySelector<HTMLElement>(".canvas")!;
     const view = canvas.getBoundingClientRect();
     const top = view.top + canvas.clientTop;
     const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
-    const bar = document.querySelector(`.canvas [data-block-id="${id}"] > .ov-sel > .ov-bar`)!.getBoundingClientRect();
-    const selection = document.getSelection()!;
-    const caret = selection.getRangeAt(0).getClientRects()[0]!;
-    return { bar: bar.top >= top && bar.bottom <= bottom, caret: caret.top >= top && caret.bottom <= bottom, scrollTop: canvas.scrollTop };
-  }, id);
+    const clamp = document.querySelector(".canvas .clamp")?.getBoundingClientRect();
+    if (!clamp) return { clamp: null, fromTop: null, scrollTop: canvas.scrollTop };
+    return { clamp: clamp.top >= top && clamp.bottom <= bottom, fromTop: Math.round(clamp.top - top), scrollTop: canvas.scrollTop };
+  });
 }
 
-test("a text written at the canvas's bottom edge has its bar under it brought into view, but never at the cost of its caret", async ({ page, request }) => {
+// The two scrolling faults stage 3 left, both of the floating bar's place
+// under a text: a text opened at the canvas's bottom edge scrolled out
+// from under the pointer, and a tall text's bar was not brought into view
+// on a new empty line. The clamp stands beside the text, so nothing need
+// scroll; beside a text taller than the canvas it keeps to the canvas's
+// top, its formatting at hand wherever the caret is.
+test("a text opened at the canvas's bottom edge stays under the pointer; beside a text taller than the canvas, its clamp keeps to the canvas's top", async ({ page, request }) => {
   const paragraphs = (...lines: string[]) => ({ doc: { type: "doc", content: lines.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) } });
   const filler = (n: number) => section(`f${n}`, `Filler ${n}`, [column(`fc${n}`, [heading(`fh${n}`, "Swim by the keys"), widget(`ft${n}`, "text", paragraphs("Tide notes for the week ahead."))])]);
   const long = "Swim at slack water, twice a week, at first light, when the bay is flat";
   const tall = Array.from({ length: 30 }, (_, n) => `Note ${n + 1} on the tides of the bay.`);
-  const { id } = await makePage(request, "Bar at the edge", [
+  const { id } = await makePage(request, "Clamp at the edge", [
     filler(1), filler(2), filler(3),
-    section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims, beginners' courses and a winter series."))])]),
+    section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims, beginners' courses and a winter series.", "Bring a towel."))])]),
     section("s3", "Tall", [column("c3", [{ ...heading("h3", long), props: { level: 1, text: long } }, widget("t3", "text", paragraphs(...tall))])]),
   ]);
-  // A page 832 wide, as in the test above, so the bar stands under the text.
   await page.setViewportSize({ width: 1184, height: 900 });
   await open(page, id);
-  // The heading at the canvas's bottom edge, the text under it out of view;
-  // the arrow key brings the text in, room kept for a bar above it only.
+  // The text's first line 30 above the canvas's bottom edge: clicked once
+  // it is selected, again it opens there, and a triple click selects the
+  // paragraph in it; nothing scrolls, the text stays open.
+  const t2 = block(page, "t2");
+  await page.locator(".canvas").evaluate((canvas) => {
+    const line = canvas.querySelector('[data-block-id="t2"] p')!.getBoundingClientRect();
+    canvas.scrollTop += line.bottom - (canvas.getBoundingClientRect().bottom - 30);
+  });
+  const scrolled = (await inView(page)).scrollTop;
+  const first = t2.locator("p").first();
+  await first.click({ position: { x: 40, y: 8 } });
+  await first.click({ position: { x: 40, y: 8 } });
+  await settledTextEditor(page, "t2");
+  expect((await inView(page)).scrollTop).toBe(scrolled);
+  await first.click({ position: { x: 40, y: 8 }, clickCount: 3 });
+  await expect(t2.locator(".rte")).toBeFocused();
+  expect(await selectedText(page, "t2")).toContain("Dawn swims");
+  expect((await inView(page)).scrollTop).toBe(scrolled);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+
+  // A text taller than the canvas, its top scrolled away: written in its
+  // middle, its clamp stands at the canvas's top, all in view; it stays
+  // there on a new empty line, which has no box of its own, and as the
+  // canvas scrolls on.
+  const tallText = block(page, "t3");
+  await tallText.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await page.locator(".canvas").evaluate((canvas) => { canvas.scrollTop += 300; });
+  await tallText.locator("p").nth(14).click();
+  await tallText.locator("p").nth(14).click();
+  await settledTextEditor(page, "t3");
+  await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
+  await expect.poll(() => inView(page)).toMatchObject({ clamp: true, fromTop: 8 });
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => inView(page)).toMatchObject({ clamp: true, fromTop: 8 });
+  await page.locator(".canvas").evaluate((canvas) => { canvas.scrollTop += 120; });
+  await expect.poll(() => inView(page)).toMatchObject({ clamp: true, fromTop: 8 });
+  expect(await clampFaults(page)).toEqual([]);
+});
+
+test("a short block chosen by the keyboard at the canvas's bottom edge comes into view with its whole clamp, which runs on below it", async ({ page, request }) => {
+  const paragraphs = (...lines: string[]) => ({ doc: { type: "doc", content: lines.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) } });
+  const filler = (n: number) => section(`f${n}`, `Filler ${n}`, [column(`fc${n}`, [heading(`fh${n}`, "Swim by the keys"), widget(`ft${n}`, "text", paragraphs("Tide notes for the week ahead."))])]);
+  const long = "Swim at slack water, twice a week, at first light, when the bay is flat";
+  const { id } = await makePage(request, "Clamp brought in", [
+    filler(1), filler(2), filler(3),
+    section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims.")), widget("b2", "button", { label: "Join", href: "#" })])]),
+  ]);
+  await page.setViewportSize({ width: 1184, height: 900 });
+  await open(page, id);
+  // The heading at the canvas's bottom edge, the text and the button under
+  // it out of view; the arrow keys bring each in with its clamp, which is
+  // taller than either.
   await page.locator(".canvas").evaluate((canvas) => {
     const heading = canvas.querySelector('[data-block-id="long"]')!.getBoundingClientRect();
     canvas.scrollTop += heading.bottom - (canvas.getBoundingClientRect().bottom - 30);
   });
   await block(page, "long").click({ position: { x: 6, y: 6 } });
-  await page.keyboard.press("ArrowDown");
-  await expect(block(page, "t2")).toBeFocused();
+  for (const next of ["t2", "b2"]) {
+    await page.keyboard.press("ArrowDown");
+    await expect(block(page, next)).toBeFocused();
+    const own = (await block(page, next).boundingBox())!;
+    const clamp = (await page.locator(".canvas .clamp").boundingBox())!;
+    expect(clamp.y + clamp.height).toBeGreaterThan(own.y + own.height);
+    await expect.poll(async () => (await inView(page)).clamp).toBe(true);
+  }
+  // Written there, the text keeps its caret in view as it grows.
+  await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
-  await expect.poll(() => barOver(page, "t2", "long")).toEqual({ place: "below", covered: 0 });
-  await expect.poll(async () => (await inView(page, "t2")).bar).toBe(true);
-  expect((await inView(page, "t2")).caret).toBe(true);
-  // A new line makes the text taller and moves the bar down: it is kept in view.
+  await settledTextEditor(page, "t2");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Bring a towel.");
-  await expect.poll(async () => (await inView(page, "t2")).bar).toBe(true);
-  expect((await inView(page, "t2")).caret).toBe(true);
-  await page.keyboard.press("Escape");
-  // A text taller than the canvas, written near its top: its bar is far
-  // under the view, and showing it would hide the caret; nothing scrolls.
-  const tallText = block(page, "t3");
-  await tallText.evaluate((element) => element.scrollIntoView({ block: "start" }));
-  await tallText.locator("p").nth(2).click();
-  await tallText.locator("p").nth(2).click();
-  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
-  await expect.poll(() => barOver(page, "t3", "h3")).toEqual({ place: "below", covered: 0 });
-  const opened = await inView(page, "t3");
-  expect(opened).toMatchObject({ bar: false, caret: true });
-  await page.keyboard.type("Calm ");
-  await page.waitForTimeout(300);
-  expect(await inView(page, "t3")).toEqual(opened);
+  const caret = await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLElement>(".canvas")!;
+    const view = canvas.getBoundingClientRect();
+    const line = document.getSelection()!.getRangeAt(0).getClientRects()[0]!;
+    return line.top >= view.top && line.bottom <= view.top + canvas.clientHeight;
+  });
+  expect(caret).toBe(true);
+  expect(await clampFaults(page)).toEqual([]);
 });

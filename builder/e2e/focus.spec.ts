@@ -1,7 +1,9 @@
 // Where the focus goes after each command, in Chromium: after a delete to
 // the neighbour, after an insert to the new block, after an undo to the
 // block the undo touched; each by the keyboard and by the mouse, on the
-// canvas or on the outline, whichever the person was on.
+// canvas or on the outline, whichever the person was on. A move from the
+// clamp keeps the focus on its key; a picker closed without adding gives
+// it back to its "+", or to the block the "+" key opened it from.
 import { block, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { column, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
@@ -24,8 +26,9 @@ test("after a delete, the focus is on the block now in its place, else the one b
   await expect(block(page, "b")).toHaveCount(0);
   await expect(block(page, "c")).toBeFocused();
   await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
-  // The last of its column: the one before.
-  await page.getByRole("button", { name: "Delete Button" }).click();
+  // The last of its column, deleted from its clamp's More: the one before.
+  await page.getByRole("toolbar", { name: "Button tools" }).getByRole("button", { name: /^More/ }).click();
+  await page.getByRole("menu", { name: "Button actions" }).getByRole("menuitem", { name: /^Delete/ }).click();
   await expect(block(page, "a")).toBeFocused();
   // The only one: its column.
   await block(page, "d").click();
@@ -101,4 +104,37 @@ test("after an undo, the focus is on the block the undo touched", { tag: "@a11y"
   // Redo puts the copy back, and the focus on it.
   await page.keyboard.press("Control+Shift+z");
   await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(1)).toBeFocused();
+});
+
+test("after a move from the clamp, the focus is on its key; after an add from a +, on the new block; a picker closed gives it back", { tag: "@a11y" }, async ({ page, request }) => {
+  const { id } = await makePage(request, "Focus clamp", fixture());
+  await open(page, id);
+  await block(page, "b").click();
+  const clamp = page.getByRole("toolbar", { name: "Quote tools" });
+  await clamp.getByRole("button", { name: "Move up" }).click();
+  await expect.poll(async () => page.locator('.canvas [data-block-id="c1"] > [data-block-id]').evaluateAll((e) => e.map((x) => x.getAttribute("data-block-id")))).toEqual(["b", "a", "c"]);
+  await expect(clamp.getByRole("button", { name: "Move up" })).toBeFocused();
+  await expect(clamp.getByRole("button", { name: "Move up" })).toHaveAttribute("aria-disabled", "true");
+  // From the keyboard: Enter on the key, the focus still on it.
+  await page.keyboard.press("ArrowDown");
+  await expect(clamp.getByRole("button", { name: "Move down" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => page.locator('.canvas [data-block-id="c1"] > [data-block-id]').evaluateAll((e) => e.map((x) => x.getAttribute("data-block-id")))).toEqual(["a", "b", "c"]);
+  await expect(clamp.getByRole("button", { name: "Move down" })).toBeFocused();
+
+  // The "+" on its edge: Esc gives the focus back to it; a key of the
+  // picker adds, the new block focused and selected.
+  const plus = page.getByRole("button", { name: "Add a block after Quote" });
+  await plus.click();
+  const picker = page.getByRole("dialog", { name: "Add a block after Quote" });
+  await expect(picker.getByRole("searchbox", { name: "Search blocks" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(picker).toHaveCount(0);
+  await expect(plus).toBeFocused();
+  await plus.click();
+  await picker.getByRole("button", { name: "Spacer" }).click();
+  const added = page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(2);
+  await expect(added).toHaveAttribute("data-block-type", "spacer");
+  await expect(added).toBeFocused();
+  await expect(added).toHaveAttribute("data-editor-selected", "true");
 });

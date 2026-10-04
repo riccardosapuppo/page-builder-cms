@@ -76,9 +76,9 @@ export function caption(page: Page): Locator {
   return page.locator(".live-caption");
 }
 
-// The floating bar's grip of the selected block.
+// The grip of the selected block's clamp.
 export function grip(page: Page): Locator {
-  return page.locator(".canvas .ov-bar [data-grip]");
+  return page.locator(".canvas .clamp [data-grip]");
 }
 
 // The text editor open in a text block, once it has the focus and
@@ -109,4 +109,61 @@ export async function settledTextEditor(page: Page, id: string): Promise<Locator
     return dom !== null && document.activeElement === dom && typeof lastFocus === "number" && Date.now() - lastFocus > 250;
   }, id);
   return editor;
+}
+
+// What is wrong with where the selected block's clamp stands, by the
+// approved layout's rules (design/layout/NOTES.md, section 4.2, and the
+// check its photographs were taken with): over its own block, into
+// a column beside it, over any words of the page, its head hidden under
+// something else (a drawer, a picker), or without its moves (Move up and
+// down, or left and right for a column). Nothing, when all is well. A
+// section's clamp sits inside it, in its margin, so only its words count.
+export async function clampFaults(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const bad: string[] = [];
+    const r = (el: Element) => el.getBoundingClientRect();
+    const hit = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+    const range = document.createRange();
+    for (const clamp of document.querySelectorAll<HTMLElement>(".canvas .clamp")) {
+      const name = clamp.getAttribute("aria-label") ?? "a clamp";
+      const box = r(clamp);
+      const own = clamp.parentElement as HTMLElement;
+      const section = own.dataset.blockType === "section";
+      if (!section && hit(box, r(own))) bad.push(`${name}: over its own block`);
+      const column = own.dataset.blockType === "column" ? own : own.closest<HTMLElement>("[data-block-type=column]");
+      for (const other of column?.parentElement?.children ?? []) {
+        if (other === column || !(other instanceof HTMLElement) || other.dataset.blockType !== "column") continue;
+        const o = r(other);
+        if (hit(box, o)) bad.push(`${name}: reaches ${Math.round(Math.min(box.right, o.right) - Math.max(box.left, o.left))} px into the column beside it`);
+      }
+      // The page's words under it, its own block's (a section's) included.
+      const walker = document.createTreeWalker(document.querySelector(".canvas .site")!, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim() || node.parentElement?.closest(".clamp, .ov, .ins, .ins-empty, .seam-tip, [data-theme-part]")) continue;
+        range.selectNodeContents(node);
+        if ([...range.getClientRects()].some((line) => hit(box, line))) bad.push(`${name}: over the words "${node.textContent.trim().slice(0, 30)}"`);
+      }
+      if (!clamp.classList.contains("clamp-text")) {
+        const labels = [...clamp.querySelectorAll(":scope > button")].map((key) => key.getAttribute("aria-label"));
+        const wants = own.dataset.blockType === "column" ? ["Move left", "Move right"] : ["Move up", "Move down"];
+        for (const want of wants) if (!labels.includes(want)) bad.push(`${name}: no ${want}`);
+      }
+      const head = clamp.querySelector(".clamp-head");
+      if (head) {
+        const h = r(head);
+        const top = document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2);
+        if (!top || !clamp.contains(top)) bad.push(`${name}: its head is hidden under ${top ? `${top.tagName.toLowerCase()}.${[...top.classList].join(".")}` : "nothing"}`);
+      }
+    }
+    return bad;
+  });
+}
+
+// The selected block's clamp: its size, the side of the block it stands
+// on, and whether it is tied to the selection's frame.
+export async function clampPlace(page: Page): Promise<{ size: string; side: string; tie: string } | null> {
+  return page.evaluate(() => {
+    const clamp = document.querySelector<HTMLElement>(".canvas .clamp");
+    return clamp ? { size: clamp.dataset.size ?? "", side: clamp.dataset.side ?? "", tie: clamp.dataset.tie ?? "" } : null;
+  });
 }
