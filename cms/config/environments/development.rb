@@ -31,6 +31,13 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
+  # Jobs go through Solid Queue, as in production, on a queue database of
+  # their own (database.yml), run by Puma (config/puma.rb). Rails' default
+  # here, :async, keeps them in memory: a scheduled publish would be lost
+  # with every restart.
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
 

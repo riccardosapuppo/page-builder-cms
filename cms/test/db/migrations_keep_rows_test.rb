@@ -32,10 +32,15 @@ class MigrationsKeepRowsTest < ActiveSupport::TestCase
     dir = Rails.root.join("tmp", "migrations-#{SecureRandom.hex(4)}")
     FileUtils.mkdir_p(dir)
     file = dir.join("data.sqlite3")
-    env = { "RAILS_ENV" => "development", "DATABASE_URL" => "sqlite3:#{file.relative_path_from(Rails.root)}", "SCHEMA" => dir.join("schema.rb").to_s }
+    # Development's queue database too goes to the folder: migrating
+    # development touches every database it has.
+    env = { "RAILS_ENV" => "development", "DATABASE_URL" => "sqlite3:#{file.relative_path_from(Rails.root)}",
+            "QUEUE_DATABASE_URL" => "sqlite3:#{dir.join('queue.sqlite3').relative_path_from(Rails.root)}", "SCHEMA" => dir.join("schema.rb").to_s }
     rails = ->(*tasks) { Open3.capture2e(env, RbConfig.ruby, "bin/rails", *tasks, chdir: Rails.root.to_s) }
 
-    out, status = rails.call("db:migrate", "VERSION=#{FIRST}")
+    # Up to FIRST on the primary database alone: with more than one
+    # database, Rails takes VERSION for each database's own migrations.
+    out, status = rails.call("db:migrate:primary", "VERSION=#{FIRST}")
     assert status.success?, out
     before = with_database(file) do |db|
       fill(db)

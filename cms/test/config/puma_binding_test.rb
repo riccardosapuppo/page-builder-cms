@@ -57,4 +57,30 @@ class PumaBindingTest < ActiveSupport::TestCase
     assert_includes config.plugins.instance_variable_get(:@instances).map(&:class), plugin, "config/puma.rb loads the plugin"
     assert_nil plugin.new.start(launcher_for(config))
   end
+
+  def with_env(changes)
+    saved = changes.keys.index_with { |name| ENV[name] }
+    changes.each { |name, value| value.nil? ? ENV.delete(name) : ENV[name] = value }
+    yield
+  ensure
+    saved&.each { |name, value| value.nil? ? ENV.delete(name) : ENV[name] = value }
+  end
+
+  # Solid Queue's supervisor runs inside the server where the jobs must
+  # run without a second process to start: development, and e2e, whose
+  # browser tests watch a scheduled publish happen. As threads on Windows,
+  # which cannot fork.
+  test "the jobs run inside the server in development and e2e, elsewhere only when asked" do
+    queue = Puma::Plugins.find("solid_queue")
+    mode = Gem.win_platform? ? :async : :fork
+    [ [ "development", nil, true ], [ "e2e", nil, true ], [ "production", nil, false ], [ "test", nil, false ],
+      [ "production", "1", true ] ].each do |env, in_puma, runs|
+      with_env("RAILS_ENV" => env, "SOLID_QUEUE_IN_PUMA" => in_puma) do
+        config = configuration
+        loaded = config.plugins.instance_variable_get(:@instances).map(&:class).include?(queue)
+        assert_equal runs, loaded, "#{env}, SOLID_QUEUE_IN_PUMA=#{in_puma.inspect}"
+        assert_equal mode, config.options[:solid_queue_mode], env if runs
+      end
+    end
+  end
 end

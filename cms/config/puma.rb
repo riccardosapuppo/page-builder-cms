@@ -64,8 +64,18 @@ plugin :loopback_only
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
-# Run the Solid Queue supervisor inside of Puma for single-server deployments.
-plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
+# The jobs (a scheduled publish, the pruning of old versions) run in Solid
+# Queue's supervisor inside Puma, so one server is all there is to start
+# and to stop: always in development and in e2e, where the editor's
+# browser tests need a scheduled publish to really happen, and anywhere
+# else with SOLID_QUEUE_IN_PUMA set (production otherwise runs bin/jobs).
+# Windows cannot fork: there the supervisor and its workers are threads
+# of Puma's own process (:async); elsewhere a child process (:fork).
+# RAILS_ENV is set by `ruby bin/rails server` before Puma reads this file.
+if ENV["SOLID_QUEUE_IN_PUMA"] || %w[development e2e].include?(ENV["RAILS_ENV"] || ENV["RACK_ENV"] || "development")
+  plugin :solid_queue
+  solid_queue_mode(Gem.win_platform? ? :async : :fork)
+end
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.

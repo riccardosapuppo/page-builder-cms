@@ -12,9 +12,9 @@ require "active_support/core_ext/integer/time"
 # - forgery protection on, as in production, so a test that uploads
 #   through the API's own endpoint shows it needs no CSRF token, while
 #   Active Storage's stock endpoint refuses without one;
-# - the solid_cache and solid_queue adapters, as in production. Running
-#   the queue inside Puma, for scheduled publishing, arrives with the jobs
-#   (stage 4).
+# - the solid_cache and solid_queue adapters, as in production, with
+#   Solid Queue running inside Puma (config/puma.rb), so a scheduled
+#   publish really happens at its time while the tests watch.
 # The harness sets SECRET_KEY_BASE_DUMMY=1: like production, this
 # environment has no credentials file to read a secret from.
 Rails.application.configure do
