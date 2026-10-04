@@ -38,12 +38,15 @@ module PageCache
   # icons the theme draws, and the enums that decide which classes exist.
   SCHEMA_PATTERN = "*.{json,svg}"
   # Of those, what a reloading server (development) reads again as it
-  # reloads: the code and templates (app/, lib/), the routes and the
-  # locales. Every other file of the release is read once, as the process
-  # starts: config/site.yml, the other config files, the gems, the
-  # schema's files. A reloading server that has not been restarted still
-  # draws with what it read then, whatever the disk holds now, so the
-  # release it names is the one it read then.
+  # reloads: the code and templates (app/, lib/), the routes, the locales,
+  # and the schema's files. These are read by models that reload with the
+  # code (SiteIcons, SiteTokens, BlockStyle, BlockDocument::Schema), and a
+  # change to one reloads it, as an edited model does
+  # (config.watchable_files, config/application.rb). Every other file of
+  # the release is read once, as the process starts: config/site.yml, the
+  # other config files, the gems. A reloading server that has not been
+  # restarted still draws with what it read then, whatever the disk holds
+  # now, so the release it names is the one it read then.
   RELOADED = %w[app lib config/routes.rb config/locales].freeze
 
   MUTEX = Mutex.new
@@ -140,13 +143,21 @@ module PageCache
   def release_files(root: release_paths[:root], schema_dir: release_paths[:schema_dir])
     files = RELEASE_DIRECTORIES.flat_map { |dir| Dir.glob(File.join(root.to_s, dir, "**", "*")) }
     files += RELEASE_FILES.map { |file| File.join(root.to_s, file) }
-    files += Dir.glob(File.join(schema_dir.to_s, SCHEMA_PATTERN))
+    files += schema_files(schema_dir)
     files.select { |path| File.file?(path) }.sort
   end
 
-  # The files a reloading server reads again as it reloads (RELOADED).
-  def reloaded_files(root: release_paths[:root])
+  # The schema folder's own files (SCHEMA_PATTERN), sorted. Matched inside
+  # the folder, so a character of its path is never read as a pattern.
+  def schema_files(schema_dir = release_paths[:schema_dir])
+    Dir.glob(SCHEMA_PATTERN, base: schema_dir.to_s).sort.map { |name| File.join(schema_dir.to_s, name) }
+  end
+
+  # The files a reloading server reads again as it reloads (RELOADED, and
+  # the schema's files).
+  def reloaded_files(root: release_paths[:root], schema_dir: release_paths[:schema_dir])
     paths = RELOADED.flat_map { |entry| Dir.glob(File.join(root.to_s, entry, "**", "*")) + [ File.join(root.to_s, entry) ] }
+    paths += schema_files(schema_dir)
     paths.select { |path| File.file?(path) }.sort
   end
 
@@ -157,7 +168,7 @@ module PageCache
 
   # The rest of the release: what the process reads once, as it starts.
   def booted_files(**paths)
-    release_files(**paths) - reloaded_files(**paths.slice(:root))
+    release_files(**paths) - reloaded_files(**paths)
   end
 
   # The digest of the files' paths (from the repository's root, where cms/

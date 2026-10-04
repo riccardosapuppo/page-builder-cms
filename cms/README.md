@@ -405,13 +405,17 @@ runs, so it is computed as the process starts
 never at the first visit: a server whose files change before its first
 page would otherwise draw the old config under the new release's name,
 and keep doing so after a restart. Where code reloads (development), the
-files that reload (`app/`, `lib/`, the routes and the locales) are read
-again whenever one of them changes, so an edited partial is never
-answered with a 304 for the page it no longer draws; the others
-(`config/site.yml` and the rest of `config/`, `Gemfile.lock`, the
-schema's files) are read once, as the process starts, and change the
-release only with a restart, since a running server draws with what it
-read then.
+files that reload (`app/`, `lib/`, the routes and the locales, and the
+schema's files) are read again whenever one of them changes, so an
+edited partial or icon is never answered with a 304 for the page it no
+longer draws. The schema's files count with them because the models that
+read them (`SiteIcons`, `SiteTokens`, `BlockStyle`,
+`BlockDocument::Schema`) reload with the code, and a change to one of
+those files reloads it (`config.watchable_files`, in
+[config/application.rb](config/application.rb)). The others
+(`config/site.yml` and the rest of `config/`, `Gemfile.lock`) are read
+once, as the process starts, and change the release only with a
+restart, since a running server draws with what it read then.
 
 | What changes | Browser | Whole page | Blocks |
 | --- | --- | --- | --- |

@@ -51,6 +51,16 @@ module Cms
     # editor: they live beside this app in the repository, never copied in.
     config.x.schema_dir = Rails.root.join("..", "schema").expand_path
 
+    # The schema folder's own files (not its corpus) are read by models
+    # that reload with the code (SiteIcons, SiteTokens, BlockStyle,
+    # BlockDocument::Schema). Where code reloads (development), a change to
+    # one reloads the code, as an edited model does: the server then draws
+    # with the files on disk, and the release it names follows them
+    # (PageCache counts them among the files that reload). Without this,
+    # an edited icon waited for the next reload of something else, and the
+    # release named the files as they were at the start.
+    config.watchable_files.concat(Dir.glob("*.{json,svg}", base: config.x.schema_dir.to_s).sort.map { |name| config.x.schema_dir.join(name).to_s })
+
     # The site's name, menu and footer line (config/site.yml).
     config.x.site = config_for(:site)
 

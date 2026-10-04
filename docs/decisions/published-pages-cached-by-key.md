@@ -35,8 +35,9 @@ Every copy is named by what makes the page's bytes
   a key derived from the secret (which signs library images' addresses).
   It is computed as the process starts, never at its first visit, so it
   names the files the process runs. Where code reloads, the files that
-  reload (`app/`, `lib/`, the routes, the locales) are read again when one
-  changes; the rest (`config/site.yml`, the gems, the schema's files) is
+  reload (`app/`, `lib/`, the routes, the locales, and the schema's files,
+  whose readers reload with the code and which the reloader watches) are
+  read again when one changes; the rest (`config/site.yml`, the gems) is
   what the process read as it started, and changes the release only with
   a restart.
 
