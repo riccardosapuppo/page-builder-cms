@@ -1,5 +1,5 @@
 // A tablet's and a phone's own values, in Chromium against the run's CMS:
-// set in the Style tab with the canvas previewing that device, each shown
+// set in the sidebar's groups with the canvas previewing that device, each shown
 // on the canvas through the page's own container queries, and the same on
 // the page the CMS serves at that width; the way back to the desktop takes
 // the device's key out of the draft the CMS holds, with the focus back on
@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { tokensFile } from "../build/paths.ts";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, device as deviceKey, draftOf, drawer, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
+import { cms, column, device as deviceKey, draftOf, drawer, expect, heading, makePage, open, openGroup, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -39,18 +39,19 @@ async function served(page: Page, id: number, width: number): Promise<string> {
   return value;
 }
 
-test("a tablet's and a phone's own space, set in the Style tab, is what the canvas and the served page show at each width", { tag: "@a11y" }, async ({ page, request }) => {
+test("a tablet's and a phone's own space, set in the column's Spacing group, is what the canvas and the served page show at each width", { tag: "@a11y" }, async ({ page, request }) => {
   const { id } = await makePage(request, "Devices", fixture());
   await open(page, id);
-  // The column, from its heading: Alt+Up.
+  // The column, from its heading: Alt+Up. Its first group, Spacing, is
+  // open.
   await block(page, "a").click();
   await page.keyboard.press("Alt+ArrowUp");
   await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
-  await page.getByRole("tab", { name: "Style" }).click();
+  const spacing = await openGroup(page, "Spacing");
 
   // The tablet: the desktop's S, until changed here, to L.
   await device(page, "Tablet");
-  await expect(page.locator(".device-note")).toHaveText("Editing for tablet. Changes you make now apply to tablets only.");
+  await expect(page.locator(".device-note")).toHaveText("Editing for tablet. Changes to its look apply to tablets only.");
   const spaceInside = field(page, "Space inside");
   await expect(spaceInside.locator(".scope")).toHaveText("From desktop");
   await expect(block(page, "c")).toHaveCSS("padding-top", px("s"));
@@ -62,6 +63,8 @@ test("a tablet's and a phone's own space, set in the Style tab, is what the canv
   await expect(spaceInside.locator(".scope")).toHaveText("Tablet only");
   await expect(spaceInside.locator(".override p")).toHaveText("Tablet override: L on all four sides. Desktop and phone use S, marked with a ring.");
   await expect(spaceInside.locator(".ruler-ghost")).toHaveAttribute("data-step", "s");
+  // The group's head says the tablet differs.
+  await expect(spacing.locator(".grp-dev")).toHaveText("Tablet differs");
   // The canvas, 768 wide, takes the tablet's L through the page's container
   // query; the dimension line says it is the tablet's own.
   await expect(block(page, "c")).toHaveCSS("padding-top", px("l"));
@@ -83,6 +86,7 @@ test("a tablet's and a phone's own space, set in the Style tab, is what the canv
   await expect(spaceInside.locator(".scope")).toHaveText("Phone only");
   await expect(block(page, "c")).toHaveCSS("padding-top", px("xs"));
   await expect(spaceInside.locator(".override p")).toHaveText("Phone override: XS on all four sides. Desktop uses S, marked with a ring; tablets have their own, L.");
+  await expect(spacing.locator(".grp-dev")).toHaveText("Tablet and phone differ");
 
   // The desktop still S, and says what the devices have.
   await device(page, "Desktop");
@@ -129,7 +133,7 @@ test("a section's rulers print their nine steps apart, none touching the next", 
   await open(page, id);
   await drawer(page, "Outline");
   await page.locator('.tree [data-row-id="s"] > .t-row').click();
-  await page.getByRole("tab", { name: "Style" }).click();
+  await openGroup(page, "Spacing");
   // The room between each printed name and the next, in pixels, measured
   // on the words themselves, ruler by ruler.
   const gaps = () => page.locator(".sidebar .ruler-nums").evaluateAll((rows) => rows.map((row) => {
@@ -158,7 +162,7 @@ test("a block hidden on phones leaves the phone's canvas and the phone's page, a
   const { id } = await makePage(request, "Hidden on phones", fixture());
   await open(page, id);
   await block(page, "b").click();
-  await page.getByRole("tab", { name: "Advanced" }).click();
+  await openGroup(page, "Shown on");
   await device(page, "Phone");
   const hide = page.getByRole("switch", { name: "Hide on phone" });
   await hide.focus();
@@ -168,7 +172,10 @@ test("a block hidden on phones leaves the phone's canvas and the phone's page, a
   await expect(hide).toBeChecked();
   await expect(hide).toBeFocused();
   await expect(block(page, "b")).toBeHidden();
-  await expect(page.locator(".sidebar .device-note")).toHaveText("Hidden on phones: the canvas leaves it out while you preview a phone, as a visitor’s phone does.");
+  await expect(page.locator('.sidebar [data-group="shown"] .device-note')).toHaveText("Hidden on phones: the canvas leaves it out while you preview a phone, as a visitor’s phone does.");
+  // Closed, Shown on says so.
+  await page.getByRole("button", { name: "Shown on", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Shown on", exact: true })).toHaveAccessibleDescription("Desktop and tablet");
   await drawer(page, "Outline");
   const row = page.locator('.tree [data-row-id="b"]');
   await expect(row).toHaveClass(/t-hidden/);

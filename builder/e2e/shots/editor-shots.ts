@@ -6,7 +6,9 @@
 // page-tab, conflict, offline), named as they are, plus the states the
 // editor has that the layout draws elsewhere or not at all: the block's
 // menu, the "?" window, a text written on the canvas with its link's field
-// (text, text-link), a section's Advanced tab, the phone preview with the
+// (text, text-link), the hero's first column's groups on the desktop
+// (style), a section's Shown on and Name and link (section), the phone
+// preview with the
 // hero's phone values, a drag from Insert, Block edges, the mark's menu,
 // About, the media library and the site style; and the home page as the
 // CMS serves it to a tablet and a phone (served-tablet, served-phone).
@@ -67,6 +69,12 @@ async function row(page: Page, name: string): Promise<Locator> {
 }
 
 const device = (page: Page, name: "Desktop" | "Tablet" | "Phone") => page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: new RegExp(`^${name}`) }).click();
+
+// A group of the sidebar, opened by its head if it is closed.
+async function group(page: Page, name: string): Promise<void> {
+  const head = page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name, exact: true });
+  if ((await head.getAttribute("aria-expanded")) !== "true") await head.click();
+}
 
 async function photograph(browser: Browser, url: string, allowed: readonly string[], window: (typeof WINDOWS)[number], first: boolean): Promise<void> {
   mkdirSync(window.folder, { recursive: true });
@@ -155,29 +163,39 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.keyboard.press("Control+z");
 
   // #tablet: Tablet in the bottom line, the hero's first column chosen in
-  // the Outline, its Style tab with its tablet-only space.
+  // the Outline, its Spacing group, first and open, with its tablet-only
+  // space.
   await away();
   await device(page, "Tablet");
   await (await row(page, "Column 1")).click();
   await closeDrawers(page);
-  await sidebar.getByRole("tab", { name: "Style" }).click();
   // The undo above saved.
   await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await away();
   await shoot("tablet");
 
-  // The desktop, the Join section, its Advanced tab.
+  // #style: the same column on the desktop, Spacing, Background and Text
+  // size and color open, the focus on Space inside, as the layout draws it.
   await device(page, "Desktop");
+  await group(page, "Background");
+  await group(page, "Text size and color");
+  await sidebar.getByRole("slider", { name: "Space inside" }).focus();
+  await away();
+  await shoot("style");
+
+  // #section (shots-extra): the Join section, its Shown on and Name and
+  // link open, the focus on its label.
   await (await row(page, "Join")).click();
   await closeDrawers(page);
-  await sidebar.getByRole("tab", { name: "Advanced" }).click();
+  await group(page, "Shown on");
+  await group(page, "Name and link");
+  await sidebar.getByRole("textbox", { name: "Section label" }).focus();
   await away();
-  await shoot("advanced");
+  await shoot("section");
 
   // #insert-drawer: the Questions' accordion selected, Insert open, its
   // sentence saying where a click puts a block.
   await page.locator('.canvas [data-block-id="questions-list"]').click();
-  await sidebar.getByRole("tab", { name: "Content" }).click();
   await drawer(page, "Insert");
   await away();
   await shoot("insert-drawer");
@@ -198,12 +216,12 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.mouse.up();
   await closeDrawers(page);
 
-  // The phone preview of the home page, the hero selected, its Style tab:
-  // the hero's own space above and below on phones.
+  // The phone preview of the home page, the hero selected, its Spacing
+  // group: the hero's own space above and below on phones.
   await device(page, "Phone");
   await (await row(page, "Hero")).click();
   await closeDrawers(page);
-  await sidebar.getByRole("tab", { name: "Style" }).click();
+  await group(page, "Spacing");
   await away();
   await shoot("phone");
   await device(page, "Desktop");
@@ -245,7 +263,6 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
 
   // The mark's menu, opened from the keyboard; then About, from it.
   await heading.click();
-  await sidebar.getByRole("tab", { name: "Content" }).click();
   await page.getByRole("button", { name: "Page Builder CMS menu" }).focus();
   await page.keyboard.press("Enter");
   await page.getByRole("menu", { name: "Page Builder CMS" }).waitFor();
@@ -280,7 +297,6 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // shot. Then both go on and are deleted, so the library is as the seed
   // has it.
   await page.locator('.canvas [data-block-id="hero-image"]').click();
-  await sidebar.getByRole("tab", { name: "Content" }).click();
   await page.getByRole("button", { name: "Replace image" }).click();
   const library = page.getByRole("dialog", { name: "Media library" });
   const files = library.getByLabel("Images to upload");
@@ -330,7 +346,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("site-style");
   await style.getByRole("button", { name: "Reset to Sea" }).click();
   await style.getByText("Saved for every page").waitFor();
-  await style.getByRole("button", { name: "Close site style" }).click();
+  await style.getByRole("button", { name: "Back to Page" }).click();
 
   // #history: three changes made in this session, the last undone, and a
   // version kept under a name (the first time; the second window finds it);
@@ -338,7 +354,6 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // page is as the seed has it again.
   const change = async (id: string, field: string, words: string) => {
     await page.locator(`.canvas [data-block-id="${id}"]`).click();
-    await sidebar.getByRole("tab", { name: "Content" }).click();
     const box = sidebar.getByRole("textbox", { name: field, exact: true });
     await box.fill(words);
     await box.blur();
@@ -380,7 +395,6 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   const elsewhere = await fetch(`${cmsUrl}/api/pages/${pageId}/draft`, { method: "PUT", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ revision: draft.revision, saveId: `shots-elsewhere-${window.width}`, document: draft.document }) });
   if (!elsewhere.ok) throw new Error(`the save from elsewhere answered ${elsewhere.status}`);
   await heading.click();
-  await sidebar.getByRole("tab", { name: "Content" }).click();
   const text = sidebar.getByRole("textbox", { name: "Text", exact: true });
   await text.fill("Swim at slack water, together");
   await text.blur();

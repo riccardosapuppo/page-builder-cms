@@ -108,9 +108,19 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect(text(page)).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(block(page, "t")).toBeFocused();
-    // Another widget's words are in its panel: Enter goes to its first field.
+    // Another widget's words are in its panel: Enter goes to its first field,
+    // on the Block tab though the Page tab was chosen, its group opened
+    // though it was closed.
     await block(page, "a").click();
+    const sidebar = page.getByRole("complementary", { name: "Settings" });
+    await sidebar.getByRole("button", { name: "Text", exact: true }).click();
+    await expect(sidebar.getByRole("button", { name: "Text", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await sidebar.getByRole("tab", { name: "Page" }).click();
+    await block(page, "a").click();
+    await expect(sidebar.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
+    await expect(sidebar.getByRole("tab", { name: "Block" })).toHaveAttribute("aria-selected", "true");
+    await expect(sidebar.getByRole("button", { name: "Text", exact: true })).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("textbox", { name: "Text" })).toBeFocused();
   },
   async blockMenu(page, pressed) {

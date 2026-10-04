@@ -8,7 +8,7 @@ import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import { axe } from "./helpers/axe.ts";
 import { block, settledTextEditor } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
-import { cms, column, device, drawer, expect, makePage, open, openSiteStyle, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, device, drawer, expect, makePage, open, openGroup, openSiteStyle, section, test, unique, widget } from "./helpers/site.ts";
 
 test.use({
   viewport: { width: 1440, height: 900 },
@@ -47,9 +47,9 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "a page, nothing selected");
 
   await block(page, "heading-0").click();
-  await clean(page, "a heading selected, its Content tab");
-  await page.getByRole("tab", { name: "Style" }).click();
-  await clean(page, "its Style tab");
+  await clean(page, "a heading selected, its first group open, the others closed with their values");
+  for (const name of ["Size and color", "Alignment", "Shown on"]) await openGroup(page, name);
+  await clean(page, "every group of the heading open");
 
   // A text written on the canvas: its formatting buttons on the block's
   // bar, then its link's field under it.
@@ -74,18 +74,19 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.getByRole("tab", { name: "Blocks" }).click();
   // A column's own space on a tablet: the override, its ring and Remove.
   await page.locator('.tree [data-row-id="first-a"] > .t-row').click();
-  await expect(page.getByRole("tablist", { name: "Column 1 properties" })).toBeVisible();
-  await page.getByRole("tab", { name: "Style" }).click();
+  await expect(page.getByRole("button", { name: "Spacing", exact: true })).toHaveAttribute("aria-expanded", "true");
   await device(page, "Tablet").click();
   const ruler = page.locator(".sidebar .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) }).getByRole("slider");
   await ruler.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("button", { name: "Remove the tablet override of Space inside" })).toBeVisible();
-  await clean(page, "a tablet's own value in the Style tab");
+  await expect(page.getByRole("button", { name: "Spacing", exact: true })).toContainText("Tablet differs");
+  await clean(page, "a tablet's own value in its Spacing group");
   await device(page, "Desktop").click();
   await page.locator('.tree [data-row-id="first"]').click();
-  await page.getByRole("tab", { name: "Advanced" }).click();
-  await clean(page, "a section's Advanced tab");
+  await openGroup(page, "Shown on");
+  await openGroup(page, "Name and link");
+  await clean(page, "a section's Shown on and Name and link");
   await drawer(page, "Insert");
   await clean(page, "the Insert drawer");
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();
@@ -180,12 +181,12 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await openSiteStyle(page);
   await page.getByRole("button", { name: /^Accent/ }).click();
   await clean(page, "Site style, a slot open");
-  await page.getByRole("button", { name: "Close site style" }).click();
+  await page.getByRole("button", { name: "Back to Page" }).click();
 
   // A save the network loses: the countdown and the toast.
   await page.route("**/api/pages/*/draft", (route) => (route.request().method() === "PUT" ? route.abort("internetdisconnected") : route.fallback()));
   await block(page, "heading-0").click();
-  await page.getByRole("tab", { name: "Content" }).click();
+  await openGroup(page, "Text");
   const text = page.getByRole("textbox", { name: "Text" });
   await text.fill("Words kept in the tab");
   await text.blur();

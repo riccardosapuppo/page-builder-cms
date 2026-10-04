@@ -12,7 +12,7 @@
 // line, in steps.
 import type { Page } from "@playwright/test";
 import { block, caption, moveOnto, pickUp } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, openGroup, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -98,7 +98,7 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
   await button.click();
   await expect(button.locator(":scope > .ov-sel")).toHaveCount(1);
   const left = await pillX();
-  await page.getByRole("tab", { name: "Style" }).click();
+  await openGroup(page, "Alignment");
   await alignment.getByRole("radio", { name: "Center" }).click();
   await expect.poll(pillX).toBeGreaterThan(left + 50);
   expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
@@ -115,7 +115,7 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
   await button.locator(":scope > .ov-sel .ov-bar").waitFor();
   await page.getByRole("button", { name: /^Select Column/ }).click();
   await expect(block(page, "c")).toHaveAttribute("data-editor-selected", "true");
-  await page.getByRole("tab", { name: "Style" }).click();
+  await openGroup(page, "Alignment");
   // A column's alignment is the horizontal half of its Alignment field.
   const columnAlignment = page.getByRole("radiogroup", { name: "Horizontal alignment" });
   await columnAlignment.getByRole("radio", { name: "Center" }).click();

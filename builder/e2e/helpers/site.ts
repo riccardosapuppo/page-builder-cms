@@ -113,6 +113,15 @@ export async function openSiteStyle(page: Page): Promise<Locator> {
   return panel;
 }
 
+// A group of the sidebar, opened by a click on its head if it is closed;
+// its head, which the group's name alone names.
+export async function openGroup(page: Page, name: string): Promise<Locator> {
+  const head = page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name, exact: true });
+  if ((await head.getAttribute("aria-expanded")) !== "true") await head.click();
+  await expect(head).toHaveAttribute("aria-expanded", "true");
+  return head;
+}
+
 // The device, from the bottom line.
 export function device(page: Page, name: "Desktop" | "Tablet" | "Phone"): Locator {
   return page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: new RegExp(`^${name}`) });

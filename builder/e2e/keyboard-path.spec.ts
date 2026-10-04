@@ -5,8 +5,9 @@
 // divider after the heading with Enter; pick the divider up with Space and
 // move it with the arrows; edit the heading's text and level in the
 // sidebar; write in a text block on the canvas and make a word bold; look
-// at a tablet from the bottom line's devices and give the column a
-// tablet's own space in the Style tab; follow the selection's path in the
+// at a tablet from the bottom line's devices, open a closed group of the
+// column's with Enter, and give the column a tablet's own space in its
+// Spacing group; follow the selection's path in the
 // bottom line and the Outline; upload an image in the media library from
 // Insert, give it its alt text and place it; undo and redo the placing;
 // keep a named version; publish with the shortcut; open the live page from
@@ -149,7 +150,8 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
 
   // A tablet's own space inside the column: Alt+Up to the column, on past
   // the sidebar to the bottom line's devices, the arrow to Tablet; back to
-  // the Style tab and its ruler.
+  // the column's Alignment group, closed, which Enter opens, and up to its
+  // Spacing group's ruler.
   await page.keyboard.press("Alt+ArrowUp");
   await expect.poll(() => focusedBlock(page)).toBe("c");
   const crumbs = page.getByRole("navigation", { name: "Selection" }).getByRole("button");
@@ -160,14 +162,18 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await expect(devices.getByRole("radio", { name: /^Tablet/ })).toBeFocused();
   await expect(devices.getByRole("radio", { name: /^Tablet/ })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator(".statusbar .sb-width")).toHaveText("Page 768 wide, tablet layout");
-  await tabTo(page, page.getByRole("tab", { name: "Content" }), { back: true });
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Style" })).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Style" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".device-note")).toHaveText("Editing for tablet. Changes you make now apply to tablets only.");
+  const sidebar = page.getByRole("complementary", { name: "Settings" });
+  const alignment = sidebar.getByRole("button", { name: "Alignment", exact: true });
+  await tabTo(page, alignment, { back: true });
+  await expect(alignment).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await expect(alignment).toHaveAttribute("aria-expanded", "true");
+  await expect(alignment).toBeFocused();
+  await expect(sidebar.getByRole("radiogroup", { name: "Horizontal alignment" })).toBeVisible();
+  await expect(page.locator(".device-note")).toHaveText("Editing for tablet. Changes to its look apply to tablets only.");
   const spaceInside = page.locator(".sidebar .field").filter({ has: page.locator(".label", { hasText: /^Space inside$/ }) });
   const ruler = spaceInside.getByRole("slider");
-  await tabTo(page, ruler);
+  await tabTo(page, ruler, { back: true });
   await expect(ruler).toHaveAttribute("aria-valuetext", "None, the theme’s default");
   for (let n = 0; n < 3; n += 1) await page.keyboard.press("ArrowRight");
   await expect(ruler).toHaveAttribute("aria-valuetext", "M");
