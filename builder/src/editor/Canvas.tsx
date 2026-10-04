@@ -769,6 +769,19 @@ export function Canvas() {
     };
   }, [origin]);
 
+  // So does every empty column, its large "+" given way to the dragged
+  // block once it would land there: a column drawn shorter under the
+  // pointer would put the pointer past it, and the block back out.
+  const dragging = dragType !== null;
+  useLayoutEffect(() => {
+    if (!dragging) return undefined;
+    const columns = [...(frame.current?.querySelectorAll<HTMLElement>(".ins-empty") ?? [])].map((plus) => plus.parentElement).filter((column): column is HTMLElement => column !== null);
+    for (const column of columns) column.style.minHeight = `${column.offsetHeight}px`;
+    return () => {
+      for (const column of columns) column.style.minHeight = "";
+    };
+  }, [dragging]);
+
   // With the keyboard, the place the block would land stays in view.
   const keyboardTarget = useEditor((s) => (s.drag && ui.getState().dragMode === "keyboard" ? `${s.drag.target?.parentId ?? ""} ${s.drag.target?.index ?? ""}` : null));
   useEffect(() => {
