@@ -184,8 +184,6 @@ body {
 .seg > button:hover { background: var(--key); color: var(--graphite); }
 .seg > button[aria-pressed="true"], .seg > button[aria-checked="true"], .seg > button[aria-selected="true"] { background: var(--graphite); color: var(--white); }
 .seg-icons > button { padding: 0 6px; }
-.seg-wide { display: flex; width: 100%; }
-.seg-wide > button { flex: 1; height: 30px; }
 .seg-fill { display: flex; }
 .seg-fill > button { flex: 1; }
 .seg-text > button { min-width: 44px; }
@@ -302,7 +300,6 @@ body {
 .tray-head-title > h2 { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; line-height: 20px; font-weight: 600; }
 .tray-head-title > h2 .i { color: var(--steel); }
 .tray-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
-.tray-body-tight { padding: 2px 8px 16px; }
 
 .search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; margin-top: 8px; background: var(--white); border: 1px solid var(--rule); border-radius: var(--r-field); color: var(--steel); }
 .search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--graphite); outline: none; }
@@ -455,9 +452,6 @@ textarea.input { resize: vertical; }
 .toggle input:focus-visible + .toggle-ui { outline: 2px solid var(--graphite); outline-offset: 2px; }
 
 .thumb-wide { display: block; width: 100%; aspect-ratio: 8 / 3; object-fit: cover; border-radius: var(--r-field); margin-bottom: 8px; background: var(--key); }
-.preview-text { padding: 8px 10px; border-radius: var(--r-field); background: var(--white); box-shadow: inset 0 0 0 1px var(--rule); font-family: "Source Serif 4", serif; font-size: 14px; line-height: 20px; max-height: 220px; overflow: auto; }
-.preview-text > * + * { margin-top: 8px; }
-.preview-text :is(ul, ol) { padding-left: 1.4em; }
 
 /* Lists of items in a panel: a gallery's images, an accordion's questions. */
 .items { list-style: none; padding: 0; display: grid; gap: 8px; }
@@ -667,7 +661,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .menu-item-rich small { color: var(--steel); font-size: 12px; line-height: 16px; }
 .menu-sep { height: 6px; border: 0; margin: 0; }
 .menu-app { top: 50px; left: 8px; }
-.menu-group { padding: 6px 10px 4px; color: var(--steel); font-size: 12px; font-weight: 600; }
 
 /* A small window under its button that is no menu (the pages, with their
    search): design/layout/shots-extra/pages.png. */

@@ -102,7 +102,7 @@ export interface UiState {
   // block's menu pastes when the browser will not read the clipboard.
   copied: string | null;
   // The selected block's menu, open at a point of the window, opened from
-  // the canvas or from the navigator.
+  // the canvas or from the Outline.
   blockMenu: BlockMenuAt | null;
   // A block being dragged, by the mouse or the keyboard (the store holds
   // the drag itself), and the live region's last word on a drag that ended.
@@ -113,14 +113,13 @@ export interface UiState {
   // text draws nothing.
   pending: PendingText;
   // The text block edited on the canvas, and where its caret started; the
-  // state and commands of its editor, for the formatting buttons on the
-  // block's bar (./rich/tools.ts).
+  // state and commands of its editor, for the formatting buttons in the
+  // block's clamp (./rich/tools.ts).
   editingText: TextEditing | null;
   textTools: TextTools | null;
 
   setHover(id: string | null): void;
   setPreview(preview: Preview): void;
-  setTray(tray: Tray): void;
   setSideTab(pick: SideTabPick | null): void;
   setGroupOpen(owner: string, group: string, open: boolean): void;
   setSidebarOpen(open: boolean): void;
@@ -177,7 +176,6 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
 
     setHover: (hover) => set({ hover }),
     setPreview: (preview) => set({ preview }),
-    setTray: (tray) => set({ tray }),
     setSideTab: (sideTab) => set({ sideTab }),
     // The same again changes nothing, so nothing is drawn or kept again.
     setGroupOpen: (owner, group, open) => set((state) => (state.openGroups[owner]?.[group] === open ? {} : { openGroups: { ...state.openGroups, [owner]: { ...state.openGroups[owner], [group]: open } } })),
