@@ -38,7 +38,7 @@ them (`open-groups.ts`).
 | `panels/` | The sidebar's panels, each in collapsible groups named after what they hold (`groups.tsx`; design/layout/, the editor, style, section and page-tab states): the page's Title and address and Search results; a block's in its type's order, a widget's own group first (its folder's, `../widgets/<widget>/panel.tsx`: Text, Button, Questions...), then its style settings by what they set (Size and color, Colors, Line color, Spacing, Background, Alignment...), then Shown on, and for a section Columns and Name and link. Every style key a type accepts is in exactly one group. A closed group says its value in words, the theme's in use where the block sets none ("Display, theme color", "Every device"); a group whose settings have a tablet's or a phone's own value says which device differs, open or closed; a value the server refused opens the group that holds it, until it is closed by hand. The first group opens at first, every group of the page; then the person's choice, per block type. The style settings (`StyleFields.tsx`) edit the device the canvas previews: the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
 | `device-style.ts` | A block's style per device as the page's container queries apply it: a tablet or a phone shows its own value, else the base, a phone never the tablet's; the devices a block has values of its own on; "back to desktop" as the key taken out, never the desktop's value written in its place |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, flush with its frame (19 on each side, the scrollbar's gutter kept), between the theme's header and footer (locked), drawn smaller when the canvas has less room than the page (the bottom line saying its width and the scale), the editor's own controls and words on it kept at their size; Block edges; a provider's player kept with no address, so it never loads on the canvas, not even when a drag's preview puts its block back into the page; the marks of the selection and its clamp (`Clamp.tsx`), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the round "+" that add on the page (on the selected widget's bottom edge; on the seam below the section that holds the selection, and on any seam under the pointer with a hairline and a tip naming the place; large in every empty column) and the yellow line a "+" opens, a gap of the column's own or a line across a seam; while Insert is open, its yellow line where a click in it lands, its words at the line's right end under the drawer; the dimension lines (the gap's in the block's left quarter, clear of the "+"), the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its clamp carrying bold, italic and link and its link's field under it |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, flush with its frame (19 on each side, the scrollbar's gutter kept), between the theme's header and footer (locked), drawn smaller when the canvas has less room than the page (the bottom line saying its width and the scale), the editor's own controls and words on it kept at their size; Block edges; a provider's player kept with no address, so it never loads on the canvas, not even when a drag's preview puts its block back into the page; the marks of the selection and its clamp (`Clamp.tsx`), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the round "+" that add on the page (on the selected widget's bottom edge; on the seam below the section that holds the selection, and on any seam under the pointer with a hairline and a tip naming the place; large in every empty column) and the yellow line a "+" opens, a gap of the column's own or a line across a seam; while Insert is open, its yellow line where a click in it lands, its words at the line's right end under the drawer, under the selection at the end of its column clear of the selection's frame and corner marks; the dimension lines (the gap's in the block's left quarter, clear of the "+"; none while a picker is open, its line may be in that gap), the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its clamp carrying bold, italic and link and its link's field under it |
 | `Clamp.tsx`, `clamp-place.ts` | The selected block's clamp (design/layout/NOTES.md, section 4.2): a vertical graphite bar in the page's margin, from the top the yellow head (the block's type; the block menu), the grip (a drag, or Space), the moves (up and down; left and right for a column; one command each, the focus kept on the key, at an end saying why not), More (the right click's items). Every block gets it, a section inside its own margin; beside a short block it runs on below it, and a block brought into view by the keyboard brings its whole clamp; beside a block taller than the canvas it keeps to the canvas's top. Where it stands (`clamp-place.ts`, plain geometry): the full clamp, tied to the frame, in a margin of 48 or more; the narrow one, centred, in a gutter of 28 to 47; out to the page's nearer margin under 28; on the block's right side where an open drawer covers its left; drawn back to its size on a page drawn smaller. One Tab stop after the block's own: the arrows go along it, Esc back. While a text is written the moves give their place to bold, italic and link; the grip and More stay |
 | `InsertPicker.tsx`, `insert-place.ts`, `canvas-ui.ts`, `canvas.css` | The picker a "+" opens beside its yellow line, a non-modal dialog offering only what fits there: the widgets in a column (one needing an image or a video asks for it first, as Insert does), 1 to 4 columns or a ready-made section at a seam; its search takes the focus, the arrows go along its rows and between them, Enter adds by one command at the place, the new block focused; Esc, or a press elsewhere, closes it, Esc giving the focus back to the "+", or to what opened it (the block, for the "+" key; the clamp's key, for its menu's Insert before and after). The places (`insert-place.ts`), and the canvas's own state beside the interface's store (`canvas-ui.ts`: the picker's place, the seam under the pointer, which of the clamp's menus is open). The clamp's, the "+"'s, the lines' and the picker's styles (`canvas.css`) |
 | `Navigator.tsx` | The Outline drawer. Blocks: the page as an ARIA tree, in step with the selection both ways, the row of the selection taking the focus when the drawer opens, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out. Headings: the page's headings in order, by level, each one a button that selects it |
@@ -55,6 +55,17 @@ them (`open-groups.ts`).
 
 Scheduling a publish is stage 4. The top bar draws no control for it
 until it works, and the "?" window lists no key for it.
+
+Drawn by the layout and not built yet:
+- the "…" button on each Outline row (a right click on the row opens
+  More, and the menu key the block menu, as on the canvas);
+- the sidebar's words while a block moves ("Moving, from Hero, column 1",
+  its groups closed, "Settings wait while you move the block"): the
+  sidebar keeps the block's settings, and the bottom line says where the
+  block will land;
+- the Outline's counts on a column's row ("2 widgets") and "Every page" on
+  the theme's header and footer;
+- the Form block in the pickers and in Insert, which comes with stage 5.
 
 ## Where it departs from the approved design, on purpose
 
@@ -74,7 +85,10 @@ owner to undo:
 - **Drawers:** all three float over the canvas's left, so the page never
   shrinks when one opens; the layout's notes have the Outline and History
   push the page aside. A floating drawer covers the left of a first
-  column's blocks while it is open.
+  column's blocks while it is open: a selected one's clamp goes to the
+  block's right side, as the layout does under Insert, and the block is
+  partly hidden under the drawer, which is the reason the layout's notes
+  give for pushing the page.
 - **The sidebar's groups:** the layout draws the groups' words for its
   example page; here they are made from the block (a closed Size and
   color says "Display, theme color" where the block sets no colour, a
@@ -117,7 +131,7 @@ owner to undo:
   the device previewed is gone from the canvas. A section's space above
   and below has nine steps, which the design does not draw: the two
   section steps print their names on two lines ("Sec" over "S"), so the
-  nine stand apart in the tray's width.
+  nine stand apart in the sidebar's width.
 - **Drag caption:** it names the section as well as the column ("to
   Column 2 in See the bay"), where the design says "to Column 2". The
   caption is the live region a screen reader hears, and a page has a
@@ -136,8 +150,8 @@ owner to undo:
 - **The clamp:** while a text is written, the layout draws its clamp as
   the head, bold, italic and link; here the grip and More stay too, so the
   block can still be dragged, duplicated or deleted without leaving the
-  text first (the text is handed over as the drag or the command starts),
-  as it could from the floating bar. The head's block menu opens beside
+  text first (the text is handed over as the drag or the command starts).
+  The head's block menu opens beside
   the clamp from its head, and upward from the clamp's foot only where the
   window has no room below it. A column takes no Insert before or after:
   a block goes inside it, from its "+" or the "+" key, which opens at its
@@ -248,7 +262,9 @@ More, its moves one step each), `insert.spec.ts` (the "+" on a block's
 edge, its line and its picker by the mouse and the keys, an empty
 column's large "+" with a video asking first, the seams under the
 pointer, the page's top and foot among them, the "+" key after each kind
-of selection, Insert's yellow line, Insert before and after),
+of selection, the dimension line waiting while a picker is open, Insert's
+yellow line and its words clear of the selection's corner marks, Insert
+before and after),
 `keyboard.spec.ts`
 (every key of the map, and the "?" window listing them; in a text being
 written, Delete, Backspace and Ctrl+D changing letters and never the
@@ -296,19 +312,23 @@ saying why; a delete the CMS refuses naming the page; axe on the open
 library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
-(the mark read back at 16 px), `a11y.spec.ts` (axe in thirty-five states, at 1440 by 900 and at 1280 by 800,
-among them each drawer and the Outline's headings, Block edges and the
-Page tab, the sidebar hidden, the clamp's block menu, the block picker and
-the section picker, a text being written and its link's field,
+(the mark read back at 16 px), `a11y.spec.ts` (axe in thirty-seven
+states, at 1440 by 900 and at 1280 by 800, among them each drawer and the
+Outline's headings, Block edges and the Page tab, the sidebar hidden, the
+clamp's block menu, the block picker and the section picker, a seam under
+the pointer with its "+" and tip, Insert open over a first column's block
+with its clamp on the right, a text being written and its link's field,
 a tablet's override, the history and its name field, the media library;
 and on the published page), `widgets.spec.ts` (each widget's accessibility
 test) and `keyboard-path.spec.ts` (the whole path with no pointer:
-insert from Insert by its chord, move, a heading's text and level in the
-sidebar, a word made bold in a text on the canvas, the devices in the
-bottom line, a column's tablet space, the Outline by its chord, an image
-uploaded through the system's file chooser and placed with its alt text,
-undo and redo, a named version, publish, the live page read at a
-desktop's and a tablet's width). The
-ones tagged `@a11y` are what `npm run check:a11y` runs. `npm run
-shots:editor -- <folder>` photographs the editor in the approved
-layout's states on the example site (`../../e2e/shots/editor-shots.ts`).
+insert from Insert by its chord, move with Space and the arrows, add from
+the page with the "+" key and its picker and move that block up from its
+clamp, a heading's text and level in its Text group, a word made bold in
+a text on the canvas, the devices in the bottom line, a column's tablet
+space in its Spacing group, the Outline by its chord, an image uploaded
+through the system's file chooser and placed with its alt text, undo and
+redo, a named version, publish, the live page read at a desktop's and a
+tablet's width). The ones tagged `@a11y` are what `npm run check:a11y`
+runs. `npm run shots:editor -- <folder>` photographs the editor in every
+state the approved layout draws but Schedule, named and staged as its
+shots are, on the example site (`../../e2e/shots/editor-shots.ts`).

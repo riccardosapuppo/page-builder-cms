@@ -33,7 +33,7 @@ is about, and its steps. The makers:
 
 | Maker | Kind | Label, as the history shows it |
 | --- | --- | --- |
-| `makeInsert` (a block made elsewhere, such as the widget panel's), `makeInsertSection`, `makeInsertUploadedImage` | insert | "Added Quote to Column 2 in Hero", "Added a section with 2 columns", "Added Image to Column 1 in Join" |
+| `makeInsert` (a block made elsewhere, such as Insert's or a "+" picker's), `makeInsertSection`, `makeInsertUploadedImage` | insert | "Added Quote to Column 2 in Hero", "Added a section with 2 columns", "Added Image to Column 1 in Join" |
 | `makeDelete` | delete | "Deleted Divider in Hero" |
 | `makeMove` | move | "Moved Heading to Column 1 in Join", "Moved Heading in Hero" |
 | `makeDuplicate` | duplicate | "Duplicated Hero" |

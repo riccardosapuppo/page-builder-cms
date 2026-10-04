@@ -163,8 +163,10 @@ itself.
 
 - [`design/`](design/): the approved design mock, in static HTML, of the
   editor and of a published page, with the design tokens, the mark, the
-  fonts and their licences, and screenshots of every state. Its own README
-  says how to open it.
+  fonts and their licences, and screenshots of every state: the identity.
+  [`design/layout/`](design/layout/) is the editor's layout, approved on
+  3 October 2026, drawn the same way with its own notes and screenshots.
+  Its own README says how to open them.
 - [`schema/tokens.json`](schema/tokens.json): the design tokens (colours and
   their contrast pairs, spacing, type, radii, breakpoints), taken from the
   mock, with the palette slots of the site style and their curated tones.
@@ -195,14 +197,15 @@ itself.
   goldens by the render contract and to the pages the CMS serves for
   random valid documents. Tests start a CMS and an editor server of their
   own, among them a browser saving a draft and uploading an image through
-  the editor's proxy. On those, the interface of the approved design: the
-  widget panel, the canvas, the property panels and the navigator; drag
-  and drop by mouse and by keyboard, from the canvas and from the widget
-  panel; one keyboard map with its "?" window; the focus placed after
-  every command; the block's menu; the save states, with the conflict's
-  Reload and Keep mine; Preview and Publish, opening the CMS's own pages;
-  Site style; the mark as icon, a manifest and About; the accessibility
-  checks (`check:a11y`) and how its shell is served (`check:serving`).
+  the editor's proxy. On those, the interface, in the approved design's
+  identity: the blocks to add, the canvas, the property panels and the
+  page's tree; drag and drop by mouse and by keyboard, on the canvas and
+  from the blocks to add; one keyboard map with its "?" window; the focus
+  placed after every command; the block's menu; the save states, with the
+  conflict's Reload and Keep mine; Preview and Publish, opening the CMS's
+  own pages; Site style; the mark as icon, a manifest and About; the
+  accessibility checks (`check:a11y`) and how its shell is served
+  (`check:serving`).
   Since stage 3: a text block written where it stands on the canvas, with
   TipTap loaded only then, its typing one step of the page's history;
   undo and redo in the top bar and a history panel of the session's steps
@@ -213,6 +216,14 @@ itself.
   one keyboard map; and the media library, uploading straight to the CMS
   each image drawn again in the browser, with its alt text required
   before it is placed.
+  Since stage 3 bis, the same editor is laid out as the approved layout:
+  a top bar with Insert, Outline and History, each a drawer floating over
+  the canvas's left; one sidebar with a Page tab and a Block tab, their
+  settings in groups named after what they hold, each saying its value
+  when closed; the selected block's tools in a clamp in the page's
+  margin; round "+" buttons on the page, each opening a picker of only
+  what fits there; and a bottom line with the selection's path, Block
+  edges, the devices in one click and the page's width.
   Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
   `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
@@ -322,9 +333,12 @@ again, and workers that cannot start even one at a time make the suite
 2. **The editor.** A React and TypeScript app with a widget panel, a canvas
    and a navigator: drag and drop, properties, automatic saving. Done.
 3. **Editing in depth.** Rich text, undo and redo, versions and restore,
-   tablet and phone overrides, full keyboard use, image uploads. In
-   progress: each of these is in `builder/` (above), walked by the
-   keyboard alone in a browser test; the stage's reviews are next.
+   tablet and phone overrides, full keyboard use, image uploads. Done.
+   - **3 bis, the layout.** The same editor, every capability kept,
+     rearranged as the layout approved on 3 October 2026
+     (`design/layout/`). In progress: it is in `builder/` (above), walked
+     by the keyboard alone in a browser test; the stage's reviews are
+     next.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled
    publishing and background jobs, with measurements.
 5. **Forms**, submitted to Rails from published pages.
