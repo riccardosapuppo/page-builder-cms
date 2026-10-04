@@ -216,6 +216,10 @@ default the origin of an absolute `VITE_API_BASE`, else
   first part, the build `npm run check` made on 3 October 2026 printed
   `bundle check: 3 JavaScript file(s), 1103.8 KiB`: the main file
   760.81 kB (203.44 kB gzipped), `TextEditor-*.js` 354.24 kB (113.37 kB
+  gzipped) and `@rails/activestorage` 15.26 kB. With stage 3 bis's
+  layout, the build `npm run check` made on 4 October 2026 printed
+  `bundle check: 3 JavaScript file(s), 1161.3 KiB`: the main file
+  815.31 kB (220.74 kB gzipped), `TextEditor-*.js` 358.57 kB (114.94 kB
   gzipped) and `@rails/activestorage` 15.26 kB. Vite still warns the main
   file is over its 500 kB.
   With `new Function` planted in `src/main.tsx`, the build failed: the

@@ -8,9 +8,10 @@ no behaviour beyond switching between still states.
 
 **This folder is frozen.** It stays as it was approved on 1 October 2026,
 so it can always be compared with what the code draws; it is not edited to
-follow the code. The one later addition is `layout/` (below), the editor's
-layout approved on 3 October 2026, frozen in the same way. In particular `design/tokens.json` is the mock's own copy
-and no longer the project's tokens: [`../schema/tokens.json`](../schema/tokens.json)
+follow the code. The one later addition is `layout/` (below), the
+editor's layout approved on 3 October 2026, frozen in the same way. In
+particular `design/tokens.json` is the mock's own copy and no longer the
+project's tokens: [`../schema/tokens.json`](../schema/tokens.json)
 is the canonical file, and it has moved on (the palette slots and their
 curated tones, the type scales, the image crops and other additions the
 code needed). Nothing in `cms/`, `schema/` or `tools/` reads
