@@ -26,7 +26,6 @@ function GalleryContent({ block }: ContentProps<"gallery">) {
   return (
     <>
       <div className="field">
-        <span className="label">Images</span>
         <ol className="items">
           {items.map((item, index) => (
             <GalleryItem key={index} blockId={block.id} item={item} index={index} count={items.length} commands={commands} />

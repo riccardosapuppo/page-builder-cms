@@ -37,7 +37,6 @@ function ImageContent({ block }: ContentProps<"image">) {
   return (
     <>
       <div className="field">
-        <span className="label">Image</span>
         {shown ? <img className="thumb-wide" src={shown.src} alt="" /> : <p className="hint">{looking ? "Looking for the image in the media library…" : "The image is not in the media library any more."}</p>}
         <button className="btn btn-secondary btn-block" type="button" onClick={() => setPicking(true)}>Replace image</button>
         <ServerErrors blockId={block.id} fields={["/props/mediaId", "/props/url"]} rules={{ kind: "imageUrl" }} />

@@ -12,7 +12,6 @@ function TextContent({ block }: ContentProps<"text">) {
   const id = useId();
   return (
     <div className="field">
-      <span className="label">Text</span>
       <button className="btn btn-small btn-secondary" type="button" aria-describedby={`${id}-hint`} onClick={() => startEditing(env, block.id, "end")}>
         Edit on the page
       </button>

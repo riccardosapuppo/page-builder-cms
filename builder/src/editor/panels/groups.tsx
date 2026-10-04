@@ -309,10 +309,12 @@ function Group({ spec, open, refused, differs, onToggle }: { spec: GroupSpec; op
         <Icon name="chevron-right" className="i i-xs grp-chev" />
         <span className="grp-name">{spec.name}</span>
         {!open && <span className="grp-sum" aria-hidden="true">{spec.dot}<span className="grp-sum-words" id={`${id}-sum`}>{spec.summary}</span></span>}
+        {/* Closed, the device's glyph alone, beside the value: its words
+            are for the description, and for the pointer's tip. */}
         {differs.length > 0 && (
-          <span className="grp-dev" id={`${id}-dev`} aria-hidden="true">
+          <span className="grp-dev" id={`${id}-dev`} aria-hidden="true" title={open ? undefined : DIFFERS_WORDS(differs)}>
             {differs.map((device) => <Icon key={device} name={device} className="i i-xs" />)}
-            {DIFFERS_WORDS(differs)}
+            <span className={open ? undefined : "visually-hidden"}>{DIFFERS_WORDS(differs)}</span>
           </span>
         )}
         {refused && <span className="grp-err" id={`${id}-err`} aria-hidden="true"><Icon name="error" className="i i-xs" />Refused</span>}

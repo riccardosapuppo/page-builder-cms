@@ -14,7 +14,6 @@ function AccordionContent({ block }: ContentProps<"accordion">) {
   const items = block.props.items;
   return (
     <div className="field">
-      <span className="label">Questions</span>
       <ol className="items">
         {items.map((item, index) => {
           const n = index + 1;
