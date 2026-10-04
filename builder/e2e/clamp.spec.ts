@@ -1,8 +1,9 @@
 // The selected block's clamp (design/layout/NOTES.md, section 4.2), in
 // Chromium: in every window and preview it keeps to the margin, over no
 // block and no words, its head never hidden; under an open drawer it goes
-// to the block's right side; its head opens the block menu beside it, its
-// More the right click's items, its moves are one step each. The rules
+// to the block's right side; a seam's "+" and its tip keep clear of it; its
+// head opens the block menu beside it, its More the right click's items,
+// its moves are one step each. The rules
 // themselves, on the layout's numbers, are clamp-place.test.ts's; marks
 // .spec.ts checks the gutters.
 import { block, clampFaults, clampKeysCovered, clampPlace } from "./helpers/canvas.ts";
@@ -127,6 +128,52 @@ test("a seam's + moves off the clamp it would stand on, which is drawn over it: 
       const back = (await plus.boundingBox())!;
       return Math.abs(back.x + back.width / 2 - middle) < 1;
     }, where).toBe(true);
+  }
+});
+
+// The tip of that seam, under the pointer: whole inside the canvas's
+// visible part, clear of the clamp and of its "+". Right of the "+" on the
+// seam where there is room, as the layout draws it; beside the Outline at
+// 1184, where the "+" moved right of the clamp and its tip ran past the
+// canvas's edge, and at 1024, where the clamp stands right of the "+",
+// under the "+".
+test("a seam's tip stays whole inside the canvas, clear of the clamp and of its +: right of the + where there is room, else under it", async ({ page, request }) => {
+  const { id } = await makePage(request, "Tip beside the clamp", band());
+  for (const [size, beside, side] of [[{ width: 1440, height: 900 }, null, "right"], [{ width: 1184, height: 900 }, "Outline", "under"], [{ width: 1024, height: 768 }, "Outline", "under"]] as const) {
+    const where = `${size.width}${beside ? `, the ${beside} open` : ""}`;
+    await page.setViewportSize(size);
+    await open(page, id);
+    if (beside) await drawer(page, beside);
+    await block(page, "nb").focus();
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowDown");
+    await expect(block(page, "nb")).toBeFocused();
+    await expect.poll(() => clampKeysCovered(page), where).toEqual([]);
+    const plus = page.locator('.canvas [data-block-id="night"] > .ins-sec');
+    const sign = (await plus.boundingBox())!;
+    await page.mouse.move(sign.x + sign.width / 2 + 40, sign.y + sign.height / 2);
+    const tip = page.locator(".canvas .seam-tip");
+    await expect(tip, where).toHaveText("Add a section between Dark band and After");
+    await expect(tip, where).toHaveAttribute("data-side", side);
+    const drawn = await page.evaluate(() => {
+      const canvas = document.querySelector<HTMLElement>(".canvas")!;
+      const bench = canvas.getBoundingClientRect();
+      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const t = box(".canvas .seam-tip");
+      const meet = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      return {
+        left: Math.round(t.left - (bench.left + canvas.clientLeft)),
+        right: Math.round(bench.left + canvas.clientLeft + canvas.clientWidth - t.right),
+        onClamp: meet(t, box(".canvas .clamp")),
+        onPlus: meet(t, box('.canvas [data-block-id="night"] > .ins-sec')),
+        drawer: [...document.querySelectorAll(".drawer-float")].some((d) => meet(t, d.getBoundingClientRect())),
+      };
+    });
+    // Inside the canvas on both sides, 4 of room kept, and clear of the
+    // clamp, the "+" and the Insert drawer.
+    expect(drawn.left, `${where}: room on the tip's left`).toBeGreaterThanOrEqual(3);
+    expect(drawn.right, `${where}: room on the tip's right`).toBeGreaterThanOrEqual(3);
+    expect(drawn, where).toMatchObject({ onClamp: false, onPlus: false, drawer: false });
   }
 });
 

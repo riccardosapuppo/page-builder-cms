@@ -49,6 +49,7 @@ import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
 import { COLUMN_GAP_DEFAULT } from "../shared/site-tokens.ts";
+import { afterRender } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { canvasUi } from "./canvas-ui.ts";
 import "./canvas.css";
@@ -71,6 +72,7 @@ import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
+import { placeSeamTip } from "./seam-tip.ts";
 import { useOptionalSession } from "./session.tsx";
 import { pushes, type Preview } from "./ui-store.ts";
 
@@ -639,11 +641,15 @@ function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>
     ? `Add a section between ${blockName(doc, above.id)} and ${blockName(doc, below.id)}`
     : above ? `Add a section after ${blockName(doc, above.id)}` : below ? `Add a section before ${blockName(doc, below.id)}` : "Add a section";
   const place = { kind: "section", index: at } as const;
+  const plusRef = useRef<HTMLButtonElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  useSeamTip(tipRef, plusRef, state === "hover", label);
   return (
     <>
       {state === "hover" && <div className="seam-hover" data-edge={edge} aria-hidden="true"><span className="seam-hair" /></div>}
       {state === "open" && <div className="seam" data-edge={edge} aria-hidden="true"><span className="seam-line" /><span className="seam-label">New section</span></div>}
       <button
+        ref={plusRef}
         className={`ins ins-sec${state === "open" ? " is-open" : ""}${state === "hover" ? " is-hover" : ""}`}
         type="button"
         tabIndex={-1}
@@ -657,9 +663,71 @@ function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>
       >
         <Icon name="plus" />
       </button>
-      {state === "hover" && <span className="seam-tip" data-edge={edge} aria-hidden="true">{label}</span>}
+      {state === "hover" && <span ref={tipRef} className="seam-tip" data-edge={edge} aria-hidden="true">{label}</span>}
     </>
   );
+}
+
+// Lays a seam's tip where it is whole and clear of the clamp and of the
+// Insert drawer (./seam-tip.ts), in its section's own pixels (the page may
+// be drawn smaller: the tip is drawn back up to its size, canvas.css); and
+// again, while it shows, whenever its "+" moves along the seam, the canvas
+// scrolls or changes size, the page is drawn at a new scale or a drawer
+// opens or closes.
+function useSeamTip(tipRef: { current: HTMLSpanElement | null }, plusRef: { current: HTMLButtonElement | null }, shown: boolean, label: string): void {
+  const { ui } = useEnv();
+  useLayoutEffect(() => {
+    const tip = tipRef.current;
+    const plus = plusRef.current;
+    const host = tip?.parentElement;
+    const canvas = tip?.closest<HTMLElement>(".canvas");
+    const frame = tip?.closest<HTMLElement>(".frame");
+    if (!shown || !tip || !plus || !host || !canvas || !frame) return undefined;
+    let soon = 0;
+    const place = () => {
+      const scale = Number(frame.dataset.scale ?? "1") || 1;
+      const bench = canvas.getBoundingClientRect();
+      const left = bench.left + canvas.clientLeft;
+      const top = bench.top + canvas.clientTop;
+      const view = { left, top, right: left + canvas.clientWidth, bottom: top + canvas.clientHeight };
+      const obstacles = [...canvas.querySelectorAll(".clamp"), ...document.querySelectorAll(".drawer-float")].map((element) => element.getBoundingClientRect());
+      const size = tip.getBoundingClientRect();
+      const where = placeSeamTip({ plus: plus.getBoundingClientRect(), width: size.width, height: size.height, view, obstacles });
+      const origin = host.getBoundingClientRect();
+      const x = `${(where.x - origin.left) / scale - host.clientLeft}px`;
+      const y = `${(where.y - origin.top) / scale - host.clientTop}px`;
+      if (tip.style.left !== x) tip.style.left = x;
+      if (tip.style.top !== y) tip.style.top = y;
+      if (tip.dataset.side !== where.side) tip.dataset.side = where.side;
+    };
+    const later = () => {
+      if (soon) return;
+      soon = requestAnimationFrame(() => {
+        soon = 0;
+        place();
+      });
+    };
+    place();
+    const resized = new ResizeObserver(later);
+    resized.observe(canvas);
+    resized.observe(host);
+    // The "+" moved along its seam (--seam-shift on the section), the page
+    // drawn at another scale.
+    const moved = new MutationObserver(later);
+    moved.observe(host, { attributes: true, attributeFilter: ["style"] });
+    moved.observe(frame, { attributes: true, attributeFilter: ["style", "data-scale"] });
+    canvas.addEventListener("scroll", later, { passive: true });
+    const unsubscribe = ui.subscribe((state, before) => {
+      if (state.drawer !== before.drawer) afterRender(place);
+    });
+    return () => {
+      if (soon) cancelAnimationFrame(soon);
+      resized.disconnect();
+      moved.disconnect();
+      canvas.removeEventListener("scroll", later);
+      unsubscribe();
+    };
+  }, [tipRef, plusRef, shown, label, ui]);
 }
 
 // ------------------------------------------------------------- the canvas

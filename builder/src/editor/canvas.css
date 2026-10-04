@@ -129,6 +129,11 @@
 .seam-hair { position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; background: repeating-linear-gradient(90deg, var(--graphite) 0 8px, transparent 8px 13px); }
 .canvas .site .seam-tip { position: absolute; z-index: 10; left: calc(50% + 30px + var(--seam-shift, 0px)); bottom: 0; max-width: none; margin: 0; transform: translateY(50%); padding: 5px 9px; border-radius: 6px; background: var(--graphite); color: var(--white); font: 600 12px/16px var(--font-ui); letter-spacing: normal; white-space: nowrap; pointer-events: none; }
 .canvas .site .seam-tip[data-edge="top"] { left: calc(50% + 30px + var(--seam-shift-top, 0px)); top: 0; bottom: auto; transform: translateY(-50%); }
+/* Laid where it is whole and clear of the clamp (./Canvas.tsx, useSeamTip;
+   ./seam-tip.ts): on the seam right of the "+" where there is room, as
+   above, else left of it, under it or over it. The script gives its left
+   and top. */
+.canvas .site .seam-tip[data-side] { bottom: auto; transform: none; }
 /* Where a click in the Insert drawer lands: the drop line's twin, its
    words at its right end where the drawer covers its left end. */
 .canvas .site .ins-point { position: absolute; left: -8px; right: -8px; z-index: 8; height: 3px; max-width: none; margin: -1.5px 0 0; pointer-events: none; }
@@ -195,4 +200,5 @@
 .frame[data-scale] .ins-point[data-label="right"] .ins-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 100% 50%; }
 .frame[data-scale] .seam-tip { transform: translateY(50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] .seam-tip[data-edge="top"] { transform: translateY(-50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] .seam-tip[data-side] { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .ins-empty > * { zoom: var(--canvas-unscale); }
