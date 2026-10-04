@@ -1,19 +1,18 @@
 // node e2e/shots/editor-shots.ts <folder>
 //
-// Photographs the editor in the states of the approved layout's shots
-// (design/layout/shots: editor, add, structure, history, tablet, publish,
-// empty, shortcuts; design/layout/shots-extra: more, insert-at-seam,
-// new-section, small-block, block-menu, narrow-gutter, seam-hover,
-// insert-drawer, insert-col1, pages, page-tab, conflict, offline), named
-// as they are, plus the states the
-// editor has that the layout draws elsewhere or not at all: the block's
-// menu, the "?" window, a text written on the canvas with its link's field
-// (text, text-link), the hero's first column's groups on the desktop
-// (style), a section's Shown on and Name and link (section), the phone
-// preview with the
-// hero's phone values, a drag from Insert, Block edges, the mark's menu,
-// About, the media library and the site style; and the home page as the
-// CMS serves it to a tablet and a phone (served-tablet, served-phone).
+// Photographs the editor in every state of the approved layout's shots
+// but Schedule, which stage 4 builds (design/layout/shots: editor, add,
+// structure, style, drag, tablet, publish, history, media, site-style,
+// empty, shortcuts; design/layout/shots-extra: text-editing, small-block,
+// insert-at-seam, page-tab, block-menu, more, new-section, phone, section,
+// pages, conflict, offline, narrow-gutter, seam-hover, outline-col1,
+// insert-col1, and insert-drawer, which the layout shoots at 1280),
+// named as they are, plus the states the editor has that the layout
+// draws elsewhere or not at all: a right click's menu (context), a text's
+// link field (text-link), a drag from Insert (drag-from-insert), the
+// hero's own space on phones (phone-spacing), Block edges, the mark's menu
+// and About; and the home page as the CMS serves it to a tablet and a
+// phone (served-tablet, served-phone).
 // Headless, in two windows: 1280 by 800, and 1440 by 900, the size the
 // layout itself was shot at. The shots of the larger window go in
 // <folder>/1440.
@@ -212,9 +211,10 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await away();
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
 
-  // A text written on the canvas, its first two words made bold from its
-  // clamp, then the link's field refusing an address with its reason.
-  // Undone after, so the shots below show the seed's page.
+  // #text-editing (shots-extra): a text written on the canvas, its first
+  // two words made bold from its clamp; then the link's field refusing an
+  // address with its reason. Undone after, so the shots below show the
+  // seed's page.
   const lead = page.locator('.canvas [data-block-id="hero-text"]');
   await lead.click();
   await lead.locator("p").click({ position: { x: 4, y: 10 } });
@@ -223,7 +223,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   for (let i = 0; i < 10; i += 1) await page.keyboard.press("Shift+ArrowRight");
   await page.locator(".canvas").getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Bold" }).click();
   await away();
-  await shoot("text");
+  await shoot("text-editing");
   await page.keyboard.press("Control+k");
   const linkField = page.locator(".canvas .ov-link input");
   await linkField.fill("swims.example.org/dawn");
@@ -272,10 +272,10 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await away();
   await shoot("insert-drawer");
 
-  // #drag: the Quote key held over See the bay's second column, after its
-  // text, then the pointer on the line where it would land (the line is
-  // the new block's own place, so it stays there); then Esc, and nothing
-  // changed.
+  // A drag from Insert: the Quote key held over See the bay's second
+  // column, after its text, then the pointer on the line where it would
+  // land (the line is the new block's own place, so it stays there); then
+  // Esc, and nothing changed.
   await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
   await moveOnto(page, page.locator('.canvas [data-block-id="meet-text"]'), "bottom");
   await page.locator(".live-caption:not(.live-caption-quiet)").waitFor();
@@ -283,10 +283,22 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   if (!line) throw new Error("no drop indicator on screen");
   await page.mouse.move(line.x + line.width * 0.7, line.y + line.height / 2, { steps: 6 });
   await page.getByText("Quote will be added to Column 2 in See the bay, after Text.").waitFor();
-  await shoot("drag");
+  await shoot("drag-from-insert");
   await page.keyboard.press("Escape");
   await page.mouse.up();
   await closeDrawers(page);
+
+  // #drag: the hero's button picked up by its clamp's grip and held under
+  // the heading: the drop line, the shaded areas and the live sentence in
+  // the graphite bottom line; then Esc, and nothing changed.
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await page.locator('.canvas [data-block-id="hero-button"]').click();
+  await pickUp(page, page.locator('.canvas [data-block-id="hero-button"] > .clamp [data-key="grip"]'));
+  await moveOnto(page, heading, "bottom");
+  await page.getByText("Button will move to Column 1 in Hero, after Heading.").waitFor();
+  await shoot("drag");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
 
   // #insert-col1 (shots-extra): the hero's heading selected, Insert open
   // over the left of the page: the heading's clamp on its right, in the
@@ -298,14 +310,28 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("insert-col1");
   await closeDrawers(page);
 
-  // The phone preview of the home page, the hero selected, its Spacing
-  // group: the hero's own space above and below on phones.
+  // #outline-col1 (shots-extra): the same heading, the Outline open over
+  // the left of the page, its row taking the focus: the heading's clamp
+  // on its right side, as under Insert.
+  await drawer(page, "Outline");
+  await page.locator('.tree [data-row-id="hero-heading"]').waitFor();
+  await away();
+  await shoot("outline-col1");
+  await closeDrawers(page);
+
+  // #phone (shots-extra): the phone preview, the hero's heading selected,
+  // the focus on its Text field; then the hero itself, its Spacing group:
+  // the hero's own space above and below on phones.
   await device(page, "Phone");
+  await heading.click();
+  await sidebar.getByRole("textbox", { name: "Text", exact: true }).focus();
+  await away();
+  await shoot("phone");
   await (await row(page, "Hero")).click();
   await closeDrawers(page);
   await group(page, "Spacing");
   await away();
-  await shoot("phone");
+  await shoot("phone-spacing");
   await device(page, "Desktop");
 
   // The same page as the CMS serves it to a tablet and a phone, to set
