@@ -16,7 +16,7 @@
 
 var guard = require("./start.cjs");
 
-var NAMES = ["server"];
+var NAMES = ["server", "bundle"];
 
 // null when this Node can run the measurement called `name`, otherwise the
 // sentence to print.

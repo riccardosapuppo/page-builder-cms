@@ -23,6 +23,7 @@
     "check:type-scales": "node tools/type-scales.ts",
     "check:production": "node tools/check-production.ts",
     "measure:server": "node tools/measure.cjs server",
+    "measure:bundle": "node tools/measure.cjs bundle",
     "test:tools": "node --test \"tools/**/*.test.ts\"",
     "builder:install": "npm ci --prefix builder",
     "builder:typecheck": "npm run typecheck --prefix builder",
