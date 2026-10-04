@@ -5,7 +5,7 @@
 // More the right click's items, its moves are one step each. The rules
 // themselves, on the layout's numbers, are clamp-place.test.ts's; marks
 // .spec.ts checks the gutters.
-import { block, clampFaults, clampPlace } from "./helpers/canvas.ts";
+import { block, clampFaults, clampKeysCovered, clampPlace } from "./helpers/canvas.ts";
 import { column, device, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -56,6 +56,78 @@ test("under the open Insert drawer, a first column's clamp goes to the block's r
   await block(page, "hh").focus();
   await page.getByRole("button", { name: "Close Insert" }).click();
   await expect.poll(() => clampPlace(page)).toEqual({ size: "full", side: "left", tie: "on" });
+});
+
+// A dark band of two columns, as the example site's Notices page has: a
+// heading and a text, and beside them a button set in the middle, whose
+// clamp stands in the gutter in the page's middle, where the seam's "+"
+// below the section stands too.
+const band = () => [
+  {
+    ...section("night", "Dark band", [
+      column("n-1", [heading("nh", "Night swim, once a year"), widget("nt", "text", { doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "On the shortest night, with lights on the buoys. Members only." }] }] } })]),
+      { ...column("n-2", [widget("nb", "button", { label: "Ask about it", href: "#" })]), style: { base: { verticalAlign: "middle" } } },
+    ]),
+    style: { base: { background: "primary", spaceAbove: "section-s", spaceBelow: "section-s" } },
+  },
+  section("after", "After", [column("a-1", [heading("ah", "After the band")])]),
+];
+
+test("a seam's + moves off the clamp it would stand on, which is drawn over it: no key of the block in focus is under it, on a page drawn smaller or beside the Outline", async ({ page, request }) => {
+  const { id } = await makePage(request, "Clamp over a seam", band());
+  for (const [size, beside] of [[{ width: 1024, height: 768 }, null], [{ width: 1280, height: 800 }, "Outline"]] as const) {
+    const where = `${size.width}${beside ? `, the ${beside} open` : ""}`;
+    await page.setViewportSize(size);
+    await open(page, id);
+    if (beside) await drawer(page, beside);
+    // The button chosen by the arrows, as a keyboard user reaches it: up
+    // from it, then down again.
+    await block(page, "nb").focus();
+    await page.keyboard.press("ArrowUp");
+    await expect(block(page, "nb")).not.toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(block(page, "nb")).toBeFocused();
+    const clamp = page.locator(".canvas .clamp");
+    const plus = page.locator('.canvas [data-block-id="night"] > .ins-sec');
+    await expect(plus).toHaveCount(1);
+    // The page is drawn smaller, and the clamp, at its size, runs on past
+    // the section's foot in the page's middle, where the "+" would stand.
+    expect(Number(await page.locator(".canvas .frame").getAttribute("data-scale")), where).toBeLessThan(0.9);
+    const section = (await block(page, "night").boundingBox())!;
+    const middle = section.x + section.width / 2;
+    const foot = section.y + section.height;
+    const drawn = (await clamp.boundingBox())!;
+    expect(drawn.x, where).toBeLessThan(middle);
+    expect(drawn.x + drawn.width, where).toBeGreaterThan(middle);
+    expect(drawn.y + drawn.height, where).toBeGreaterThan(foot - 16);
+    // Every key of the clamp is drawn where it is, nothing over it.
+    await expect.poll(() => clampKeysCovered(page), where).toEqual([]);
+    // The "+" stays on its seam, beside the clamp, clear of it, and drawn
+    // where it is.
+    const sign = (await plus.boundingBox())!;
+    expect(Math.abs(sign.y + sign.height / 2 - foot), where).toBeLessThan(1);
+    expect(sign.x >= drawn.x + drawn.width || sign.x + sign.width <= drawn.x, where).toBe(true);
+    expect(await plus.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+    }), where).toBe(true);
+    // A press on More, where it is drawn, opens the button's actions, not
+    // the section picker of the "+".
+    const more = clamp.getByRole("button", { name: /^More/ });
+    const key = (await more.boundingBox())!;
+    await page.mouse.click(key.x + key.width / 2, key.y + key.height / 2);
+    await expect(page.getByRole("menu", { name: "Button actions" }), where).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /^Add a section/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(more).toBeFocused();
+    // The heading chosen instead: its clamp in the page's left margin, the
+    // "+" back in the middle.
+    await block(page, "nh").focus();
+    await expect.poll(async () => {
+      const back = (await plus.boundingBox())!;
+      return Math.abs(back.x + back.width / 2 - middle) < 1;
+    }, where).toBe(true);
+  }
 });
 
 test("the clamp's head opens the block menu beside it, More the right click's items; its moves are one step each, the focus on the key", async ({ page, request }) => {

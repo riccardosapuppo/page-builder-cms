@@ -26,7 +26,7 @@ import type { BlockType } from "../shared/document.ts";
 import { afterRender, runCommand } from "./act.ts";
 import { BlockIcon } from "./block-icon.tsx";
 import { canvasUi } from "./canvas-ui.ts";
-import { placeClamp, type Box, type ClampRoom } from "./clamp-place.ts";
+import { CLAMP_WIDTH, placeClamp, plusShift, type Box, type ClampRoom } from "./clamp-place.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
@@ -156,15 +156,53 @@ function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): ClampRoo
   return { block, leftLimit, rightLimit, contentLeft, contentRight, view, covers, height: clamp.offsetHeight, scale, section: kind === "section" };
 }
 
+// The seams whose "+" the clamp may stand on: the one below its section,
+// and the one above it, which the section before draws, or the section
+// itself above the page's first. A "+" is moved along its seam by a
+// property of the section that draws it (canvas.css: --seam-shift for the
+// seam below it, --seam-shift-top for the one above).
+interface SeamPlus {
+  host: HTMLElement;
+  edge: "top" | "bottom";
+}
+
+const SEAM_SHIFT: Readonly<Record<SeamPlus["edge"], string>> = { bottom: "--seam-shift", top: "--seam-shift-top" };
+
+function seamsBeside(own: HTMLElement, kind: ClampKind): SeamPlus[] {
+  const section = kind === "section" ? own : own.closest<HTMLElement>("[data-block-type=section]");
+  const row = section?.parentElement;
+  if (!section || !row) return [];
+  const sections = [...row.children].filter((e): e is HTMLElement => e instanceof HTMLElement && e.dataset.blockType === "section");
+  const before = sections[sections.indexOf(section) - 1];
+  return [{ host: section, edge: "bottom" }, before ? { host: before, edge: "bottom" } : { host: section, edge: "top" }];
+}
+
+// Moves each seam's "+" off the clamp, or back to the page's middle when
+// the clamp leaves it clear (./clamp-place.ts, plusShift), in the page's
+// pixels: the "+" is drawn on the page, which may be drawn smaller.
+function clearSeams(seams: readonly SeamPlus[], clamp: Box, scale: number): void {
+  for (const { host, edge } of seams) {
+    const band = host.getBoundingClientRect();
+    const shift = plusShift(clamp, { x: (band.left + band.right) / 2, y: edge === "top" ? band.top : band.bottom }, band);
+    if (shift === 0) host.style.removeProperty(SEAM_SHIFT[edge]);
+    else host.style.setProperty(SEAM_SHIFT[edge], `${shift / scale}px`);
+  }
+}
+
+function forgetSeams(seams: readonly SeamPlus[]): void {
+  for (const { host, edge } of seams) host.style.removeProperty(SEAM_SHIFT[edge]);
+}
+
 // Lays the clamp where it goes, in the block's own pixels (the page may be
 // drawn smaller: the clamp is drawn back up to its size, editor.css), and
 // keeps room under the block for a clamp that runs on below it, so a
-// block brought into view brings its whole clamp.
-function placeOnPage(clamp: HTMLElement, kind: ClampKind): void {
+// block brought into view brings its whole clamp. Moves the seams' "+"
+// off it, and says which seams it looked at.
+function placeOnPage(clamp: HTMLElement, kind: ClampKind): SeamPlus[] {
   const own = clamp.parentElement;
-  if (!own) return;
+  if (!own) return [];
   const room = roomOf(own, kind, clamp);
-  if (!room) return;
+  if (!room) return [];
   const place = placeClamp(room);
   const box = own.getBoundingClientRect();
   const { scale } = room;
@@ -177,12 +215,16 @@ function placeOnPage(clamp: HTMLElement, kind: ClampKind): void {
   clamp.dataset.tie = place.tie === null ? "none" : "on";
   const below = place.y + room.height - box.bottom;
   own.style.scrollMarginBottom = below > 0 ? `${Math.ceil(below / scale) + 24}px` : "";
+  const seams = seamsBeside(own, kind);
+  clearSeams(seams, { left: place.x, top: place.y, right: place.x + CLAMP_WIDTH[place.size], bottom: place.y + room.height }, scale);
+  return seams;
 }
 
 // Places the clamp now, and again whenever the block, the page, the canvas
 // or the clamp changes size, the canvas scrolls (a tall block's clamp
 // keeps to the canvas's top), the page is drawn at a new scale, or a
-// drawer opens or closes over the canvas.
+// drawer opens or closes over the canvas. Gone, it gives the seams' "+"
+// back their places.
 function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind, writing: boolean): void {
   const { ui } = useEnv();
   useLayoutEffect(() => {
@@ -190,7 +232,14 @@ function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind,
     const own = clamp?.parentElement;
     if (!clamp || !own) return undefined;
     let frame = 0;
-    const place = () => placeOnPage(clamp, kind);
+    // The seams looked at last: a section moved by its clamp has another
+    // section before it, whose "+" goes back to its place.
+    let seams: SeamPlus[] = [];
+    const place = () => {
+      const now = placeOnPage(clamp, kind);
+      forgetSeams(seams.filter((seam) => !now.some((other) => other.host === seam.host && other.edge === seam.edge)));
+      seams = now;
+    };
     const soon = () => {
       if (frame) return;
       frame = requestAnimationFrame(() => {
@@ -220,6 +269,7 @@ function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind,
       canvas?.removeEventListener("scroll", soon);
       unsubscribe();
       own.style.scrollMarginBottom = "";
+      forgetSeams(seams);
     };
   }, [ref, kind, writing, ui]);
 }

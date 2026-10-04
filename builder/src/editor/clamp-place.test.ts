@@ -4,7 +4,7 @@
 // gutters 32, a section's default 48.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { clampTop, placeClamp, type Box, type ClampRoom } from "./clamp-place.ts";
+import { clampTop, placeClamp, plusShift, PLUS_REACH, type Box, type ClampRoom } from "./clamp-place.ts";
 
 const view: Box = { left: 0, top: 52, right: 1126, bottom: 848 };
 const room = (over: Partial<ClampRoom>): ClampRoom => ({
@@ -110,4 +110,23 @@ test("a section's clamp sits inside it, in the page's margin, on the same vertic
 test("on a page drawn smaller, the clamp keeps its size and its 14 from the block; the frame it ties to is nearer", () => {
   const scaled = room({ scale: 0.8, block: { left: 70, top: 200, right: 500, bottom: 300 } });
   expect(placeClamp(scaled)).toMatchObject({ size: "full", tie: 14 - 6 * 0.8, x: 70 - 48, y: 200 - 6 * 0.8 });
+});
+
+test("a seam's + the clamp would stand on moves along its seam, off the clamp: to its right, or to its left where the seam ends first", () => {
+  // A button in the second of two columns, its clamp in the gutter in the
+  // page's middle, running on down past the section's foot: the page drawn
+  // at 84% (a 1024 window), its seam's "+" at the middle, x 355, y 670.
+  const clamp: Box = { left: 338, top: 525, right: 372, bottom: 673 };
+  const seam = { left: 19, right: 691 };
+  const shift = plusShift(clamp, { x: 355, y: 670 }, seam);
+  expect(shift).toBe(372 + PLUS_REACH - 355);
+  // Moved, the "+" (16 round) stands 6 clear of the clamp.
+  expect(355 + shift - 16 - clamp.right).toBe(6);
+  // The seam ends too soon on the right: to the clamp's left.
+  expect(plusShift(clamp, { x: 355, y: 670 }, { left: 19, right: 400 })).toBe(338 - PLUS_REACH - 355);
+  // A clamp that ends above the "+", or stands beside it, leaves it alone.
+  expect(plusShift({ ...clamp, bottom: 670 - PLUS_REACH }, { x: 355, y: 670 }, seam)).toBe(0);
+  expect(plusShift({ ...clamp, left: 35, right: 69 }, { x: 355, y: 670 }, seam)).toBe(0);
+  // The seam above a section: a clamp whose head reaches up over it.
+  expect(plusShift({ ...clamp, top: 660, bottom: 808 }, { x: 355, y: 670 }, seam)).toBe(372 + PLUS_REACH - 355);
 });

@@ -19,6 +19,8 @@
 //   runs on below a short block, in the margin where nothing else sits.
 //   Beside a block taller than the canvas whose top has scrolled away, it
 //   stays at the canvas's top for as long as the block is there.
+// - A seam's "+" it would stand on moves along the seam, off it
+//   (plusShift).
 //
 // Plain geometry in the window's pixels, so the unit tests can read it;
 // ./Canvas.tsx measures the page and lays the answer on the clamp.
@@ -156,4 +158,26 @@ export function placeClamp(room: ClampRoom): ClampPlace {
   const other = inMargin(room, "left", y);
   if (!covered(room, other)) return other;
   return clearOfCovers(room, y);
+}
+
+// A seam's "+" (./Canvas.tsx, Seam) stands in the middle of the page, on
+// its seam, 32 round, and the seam below the section that holds the
+// selection always shows it. The clamp of a block in a column that starts
+// in the page's middle stands in the gutter there, and beside a block low
+// in its section it runs on down to that seam, most of all on a page drawn
+// smaller, where the clamp keeps its size and the section does not. The
+// clamp is drawn over the "+" (canvas.css), so none of its keys is ever
+// under it; and the "+" moves along its seam, off the clamp, so it is not
+// under the clamp either: to the clamp's right, or to its left where the
+// seam ends first. How far it moves, in the window's pixels: 0 when the
+// clamp leaves it clear.
+// Its radius (16) and the room it keeps from the clamp (6).
+export const PLUS_REACH = 22;
+
+export function plusShift(clamp: Box, plus: { x: number; y: number }, seam: { left: number; right: number }): number {
+  const reach = PLUS_REACH;
+  if (plus.x + reach <= clamp.left || plus.x - reach >= clamp.right || plus.y + reach <= clamp.top || plus.y - reach >= clamp.bottom) return 0;
+  const right = clamp.right + reach;
+  if (right + reach <= seam.right) return right - plus.x;
+  return clamp.left - reach - plus.x;
 }
