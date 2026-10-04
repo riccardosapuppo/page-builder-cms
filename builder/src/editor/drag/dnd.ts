@@ -74,16 +74,34 @@ export function collisionPriority(children: number): CollisionPriority | undefin
   return containerPriority(children) === "low" ? CollisionPriority.Low : undefined;
 }
 
+// The drawers float over the canvas (../Drawer.tsx), and the library
+// measures its targets' shapes, not what lies on top of them: a pointer
+// over a drawer would land on the hidden block under it, and a key of
+// Insert, picked up there, would already be on its way into that block.
+// Over a drawer, the pointer is on nothing of the page.
+function overDrawer(point: { x: number; y: number }): boolean {
+  for (const drawer of document.querySelectorAll(".drawer")) {
+    const box = drawer.getBoundingClientRect();
+    if (point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom) return true;
+  }
+  return false;
+}
+
 // What is under the pointer, and nothing else, is a target: a shaded area
-// is not a place, even with a target close by. A target that ranks low
-// says so in its collisions; the library's hook would read a priority
-// given to the target only when it is made, and the priority follows the
-// drag.
+// is not a place, even with a target close by.
+const UNDER: CollisionDetector = (input) => {
+  const point = input.dragOperation.position.current;
+  return point && overDrawer(point) ? null : pointerIntersection(input);
+};
+
+// A target that ranks low says so in its collisions; the library's hook
+// would read a priority given to the target only when it is made, and the
+// priority follows the drag.
 const LOW: CollisionDetector = (input) => {
-  const collision = pointerIntersection(input);
+  const collision = UNDER(input);
   return collision ? { ...collision, priority: CollisionPriority.Low } : null;
 };
 
 export function useDropTarget(input: Omit<UseDroppableInput, "collisionDetector">, priority: CollisionPriority | undefined) {
-  return useDroppable({ ...input, collisionDetector: priority === CollisionPriority.Low ? LOW : pointerIntersection });
+  return useDroppable({ ...input, collisionDetector: priority === CollisionPriority.Low ? LOW : UNDER });
 }
