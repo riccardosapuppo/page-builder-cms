@@ -1,4 +1,4 @@
-// The text widget's panel: its Content tab opens the text's editor on the
+// The text widget's panel: its Text group opens the text's editor on the
 // canvas, with the caret at the end, and says how else to get there; the
 // server's 422 on the text's document shows in the panel. The editing
 // itself is the canvas's (../../editor/rich/, e2e/rich-text.spec.ts).

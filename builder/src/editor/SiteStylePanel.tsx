@@ -43,7 +43,7 @@ export function ratioWords(ratio: number): string {
   return words;
 }
 
-// The sample "Aa" of each step, at a size the tray can hold, in the
+// The sample "Aa" of each step, at a size the sidebar can hold, in the
 // design's sizes.
 const SAMPLE_PX = [26, 23, 20, 17, 16, 14, 12] as const;
 

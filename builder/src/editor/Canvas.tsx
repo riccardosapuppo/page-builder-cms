@@ -218,8 +218,8 @@ function useDecoration(block: RawBlock): Decoration | undefined {
 }
 
 // The spacing the selected block's dimension line measures, by the step
-// the Style tab names (design/shots/editor.png, the "L" under the hero's
-// heading): for a widget, the gap below it to the next widget, its
+// the sidebar's Spacing names (design/shots/editor.png, the "L" under the
+// hero's heading): for a widget, the gap below it to the next widget, its
 // column's Space between; for a column, the space inside it, at its top.
 // The step is the one the previewed device shows (./device-style.ts): its
 // own, else the base; a phone never takes the tablet's. A step that is the

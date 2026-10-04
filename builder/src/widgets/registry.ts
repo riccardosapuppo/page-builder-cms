@@ -1,4 +1,4 @@
-// Every widget, in the widget panel's order (the approved design's: Basic,
+// Every widget, in the Insert drawer's order (the approved design's: Basic,
 // Media, Content), and the renderer of each type. registry.test.ts holds
 // the list to the schema's widget types, one definition each.
 //

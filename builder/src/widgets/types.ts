@@ -1,11 +1,12 @@
 // What a widget is to the editor: its definition. Each widget's folder
-// exports one, and registry.ts lists them in the widget panel's order.
+// exports one, and registry.ts lists them in the Insert drawer's order.
 import type { ComponentType } from "react";
 import type { BlockRenderProps } from "../render/context.ts";
 import type { Shape } from "../render/drawings.tsx";
 import type { BlockOfType, ImageRef, PropsOf, VideoProvider, WidgetType } from "../shared/document.ts";
 
-// The widget panel's groups, in the approved design's order.
+// The Insert drawer's and the picker's groups, in the approved design's
+// order.
 export const WIDGET_GROUPS = [
   { id: "basic", label: "Basic" },
   { id: "media", label: "Media" },
@@ -26,7 +27,7 @@ export interface VideoInput {
   videoId: string;
 }
 
-// What the widget panel must have before it can add a widget: nothing, one
+// What Insert or a "+" must have before it can add a widget: nothing, one
 // image (from the library or another site), at least one image, or a video.
 // A new block is a valid block from the moment it exists, and an image
 // cannot be valid without its source.
@@ -49,9 +50,9 @@ export type Needs = null | "image" | "images" | "video";
 export interface WidgetDefinition<T extends WidgetType> {
   type: T;
   group: WidgetGroup;
-  // As the widget panel, the navigator and the history name it.
+  // As Insert, the Outline and the history name it.
   label: string;
-  // The widget panel's tile, from the approved design.
+  // Its key in Insert and in the picker, the approved design's tile.
   icon: IconData;
   needs: Needs;
   // The props of a new one.

@@ -126,7 +126,7 @@ test("a tablet's and a phone's own space, set in the column's Spacing group, is 
 });
 
 // A section's space above and below has nine steps, the theme's seven and
-// the two section steps, in the tray's width: each step's name stands
+// the two section steps, in the sidebar's width: each step's name stands
 // apart from the next, read as a person reads them, on every device.
 test("a section's rulers print their nine steps apart, none touching the next", async ({ page, request }) => {
   const { id } = await makePage(request, "Nine steps", fixture());

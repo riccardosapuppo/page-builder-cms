@@ -6,9 +6,9 @@
 // 800 for a tablet, under 560 for a phone), so the base is the only value
 // the two share.
 //
-// The Style tab edits the previewed device's values with these, the canvas
-// measures the step the page shows, and the navigator flags the blocks
-// with values of their own on a tablet or a phone.
+// The sidebar's style settings edit the previewed device's values with
+// these, the canvas measures the step the page shows, and the Outline
+// flags the blocks with values of their own on a tablet or a phone.
 import { REMOVE, type StyleUpdates } from "../document/commands.ts";
 import { styleValue } from "../render/style.ts";
 import type { Device, StyleTokens } from "../shared/document.ts";
@@ -17,7 +17,7 @@ import type { Preview } from "./ui-store.ts";
 export type OverrideDevice = Exclude<Device, "base">;
 export const OVERRIDE_DEVICES: readonly OverrideDevice[] = ["tablet", "phone"];
 
-// The part of the style the Style tab writes while a width is previewed.
+// The part of the style the style settings write while a width is previewed.
 export function deviceOf(preview: Preview): Device {
   return preview === "desktop" ? "base" : preview;
 }

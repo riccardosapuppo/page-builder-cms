@@ -1,4 +1,4 @@
-// Every widget's accessibility test (./a11y.ts), in the widget panel's
+// Every widget's accessibility test (./a11y.ts), in the Insert drawer's
 // order. registry.test.ts holds this list to the registry: one for each
 // widget type, none missing.
 import type { WidgetA11y } from "./a11y.ts";

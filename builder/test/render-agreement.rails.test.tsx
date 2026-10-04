@@ -56,7 +56,7 @@ test("the page root carries the site style as the CMS writes it", async () => {
   expect(attributes).toEqual(siteStyleAttributes(await cmsPage.adapter.getSiteStyle()));
 });
 
-test("every widget as the widget panel makes it draws on the CMS as in React", async () => {
+test("every widget as Insert makes it draws on the CMS as in React", async () => {
   const [shore, pier] = cmsPage.library;
   const inputs: Partial<Record<WidgetType, unknown>> = {
     image: { mediaId: shore!.id, alt: "The shore" },

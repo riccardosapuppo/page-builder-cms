@@ -4,7 +4,8 @@ One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
 `map/`, `iconbox/`, `quote/`, `accordion/`. Each holds:
 
-- `definition.ts`: the type, the widget panel's group and label (the
+- `definition.ts`: the type, its group and label in the Insert drawer and
+  the "+"'s picker (the
   label is `TYPE_NAMES` of `../document/labels.ts`, the history's too),
   the tile's icon, what the panel must have before it can add one
   (`needs`), the props of a new one, the renderer, and its **traps**: the

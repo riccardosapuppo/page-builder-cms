@@ -38,7 +38,8 @@ widgets import its helpers. Nothing here talks to a server.
 - **`ctx.useDecoration(block)`**, the canvas's only way in: a hook called
   once in each block's render, returning attributes and handlers for the
   block's root, a `ref`, and what to draw inside it after the block's
-  content (the floating bar, an empty column's drop zone). The page's own
+  content (the selected block's clamp and its "+", an empty column's
+  large "+" and drop zone). The page's own
   attributes win over any of the same name, and nothing replaces a
   block's content but one thing: `editing`, the editor in a text block's
   place while it is written on the canvas, which only the text widget's

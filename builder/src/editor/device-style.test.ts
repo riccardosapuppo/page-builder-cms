@@ -1,5 +1,5 @@
 // A block's style on each device, as the published page shows it, and the
-// Style tab's way back to the desktop's value: the device's key taken out,
+// style settings' way back to the desktop's value: the device's key taken out,
 // never the desktop's value written in its place. Held on random styles of
 // every block of a page, with that very fault planted to see the check
 // fail.

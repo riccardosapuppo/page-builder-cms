@@ -1,5 +1,5 @@
 // The widget registry against the schema and the approved design: one
-// definition for every widget type the schema has, in the widget panel's
+// definition for every widget type the schema has, in the design's
 // groups and order, named and drawn as the design's tiles are; and every
 // new widget a valid block, on a valid page.
 // @vitest-environment node
@@ -55,7 +55,7 @@ test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
 });
 
-test("the widget panel's groups, order and labels are the approved design's (its Form tile comes with stage 5)", () => {
+test("Insert's groups, order and labels are the approved design's widget tiles' (its Form tile comes with stage 5)", () => {
   const panel = designPanel().filter((group) => group.title !== "Layout" && group.title !== "Forms");
   expect(WIDGET_GROUPS.map((g) => g.label)).toEqual(panel.map((g) => g.title));
   const ours = WIDGET_GROUPS.map((g) => ({ title: g.label, tiles: WIDGETS.filter((w) => w.group === g.id).map((w) => ({ label: w.label, symbol: `w-${w.type}` })) }));
@@ -93,7 +93,7 @@ test("each tile draws its shapes under their SVG names, as the design's symbol h
   expect(said.mock.calls.map((call) => String(call[0]))).toEqual([]);
 });
 
-// What the widget panel hands a widget that needs something first.
+// What Insert or a "+" hands a widget that needs something first.
 const library: ImageRef = { mediaId: "m1", alt: "The bay at dawn" };
 const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorative: true };
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
