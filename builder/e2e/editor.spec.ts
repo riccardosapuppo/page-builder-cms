@@ -689,11 +689,50 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
     expect(frame.y + frame.height, "the frame's bottom against the name").toBeGreaterThan(name.y);
     expect(frame.y + frame.height - 2, "the frame's bottom against the name").toBeLessThan(name.y + name.height);
     expect(frame.x + frame.width, "the frame's right end against the name").toBeGreaterThan(name.x);
-    // Inside its border, the name looks the same with the frame hidden.
-    const inside = { x: name.x + 2, y: name.y + 2, width: name.width - 4, height: name.height - 4 };
-    const shown = await page.screenshot({ clip: inside });
-    await selected.evaluate((element) => { (element as HTMLElement).style.visibility = "hidden"; });
-    expect(await page.screenshot({ clip: inside })).toEqual(shown);
+    // Where the frame's bottom line and its corner run through the name,
+    // the browser finds the name over them. Asked of the browser's own
+    // order of drawing, as a click asks it, not of pixels: how the name's
+    // letters are drawn differs from one system to another, and with what
+    // is drawn under them. Marks let clicks through; for the moment of the
+    // question, the name and the frame take them.
+    const label = await block(page, "h2").locator(":scope > .ov-hover > .ov-label").elementHandle();
+    const { over, levels } = await selected.evaluate((frame, label) => {
+      const corner = frame.querySelector(":scope > .br-br")!;
+      const name = label.getBoundingClientRect();
+      const box = frame.getBoundingClientRect();
+      const end = corner.getBoundingClientRect();
+      // The middle of each line, drawn at the page's scale.
+      const scale = box.height / (frame as HTMLElement).offsetHeight;
+      const middle = (element: Element, bottom: number) => bottom - (parseFloat(getComputedStyle(element).borderBottomWidth) * scale) / 2;
+      const line = middle(frame, box.bottom);
+      const points: Record<string, [number, number]> = {
+        "the line, at the name's left": [name.left + 4, line],
+        "the line, at the name's middle": [(name.left + name.right) / 2, line],
+        "the line, at the name's right": [name.right - 4, line],
+        "the corner": [(Math.max(name.left, end.left) + Math.min(name.right, end.right)) / 2, middle(corner, end.bottom)],
+      };
+      const taking = [frame, label] as HTMLElement[];
+      const before = taking.map((element) => element.style.pointerEvents);
+      for (const element of taking) element.style.pointerEvents = "auto";
+      try {
+        const over = Object.fromEntries(Object.entries(points).map(([where, [x, y]]) => {
+          const found = document.elementsFromPoint(x, y);
+          const at = (part: Element) => found.findIndex((element) => part.contains(element));
+          const [named, framed] = [at(label), at(frame)];
+          return [where, named < 0 || framed < 0 ? `not both there: the name ${named}, the frame ${framed}` : named < framed ? "the name" : "the frame"];
+        }));
+        const level = (element: Element) => getComputedStyle(element).zIndex;
+        return { over, levels: `the hovered outline at z-index ${level(label.parentElement!)}, the frame at ${level(frame)}` };
+      } finally {
+        taking.forEach((element, n) => { element.style.pointerEvents = before[n]!; });
+      }
+    }, label);
+    expect(over, levels).toEqual({
+      "the line, at the name's left": "the name",
+      "the line, at the name's middle": "the name",
+      "the line, at the name's right": "the name",
+      "the corner": "the name",
+    });
   });
 
   // The window changes size while the pointer stays on a block: the page
