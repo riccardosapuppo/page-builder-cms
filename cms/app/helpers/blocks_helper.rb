@@ -12,18 +12,30 @@
 module BlocksHelper
   WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion].freeze
 
-  def render_document(document, media:)
+  def render_document(document, media:, cached: false)
     sections = document.is_a?(Hash) ? document["sections"] : nil
-    render_blocks(sections, allow: %w[section], media: media)
+    render_blocks(sections, allow: %w[section], media: media, cached: cached)
   end
 
-  def render_blocks(blocks, allow:, media:)
-    parts = Array(blocks).filter_map do |block|
-      next unless block.is_a?(Hash) && allow.include?(block["type"])
-
-      render(partial: "blocks/#{block['type']}", locals: { block: block, media: media })
+  # The blocks of one level (a page's sections, a section's columns, a
+  # column's widgets), in order.
+  #
+  # cached: each block is a fragment of the cache, keyed on its subtree
+  # (PageCache::BlockKeys) and read with one read_multi for the whole
+  # level; only the blocks it misses are drawn, and written back with one
+  # write_multi. Rails caches a collection through a single partial, so
+  # blocks/_block hands each block to its type's partial. The published
+  # pages are cached; the preview, the 404 page and the contract goldens
+  # are not.
+  def render_blocks(blocks, allow:, media:, cached: false)
+    blocks = Array(blocks).select { |block| block.is_a?(Hash) && allow.include?(block["type"]) }
+    if cached
+      @block_keys ||= PageCache::BlockKeys.new
+      keys = @block_keys
+      render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media }, cached: ->(block) { keys.call(block) }) || "".html_safe
+    else
+      safe_join(blocks.map { |block| render(partial: "blocks/#{block['type']}", locals: { block: block, media: media }) })
     end
-    safe_join(parts)
   end
 
   # The attributes of a block's root element: its classes, then

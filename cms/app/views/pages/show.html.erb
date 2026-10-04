@@ -1,1 +1,2 @@
-<%= render_document(@document, media: @media) %>
+<%# The page's blocks: each a fragment of the cache on a published page (@cache_blocks, PublicPage#render_published), drawn afresh in the preview and on the 404 page. -%>
+<%= render_document(@document, media: @media, cached: @cache_blocks) %>

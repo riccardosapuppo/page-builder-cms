@@ -8,14 +8,21 @@
 class MediaResolver
   Image = Data.define(:src, :width, :height)
 
-  # One query for every image the document names, files included.
+  # One query for every image the document names, files included, made at
+  # the first image the renderer asks for: on a cached page, the blocks
+  # read from the cache ask nothing, and when every block is read, the
+  # query is never made.
   def self.for_document(document)
-    ids = BlockDocument.media_refs(document).map(&:last).uniq
-    new(MediaItem.where(public_id: ids).includes(file_attachment: :blob).index_by(&:public_id))
+    new do
+      ids = BlockDocument.media_refs(document).map(&:last).uniq
+      MediaItem.where(public_id: ids).includes(file_attachment: :blob).index_by(&:public_id)
+    end
   end
 
-  def initialize(items_by_public_id)
+  # items_by_public_id, or a block that returns them when first needed.
+  def initialize(items_by_public_id = nil, &load)
     @items = items_by_public_id
+    @load = load
   end
 
   # Served through the app (Active Storage's proxy route), not by a
@@ -24,6 +31,7 @@ class MediaResolver
   # that no longer exists, or has no file, gives nil and the renderer
   # leaves the image out.
   def call(media_id)
+    @items ||= @load.call
     item = @items[media_id]
     return nil unless item&.file&.attached?
 
