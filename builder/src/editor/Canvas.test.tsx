@@ -152,8 +152,9 @@ test("while a text is written, the clamp's moving keys give their place to bold,
   kit.render(<Canvas />);
   act(() => kit.ui.setState({ textTools: tools }));
   const clamp = screen.getByRole("toolbar", { name: "Text formatting" });
-  expect(within(clamp).getAllByRole("button").map((key) => [key.getAttribute("aria-label"), key.getAttribute("aria-pressed")])).toEqual([
-    ["Bold", "true"], ["Italic", "false"], ["Link", "false"],
+  // The grip and More stay: the block can still move and be duplicated.
+  expect(within(clamp).getAllByRole("button").map((key) => [key.getAttribute("aria-label"), key.getAttribute("aria-pressed"), key.tabIndex])).toEqual([
+    ["Drag to move, or press Space to pick up", null, -1], ["Bold", "true", 0], ["Italic", "false", -1], ["Link", "false", -1], ["More: copy, paste, duplicate, insert, delete", null, -1],
   ]);
   expect(within(clamp).getByRole("img", { name: "Text, being written" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Move up" })).toBeNull();

@@ -11,7 +11,8 @@
 //
 // While its text is being written, the moving keys give their place to
 // bold, italic and link (Up, Down and Space are the text's then), the
-// head names the text, and Esc gives them back.
+// head names the text, and Esc gives them back; the grip and More stay,
+// so the block can still be dragged or duplicated without leaving it.
 //
 // One Tab stop, after the block's own (a toolbar): Up and Down move along
 // it, Esc goes back to the block, or into the text being written.
@@ -249,8 +250,9 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
 
   // The one key the Tab key lands on: the head, or, writing, Bold; the
   // arrows move it.
-  const [tabStop, setTabStop] = useState({ writing, at: 0 });
-  const current = tabStop.writing === writing ? tabStop.at : 0;
+  const first = writing ? 1 : 0;
+  const [tabStop, setTabStop] = useState({ writing, at: first });
+  const current = tabStop.writing === writing ? tabStop.at : first;
   const setCurrent = (at: number) => setTabStop({ writing, at });
   const keys = () => [...(ref.current?.querySelectorAll<HTMLElement>(":scope > button") ?? [])];
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -281,16 +283,40 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
   const back = moveRefusal(kind, standing, -1);
   const on = moveRefusal(kind, standing, 1);
   const where = place ? `, in ${place}` : "";
+  const keep = (event: { preventDefault(): void }) => event.preventDefault();
+
+  // The grip and More stay while a text is written: the block can still be
+  // dragged, duplicated or deleted from its clamp, its text handed over
+  // first. Only the moves, whose keys the text takes, give their place.
+  // Keyed, so the two clamps share these two elements as the text opens
+  // and closes: a menu opened from More keeps its key to go back to.
+  const grip = (index: number) => <button key="grip" type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(index)}><Icon name="grip" /></button>;
+  const more = (index: number) => (
+    <button
+      key="more"
+      type="button"
+      data-key="more"
+      aria-label="More: copy, paste, duplicate, insert, delete"
+      aria-haspopup="menu"
+      aria-expanded={menu && menuFrom === "more"}
+      title="More (or right-click the block)"
+      onClick={(event) => openClampMenu(env, event.currentTarget, "more")}
+      {...roving(index)}
+    >
+      <Icon name="more" />
+    </button>
+  );
 
   if (tools) {
-    const keep = (event: { preventDefault(): void }) => event.preventDefault();
     return (
       <div ref={ref} className="clamp clamp-text" role="toolbar" aria-orientation="vertical" aria-label="Text formatting" onKeyDown={onKeyDown}>
-        <span className="clamp-head clamp-head-static" role="img" aria-label={`${name}, being written`} title={`${name}, being written. ${LEAVE} to finish`}><BlockIcon type={type} className="i" /></span>
-        <button type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(0)}><Icon name="bold" className="i i-strong" /></button>
-        <button type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(1)}><Icon name="italic" className="i i-strong" /></button>
+        <span key="head-static" className="clamp-head clamp-head-static" role="img" aria-label={`${name}, being written`} title={`${name}, being written. ${LEAVE} to finish`}><BlockIcon type={type} className="i" /></span>
+        {grip(0)}
+        <button key="bold" type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(1)}><Icon name="bold" className="i i-strong" /></button>
+        <button key="italic" type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(2)}><Icon name="italic" className="i i-strong" /></button>
         <button
           type="button"
+          key="link"
           data-key="link"
           aria-label={tools.link ? `Link to ${tools.link}` : "Link"}
           aria-pressed={tools.link !== null}
@@ -299,10 +325,12 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
           title={`Link the selected words (${entryKeysText(entry("link"))})`}
           onMouseDown={keep}
           onClick={() => (tools.linkOpen ? tools.run.closeLink(true) : tools.run.openLink())}
-          {...roving(2)}
+          {...roving(3)}
         >
           <Icon name="link" />
         </button>
+        <hr key="rule" aria-hidden="true" />
+        {more(4)}
       </div>
     );
   }
@@ -312,6 +340,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       <button
         type="button"
         className="clamp-head"
+        key="head"
         data-key="head"
         aria-haspopup="menu"
         aria-expanded={menu && menuFrom === "head"}
@@ -323,22 +352,11 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       >
         <BlockIcon type={type} className="i" />
       </button>
-      <button type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(1)}><Icon name="grip" /></button>
-      <button type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Icon name={moves.backIcon} /></button>
-      <button type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Icon name={moves.onIcon} /></button>
-      <hr aria-hidden="true" />
-      <button
-        type="button"
-        data-key="more"
-        aria-label="More: copy, paste, duplicate, insert, delete"
-        aria-haspopup="menu"
-        aria-expanded={menu && menuFrom === "more"}
-        title="More (or right-click the block)"
-        onClick={(event) => openClampMenu(env, event.currentTarget, "more")}
-        {...roving(4)}
-      >
-        <Icon name="more" />
-      </button>
+      {grip(1)}
+      <button key="back" type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Icon name={moves.backIcon} /></button>
+      <button key="on" type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Icon name={moves.onIcon} /></button>
+      <hr key="rule" aria-hidden="true" />
+      {more(4)}
     </div>
   );
 }
