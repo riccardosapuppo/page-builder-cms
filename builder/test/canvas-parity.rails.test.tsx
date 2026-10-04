@@ -13,7 +13,8 @@
 // - the editor's page root (src/render/page.tsx) with the published page's
 //   stylesheets (site.css and tokens.css, as the CMS has them), all four
 //   widths side by side in one window 1400 wide: only the root's width
-//   tells each how to lay out.
+//   tells each how to lay out. Each is drawn in the site style its served
+//   page carries, since other test files change the CMS's for a moment.
 // For every element of the page, in order, its box (from the left of the
 // page root and the top of the sections' container, to 1/64 of a pixel,
 // the unit layout works in) and the properties the stylesheets set must be
@@ -25,7 +26,7 @@ import { chromium, type Browser, type Page } from "playwright-core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, expect, inject, test } from "vitest";
 import { cmsFonts, cmsStylesheets } from "../build/paths.ts";
-import { PageRoot, type SiteStyleChoice } from "../src/render/page.tsx";
+import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../src/render/page.tsx";
 import type { PageDocument } from "../src/shared/document.ts";
 import { PREVIEW_WIDTHS } from "../src/shared/preview-widths.ts";
 import { createRailsAdapter } from "../src/storage/rails.ts";
@@ -190,6 +191,19 @@ interface Difference {
   styles: string[];
 }
 
+// The site style whose attributes a served page's root carries (data-<slot>
+// and data-type-scale, as siteStyleAttributes writes them), with the
+// choices the CMS offers; read back, it must give those attributes again.
+function styleOf(carried: Record<string, string>): SiteStyleChoice {
+  const palette = Object.fromEntries(Object.keys(siteStyle.choices.palette).flatMap((slot) => {
+    const tone = carried[`data-${slot}`];
+    return tone === undefined ? [] : [[slot, tone]];
+  }));
+  const style: SiteStyleChoice = { ...siteStyle, palette, typeScale: carried["data-type-scale"] ?? "" };
+  expect(siteStyleAttributes(style), "the served page's site style, read back").toEqual(carried);
+  return style;
+}
+
 // The elements of the canvas that differ from the page's, at every width:
 // none, when the canvas lays the page out as the CMS's page is laid out.
 // The canvas uses the stylesheets named (both, unless a fault is planted).
@@ -198,14 +212,31 @@ async function compare(doc: PageDocument, label: string, stylesheets = ["site.cs
   if (!saved.ok) throw new Error(JSON.stringify(saved.problem));
   revision = saved.value.revision;
 
+  // The pages the CMS serves, first, each with the site style it was drawn
+  // in. That style is the CMS's, shared by every test file of the run, and
+  // the storage contract (src/storage/contract.ts) changes it for a moment
+  // to see that it can, then puts it back: a page served in that moment is
+  // drawn in another type scale (text of 22 px where the canvas, drawn in
+  // the style read before, had 24). So each width's root on the canvas is
+  // drawn in the style its served page carries.
+  const served: { width: number; measured: Measured[]; style: SiteStyleChoice }[] = [];
+  for (const width of WIDTHS) {
+    const page = await newPage(width);
+    await page.goto(new URL(previewPath, cms).href);
+    await settle(page);
+    const carried = await page.locator(".site").evaluate((root) => Object.fromEntries([...root.attributes].filter((a) => a.name !== "class").map((a) => [a.name, a.value])));
+    served.push({ width, measured: await measure(page, ".site"), style: styleOf(carried) });
+    await page.close();
+  }
+
   // The editor's page roots, one per width, side by side from the top of
   // the window, each at a whole pixel as the page's sections are: a root
   // half a pixel down would round some boxes the other way.
   let x = 0;
-  const roots = WIDTHS.map((width) => {
+  const roots = served.map(({ width, style }) => {
     const at = x;
     x += width + 100;
-    return `<div data-width="${width}" style="position: absolute; top: 0; left: ${at}px">${renderToStaticMarkup(<PageRoot document={doc} ctx={{ media: () => null }} siteStyle={siteStyle} width={width} landmark={false} />)}</div>`;
+    return `<div data-width="${width}" style="position: absolute; top: 0; left: ${at}px">${renderToStaticMarkup(<PageRoot document={doc} ctx={{ media: () => null }} siteStyle={style} width={width} landmark={false} />)}</div>`;
   }).join("");
   const css = stylesheets.map((name) => readFileSync(join(cmsStylesheets, name), "utf8")).join("\n");
   const canvas = await newPage(1400);
@@ -220,13 +251,8 @@ async function compare(doc: PageDocument, label: string, stylesheets = ["site.cs
 
   let elements = 0;
   const differences: Difference[] = [];
-  for (const width of WIDTHS) {
-    const served = await newPage(width);
-    await served.goto(new URL(previewPath, cms).href);
-    await settle(served);
-    const page = await measure(served, ".site");
+  for (const { width, measured: page } of served) {
     const ours = await measure(canvas, `[data-width="${width}"] > .site`);
-    await served.close();
     expect(page.length, `${label} at ${width}`).toBeGreaterThan(20);
     expect(ours.length, `${label} at ${width}`).toBe(page.length);
     // Each element that differs, with what differs: the deepest of a run is
