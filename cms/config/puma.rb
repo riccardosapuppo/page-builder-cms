@@ -61,8 +61,16 @@ Puma::Plugins.register("loopback_only", Class.new(Puma::Plugin) {
 })
 plugin :loopback_only
 
-# Allow puma to be restarted by `bin/rails restart` command.
-plugin :tmp_restart
+# Allow puma to be restarted by `bin/rails restart` command, and by
+# `bin/rails dev:cache`, which touches the same tmp/restart.txt. Not on
+# Windows: Rails gives Puma `bin/rails server ... --restart` to run again,
+# and Windows cannot run bin/rails (a script, with no extension) that way.
+# The restart there fails after the server has stopped listening and
+# closed its sockets, in a process that stays alive (Solid Queue's threads
+# keep it so), with no server and nothing to say so: the editor's `npm
+# start` still sees its CMS running. There the server is stopped and
+# started again by hand, as the README says.
+plugin :tmp_restart unless Gem.win_platform?
 
 # The jobs (a scheduled publish, the pruning of old versions) run in Solid
 # Queue's supervisor inside Puma, so one server is all there is to start

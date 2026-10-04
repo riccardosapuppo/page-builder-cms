@@ -435,7 +435,13 @@ Production, the e2e environment and development cache in Solid Cache,
 each in its own cache database (`storage/development_cache.sqlite3` for
 development, which `db:prepare` makes). Development keeps Rails' switch:
 caching is off until `ruby bin/rails dev:cache` turns it on, and the
-browser level works there either way. The tests keep the null store,
+browser level works there either way. The switch is read as the server
+starts, so stop the server, run `ruby bin/rails dev:cache` (it says
+whether caching is now enabled or disabled), and start the server again.
+Rails would restart a running server itself by `tmp/restart.txt`, which
+`dev:cache` touches; on Windows that restart cannot run, so
+[config/puma.rb](config/puma.rb) leaves it out there, and a server left
+running goes on as it was started. The tests keep the null store,
 except the cache tests, which put Solid Cache in place on the tests' own
 cache database (`storage/test_cache.sqlite3`) and count its calls.
 

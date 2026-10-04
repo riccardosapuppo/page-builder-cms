@@ -66,6 +66,18 @@ class PumaBindingTest < ActiveSupport::TestCase
     saved&.each { |name, value| value.nil? ? ENV.delete(name) : ENV[name] = value }
   end
 
+  # `bin/rails dev:cache` and `bin/rails restart` touch tmp/restart.txt,
+  # and this plugin restarts the server when they do. On Windows the
+  # restart cannot run (Rails hands Puma `bin/rails ...` to execute, which
+  # Windows cannot), and it fails after the server has closed its sockets,
+  # leaving a process that listens on nothing and does not exit.
+  test "the server is restarted by tmp/restart.txt except on Windows, where it could not start again" do
+    restart = Puma::Plugins.find("tmp_restart")
+    loaded = configuration.plugins.instance_variable_get(:@instances).map(&:class).include?(restart)
+
+    assert_equal !Gem.win_platform?, loaded
+  end
+
   # Solid Queue's supervisor runs inside the server where the jobs must
   # run without a second process to start: development, and e2e, whose
   # browser tests watch a scheduled publish happen. As threads on Windows,

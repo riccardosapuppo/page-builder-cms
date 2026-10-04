@@ -78,6 +78,11 @@ The other ways, and why not:
 - **Development caches only in the browser** unless `ruby bin/rails
   dev:cache` turns the server's caching on, as Rails does by default;
   then in Solid Cache, on a cache database of its own, as production does.
+  The switch is read as the server starts: stop the server, run
+  `dev:cache`, start it again. Rails restarts a running server by touching
+  `tmp/restart.txt`, which `dev:cache` does, but on Windows that restart
+  fails after the server has stopped listening and leaves a process that
+  does not exit, so `config/puma.rb` does not load the plugin there.
 
 ## The proof
 
