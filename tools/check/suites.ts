@@ -399,7 +399,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 157);
+      return why ? notRun(why) : playwright(ctx, "e2e", 158);
     },
   },
   {
