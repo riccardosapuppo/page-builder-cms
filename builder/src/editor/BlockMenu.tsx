@@ -54,6 +54,17 @@ export function openBlockMenu(env: ReturnType<typeof useEnv>, event: ReactMouseE
   env.ui.getState().setBlockMenu({ x, y, from });
 }
 
+// The same More menu from a row's "…" key: the row's block selected, the
+// menu under the key, its right edge on the key's, so it stays over the
+// drawer it was opened from.
+export function openRowMenu(env: ReturnType<typeof useEnv>, id: string, from: HTMLElement): void {
+  env.store.getState().select(id);
+  env.ui.setState({ tray: "edit", notice: null });
+  const box = from.getBoundingClientRect();
+  canvasUi(env.ui).getState().setMenu("more", null);
+  env.ui.getState().setBlockMenu({ x: box.right - MENU_WIDTH, y: box.bottom + 4, from: "navigator" });
+}
+
 export function BlockMenu() {
   const at = useUi((u) => u.blockMenu);
   const selection = useEditor((s) => s.selection);

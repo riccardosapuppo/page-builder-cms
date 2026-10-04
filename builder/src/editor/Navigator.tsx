@@ -28,7 +28,7 @@ import { allBlocks, locate } from "../document/tree.ts";
 import type { Block, PageDocument, StyleTokens } from "../shared/document.ts";
 import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
-import { openBlockMenu } from "./BlockMenu.tsx";
+import { openBlockMenu, openRowMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { overriddenOn, type OverrideDevice } from "./device-style.ts";
 import { draggedName } from "./drag/marks.ts";
@@ -73,6 +73,10 @@ function flagWords(devices: readonly OverrideDevice[]): string {
 function countWidgets(doc: PageDocument): number {
   return doc.sections.reduce((sum, section) => sum + section.children.reduce((n, column) => n + column.children.length, 0), 0);
 }
+
+// "3 widgets", "1 widget": a column's count at the end of its row, and the
+// drawer's total.
+const widgetsWords = (count: number): string => `${count} ${count === 1 ? "widget" : "widgets"}`;
 
 export function Navigator() {
   const env = useEnv();
@@ -254,7 +258,7 @@ export function Navigator() {
           {sections > 0 && <p className="hint hint-pad tree-hint">Select a row and the page scrolls to it.</p>}
         </>)}
       </div>
-      <p className="drawer-foot drawer-foot-count">{sections} {sections === 1 ? "section" : "sections"}, {widgets} {widgets === 1 ? "widget" : "widgets"}</p>
+      <p className="drawer-foot drawer-foot-count">{sections} {sections === 1 ? "section" : "sections"}, {widgetsWords(widgets)}</p>
     </>
   );
 }
@@ -376,13 +380,34 @@ function TreeItem(props: TreeItemProps) {
         <span>{name}</span>
         {block.type === "section"
           ? <em className="t-count">{detail}</em>
-          : detail && <em>{detail}</em>}
+          : block.type === "column"
+            ? <em className="t-count">{widgetsWords(children.length)}</em>
+            : detail && <em>{detail}</em>}
         {errorsOn.has(block.id) && <span className="t-count" title="The server refused this block in the last save"><Icon name="error" className="i i-xs" /></span>}
         {overrides.length > 0 && (
           <span className="t-flags" id={flagsId} title={flagWords(overrides)}>
             {overrides.map((device) => <Icon key={device} name={device} className="i i-xs" />)}
             <span className="visually-hidden">{flagWords(overrides)}</span>
           </span>
+        )}
+        {/* The selected row's "…": the same menu a right click opens, for the
+            pointer that has no right click. Not a Tab stop: the keyboard has
+            the menu key (Shift+F10) on the row. */}
+        {selection === block.id && !dragging && (
+          <button
+            className="t-more"
+            type="button"
+            tabIndex={-1}
+            aria-label={`${name} options`}
+            aria-haspopup="menu"
+            title="More (or right-click the row)"
+            onClick={(event) => {
+              event.stopPropagation();
+              openRowMenu(env, block.id, event.currentTarget);
+            }}
+          >
+            <Icon name="more" />
+          </button>
         )}
       </div>
       {isOpen && (
@@ -399,7 +424,7 @@ function ThemeRow({ part }: { part: "header" | "footer" }) {
   const name = part === "header" ? "Site header" : "Site footer";
   return (
     <p className="t-row t-theme" title={`${name}: the same on every page. It comes from the site's theme and is not edited here.`}>
-      <Icon name="lock" /><span>{name}</span><span className="visually-hidden">, locked: the same on every page</span>
+      <Icon name="lock" /><span>{name}</span>{" "}<em aria-hidden="true">Every page</em><span className="visually-hidden">, locked: the same on every page</span>
     </p>
   );
 }

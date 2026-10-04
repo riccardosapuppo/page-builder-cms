@@ -6,7 +6,8 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
-import { makeSetStyle, REMOVE } from "../document/commands.ts";
+import { makeDelete, makeSetStyle, REMOVE } from "../document/commands.ts";
+import { BlockMenu } from "./BlockMenu.tsx";
 import { Navigator } from "./Navigator.tsx";
 
 const item = (name: string) => screen.getByRole("treeitem", { name });
@@ -137,6 +138,58 @@ test("Headings lists the page's headings in order and by level; one chosen is se
   fireEvent.keyDown(headings, { key: "ArrowLeft" });
   expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Blocks" }));
   expect(screen.getByRole("tree", { name: "Page structure" })).toBeTruthy();
+});
+
+test("a column's row says how many widgets it holds, as a section's says its columns; the theme's rows say they are on every page", () => {
+  const kit = editorKit({ document: page() });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" } });
+  kit.render(<Navigator />);
+  act(() => kit.store.getState().select("c1"));
+  expect(within(item("Hero")).getByText("2 columns")).toBeTruthy();
+  // The count is the row's own, at its end; the name stays the block's.
+  expect(within(item("Column 1")).getByText("3 widgets")).toBeTruthy();
+  expect(within(item("Column 2")).getByText("1 widget")).toBeTruthy();
+  const made = makeDelete(kit.doc(), "i1");
+  if (!made.ok) throw new Error(made.error.message);
+  act(() => {
+    kit.store.getState().dispatch(made.command);
+  });
+  expect(within(item("Column 2")).getByText("0 widgets")).toBeTruthy();
+  const header = screen.getByText("Site header").closest("p")!;
+  const footer = screen.getByText("Site footer").closest("p")!;
+  for (const row of [header, footer]) {
+    expect(within(row).getByText("Every page")).toBeTruthy();
+    // Said once to a screen reader: its name and why it is locked.
+    expect(within(row).getByText("Every page").getAttribute("aria-hidden")).toBe("true");
+    expect(row.textContent).toMatch(/, locked: the same on every page$/);
+  }
+});
+
+test("the selected row, and only it, has a … key that opens the More menu; a right click opens the same", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<><Navigator /><BlockMenu /></>);
+  expect(document.querySelectorAll(".t-more")).toHaveLength(0);
+  act(() => kit.store.getState().select("h1"));
+  const more = screen.getAllByRole("button", { name: "Heading options" });
+  expect(more).toHaveLength(1);
+  expect(document.querySelectorAll(".t-more")).toHaveLength(1);
+  // Inside the selected row, not a Tab stop of its own.
+  expect(more[0]!.closest("[role=treeitem]")).toBe(item("Heading: Winter series"));
+  expect(more[0]!.tabIndex).toBe(-1);
+  fireEvent.click(more[0]!);
+  const menu = screen.getByRole("menu", { name: "Heading actions" });
+  expect(within(menu).getAllByRole("menuitem").map((entry) => entry.getAttribute("data-item"))).toEqual(["copy", "paste", "duplicate", "before", "after", "parent", "delete"]);
+  // The click chose nothing else: still the heading, and the row did not take it.
+  expect(kit.store.getState().selection).toBe("h1");
+  // The right click's menu is the same list.
+  fireEvent.keyDown(menu, { key: "Escape" });
+  fireEvent.contextMenu(item("Heading: Winter series"), { clientX: 40, clientY: 40 });
+  expect(within(screen.getByRole("menu", { name: "Heading actions" })).getAllByRole("menuitem")).toHaveLength(7);
+  // Another row selected: the key moves with the selection.
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  fireEvent.click(within(item("Join")).getByText("Join"));
+  expect(screen.queryAllByRole("button", { name: "Heading options" })).toHaveLength(0);
+  expect(screen.getAllByRole("button", { name: "Join options" })).toHaveLength(1);
 });
 
 test("the row the drawer gives the focus to when it opens is the tree's one Tab stop", () => {

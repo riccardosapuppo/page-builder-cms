@@ -295,7 +295,7 @@ test("the theme's header and footer are drawn around the page, locked, and the O
 
   // The Outline: the two locked rows, above and below the tree.
   const tray = await drawer(page, "Outline");
-  await expect(tray.locator(".t-theme")).toHaveText(["Site header, locked: the same on every page", "Site footer, locked: the same on every page"]);
+  await expect(tray.locator(".t-theme")).toHaveText(["Site header Every page, locked: the same on every page", "Site footer Every page, locked: the same on every page"]);
   const rows = await tray.locator(".t-theme, .tree").evaluateAll((elements) => elements.map((e) => e.className));
   expect(rows).toEqual(["t-row t-theme", "tree", "t-row t-theme"]);
 

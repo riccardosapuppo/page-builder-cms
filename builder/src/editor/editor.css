@@ -489,6 +489,13 @@ textarea.input { resize: vertical; }
    row's end (design/styles.css, .t-flag). */
 .t-flags { display: inline-flex; gap: 2px; margin-left: auto; padding-left: 8px; color: var(--graphite); }
 .t-count ~ .t-flags { margin-left: 0; padding-left: 4px; }
+.t-theme em { margin-left: auto; padding-left: 8px; }
+/* The selected row's "…" (design/layout/shots/structure.png), at the end of
+   the row after whatever else it holds. */
+.t-more { display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin-left: auto; border-radius: 4px; color: var(--graphite); }
+.t-more:hover { background: var(--alloy); }
+.t-more:focus-visible { outline-offset: -2px; }
+.t-count ~ .t-more, .t-flags ~ .t-more { margin-left: 4px; }
 .t-chev { color: var(--steel); }
 .t-chev-none { visibility: hidden; }
 li[aria-expanded="true"] > .t-row > .t-chev { transform: rotate(90deg); }
