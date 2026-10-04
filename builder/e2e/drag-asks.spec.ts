@@ -135,6 +135,21 @@ test.describe("from Insert, with the mouse", () => {
     expect(added.map((w) => w.props)).toEqual([{ provider: "youtube", videoId: "dawnswim-01", title: "A dawn swim" }]);
   });
 
+  test("Esc while a key is dragged with the mouse cancels the drag only: Insert stays open, nothing asked, nothing added", async ({ page, request }) => {
+    const { id } = await makePage(request, "Mouse drag cancelled", fixture());
+    await open(page, id);
+    await pickUp(page, await insertKey(page, "Media", "Gallery"));
+    await moveOnto(page, block(page, "c4"));
+    await expect(caption(page).locator("strong")).toHaveText("Gallery will be added to Column 2 in Second.");
+    await page.keyboard.press("Escape");
+    await expect(caption(page)).toHaveText("Cancelled: nothing was added.");
+    await page.mouse.up();
+    await expect(page.getByRole("complementary", { name: "Insert", exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(await canvasShape(page)).toEqual(START);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
+  });
+
   test("dropped where widgets cannot go, Video asks for nothing and adds nothing", async ({ page, request }) => {
     const { id } = await makePage(request, "Video refused", fixture());
     await open(page, id);

@@ -241,16 +241,24 @@ export function DragLayer({ children }: { children: ReactNode }) {
           canvas?.addEventListener("scroll", resync, { passive: true });
           // Space drops it where it is, as releasing does (the caption says
           // so): a hand that holds the button can still use the keyboard.
-          const space = (key: KeyboardEvent) => {
-            if (key.code !== "Space" || key.repeat || !manager.dragOperation.status.dragging) return;
+          // Esc is the drag library's, which cancels: it is marked taken
+          // on its way down, so the drawer the key was taken from (Insert)
+          // stays open, as it does for a key moved with the keyboard.
+          const keys = (key: KeyboardEvent) => {
+            if (!manager.dragOperation.status.dragging) return;
+            if (key.code === "Escape") {
+              key.preventDefault();
+              return;
+            }
+            if (key.code !== "Space" || key.repeat) return;
             key.preventDefault();
             key.stopPropagation();
             void manager.actions.stop({ event: key });
           };
-          window.addEventListener("keydown", space, true);
+          window.addEventListener("keydown", keys, true);
           scrollListener.current = () => {
             canvas?.removeEventListener("scroll", resync);
-            window.removeEventListener("keydown", space, true);
+            window.removeEventListener("keydown", keys, true);
           };
         }
       }}
