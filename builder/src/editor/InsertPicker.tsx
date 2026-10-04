@@ -10,6 +10,15 @@
 // What it adds goes in by ONE command made at the place (makeInsert, as
 // the Insert drawer's do), the new block selected and focused; a widget
 // that needs an image or a video asks for it first, as Insert does.
+//
+// Its keys are dragged as Insert's are (./tiles.ts), by the mouse or by
+// Space and the arrows, to put their block somewhere else than its line;
+// while one is, the picker and its line give way, and once its block is
+// added elsewhere the picker closes. A key dropped that needs something
+// first (an image, images, a video, a picture), from here or from
+// Insert, opens the picker at the drop place with that window already
+// open: what the window returns is added there; Esc or Cancel adds
+// nothing, closes the picker, and gives the focus back.
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { idDraw } from "../document/ids.ts";
@@ -19,8 +28,9 @@ import { WidgetIcon } from "../widgets/icon.tsx";
 import { LAYOUT, WIDGETS } from "../widgets/registry.ts";
 import { newWidget, type AnyWidgetDefinition, type InputOf } from "../widgets/types.ts";
 import { afterRender } from "./act.ts";
-import { canvasUi, useCanvasUi, type InsertPlace } from "./canvas-ui.ts";
+import { canvasUi, useCanvasUi, type Asking, type InsertPlace } from "./canvas-ui.ts";
 import { useEditor, useEnv, type EditorEnv } from "./context.tsx";
+import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { openDrawer } from "./Drawer.tsx";
 import { Icon } from "./icons.tsx";
 import { useInsert } from "./insert.ts";
@@ -28,21 +38,28 @@ import { placeExists, placeKey, placeWords, type PlaceWords } from "./insert-pla
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, PRESETS, type Preset } from "./presets.ts";
+import { askedWidget, DRAG_WORDS, presetTile, sectionTile, widgetTile, type TileSource } from "./tiles.ts";
 
 // What takes the focus back when the picker closes: the "+" that opened
 // it, drawn again by then (found by its data-plus), or the element that
 // had the focus (the block, for the "+" key; the clamp's key, for its
-// menu's Insert after).
+// menu's Insert after; a key of Insert, dropped).
 let returnTo: { plus: string } | { element: HTMLElement } | null = null;
 
-export function openInserter(env: Pick<EditorEnv, "ui">, place: InsertPlace, from: Element | null): void {
-  const plus = from instanceof HTMLElement ? from.closest<HTMLElement>("[data-plus]")?.dataset.plus : undefined;
-  const active = document.activeElement;
-  const element = from instanceof HTMLElement ? from : active instanceof HTMLElement && active !== document.body ? active : null;
-  returnTo = plus ? { plus } : element ? { element } : null;
+// `asking`: a key was dropped at the place and asks for something first;
+// the picker opens with its window. A key of the picker itself, dropped
+// elsewhere, moves the picker, and the focus still goes back to what
+// opened it in the first place.
+export function openInserter(env: Pick<EditorEnv, "ui">, place: InsertPlace, from: Element | null, asking: Asking | null = null): void {
+  if (!(from instanceof Element && from.closest(".picker"))) {
+    const plus = from instanceof HTMLElement ? from.closest<HTMLElement>("[data-plus]")?.dataset.plus : undefined;
+    const active = document.activeElement;
+    const element = from instanceof HTMLElement ? from : active instanceof HTMLElement && active !== document.body ? active : null;
+    returnTo = plus ? { plus } : element ? { element } : null;
+  }
   env.ui.getState().setBlockMenu(null);
   env.ui.getState().setHover(null);
-  canvasUi(env.ui).getState().setInserting(place);
+  canvasUi(env.ui).getState().setInserting(place, asking);
 }
 
 export function closeInserter(env: Pick<EditorEnv, "ui">, focusBack: boolean): void {
@@ -63,7 +80,28 @@ export const PICKER_ID = "canvas_picker";
 
 export function InsertPicker() {
   const place = useCanvasUi((s) => s.inserting);
-  return place ? <Picker key={placeKey(place)} place={place} /> : null;
+  const asking = useCanvasUi((s) => s.asking);
+  // A drop at the very place the picker stands opens a new one, its
+  // window open.
+  return place ? <Picker key={`${placeKey(place)}${asking ? `:${asking.kind === "widget" ? asking.type : asking.kind}` : ""}`} place={place} dropped={asking} /> : null;
+}
+
+// A key of the picker: a button its arrows go to (found by its index in
+// the list), and a drag source.
+function PickerKey({ id, index, tile, className, ...button }: {
+  id: string;
+  index: number;
+  tile: TileSource;
+  className: string;
+  tabIndex: number;
+  "aria-haspopup": "dialog" | undefined;
+  "aria-describedby": string;
+  onFocus: () => void;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const { ref } = useDraggable({ id, data: tile, sensors: TILE_SENSORS });
+  return <button ref={ref} type="button" className={className} data-key-index={index} data-draggable="" {...button} />;
 }
 
 const matching = (label: string, query: string) => query.trim() === "" || label.toLowerCase().includes(query.trim().toLowerCase());
@@ -120,13 +158,17 @@ function placePicker(picker: HTMLElement, place: InsertPlace): PickerPlace | nul
   return { style: { left: x - left + canvas.scrollLeft, top: y - top + canvas.scrollTop }, side, leader: lineY - y };
 }
 
-function Picker({ place }: { place: InsertPlace }) {
+function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null }) {
   const env = useEnv();
   const { store, newId } = env;
   const doc = useEditor((s) => s.document);
+  // One of its keys being dragged: the picker and its line give way
+  // (canvas.css, ./Canvas.tsx).
+  const dragging = useEditor((s) => s.drag !== null);
   const { insertMade } = useInsert();
   const [query, setQuery] = useState("");
-  const [asking, setAsking] = useState<AnyWidgetDefinition | "picture" | null>(null);
+  // Opened by a dropped key, the picker opens on that key's window.
+  const [asking, setAsking] = useState<AnyWidgetDefinition | "picture" | null>(() => (dropped === null ? null : dropped.kind === "picture" ? "picture" : askedWidget(dropped)));
   const [current, setCurrent] = useState(0);
   const [position, setPosition] = useState<PickerPlace | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -176,11 +218,25 @@ function Picker({ place }: { place: InsertPlace }) {
 
   if (gone) return null;
 
-  // One command at the place; the picker closes once the page has it.
+  // One command at the place; the picker closes once the page has it. For
+  // a dropped key, the live region says so, as it says how a drag ended.
   const settle = (made: Parameters<typeof insertMade>[0]) => {
     const refusal = insertMade(made);
-    if (refusal === null) closeInserter(env, false);
-    return refusal;
+    if (refusal !== null) return refusal;
+    const label = store.getState().past.at(-1)?.command.label;
+    if (dropped && label) env.ui.setState({ dragSaid: `${label}.` });
+    closeInserter(env, false);
+    return null;
+  };
+  // The window closed without adding: back to the picker's keys; for a
+  // dropped key, nothing was added, and the focus goes back to the key.
+  const unask = () => {
+    if (dropped === null) {
+      setAsking(null);
+      return;
+    }
+    env.ui.setState({ dragSaid: "Cancelled: nothing was added." });
+    closeInserter(env, true);
   };
   const addWidget = (definition: AnyWidgetDefinition, input?: unknown) => {
     if (place.kind !== "block") return null;
@@ -198,8 +254,11 @@ function Picker({ place }: { place: InsertPlace }) {
   const layouts = place.kind === "section" ? LAYOUT.columns.filter((c) => matching(c.label, query)) : [];
   const presets = place.kind === "section" ? PRESETS.filter((p) => matching(PRESET_LABELS[p], query)) : [];
 
+  // A key dragged with the keyboard starts on this picker's line.
+  const here = () => (place.kind === "block" ? { parentId: place.parentId, index: place.index } : { parentId: null, index: place.index });
+
   // The keys in reading order, each with its row and its place in it.
-  const keys: Array<{ key: string; row: number; col: number; label: string; node: ReactNode; popup: boolean; press: () => void }> = [];
+  const keys: Array<{ key: string; row: number; col: number; label: string; node: ReactNode; popup: boolean; press: () => void; tile: TileSource }> = [];
   const lay = (group: readonly unknown[], perRow: number, rowStart: number, make: (index: number) => Omit<(typeof keys)[number], "row" | "col">) => {
     group.forEach((_, index) => keys.push({ ...make(index), row: rowStart + Math.floor(index / perRow), col: index % perRow }));
     return rowStart + Math.ceil(group.length / perRow);
@@ -213,6 +272,7 @@ function Picker({ place }: { place: InsertPlace }) {
         popup: definition.needs !== null,
         node: <><WidgetIcon icon={definition.icon} className="i" />{definition.label}</>,
         press: () => (definition.needs === null ? void addWidget(definition) : setAsking(definition)),
+        tile: widgetTile(definition, newId, here),
       };
     });
   } else {
@@ -224,6 +284,7 @@ function Picker({ place }: { place: InsertPlace }) {
         popup: false,
         node: <><span className="layout-pic" aria-hidden="true" style={{ "--n": choice.count } as CSSProperties}>{Array.from({ length: choice.count }, (_, i) => <i key={i} />)}</span>{choice.count} {plural("column", choice.count)}</>,
         press: () => void addSection(choice.count),
+        tile: sectionTile(choice.count, newId, here),
       };
     });
     lay(presets, ROW.presets, after, (index) => {
@@ -234,17 +295,23 @@ function Picker({ place }: { place: InsertPlace }) {
         popup: preset === "picture",
         node: <>{PRESET_PICTURES[preset]}<span className="preset-name">{PRESET_LABELS[preset]}</span></>,
         press: () => (preset === "picture" ? setAsking("picture") : void addPreset(preset)),
+        tile: presetTile(preset, newId, here),
       };
     });
   }
   const at = Math.min(current, Math.max(0, keys.length - 1));
-  const keyRefs = new Map<number, HTMLButtonElement>();
+  // The keys are found by their place in the list, which each carries.
+  const keyAt = (index: number) => box.current?.querySelector<HTMLButtonElement>(`[data-key-index="${index}"]`) ?? null;
   const go = (index: number) => {
     setCurrent(index);
-    keyRefs.get(index)?.focus();
+    keyAt(index)?.focus();
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // While a key is moved with the keyboard, the arrows, Space and Esc
+    // are the drag's (the drag library takes them first and marks them
+    // taken): none moves to another key or closes the picker.
+    if (event.defaultPrevented || store.getState().drag !== null) return;
     if (event.key === "Escape") {
       event.preventDefault();
       closeInserter(env, true);
@@ -261,8 +328,8 @@ function Picker({ place }: { place: InsertPlace }) {
       }
       return;
     }
-    const from = keys.findIndex((_, index) => keyRefs.get(index) === target);
-    if (from < 0) return;
+    const from = target.dataset.keyIndex === undefined ? -1 : Number(target.dataset.keyIndex);
+    if (!(from >= 0 && from < keys.length)) return;
     const here = keys[from]!;
     let next: number | undefined;
     if (event.key === "ArrowRight") next = Math.min(keys.length - 1, from + 1);
@@ -304,6 +371,7 @@ function Picker({ place }: { place: InsertPlace }) {
         aria-labelledby={`${id}-title`}
         hidden={asking !== null}
         data-side={position?.side}
+        data-giving-way={dragging ? "" : undefined}
         style={position ? { ...position.style, "--leader-y": `${position.leader}px` } as CSSProperties : { visibility: "hidden" }}
         onKeyDown={onKeyDown}
       >
@@ -324,26 +392,27 @@ function Picker({ place }: { place: InsertPlace }) {
               {keys.slice(group.from, group.to).map((key, offset) => {
                 const index = group.from + offset;
                 return (
-                  <button
+                  <PickerKey
                     key={key.key}
-                    ref={(element) => {
-                      if (element) keyRefs.set(index, element);
-                    }}
-                    type="button"
+                    id={`pick:${key.key}`}
+                    index={index}
+                    tile={key.tile}
                     className={place.kind === "block" ? "pkey" : group.id === "columns" ? "layout-btn" : "preset"}
                     tabIndex={index === at ? 0 : -1}
                     aria-haspopup={key.popup ? "dialog" : undefined}
+                    aria-describedby={`${id}-drag`}
                     onFocus={() => setCurrent(index)}
                     onClick={key.press}
                   >
                     {key.node}
-                  </button>
+                  </PickerKey>
                 );
               })}
             </div>
           </div>
         ))}
         {keys.length === 0 && <p className="picker-none" role="status">{place.kind === "block" ? "No block" : "No section"} is called “{query.trim()}”.</p>}
+        <p id={`${id}-drag`} hidden>{DRAG_WORDS}</p>
         <div className="picker-foot">
           <p>Lands on the yellow line, <Lands words={words} kind={place.kind} />.</p>
           <p className="picker-keys">{place.kind === "block" ? <>Arrows choose, <kbd className="kc">Enter</kbd> adds, <kbd className="kc">Esc</kbd> closes</> : <><kbd className="kc">Esc</kbd> closes without adding anything</>}</p>
@@ -357,7 +426,7 @@ function Picker({ place }: { place: InsertPlace }) {
       {asking === "picture" && (
         <ImagePicker
           confirm="Add section"
-          onClose={() => setAsking(null)}
+          onClose={unask}
           onPick={([image]) => (image ? addPreset("picture", image) : null)}
         />
       )}
@@ -365,13 +434,13 @@ function Picker({ place }: { place: InsertPlace }) {
         <ImagePicker
           confirm={asking.needs === "image" ? "Add image" : "Add gallery"}
           multiple={asking.needs === "images"}
-          onClose={() => setAsking(null)}
+          onClose={unask}
           onPick={(images: ImageRef[]) => addWidget(asking, asking.needs === "image" ? images[0]! : (images as unknown as InputOf["gallery"]))}
         />
       )}
       {asking && asking !== "picture" && asking.needs === "video" && (
         <VideoPicker
-          onClose={() => setAsking(null)}
+          onClose={unask}
           onPick={(video: { provider: VideoProvider; videoId: string; title: string }) => {
             if (place.kind !== "block") return null;
             const page = store.getState().document;

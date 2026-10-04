@@ -5,54 +5,55 @@
 // the ready-made sections the empty page offers too. Above them, a
 // sentence says where a click puts a block. Each group is a labelled group
 // of buttons; Enter or a click adds where the selection says (./insert.ts),
-// and a block or a section dragged onto the page adds where it is dropped
-// (./drag/DragLayer.tsx): the new block is made, with its ids, when the
-// drag begins.
+// and every key, a block or a section, dragged onto the page adds where it
+// is dropped (./drag/DragLayer.tsx, ./tiles.ts): by the mouse, or picked up
+// by Space where Enter would add it and moved with the arrows. The new
+// block is made, with its ids, when the drag begins.
 //
 // At its foot, a sentence says the page's own "+" add where they sit
 // (./InsertPicker.tsx): the drawer is the catalogue, the "+" the way.
 //
 // Three widgets need something first (an image, images, a video), and so
 // does the ready-made section with a picture: their key asks for it, then
-// adds the block with it. Those are added by Enter or a click only, since a
-// drag would have to drop a block that does not exist yet.
+// adds the block with it. Dragged, such a key is dropped as no command: the
+// place is kept, and its window opens there (./InsertPicker.tsx), which
+// adds the block at that place, or nothing.
 import { Fragment, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { makeInsert, makeInsertSection, newSection } from "../document/commands.ts";
+import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { idDraw } from "../document/ids.ts";
 import { blockName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
-import type { Block, ImageRef, PageDocument, VideoProvider, WidgetBlock } from "../shared/document.ts";
+import type { ImageRef, PageDocument, VideoProvider, WidgetBlock } from "../shared/document.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
 import { LAYOUT, WIDGETS } from "../widgets/registry.ts";
 import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type InputOf } from "../widgets/types.ts";
 import { useEditor, useEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
-import type { SourceData } from "./drag/DragLayer.tsx";
 import { Icon } from "./icons.tsx";
 import { insertTarget, useInsert } from "./insert.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, PRESETS, type Preset } from "./presets.ts";
+import { DRAG_WORDS, presetTile, sectionTile, widgetTile, type TileSource } from "./tiles.ts";
 
-// A key of the catalogue: a button, and the source of a drag when it can
-// make its block on its own.
-function Tile({ id, make, className, label, title, popup, onClick, children }: {
+// A key of the catalogue: a button, and the source of a drag.
+function Tile({ id, tile, className, label, title, popup, describedBy, onClick, children }: {
   id: string;
-  make: ((doc: PageDocument) => Block) | null;
+  tile: TileSource;
   className?: string;
   label?: string;
   title?: string;
   popup?: boolean;
+  describedBy: string;
   onClick: () => void;
   children: ReactNode;
 }) {
-  const data: SourceData | null = make ? { kind: "tile", make } : null;
-  const { ref, isDragSource } = useDraggable({ id, ...(data ? { data } : {}), disabled: data === null, sensors: TILE_SENSORS });
+  const { ref, isDragSource } = useDraggable({ id, data: tile, sensors: TILE_SENSORS });
   // While its block is dragged, the key leaves a dashed place in the
   // drawer, so the person sees what they took.
   const classes = [className, isDragSource ? "is-sel" : null].filter(Boolean).join(" ") || undefined;
   return (
-    <button ref={ref} className={classes} type="button" aria-label={label} title={title} aria-haspopup={popup ? "dialog" : undefined} data-draggable={data ? "" : undefined} onClick={onClick}>
+    <button ref={ref} className={classes} type="button" aria-label={label} title={title} aria-haspopup={popup ? "dialog" : undefined} aria-describedby={describedBy} data-draggable="" onClick={onClick}>
       {children}
     </button>
   );
@@ -104,13 +105,11 @@ export function Palette() {
     }
     insertBlock(make(definition, undefined));
   };
-  // What a dragged key drops: made from the page as it is when the drag
-  // begins, so its ids are free.
-  const widgetMaker = (definition: AnyWidgetDefinition) => (definition.needs === null
-    ? (page: PageDocument): Block => newWidget(definition as never, idDraw(page, newId)(), undefined as never) as WidgetBlock
-    : null);
-  const sectionMaker = (columns: number) => (page: PageDocument): Block => newSection(columns, idDraw(page, newId));
+  // Where a key picked up by the keyboard starts: where Enter would add
+  // its block, by the selection as it is when the drag begins.
   const sectionAt = (page: PageDocument) => insertTarget(page, "section", store.getState().selection)?.index ?? page.sections.length;
+  const widgetStart = (definition: AnyWidgetDefinition) => (page: PageDocument) => insertTarget(page, definition.type, store.getState().selection);
+  const sectionStart = (page: PageDocument) => ({ parentId: null, index: sectionAt(page) });
   const addSection = (columns: number) => {
     const page = store.getState().document;
     insertMade(makeInsertSection(page, columns, sectionAt(page), newId));
@@ -172,7 +171,7 @@ export function Palette() {
             <h3 className="group-title" id={`${id}-layout`}>{NEW_SECTION}</h3>
             <div className="colpick" role="group" aria-labelledby={`${id}-layout`}>
               {LAYOUT.columns.map((choice) => (
-                <Tile key={choice.count} id={`tile:columns-${choice.count}`} label={choice.label} title={choice.label} make={sectionMaker(choice.count)} onClick={() => addSection(choice.count)}>
+                <Tile key={choice.count} id={`tile:columns-${choice.count}`} label={choice.label} title={choice.label} tile={sectionTile(choice.count, newId, sectionStart)} describedBy={`${id}-drag`} onClick={() => addSection(choice.count)}>
                   <WidgetIcon icon={choice.icon} /><span aria-hidden="true">{choice.count}</span>
                 </Tile>
               ))}
@@ -190,7 +189,8 @@ export function Palette() {
                   id={`tile:${definition.type}`}
                   className="bitem"
                   popup={definition.needs !== null}
-                  make={widgetMaker(definition)}
+                  tile={widgetTile(definition, newId, widgetStart(definition))}
+                  describedBy={`${id}-drag`}
                   onClick={() => addWidget(definition)}
                 >
                   <WidgetIcon icon={definition.icon} className="i" /><span>{definition.label}</span>
@@ -206,15 +206,16 @@ export function Palette() {
             <h3 className="group-title" id={`${id}-presets`}>Ready-made sections</h3>
             <div className="drawer-presets" role="group" aria-labelledby={`${id}-presets`}>
               {presets.map((preset) => (
-                <button key={preset} type="button" className="preset" aria-haspopup={preset === "picture" ? "dialog" : undefined} onClick={() => (preset === "picture" ? setAsking("picture") : addPreset(preset))}>
+                <Tile key={preset} id={`tile:preset-${preset}`} className="preset" popup={preset === "picture"} tile={presetTile(preset, newId, sectionStart)} describedBy={`${id}-drag`} onClick={() => (preset === "picture" ? setAsking("picture") : void addPreset(preset))}>
                   {PRESET_PICTURES[preset]}<span>{PRESET_LABELS[preset]}</span>
-                </button>
+                </Tile>
               ))}
             </div>
           </>
         )}
         {tab === "sections" && presets.length === 0 && <p className="palette-none" role="status">No ready-made section is called “{query.trim()}”.{blocksFound ? " Blocks has one." : ""}</p>}
       </div>
+      <p id={`${id}-drag`} hidden>{DRAG_WORDS}</p>
       <p className="drawer-foot">On the page, the round <span className="ins-glyph" role="img" aria-label="plus"><Icon name="plus" /></span> buttons add right where they sit, and offer only what fits there.</p>
 
       {asking === "picture" && (

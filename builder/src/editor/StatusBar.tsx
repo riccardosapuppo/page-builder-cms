@@ -191,12 +191,15 @@ function LiveCaption() {
   const session = useEditor((s) => s.drag);
   const mode = useUi((u) => u.dragMode);
   const said = useUi((u) => u.dragSaid);
+  const asks = useUi((u) => u.dragAsks);
   const moving = session !== null && mode !== null;
-  // A block from Insert is added; a block of the page moves.
+  // A block from Insert or a picker is added; a block of the page moves.
+  // One that needs something first asks for it where it is dropped.
   const adding = session !== null && !draggedOf(session).fromPage;
+  const then = asks ? `, then choose ${asks}` : "";
   const help = mode === "keyboard"
-    ? "The arrows move it, Space drops it here, Esc puts it back."
-    : `Release, or press Space, to ${adding ? "add" : "drop"} it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
+    ? adding ? `The arrows move it, Space adds it here${then}, Esc cancels.` : "The arrows move it, Space drops it here, Esc puts it back."
+    : `Release, or press Space, to ${adding ? "add" : "drop"} it${then}.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
   return (
     <p className={`live-caption${moving ? "" : " live-caption-quiet"}`} role="status" aria-live="polite">
       {moving ? <><strong>{dropSentence(session)}</strong><span>{help}</span></> : said}

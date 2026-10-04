@@ -112,6 +112,9 @@ export interface UiState {
   // the drag itself), and the live region's last word on a drag that ended.
   dragMode: "pointer" | "keyboard" | null;
   dragSaid: string;
+  // What a key being dragged asks for once it is dropped ("its images"),
+  // for the live region; null for a block that needs nothing first.
+  dragAsks: string | null;
   // The text typed in a panel's field or in a text on the canvas and not
   // handed over yet. The same object for the life of the store: holding
   // text draws nothing.
@@ -174,6 +177,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     blockMenu: null,
     dragMode: null,
     dragSaid: "",
+    dragAsks: null,
     pending: new PendingText(),
     editingText: null,
     textTools: null,

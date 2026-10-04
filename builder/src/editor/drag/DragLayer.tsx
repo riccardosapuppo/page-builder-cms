@@ -6,33 +6,43 @@
 // (Esc) throws the preview away.
 //
 // The sources are the canvas's selected block (./dnd.ts, SELECTION_SOURCE)
-// and the Insert drawer's keys, each a new block made when its drag
-// begins and validated by the store as a moved block is. Before either
-// starts, the text still waiting in a panel's field is handed over.
+// and the keys of the Insert drawer and of a "+" picker (../tiles.ts),
+// each a new block made when its drag begins and validated by the store
+// as a moved block is. With the keyboard, a key starts where Enter would
+// add it. Before any drag starts, the text still waiting in a panel's
+// field is handed over.
+//
+// A key whose block needs something first (an image, images, a video, a
+// picture) is dropped as no command: the place is kept, and the picker
+// opens there with the key's window (../InsertPicker.tsx), which adds the
+// block with what it is given, by one command, or nothing.
 //
 // One live region says where the block will go while it moves, and how
 // the drag ended; it is the bottom line's (../StatusBar.tsx), drawn
-// graphite while the block moves (design/layout/shots/drag.png).
-import { useCallback, useRef, useState, type ReactNode } from "react";
-import type { Block, PageDocument } from "../../shared/document.ts";
+// graphite while the block moves (design/layout/shots/drag.png). The
+// pointer says it too: over no place for the block, it is the browser's
+// no-drop cursor.
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { Block } from "../../shared/document.ts";
 import { describeDrop, verdictFor, type DragSession, type DropTarget } from "../../document/drag.ts";
 import { locate } from "../../document/tree.ts";
 import { focusBlock, handOver, placeFocus } from "../act.ts";
 import { BlockIcon } from "../block-icon.tsx";
 import type { CommandError } from "../../document/check.ts";
 import { useEnv, type EditorEnv } from "../context.tsx";
+import { nowhereMessage } from "../insert.ts";
+import { closeInserter, openInserter } from "../InsertPicker.tsx";
+import { askedWords, placeOfDrop, type TileSource } from "../tiles.ts";
 import { DragDropProvider, DragOverlay, isKeyboardEvent, plugins, type DragDropManager } from "./dnd.ts";
 import { draggedName, draggedOf, homeRule } from "./marks.ts";
 import { PAGE_TARGET, placeAtPoint, placeFromSide, targetForPlace, type Point, type Rect, type Side } from "./place.ts";
 import { stepPlace, type Direction } from "./steps.ts";
 import { sensorCodes } from "../keymap.ts";
 
-// What a drag source carries: the canvas's selection, or a key of the
-// Insert drawer, which makes its new block (with ids the page does not have) from
-// the page as it is when the drag begins.
-export type SourceData =
-  | { kind: "selection" }
-  | { kind: "tile"; make: (doc: PageDocument) => Block };
+// What a drag source carries: the canvas's selection, or a key of Insert
+// or of a picker, which makes its new block (with ids the page does not
+// have) from the page as it is when the drag begins.
+export type SourceData = { kind: "selection" } | TileSource;
 
 // The canvas's element for a block, never the inert copy a drag library
 // may leave in its place (a block may be aria-hidden itself: a spacer).
@@ -80,6 +90,14 @@ export function beginDrag(env: Pick<EditorEnv, "store" | "ui">, data: SourceData
   if (held) return held;
   ui.getState().setBlockMenu(null);
   const { document: page, selection } = store.getState();
+  // A key the keyboard picks up starts where Enter would add it: where
+  // there is no such place (a widget, and no section yet), it stays put,
+  // and the editor says why, as Enter would.
+  if (data.kind === "tile" && keyboard && data.start(page) === null) {
+    const message = nowhereMessage(page, data.type);
+    ui.getState().say(message);
+    return { reason: "noTarget", message };
+  }
   const started = data.kind === "selection"
     ? selection === null
       ? { ok: false as const, error: { reason: "nothing" as const, message: "Select a block to move it." } }
@@ -89,10 +107,17 @@ export function beginDrag(env: Pick<EditorEnv, "store" | "ui">, data: SourceData
     ui.getState().say(started.error.message);
     return started.error;
   }
-  ui.setState({ dragMode: keyboard ? "keyboard" : "pointer", notice: null, hover: null, dragSaid: "" });
+  ui.setState({ dragMode: keyboard ? "keyboard" : "pointer", notice: null, hover: null, dragSaid: "", dragAsks: data.kind === "tile" && data.asks ? askedWords(data.asks) : null });
   const own = ownPlace(store.getState().drag!);
   if (own) store.getState().dragOver(own);
   return null;
+}
+
+// Whether the pointer is over no place for the dragged block: none under
+// it, or one that cannot take the block.
+function refusedHere(env: Pick<EditorEnv, "store" | "ui">): boolean {
+  const session = env.store.getState().drag;
+  return session !== null && env.ui.getState().dragMode === "pointer" && !(session.target !== null && session.verdict?.allowed === true);
 }
 
 interface Ghost {
@@ -107,6 +132,22 @@ export function DragLayer({ children }: { children: ReactNode }) {
   const side = useRef<Side>("inside");
   const pointer = useRef<Point | null>(null);
   const [ghost, setGhost] = useState<Ghost | null>(null);
+  // What the drag started from, kept for its end: a key's own data and
+  // element (a picker's key, the picker closes once its block is added).
+  const source = useRef<{ data: SourceData; element: Element | null } | null>(null);
+
+  // The cursor over no place for the block: no-drop (editor.css), for a
+  // person who does not read the shading or the bottom line.
+  useEffect(() => {
+    const mark = () => document.documentElement.toggleAttribute("data-drop-refused", refusedHere({ store, ui }));
+    const stopStore = store.subscribe(mark);
+    const stopUi = ui.subscribe(mark);
+    return () => {
+      stopStore();
+      stopUi();
+      document.documentElement.removeAttribute("data-drop-refused");
+    };
+  }, [store, ui]);
 
   const over = useCallback((target: DropTarget | null) => {
     const session = store.getState().drag;
@@ -172,6 +213,7 @@ export function DragLayer({ children }: { children: ReactNode }) {
           event.preventDefault();
           return;
         }
+        source.current = { data, element: event.operation.source?.element ?? null };
         const session = store.getState().drag!;
         if (keyboard) {
           const directions: Direction[] = [];
@@ -218,7 +260,10 @@ export function DragLayer({ children }: { children: ReactNode }) {
         kept?.stop();
         const session = store.getState().drag;
         if (!session || ui.getState().dragMode !== "keyboard") return;
-        const own = ownPlace(session);
+        // A block of the page starts where it is; a key's, where Enter
+        // would add it.
+        const data = source.current?.data;
+        const own = ownPlace(session) ?? (data?.kind === "tile" ? data.start(session.base) : null);
         if (own) aim(manager, own);
         for (const direction of kept?.directions ?? []) step(manager, direction);
       }}
@@ -252,7 +297,9 @@ export function DragLayer({ children }: { children: ReactNode }) {
         setGhost(null);
         pointer.current = null;
         const session = store.getState().drag;
-        ui.setState({ dragMode: null });
+        const from = source.current;
+        source.current = null;
+        ui.setState({ dragMode: null, dragAsks: null });
         if (!session) return;
         const dragged = draggedOf(session);
         const name = draggedName(session);
@@ -260,6 +307,18 @@ export function DragLayer({ children }: { children: ReactNode }) {
           store.getState().cancelDrag();
           ui.setState({ dragSaid: dragged.fromPage ? `Cancelled: ${name} is back where it was.` : `Cancelled: nothing was added.` });
           if (dragged.fromPage && keyboard) focusBlock(dragged.id);
+          return;
+        }
+        // A key whose block needs something first, dropped where it may
+        // go: no command yet. The place is kept, and the picker opens
+        // there with the key's window; the focus comes back to the key if
+        // the window adds nothing.
+        const tile = from?.data.kind === "tile" ? from.data : null;
+        if (tile?.asks && session.target !== null && session.verdict?.allowed) {
+          const sentence = describeDrop(session) ?? `${name} goes here.`;
+          store.getState().cancelDrag();
+          ui.setState({ tray: "edit", notice: null, dragSaid: `${sentence.replace(/\.$/, "")}, once you choose ${askedWords(tile.asks)}.` });
+          openInserter({ ui }, placeOfDrop(session.target), from?.element ?? null, tile.asks);
           return;
         }
         const last = store.getState().past.at(-1);
@@ -273,6 +332,9 @@ export function DragLayer({ children }: { children: ReactNode }) {
         // A drop where the block already was makes no command.
         const made = store.getState().past.at(-1);
         ui.setState({ tray: "edit", notice: null, dragSaid: made && made !== last ? `${made.command.label}.` : `${name} stays where it was.` });
+        // A key of a picker added its block elsewhere: the picker's place
+        // is done with.
+        if (tile && from?.element?.closest(".picker")) closeInserter({ ui }, false);
         placeFocus(outcome.focus, "canvas");
       }}
     >

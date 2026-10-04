@@ -453,7 +453,11 @@ function usePluses(block: RawBlock, id: string | null, relation: Relation): Plus
   };
   const below = useStore(canvas, seam(section + 1));
   const above = useStore(canvas, section === 0 ? seam(0) : () => null);
-  const slot = useStore(canvas, (s) => (s.inserting?.kind === "block" && s.inserting.parentId === id ? s.inserting.index : null));
+  // While one of the picker's keys is dragged, its line gives way to the
+  // drop indicator (the picker itself too, ./InsertPicker.tsx).
+  const dragging = useStore(store, (s) => s.drag !== null);
+  const opened = useStore(canvas, (s) => (s.inserting?.kind === "block" && s.inserting.parentId === id ? s.inserting.index : null));
+  const slot = dragging ? null : opened;
   const point = useStore(store, (s) => {
     if (!insertOpen || type !== "column" || id === null || s.drag) return null;
     const at = insertTarget(s.document, "heading", s.selection);

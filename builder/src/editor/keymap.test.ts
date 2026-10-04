@@ -49,7 +49,9 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("I", { metaKey: true, shiftKey: true }))).toEqual([]);
   expect(actions(press("i", { metaKey: true }))).toEqual(["italic"]);
   expect(actions(press("k", { ctrlKey: true }))).toEqual(["link"]);
-  expect(actions(press(" "))).toEqual(["pickUp", "drop"]);
+  // Space picks a block of the canvas up, drops it, and picks up a key of
+  // Insert or of a picker: three places, one key.
+  expect(actions(press(" "))).toEqual(["pickUp", "drop", "pickUpTile"]);
   // "?" is Shift and "/" on one keyboard and a key of its own on another.
   expect(actions(press("?", { shiftKey: true }))).toEqual(["showShortcuts"]);
   expect(actions(press("?"))).toEqual(["showShortcuts"]);
@@ -170,5 +172,5 @@ test("the window and the menus name the keys as the design does", () => {
   expect(ariaKeyShortcuts(entry("addHere"))).toBe("Plus");
   expect(entryCaps(entry("blockTools"))).toEqual([{ text: "Tab" }]);
   // The words of the approved layout's window, the widths the previews'.
-  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add after the selection", "Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, `On phone, ${PREVIEW_WIDTHS.phone} wide`]);
+  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add after the selection", "Add the block chosen in Insert", "Pick up the block chosen in Insert, to place it", "Open Insert", "Open the outline", "Look at it on desktop", `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, `On phone, ${PREVIEW_WIDTHS.phone} wide`]);
 });

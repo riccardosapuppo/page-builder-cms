@@ -38,7 +38,7 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
 
 // The design's window, and the smallest the editor is made for.
 for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) test(`the editor has no serious or critical axe finding, in any of its states, at ${size.width} by ${size.height}`, { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Thirty-seven states, each read by axe whole.
+  // Thirty-nine states, each read by axe whole.
   test.setTimeout(240_000);
   await page.setViewportSize(size);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -131,6 +131,17 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Blocks" }).click();
   await expect(page.locator(".canvas .clamp")).toHaveAttribute("data-side", "right");
   await clean(page, "Insert open over a first column's block, its clamp on the right");
+  // A key of Insert picked up by the keyboard, the grey where it cannot
+  // go; then dropped, the window it asks with open at the place.
+  await page.getByRole("complementary", { name: "Insert" }).getByRole("group", { name: "Media" }).getByRole("button", { name: "Video", exact: true }).focus();
+  await page.keyboard.press("Space");
+  await expect(page.locator(".live-caption strong")).toHaveText(/^Video will be added to /);
+  await clean(page, "a key of Insert picked up by the keyboard");
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("dialog", { name: "Add a video" })).toBeVisible();
+  await clean(page, "a dropped Video asking for its address at its place");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Add a video" })).toHaveCount(0);
   await page.getByRole("button", { name: "Close Insert" }).click();
   await device(page, "Phone").click();
   await clean(page, "the phone preview");

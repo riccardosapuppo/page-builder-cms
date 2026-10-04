@@ -144,6 +144,24 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]').nth(1)).toHaveAttribute("data-block-type", "spacer");
     await insert.getByRole("button", { name: "Close Insert" }).click();
   },
+  async pickUpTile(page, pressed) {
+    // Space on a key of Insert picks its block up where Enter would add
+    // it, after the selection; the Moving keys take it on and drop it.
+    // Undone after, so the exercises below find the column as they expect.
+    await block(page, "b").click();
+    const insert = await drawer(page, "Insert");
+    await insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }).focus();
+    await press(page, pressed, "Space");
+    await expect(caption(page).locator("strong")).toHaveText("Divider will be added to Column 1 in First, after Quote.");
+    await page.keyboard.press("ArrowDown");
+    await expect(caption(page).locator("strong")).toHaveText("Divider will be added to Column 1 in First, after Spacer.");
+    await page.keyboard.press("Space");
+    await expect.poll(() => page.locator('.canvas [data-block-id="c1"] > [data-block-id]').evaluateAll((e) => e.map((x) => x.getAttribute("data-block-type")))).toEqual(["quote", "spacer", "divider", "button"]);
+    await page.keyboard.press("Control+z");
+    await expect.poll(async () => (await childIds(page, "c1")).length).toBe(3);
+    const close = insert.getByRole("button", { name: "Close Insert" });
+    if (await close.isVisible()) await close.click();
+  },
   async editText(page, pressed) {
     await block(page, "t").click();
     await press(page, pressed, "Enter");

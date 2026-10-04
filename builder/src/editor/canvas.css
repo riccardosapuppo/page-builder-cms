@@ -155,6 +155,10 @@
 .picker[data-side="right"]::before { right: 100%; }
 .picker[data-side="left"]::before { left: 100%; }
 .picker[data-side="over"]::before, .picker-s::before { display: none; }
+/* While one of its keys is dragged, the picker gives way to the page it
+   covered: unseen and out of the pointer's way, but there, so the key
+   keeps the keyboard's focus and comes back with it on Esc. */
+.picker[data-giving-way] { opacity: 0; pointer-events: none; }
 .picker-w { width: 392px; }
 .picker-s { width: 456px; }
 .picker-head { padding: 12px 12px 10px; }

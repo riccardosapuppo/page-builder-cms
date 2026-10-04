@@ -58,13 +58,16 @@ export const SELECTION_SENSORS = [
   }),
 ];
 
-// A key of the Insert drawer is dragged with the mouse; its keyboard keys
-// are a button's (Enter adds it after the selection).
+// A key of the Insert drawer or of a "+" picker is dragged with the mouse,
+// or picked up by the keymap's Space (pickUpTile) and moved with its keys,
+// as a block of the canvas is. Enter stays the button's own: it adds the
+// block where the drawer's sentence, or the picker's line, says.
 export const TILE_SENSORS = [
   PointerSensor.configure({
     // A press that does not move is a click, however long it lasts.
     activationConstraints: [new PointerActivationConstraints.Distance({ value: 5 })],
   }),
+  KeyboardSensor.configure({ keyboardCodes: sensorCodes() }),
 ];
 
 // The library's collision priority for a container: one with children

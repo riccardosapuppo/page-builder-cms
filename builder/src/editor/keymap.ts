@@ -27,7 +27,7 @@ import { listed } from "./plain-words.ts";
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection" | "blockTools"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
-  | "addHere" | "addTile"
+  | "addHere" | "addTile" | "pickUpTile"
   | "editText" | "blockMenu" | "copy" | "paste" | "duplicate" | "delete"
   | "bold" | "italic" | "link" | "leaveText"
   | "undo" | "redo" | "saveVersion"
@@ -39,7 +39,7 @@ export type KeyAction =
 // - canvas: a block of the canvas has the focus;
 // - selection: a block of the canvas, or a row of the navigator;
 // - editor: anywhere in the editor;
-// - tile: a block of the Insert drawer;
+// - tile: a block of the Insert drawer, or of the picker a "+" opens;
 // - moving: while a block is picked up with the keyboard;
 // - text: in the text of a text block, edited on the canvas.
 // Never in a menu or a dialog, which keep their keys, and never in a text
@@ -120,6 +120,11 @@ export const KEYMAP: readonly KeyEntry[] = [
   // pad's.
   { action: "addHere", group: "Adding and looking", label: "Add after the selection", chords: [{ key: "+" }], scope: "canvas", via: "keymap" },
   { action: "addTile", group: "Adding and looking", label: "Add the block chosen in Insert", chords: [{ key: "Enter" }], scope: "tile", via: "native" },
+  // The keyboard's drag of a key, as the mouse's: picked up where Enter
+  // would add it, then moved and dropped with the Moving keys; one that
+  // needs an image or a video asks for it where it is dropped
+  // (./drag/DragLayer.tsx).
+  { action: "pickUpTile", group: "Adding and looking", label: "Pick up the block chosen in Insert, to place it", chords: [SPACE], scope: "tile", via: "drag" },
 
   { action: "editText", group: "Editing", label: "Edit the text of a block", chords: [{ key: "Enter" }], scope: "canvas", via: "keymap" },
   // The browser raises the context menu event for it, which the canvas and
@@ -164,7 +169,7 @@ function typingWords(): string {
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
   Moving: "While a block moves, the bottom line says where it will land, and screen readers hear the same sentence.",
   "Text, while you write": `In a text on the page, Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the sidebar’s fields.`,
-  "Adding and looking": "On the page, + opens a picker beside the selection with only what fits there. A block in Insert goes after the selection with Enter, or where it is dragged on the page.",
+  "Adding and looking": "On the page, + opens a picker beside the selection with only what fits there. A block in Insert goes after the selection with Enter, or where it is dragged on the page, by the mouse or by Space and the arrows. One that needs an image or a video asks for it where it lands.",
 };
 
 // The keys of an event, as the chords name them. altGraph: the AltGr key
