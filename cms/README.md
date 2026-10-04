@@ -625,7 +625,16 @@ development and in e2e, and anywhere `SOLID_QUEUE_IN_PUMA` is set; a
 production run without it runs `ruby bin/jobs` beside the server, or no
 job at all. On Windows, which cannot fork, the supervisor and its workers
 are threads of Puma's own process (`solid_queue_mode :async`); on Linux
-and macOS a child process (`:fork`). Development keeps its queue in
+and macOS a child process (`:fork`). `bin/jobs` does the same: on Windows
+it takes Solid Queue's `async` mode unless `--mode` or
+`SOLID_QUEUE_SUPERVISOR_MODE` says another (Solid Queue's own default,
+`fork`, stopped it there with `fork() function is unimplemented on this
+machine`). [test/bin/jobs_test.rb](test/bin/jobs_test.rb) starts it for
+real on databases of its own and sees its supervisor, dispatcher, worker
+and scheduler registered and the process staying up, and
+`node tools/check-production.ts` runs it beside a production server and
+sees a page scheduled for 15 seconds ahead not live before and live after
+(1.9 seconds late on 4 October 2026). Development keeps its queue in
 `storage/development_queue.sqlite3`, which `db:prepare` makes.
 
 - **PublishPageJob** is enqueued for a schedule's time and carries only
@@ -797,7 +806,13 @@ it has not run on macOS. With stage 4's cache checks it printed
 with 46 fragments after the first visit both times, and 46 rows in all
 the first time and 47 the second: Solid Cache had added its size
 estimate's row, which a count of every row, as the check first made it,
-would have failed on. With stage 4 it has not run on Linux yet. With
+would have failed on. It then starts `ruby bin/jobs` beside the server,
+schedules a page 15 seconds ahead and checks that it is not live before
+its time and is live after (three more checks, 45 in all: on 4 October
+2026, on Windows on 3901, `RESULT: 45 checks passed`, the page live 1.9
+seconds after its time; with bin/jobs' Windows default taken out, 2 of
+the 45 failed, naming its exit). With stage 4 it has not run on Linux
+yet. With
 seven faults planted at once in the stylesheets (`.cols-2`
 outweighed as `.sw .cols-2`, the Primary band painted Muted, Display
 capped at 70 px, the header's wrap moved to 300 px, the ring back to ink

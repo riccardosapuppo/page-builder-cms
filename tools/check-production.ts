@@ -20,7 +20,11 @@
 //   must-revalidate" with an ETag and no Last-Modified, its ETag sent back
 //   gets a 304, a publish shows at the next request, and production's
 //   Solid Cache holds the page and its blocks, gaining four entries when
-//   one widget changes (cacheChecks).
+//   one widget changes (cacheChecks);
+// - the jobs, with `ruby bin/jobs` in a process of its own beside the
+//   server, as the CMS's README says a production run does: a page
+//   scheduled for 15 seconds ahead is not live before, and is live after
+//   (scheduledChecks).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
@@ -170,6 +174,49 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
   check(after.fragments - before.fragments === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before.fragments} fragments, then ${after.fragments} (${before.rows} rows in all, then ${after.rows})`);
 }
 
+// A publish set for a time, in production. No job runs inside this server
+// (SOLID_QUEUE_IN_PUMA is not set: production's default), so the page goes
+// live only if `ruby bin/jobs`, the command the CMS's README gives for the
+// jobs of a production run, starts Solid Queue and carries it out. On
+// Windows, where Solid Queue's default of forking its workers stops
+// bin/jobs with NotImplementedError, that is a check that the command
+// starts at all.
+async function scheduledChecks(): Promise<void> {
+  const title = "Scheduled in production";
+  const created = await api("POST", "/api/pages", { title, slug: "scheduled" });
+  const id = created.page.id;
+  await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document: fixture(title), saveId: "check-3" });
+  const draft = await api("GET", `/api/pages/${id}/draft`, undefined);
+
+  const jobsLog = join(tmp, "jobs.log");
+  const fd = openSync(jobsLog, "w");
+  // Kept in the module's `jobs`, so the stop at the end finds it whatever
+  // happens below.
+  const child = startTree("ruby", ["bin/jobs"], { cwd: cms, env, stdio: ["ignore", fd, fd] });
+  jobs = child;
+  closeSync(fd);
+
+  const at = new Date(Date.now() + 15_000);
+  await api("POST", `/api/pages/${id}/schedules`, { revision: draft.revision, at: at.toISOString() });
+  const before = await get("/scheduled");
+  await before.text();
+  check(before.status === 404, "a page scheduled for 15 seconds ahead is not live before its time", `${before.status}`);
+
+  let live: Response | undefined;
+  let html = "";
+  const deadline = at.getTime() + 90_000;
+  while (Date.now() < deadline && child.exitCode === null) {
+    live = await get("/scheduled");
+    html = await live.text();
+    if (live.status === 200) break;
+    await new Promise((done) => setTimeout(done, 500));
+  }
+  const late = ((Date.now() - at.getTime()) / 1000).toFixed(1);
+  const said = existsSync(jobsLog) ? readFileSync(jobsLog, "utf8").trim().split(/\r?\n/).slice(-3).join(" | ") : "no log";
+  check(live?.status === 200 && html.includes(title), "ruby bin/jobs carries a scheduled publish out: the page is live", live?.status === 200 ? `live ${late} s after its time` : child.exitCode !== null ? `bin/jobs exited (${child.exitCode}): ${said}` : `still ${live?.status ?? "not asked"} ${late} s after its time: ${said}`);
+  check(child.exitCode === null, "bin/jobs is still running once the publish is done", child.exitCode === null ? "" : `exit ${child.exitCode}`);
+}
+
 let taken: Listener[];
 try {
   taken = listeners(PORT);
@@ -185,6 +232,7 @@ if (taken.length) {
 mkdirSync(tmp, { recursive: true });
 let main: ChildProcess | undefined;
 let refused: ChildProcess | undefined;
+let jobs: ChildProcess | undefined;
 let exitCode = 0;
 try {
   rails(["assets:precompile"], "assets:precompile");
@@ -279,13 +327,16 @@ try {
     // The caches, last: the edit below changes the draft the visitor
     // checks read through the preview.
     if (etag) await cacheChecks(id, title, etag);
+
+    // And the jobs, with a process of their own, as the README says.
+    await scheduledChecks();
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);
   if (error instanceof CouldNotRun) exitCode = 2;
   else check(false, "the check ran to its end", (error as Error).message);
 } finally {
-  for (const child of [refused, main]) {
+  for (const child of [refused, jobs, main]) {
     if (child) console.log(await stopTree(child));
   }
   let still: string[] = [];

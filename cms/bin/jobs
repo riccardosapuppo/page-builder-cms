@@ -3,4 +3,11 @@
 require_relative "../config/environment"
 require "solid_queue/cli"
 
+# Solid Queue starts its workers as child processes (--mode fork), which
+# Windows cannot do: there the command stopped with `fork() function is
+# unimplemented on this machine`. As config/puma.rb does for the supervisor
+# inside Puma, the workers are threads of this process (async) on Windows,
+# unless --mode or SOLID_QUEUE_SUPERVISOR_MODE says otherwise.
+ENV["SOLID_QUEUE_SUPERVISOR_MODE"] ||= "async" if Gem.win_platform?
+
 SolidQueue::Cli.start(ARGV)
