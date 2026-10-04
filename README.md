@@ -242,7 +242,7 @@ itself.
   edges, the devices in one click and the page's width.
   Since stage 4: Schedule… in the Publish menu, a small dialog that takes
   a day and a time in the site's time zone, and the publish waiting shown
-  in the top bar, the Publish menu and History, each with its cancel;
+  in the top bar, and in the Publish menu and History with its cancel;
   every key of Insert and of the pickers dragged by mouse or keyboard,
   Gallery and Video included, which ask in their window first and then
   land where the key was dropped; and a flat light grey where a block
@@ -288,13 +288,14 @@ itself.
   (`check:serving`), the tools' tests on Linux
   and Windows, npm start's refusal of Node 22.13.0 and 18 before any
   install, and npm start in smoke mode on Linux and Windows, from
-  nothing, with its real Ctrl+C. It first ran on 2 October 2026, on the
-  checks of stage 1, and every job passed on Linux, among them the Rails
-  tests in forked workers, whose OpenAPI counts the main process added
-  up, and the production check, which found who listened and stopped the
-  server's process group. On 4 October 2026 it ran on stages 2 to 3 bis:
-  12 of its 15 jobs passed, npm start's smoke run on Linux and Windows
-  and the editor's checks on Node 22.13.0 and 24 among them. Three failed
+  nothing, with its real Ctrl+C and `check:setup-tree`. It first ran on
+  2 October 2026, on the checks of stage 1, and every job passed on
+  Linux, among them the Rails tests in forked workers, whose OpenAPI
+  counts the main process added up, and the production check, which
+  found who listened and stopped the server's process group. On
+  4 October 2026 it ran on stages 2 to 3 bis: 12 of its 15 jobs passed,
+  npm start's smoke run on Linux and Windows and the editor's checks on
+  Node 22.13.0 and 24 among them. Three failed
   on two faults only Linux has: the tools' tests (in the tools job and
   before the production check) read a process's name from the kernel,
   which for Node 24 is its main thread's, and a browser test compared two
@@ -319,18 +320,18 @@ the stylesheets being edited. `npm run check -- --list` names the
 suites; `--only` and `--skip` take those names.
 
 On 4 October 2026, on the virtual machine of "Before you start", with
-`CMS_PORT`, `BUILDER_PORT` and `PRODUCTION_CHECK_PORT` set to 3901 and
-4901 so that every server it started was on the test ports, one whole
-run, from 14:50:32 to 15:09:34, took 19 minutes and ended
-`RESULT: 25 passed, 1 could not run here`: bundler-audit, for want of
-its database. Its counts, with stage 3 bis's layout: 41 tools tests,
-354 files linted, 715 unit tests and the render contract's 22, 214
-corpus files with no disagreement, 237 Rails runs with 201 API answers
-held to the description, 47 tests against a CMS of their own, 162
-browser tests and 36 accessibility tests, 40 serving checks, 35 of the
-production boot, 7 of npm start's smoke run and 11 of its stops.
-The floors in `suites.ts` are those counts, and RuboCop's 110 files;
-Brakeman's, 70, is under the 79 checks it ran.
+`CMS_PORT` and `BUILDER_PORT` set to 3901 and 4901 so that every server
+it started was on the test ports (the production check on its own
+3902), one whole run, from 17:16:58 to 17:39:54 UTC, took 23 minutes and
+ended `RESULT: 25 passed, 1 could not run here`: bundler-audit, for want
+of its database. Its counts, with stage 4: 68 tools tests, 368 files
+linted, 752 unit tests and the render contract's 22, 214 corpus files
+with no disagreement, 292 Rails runs with 272 API answers held to the
+description, 51 tests against a CMS of their own, 178 browser tests and
+38 accessibility tests, 40 serving checks, 42 of the production boot, 7
+of npm start's smoke run and 11 of its stops. The floors in `suites.ts`
+are those counts, and RuboCop's 130 files; Brakeman's, 70, is under the
+79 checks it ran. (One browser test came after the run: 179.)
 
 The Vitest projects are made to hold on a busy machine without hiding a
 failure. Each runs alone, with at most half the processors as workers (up

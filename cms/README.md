@@ -161,18 +161,24 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 2 October 2026, late (Windows 10, Ruby 3.4.11), the same with
-`CI=1`, which loads the whole app first as production does:
+The run of 4 October 2026 (Windows 10, Ruby 3.4.11), with `CI=1`, which
+loads the whole app first as production does and as CI runs it:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-234 runs, 1110 assertions, 0 failures, 0 errors, 0 skips
-openapi: 198 API response(s) checked against cms/openapi.yaml
+Finished in 52.309376s, 5.5822 runs/s, 26.9550 assertions/s.
+292 runs, 1410 assertions, 0 failures, 0 errors, 0 skips
+openapi: 272 API response(s) checked against cms/openapi.yaml
 ```
 
-The run includes two tests that start Rails twice each, in processes of
-their own: `test/lib/tasks/db_drop_test.rb` (about 13 seconds on the
-earlier machine) and `test/db/migrations_keep_rows_test.rb` (about 10).
+The run includes three tests that start Rails in processes of their own,
+in the development or e2e environment: `test/lib/tasks/db_drop_test.rb`,
+`test/db/migrations_keep_rows_test.rb` and `test/lib/queue_orphans_test.rb`.
+Each sends every database of that environment to a folder of its own
+([test/support/own_databases.rb](test/support/own_databases.rb), which
+reads them from `config/database.yml`), and the first and last fail if the
+tasks name any database outside it: before that, the `db:drop` test made,
+emptied and deleted development's queue database at every run.
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
@@ -248,9 +254,10 @@ earlier machine) and `test/db/migrations_keep_rows_test.rb` (about 10).
   finds no draft, version, redirect or usage left. So a migration here
   adds plain columns, or uses SQLite's own `ALTER TABLE ... DROP COLUMN`.
 
-Also run, from this folder: `ruby bin/rubocop` (108 files, no offenses on
-2 October, with `Layout/SpaceAroundOperators` switched on over the
-omakase style) and `ruby bin/brakeman` (no warnings).
+Also run, from this folder: `ruby bin/rubocop` (130 files, no offenses on
+4 October 2026, with `Layout/SpaceAroundOperators` switched on over the
+omakase style) and `ruby bin/brakeman` (79 checks, no warnings, the same
+day).
 
 ## The pages a visitor sees
 
@@ -749,7 +756,13 @@ its databases. It runs on Windows (netstat, taskkill) and on Linux and
 macOS (ss or lsof, and the server's own process group, signalled). On
 2 October 2026 it printed `RESULT: 35 checks passed` on Windows, on 3902
 and again with `PRODUCTION_CHECK_PORT=3901`, and passed in CI on Linux;
-it has not run on macOS. With seven faults planted at once in the stylesheets (`.cols-2`
+it has not run on macOS. With stage 4's cache checks it printed
+`RESULT: 42 checks passed` twice on 4 October 2026, on Windows on 3902,
+with 46 fragments after the first visit both times, and 46 rows in all
+the first time and 47 the second: Solid Cache had added its size
+estimate's row, which a count of every row, as the check first made it,
+would have failed on. With stage 4 it has not run on Linux yet. With
+seven faults planted at once in the stylesheets (`.cols-2`
 outweighed as `.sw .cols-2`, the Primary band painted Muted, Display
 capped at 70 px, the header's wrap moved to 300 px, the ring back to ink
 everywhere, the colours of a phone's `none` and of Accent undone), 8 of
