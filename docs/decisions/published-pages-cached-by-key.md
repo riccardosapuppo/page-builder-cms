@@ -20,8 +20,13 @@ Every copy is named by what makes the page's bytes
   and an ETag made of the published version, the site style and the
   release, with no `Last-Modified`. Every visit asks again; an unchanged
   page is a 304 with no body, decided from the page row and the site style
-  before the version's document is read.
-- **Solid Cache** keeps the page's whole HTML under the version and the
+  before the version's document is read. The version is named by its id
+  and by the moment the page was put live, to the microsecond (both are on
+  the page's row): ids start again in a database made anew, and a restored
+  backup or a kept cache database would otherwise give the old database's
+  page to the new one's.
+- **Solid Cache** keeps the page's whole HTML under the version (named the
+  same way) and the
   site style, and each block's HTML under a digest of its subtree and the
   fingerprint of `tokens.css`, read one level at a time with Rails'
   collection caching. Every key starts with the release.

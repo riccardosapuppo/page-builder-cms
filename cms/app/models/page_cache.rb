@@ -8,7 +8,11 @@
 #
 # A published page's bytes come from four things:
 # - the published version, immutable once written: a publish, a restore
-#   that is then published, or a scheduled publish all make a new one;
+#   that is then published, or a scheduled publish all make a new one.
+#   It is named by its id and by the moment it was put live: ids start
+#   again whenever a database is made anew (db:drop then db:prepare, a
+#   backup restored), and a copy of the old database's page 1, version 3
+#   must never be taken for the new database's;
 # - the site style, which colours every page (the layout's data
 #   attributes);
 # - the release the server runs: its code, templates, stylesheets, the
@@ -42,14 +46,22 @@ module PageCache
   # colours, by which release. A visitor's copy stays good until one of
   # them changes.
   def etag(page, site_style)
-    [ "page", page.published_version_id, site_style_key(site_style), revision ]
+    [ "page", *published_key(page), site_style_key(site_style), revision ]
   end
 
   # The key of a published page's outer fragment, its whole HTML. The
   # release is not repeated here: every fragment key of the public pages
   # starts with it (PublicPage).
   def page_fragment(page, site_style)
-    [ "page", page.published_version_id, site_style_key(site_style) ]
+    [ "page", *published_key(page), site_style_key(site_style) ]
+  end
+
+  # The published version's id, and when the page was put live, to the
+  # microsecond: both are on the page's row, so a 304 is decided before
+  # the version's document is read. The id alone repeats whenever the
+  # database is made anew; the moment does not.
+  def published_key(page)
+    [ page.published_version_id, page.published_at&.utc&.strftime("%Y%m%dT%H%M%S.%6N") ]
   end
 
   # The site style as a short key: the tone of each slot and the type

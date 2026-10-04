@@ -373,9 +373,16 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   publish shows at the very next request. The ETag is a digest of the
   published version, the site style and the release; `fresh_when` is not
   used, because its digest of the action's template sees neither the
-  layout nor the partials a helper renders.
+  layout nor the partials a helper renders. The version is named by its
+  id and by the moment the page was put live, to the microsecond, both
+  on the page's row: ids start again whenever a database is made anew
+  (`db:drop` then `db:prepare`, a backup restored), so a browser that
+  held page 1, version 3 of the old database must not be told its copy is
+  good for the new database's page 1, version 3.
 - **The whole page in Solid Cache,** one entry per version and site
-  style: a visit after the first is one read.
+  style, under the same name of the version: a visit after the first is
+  one read, and a cache database that outlives the pages database it was
+  filled for holds nothing the new one can find.
 - **Each block in Solid Cache,** keyed on a digest of its subtree (its
   own JSON and its children's digests) and the fingerprint of
   `tokens.css`, rendered with Rails' collection caching through

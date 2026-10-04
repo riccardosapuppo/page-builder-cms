@@ -134,6 +134,33 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_not_equal held, response.headers["ETag"]
   end
 
+  # db:drop then db:prepare, or a primary restored from a backup, starts
+  # the ids again, while the cache database (kept apart) and a browser
+  # still hold what the old database's page 1, version 1 looked like.
+  test "a database made anew gives the same ids another page: no browser and no visitor gets the old one's" do
+    remake_primary_database
+    page = published(document: grid_document(changed: "s1c1w1"))
+    ids = [ page.id, page.published_version_id ]
+    with_page_cache { get "/tides" }
+    held = response.headers["ETag"]
+    assert_select "main [data-block-id=s1c1w1] p", text: "Changed words"
+    remake_primary_database
+
+    again = published(document: grid_document(changed: "s2c2w3"))
+    assert_equal ids, [ again.id, again.published_version_id ], "the new database numbers its rows from 1 again"
+    calls = with_page_cache { get "/tides", headers: { "If-None-Match" => held } }
+
+    assert_response :ok
+    assert_select "main [data-block-id=s2c2w3] p", text: "Changed words"
+    assert_select "main [data-block-id=s1c1w1] p", text: "Words of s1c1w1"
+    assert_not_equal held, response.headers["ETag"]
+    assert_equal 0, found(calls.select { |call| call.operation == :read && call.keys.size == 1 }), "the old database's whole page was not found"
+    current = response.body
+    calls = with_page_cache { get "/tides" }
+    assert_equal current, response.body
+    assert_equal [ [ :read, 1, 1 ] ], shape(calls), "and the new one is read whole from Solid Cache"
+  end
+
   test "the ETag of one page is no use on another, nor on the home page's address" do
     published(slug: "tides")
     other = published(slug: "swims", document: grid_document(title: "Swims"))
@@ -318,6 +345,15 @@ class PageCacheTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  # The primary database as a new one: no row, and the numbering of its
+  # rows from 1 again (SQLite keeps the last number given in
+  # sqlite_sequence, which a new file does not have).
+  def remake_primary_database
+    Page.update_all(published_version_id: nil)
+    [ ScheduledPublication, MediaUsage, SlugRedirect, PageVersion, Draft, Page ].each(&:delete_all)
+    ActiveRecord::Base.connection.execute("DELETE FROM sqlite_sequence")
+  end
 
   # The blocks of a document drawn straight by their partials, with no
   # cache anywhere: what the main element of a cached page must hold.

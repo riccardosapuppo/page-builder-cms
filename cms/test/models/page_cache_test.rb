@@ -66,6 +66,18 @@ class PageCacheModelTest < ActiveSupport::TestCase
     end
   end
 
+  test "the page's key and ETag name the version by its id and the moment it was put live, to the microsecond" do
+    now = Time.utc(2026, 10, 4, 18, 0, 45, 451_234)
+    page = Page.new(published_version_id: 7, published_at: now)
+    other = Page.new(published_version_id: 7, published_at: Time.utc(2026, 10, 4, 18, 0, 45, 451_235))
+    style = SiteStyle.new(palette: SiteTokens.default_palette, type_scale: "balanced")
+
+    assert_equal [ 7, "20261004T180045.451234" ], PageCache.published_key(page)
+    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style) ], PageCache.page_fragment(page, style)
+    assert_not_equal PageCache.page_fragment(page, style), PageCache.page_fragment(other, style)
+    assert_not_equal PageCache.etag(page, style), PageCache.etag(other, style)
+  end
+
   test "what the release's digest takes from the app's secret is a digest of a key derived from it, never the secret" do
     secret = PageCache.release_secret
 
