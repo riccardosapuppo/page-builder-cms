@@ -17,8 +17,9 @@
 // added elsewhere the picker closes. A key dropped that needs something
 // first (an image, images, a video, a picture), from here or from
 // Insert, opens the picker at the drop place with that window already
-// open: what the window returns is added there; Esc or Cancel adds
-// nothing, closes the picker, and gives the focus back.
+// open, which stands beside the yellow line and not over it
+// (./place-dialog.ts): what the window returns is added there; Esc or
+// Cancel adds nothing, closes the picker, and gives the focus back.
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { idDraw } from "../document/ids.ts";
@@ -363,6 +364,9 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
   // Said under the window that asks for an image or a video, which covers
   // the line: where the block will land, its column named.
   const landing = <>Lands on the yellow line on the page, <Lands words={words} kind={place.kind} />{place.kind === "block" && words.lands.before ? <> in <strong>{words.lands.within}</strong></> : null}.</>;
+  // That line, which the window stands beside, as the picker does, and
+  // never over (./place-dialog.ts).
+  const beside = place.kind === "block" ? ".canvas .ins-slot" : ".canvas .seam-line";
 
   return (
     <>
@@ -430,6 +434,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
         <ImagePicker
           confirm="Add section"
           where={landing}
+          beside={beside}
           onClose={unask}
           onPick={([image]) => (image ? addPreset("picture", image) : null)}
         />
@@ -439,6 +444,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
           confirm={asking.needs === "image" ? "Add image" : "Add gallery"}
           multiple={asking.needs === "images"}
           where={landing}
+          beside={beside}
           onClose={unask}
           onPick={(images: ImageRef[]) => addWidget(asking, asking.needs === "image" ? images[0]! : (images as unknown as InputOf["gallery"]))}
         />
@@ -446,6 +452,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
       {asking && asking !== "picture" && asking.needs === "video" && (
         <VideoPicker
           where={landing}
+          beside={beside}
           onClose={unask}
           onPick={(video: { provider: VideoProvider; videoId: string; title: string }) => {
             if (place.kind !== "block") return null;

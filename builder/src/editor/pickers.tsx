@@ -29,10 +29,13 @@ interface ImagePickerProps {
   // Where the block will land, said under the window: a "+" picker's place,
   // or a dropped key's (./InsertPicker.tsx).
   where?: ReactNode;
+  // The yellow line of that place, which the window stands beside and
+  // never over (./place-dialog.ts).
+  beside?: string;
 }
 
-export function ImagePicker({ confirm, multiple = false, onPick, onClose, where }: ImagePickerProps) {
-  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}) }} onClose={onClose} />;
+export function ImagePicker({ confirm, multiple = false, onPick, onClose, where, beside }: ImagePickerProps) {
+  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}), ...(beside ? { beside } : {}) }} onClose={onClose} />;
 }
 
 // ------------------------------------------------------------ video
@@ -78,9 +81,10 @@ interface VideoPickerProps {
   onClose: () => void;
   // As the image picker's.
   where?: ReactNode;
+  beside?: string;
 }
 
-export function VideoPicker({ onPick, onClose, where }: VideoPickerProps) {
+export function VideoPicker({ onPick, onClose, where, beside }: VideoPickerProps) {
   const id = useId();
   const [address, setAddress] = useState("");
   const [title, setTitle] = useState("Video");
@@ -101,6 +105,7 @@ export function VideoPicker({ onPick, onClose, where }: VideoPickerProps) {
     <Dialog
       title="Add a video"
       onClose={onClose}
+      beside={beside}
       note={where ? <p className="hint">{where}</p> : undefined}
       footer={
         <>

@@ -68,8 +68,8 @@ test.describe("from Insert, with the mouse", () => {
     await expect(caption(page).locator("span")).toHaveText("Release, or press Space, to add it, then choose its images. Shaded areas cannot hold widgets. Esc cancels.");
     await page.mouse.up();
 
-    // The library, the place kept as the yellow line, and named under the
-    // library, which covers it; nothing added yet.
+    // The library, the place kept as the yellow line, which the library
+    // does not cover, and named under the library too; nothing added yet.
     await expect(library(page)).toBeVisible();
     await expect(keptLine(page, "c2")).toHaveCount(1);
     await expect(library(page).locator(".dlg-foot-note")).toHaveText("Lands on the yellow line on the page, after Divider in Column 2.");

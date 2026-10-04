@@ -5,6 +5,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons.tsx";
+import { standBeside } from "./place-dialog.ts";
 
 interface DialogProps {
   title: string;
@@ -27,11 +28,15 @@ interface DialogProps {
   plain?: { lead: ReactNode };
   // The id of what says, under the title, what the dialog is for.
   describedBy?: string;
+  // A selector for the element on the page the dialog is about (the yellow
+  // line a key was dropped at): the dialog stands beside it and not over
+  // it, instead of in the middle of the window (./place-dialog.ts).
+  beside?: string | undefined;
 }
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
-export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy }: DialogProps) {
+export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy, beside }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -39,6 +44,17 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
   useLayoutEffect(() => {
     close.current = onClose;
   });
+
+  // Beside the element it is about, before the first paint, and again when
+  // the window changes size.
+  useLayoutEffect(() => {
+    const dialog = box.current;
+    if (!beside || !dialog) return undefined;
+    const stand = () => void standBeside(dialog, beside);
+    stand();
+    window.addEventListener("resize", stand);
+    return () => window.removeEventListener("resize", stand);
+  }, [beside]);
 
   useEffect(() => {
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;

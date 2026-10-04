@@ -37,7 +37,9 @@ export type LibraryPurpose =
   // Choosing images for a block: one, or several for a gallery. onPick
   // returns null once they are placed, the refusal otherwise. where: the
   // place they will land, said under the window (a "+" picker's place).
-  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode }
+  // beside: the yellow line of that place, which the window stands above or
+  // under and never over (../place-dialog.ts).
+  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode; beside?: string }
   // Looking after the library: nothing is placed.
   | { kind: "manage" };
 
@@ -319,6 +321,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
       closeLabel="Close media library"
       tools={<p className="dlg-count" aria-live="polite">{countLine(library.length, missing, sending)}</p>}
       onClose={onClose}
+      beside={purpose.kind === "pick" ? purpose.beside : undefined}
       note={purpose.kind === "pick" && purpose.where ? <p className="hint">{purpose.where}</p> : undefined}
       footer={
         <>
