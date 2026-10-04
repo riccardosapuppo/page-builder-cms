@@ -26,9 +26,11 @@ the canvas draws around the page), form answers, and `capabilities`,
 which says which of the optional
 operations (publish, schedule, responses) this adapter has. The editor
 shows no control for one it lacks; the adapter refuses it as
-`unsupported` without asking anyone. The Rails adapter declares
-scheduling (stage 4) and form answers (stage 5) absent until the CMS has
-them; their shapes in `adapter.ts` are a guess until then.
+`unsupported` without asking anyone. The Rails adapter has scheduling
+(schedule a revision of the draft for a time, cancel, list; the times in
+UTC, the site's zone in `getSite`'s `timeZone`) and declares form answers
+(stage 5) absent until the CMS has them; their shape in `adapter.ts` is a
+guess until then.
 `capabilities.imageVariants` says one thing more, not an operation:
 whether the storage makes smaller copies of an uploaded image for the
 pages to serve. The CMS does not (it has no image library: no libvips),
@@ -100,7 +102,7 @@ id and field (`/props/level`), the way the editor shows them.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 28 cases, each named once, and
+  It first checks the battery holds its 32 cases, each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). It runs in jsdom, whose
   document is on the CMS's origin
@@ -129,7 +131,10 @@ another document being a conflict, the schema's and the application
 rules' refusals by block and field, a page's address and home mark,
 versions and restore, publishing and publishing a stale revision, the
 draft revision what is live came from (the saves since it are the changes
-not live), the
+not live), a publish set for a time (pending on the page, replaced by a
+second, cancelled, refused at its field or as a conflict, and, on the
+real clock, a few seconds ahead: the page watched until it goes live with
+the revision scheduled, not the draft edited since), the
 media library (upload and bytes read back, refusals at `/file`, alt text,
 deleting, an image in use naming who uses it, an image that does not
 exist), the site style, refusing what the capabilities declare absent,
