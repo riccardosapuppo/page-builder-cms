@@ -5,7 +5,7 @@
 // 1440 by 900 window with the Video window (440 wide) and the media library
 // (1060 wide).
 import { expect, test } from "vitest";
-import { placeBeside, type Box } from "./place-dialog.ts";
+import { moveFor, placeBeside, type Box } from "./place-dialog.ts";
 
 const view = { width: 1440, height: 900 };
 const video = { width: 440, height: 359 };
@@ -66,4 +66,56 @@ test("it is not shortened below what it needs, and without the room there is no 
 
 test("a window wider than the view has no place beside or over anything", () => {
   expect(placeBeside(line(0, 100), { width: 600, height: 900 }, library)).toBeNull();
+});
+
+// A laptop's window, 1366 by 768: the canvas from 52 to 716, and the line
+// of the review's case (an Image dropped in the last column of the page),
+// 40 high at 422, with 390 over it and 274 under it, short of the 420 the
+// library needs. The page moves, and the line with it.
+const laptop = { width: 1366, height: 768 };
+const canvas: Box = { left: 0, top: 52, right: 1062, bottom: 716 };
+const laptopLine = line(550, 422, 419);
+const moved = (box: Box, by: number): Box => ({ ...box, top: box.top - by, bottom: box.bottom - by });
+// The canvas scrolled to `top` of the `furthest` it goes, 664 high: a page
+// as high as that and the furthest.
+const scrolled = (top: number, furthest: number, client = 664) => ({ top, client, content: client + furthest });
+
+test("a line with a place where it is does not move the page", () => {
+  expect(moveFor(line(587, 554), { ...canvas, bottom: 848 }, scrolled(0, 400, 796), view, library)).toMatchObject({ by: 0, room: 0, stand: { side: "above" } });
+});
+
+test("on a page that scrolls on, the line goes near the canvas's top and the library under it", () => {
+  const move = moveFor(laptopLine, canvas, scrolled(0, 2000), laptop, library)!;
+  expect(move).toMatchObject({ by: 422 - (52 + 12), room: 0, stand: { side: "below", top: 52 + 12 + 40 + 24 } });
+  expect(overlap(boxOf(move.stand, library, move.stand.height), moved(laptopLine, move.by))).toBe(false);
+});
+
+test("at the end of a long page, which scrolls no further, the page goes back and the library stands over the line near the canvas's foot", () => {
+  const move = moveFor(laptopLine, canvas, scrolled(900, 900), laptop, library)!;
+  expect(move).toMatchObject({ by: 462 - (716 - 12), room: 0, stand: { side: "above", top: 8 } });
+  const at = moved(laptopLine, move.by);
+  expect(at.bottom).toBe(716 - 12);
+  expect(move.stand.height).toBe(at.top - 24 - 8);
+  expect(overlap(boxOf(move.stand, library, move.stand.height), at)).toBe(false);
+});
+
+test("on a short page, which does not scroll, the canvas is given the room at its foot, and the line goes near its top", () => {
+  const move = moveFor(laptopLine, canvas, scrolled(0, 0), laptop, library)!;
+  expect(move).toMatchObject({ by: 358, room: 358, stand: { side: "below", top: 128, height: 768 - 8 - 128 } });
+  // A page that scrolls a little: only the room it lacks is added.
+  expect(moveFor(laptopLine, canvas, scrolled(0, 100), laptop, library)).toMatchObject({ by: 358, room: 258 });
+  // A page lower than the canvas: the room also fills the canvas below it.
+  expect(moveFor(laptopLine, canvas, { top: 0, client: 664, content: 600 }, laptop, library)).toMatchObject({ by: 358, room: 358 + 64 });
+});
+
+test("in a window 720 high, the library is shortened to its 672 and still finds a place, under the line moved near the top", () => {
+  const short = { width: 1280, height: 720 };
+  const frame: Box = { left: 0, top: 52, right: 976, bottom: 668 };
+  const at = line(507, 374, 376);
+  const move = moveFor(at, frame, scrolled(0, 0, 616), short, { width: 1060, height: 672 })!;
+  expect(move).toMatchObject({ by: 310, room: 310, stand: { side: "below", top: 128, height: 720 - 8 - 128 } });
+});
+
+test("a view too low for the library even with the line at the canvas's top has no move that helps", () => {
+  expect(moveFor(line(550, 300, 419), { ...canvas, bottom: 448 }, scrolled(0, 0, 396), { width: 1366, height: 500 }, library)).toBeNull();
 });

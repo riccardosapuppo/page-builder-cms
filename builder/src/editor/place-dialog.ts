@@ -8,11 +8,18 @@
 // The video window is narrow enough to stand beside a line, on the side
 // with room; the media library, 1060 wide, is not, so it stands above the
 // line or under it, made shorter to fit the room there (its list scrolls).
-// When there is no room above or below either, the page is moved so that
-// the line is near the top of the canvas and the window goes under it.
+// When there is no room above or below either (a window 768 or 720 high,
+// a line in the middle of it), the page is moved: the line brought near
+// the top of the canvas, with the window under it, or near its foot, with
+// the window over it, as far as the page scrolls; and where the page ends
+// too soon for either (a short page, or the last column of a long one,
+// already scrolled to its end), the canvas is given room at its foot for
+// as long as the window is open, so the line can still go near its top.
 //
-// placeBeside is the choice, a function of boxes and nothing else;
-// standBeside reads the boxes from the page and sets the window's style.
+// placeBeside is the choice for a line where it is, and moveFor the move
+// of the page that gives it one, functions of boxes and nothing else;
+// standBeside reads the boxes from the page and sets the window's style,
+// and leaveBeside gives the canvas's room back when the window closes.
 
 export interface Box {
   left: number;
@@ -86,19 +93,84 @@ export function placeBeside(line: Box, view: Size, size: Size, options: StandOpt
   };
 }
 
+// How far inside the canvas's edge a line moved to its top or its foot is
+// brought.
+const EDGE = 12;
+
+// The canvas's scroll: where it is, the height it shows, and the height of
+// the page it holds, which may be less than what it shows (then it does
+// not scroll at all, and room added at its foot first fills the rest).
+export interface Scroll {
+  top: number;
+  client: number;
+  content: number;
+}
+
+// A move of the canvas that gives a window a place: scroll it by `by`
+// (down when positive), after adding `room` at its foot, and the window
+// stands at `stand`.
+export interface Move {
+  by: number;
+  room: number;
+  stand: Stand;
+}
+
+// The least move of the canvas (`frame`, scrolled as `scroll` says) that
+// gives a window of `size` a place beside `line`, which is in its view:
+// none, if the line has one where it is; else the line brought near the
+// canvas's top, as far as the page scrolls; else near its foot, as far as
+// the page scrolls back; else near its top with the room the page lacks
+// added at its foot. Null when even that gives none (a view too small).
+export function moveFor(line: Box, frame: Box, scroll: Scroll, view: Size, size: Size, options: StandOptions = {}): Move | null {
+  const free = Math.max(0, scroll.content - scroll.client) - scroll.top;
+  const within = (by: number) => Math.max(-scroll.top, Math.min(by, free));
+  const toTop = line.top - (frame.top + EDGE);
+  const toFoot = line.bottom - (frame.bottom - EDGE);
+  const tries = [{ by: 0, room: 0 }, { by: within(toTop), room: 0 }, { by: within(toFoot), room: 0 }];
+  // Scrolled to top + toTop, the canvas shows down to that plus its own
+  // height: what the page lacks of that is the room.
+  if (toTop > free) tries.push({ by: toTop, room: scroll.top + toTop + scroll.client - scroll.content });
+  for (const { by, room } of tries) {
+    const stand = placeBeside({ ...line, top: line.top - by, bottom: line.bottom - by }, view, size, options);
+    if (stand) return { by, room, stand };
+  }
+  return null;
+}
+
 const boxOf = (element: Element): Box => {
   const { left, top, right, bottom } = element.getBoundingClientRect();
   return { left, top, right, bottom };
 };
 
+// Takes away the room a window gave the canvas at its foot (moveFor), if
+// any: the canvas scrolls back as far as the page then goes.
+export function leaveBeside(): void {
+  for (const canvas of document.querySelectorAll<HTMLElement>(".canvas[data-room]")) {
+    canvas.style.removeProperty("padding-bottom");
+    delete canvas.dataset.room;
+  }
+}
+
+// The height of the page the canvas holds, from the top of its scroll: its
+// scroll height says it only when the page is taller than the canvas, so
+// it is read with a room at the foot that makes it so, then taken away.
+function pageHeight(canvas: HTMLElement): number {
+  const probe = canvas.clientHeight;
+  canvas.style.paddingBottom = `${probe}px`;
+  const height = canvas.scrollHeight - probe;
+  canvas.style.removeProperty("padding-bottom");
+  return height;
+}
+
 // Puts `dialog` (a fixed-position window, centred by the stylesheet) beside
 // the element `selector` finds, and says where it went (data-beside), or
 // leaves it centred when there is no such element or no room anywhere. The
-// canvas is scrolled first if the line is out of its view, and again when
-// the window has no room above or below it.
+// canvas is scrolled first if the line is out of its view, and moved again
+// (moveFor) when the window has no room beside, over or under it there.
 export function standBeside(dialog: HTMLElement, selector: string): Stand | null {
   dialog.style.cssText = "";
   delete dialog.dataset.beside;
+  leaveBeside();
   const anchor = document.querySelector<HTMLElement>(selector);
   if (!anchor) return null;
   const size: Size = { width: dialog.offsetWidth, height: dialog.offsetHeight };
@@ -112,14 +184,21 @@ export function standBeside(dialog: HTMLElement, selector: string): Stand | null
       anchor.scrollIntoView({ block: "center", inline: "nearest" });
       line = boxOf(anchor);
     }
+    const move = moveFor(line, frame, { top: canvas.scrollTop, client: canvas.clientHeight, content: pageHeight(canvas) }, view, size);
+    if (move && move.room > 0) {
+      canvas.style.paddingBottom = `${Math.ceil(move.room)}px`;
+      canvas.dataset.room = String(Math.ceil(move.room));
+    }
+    if (move && move.by !== 0) {
+      canvas.scrollTop += move.by;
+      line = boxOf(anchor);
+    }
   }
-  let stand = placeBeside(line, view, size);
-  if (!stand && canvas) {
-    canvas.scrollTop += line.top - (boxOf(canvas).top + 12);
-    line = boxOf(anchor);
-    stand = placeBeside(line, view, size);
+  const stand = placeBeside(line, view, size);
+  if (!stand) {
+    leaveBeside();
+    return null;
   }
-  if (!stand) return null;
 
   dialog.style.left = `${stand.left}px`;
   dialog.style.top = `${stand.top}px`;

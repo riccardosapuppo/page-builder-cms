@@ -5,7 +5,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons.tsx";
-import { standBeside } from "./place-dialog.ts";
+import { leaveBeside, standBeside } from "./place-dialog.ts";
 
 interface DialogProps {
   title: string;
@@ -46,14 +46,18 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
   });
 
   // Beside the element it is about, before the first paint, and again when
-  // the window changes size.
+  // the window changes size; the room it may have given the canvas to
+  // stand there is taken back as it closes.
   useLayoutEffect(() => {
     const dialog = box.current;
     if (!beside || !dialog) return undefined;
     const stand = () => void standBeside(dialog, beside);
     stand();
     window.addEventListener("resize", stand);
-    return () => window.removeEventListener("resize", stand);
+    return () => {
+      window.removeEventListener("resize", stand);
+      leaveBeside();
+    };
   }, [beside]);
 
   useEffect(() => {

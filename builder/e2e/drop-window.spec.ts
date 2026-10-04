@@ -9,10 +9,16 @@
 // - the same from the "+" picker's own keys, by click as well as by drop, and
 //   at a seam, where the line is a section's;
 // - a window that has no such line to stand beside, opened from the menu or
-//   by a click on a key of Insert, is in the middle as it always was.
+//   by a click on a key of Insert, is in the middle as it always was;
+// - on a laptop's window, 1366 by 768 or 1280 by 720, where the library
+//   has no room over or under a line in the middle of it (the review of the
+//   first fix): the page moves, back if it is at its end, or onto room the
+//   canvas is given at its foot if it is too short to scroll, and that room
+//   goes when the library closes.
 import type { Locator, Page } from "@playwright/test";
 import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
-import { column, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
+import { png } from "./helpers/images.ts";
+import { column, drawer, expect, heading, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -53,11 +59,27 @@ async function boxes(page: Page, dialog: Locator, theLine: Locator) {
 
 // What must be true wherever the window stands: whole in the window of the
 // browser, nowhere over the line, and the line itself in the canvas's view.
-function expectLeavesTheLine(found: Awaited<ReturnType<typeof boxes>>) {
-  expect(within(found.shown, WINDOW), `the window ${JSON.stringify(found.shown)} is inside the browser's window`).toBe(true);
+function expectLeavesTheLine(found: Awaited<ReturnType<typeof boxes>>, view: Box = WINDOW) {
+  expect(within(found.shown, view), `the window ${JSON.stringify(found.shown)} is inside the browser's window`).toBe(true);
   expect(overlap(found.shown, found.line), `the window ${JSON.stringify(found.shown)} is over the line ${JSON.stringify(found.line)}`).toBe(false);
   expect(within(found.line, found.canvas), `the line ${JSON.stringify(found.line)} is in the canvas's view ${JSON.stringify(found.canvas)}`).toBe(true);
 }
+
+// A key of Insert dropped in a column, and the library it opens.
+async function dropped(page: Page, group: "Basic" | "Media" | "Content", name: string, columnId: string, where: "top" | "bottom" | "middle") {
+  await pickUp(page, await insertKey(page, group, name));
+  await moveOnto(page, block(page, columnId), where);
+  await page.mouse.up();
+  await expect(library(page)).toBeVisible();
+}
+
+// What the browser finds at the middle of the line: the line itself, or
+// the scrim that dims it, and nothing of a window.
+const lineSeen = (theLine: Locator) => theLine.evaluate((element) => {
+  const { left, right, top, bottom } = element.getBoundingClientRect();
+  const hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2);
+  return hit === null ? "nothing" : hit.closest("[role=dialog]") ? "a window" : hit === element || element.contains(hit) ? "the line" : hit.classList.contains("scrim") ? "the scrim" : hit.tagName.toLowerCase();
+});
 
 test.describe("the video window", () => {
   test("dropped from Insert into an empty column, it stands beside the yellow line, level with it, and not over it", async ({ page, request }) => {
@@ -120,13 +142,6 @@ test.describe("the video window", () => {
 });
 
 test.describe("the media library", () => {
-  const dropped = async (page: Page, group: "Basic" | "Media" | "Content", name: string, columnId: string, where: "top" | "bottom" | "middle") => {
-    await pickUp(page, await insertKey(page, group, name));
-    await moveOnto(page, block(page, columnId), where);
-    await page.mouse.up();
-    await expect(library(page)).toBeVisible();
-  };
-
   for (const [group, name, columnId, where] of [["Media", "Gallery", "c2", "bottom"], ["Media", "Gallery", "c4", "middle"], ["Basic", "Image", "c1", "bottom"], ["Basic", "Image", "c3", "top"]] as const) {
     test(`${name} dropped in ${columnId} from Insert: the library stands over the yellow line or under it, and the line stays in view`, async ({ page, request }) => {
       const { id } = await makePage(request, `Library for ${name} in ${columnId}`, fixture());
@@ -183,5 +198,121 @@ test.describe("the media library", () => {
 
     await (await insertKey(page, "Basic", "Image")).click();
     await inTheMiddle();
+  });
+});
+
+// A longer page: the drop place in its last column, near its end.
+const longFixture = () => [
+  ...[1, 2, 3, 4, 5].map((n) => section(`L${n}`, `Long ${n}`, [column(`L${n}c1`, [heading(`L${n}h`, `Heading ${n}`), widget(`L${n}q`, "quote", { text: `Quote ${n}` })]), column(`L${n}c2`, [widget(`L${n}d`, "divider", {})])])),
+  section("s9", "Last", [column("c9", [widget("e9", "spacer", { size: "m" })]), column("c10", [])]),
+];
+
+// The blocks a column holds, by type.
+const types = (page: Page, columnId: string) => page.locator(`.canvas [data-block-id="${columnId}"] > [data-block-id]`).evaluateAll((all) => all.map((one) => one.getAttribute("data-block-type")));
+
+for (const size of [{ width: 1366, height: 768 }, { width: 1280, height: 720 }]) {
+  const view: Box = { x: 0, y: 0, ...size };
+
+  test.describe(`on a laptop's window, ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test("Image dropped in the empty last column of the review's page: the library stands over the line or under it, and not over it", async ({ page, request }) => {
+      const { id } = await makePage(request, `Review's page at ${size.height}`, fixture());
+      await open(page, id);
+      await dropped(page, "Basic", "Image", "c4", "middle");
+
+      const found = await boxes(page, library(page), line(page, "c4"));
+      expectLeavesTheLine(found, view);
+      expect(["above", "below"]).toContain(found.side);
+      expect(found.shown.height, "the library is shortened to the room, not made a strip").toBeGreaterThanOrEqual(420);
+      expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c4")));
+      await page.keyboard.press("Escape");
+      await expect(library(page)).toHaveCount(0);
+      expect(await types(page, "c4")).toEqual([]);
+    });
+
+    test("Image dropped in the last column of a long page, scrolled to its end: the page goes back, and the library stands over the line, with no room added", async ({ page, request }) => {
+      const { id } = await makePage(request, `Long page at ${size.height}`, longFixture());
+      await open(page, id);
+      await dropped(page, "Basic", "Image", "c10", "middle");
+
+      const found = await boxes(page, library(page), line(page, "c10"));
+      expectLeavesTheLine(found, view);
+      expect(found.side).toBe("above");
+      expect(found.shown.height).toBeGreaterThanOrEqual(420);
+      expect(found.canvas.y + found.canvas.height - (found.line.y + found.line.height), "the line is near the canvas's foot").toBeLessThanOrEqual(16);
+      expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c10")));
+      await expect(page.locator(".canvas")).not.toHaveAttribute("data-room");
+      await page.keyboard.press("Escape");
+      await expect(library(page)).toHaveCount(0);
+      expect(await types(page, "c10")).toEqual([]);
+    });
+
+    test("Video dropped in the empty last column of the review's page: its window stands beside the line", async ({ page, request }) => {
+      const { id } = await makePage(request, `Video at ${size.height}`, fixture());
+      await open(page, id);
+      await pickUp(page, await insertKey(page, "Media", "Video"));
+      await moveOnto(page, block(page, "c4"));
+      await page.mouse.up();
+      await expect(videoWindow(page)).toBeVisible();
+
+      const found = await boxes(page, videoWindow(page), line(page, "c4"));
+      expectLeavesTheLine(found, view);
+      expect(["left", "right"]).toContain(found.side);
+      expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c4")));
+    });
+  });
+}
+
+// A page of one section, lower than a 720-high window's canvas, so it does
+// not scroll: its empty column's line is where the library has room
+// neither over it nor under it.
+const shortFixture = () => [section("s1", "Only", [column("c3", [heading("a", "Alpha"), widget("b", "quote", { text: "Bravo" })]), column("c4", [])])];
+
+test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+  const view: Box = { x: 0, y: 0, width: 1280, height: 720 };
+
+  test("Image dropped in its empty column: the canvas is given room, the line goes near its top with the library under it, and the room goes when the library closes", async ({ page, request }) => {
+    const { id } = await makePage(request, "Short page", shortFixture());
+    await open(page, id);
+    const canvas = page.locator(".canvas");
+    // Measured with Insert open, as it stays.
+    await drawer(page, "Insert");
+    const before = await canvas.evaluate((element) => [element.scrollHeight, element.clientHeight]);
+    await dropped(page, "Basic", "Image", "c4", "middle");
+
+    const found = await boxes(page, library(page), line(page, "c4"));
+    expectLeavesTheLine(found, view);
+    expect(found.side).toBe("below");
+    expect(found.shown.height, "the library is shortened to the room, not made a strip").toBeGreaterThanOrEqual(420);
+    expect(Math.abs(found.line.y - (found.canvas.y + 12)), `the line ${JSON.stringify(found.line)} is 12 inside the canvas's top ${found.canvas.y}`).toBeLessThanOrEqual(1);
+    expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c4")));
+    await expect(canvas).toHaveAttribute("data-room", /^[1-9]\d*$/);
+
+    await library(page).getByRole("button", { name: "Cancel" }).click();
+    await expect(library(page)).toHaveCount(0);
+    await expect(canvas).not.toHaveAttribute("data-room");
+    expect(await canvas.evaluate((element) => [element.style.paddingBottom, element.scrollHeight, element.clientHeight])).toEqual(["", ...before]);
+    expect(await types(page, "c4")).toEqual([]);
+  });
+
+  test("the library standing under the line moved near the canvas's top adds the image at that line, and the canvas's room goes", async ({ page, request }) => {
+    const { id } = await makePage(request, "Short page, image added", shortFixture());
+    await open(page, id);
+    await dropped(page, "Basic", "Image", "c4", "middle");
+    await expect(page.locator(".canvas")).toHaveAttribute("data-room", /^[1-9]\d*$/);
+
+    const name = `${unique("laptop")}.png`;
+    await library(page).getByLabel("Images to upload").setInputFiles({ name, mimeType: "image/png", buffer: png(48, 32, (x) => (x < 24 ? [40, 90, 150] : [220, 210, 180])) });
+    const tile = library(page).getByRole("radio", { name: `${name}, no alt text` });
+    await expect(tile).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+    await library(page).getByRole("textbox", { name: /^Alt text/ }).fill("A blue and sand test card");
+    await library(page).getByRole("button", { name: "Add image" }).click();
+
+    await expect(library(page)).toHaveCount(0);
+    await expect.poll(() => types(page, "c4")).toEqual(["image"]);
+    await expect(page.locator(".canvas")).not.toHaveAttribute("data-room");
+    expect(await page.locator(".canvas").evaluate((element) => element.style.paddingBottom)).toBe("");
   });
 });
