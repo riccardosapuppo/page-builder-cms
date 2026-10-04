@@ -1,7 +1,7 @@
 # A publish set for a time: which page, the version of the draft it will
 # put live (reason "scheduled") and the draft revision that version was
 # taken from, when, and what became of it. PublishPageJob reads the row
-# when its time comes and acts only on a pending one (rule 64).
+# when its time comes and acts only on a pending one.
 #
 # state:
 #   pending     waiting for its time;

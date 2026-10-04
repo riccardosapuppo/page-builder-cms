@@ -1,9 +1,9 @@
 require "test_helper"
 
 # Publishing at a set time, through the API, with the job run the way the
-# queue runs it: at its time and not before (perform_enqueued_jobs(at:);
-# PIANO, section 6). Each test looks at what a visitor gets at the page's
-# address, before and after the time.
+# queue runs it: at its time and not before (perform_enqueued_jobs(at:),
+# never a form that runs future jobs at once). Each test looks at what a
+# visitor gets at the page's address, before and after the time.
 class Api::SchedulesTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 

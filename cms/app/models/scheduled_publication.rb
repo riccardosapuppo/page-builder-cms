@@ -5,9 +5,9 @@
 # revision that version came from, and when.
 #
 # PublishPageJob puts it live when the time comes, and only then decides
-# whether it still should (rule 64): the job runs once at the time it was
-# enqueued for, whatever happened since, so everything that can change in
-# between is looked at again there. See run!.
+# whether it still should: the job runs once at the time it was enqueued
+# for, whatever happened since, so everything that can change in between
+# is looked at again there. See run!.
 #
 # The states, and what becomes of a pending one (the migration lists them
 # too): published by the job; cancelled by a person; replaced by a newer

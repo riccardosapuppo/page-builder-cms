@@ -1,10 +1,10 @@
 require "test_helper"
 require "fugit"
 
-# The retention rule of the versions (PIANO, section 5): every version
-# that is not automatic stays; of a page's automatic versions the newest
-# 50 stay, and beyond them those of the last 30 days. Histories are built
-# with the time of each version given, and the job runs at a set time.
+# The retention rule of the versions: every version that is not automatic
+# stays; of a page's automatic versions the newest 50 stay, and beyond
+# them those of the last 30 days. Histories are built with the time of
+# each version given, and the job runs at a set time.
 class PruneVersionsJobTest < ActiveSupport::TestCase
   include StoredFiles
 
