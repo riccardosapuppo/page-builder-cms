@@ -272,3 +272,64 @@ test("a text being written never has its bar over the words above, even where th
     await expect(page.getByRole("group", { name: "Formatting" })).toHaveCount(0);
   }
 });
+
+// Where a written text's bar, its caret and the canvas's view stand, top
+// and bottom: the view under the sticky width rule, to the canvas's edge.
+async function inView(page: Page, id: string): Promise<{ bar: boolean; caret: boolean; scrollTop: number }> {
+  return page.evaluate((id) => {
+    const canvas = document.querySelector<HTMLElement>(".canvas")!;
+    const view = canvas.getBoundingClientRect();
+    const top = canvas.querySelector(".wrule")!.getBoundingClientRect().bottom;
+    const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
+    const bar = document.querySelector(`.canvas [data-block-id="${id}"] > .ov-sel > .ov-bar`)!.getBoundingClientRect();
+    const selection = document.getSelection()!;
+    const caret = selection.getRangeAt(0).getClientRects()[0]!;
+    return { bar: bar.top >= top && bar.bottom <= bottom, caret: caret.top >= top && caret.bottom <= bottom, scrollTop: canvas.scrollTop };
+  }, id);
+}
+
+test("a text written at the canvas's bottom edge has its bar under it brought into view, but never at the cost of its caret", async ({ page, request }) => {
+  const paragraphs = (...lines: string[]) => ({ doc: { type: "doc", content: lines.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) } });
+  const filler = (n: number) => section(`f${n}`, `Filler ${n}`, [column(`fc${n}`, [heading(`fh${n}`, "Swim by the keys"), widget(`ft${n}`, "text", paragraphs("Tide notes for the week ahead."))])]);
+  const long = "Swim at slack water, twice a week, at first light, when the bay is flat";
+  const tall = Array.from({ length: 30 }, (_, n) => `Note ${n + 1} on the tides of the bay.`);
+  const { id } = await makePage(request, "Bar at the edge", [
+    filler(1), filler(2), filler(3),
+    section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims, beginners' courses and a winter series."))])]),
+    section("s3", "Tall", [column("c3", [{ ...heading("h3", long), props: { level: 1, text: long } }, widget("t3", "text", paragraphs(...tall))])]),
+  ]);
+  await open(page, id);
+  // The heading at the canvas's bottom edge, the text under it out of view;
+  // the arrow key brings the text in, room kept for a bar above it only.
+  await page.locator(".canvas").evaluate((canvas) => {
+    const heading = canvas.querySelector('[data-block-id="long"]')!.getBoundingClientRect();
+    canvas.scrollTop += heading.bottom - (canvas.getBoundingClientRect().bottom - 30);
+  });
+  await block(page, "long").click({ position: { x: 6, y: 6 } });
+  await page.keyboard.press("ArrowDown");
+  await expect(block(page, "t2")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await expect.poll(() => barOver(page, "t2", "long")).toEqual({ place: "below", covered: 0 });
+  await expect.poll(async () => (await inView(page, "t2")).bar).toBe(true);
+  expect((await inView(page, "t2")).caret).toBe(true);
+  // A new line makes the text taller and moves the bar down: it is kept in view.
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Bring a towel.");
+  await expect.poll(async () => (await inView(page, "t2")).bar).toBe(true);
+  expect((await inView(page, "t2")).caret).toBe(true);
+  await page.keyboard.press("Escape");
+  // A text taller than the canvas, written near its top: its bar is far
+  // under the view, and showing it would hide the caret; nothing scrolls.
+  const tallText = block(page, "t3");
+  await tallText.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await tallText.locator("p").nth(2).click();
+  await tallText.locator("p").nth(2).click();
+  await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+  await expect.poll(() => barOver(page, "t3", "h3")).toEqual({ place: "below", covered: 0 });
+  const opened = await inView(page, "t3");
+  expect(opened).toMatchObject({ bar: false, caret: true });
+  await page.keyboard.type("Calm ");
+  await page.waitForTimeout(300);
+  expect(await inView(page, "t3")).toEqual(opened);
+});

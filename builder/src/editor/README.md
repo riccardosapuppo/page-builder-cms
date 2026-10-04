@@ -109,7 +109,9 @@ owner to undo:
   would (a heading as wide as its column, or one wider than what is left
   of a narrow column beside the bar), it stands under the block, its link
   field under it, in the bottom corner that covers less, even over the
-  next block (a button, a divider), as the link field does. Not writing,
+  next block (a button, a divider), as the link field does; there the
+  canvas scrolls just enough to show it, as long as the caret stays in
+  view. Not writing,
   where both top corners would cover the block above, the bar stays in
   the one that covers less, as the design draws a selected block's bar
   at the top. The text widget's Content tab has no text

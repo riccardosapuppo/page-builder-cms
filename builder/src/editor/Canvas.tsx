@@ -373,6 +373,46 @@ function placeBar(frame: HTMLElement): void {
   const first = places === WRITING_PLACES ? 2 : 0;
   const best = free >= 0 ? free : (covered[first + 1] ?? Infinity) < (covered[first] ?? Infinity) ? first + 1 : first;
   frame.dataset.bar = places[best] ?? "";
+  if (frame.dataset.bar.startsWith("below")) showBarBelow(frame, bar);
+}
+
+// A written text's bar under the block is brought into the canvas's view
+// each time it is placed there: the blocks' scroll margin (editor.css)
+// keeps room for a bar above a block, not under it, and a text opening or
+// growing scrolls only its caret into view. The canvas scrolls just enough
+// to show the whole bar, with the blocks' 24 px under it where they fit,
+// and only while the caret is in view and stays there, below the sticky
+// width rule: a person who has scrolled away from the text, or a text
+// taller than the canvas written far above its end, keeps the view.
+const BAR_ROOM = 24;
+
+function showBarBelow(frame: HTMLElement, bar: HTMLElement): void {
+  const canvas = frame.closest<HTMLElement>(".canvas");
+  const own = frame.parentElement;
+  // A document that lays nothing out (a test's) has no view to scroll.
+  if (!canvas || !own || canvas.clientHeight === 0) return;
+  const view = canvas.getBoundingClientRect();
+  const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
+  const top = canvas.querySelector(".wrule")?.getBoundingClientRect().bottom ?? view.top + canvas.clientTop;
+  const past = bar.getBoundingClientRect().bottom - bottom;
+  if (past <= 0) return;
+  const caret = caretOf(own);
+  if (caret.top < top || caret.bottom > bottom) return;
+  const by = Math.min(past + BAR_ROOM, caret.top - top);
+  if (by >= past) canvas.scrollTop += by;
+}
+
+// The caret's line box in a block being written, or, where the document's
+// selection lies elsewhere or draws no box, the block's own.
+function caretOf(own: HTMLElement): DOMRect {
+  const selection = document.getSelection();
+  if (selection && selection.rangeCount > 0 && selection.focusNode && own.contains(selection.focusNode)) {
+    const range = document.createRange();
+    range.setStart(selection.focusNode, selection.focusOffset);
+    const line = typeof range.getClientRects === "function" ? range.getClientRects()[0] : undefined;
+    if (line && line.height > 0) return line;
+  }
+  return own.getBoundingClientRect();
 }
 
 function barMark(frame: HTMLElement): () => void {
