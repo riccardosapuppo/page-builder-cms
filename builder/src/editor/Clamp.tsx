@@ -150,7 +150,9 @@ function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): ClampRoo
       }
     }
   }
-  const covers = [...document.querySelectorAll(".drawer")].map((drawer) => drawer.getBoundingClientRect());
+  // Only the floating drawer (Insert) is over the canvas; the pushed ones
+  // have a column of their own.
+  const covers = [...document.querySelectorAll(".drawer-float")].map((drawer) => drawer.getBoundingClientRect());
   return { block, leftLimit, rightLimit, contentLeft, contentRight, view, covers, height: clamp.offsetHeight, scale, section: kind === "section" };
 }
 

@@ -66,6 +66,24 @@ test("where an open drawer covers the left margin, the clamp goes to the block's
   expect(placeClamp(room({ covers: [{ ...drawer, right: 30 }] }))).toMatchObject({ side: "left", x: 35 });
 });
 
+test("where the drawer covers the block's right gutter as well, the clamp goes to the page's right margin, never under the drawer", () => {
+  const drawer: Box = { left: 8, top: 60, right: 288, bottom: 848 };
+  const under = (place: ReturnType<typeof placeClamp>, over: Box) => !apart(box(place), over);
+  // The first of four columns at 1280: the block 83 to 247, the next column
+  // at 295. Its right gutter is 48, but 261 to 295 runs under the drawer's
+  // edge at 288, as does its left margin.
+  const four = room({ block: { left: 83, top: 264, right: 247, bottom: 400 }, rightLimit: 295, covers: [drawer] });
+  const place = placeClamp(four);
+  expect(place).toMatchObject({ side: "right", size: "full", tie: null, x: 1067 });
+  expect(under(place, drawer)).toBe(false);
+  // A block wide enough that its right gutter is clear of the drawer keeps to it.
+  expect(placeClamp(room({ block: { left: 83, top: 264, right: 300, bottom: 400 }, rightLimit: 348, covers: [drawer] }))).toMatchObject({ side: "right", size: "full", tie: 8, x: 314 });
+  // Nothing beside the block free of the drawer: just clear of its edge.
+  const edge = placeClamp(room({ block: { left: 83, top: 264, right: 247, bottom: 400 }, rightLimit: 295, covers: [drawer, { left: 1000, top: 60, right: 1126, bottom: 848 }] }));
+  expect(edge).toMatchObject({ side: "right", size: "full", tie: null, x: 295 });
+  expect(under(edge, drawer)).toBe(false);
+});
+
 test("every block gets the same clamp: beside a short block it runs on below it, and never flips", () => {
   const button = room({ block: { left: 83, top: 512, right: 637, bottom: 566 } });
   const place = placeClamp(button);

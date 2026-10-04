@@ -10,9 +10,11 @@
 //   selection's frame and stays clear of the column beside it.
 // - Less than 28 holds no clamp: it goes out to the page's margin nearest
 //   to the block, level with the block's top, with no tie.
-// - Where an open drawer covers that place (the drawers float over the
+// - Where the open Insert drawer covers that place (it floats over the
 //   canvas's left), the clamp goes to the block's right side by the same
-//   rules: its gutter there, else the page's right margin.
+//   rules: its gutter there, else the page's right margin. A place the
+//   drawer covers is never chosen while one it does not cover exists; if
+//   it covers them all, the clamp stands just clear of its edge.
 // - It stands level with the selection's frame, at the block's top, and
 //   runs on below a short block, in the margin where nothing else sits.
 //   Beside a block taller than the canvas whose top has scrolled away, it
@@ -41,7 +43,7 @@ export interface ClampRoom {
   contentRight: number;
   // The canvas's visible edges.
   view: Box;
-  // What hides part of the canvas (an open drawer).
+  // What hides part of the canvas (the Insert drawer, when open).
   covers: readonly Box[];
   // The clamp's height as drawn, and the page's scale: the clamp keeps its
   // size on a page drawn smaller; the frame it is level with does not.
@@ -123,13 +125,35 @@ export function clampTop(room: ClampRoom): number {
   return Math.max(top, Math.min(view.top + VIEW_GAP, block.bottom - height));
 }
 
+// The clamp when the drawer covers the places beside the block on both
+// sides: level with the block, just clear of the covering drawer's right
+// edge (and of the canvas's), where it is seen and can be used.
+function clearOfCovers(room: ClampRoom, y: number): ClampPlace {
+  const width = CLAMP_WIDTH.full;
+  const box = (x: number) => ({ left: x, top: y, right: x + width, bottom: y + room.height });
+  let x = room.view.left;
+  // A cover can push the place past another, so go through them in order
+  // until the place is clear of every one.
+  for (const cover of [...room.covers].sort((a, b) => a.right - b.right)) {
+    if (overlaps(cover, box(x))) x = cover.right + CLAMP_GAP / 2;
+  }
+  return { side: "right", size: "full", tie: null, x: Math.min(x, room.view.right - width), y };
+}
+
 export function placeClamp(room: ClampRoom): ClampPlace {
   const y = clampTop(room);
   // The block's left gutter, else the page's margin nearer the block.
   const nearer: "left" | "right" = room.block.left - room.contentLeft <= room.contentRight - room.block.right ? "left" : "right";
   const first = inGutter(room, "left", y) ?? inMargin(room, nearer, y);
   if (!covered(room, first)) return first;
-  // Hidden there (a drawer over the canvas's left): the right side.
-  const right = inGutter(room, "right", y) ?? inMargin(room, "right", y);
-  return covered(room, right) ? first : right;
+  // Hidden there (a drawer over the canvas's left): the right side, its
+  // gutter, else the page's right margin. Never a place that is covered
+  // while one that is not exists.
+  const gutter = inGutter(room, "right", y);
+  if (gutter && !covered(room, gutter)) return gutter;
+  const margin = inMargin(room, "right", y);
+  if (!covered(room, margin)) return margin;
+  const other = inMargin(room, "left", y);
+  if (!covered(room, other)) return other;
+  return clearOfCovers(room, y);
 }
