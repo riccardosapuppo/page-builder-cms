@@ -16,9 +16,18 @@ development:
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
+#
+# The tests' own cache database is the one the page cache's tests write
+# to through Solid Cache (test/support/page_cache_store.rb); every other
+# test keeps the :null_store of config/environments/test.rb.
 test:
-  <<: *default
-  database: storage/test.sqlite3
+  primary:
+    <<: *default
+    database: storage/test.sqlite3
+  cache:
+    <<: *default
+    database: storage/test_cache.sqlite3
+    migrations_paths: db/cache_migrate
 
 # The CMS the editor's browser tests start (config/environments/e2e.rb).
 # The harness gives each run a folder of its own through DATABASE_URL,
