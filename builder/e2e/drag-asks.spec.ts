@@ -266,6 +266,15 @@ test.describe("from the picker a + opens", () => {
     await page.keyboard.type("gal");
     await page.keyboard.press("ArrowDown");
     await expect(picker.getByRole("button", { name: "Gallery", exact: true })).toBeFocused();
+    // Esc while it moves puts it back: the picker comes back as it was,
+    // the focus on its key, nothing added.
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Escape");
+    await expect(caption(page)).toHaveText("Cancelled: nothing was added.");
+    await expect(picker).toHaveCSS("opacity", "1");
+    await expect(keptLine(page, "c1")).toHaveCount(1);
+    await expect(picker.getByRole("button", { name: "Gallery", exact: true })).toBeFocused();
     await page.keyboard.press("Space");
     // It starts on the picker's own line.
     await expect(caption(page).locator("strong")).toHaveText("Gallery will be added to Column 1 in First, after Quote.");
