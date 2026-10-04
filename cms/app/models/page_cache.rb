@@ -37,6 +37,14 @@ module PageCache
   # And the schema folder's own files (not its corpus): the tokens and
   # icons the theme draws, and the enums that decide which classes exist.
   SCHEMA_PATTERN = "*.{json,svg}"
+  # Of those, what a reloading server (development) reads again as it
+  # reloads: the code and templates (app/, lib/), the routes and the
+  # locales. Every other file of the release is read once, as the process
+  # starts: config/site.yml, the other config files, the gems, the
+  # schema's files. A reloading server that has not been restarted still
+  # draws with what it read then, whatever the disk holds now, so the
+  # release it names is the one it read then.
+  RELOADED = %w[app lib config/routes.rb config/locales].freeze
 
   MUTEX = Mutex.new
 
@@ -72,64 +80,111 @@ module PageCache
     ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale ]))
   end
 
-  # A digest of the release, computed once per process. Where code is
-  # reloaded (development), it is computed again when one of its files
-  # changes, so an edited partial is not answered with a 304 for the page
-  # it no longer draws.
+  # The digest of the release this process runs. It is made as the process
+  # starts (boot!, from config/initializers/page_cache.rb), never at the
+  # first request: a server started on one release whose files change
+  # before its first visitor must not label what it draws with the next.
+  # Where code is reloaded (development) the part that reloads is read
+  # again whenever one of its files changes, so an edited partial is not
+  # answered with a 304 for the page it no longer draws; the rest stays
+  # what the process read as it started, and changes only with a restart.
   def revision
-    current[:revision]
+    MUTEX.synchronize { current }
   end
 
   # The revision of tokens.css, as its fingerprinted name says it: the
-  # classes a block's style turns into live there.
+  # classes a block's style turns into live there. Read at the first
+  # visit, with the asset manifest the pages' links come from, so the two
+  # always agree.
   def token_css_revision
-    current[:token_css]
-  end
-
-  def current
     MUTEX.synchronize do
-      if Rails.application.config.enable_reloading
-        # The watcher Rails' own reloader uses (config.file_watcher).
-        @checker ||= Rails.application.config.file_watcher.new(release_files, release_directories) { @current = nil }
-        @checker.execute_if_updated
-      end
-      @current ||= {
-        revision: release_digest(release_files, secret: release_secret),
-        token_css: File.basename(ActionController::Base.helpers.asset_path("tokens.css"), ".css")
-      }.freeze
+      current
+      @token_css ||= File.basename(ActionController::Base.helpers.asset_path("tokens.css"), ".css")
     end
   end
 
+  # As a process starts: reads the files of the release it will run and
+  # fixes its digest. A reloading server keeps what it read here beside
+  # the reloadable code (config.x), since the code that holds a digest is
+  # itself reloaded and starts over.
+  def boot!
+    MUTEX.synchronize do
+      Rails.application.config.x.page_cache.booted = nil
+      @revision = @token_css = @checker = nil
+      current
+    end
+  end
+
+  # Called with the mutex held.
+  def current
+    if Rails.application.config.enable_reloading
+      # The watcher Rails' own reloader uses (config.file_watcher), made
+      # before the digest is read so that an edit in between is seen.
+      @checker ||= Rails.application.config.file_watcher.new(reloaded_files, reloaded_directories) { @revision = @token_css = nil }
+      @checker.execute_if_updated
+    end
+    @revision ||= release_digest(booted: booted_digest, reloaded: files_digest(reloaded_files), secret: release_secret)
+  end
+
+  # The digest of the files the process read as it started.
+  def booted_digest
+    Rails.application.config.x.page_cache.booted ||= files_digest(booted_files)
+  end
+
+  # The folders of the release: the app's root, and the schema's.
+  def release_paths
+    { root: Rails.root, schema_dir: Rails.application.config.x.schema_dir }
+  end
+
   # Every file of the release, sorted, with the release's paths.
-  def release_files(root: Rails.root, schema_dir: Rails.application.config.x.schema_dir)
+  def release_files(root: release_paths[:root], schema_dir: release_paths[:schema_dir])
     files = RELEASE_DIRECTORIES.flat_map { |dir| Dir.glob(File.join(root.to_s, dir, "**", "*")) }
     files += RELEASE_FILES.map { |file| File.join(root.to_s, file) }
     files += Dir.glob(File.join(schema_dir.to_s, SCHEMA_PATTERN))
     files.select { |path| File.file?(path) }.sort
   end
 
-  # The folders whose new files a reloading server notices; the schema's
-  # files are watched one by one, so its corpus is not walked per request.
-  def release_directories
-    RELEASE_DIRECTORIES.to_h { |dir| [ Rails.root.join(dir).to_s, [] ] }
+  # The files a reloading server reads again as it reloads (RELOADED).
+  def reloaded_files(root: release_paths[:root])
+    paths = RELOADED.flat_map { |entry| Dir.glob(File.join(root.to_s, entry, "**", "*")) + [ File.join(root.to_s, entry) ] }
+    paths.select { |path| File.file?(path) }.sort
   end
 
-  # The digest of the files' names and bytes, of the Ruby that runs them,
-  # and of a key derived from the app's secret: a new secret signs library
-  # images under new addresses, and a page cached with the old ones would
-  # show none of its images. The secret itself never enters the digest.
-  def release_digest(files, secret:, root: Rails.root.join("..").expand_path)
+  # And the folders it watches for a new file or a deleted one.
+  def reloaded_directories(root: release_paths[:root])
+    RELOADED.map { |entry| File.join(root.to_s, entry) }.select { |path| File.directory?(path) }.to_h { |path| [ path, [] ] }
+  end
+
+  # The rest of the release: what the process reads once, as it starts.
+  def booted_files(**paths)
+    release_files(**paths) - reloaded_files(**paths.slice(:root))
+  end
+
+  # The digest of the files' paths (from the repository's root, where cms/
+  # and schema/ sit side by side) and bytes.
+  def files_digest(files, root: release_paths[:root].join("..").expand_path)
     digest = Digest::SHA256.new
-    digest << RUBY_VERSION << "\0" << secret << "\0"
     files.each do |path|
       digest << Pathname(path).expand_path.relative_path_from(root).to_s << "\0" << File.binread(path) << "\0"
     end
     digest.hexdigest
   end
 
+  # The digest of the Ruby that runs the release, of a key derived from the
+  # app's secret (a new secret signs library images under new addresses,
+  # and a page cached with the old ones would show none of its images; the
+  # secret itself never enters the digest), and of the two digests of
+  # files: the booted and the reloaded.
+  def release_digest(booted:, reloaded:, secret:)
+    Digest::SHA256.hexdigest([ RUBY_VERSION, secret, booted, reloaded ].join("\0"))
+  end
+
   def release_secret
     Digest::SHA256.hexdigest(Rails.application.key_generator.generate_key("page-builder-cms/page-cache", 32))
   end
+
+  # These two are only for callers that hold the mutex.
+  private_class_method :current, :booted_digest
 
   # The keys of the blocks of one render: [token CSS revision, digest of
   # the block's subtree]. A digest is taken once per block, from the

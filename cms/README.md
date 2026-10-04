@@ -396,10 +396,19 @@ Every fragment key also starts with the release, so a deploy finds none
 of the old fragments. The release is a digest of `app/`, `config/`,
 `lib/`, `Gemfile.lock`, the schema folder's own files (its tokens,
 icons and enums), the Ruby version and a key derived from the secret,
-which signs library images' addresses; it is computed once per process,
-and again after an edited file where code reloads (development), so an
-edited partial is never answered with a 304 for the page it no longer
-draws.
+which signs library images' addresses. It names the files the process
+runs, so it is computed as the process starts
+([config/initializers/page_cache.rb](config/initializers/page_cache.rb)),
+never at the first visit: a server whose files change before its first
+page would otherwise draw the old config under the new release's name,
+and keep doing so after a restart. Where code reloads (development), the
+files that reload (`app/`, `lib/`, the routes and the locales) are read
+again whenever one of them changes, so an edited partial is never
+answered with a 304 for the page it no longer draws; the others
+(`config/site.yml` and the rest of `config/`, `Gemfile.lock`, the
+schema's files) are read once, as the process starts, and change the
+release only with a restart, since a running server draws with what it
+read then.
 
 | What changes | Browser | Whole page | Blocks |
 | --- | --- | --- | --- |

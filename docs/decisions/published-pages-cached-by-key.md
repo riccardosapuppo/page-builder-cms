@@ -32,9 +32,13 @@ Every copy is named by what makes the page's bytes
   collection caching. Every key starts with the release.
 - **The release** is a digest of the CMS's `app/`, `config/` and `lib/`,
   its `Gemfile.lock`, the schema folder's own files, the Ruby version and
-  a key derived from the secret (which signs library images' addresses),
-  computed once per process, and again after an edited file where code
-  reloads.
+  a key derived from the secret (which signs library images' addresses).
+  It is computed as the process starts, never at its first visit, so it
+  names the files the process runs. Where code reloads, the files that
+  reload (`app/`, `lib/`, the routes, the locales) are read again when one
+  changes; the rest (`config/site.yml`, the gems, the schema's files) is
+  what the process read as it started, and changes the release only with
+  a restart.
 
 A publish of any kind (now, from a restored version, at a scheduled
 time) makes a new version, so a new ETag and a new page entry, and only

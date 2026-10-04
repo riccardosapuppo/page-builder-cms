@@ -1,69 +1,131 @@
 require "test_helper"
+require "open3"
 
-# The keys of the page cache: the release's digest, the site style's, and
-# each block's.
+# The keys of the page cache: the page's, the release's digest, the site
+# style's, and each block's.
 class PageCacheModelTest < ActiveSupport::TestCase
-  def with_release
-    Dir.mktmpdir("release") do |dir|
-      root = Pathname(dir)
-      FileUtils.mkdir_p(root.join("cms", "app", "views"))
-      FileUtils.mkdir_p(root.join("schema", "corpus"))
-      root.join("cms", "app", "views", "show.html.erb").write("<p>page</p>")
-      root.join("cms", "Gemfile.lock").write("rails (8.1.4)")
-      root.join("schema", "tokens.json").write("{}")
-      root.join("schema", "corpus", "one.json").write("{}")
-      digest = ->(secret: "s") { PageCache.release_digest(PageCache.release_files(root: root.join("cms"), schema_dir: root.join("schema")), secret: secret, root: root) }
-      yield root, digest
-    end
+  include ReleaseFolder
+
+  # The release's digest as a server computes it, over a folder laid out as
+  # the repository is.
+  def digest_of(root, secret: "s")
+    paths = { root: root.join("cms"), schema_dir: root.join("schema") }
+    PageCache.release_digest(
+      booted: PageCache.files_digest(PageCache.booted_files(**paths), root: root),
+      reloaded: PageCache.files_digest(PageCache.reloaded_files(root: paths[:root]), root: root),
+      secret: secret
+    )
   end
 
-  test "the release's digest changes with a file's bytes, a new file, the schema's tokens and the secret, and with nothing else" do
-    with_release do |root, digest|
-      first = digest.call
-      assert_equal first, digest.call
+  test "the release's digest changes with a file's bytes, a new file, the schema's tokens, the config and the secret, and with nothing else" do
+    with_release_folder do |root, edit|
+      first = digest_of(root)
+      assert_equal first, digest_of(root)
 
-      root.join("schema", "corpus", "one.json").write("{\"changed\": true}")
-      root.join("cms", "tmp").mkpath
-      root.join("cms", "tmp", "cache.txt").write("anything")
-      assert_equal first, digest.call, "the corpus and tmp/ are not the release"
+      edit.call("schema/corpus/one.json", "{\"changed\": true}")
+      edit.call("cms/tmp/cache.txt", "anything")
+      assert_equal first, digest_of(root), "the corpus and tmp/ are not the release"
 
       seen = [ first ]
       [
-        -> { root.join("cms", "app", "views", "show.html.erb").write("<p>page!</p>") },
-        -> { root.join("cms", "app", "views", "new.html.erb").write("") },
-        -> { root.join("cms", "Gemfile.lock").write("rails (8.1.5)") },
-        -> { root.join("schema", "tokens.json").write("{\"a\":1}") }
+        -> { edit.call("cms/app/views/show.html.erb", "<p>page!</p>") },
+        -> { edit.call("cms/app/views/new.html.erb", "") },
+        -> { edit.call("cms/config/site.yml", "name: Slack Water B") },
+        -> { edit.call("cms/Gemfile.lock", "rails (8.1.5)") },
+        -> { edit.call("schema/tokens.json", "{\"a\":1}") }
       ].each do |change|
         change.call
-        seen << digest.call
+        seen << digest_of(root)
       end
-      seen << digest.call(secret: "t")
+      seen << digest_of(root, secret: "t")
       assert_equal seen.uniq, seen
+    end
+  end
+
+  test "a release's files are read again by a reloading server, or once as the process starts, and each is one or the other" do
+    with_release_folder do |root, _edit|
+      paths = { root: root.join("cms"), schema_dir: root.join("schema") }
+      reloaded = PageCache.reloaded_files(root: paths[:root]).map { |path| Pathname(path).relative_path_from(root).to_s }
+      booted = PageCache.booted_files(**paths).map { |path| Pathname(path).relative_path_from(root).to_s }
+
+      assert_equal %w[cms/app/models/thing.rb cms/app/views/show.html.erb cms/config/locales/en.yml cms/config/routes.rb], reloaded
+      assert_equal %w[cms/Gemfile.lock cms/config/site.yml schema/tokens.json], booted
+      assert_equal PageCache.release_files(**paths).size, reloaded.size + booted.size
     end
   end
 
   # Development reloads code, and its pages must not be answered with a
   # 304 drawn by a partial that has since been edited. Here the release is
   # a folder of its own, so no file of the app is touched.
-  test "where code reloads, the release's digest follows an edited file and stays put otherwise" do
-    Dir.mktmpdir("release") do |dir|
-      file = File.join(dir, "show.html.erb")
-      File.write(file, "<p>page</p>")
-      # Written a minute ago: the edit below is then newer, as an edit is.
-      # (Rails' checker ignores times in the future.)
-      File.utime(Time.now - 60, Time.now - 60, file)
-      as_reloading_release(dir) do
-        first = PageCache.revision
-        assert_equal first, PageCache.revision
+  test "where code reloads, the release's digest follows an edited file of the code and stays put otherwise" do
+    with_release_folder(reloading: true) do |root, edit|
+      first = PageCache.revision
+      assert_equal first, PageCache.revision
 
-        File.write(file, "<p>page, edited</p>")
-        edited = PageCache.revision
-        assert_not_equal first, edited
+      edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
+      edited = PageCache.revision
+      assert_not_equal first, edited
 
-        File.write(File.join(dir, "new.html.erb"), "")
-        assert_not_equal edited, PageCache.revision
-      end
+      edit.call("cms/app/views/new.html.erb", "")
+      added = PageCache.revision
+      assert_not_equal edited, added
+
+      edit.call("cms/config/locales/en.yml", "en: { a: b }")
+      assert_not_equal added, PageCache.revision, "the locales are read again as it reloads"
     end
+  end
+
+  # What a reloading server has not read again is not what it draws with,
+  # whatever the disk holds: config/site.yml is read once, as it starts. A
+  # digest that followed the file would name a release the process is not
+  # running, and the new release, started later, would find the pages
+  # drawn with the old header under its own name.
+  test "where code reloads, an edited config file, gem lockfile or schema file changes the release's digest only when the process starts again" do
+    with_release_folder(reloading: true) do |root, edit|
+      first = PageCache.revision
+
+      edit.call("cms/config/site.yml", "name: Slack Water B")
+      edit.call("cms/Gemfile.lock", "rails (8.1.5)")
+      edit.call("schema/tokens.json", "{\"a\":1}")
+      assert_equal first, PageCache.revision, "the process is still the one that read the old files"
+      edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
+      reloaded = PageCache.revision
+      assert_not_equal first, reloaded
+      assert_equal reloaded, PageCache.revision
+
+      PageCache.boot!
+
+      assert_not_equal reloaded, PageCache.revision, "started again, it reads the new config"
+    end
+  end
+
+  # A deploy starts a new process on new files. A process that has not
+  # served a page yet is still the process that started on the old ones.
+  test "where code does not reload, the release's digest is that of the files the process started on, whenever it is first asked" do
+    with_release_folder do |root, edit|
+      # The server has started and has been asked for nothing. Its files
+      # change, and only then does the first visitor come.
+      started = digest_of(root, secret: PageCache.release_secret)
+      edit.call("cms/config/site.yml", "name: Slack Water B")
+      edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
+      edit.call("cms/Gemfile.lock", "rails (8.1.5)")
+
+      on_disk = digest_of(root, secret: PageCache.release_secret)
+      assert_not_equal started, on_disk, "the files on disk are not those it started on"
+      assert_equal started, PageCache.revision, "and it names the ones it started on"
+      PageCache.boot!
+      assert_equal on_disk, PageCache.revision, "the process started afterwards names the files on disk"
+    end
+  end
+
+  # The digest is made as the process starts (config/initializers/page_cache.rb),
+  # not at its first visit: a process of the app's own, asked for nothing.
+  test "a process has its release's digest as soon as it has started, before any visit" do
+    out, status = Open3.capture2e({ "RAILS_ENV" => "test", "RAILS_LOG_LEVEL" => "warn" }, RbConfig.ruby, "bin/rails", "runner",
+                                  "puts JSON.generate(PageCache.instance_variable_get(:@revision))", chdir: Rails.root.to_s)
+
+    assert status.success?, out
+    assert_match(/\A"[0-9a-f]{64}"\z/, out.lines.last.to_s.strip, "the digest is there with no visit made: #{out}")
   end
 
   test "the page's key and ETag name the version by its id and the moment it was put live, to the microsecond" do
@@ -128,26 +190,5 @@ class PageCacheModelTest < ActiveSupport::TestCase
 
     assert_not_equal keys.call(a), keys.call(b)
     assert_not_equal keys.call(one), keys.call(other)
-  end
-
-  private
-
-  # PageCache as a reloading server has it, over the files of dir alone;
-  # afterwards, as it was, computed afresh at its next use.
-  def as_reloading_release(dir)
-    reloading = Rails.application.config.enable_reloading
-    files = PageCache.method(:release_files)
-    directories = PageCache.method(:release_directories)
-    PageCache.define_singleton_method(:release_files) { |**| Dir.glob(File.join(dir, "*")).sort }
-    PageCache.define_singleton_method(:release_directories) { { dir => [] } }
-    forget = -> { %i[@current @checker].each { |name| PageCache.instance_variable_set(name, nil) } }
-    forget.call
-    Rails.application.config.enable_reloading = true
-    yield
-  ensure
-    Rails.application.config.enable_reloading = reloading
-    PageCache.define_singleton_method(:release_files, files)
-    PageCache.define_singleton_method(:release_directories, directories)
-    forget&.call
   end
 end

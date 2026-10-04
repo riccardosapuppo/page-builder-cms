@@ -7,6 +7,7 @@ require "test_helper"
 # writes on the way.
 class PageCacheTest < ActionDispatch::IntegrationTest
   include PageCacheStore
+  include ReleaseFolder
 
   CACHE_CONTROL = %w[max-age=0 must-revalidate public].freeze
 
@@ -159,6 +160,35 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     calls = with_page_cache { get "/tides" }
     assert_equal current, response.body
     assert_equal [ [ :read, 1, 1 ] ], shape(calls), "and the new one is read whole from Solid Cache"
+  end
+
+  # The pages of a server are drawn with the config it read as it started
+  # (config/site.yml: the header, the menu, the footer). A file edited
+  # under it is not yet what it draws with, so its pages keep their
+  # release; the process that starts on the file is another release.
+  test "a config file edited under a running server changes nothing until a server starts on it, and then every browser gets the new header" do
+    published
+    was = Rails.configuration.x.site
+    with_release_folder do |_root, edit|
+      edit.call("cms/config/site.yml", "name: Slack Water B")
+      with_page_cache { get "/tides" }
+      held = response.headers["ETag"]
+      assert_select ".sw-brand span", text: was[:name]
+
+      get "/tides", headers: { "If-None-Match" => held }
+      assert_response :not_modified, "the running server still draws with the config it started on"
+
+      Rails.configuration.x.site = was.merge(name: "Slack Water B")
+      PageCache.boot!
+      calls = with_page_cache { get "/tides", headers: { "If-None-Match" => held } }
+
+      assert_response :ok
+      assert_select ".sw-brand span", text: "Slack Water B"
+      assert_not_equal held, response.headers["ETag"]
+      assert_equal 0, found(calls), "none of the fragments of the release before"
+    end
+  ensure
+    Rails.configuration.x.site = was
   end
 
   test "the ETag of one page is no use on another, nor on the home page's address" do
