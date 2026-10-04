@@ -77,7 +77,8 @@ module PageCache
   def current
     MUTEX.synchronize do
       if Rails.application.config.enable_reloading
-        @checker ||= ActiveSupport::FileUpdateChecker.new(release_files, release_directories) { @current = nil }
+        # The watcher Rails' own reloader uses (config.file_watcher).
+        @checker ||= Rails.application.config.file_watcher.new(release_files, release_directories) { @current = nil }
         @checker.execute_if_updated
       end
       @current ||= {
