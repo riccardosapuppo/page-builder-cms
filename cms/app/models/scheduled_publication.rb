@@ -79,6 +79,29 @@ class ScheduledPublication < ApplicationRecord
     enqueue_overdue!(at: at, after: SWEEP_AFTER, lease: SWEEP_LEASE)
   end
 
+  # Solid Queue keeps a job that failed for good, with its error, in
+  # solid_queue_failed_executions until someone discards it; nothing of
+  # its own ever does. A failed PublishPageJob says why its schedule is
+  # late, and is kept while the schedule waits. Once the schedule is
+  # settled (the sweep's job put it live, or a person published, cancelled
+  # or replaced it) or gone, the failure says something no longer true, so
+  # the sweep discards it, job and all: a failed publish is then only ever
+  # one whose schedule is still pending. Returns the ids of the schedules
+  # whose failed jobs it discarded. Nothing to do where the jobs do not run
+  # on Solid Queue (the tests' own environment, which has no queue tables).
+  def self.discard_settled_failures!
+    return [] unless PublishPageJob.queue_adapter_name == "solid_queue"
+
+    failed = SolidQueue::Job.failed.where(class_name: PublishPageJob.name).to_a
+    return [] if failed.empty?
+
+    schedule_of = failed.to_h { |job| [ job.id, Array(job.arguments["arguments"]).first ] }
+    waiting = pending.where(id: schedule_of.values.compact).pluck(:id)
+    settled = failed.reject { |job| waiting.include?(schedule_of[job.id]) }
+    SolidQueue::FailedExecution.discard_all_from_jobs(settled) unless settled.empty?
+    settled.map { |job| schedule_of[job.id] }.sort
+  end
+
   # Cancels it if it is still pending, and raises NotPending if it is not:
   # whoever cancels learns that the publish already happened, or that
   # someone else cancelled or replaced it. The job, when it comes, finds it

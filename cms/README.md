@@ -171,20 +171,21 @@ Finished in 79.641026s, 3.8548 runs/s, 18.7592 assertions/s.
 openapi: 276 API response(s) checked against cms/openapi.yaml
 ```
 
-The run includes five tests that start Rails in processes of their own,
+The run includes six tests that start Rails in processes of their own,
 in the development, test or e2e environment: `test/lib/tasks/db_drop_test.rb`,
 `test/db/migrations_keep_rows_test.rb`, `test/lib/queue_orphans_test.rb`,
-`test/bin/jobs_test.rb` (the jobs command, started for real) and the one in
-`test/models/page_cache_test.rb` that asks a process of its own for its
-release's digest before any visit.
-The first four send every database of their environment to a folder of
+`test/bin/jobs_test.rb` (the jobs command, started for real),
+`test/jobs/failed_publishes_test.rb` (the sweep, on Solid Queue's real
+tables) and the one in `test/models/page_cache_test.rb` that asks a
+process of its own for its release's digest before any visit.
+The first five send every database of their environment to a folder of
 their own ([test/support/own_databases.rb](test/support/own_databases.rb),
-which reads them from `config/database.yml`), and the `db:drop` and queue
-orphans tests fail if the tasks name any database outside it: before
-that, the `db:drop` test made, emptied and deleted development's queue
-database at every run. The fifth runs the test environment's own
-`bin/rails runner`, which opens no database: at its end no connection
-pool of that environment is connected.
+which reads them from `config/database.yml`), and the `db:drop`, queue
+orphans and failed publishes tests fail if the tasks name any database
+outside it: before that, the `db:drop` test made, emptied and deleted
+development's queue database at every run. The sixth runs the test
+environment's own `bin/rails runner`, which opens no database: at its end
+no connection pool of that environment is connected.
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
@@ -667,7 +668,19 @@ sees a page scheduled for 15 seconds ahead not live before and live after
   left alone for the next five minutes (its `updated_at` is when), so one
   that fails every time is tried every five minutes, not every minute.
   The editor says meanwhile that it "should have gone live" at its time,
-  and goes on reading the page every half minute until it has.
+  and goes on reading the page every half minute until it has. A job that
+  failed for good stays in Solid Queue's `solid_queue_failed_executions`
+  with its error, which Solid Queue itself never clears: while its
+  schedule waits it says why the page is late. Once the schedule is
+  settled (put live by the job the sweep set going, or published,
+  cancelled or replaced by a person) or gone, the sweep discards that
+  failed job (`ScheduledPublication.discard_settled_failures!`), so no
+  failure is kept for a publish that has happened.
+  [test/jobs/failed_publishes_test.rb](test/jobs/failed_publishes_test.rb)
+  plants such failures on Solid Queue's real tables, in the e2e
+  environment, and sees those of settled schedules go with their jobs,
+  and a waiting schedule's failure, another job's and the jobs still
+  coming at their time stay.
 - **PruneVersionsJob**, every night at 3:30 by the site's clock
   ([config/recurring.yml](config/recurring.yml)), deletes automatic
   versions only: of each page's, the newest 50 stay, and beyond them those

@@ -10,7 +10,8 @@
 # - EnqueueOverdueSchedulesJob, every minute: a scheduled publish whose
 #   time passed by more than a minute with the page still not live gets
 #   its job again (a lost job, or one that failed for good), so it
-#   happens while the server runs and not only at its next start.
+#   happens while the server runs and not only at its next start; and
+#   the failed job of a schedule settled since is discarded.
 production: &jobs
   enqueue_overdue_schedules:
     class: EnqueueOverdueSchedulesJob
