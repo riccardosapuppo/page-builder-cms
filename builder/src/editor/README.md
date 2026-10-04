@@ -1,7 +1,10 @@
 # src/editor/
 
-The editor's interface, built on the approved design (`../../../design/`,
-`index.html` and its screenshots).
+The editor's interface: the identity of the approved design
+(`../../../design/`, `index.html` and its screenshots), laid out as the
+approved layout (`../../../design/layout/`, approved on 3 October 2026):
+the top bar, the drawers floating over the canvas, one sidebar on the
+right, the bottom line.
 
 - It reads the store (`../store`) and dispatches commands; it never edits
   the document itself.
@@ -18,28 +21,31 @@ random block ids.
 
 | File | What it is |
 | --- | --- |
-| `App.tsx` | The shell: the grid of the design, the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way (Reload as a step of the session, which Undo takes back; Keep mine after keeping the server's draft as a version, "Before Keep mine"), the page's versions read for the history, "Save version" and restore (each after the edits waiting are saved; the restored draft takes the canvas only when this tab has nothing the restore did not keep, else the conflict bar asks; undo starts again, and the notice says why), and the site style's changes sent one at a time, a refusal put back |
-| `TopBar.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The mark's menu (Site style, the pages, the shortcuts, About), the page switch (the site's pages, a new page), whether the page is live and how many saved changes are not, Site style, the device previewed, undo and redo (greyed, and saying so, with nothing to do) and History, the save state, Preview and Publish |
-| `HistoryPanel.tsx`, `history-words.ts`, `history.css` | The history, in the navigator's place: this session's steps newest first, the undone ones on top, any of them a button that undoes or redoes up to it; the draft and the page's versions, named by why, when and their name, with no author, the live one marked; "Save version" with an optional name (Ctrl+S opens it); Restore |
+| `App.tsx` | The shell: the layout's grid (the top bar; the drawer open, over the canvas's left; the canvas; the sidebar; the bottom line, in the order the Tab key goes), the site's pages, media library and site style read through the adapter, a page opened (`openDocument` before the store takes it, the page's id in the address as `?page=`), its autosave fed every new document, the server's 422 laid on its blocks (`errorsByBlock`, on the document that save sent), a warning before the tab closes while edits are only here; publishing (the edits waiting saved first, then published at that revision), the preview opened in a tab once they are sent, the conflict settled the person's way (Reload as a step of the session, which Undo takes back; Keep mine after keeping the server's draft as a version, "Before Keep mine"), the page's versions read for the history, "Save version" and restore (each after the edits waiting are saved; the restored draft takes the canvas only when this tab has nothing the restore did not keep, else the conflict bar asks; undo starts again, and the notice says why), and the site style's changes sent one at a time, a refusal put back |
+| `TopBar.tsx`, `PageSwitch.tsx`, `Menu.tsx`, `NewPageDialog.tsx` | The top bar: the mark's menu (Site style, the pages, the media library, the shortcuts, About); Insert, Outline and History, each opening and closing its drawer; undo and redo (greyed, and saying so, with nothing to do); in the middle, the page's title, which opens the site's pages (a small window with a search, each page's address and whether it is live, New page), and under it whether the page is live and how many saved changes are not; the save state, Preview, Publish and the sidebar's key. Short of room, the title is cut last: the save state draws closer first, then the drawers' and Preview's words give way to their icons |
+| `Drawer.tsx` | The drawers: one open at a time, floating over the canvas's left at every width, so the page keeps its width; each takes the focus when it opens (what it marks, else its first key) and gives it back, on Esc or its close button, to where it was before it opened |
+| `Sidebar.tsx` | The one sidebar: the Page tab (the page's own settings, and Site style one click below it, which closes back to it) and the Block tab (the selection's panel), following the selection and chosen by hand in between; hidden from its own button or the top bar's key, the canvas taking its room |
+| `StatusBar.tsx` | The bottom line: the selection's path from the page, each step a button; a hint when nothing is selected or a column or section is; while a block moves, the live region's sentence in its place, the line graphite; Block edges; the devices, a radio group (Desktop, Tablet 768, Phone 390); the page's width as the canvas lays it out, its layout, and the scale it is drawn at |
+| `HistoryPanel.tsx`, `history-words.ts`, `history.css` | The History drawer: this session's steps newest first, the undone ones on top, any of them a button that undoes or redoes up to it; the draft and the page's versions, named by why, when and their name, with no author, the live one marked; "Save version" with an optional name (Ctrl+S opens it); Restore |
 | `SaveStatus.tsx` | Where the edits are, from the autosave's snapshot: the top bar's word (Saved only when the server has every edit; a countdown to the next try, on the injected clock, never read to a screen reader); the toast of a save whose outcome is unknown, with Retry now; the conflict's banner, an alert, with Reload and Keep mine |
 | `Publish.tsx` | Preview, a link to the draft's preview on the CMS's own origin; the split Publish button and its menu (Publish now, the live page), waiting and saying why on an empty page, a conflict or a save not confirmed; nothing for what the storage lacks (no Schedule before stage 4) |
 | `SiteStylePanel.tsx` | Site style, the one screen that changes the tokens: each slot's curated tones, their contrast in words, back to a new site's tone, the type scale and its steps |
 | `AboutDialog.tsx` | About: the mark, the version (the package's, held to the repository's) and "Developed by Riccardo Sapuppo" |
-| `LeftTray.tsx`, `Palette.tsx`, `insert.ts`, `pickers.tsx` | The Add and Edit tabs; the widget panel, its tiles in labelled groups with a search; where a new block goes (after the selection, as a paste does); what an image, a gallery or a video needs before it is added (images from the media library, below) |
+| `Palette.tsx`, `preset-pictures.tsx`, `insert.ts`, `pickers.tsx` | The Insert drawer: a search; Blocks (a new section by its number of columns, then the widgets as named keys in their labelled groups) and Sections (the ready-made sections); a sentence saying where a click puts a block; where a new block goes (after the selection, as a paste does); what an image, a gallery, a video or the picture beside text needs before it is added (images from the media library, below) |
 | `library/` | The media library (design/shots/media.png), opened by every image tile, Replace image, a gallery's Add images and the picture beside text, and from the mark's menu to look after the library itself. A search, three filters (all, on this page, missing alt text), the count. Uploads (`service.ts`, through the storage adapter only): one at a time, each drawn again first in the browser (`resize.ts`: the EXIF orientation applied, at most 2400 px on the long side, proportions kept, in its own format, the camera's notes left behind; an image that moves goes up as it is), with its progress and a way to stop it; what the browser or the CMS refuses keeps its reason (`files.ts`). No image is placed without alt text or the decorative mark: the button says why it waits and leads to the field. Placing is one command born with the mediaId, the alt text copied in and kept as the library's proposal. Delete, asked twice, after the edits waiting are saved; one the CMS refuses names the pages and kept versions that show the image (`words.ts`). The footer says the CMS makes no smaller copies (`capabilities.imageVariants`) |
-| `panels/` | The Edit view: the page's panel, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx`. The Style tab edits the device the canvas previews (design/shots/style.png): the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
+| `panels/` | The sidebar's panels: the page's, and a block's with its Content, Style and Advanced tabs. The Content tab of a widget is its own, in `../widgets/<widget>/panel.tsx`. The Style tab edits the device the canvas previews (design/shots/style.png): the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
 | `device-style.ts` | A block's style per device as the page's container queries apply it: a tablet or a phone shows its own value, else the base, a phone never the tablet's; the devices a block has values of its own on; "back to desktop" as the key taken out, never the desktop's value written in its place |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, between the theme's header and footer (locked), drawn smaller when the canvas is narrower than the page (the width rule saying both widths), the editor's own controls and words on it kept at their size; the marks of the selection and its floating bar (at the block's top left corner, at the right one where the left would cover the words above, and, while a text is written, under the block where both would), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
-| `Navigator.tsx` | The page as an ARIA tree, in step with the selection both ways, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out |
-| `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own, and a text the page refuses keeps the command from running; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the navigator's row |
-| `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each widget panel tile as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the live region (`DragLayer.tsx`) |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, flush with its frame (19 on each side, the scrollbar's gutter kept), between the theme's header and footer (locked), drawn smaller when the canvas has less room than the page (the bottom line saying its width and the scale), the editor's own controls and words on it kept at their size; Block edges; a provider's player kept with no address, so it never loads on the canvas, not even when a drag's preview puts its block back into the page; the marks of the selection and its floating bar (at the block's top left corner, at the right one where the left would cover the words above, and, while a text is written, under the block where both would), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
+| `Navigator.tsx` | The Outline drawer. Blocks: the page as an ARIA tree, in step with the selection both ways, the row of the selection taking the focus when the drawer opens, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out. Headings: the page's headings in order, by level, each one a button that selects it |
+| `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own, and a text the page refuses keeps the command from running; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the outline's row |
+| `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each key of the Insert drawer as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the sentence the bottom line's live region says (`DragLayer.tsx`, `../StatusBar.tsx`) |
 | `rich/` | Rich text on the canvas: TipTap with exactly the schema's nodes and marks, the link cut to its href and held to the URL policy and the schema (`extensions.ts`, `link-check.ts`); a paste cleaned to what the schema allows (`paste.ts`); what the page takes of a text held while it is written, from the schema's counts and the page's nesting at the block's place: a key, a mark or a link past it not done and said, a paste cut to what fits and said (`limits.ts`); the editor as the canvas makes it (`setup.ts`), loaded on demand with TipTap in a chunk of its own (`TextEditor.tsx`, through `tools.ts`), opened in the same moment once the chunk is here, the focus in it at once, and the keys pressed while it is still on its way kept from the block and typed into it when it opens (`../keys.ts`, `waitForText`), unless another block is chosen first, which gives up the opening and its keys (`tools.ts`, `forgetLeftText`); one text being edited and its two histories (`text-session.ts`: the typing becomes ONE command of the page when the person pauses or leaves the text, before any other command and at a drag's start, and TipTap's history is closed there, so Ctrl+Z in the text is TipTap's and outside it the page's; a text the page refuses all the same is never dropped: the editor stays open saying why, and the commands, drags and the leaving that would lose it wait); its buttons and link field on the block's bar (`FormatBar.tsx`) |
-| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor and the text editor take their keys from it, every title and `aria-keyshortcuts` names its keys from it (a test reads the source for a key written anywhere else), and the "?" window lists it; the arrows' order through the page. While the person types (a field, a text on the canvas) the typing keys are the text's: only the entries marked `typing` work there (Save a named version, Preview, Publish now), looked for before the text editor cancels Enter; a chord with Alt counts there by the key it types, never with AltGr |
+| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor and the text editor take their keys from it, every title and `aria-keyshortcuts` names its keys from it (a test reads the source for a key written anywhere else), and the "?" window lists it, in the layout's three columns; the arrows' order through the page. The layout's chords are Alt and Shift with a letter or a digit (Preview, Insert, the Outline, the three devices), never Ctrl and Alt, which many keyboards type as AltGr; off a text they go by the key's place. While the person types (a field, a text on the canvas) the typing keys are the text's: only the entries marked `typing` work there (Save a named version, Preview, Publish now), looked for before the text editor cancels Enter; a chord with Alt counts there by the key it types, never with AltGr |
 | `BlockMenu.tsx`, `Menu.tsx`, `clipboard.ts` | The block's menu (right click, or the menu key): copy, paste, duplicate, delete; copy and paste through the browser's clipboard events, so a copied block is on the system clipboard as text |
 | `plain-words.ts` | The words the history, the media library and the keymap's notes share, so they read alike: a day against the clock's ("Today", "Yesterday", "Sep 28", "Dec 30, 2025") and a list in a sentence ("A, B and C") |
-| `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, tabs, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
-| `icons.tsx`, `editor.css` | The design's icons and stylesheet; the design's resets of bare elements are kept off the canvas |
+| `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, the drawer open, the sidebar shown and what it shows, Block edges, the page's width as laid out, tabs, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
+| `icons.tsx`, `editor.css` | The design's icons (and the layout's few of its own, Block edges) and stylesheet, laid out as the layout's; the design's resets of bare elements are kept off the canvas |
 
 ## Not here yet
 
@@ -50,17 +56,21 @@ until it works, and the "?" window lists no key for it.
 
 Each of these is a choice, kept for a reason, and open to the design's
 owner to undo:
-- **"?" window:** the design's two rows of three groups, and a third the
-  design does not draw: a Text group, two columns wide, listing the keys
-  inside a text being written (bold, italic, link, Esc to leave) with a
-  note on Ctrl+Z there, on Delete and Backspace deleting letters and on
-  the keys that work while typing; and an Adding group (Enter on a widget
-  panel tile adds it after the selection). The window is the keymap
-  written out, so every key that works is in it; laid out so, it keeps
-  inside a window 800 pixels tall (690 there). Enter, "Edit the text of a
-  block", also goes to the first field of a widget whose words are in its
-  panel. Its keys stand 8 pixels from their words, not 12, so "Select the
-  parent column or section" keeps to one line as in the design.
+- **"?" window:** the layout's three columns and its groups, with what
+  the layout does not draw: under Text, while you write, a note on Ctrl+Z
+  there, on Delete and Backspace deleting letters and on the keys that
+  work while typing; under Adding and looking, Enter on a block of Insert
+  adding it after the selection. The layout's "+" and the clamp's Tab
+  stop are not listed until the canvas has them. The window is the
+  keymap written out, so every key that works is in it. Enter, "Edit the
+  text of a block", also goes to the first field of a widget whose words
+  are in its panel. Its keys stand 8 pixels from their words, not 12, so
+  "Select the parent column or section" keeps to one line as in the
+  design.
+- **Drawers:** all three float over the canvas's left, so the page never
+  shrinks when one opens; the layout's notes have the Outline and History
+  push the page aside. A floating drawer covers the left of a first
+  column's blocks while it is open.
 - **Style tab:** Background offers the palette's six slots in the design's
   order, and Slate, which the design does not draw, last; Text color,
   which the design does not draw either, comes after Alignment. A
@@ -91,9 +101,10 @@ owner to undo:
   Column 2 in most sections.
 - **Top bar:** a bar a few pixels short of room for every word draws the
   save state closer to its neighbours (2 pixels on its right instead of
-  8, none on its left instead of 6) before History and Preview give up
-  their words; the save state takes the room of "Saving…" when it says
-  "Saved", so a save moves nothing.
+  8, none on its left instead of 6) before Insert, Outline, History and
+  Preview give up their words; the save state takes the room of
+  "Saving…" when it says "Saved", so a save moves nothing. The pages'
+  window has no "Manage all pages": there is no such screen yet.
 - **Site style:** a "Saved for every page" line under the panel's title,
   where the style's own save shows (the top bar's word is the page's);
   a chevron on Primary and Accent, which open to their tones; contrast
@@ -117,9 +128,9 @@ owner to undo:
   at the top. The text widget's Content tab has no text
   field: its words are written on the page, and the tab opens the editor
   there and says how.
-- **The empty page's panel** has no "Show in the site menu" toggle: the
-  site's menu is the theme's (`cms/config/site.yml`), which nothing in
-  the editor changes yet.
+- **The Page tab** has no "Show in the site menu" toggle, which the layout
+  draws as "Comes later": the site's menu is the theme's
+  (`cms/config/site.yml`), which nothing in the editor changes yet.
 - **History:** no version says who made it ("Saved", not "Saved by you"):
   the CMS has no people, and a version's words come from why it was made,
   when, and its name. A restore says what it copied back ("From “First
@@ -148,7 +159,8 @@ owner to undo:
 One test file per panel, next to it, drives its controls and checks the
 page and the command that changed it, and lays the server's 422 on the
 store as the shell does, then finds it on the field it names; the
-canvas, the widget panel, the navigator, the top bar, the history panel
+canvas, the Insert drawer, the Outline, the top bar, the drawers, the
+sidebar, the bottom line, the history panel
 (in strict mode where an effect matters), the style per device
 (`device-style.test.ts`: "back to desktop" on random styles of every
 block, with the desktop's value written in its place planted to see the
@@ -165,17 +177,24 @@ storage of the test's own, and the dialog (alt text before an image is
 placed, one command, an upload kept off the page, a refused delete, Esc
 in the delete question taking back only the question). jsdom lays nothing out, so the pointer, the keys and
 the clipboard are Chromium's, against a CMS of the run's own:
-`../../e2e/editor.spec.ts` (the shell; sections anchored with the
-editor's own ids, which hold an underscore no anchor can; the theme's
-header and footer, locked; and in a 1280 by 800 window the pages drawn
-smaller to fit, the editor's own controls and words on them kept at
-their size and in their place, a hovered block's name kept inside the
-canvas, drawn over the frame of a selection just before it and placed
-again when the window's size changes under the pointer, a stacked
-column's tab and the page's title kept whole),
+`../../e2e/editor.spec.ts` (the shell in the layout's frame: Insert
+saying where a block goes, the devices and the page's width in the
+bottom line, the Outline and the bottom line's steps selecting with the
+canvas, the drawers floating one at a time with the page keeping its
+width; sections anchored with the editor's own ids, which hold an
+underscore no anchor can; the theme's header and footer, locked; the
+page 1088 wide at 1440 and in its desktop layout at 1280, measured in a
+browser that draws its scrollbar; in a 1280 by 800 window the pages
+whole, a stacked column's tab and the page's title kept whole; and in a
+1024 by 768 window the pages drawn smaller to fit, the editor's own
+controls and words on them kept at their size and in their place, a
+hovered block's name kept inside the canvas, drawn over the frame of a
+selection just before it and placed again when the window's size changes
+under the pointer),
 `drag.spec.ts` (every drop by mouse and by keyboard, Space with the
 button held, refused drops, Esc, a drag on a page drawn smaller, its
-words at their size),
+words at their size, a block moved past a video without the provider's
+player loading),
 `focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
 (every key of the map, and the "?" window listing them; in a text being
 written, Delete, Backspace and Ctrl+D changing letters and never the
@@ -215,16 +234,18 @@ saying why; a delete the CMS refuses naming the page; axe on the open
 library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
-(the mark read back at 16 px), `a11y.spec.ts` (axe in twenty-seven states, at 1440 by 900 and at 1280 by 800,
-among them a text being written and its link's field, a tablet's
-override, the history and its name field, the media library; and on the
-published page), `widgets.spec.ts` (each widget's accessibility
+(the mark read back at 16 px), `a11y.spec.ts` (axe in thirty-two states, at 1440 by 900 and at 1280 by 800,
+among them each drawer and the Outline's headings, Block edges and the
+Page tab, the sidebar hidden, a text being written and its link's field,
+a tablet's override, the history and its name field, the media library;
+and on the published page), `widgets.spec.ts` (each widget's accessibility
 test) and `keyboard-path.spec.ts` (the whole path with no pointer:
-insert, move, a heading's text and level, a word made bold in a text on
-the canvas, a column's tablet space, an image uploaded through the
-system's file chooser and placed with its alt text, undo and redo, a
-named version, publish, the live page read at a desktop's and a
-tablet's width). The
+insert from Insert by its chord, move, a heading's text and level in the
+sidebar, a word made bold in a text on the canvas, the devices in the
+bottom line, a column's tablet space, the Outline by its chord, an image
+uploaded through the system's file chooser and placed with its alt text,
+undo and redo, a named version, publish, the live page read at a
+desktop's and a tablet's width). The
 ones tagged `@a11y` are what `npm run check:a11y` runs. `npm run
-shots:editor -- <folder>` photographs the editor in the design's states
-on the example site (`../../e2e/shots/editor-shots.ts`).
+shots:editor -- <folder>` photographs the editor in the approved
+layout's states on the example site (`../../e2e/shots/editor-shots.ts`).
