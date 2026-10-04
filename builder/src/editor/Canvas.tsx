@@ -494,6 +494,36 @@ interface MarksProps {
 
 const ADD_KEY = entryKeysText(entry("addHere"));
 
+// The note on a shaded section ("Widgets go inside a column."): at the
+// section's left, except under Insert, the one drawer that floats over the
+// page (the Outline and History push it aside). A key dragged out of Insert
+// is over a page whose left part the drawer covers, and the note at the
+// section's left was under it: it starts instead at the drawer's right
+// edge, in the part of the band that is seen. --note-from is that edge in
+// the section's own pixels (the page may be drawn smaller than its size).
+function VeilNote({ note }: { note: string }) {
+  const span = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const element = span.current;
+    const veil = element?.offsetParent;
+    if (!element || !(veil instanceof HTMLElement)) return undefined;
+    const place = () => {
+      const drawer = document.querySelector(".drawer-float");
+      const box = veil.getBoundingClientRect();
+      if (!drawer || box.width === 0 || veil.offsetWidth === 0) {
+        element.style.removeProperty("--note-from");
+        return;
+      }
+      const scale = box.width / veil.offsetWidth;
+      element.style.setProperty("--note-from", `${(drawer.getBoundingClientRect().right + 12 - box.left) / scale}px`);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, []);
+  return <span ref={span} className="veil-note"><Icon name="block" className="i i-xs" />{note}</span>;
+}
+
 function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs, dimension, tools, pluses }: MarksProps) {
   const env = useEnv();
   const dragging = useEditor((s) => s.drag !== null);
@@ -507,7 +537,7 @@ function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs
       {mark?.kind === "open" && kind === "column" && <div className="ov ov-drop" aria-hidden="true" />}
       {mark?.kind === "shut" && (
         <div className="ov ov-veil" aria-hidden="true">
-          {kind === "section" && <span className="veil-note"><Icon name="block" className="i i-xs" />{mark.note}</span>}
+          {kind === "section" && <VeilNote note={mark.note} />}
         </div>
       )}
       {relation === "selected" && dimension && !pluses.picking && <DimensionLine dimension={dimension} />}

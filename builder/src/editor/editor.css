@@ -746,7 +746,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    Steel is 3.7 to 5.1 (5.05 over a white band, as e2e/drag.spec.ts
    measures it). The marks of the places that can take the block keep
    their graphite edges, 9.6 to 13.1 to 1 against it. */
-.veil-note { position: absolute; left: var(--pad-x, 24px); top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: var(--plate); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; box-shadow: 0 0 0 1px var(--steel); }
+.veil-note { position: absolute; left: max(var(--pad-x, 24px), var(--note-from, 0px)); top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: var(--plate); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; box-shadow: 0 0 0 1px var(--steel); }
 .veil-note .i { color: var(--steel); }
 .frame-shut { background: var(--shut); }
 /* The pointer over no place for the block (./drag/DragLayer.tsx marks the
