@@ -12,6 +12,7 @@
     "start": "node tools/start.cjs",
     "setup": "node tools/start.cjs --setup",
     "check:start-interrupt": "node tools/start/interrupt-check.ts",
+    "check:setup-tree": "node --test tools/start/setup-tree.test.ts",
     "check": "node tools/check.ts",
     "typecheck": "tsc -p tsconfig.json",
     "lint:openapi": "node tools/lint-openapi.ts",

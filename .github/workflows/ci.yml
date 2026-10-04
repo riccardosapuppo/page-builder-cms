@@ -283,3 +283,8 @@ jobs:
       - run: npm start -- --smoke
       # A real Ctrl+C, and a child that dies, each stopping everything.
       - run: npm run check:start-interrupt
+      # The setup migrating an older database leaves the schema it dumps,
+      # and git status, as they were: on Windows Ruby wrote it with CRLF.
+      # Here, where npm start has installed the gems the test needs; the
+      # tools job, which has none, skips it.
+      - run: npm run check:setup-tree

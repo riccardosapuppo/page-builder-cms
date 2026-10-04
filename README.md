@@ -157,7 +157,15 @@ itself.
   On 3 October 2026, on Windows, they printed `smoke: 7 checks passed`
   and `RESULT: 11 checks passed`. The smoke run reads, among its seven
   looks, the editor's entry module as Vite compiles it: a module with a
-  syntax error answers 500 there.
+  syntax error answers 500 there. `npm run check:setup-tree` runs the
+  setup on a development database of its own, one migration behind, so
+  that it migrates and dumps the schema, and checks that the schema it
+  wrote and git status are what they were: Ruby on Windows wrote the
+  dump with CRLF line endings, and `cms/db/schema.rb` came back modified
+  with nothing else changed (`cms/lib/tasks/schema_dump.rake` turns the
+  dump back to LF). On 4 October 2026, on Windows, it printed `pass 1`
+  after 29 s; without the rake file, it failed on 149 lines ending in
+  CRLF and `AM db/schema.rb`.
 
 ## What is here now
 
