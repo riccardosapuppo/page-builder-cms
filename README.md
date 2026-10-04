@@ -246,6 +246,8 @@ itself.
   `npm run lint:openapi` lints the API
   description; `tools/seed-images.ts` renders the seed's pictures,
   `tools/gen-contract-500.ts` writes the 500-block fixture,
+  `npm run measure:server`, `measure:builder` and `measure:bundle` take the
+  measurements of the [Measurements](#measurements) section,
   `tools/site-shots.ts` photographs a running site,
   `tools/type-scales.ts` measures its headings under each type-scale
   choice, and
@@ -329,6 +331,224 @@ again, and workers that cannot start even one at a time make the suite
 - held to one processor beside two busy loops, Vitest's own settings
   failed a canvas test that took 14.7 seconds against its 5, and the
   check's passed all 428 tests (each run about 600 seconds).
+
+## Measurements
+
+Every number in this section was produced by the command given with it,
+run from the repository's root on 4 October 2026, on one machine: a
+Windows 10 virtual machine with 8 logical processors (an Intel Core
+i7-10700 at 2.9 GHz) and 12 GB of memory, with Node 24.19.0, Ruby 3.4.11
+(YJIT off), Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless
+Chromium 151, the build Playwright 1.62.1 is held to.
+
+The server's and the editor's measurements work on one page,
+`contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns
+and 414 widgets of the twelve kinds, which the server renders to 211 KB of
+HTML. Its nine library images are the example site's pictures, uploaded to
+the run's own library as the editor uploads an image, with the library's
+ids in place of the fixture's own; the rest is the fixture as it is. (Ten
+of its images name another site, which this machine cannot fetch.) Each
+command that needs servers starts them, on ports of its own (3902 for the
+production CMS; 3901 and 4901 for the e2e CMS and the editor), with
+databases and an Active Storage root of its own, and deletes them when it
+ends.
+
+How a number is taken:
+- **On a quiet machine.** A command waits until two readings in a row,
+  three seconds each, have all the processors under 15% busy, and gives up
+  (exit 2) if the machine does not settle in fifteen minutes, rather than
+  measure. Each run is taken after a quiet reading and read again after it;
+  a run the machine was busy after is thrown away and taken again, and
+  the tables say how many were. The ranges of load below are those
+  readings, before and after the runs kept. A virtual machine cannot see
+  what its host is doing: the load is the guest's own, and it is read
+  between the runs, not during them. `MEASURE_ALLOW_BUSY=1` measures
+  anyway, and the output then says it was taken under load and is not to be
+  quoted.
+- **Several times.** A number is the median of many runs with the smallest
+  and the largest beside it, not one run. A 95th percentile is given only
+  where there are hundreds of values to take it from.
+- **Against a baseline.** The server's health check, which draws nothing,
+  and the same drag on a page of four blocks say what the stack and the
+  harness cost by themselves.
+- **Able to fail.** Each command also checks that it measured what it says:
+  that every answer had the 500 blocks, that a cold visit wrote 501 rows,
+  that the drag was engaged and saved nothing, that the editor's text
+  chunk was not loaded to open the page. `npm run test:tools` runs the
+  tests of the tools themselves, among them one that reads this section
+  and fails if a command in it does not exist.
+
+### A published page, on the server
+
+`npm run measure:server`, on 4 October 2026 from 16:06 to 16:09 UTC, the
+machine 3% then 2% busy before it, no run thrown away. The CMS in production mode, Solid
+Cache on its own SQLite database, one visit at a time over one connection:
+
+| One visit | The application (X-Runtime), ms | The client, to the last byte, ms | Runs | Load before and after the runs |
+| --- | --- | --- | --- | --- |
+| The health check, `/up`: no database, no view | 0.91 (0.62 to 6.11) | 15.2 (9.87 to 21.2) | 100 | 1 to 1% |
+| Drawn with no cache (the draft preview) | 105 (94.2 to 153) | 114 (101 to 166) | 30 | 0 to 1% |
+| Cold: Solid Cache emptied | 382 (320 to 456) | 395 (332 to 470) | 15 | 1 to 4% |
+| Warm: the whole page read from Solid Cache | 3.98 (3.01 to 7.35) | 13.8 (4.50 to 21.6) | 100 | 1 to 1% |
+| A 304: the ETag sent back | 2.27 (1.62 to 3.92) | 15.1 (3.90 to 18.9) | 100 | 1 to 2% |
+| One heading changed and published | 23.5 (19.8 to 45.2) | 33.9 (24.0 to 51.2) | 15 | 0 to 3% |
+| The site style changed | 17.6 (15.2 to 23.8) | 30.8 (26.8 to 37.6) | 15 | 0 to 5% |
+
+Median, and the smallest to the largest run in brackets. What each visit
+read from Solid Cache and wrote to it, counted as the store receives the
+calls (`tools/lib/count-reuse.rb`, in production, on the same databases,
+one visit each):
+
+| Visit | Reads | Fragments asked for | Found | Writes | Fragments written |
+| --- | --- | --- | --- | --- | --- |
+| Cold | 88 | 501 | 0 | 88 | 501 |
+| Warm | 1 | 1 | 1 | 0 | 0 |
+| A 304 | 0 | 0 | 0 | 0 | 0 |
+| One heading changed | 4 | 37 | 33 | 4 | 4 |
+| The site style changed | 2 | 26 | 25 | 1 | 1 |
+
+- **A cold visit is slower than no cache.** It draws the same 500 blocks as
+  the preview does, and also makes the 501 keys, asks for them in 88
+  reads that find nothing, and writes them in 88 writes: 382 ms against
+  105. That is the price of the first visit after a deploy, or after the
+  cache is emptied; the visits after it cost what the rows below say.
+- **A warm visit is one read.** 3.98 ms in the application, 2.27 for a 304
+  that reads nothing: a difference of 1.7 ms, and 211 KB more on the wire.
+  Neither costs the client more than the health check does (15.2 ms),
+  which does no work at all, so on this stack the client cannot tell them
+  from nothing: that 15 ms belongs to the stack (Puma, the loopback of
+  Windows, Node's client; which of them is not looked into here), not to
+  the page. The application's own column is the one to read for the small
+  ones.
+- **One block changed: 497 of 500 are not drawn again.** Of the 37
+  fragments asked for, 33 were found; the 4 written are the heading, its
+  column, its section and the page. 23.5 ms against 382 cold and 105 with
+  no cache. A new site style writes only the page's own fragment and finds
+  the other 25 in the cache: 17.6 ms.
+- **No compression.** The CMS sends the HTML as it renders it, 211 KB; a
+  proxy in front would compress it, and none was in the way here.
+
+### The editor, in the browser
+
+`npm run measure:builder`, on 4 October 2026 from 16:09 to 16:31 UTC, the
+machine 2% then 5% busy before it, no run thrown away. Headless Chromium at 1440 by 900,
+against the e2e CMS, in two forms of the editor: the production build
+served by `vite preview`, and the development server `npm start` runs.
+Nine runs of each, every run in a browser context of its own with nothing
+cached.
+
+Opening the page of 500 blocks, in ms from the start of the navigation:
+
+| Form | The page's data arrived | The 500 blocks are in the canvas | The frame after them is made | Of that, after the data | Long tasks of the main thread | Load |
+| --- | --- | --- | --- | --- | --- | --- |
+| Production build | 248 (218 to 6,861) | 1,036 (982 to 7,622) | 1,161 (1,115 to 7,755) | 908 (894 to 949) | 3 (3 to 3), 924 (891 to 955) ms | 1 to 9% |
+| Development server | 607 (593 to 627) | 2,094 (2,027 to 2,149) | 2,300 (2,208 to 2,332) | 1,693 (1,615 to 1,706) | 5 (5 to 6), 1,807 (1,726 to 1,840) ms | 1 to 12% |
+
+One of the nine openings of the production build took 7.6 s, its data
+arriving after 6.9 s, and the median of the nine is 1,036 ms. The load
+readings of the nine runs were 1 to 9% and the cause of that one is not
+known. `MEASURE_DRAG=0 MEASURE_FORMS=build MEASURE_RUNS_BUILDER=40 npm run
+measure:builder`, run the same day (16:34 to 16:37 UTC), opened the page
+40 more times: the blocks were in the canvas after 1,044 ms (999 to
+1,087), the data after 245 (224 to 269), the frame after them 1,176 (1,122
+to 1,233), the load 0 to 8%, and none stalled.
+
+Where the main thread's time went, from the creation of the page to the
+frame after its blocks, by the browser's own counters (median, ms): the
+production build was busy 1,118, of which 558 in JavaScript, 415 in
+layout (79 layouts) and 31 in style recalculation; the development server
+2,062, of which 1,361 in JavaScript and 402 in layout. The page has 3,001
+DOM nodes and the JavaScript heap is 57.5 MB.
+
+Dragging a block across the page: the block is held by its grip while the
+page is scrolled to 14 positions spread evenly over its 65,562 px, and the
+pointer goes down the canvas and up again at each, 482 moves in all. The
+frame interval is the time between two animation frames; the pointer's
+latency is from the move to the end of the second frame after it (the
+editor answers a move in a task after the frame it arrived in, and the
+second frame is the one that draws the answer, so a page that does nothing
+about a move reads about 30 ms). The 4-block page is the baseline.
+
+| Form | Page | Frame interval, median / 95th / worst, ms | Frames over 33 ms | Pointer latency, median / 95th / worst, ms | Long tasks (over 50 ms) | Runs | Load |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Production build | 500 blocks | 16.7 / 50.0 / 233 | 208 of 2,369 | 60.9 / 176 / 348 | 72, 4,776 ms | 9 | 1 to 9% |
+| Production build | 4 blocks | 16.7 / 16.7 / 16.8 | 0 of 525 | 30.2 / 34.1 / 54.4 | 0 | 9 | 1 to 6% |
+| Development server | 500 blocks | 16.7 / 66.6 / 550 | 310 of 2,369 | 75.1 / 199 / 697 | 184, 12,301 ms | 9 | 1 to 12% |
+| Development server | 4 blocks | 16.7 / 16.7 / 33.4 | 0 of 572 | 28.9 / 44.8 / 81.8 | 0 | 9 | 0 to 5% |
+
+Medians over the runs of each run's own median, 95th percentile and worst;
+the 95th percentiles of all the runs' frames pooled are 50.0 ms and 66.6 ms
+(21,301 and 21,340 frames) and of their pointer moves 177 and 196 ms
+(4,338 moves each). In each run the live region named 79 to 84 different
+places the block would go to, and nothing was saved: the page sent no
+write to the CMS.
+
+In the production build the 482 moves took 50.5 s on the 500-block page,
+9.5 moves a second, and 8.75 s on the 4-block page, 55 a second. The main
+thread was busy 46.1 s of the 50.5 (91%), 26.3 s of that in JavaScript, 1.5
+in style recalculation and 0.3 in layout; on the 4-block page, 1.4 s. That
+is 96 ms of main thread for a pointer move, against 2.9.
+
+**These numbers are bad and are left as they are.** The 500-block page
+takes about 1.2 s to open, 0.9 s of it after its data has arrived, and a
+drag across it takes the pointer's moves at about ten a second, with a
+latency of 61 ms in the middle and 176 at the 95th percentile where the
+baseline gives 30 and 34. The development server is worse on both.
+`MEASURE_PROFILE=only npm run measure:builder` (16:37 UTC) profiles one
+run on an unminified build and says where the JavaScript's time went. A
+profiler slows the page, so only the shares are to be read:
+- **Opening:** 24.5% of the sampled time is in the canvas's `measure`,
+  which reads the page's width in a layout effect, and 17.9% in the next
+  layout effect, which queries the new elements. They are the first code
+  to need the new DOM laid out, so the browser's own style and layout of
+  its 3,001 elements is paid there, as the counters above say (415 ms of
+  layout). React's render of the 500 blocks is 12.6%, and inserting the
+  elements about 9%.
+- **Dragging:** 41.4% of the sampled time is in `overDrawer`
+  (`builder/src/editor/drag/dnd.ts`), which every one of the 500 blocks, as
+  a drop target, runs at every pointer move to ask whether the pointer is
+  over a drawer, and which looks the drawers up with
+  `document.querySelectorAll(".drawer")` each time. 31.2% is the drag
+  library's position observer measuring the targets again (`updateShape`),
+  and 12 to 13% React rendering what changed. Looking the drawers up once
+  per move, not once per block, would take the first of these away. This
+  stage measures and does not change the editor, so it is left, and listed
+  as open.
+
+### The bundle
+
+`npm run measure:bundle`, on 4 October 2026 at 15:54 UTC. It builds the
+editor twice, as `npm run builder:build` does, into folders of its own: the
+two builds are the same files, byte for byte. Gzip is level 9. The sizes do
+not depend on the load of the machine.
+
+| File | What | Raw | Gzipped |
+| --- | --- | --- | --- |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the editor | 842,681 B (822.9 KiB) | 226,273 B (221.0 KiB) |
+| `index-*.css` | The stylesheet, loaded at once | 99,444 B (97.1 KiB) | 18,110 B (17.7 KiB) |
+| `index.html` | The page | 1,423 B | 756 B |
+| | Loaded at once, in all | 943,548 B (921.4 KiB) | 245,139 B (239.4 KiB) |
+| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
+| `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
+| 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
+
+What is lazy is read from the files: `index.html` names only the entry, the
+entry reaches the text editor and the upload code with `import()` and never
+statically, and a string only ProseMirror holds is in the text editor's
+chunk and not in the entry. Opening the 500-block page did not request the
+text editor's chunk in any run above.
+
+### What these numbers do not say
+
+- Chromium here paints in software and has no screen: the compositor of a
+  real display is not in them, and the frame intervals are those of a
+  60 Hz timer. Only Chromium was measured, only on Windows, and only one
+  visit at a time: the CMS was not measured under concurrent visits.
+- The load is read between runs, on the guest. A stall that shows as no
+  load, like the opening that took 7.6 s, is not explained by it.
+- The client's times for small answers are the 15 ms floor of this stack.
+  The application's column shows them, and it is the application's own
+  time, from where Rails starts its clock to its response, not Puma's.
 
 ## The plan, stage by stage
 
