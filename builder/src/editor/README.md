@@ -83,6 +83,19 @@ owner to undo:
   Focus Not Obscured: a floating Outline hid a first-column block in
   every state where it was picked). If the owner wants all three
   floating, it is one function, `pushes` in `ui-store.ts`.
+  The layout measures two windows only, 1440 and 1280. In narrower ones
+  the Outline and History push the page the same way, and the desktop
+  page is drawn smaller to fit: at 81% in a 1280 window, 69% in a 1184
+  one and 49% in a 1024 one (92% at 1366; with no drawer open, 100%,
+  100% and 84%). The editor of stage 3 drew it at about the same scale
+  with its navigator open, about 70% and 50%, from its two fixed columns
+  (288 and 264). The mock the layout is built on (its notes call it B)
+  floated a drawer below 1360 instead; the layout's notes turned that
+  down at 1280 for the reason above, and say nothing below it. If the owner wants a floor
+  there, the two ways are a drawer that floats below some width (a
+  first-column block hidden under it again) or a sidebar that steps
+  aside while the drawer is open (its settings out of sight until the
+  drawer closes).
 - **The drag state:** a widget's old place keeps its dimmed copy from the
   pick-up, so the drop line stands beside it while the widget is over its
   own place, where the layout draws the copy once the block has left; the
