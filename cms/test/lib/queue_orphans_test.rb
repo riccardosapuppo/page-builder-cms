@@ -8,6 +8,8 @@ require "open3"
 # planted as its rows: a worker whose process is gone, holding a job, and a
 # dispatcher registered under the process id the new server was given.
 class QueueOrphansTest < ActiveSupport::TestCase
+  include OwnDatabases
+
   SCRIPT = <<~RUBY
     require "socket"
     dead, running = ARGV.map(&:to_i)
@@ -37,15 +39,16 @@ class QueueOrphansTest < ActiveSupport::TestCase
   test "a new server releases the rows of one stopped abruptly, and their job goes back to the queue" do
     dir = Rails.root.join("tmp", "queue-orphans-#{SecureRandom.hex(4)}")
     FileUtils.mkdir_p(dir)
-    folder = dir.relative_path_from(Rails.root)
     env = {
       "RAILS_ENV" => "e2e", "SECRET_KEY_BASE_DUMMY" => "1", "RAILS_LOG_LEVEL" => "warn",
-      "DATABASE_URL" => "sqlite3:#{folder}/e2e.sqlite3", "CACHE_DATABASE_URL" => "sqlite3:#{folder}/e2e_cache.sqlite3",
-      "QUEUE_DATABASE_URL" => "sqlite3:#{folder}/e2e_queue.sqlite3", "CMS_STORAGE_ROOT" => dir.join("storage").to_s
+      **own_databases("e2e", dir), "CMS_STORAGE_ROOT" => dir.join("storage").to_s
     }
     rails = ->(*args) { Open3.capture2e(env, RbConfig.ruby, "bin/rails", *args, chdir: Rails.root.to_s) }
     out, status = rails.call("db:create", "db:schema:load")
     assert status.success?, out
+    inside, outside = databases_named(out, dir)
+    assert_equal [ "cache.sqlite3", "primary.sqlite3", "queue.sqlite3" ], inside.map { |path| File.basename(path) }.sort, out
+    assert_equal [], outside, "no database outside the test's folder is touched"
     # A process id that no process has any more.
     dead = Process.spawn(RbConfig.ruby, "-e", "exit")
     Process.wait(dead)

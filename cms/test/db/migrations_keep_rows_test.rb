@@ -15,6 +15,8 @@ require "open3"
 # with the schema dump sent to that database's folder (SCHEMA), so
 # db/schema.rb and the development and test databases are never touched.
 class MigrationsKeepRowsTest < ActiveSupport::TestCase
+  include OwnDatabases
+
   FIRST = "20261001193000"
   TABLES = %w[active_storage_blobs active_storage_attachments pages drafts page_versions slug_redirects media_items media_usages site_styles].freeze
   NOW = "2026-10-01 10:00:00"
@@ -31,11 +33,10 @@ class MigrationsKeepRowsTest < ActiveSupport::TestCase
   test "migrating a database that holds data keeps every row of every table" do
     dir = Rails.root.join("tmp", "migrations-#{SecureRandom.hex(4)}")
     FileUtils.mkdir_p(dir)
-    file = dir.join("data.sqlite3")
-    # Development's queue database too goes to the folder: migrating
-    # development touches every database it has.
-    env = { "RAILS_ENV" => "development", "DATABASE_URL" => "sqlite3:#{file.relative_path_from(Rails.root)}",
-            "QUEUE_DATABASE_URL" => "sqlite3:#{dir.join('queue.sqlite3').relative_path_from(Rails.root)}", "SCHEMA" => dir.join("schema.rb").to_s }
+    file = dir.join("primary.sqlite3")
+    # Every database development has goes to the folder (OwnDatabases):
+    # migrating development touches each of them.
+    env = { "RAILS_ENV" => "development", **own_databases("development", dir), "SCHEMA" => dir.join("schema.rb").to_s }
     rails = ->(*tasks) { Open3.capture2e(env, RbConfig.ruby, "bin/rails", *tasks, chdir: Rails.root.to_s) }
 
     # Up to FIRST on the primary database alone: with more than one
