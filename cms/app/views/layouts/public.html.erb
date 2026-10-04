@@ -23,7 +23,7 @@
 <%= stylesheet_link_tag("site", "tokens") %>
 </head>
 <body>
-<%= tag.div(class: "site", data: site_style_data) do %><div class="sw">
+<%= tag.div(class: "site", data: site_style_data(site_style)) do %><div class="sw">
 <a class="sw-skip" href="#main_content">Skip to content</a>
 <header class="sw-header"><div class="sw-inner sw-header-row"><a class="sw-brand" href="/"><%= theme_svg("mark", css_class: "sw-brand-mark") %><span><%= site[:name] %></span></a><nav class="sw-nav" aria-label="Main"><div class="sw-nav-links"><%= safe_join(site_links(site[:menu])) %></div><%= site_link(site[:action], class: "sw-btn sw-btn-small") %><details class="sw-menu"><summary class="sw-menu-button"><%= theme_svg("menu", css_class: "sw-menu-icon") %>Menu</summary><div class="sw-menu-sheet"><%= safe_join(site_links(site[:menu])) %></div></details></nav></div></header>
 <main id="main_content">

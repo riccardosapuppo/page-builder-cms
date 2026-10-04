@@ -51,6 +51,7 @@ module PublicPage
 
   included do
     layout "public"
+    helper_method :site_style
 
     content_security_policy do |policy|
       policy.default_src :none
@@ -66,6 +67,26 @@ module PublicPage
   end
 
   private
+
+  # The site style, read once per request: the ETag and the layout's data
+  # attributes see the same one.
+  def site_style
+    @site_style ||= SiteStyle.current
+  end
+
+  # A published page, kept by the browser: "max-age=0, public,
+  # must-revalidate" and an ETag (PageCache.etag), with no Last-Modified,
+  # since a restore that is then published would make it go back in time.
+  # Every visit asks again, and a page that has not changed costs a 304
+  # with no body, decided before the version's document is even read; a
+  # publish shows at the next request.
+  def render_published(page)
+    expires_in 0, public: true, must_revalidate: true
+    response.weak_etag = PageCache.etag(page, site_style)
+    return head(:not_modified) if request.fresh?(response)
+
+    render_document(page.published_version.document)
+  end
 
   # Renders a stored document, upgraded to the current schemaVersion, with
   # the images it names looked up in one query.
