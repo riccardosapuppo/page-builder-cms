@@ -38,7 +38,7 @@ async function clean(page: Page, state: string, options: Parameters<typeof axe>[
 
 // The design's window, and the smallest the editor is made for.
 for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) test(`the editor has no serious or critical axe finding, in any of its states, at ${size.width} by ${size.height}`, { tag: "@a11y" }, async ({ page, request, context }) => {
-  // Thirty-five states, each read by axe whole.
+  // Thirty-seven states, each read by axe whole.
   test.setTimeout(240_000);
   await page.setViewportSize(size);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -65,6 +65,22 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "the section picker on a seam");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  // Nothing selected, the pointer over the seam between the two sections:
+  // its hairline, its "+" and the tip naming the place.
+  await block(page, "heading-0").focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".canvas [data-editor-selected=true]")).toHaveCount(0);
+  // The second section is taller than the canvas: its top brought 300
+  // below the canvas's.
+  await block(page, "second").evaluate((element) => {
+    element.scrollIntoView({ block: "start" });
+    element.closest(".canvas")?.scrollBy(0, -300);
+  });
+  const second = (await block(page, "second").boundingBox())!;
+  await page.mouse.move(second.x + second.width / 2 - 120, second.y + 1, { steps: 4 });
+  await expect(page.locator(".canvas .seam-tip")).toBeVisible();
+  await clean(page, "a seam under the pointer, its + and its tip");
+  await page.mouse.move(size.width - 6, size.height - 6);
 
   // A text written on the canvas: bold, italic and link in its clamp,
   // then its link's field under it.
@@ -107,6 +123,14 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "the Insert drawer");
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();
   await clean(page, "the Insert drawer's ready-made sections");
+  await page.getByRole("button", { name: "Close Insert" }).click();
+  // A first column's block selected under Insert: its clamp on its right
+  // side, Insert's yellow line where a click lands.
+  await block(page, "heading-0").click();
+  await drawer(page, "Insert");
+  await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Blocks" }).click();
+  await expect(page.locator(".canvas .clamp")).toHaveAttribute("data-side", "right");
+  await clean(page, "Insert open over a first column's block, its clamp on the right");
   await page.getByRole("button", { name: "Close Insert" }).click();
   await device(page, "Phone").click();
   await clean(page, "the phone preview");
