@@ -53,14 +53,17 @@ export const section = (id: string, label: string, children: unknown[]) => ({ id
 export const heading = (id: string, text: string) => widget(id, "heading", { level: 2, text });
 
 // A page with this document as its draft, made as the editor would: the
-// page, then a save at the draft's revision.
+// page, then a save at the draft's revision. The save's id keeps the
+// slug's unique end, cut to the 64 characters the CMS takes: a long test
+// name made a longer one, and the CMS refused the setup's save.
 export async function makePage(request: APIRequestContext, title: string, sections: unknown[]): Promise<{ id: number; slug: string }> {
   const slug = unique(title.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   const created = await request.post(`${cms()}/api/pages`, { data: { title, slug } });
   expect(created.status(), await created.text()).toBe(201);
   const { page } = (await created.json()) as { page: { id: number } };
   const draft = (await (await request.get(`${cms()}/api/pages/${page.id}/draft`)).json()) as { revision: number };
-  const saved = await request.put(`${cms()}/api/pages/${page.id}/draft`, { data: { revision: draft.revision, saveId: `setup-${slug}`, document: { schemaVersion: 1, title, sections } } });
+  const saveId = `setup-${slug.slice(-58)}`;
+  const saved = await request.put(`${cms()}/api/pages/${page.id}/draft`, { data: { revision: draft.revision, saveId, document: { schemaVersion: 1, title, sections } } });
   expect(saved.status(), await saved.text()).toBe(200);
   return { id: page.id, slug };
 }
