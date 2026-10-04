@@ -21,6 +21,19 @@ test("Edit on the page opens the text's editor on the canvas, the caret at the e
   expect(kit.store.getState().past).toEqual([]);
 });
 
+test("while the text is written, its group lists the keys that work in it, from the keymap", () => {
+  const kit = editorKit({ document: widgetPage(), selection: "text" });
+  kit.render(<BlockPanel id="text" />);
+  expect(screen.queryByRole("list", { name: "While you write" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Edit on the page" }));
+  const list = screen.getByRole("list", { name: "While you write" });
+  expect([...list.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["BoldCtrlB", "ItalicCtrlI", "Link the selected wordsCtrlK", "Leave the textEsc"]);
+  expect(screen.queryByRole("button", { name: "Edit on the page" })).toBeNull();
+  // Left, the group is as it was.
+  act(() => kit.ui.setState({ editingText: null }));
+  expect(screen.getByRole("button", { name: "Edit on the page" })).toBeTruthy();
+});
+
 test("the server's 422 on the text's document shows in the text's panel", () => {
   const kit = editorKit({ document: widgetPage(), selection: "text" });
   kit.render(<BlockPanel id="text" />);

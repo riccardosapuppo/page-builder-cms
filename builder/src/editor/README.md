@@ -148,7 +148,8 @@ owner to undo:
   the one that covers less, as the design draws a selected block's bar
   at the top. The text widget's Text group has no text
   field: its words are written on the page, and the group opens the editor
-  there and says how.
+  there and says how; while the text is written, it lists the keys that
+  work in it, from the keymap, Leave the text among them.
 - **The Page tab** has no "Show in the site menu" toggle, which the layout
   draws as "Comes later": the site's menu is the theme's
   (`cms/config/site.yml`), which nothing in the editor changes yet. The
