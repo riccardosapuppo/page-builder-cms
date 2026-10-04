@@ -371,6 +371,21 @@ review:
   heading selected: its clamp on the right, in the 32 gutter; the yellow
   line's label at its right end.
 
+**The owner's choice of 4 October 2026, over the `drag` state's
+hatching.** Trying the editor, the owner asked for no diagonal lines on the
+areas a moving block cannot go, and a light grey background instead. The
+editor draws them as a light, flat grey wash (Alloy at 85%, no stripes)
+over the section bands, the theme's header and footer and the page around
+them, wherever this mock draws hatching; this choice overrides the mock,
+whose `shots/drag.png` stays as approved. What the hatching also said is
+still said without colour: the "Widgets go inside a column." note, now
+with a Steel edge so it stands out against the grey (3.7 to 5.1 to 1 over
+the site's six band colours; Rule was 2.1 to 2.9), the browser's no-drop
+cursor over the grey, and the bottom line's sentence ("Nowhere to drop it
+here."). The places that can take the block keep their graphite marks,
+9.6 to 13.1 to 1 against the grey (`builder/e2e/drag.spec.ts` measures
+them from the pixels).
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every

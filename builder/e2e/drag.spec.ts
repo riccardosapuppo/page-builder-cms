@@ -34,6 +34,33 @@ async function select(page: Page, id: string) {
   await expect(block(page, id)).toHaveAttribute("data-editor-selected", "true");
 }
 
+// The colours the browser draws in a box of the window, pixel by pixel
+// (red, green, blue), read from a screenshot of it.
+async function pixels(page: Page, clip: { x: number; y: number; width: number; height: number }): Promise<number[][]> {
+  const shot = await page.screenshot({ clip, animations: "disabled", caret: "hide" });
+  return page.evaluate(async (data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d")!;
+    context.drawImage(bitmap, 0, 0);
+    const { data: rgba } = context.getImageData(0, 0, bitmap.width, bitmap.height);
+    const out: number[][] = [];
+    for (let i = 0; i < rgba.length; i += 4) out.push([rgba[i]!, rgba[i + 1]!, rgba[i + 2]!]);
+    return out;
+  }, shot.toString("base64"));
+}
+
+// A CSS colour's red, green and blue; the WCAG contrast of two of them.
+const rgb = (css: string): number[] => (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+function contrast(a: readonly number[], b: readonly number[]): number {
+  const luminance = (colour: readonly number[]) => {
+    const [r, g, b2] = colour.map((c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b2!;
+  };
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return Math.round(((light! + 0.05) / (dark! + 0.05)) * 100) / 100;
+}
+
 // In a 1280 window the page keeps its desktop layout whole; under 1150 or
 // so the canvas has less than 800 for it, and it is drawn smaller.
 test.describe("on a page drawn smaller to fit a 1024 window", () => {
@@ -192,7 +219,7 @@ test.describe("with the mouse", () => {
     const { id } = await startPage(page, request, "Refused");
     await select(page, "a");
     await pickUp(page, grip(page));
-    // The section's own band, above its columns: hatched, no place.
+    // The section's own band, above its columns: washed grey, no place.
     await moveOnto(page, block(page, "s2"), "top");
     await expect(caption(page).locator("strong")).toHaveText("Nowhere to drop it here. Widgets go inside a column.");
     await expect(block(page, "s2").locator(":scope > .ov-veil")).toContainText("Widgets go inside a column.");
@@ -202,6 +229,98 @@ test.describe("with the mouse", () => {
     await expect.poll(() => canvasShape(page)).toEqual(START);
     await expect(block(page, "a")).toBeFocused();
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
+  });
+
+  // The owner's choice of 4 October 2026 over the mock's hatching
+  // (design/layout/NOTES.md, section 9): where the block cannot go is a
+  // light, flat grey, read from the pixels the browser draws; the meaning
+  // never rests on that colour alone (the note, the cursor, the sentence);
+  // the note and the marks of the places that can take it stand out
+  // against the grey.
+  test("where a widget cannot go is a flat light grey, with its note, the no-drop cursor and the sentence; the note and the open columns' marks stand out against it", async ({ page, request }) => {
+    await startPage(page, request, "Wash");
+    const band = async () => {
+      // The band of the section the block moves in, above its columns,
+      // right of its note and clear of the open column's outline, 8 out
+      // from it. Nothing may scroll once the drag is on: the place under
+      // a pointer that stands still would change.
+      const [s, c, view] = await Promise.all([block(page, "s1").boundingBox(), block(page, "c1").boundingBox(), page.locator(".canvas").boundingBox()]);
+      const top = s!.y + 4;
+      expect(top, "the band is in the canvas's view").toBeGreaterThanOrEqual(view!.y);
+      return { x: Math.round(s!.x + s!.width * 0.6), y: Math.round(top), width: 48, height: Math.round(Math.min(16, c!.y - 12 - top)) };
+    };
+    const plain = await pixels(page, await band());
+
+    await select(page, "a");
+    await pickUp(page, grip(page));
+    await moveOnto(page, block(page, "c2"), "bottom");
+    await expect(caption(page).locator("strong")).toHaveText("Heading will move to Column 2 in First, after Divider.");
+    // Over a column that takes it, the drag's own cursor.
+    expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).toBe("grabbing");
+    const area = await band();
+    expect(area.height, "the band above the columns is tall enough to look at").toBeGreaterThanOrEqual(8);
+    const washed = await pixels(page, area);
+
+    // Flat: every pixel of the area the same, give or take the encoder's 2
+    // (with the mock's hatching put back, it varied by 77, 73 and 68).
+    const spread = [0, 1, 2].map((channel) => Math.max(...washed.map((p) => p[channel]!)) - Math.min(...washed.map((p) => p[channel]!)));
+    expect(spread.every((s) => s <= 2), `the wash varies by ${spread.join(", ")}`).toBe(true);
+    // Light grey: the band's own white made Alloy at 85%, as --shut says.
+    const before = plain[0]!;
+    const grey = washed[0]!;
+    expect(plain.every((p) => p.join() === before.join())).toBe(true);
+    expect(grey.map((value, i) => Math.round(0.85 * [220, 224, 229][i]! + 0.15 * before[i]!) - value).every((d) => Math.abs(d) <= 2), `${grey} over ${before}`).toBe(true);
+    console.log(`wash: ${before.join(",")} under, ${grey.join(",")} drawn`);
+
+    // The theme's header and footer, and the page, the same wash.
+    const washes = await page.evaluate(() => {
+      const after = (element: Element | null) => (element ? getComputedStyle(element, "::after") : null);
+      const parts = [...document.querySelectorAll(".canvas .site [data-theme-part]")].map((part) => `${after(part)!.backgroundImage} ${after(part)!.backgroundColor}`);
+      const frame = getComputedStyle(document.querySelector(".canvas .frame")!);
+      const veils = [...document.querySelectorAll(".canvas .ov-veil")].map((veil) => `${getComputedStyle(veil).backgroundImage} ${getComputedStyle(veil).backgroundColor}`);
+      return { parts, frame: `${frame.backgroundImage} ${frame.backgroundColor}`, veils };
+    });
+    const shut = "none rgba(220, 224, 229, 0.85)";
+    expect(washes).toEqual({ parts: [shut, shut], frame: shut, veils: [shut, shut] });
+
+    // The note says the rule, and it and the marks of the open columns
+    // stand out against the grey: text 4.5 to 1 at least, edges 3 to 1.
+    const colours = await page.evaluate(() => {
+      const style = (selector: string) => getComputedStyle(document.querySelector(selector)!);
+      const edge = (shadow: string) => /rgba?\([^)]*\)/.exec(shadow)?.[0] ?? "";
+      const note = style('.canvas [data-block-id="s1"] > .ov-veil .veil-note');
+      return {
+        noteText: note.color, noteBack: note.backgroundColor, noteEdge: edge(note.boxShadow),
+        dropLine: style(".canvas .drop-line").backgroundColor, dropKeyline: edge(style(".canvas .drop-line").boxShadow),
+        labelText: style(".canvas .drop-label").color, labelBack: style(".canvas .drop-label").backgroundColor,
+        openEdge: style('.canvas [data-block-id="c3"] > .ov-drop').borderTopColor,
+        targetKeyline: edge(style('.canvas [data-block-id="c2"] > .ov-drop-target').boxShadow),
+      };
+    });
+    await expect(block(page, "s1").locator(":scope > .ov-veil .veil-note")).toHaveText("Widgets go inside a column.");
+    const ratios = {
+      noteText: contrast(rgb(colours.noteText), rgb(colours.noteBack)),
+      noteEdge: contrast(rgb(colours.noteEdge), grey),
+      noteBackOnWash: contrast(rgb(colours.noteBack), grey),
+      dropKeyline: contrast(rgb(colours.dropKeyline), grey),
+      dropLineOnWash: contrast(rgb(colours.dropLine), grey),
+      label: contrast(rgb(colours.labelText), rgb(colours.labelBack)),
+      openEdge: contrast(rgb(colours.openEdge), grey),
+      targetKeyline: contrast(rgb(colours.targetKeyline), grey),
+      openColumnOnWash: contrast(before, grey),
+    };
+    console.log(`contrast against the wash, and of the words: ${JSON.stringify(ratios)}`);
+    expect(ratios.noteText).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.label).toBeGreaterThanOrEqual(4.5);
+    for (const edge of ["noteEdge", "dropKeyline", "openEdge", "targetKeyline"] as const) expect(ratios[edge], edge).toBeGreaterThanOrEqual(3);
+
+    // Over the band itself: no place, said three ways besides the grey.
+    await moveOnto(page, block(page, "s2"), "top");
+    await expect(caption(page).locator("strong")).toHaveText("Nowhere to drop it here. Widgets go inside a column.");
+    expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).toBe("no-drop");
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).cursor)).toBe("auto");
   });
 
   test("a column refused by a section that holds four already", async ({ page, request }) => {

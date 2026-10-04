@@ -46,6 +46,11 @@
   --lift: 0 0 0 1px rgb(27 31 36 / .1), 0 18px 44px -12px rgb(27 31 36 / .42);
   /* A divider inside a toolbar or between groups: Rule at half strength. */
   --hair: rgb(126 134 144 / .45);
+  /* Where a dragged block cannot go: a light, flat grey wash over it,
+     Alloy at 85%, no stripes (the owner's choice of 4 October 2026 over
+     the approved mock's hatching, design/layout/NOTES.md section 9). The
+     page under it still shows, faintly. */
+  --shut: rgb(220 224 229 / .85);
   /* The approved layout's sizes: the top bar, a drawer, the sidebar. */
   --bar: 52px;
   --drawer: 280px;
@@ -535,9 +540,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    top left corner; the box around it takes its scaled size. */
 .frame { background: var(--white); border-radius: 4px; }
 /* The theme's header and footer (render/theme.tsx), locked: inert, and,
-   while a block is dragged, shaded as no place for it. */
+   while a block is dragged, washed grey as no place for it. */
 .canvas .site [data-theme-part] { position: relative; }
-.canvas-drag .site [data-theme-part]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(220 224 229 / .78); }
+.canvas-drag .site [data-theme-part]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: var(--shut); }
 
 /* Block edges (the bottom line): every block's edges dashed, sections and
    columns too, drawn inside each block so the page's layout does not
@@ -719,8 +724,11 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* ---------- 5. Dragging, the keyboard and the block's menu ---------- */
 /* While a block is dragged (design/shots/drag.png): the dragged block, in
    the store's preview, is the drop indicator; the container it would land
-   in is framed; where it cannot go is hatched. A widget's columns stand
-   above their section's hatching, on the band's own colour. */
+   in is framed; where it cannot go is washed a flat light grey (--shut,
+   in place of the mock's hatching), with the rule in a note, the no-drop
+   cursor over it and the bottom line's sentence, so it is never told by
+   its colour alone. A widget's columns stand above their section's wash,
+   on the band's own colour, outlined. */
 .canvas .site .sec, .canvas .site .col { --sec-bg: var(--sw-background); }
 .canvas .site .bg-text { --sec-bg: var(--sw-text); }
 .canvas .site .bg-background { --sec-bg: var(--sw-background); }
@@ -730,10 +738,19 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site .bg-muted { --sec-bg: var(--sw-muted); }
 .canvas-drag-widget .site .col { z-index: 2; background-color: var(--sec-bg); }
 .canvas-drag-widget .site .w { z-index: 3; }
-.ov-veil { inset: 0; z-index: 1; background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(233 236 239 / .72); }
-.veil-note { position: absolute; left: var(--pad-x, 24px); top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: var(--plate); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; box-shadow: 0 0 0 1px var(--rule); }
+.ov-veil { inset: 0; z-index: 1; background: var(--shut); }
+/* The note's edge in Steel. Against the wash over the site's six band
+   colours, Rule was 2.1 to 2.9 to 1, and the note melted into the grey;
+   Steel is 3.7 to 5.1 (5.05 over a white band, as e2e/drag.spec.ts
+   measures it). The marks of the places that can take the block keep
+   their graphite edges, 9.6 to 13.1 to 1 against it. */
+.veil-note { position: absolute; left: var(--pad-x, 24px); top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: var(--plate); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; box-shadow: 0 0 0 1px var(--steel); }
 .veil-note .i { color: var(--steel); }
-.frame-shut { background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(233 236 239 / .72); }
+.frame-shut { background: var(--shut); }
+/* The pointer over no place for the block (./drag/DragLayer.tsx marks the
+   page): the drag library sets every element's cursor to grabbing, with
+   !important, so this one needs it too. */
+:root[data-drop-refused], :root[data-drop-refused] * { cursor: no-drop !important; }
 .ov-drop { inset: -8px; z-index: 0; border: 1.5px dashed var(--mark-line); border-radius: 4px; background: var(--sec-bg); }
 .ov-drop-target { border: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--mark-key), inset 0 0 0 1px var(--mark-key); }
 .col > .ov-drop-target { background: var(--white); }
