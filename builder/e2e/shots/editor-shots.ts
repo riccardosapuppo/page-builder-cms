@@ -174,10 +174,13 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("insert-at-seam");
   await sections.getByRole("button", { name: "2 columns" }).click();
   await page.locator(".canvas .ins-empty").nth(1).waitFor();
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await away();
   await shoot("new-section");
   await page.keyboard.press("Control+z");
   await page.locator(".canvas .ins-empty").waitFor({ state: "detached" });
+  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
 
   // #small-block (shots-extra): the hero's button selected, the same clamp
   // as every block's, running on below it; then #block-menu, its head
