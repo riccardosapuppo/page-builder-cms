@@ -42,8 +42,9 @@ export function openBlockMenu(env: ReturnType<typeof useEnv>, event: ReactMouseE
   env.store.getState().select(id);
   env.ui.setState({ tray: "edit", notice: null });
   let { clientX: x, clientY: y } = event;
-  // The menu key fires at the focused element, with no pointer position.
-  const keyboard = x === 0 && y === 0;
+  // The menu key fires at the focused element: Chromium says so with no
+  // button (-1) and a point inside it; other browsers with no point.
+  const keyboard = event.button === -1 || (x === 0 && y === 0);
   if (keyboard && event.target instanceof Element) {
     const box = event.target.getBoundingClientRect();
     x = box.left + 12;
