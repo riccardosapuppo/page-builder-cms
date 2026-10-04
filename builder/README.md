@@ -332,6 +332,15 @@ Windows 11 with Ruby 3.4.10 and an Intel Core i5-7200U, the CMS was ready
 25.9 s after the start, and 137.6 s in a later run with other work
 keeping the CPU fully busy; stopping it took under a second.
 
+Every page a test drives ends with no error on it, none in its console
+and no request anywhere but those two servers, which is refused before it
+leaves the machine; the pictures "from another site" are answered inside
+the browser (`e2e/helpers/site.ts`, `watchQuietly`). The shared fixture
+holds each test's own page to it; a page of a browser or a context a test
+opens for itself (one that draws its scrollbars, a second tab) is held to
+it by the test with the same function, and `e2e/quiet.spec.ts` plants
+each of the three faults in such a browser and sees it caught.
+
 ## Versions
 
 React and React DOM 19.3.0, Vite 8.3.1 with `@vitejs/plugin-react` 6.1.1,
