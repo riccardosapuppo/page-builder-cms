@@ -136,8 +136,10 @@ npm start
 everything that is missing: Ruby, Bundler, the Node version, a port held
 by another program, named with its process. Only then does it install
 the gems and the editor's packages, when they are not there yet, prepare
-the development database (`db:prepare`, which loads the example site
-into a new one), start the CMS on http://127.0.0.1:3900 and the editor on
+the development databases (`db:prepare`: the pages, the cache and the
+queue, and the example site loaded into a new one), start the CMS on
+http://127.0.0.1:3900, with Solid Queue inside it so that a publish set
+for a time happens while it runs, and the editor on
 http://127.0.0.1:4900, with every line they print marked `[cms]` or
 `[editor]`, wait until each answers for itself, and open the editor in
 the browser. Ctrl+C stops both, and so does either one stopping by
@@ -187,8 +189,14 @@ itself.
   style, answers the editor through a JSON API described in
   [`cms/openapi.yaml`](cms/openapi.yaml), and serves the published pages,
   rendered on the server in the design's theme, with a draft preview and a
-  404 page. `ruby bin/rails db:seed` loads the design's example site. Its
-  README has the commands to install, run and test it.
+  404 page. Since stage 4 a published page is cached in the browser (an
+  ETag, and a 304 while nothing changed) and in Solid Cache (the whole page
+  and each block, so a change redraws only the blocks it touched), a
+  publish can be set for a time, and Solid Queue runs the jobs inside the
+  server: the scheduled publish, and every night the pruning of old
+  automatic versions and the purge of unused images. `ruby bin/rails
+  db:seed` loads the design's example site. Its README has the commands to
+  install, run and test it, and how the caches and the jobs work.
 - [`contract/`](contract/): the render contract, documents and the HTML the
   server renders for each, which the editor's renderer is held to.
 - [`builder/`](builder/): the editor's package, React 19, TypeScript and
@@ -232,6 +240,13 @@ itself.
   margin; round "+" buttons on the page, each opening a picker of only
   what fits there; and a bottom line with the selection's path, Block
   edges, the devices in one click and the page's width.
+  Since stage 4: Schedule… in the Publish menu, a small dialog that takes
+  a day and a time in the site's time zone, and the publish waiting shown
+  in the top bar, the Publish menu and History, each with its cancel;
+  every key of Insert and of the pickers dragged by mouse or keyboard,
+  Gallery and Video included, which ask in their window first and then
+  land where the key was dropped; and a flat light grey where a block
+  cannot go.
   Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
   `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
@@ -277,11 +292,16 @@ itself.
   checks of stage 1, and every job passed on Linux, among them the Rails
   tests in forked workers, whose OpenAPI counts the main process added
   up, and the production check, which found who listened and stopped the
-  server's process group. The jobs of stage 2 have not run yet: until
-  they do, the editor's checks and npm start have passed on Windows only,
-  and their Linux paths (ss, process groups, a first install from
-  nothing) and the editor's checks on Node 22 have run nowhere. Nothing
-  has run on macOS.
+  server's process group. On 4 October 2026 it ran on stages 2 to 3 bis:
+  12 of its 15 jobs passed, npm start's smoke run on Linux and Windows
+  and the editor's checks on Node 22.13.0 and 24 among them. Three failed
+  on two faults only Linux has: the tools' tests (in the tools job and
+  before the production check) read a process's name from the kernel,
+  which for Node 24 is its main thread's, and a browser test compared two
+  screenshots byte for byte, which Linux's font smoothing told apart.
+  Both are fixed in stage 4, which has not run there yet, nor have its own
+  checks: the jobs in Solid Queue's forked process, the Rails tests'
+  cache database in forked workers. Nothing has run on macOS.
 
 ## Checking it
 
@@ -568,11 +588,11 @@ text editor's chunk in any run above.
    tablet and phone overrides, full keyboard use, image uploads. Done.
    - **3 bis, the layout.** The same editor, every capability kept,
      rearranged as the layout approved on 3 October 2026
-     (`design/layout/`). In progress: it is in `builder/` (above), walked
-     by the keyboard alone in a browser test; the stage's reviews are
-     next.
+     (`design/layout/`). Done.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled
-   publishing and background jobs, with measurements.
+   publishing and background jobs, with measurements. In progress: all
+   four are in the repository (above, and [Measurements](#measurements));
+   the stage's reviews are next.
 5. **Forms**, submitted to Rails from published pages.
 6. **A browser-only demo** of the editor, then the full documentation.
 
