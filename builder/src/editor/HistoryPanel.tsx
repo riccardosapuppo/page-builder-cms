@@ -24,6 +24,7 @@ import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { changesNotLive } from "./Publish.tsx";
 import { useSaveSnapshot } from "./SaveStatus.tsx";
+import { useScheduleLate } from "./schedule-late.ts";
 import { useSession } from "./session.tsx";
 import { siteWhen } from "./site-time.ts";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
@@ -112,6 +113,7 @@ export function HistoryPanel() {
   const steps = sessionSteps(past, future);
   const now = clock.now();
   const page = session.current;
+  const late = useScheduleLate(page?.scheduled?.at);
   const { loadVersions } = session;
   const revision = snapshot?.revision ?? page?.revision ?? null;
   const saveButton = useRef<HTMLButtonElement>(null);
@@ -197,7 +199,7 @@ export function HistoryPanel() {
           <li className="ver ver-sched">
             <div>
               <span className="ver-kind">Scheduled publish</span>
-              <span className="ver-name">Goes live {siteWhen(zone, page.scheduled.at)}</span>
+              <span className="ver-name">{late ? "Should have gone live" : "Goes live"} {siteWhen(zone, page.scheduled.at)}</span>
               <span className="ver-when">Set {serverTime(page.scheduled.createdAt, now)}</span>
             </div>
             <button

@@ -146,6 +146,8 @@ body {
 .tb-title-row .i { flex: none; color: var(--steel); }
 .tb-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 14px; line-height: 20px; font-weight: 600; }
 .tb-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--steel); }
+/* A scheduled publish whose time has passed with the page still not live. */
+.tb-sched-late { color: var(--warn); }
 .tb-right > .btn-secondary { margin-left: 4px; }
 .ibtn-side { flex: none; margin-left: 4px; }
 .ibtn-side[aria-pressed="true"] { background: var(--key); }

@@ -14,6 +14,7 @@ import { Icon } from "./icons.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, shownAddress } from "./Publish.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
+import { useScheduleLate } from "./schedule-late.ts";
 import { useSession, type OpenPage } from "./session.tsx";
 import { shortWhen, siteWhen, wallClockAt } from "./site-time.ts";
 
@@ -77,13 +78,24 @@ function useSessionTitle(): string {
 // next publish too.
 //
 // A publish set for a time follows, by the site's clock: "Published, 6
-// changes not live · scheduled for Oct 5 at 7:15 AM".
+// changes not live · scheduled for Oct 5 at 7:15 AM". Once its time has
+// passed with the page still not live, it says so instead: "should have
+// gone live on Oct 5 at 7:15 AM", since the CMS's job did not carry it out
+// (it tries again by itself every few minutes).
 export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
   const snapshot = useSaveSnapshot();
   const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
   const pending = page.scheduled ?? null;
-  const waiting = pending && <span className="tb-sched"> · scheduled for {shortWhen(wallClockAt(zone, Date.parse(pending.at)))}</span>;
-  const waitingTitle = pending ? ` A publish is scheduled for ${siteWhen(zone, pending.at)}: the Publish menu cancels it.` : "";
+  const late = useScheduleLate(pending?.at);
+  const pendingAt = pending && shortWhen(wallClockAt(zone, Date.parse(pending.at)));
+  const waiting = pending && (late
+    ? <span className="tb-sched tb-sched-late"> · should have gone live on {pendingAt}</span>
+    : <span className="tb-sched"> · scheduled for {pendingAt}</span>);
+  const waitingTitle = pending
+    ? late
+      ? ` The publish scheduled for ${siteWhen(zone, pending.at)} has not happened yet. The CMS tries again every few minutes; Publish sends the page now, and the Publish menu cancels the schedule.`
+      : ` A publish is scheduled for ${siteWhen(zone, pending.at)}: the Publish menu cancels it.`
+    : "";
   if (!page.published) {
     return <span className="tb-status" id={id} title={waitingTitle.trim() || undefined}><span className="dot-draft" aria-hidden="true" />Not published yet{waiting}</span>;
   }

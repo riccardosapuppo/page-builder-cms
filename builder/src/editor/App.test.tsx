@@ -349,6 +349,38 @@ test("Schedule saves the edit waiting first, sets the revision it made for the t
   await waitFor(() => expect(document.querySelector(".tb-status")?.textContent).toBe("Published"));
 });
 
+test("a scheduled publish whose job does not run is said to be late, and the page is still read again every half minute until it goes live", async () => {
+  const { site, clock } = start(1, { schedule: true });
+  await opened();
+  relabel("Winter");
+  await scheduleFor("Oct 2, 2026", "3:00 PM");
+  const status = () => document.querySelector(".tb-status")?.textContent;
+  const reads: number[] = [];
+  const getPage = site.page.bind(site);
+  site.page = (id) => {
+    reads.push(clock.now());
+    return getPage(id);
+  };
+
+  // The time comes and the job does not run (the CMS's database was busy).
+  await act(() => clock.advance(5 * 3_600_000 + 10_000));
+  expect(status()).toBe("Not published yet · scheduled for Oct 2 at 3:00 PM");
+  await act(() => clock.advance(21_000));
+  expect(status()).toBe("Not published yet · should have gone live on Oct 2 at 3:00 PM");
+
+  // A minute on, the quick reads are over; the slow ones go on, a few minutes.
+  await act(() => clock.advance(5 * 60_000));
+  const slow = reads.filter((at) => at > Date.UTC(2026, 9, 2, 14, 2));
+  expect(slow.length).toBeGreaterThanOrEqual(6);
+  expect(slow.slice(1).map((at, index) => at - slow[index]!)).toEqual(slow.slice(1).map(() => 30_000));
+  expect(status()).toBe("Not published yet · should have gone live on Oct 2 at 3:00 PM");
+
+  // The CMS sets the job going again, and the page is live: the next read says so.
+  site.fire(1);
+  await act(() => clock.advance(31_000));
+  await waitFor(() => expect(status()).toBe("Published"));
+});
+
 test("a scheduled publish is cancelled from the Publish menu; too late, the editor says what became of it", async () => {
   const { site, env } = start(1, { schedule: true });
   await opened();

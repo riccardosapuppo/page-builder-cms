@@ -242,6 +242,24 @@ test("a publish set for a time waits under the draft, by the site's clock, and C
   expect(cancelled).toBe(1);
 });
 
+test("a publish whose time has passed without going live is listed as one that should have gone live", () => {
+  // The kit's clock reads Oct 2, 9:00 UTC: the time was an hour ago.
+  const scheduled = { id: 3, at: "2026-10-02T08:00:00.000Z", revision: 3, versionNumber: 2, state: "pending", createdAt: "2026-10-01T08:00:00.000Z", settledAt: null, publishedVersionNumber: null } as const;
+  const kit = editorKit({
+    document: page(),
+    session: {
+      current: { ...open, scheduled },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false },
+      versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-01T08:00:00Z")], message: null },
+    },
+  });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.render(<HistoryPanel />);
+
+  const rows = within(screen.getByRole("list", { name: "Versions" })).getAllByRole("listitem");
+  expect(rows[1]!.querySelector(".ver-name")!.textContent).toBe("Should have gone live Oct 2 at 9:00 AM (UTC+1)");
+});
+
 test("the top bar's undo and redo run the store's history, name the step they would undo or redo, and with nothing to do say so", () => {
   const kit = editorKit({ document: page(), session: { current: open } });
   kit.render(<TopBar />);

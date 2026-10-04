@@ -48,6 +48,39 @@ test("a publish set for a time follows on the line, by the site's clock, whateve
   }
 });
 
+// The kit's clock reads Fri Oct 2, 9:00:00 UTC. A publish set for the
+// moment is the job still on its way; for more than half a minute ago, one
+// the job did not carry out.
+test("a publish set for a time that has passed, with the page still not live, says it should have gone live, once it is half a minute late", async () => {
+  const scheduled: Schedule = { id: 3, at: "2026-10-02T09:00:00.000Z", revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null };
+  const kit = editorKit({ document: page(), session: { current: open({ revision: 9, scheduled }) } });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.render(<TopBar />);
+
+  expect(status()).toBe("Published, 6 changes not live · scheduled for Oct 2 at 10:00 AM");
+  await act(() => kit.clock.advance(29_000));
+  expect(status()).toBe("Published, 6 changes not live · scheduled for Oct 2 at 10:00 AM");
+  await act(() => kit.clock.advance(2_000));
+  expect(status()).toBe("Published, 6 changes not live · should have gone live on Oct 2 at 10:00 AM");
+  expect(document.querySelector(".tb-sched")!.classList.contains("tb-sched-late")).toBe(true);
+  expect(document.querySelector(".tb-status")!.getAttribute("title")).toContain("The publish scheduled for Oct 2 at 10:00 AM (UTC+1) has not happened yet.");
+  expect(kit.clock.pending, "the timer is spent, none is left behind").toBe(0);
+});
+
+test("a publish whose time is long past is said to be late from the first draw, and one in the future is not", () => {
+  const at = (iso: string): Schedule => ({ id: 3, at: iso, revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-01T08:00:00.000Z", settledAt: null, publishedVersionNumber: null });
+  for (const [iso, said] of [
+    ["2026-10-02T08:00:00.000Z", "Not published yet · should have gone live on Oct 2 at 9:00 AM"],
+    ["2026-10-02T09:01:00.000Z", "Not published yet · scheduled for Oct 2 at 10:01 AM"],
+  ] as const) {
+    const kit = editorKit({ document: page(), session: { current: open({ published: null, scheduled: at(iso) }) } });
+    kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+    const { unmount } = kit.render(<TopBar />);
+    expect(status()).toBe(said);
+    unmount();
+  }
+});
+
 test("Insert, Outline and History each open their drawer and close it, one open at a time, with their keys named", () => {
   const kit = editorKit({ document: page(), session: { current: open({}) } });
   kit.render(<TopBar />);

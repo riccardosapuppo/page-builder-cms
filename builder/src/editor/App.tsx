@@ -469,7 +469,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   // the editor reads the page again then, so the top bar and the history
   // stop saying it waits. A browser runs a timer of more than about 24
   // days at once, so a long wait is taken in steps; past the time, the
-  // page is read every few seconds for a minute, in case the job is late.
+  // page is read every few seconds for a minute, in case the job is late,
+  // then every half minute for as long as it is still waiting: the CMS
+  // sets a job that failed going again by itself after some minutes, and
+  // the top bar says meanwhile that it should have happened
+  // (./schedule-late.ts).
   const scheduledAt = current?.scheduled?.at ?? null;
   const currentId = current?.id ?? null;
   useEffect(() => {
@@ -488,7 +492,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
         return;
       }
       await refreshLive(currentId).catch(() => undefined);
-      if (!stopped && ++reads < 20) wait(3_000);
+      if (!stopped) wait(++reads < QUICK_READS ? 3_000 : SLOW_READ_MS);
     };
     wait(due - clock.now() + 1_000);
     return () => {
@@ -834,6 +838,11 @@ export function restoredSentence(result: RestoreResult, shown: readonly Version[
 // The longest wait a browser's setTimeout keeps: past 2^31 - 1 ms it fires
 // at once.
 const LONGEST_TIMER_MS = 2_147_483_647;
+
+// Once a scheduled publish's time has passed: how many reads, three
+// seconds apart, then one every SLOW_READ_MS.
+const QUICK_READS = 20;
+const SLOW_READ_MS = 30_000;
 
 // What became of a scheduled publish that could not be cancelled any more.
 export function tooLateToCancel(state: ScheduleState): string {
