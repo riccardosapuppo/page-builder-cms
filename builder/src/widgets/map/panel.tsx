@@ -1,4 +1,4 @@
-// The map's Content tab: the place's label and its point, latitude,
+// The map's Map group: the place's label and its point, latitude,
 // longitude and zoom, as numbers. The page draws its own card and asks the
 // provider for the map only when a visitor clicks Load map.
 import { NumberField, TextField } from "../../editor/controls.tsx";
@@ -50,4 +50,4 @@ function MapContent({ block }: ContentProps<"map">) {
   );
 }
 
-export const panel: WidgetPanel<"map"> = { Content: MapContent };
+export const panel: WidgetPanel<"map"> = { content: { name: "Map", Content: MapContent } };

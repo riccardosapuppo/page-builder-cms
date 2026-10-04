@@ -137,8 +137,9 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     delete: (region) => command((id) => (doc) => makeDelete(doc, id), region),
     // A text block's text is written on the canvas: its editor opens, the
     // caret at the end. Another widget's words are in its panel: the
-    // Content tab, and its first field. A divider, a spacer, a section or a
-    // column has no words to edit.
+    // sidebar's Block tab, its own group opened, and that group's first
+    // field. A divider, a spacer, a section or a column has no words to
+    // edit.
     editText: () => {
       const id = selected();
       const block = id === null ? undefined : locate(store.getState().document, id)?.block;
@@ -148,9 +149,10 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
         return true;
       }
       if (["section", "column", "divider", "spacer"].includes(block.type)) return false;
-      // The sidebar shown if it was hidden, on the block's Content tab.
-      ui.setState({ tray: "edit", panelTab: "content", sidebarOpen: true });
-      afterRender(() => document.querySelector<HTMLElement>(".sidebar [role=tabpanel] :is(input:not([type=hidden]), textarea)")?.focus());
+      // The sidebar shown if it was hidden, on the Block tab.
+      ui.setState({ tray: "edit", sideTab: null, sidebarOpen: true });
+      ui.getState().setGroupOpen(block.type, "content", true);
+      afterRender(() => document.querySelector<HTMLElement>(".sidebar [role=tabpanel] [data-group=content] :is(input:not([type=hidden]), textarea)")?.focus());
       return true;
     },
     undo: (region) => {

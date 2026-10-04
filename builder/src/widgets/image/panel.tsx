@@ -1,4 +1,4 @@
-// The image's Content tab: the picture with Replace image, and its alt
+// The image's Image group: the picture with Replace image, and its alt
 // text, or the mark that it is decorative and needs none. The source and
 // the text change together when the image is replaced, so the page never
 // holds a picture with another picture's description.
@@ -92,4 +92,4 @@ function ImageContent({ block }: ContentProps<"image">) {
   );
 }
 
-export const panel: WidgetPanel<"image"> = { Content: ImageContent };
+export const panel: WidgetPanel<"image"> = { content: { name: "Image", Content: ImageContent } };

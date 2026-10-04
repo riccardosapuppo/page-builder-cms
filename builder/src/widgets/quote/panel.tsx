@@ -1,4 +1,4 @@
-// The quote's Content tab: the words quoted and, if there is one, who said
+// The quote's Quote group: the words quoted and, if there is one, who said
 // them.
 import { REMOVE } from "../../document/commands.ts";
 import { TextField } from "../../editor/controls.tsx";
@@ -32,4 +32,4 @@ function QuoteContent({ block }: ContentProps<"quote">) {
   );
 }
 
-export const panel: WidgetPanel<"quote"> = { Content: QuoteContent };
+export const panel: WidgetPanel<"quote"> = { content: { name: "Quote", Content: QuoteContent } };

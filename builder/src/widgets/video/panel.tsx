@@ -1,4 +1,4 @@
-// The video's Content tab: which video, from the address of its page or
+// The video's Video group: which video, from the address of its page or
 // its id, and its title. The page keeps the provider and the id only
 // (../../editor/pickers.tsx, parseVideo); the renderers build the player's
 // address, and the page asks the provider only when a visitor clicks.
@@ -38,4 +38,4 @@ function VideoContent({ block }: ContentProps<"video">) {
   );
 }
 
-export const panel: WidgetPanel<"video"> = { Content: VideoContent };
+export const panel: WidgetPanel<"video"> = { content: { name: "Video", Content: VideoContent } };

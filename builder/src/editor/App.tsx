@@ -186,7 +186,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     live.current.unsubscribe();
     previous?.dispose();
     store.getState().load(opened.document);
-    ui.setState({ serverErrors: [], hover: null, notice: null, tray: "edit", panelTab: "content" });
+    ui.setState({ serverErrors: [], hover: null, notice: null, tray: "edit", sideTab: null });
     // The page left's versions, and any read of them still on its way, go.
     versionReads.current += 1;
     setVersions(NO_VERSIONS);

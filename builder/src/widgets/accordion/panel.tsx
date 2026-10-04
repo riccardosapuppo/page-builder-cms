@@ -1,4 +1,4 @@
-// The accordion's Content tab: its questions and answers in order, each
+// The accordion's Questions group: its questions and answers in order, each
 // moved up or down or removed with the accordion's own item commands, and
 // new ones added at the end. The first one starts open on the page.
 import { ServerErrors, TextField } from "../../editor/controls.tsx";
@@ -66,4 +66,4 @@ function AccordionContent({ block }: ContentProps<"accordion">) {
   );
 }
 
-export const panel: WidgetPanel<"accordion"> = { Content: AccordionContent };
+export const panel: WidgetPanel<"accordion"> = { content: { name: "Questions", Content: AccordionContent } };

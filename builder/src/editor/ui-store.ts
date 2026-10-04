@@ -18,8 +18,21 @@ import type { TextEditing, TextTools } from "./rich/tools.ts";
 export const PREVIEWS = ["desktop", "tablet", "phone"] as const;
 export type Preview = (typeof PREVIEWS)[number];
 
-export const PANEL_TABS = ["content", "style", "advanced"] as const;
-export type PanelTab = (typeof PANEL_TABS)[number];
+// The sidebar's two tabs (./Sidebar.tsx). They follow the selection, Block
+// for a block and Page for none; a tab chosen by hand holds for the
+// selection it was chosen with, and the next selection is followed again.
+export type SideTab = "page" | "block";
+export interface SideTabPick {
+  tab: SideTab;
+  selection: string | null;
+}
+
+// Which of the sidebar's groups are open (./panels/groups.tsx), by whose
+// they are (a block's type, or "page") and the group's id: only those the
+// person opened or closed, the others drawn as their panel first draws
+// them. The shell keeps it in the browser, for this person
+// (./open-groups.ts).
+export type OpenGroups = Readonly<Record<string, Readonly<Record<string, boolean>>>>;
 
 // What the sidebar shows: the settings of the page and of the selection
 // (its Page and Block tabs), or the site style, a level below Page.
@@ -55,7 +68,8 @@ export interface UiState {
   hover: string | null;
   preview: Preview;
   tray: Tray;
-  panelTab: PanelTab;
+  sideTab: SideTabPick | null;
+  openGroups: OpenGroups;
   // The sidebar is shown; hidden, the canvas takes its room.
   sidebarOpen: boolean;
   drawer: Drawer | null;
@@ -107,7 +121,8 @@ export interface UiState {
   setHover(id: string | null): void;
   setPreview(preview: Preview): void;
   setTray(tray: Tray): void;
-  setPanelTab(tab: PanelTab): void;
+  setSideTab(pick: SideTabPick | null): void;
+  setGroupOpen(owner: string, group: string, open: boolean): void;
   setSidebarOpen(open: boolean): void;
   // Opens a drawer, the one open closing; null closes it. Leaving the
   // history closes its name field too.
@@ -129,13 +144,14 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "panelTab" | "sidebarOpen" | "drawer" | "siteStyle" | "site">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site">> = {}): UiStore {
   const drawer = initial.drawer ?? null;
   return createStore<UiState>()((set, get) => ({
     hover: null,
     preview: initial.preview ?? "desktop",
     tray: initial.tray ?? "edit",
-    panelTab: initial.panelTab ?? "content",
+    sideTab: initial.sideTab ?? null,
+    openGroups: initial.openGroups ?? {},
     sidebarOpen: initial.sidebarOpen ?? true,
     drawer,
     blockEdges: false,
@@ -162,7 +178,9 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setHover: (hover) => set({ hover }),
     setPreview: (preview) => set({ preview }),
     setTray: (tray) => set({ tray }),
-    setPanelTab: (panelTab) => set({ panelTab }),
+    setSideTab: (sideTab) => set({ sideTab }),
+    // The same again changes nothing, so nothing is drawn or kept again.
+    setGroupOpen: (owner, group, open) => set((state) => (state.openGroups[owner]?.[group] === open ? {} : { openGroups: { ...state.openGroups, [owner]: { ...state.openGroups[owner], [group]: open } } })),
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
     setDrawer: (next) => set(next === "history" ? { drawer: next, historyOpen: true } : { drawer: next, historyOpen: false, namingVersion: false }),
     setBlockEdges: (blockEdges) => set({ blockEdges }),

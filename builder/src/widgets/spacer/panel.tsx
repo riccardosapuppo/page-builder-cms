@@ -1,5 +1,5 @@
-// The spacer's Content tab: its height, one step of the site's spacing
-// scale, on the same ruler the Style tab uses for space.
+// The spacer's Height group: its height, one step of the site's spacing
+// scale, on the same ruler the Spacing groups use for space.
 import { RulerField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import { spaceSteps } from "../../editor/panels/steps.ts";
@@ -21,4 +21,4 @@ function SpacerContent({ block }: ContentProps<"spacer">) {
   );
 }
 
-export const panel: WidgetPanel<"spacer"> = { Content: SpacerContent };
+export const panel: WidgetPanel<"spacer"> = { content: { name: "Height", Content: SpacerContent } };

@@ -1,4 +1,4 @@
-// The gallery's Content tab: its images in order, each with its alt text
+// The gallery's Images group: its images in order, each with its alt text
 // or the mark that it is decorative, moved up or down or removed one at a
 // time; and more images added from the library or an address. Each of
 // these is one of the gallery's own item commands, so the history names
@@ -118,4 +118,4 @@ function GalleryItem({ blockId, item, index, count, commands }: ItemProps) {
   );
 }
 
-export const panel: WidgetPanel<"gallery"> = { Content: GalleryContent };
+export const panel: WidgetPanel<"gallery"> = { content: { name: "Images", Content: GalleryContent } };

@@ -15,6 +15,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { counter, page } from "../../test/document-page.ts";
+import { openGroups } from "../../test/editor-kit.tsx";
 import { FakeClock } from "../../test/fake-clock.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
@@ -114,7 +115,7 @@ async function start(site = new VersionSite(), adapter: StorageAdapter = site.ad
 // the autosave holds for its pause.
 function relabel(env: Awaited<ReturnType<typeof start>>["env"], label: string) {
   act(() => env.store.getState().select("hero"));
-  fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+  openGroups("Name and link");
   const field = screen.getByLabelText("Section label");
   fireEvent.change(field, { target: { value: label } });
   fireEvent.blur(field);

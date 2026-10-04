@@ -1,5 +1,5 @@
-// The button's Content tab: what it says and where it goes. Its colours
-// and alignment are the Style tab's.
+// The button's Button group: what it says and where it goes. Its colours
+// and alignment are the Colors and Alignment groups'.
 import { TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import { usePageLinks } from "../../editor/session.tsx";
@@ -34,4 +34,4 @@ function ButtonContent({ block }: ContentProps<"button">) {
   );
 }
 
-export const panel: WidgetPanel<"button"> = { Content: ButtonContent };
+export const panel: WidgetPanel<"button"> = { content: { name: "Button", Content: ButtonContent } };

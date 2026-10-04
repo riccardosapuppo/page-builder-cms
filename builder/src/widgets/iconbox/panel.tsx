@@ -1,4 +1,4 @@
-// The icon box's Content tab: its icon, from the site's own set
+// The icon box's Icon box group: its icon, from the site's own set
 // (schema/icons.svg, drawn as the page draws it), its title and its text.
 import { RadioField, TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
@@ -49,4 +49,4 @@ function IconboxContent({ block }: ContentProps<"iconbox">) {
   );
 }
 
-export const panel: WidgetPanel<"iconbox"> = { Content: IconboxContent };
+export const panel: WidgetPanel<"iconbox"> = { content: { name: "Icon box", Content: IconboxContent } };

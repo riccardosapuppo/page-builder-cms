@@ -11,7 +11,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { render } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { page } from "../../test/document-page.ts";
-import { describedText } from "../../test/editor-kit.tsx";
+import { describedText, openGroups } from "../../test/editor-kit.tsx";
 import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
@@ -175,7 +175,7 @@ test("the shell opens the page the address names, and its edits reach the adapte
   expect(written).toEqual([1]);
 
   fireEvent.click(within(outline()).getByText("Hero"));
-  fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+  openGroups("Name and link");
   const label = screen.getByLabelText("Section label");
   fireEvent.change(label, { target: { value: "Winter" } });
   fireEvent.blur(label);
@@ -255,7 +255,7 @@ test("a new page is made, its address offered from its title, and opened; a take
 // An edit the shell's autosave has not sent yet: the first section's label.
 function relabel(label: string) {
   fireEvent.click(within(outline()).getAllByRole("treeitem")[0]!.querySelector(".t-row")!);
-  fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+  openGroups("Name and link");
   const field = screen.getByLabelText("Section label");
   fireEvent.change(field, { target: { value: label } });
   fireEvent.blur(field);

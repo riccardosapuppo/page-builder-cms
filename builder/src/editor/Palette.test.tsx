@@ -65,6 +65,8 @@ test("the sentence over the keys says where a click puts a block, as the selecti
 // does not do; e2e/editor.spec.ts presses Enter in Chromium.
 test("a key adds the widget after the selected one and selects it", () => {
   const kit = editorKit({ document: page(), selection: "t1" });
+  // The sidebar on the site style, its Page tab chosen by hand.
+  kit.ui.setState({ tray: "site-style", sideTab: { tab: "page", selection: "t1" } });
   kit.render(<Palette />);
   fireEvent.click(screen.getByRole("button", { name: "Quote" }));
   const column = kit.doc().sections[0]?.children[0] as ColumnBlock;
@@ -72,8 +74,8 @@ test("a key adds the widget after the selected one and selects it", () => {
   const added = column.children[2]!;
   expect(kit.store.getState().selection).toBe(added.id);
   expect(kit.lastCommand()).toMatchObject({ kind: "insert", label: "Added Quote to Column 1 in Hero" });
-  // Its settings show in the sidebar, on their first tab.
-  expect(kit.ui.getState()).toMatchObject({ tray: "edit", panelTab: "content" });
+  // Its settings show in the sidebar, whose tab follows the selection.
+  expect(kit.ui.getState()).toMatchObject({ tray: "edit", sideTab: null });
 });
 
 test("a section goes after the selection's section, with the columns asked for", () => {

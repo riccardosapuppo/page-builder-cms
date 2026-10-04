@@ -1,14 +1,6 @@
-// The divider's Content tab. A divider is a line and holds nothing of its
-// own, so its tab says where its one setting, the colour, is.
-import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
+// The divider's panel. A divider is a line and holds nothing of its own:
+// its one setting, the line's colour, is its Line color group, drawn from
+// the style keys its type accepts (../../editor/panels/groups.tsx).
+import type { WidgetPanel } from "../../editor/panels/types.ts";
 
-function DividerContent(_props: ContentProps<"divider">) {
-  return (
-    <div className="field">
-      <span className="label">Line</span>
-      <p className="hint">A divider is a line between the widgets around it. Its color is in the Style tab.</p>
-    </div>
-  );
-}
-
-export const panel: WidgetPanel<"divider"> = { Content: DividerContent };
+export const panel: WidgetPanel<"divider"> = { content: null };

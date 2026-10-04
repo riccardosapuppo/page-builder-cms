@@ -3,7 +3,7 @@
 // making; a page holding one widget of each kind; and the server's 422 for
 // one field, worded as the API words it and laid on the page by the
 // adapter's own errorsByBlock, as the shell does with a refused save.
-import { render, type RenderResult } from "@testing-library/react";
+import { fireEvent, render, screen, type RenderResult } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { Command } from "../src/document/commands.ts";
 import { locate, pointerOf } from "../src/document/tree.ts";
@@ -96,6 +96,21 @@ export function editorKit(options: { document: PageDocument; selection?: string 
       ui.getState().setServerErrors(errorsByBlock(sent, [error]));
     },
   };
+}
+
+// Opens the sidebar's groups by their names, each by a click on its head,
+// as a person does; a group already open stays open.
+export function openGroups(...names: string[]): void {
+  for (const name of names) {
+    const head = screen.getByRole("button", { name });
+    if (head.getAttribute("aria-expanded") !== "true") fireEvent.click(head);
+    if (head.getAttribute("aria-expanded") !== "true") throw new Error(`the ${name} group did not open`);
+  }
+}
+
+// The names of the groups drawn, top to bottom.
+export function groupNames(): string[] {
+  return [...document.querySelectorAll(".grp .grp-name")].map((e) => e.textContent ?? "");
 }
 
 // The text of the error a control names in aria-describedby.

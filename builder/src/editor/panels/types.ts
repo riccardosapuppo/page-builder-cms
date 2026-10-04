@@ -1,8 +1,9 @@
 // A widget's panel, as its folder exports it (../../widgets/<widget>/panel.tsx):
-// the Content tab, which is the widget's own. The Style tab is drawn from the
-// style settings the widget's type accepts (STYLE_KEYS_BY_TYPE) and the
-// Advanced tab is the same for every block, so a widget writes only what is
-// its own.
+// the group of its own content, first in the Block tab, named after what it
+// holds ("Text", "Button", "Questions"). The groups of its style settings
+// are drawn from the keys its type accepts (STYLE_KEYS_BY_TYPE), and Shown
+// on is the same for every block (./groups.tsx), so a widget writes only
+// what is its own.
 import type { ComponentType } from "react";
 import type { BlockOfType, WidgetType } from "../../shared/document.ts";
 
@@ -11,5 +12,7 @@ export interface ContentProps<T extends WidgetType> {
 }
 
 export interface WidgetPanel<T extends WidgetType> {
-  Content: ComponentType<ContentProps<T>>;
+  // null for a widget with no content of its own: a divider, whose one
+  // setting is its line's colour.
+  content: { name: string; Content: ComponentType<ContentProps<T>> } | null;
 }

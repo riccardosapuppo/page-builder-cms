@@ -46,7 +46,7 @@ export function useInsert(): Inserter {
       return result.error;
     }
     const focus = result.outcome.focus;
-    ui.setState({ tray: "edit", panelTab: "content", notice: null });
+    ui.setState({ tray: "edit", sideTab: null, notice: null });
     if (focus) focusBlock(focus.id);
     return null;
   }, [store, ui]);

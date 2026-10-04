@@ -22,7 +22,7 @@ test("the tabs follow the selection, and either can be chosen by hand", () => {
   expect(screen.getByLabelText("Title")).toBeTruthy();
   act(() => kit.store.getState().select("q1"));
   expect(tab("Block").getAttribute("aria-selected")).toBe("true");
-  expect(screen.getByRole("tablist", { name: "Quote properties" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Quote" }).getAttribute("aria-expanded")).toBe("true");
   fireEvent.click(tab("Page"));
   expect(screen.getByLabelText("Address")).toBeTruthy();
   // The arrows move between the two, the tab stop with them.
@@ -37,6 +37,19 @@ test("the tabs follow the selection, and either can be chosen by hand", () => {
   expect(screen.getByRole("tabpanel").textContent).toContain("Nothing is selected.");
 });
 
+test("a tab chosen by hand holds for its selection only: the next one is followed, and the choice does not come back with the first", () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  kit.render(<Sidebar />);
+  act(() => kit.store.getState().select("q1"));
+  fireEvent.click(tab("Page"));
+  expect(kit.ui.getState().sideTab).toEqual({ tab: "page", selection: "q1" });
+  act(() => kit.store.getState().select("h1"));
+  expect(tab("Block").getAttribute("aria-selected")).toBe("true");
+  expect(kit.ui.getState().sideTab).toBeNull();
+  act(() => kit.store.getState().select("q1"));
+  expect(tab("Block").getAttribute("aria-selected")).toBe("true");
+});
+
 test("Site style opens a level below Page, and closes back to it, the focus on the way in", async () => {
   const kit = editorKit({ document: page(), session: { current } });
   kit.render(<Sidebar />);
@@ -48,6 +61,17 @@ test("Site style opens a level below Page, and closes back to it, the focus on t
   expect(screen.queryByRole("tablist", { name: "Settings" })).toBeNull();
   fireEvent.click(within(style).getByRole("button", { name: "Close site style" }));
   expect(kit.ui.getState().tray).toBe("edit");
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
+
+  // Opened from a block's panel, it closes back to the Page tab too, the
+  // block still selected.
+  act(() => kit.store.getState().select("q1"));
+  expect(tab("Block").getAttribute("aria-selected")).toBe("true");
+  fireEvent.click(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Site style" }));
+  expect(kit.ui.getState().tray).toBe("site-style");
+  fireEvent.click(within(screen.getByRole("complementary", { name: "Site style" })).getByRole("button", { name: "Close site style" }));
+  expect(tab("Page").getAttribute("aria-selected")).toBe("true");
+  expect(kit.store.getState().selection).toBe("q1");
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
 });
 

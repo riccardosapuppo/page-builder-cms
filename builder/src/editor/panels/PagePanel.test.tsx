@@ -1,10 +1,12 @@
-// The page's panel, the sidebar's Page tab: title and description by the
+// The page's panel, the sidebar's Page tab: its groups, Title and address
+// and Search results, both open until closed; title and description by the
 // page command; the address through the storage adapter, whose refusal
-// shows on the Address field; the server's 422 on the title on its field.
+// shows on the Address field; the server's 422 on the title on its field,
+// its group opened for it.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
-import { describedText, editorKit } from "../../../test/editor-kit.tsx";
+import { describedText, editorKit, groupNames } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { errorsByBlock } from "../../storage/adapter.ts";
 import { PagePanel } from "./EditPanel.tsx";
@@ -20,11 +22,25 @@ test("title and description change the page by the page command", () => {
   expect(kit.doc().title).toBe("Winter swims");
   expect(kit.lastCommand()).toMatchObject({ kind: "page", label: "Changed the page title", subject: null });
 
-  const description = screen.getByLabelText("Description in search results");
+  const description = screen.getByLabelText("Description");
   fireEvent.change(description, { target: { value: "" } });
   fireEvent.blur(description);
   expect(kit.doc()).not.toHaveProperty("description");
   expect(kit.lastCommand()?.label).toBe("Removed the page description");
+});
+
+test("the page's settings come in two groups, both open; closed, each says its value; the person's choice is kept for the page", () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  kit.render(<PagePanel />);
+  expect(groupNames()).toEqual(["Title and address", "Search results"]);
+  expect([...document.querySelectorAll(".grp-head")].map((h) => h.getAttribute("aria-expanded"))).toEqual(["true", "true"]);
+  // The panel names the page and where it lives.
+  expect(document.querySelector(".ed-title")?.textContent).toBe("Winter series/winter-series, not published yet");
+  fireEvent.click(screen.getByRole("button", { name: "Title and address" }));
+  fireEvent.click(screen.getByRole("button", { name: "Search results" }));
+  expect(describedText(screen.getByRole("button", { name: "Title and address" }))).toBe("Winter series, /winter-series");
+  expect(describedText(screen.getByRole("button", { name: "Search results" }))).toBe("Short, cold swims from November to March.");
+  expect(kit.ui.getState().openGroups).toEqual({ page: { title: false, search: false } });
 });
 
 test("a page not published yet shows the address it will have on the CMS, as the design does", () => {
@@ -56,9 +72,11 @@ test("the address goes through the adapter, and its refusal shows on the Address
   expect(kit.store.getState().past).toHaveLength(0);
 });
 
-test("the server's 422 on the title shows on the Title field", () => {
+test("the server's 422 on the title opens its group, closed before, and shows on the Title field", () => {
   const kit = editorKit({ document: page(), session: { current } });
+  kit.ui.getState().setGroupOpen("page", "title", false);
   kit.render(<PagePanel />);
+  expect(screen.queryByLabelText("Title")).toBeNull();
   act(() => kit.ui.getState().setServerErrors(errorsByBlock(kit.doc(), [{ pointer: "/document/title", keyword: "maxLength", blockPointer: null, message: "is longer than 120 characters" }])));
   const title = screen.getByLabelText("Title");
   expect(title.getAttribute("aria-invalid")).toBe("true");

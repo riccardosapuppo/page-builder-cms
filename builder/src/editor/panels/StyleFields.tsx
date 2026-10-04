@@ -1,12 +1,14 @@
-// The Style tab of any block: the settings its type accepts
-// (STYLE_KEYS_BY_TYPE), each from the site's tokens only, never a free
-// value: space on the spacing scale, colours from the site's palette slots,
-// sizes from its type scale. Visibility is the Advanced tab's.
+// A block's style settings, drawn in the Block tab's groups
+// (./groups.tsx): each group hands the keys it holds, of those the type
+// accepts (STYLE_KEYS_BY_TYPE), each from the site's tokens only, never a
+// free value: space on the spacing scale, colours from the site's palette
+// slots, sizes from its type scale. Visibility is the Shown on group's
+// (./ShownOn.tsx).
 //
-// The tab edits the device the canvas previews (design/shots/style.png).
-// On the desktop it writes the style's base, which every device shows
-// unless it has a value of its own. With a tablet or a phone previewed it
-// writes that device's values only, and each setting says where its value
+// The settings edit the device the canvas previews (design/shots/style.png).
+// On the desktop they write the style's base, which every device shows
+// unless it has a value of its own. With a tablet or a phone previewed they
+// write that device's values only, and each setting says where its value
 // comes from: "From desktop" (the device shows the base, and a change
 // makes it its own), or "Tablet only" with the override's words and a
 // Remove that takes the device's key out, so the device follows the
@@ -30,10 +32,10 @@ import { Icon } from "../icons.tsx";
 import { useBlockCommands } from "./hooks.ts";
 import { spaceSteps } from "./steps.ts";
 
-type StyleKey = Exclude<keyof StyleTokens, "visibility">;
+export type StyleKey = Exclude<keyof StyleTokens, "visibility">;
 
 // The setting's name where the type means it its own way.
-function labelOf(type: BlockType, key: StyleKey): string {
+export function labelOf(type: BlockType, key: StyleKey): string {
   if (key === "spaceBetween") return type === "section" ? "Space between columns" : type === "gallery" ? "Space between images" : "Space between widgets";
   if (key === "color") return type === "divider" || type === "accordion" ? "Line color" : "Text color";
   if (key === "textSize") return type === "column" ? "Text size in this column" : "Text size";
@@ -52,12 +54,18 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
   small: { size: 12, sans: false, label: "Small" },
 };
 
-// The order the tab lists its settings in, the approved design's (the
+// The order a group lists its settings in, the approved design's (the
 // #style state: Space inside, Space between, Background, Text size,
 // Alignment): space first, then colour, then type, then placement.
 // Alignment, a column's two in one field, vertical first; then the text
 // colour, which the design does not draw.
 const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "verticalAlign", "align", "color", "aspect"];
+
+// The keys of `keys` the block's type accepts, in that order.
+export function acceptedKeys(type: BlockType, keys: readonly StyleKey[]): StyleKey[] {
+  const accepted = STYLE_KEYS_BY_TYPE[type] as readonly (keyof StyleTokens)[];
+  return keys.filter((key) => accepted.includes(key)).sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
+}
 
 const ALIGN_ICONS = { left: "align-left", center: "align-center", right: "align-right" } as const;
 const VALIGN_ICONS = { top: "valign-top", middle: "valign-middle", bottom: "valign-bottom" } as const;
@@ -66,7 +74,7 @@ const VALIGN_ICONS = { top: "valign-top", middle: "valign-middle", bottom: "vali
 // with a ring.
 const RULERS: ReadonlySet<StyleKey> = new Set(["spaceInside", "spaceBetween", "spaceAbove", "spaceBelow"]);
 
-const DEVICE_WORDS: Readonly<Record<OverrideDevice, { name: string; plural: string; other: OverrideDevice }>> = {
+export const DEVICE_WORDS: Readonly<Record<OverrideDevice, { name: string; plural: string; other: OverrideDevice }>> = {
   tablet: { name: "Tablet", plural: "tablets", other: "phone" },
   phone: { name: "Phone", plural: "phones", other: "tablet" },
 };
@@ -112,7 +120,7 @@ function elsewhereWords(style: unknown, key: StyleKey): string | undefined {
 function focusFieldOf(event: MouseEvent<HTMLElement>): void {
   const field = event.currentTarget.closest(".field");
   const label = field?.querySelector(":scope > .label, :scope > .label-row > .label")?.textContent ?? null;
-  const tray = field?.closest(".tray-left") ?? document;
+  const tray = field?.closest(".sidebar") ?? document;
   afterRender(() => {
     const now = field?.isConnected ? field : [...tray.querySelectorAll(".field")].find((f) => f.querySelector(":scope > .label, :scope > .label-row > .label")?.textContent === label);
     now?.querySelector<HTMLElement>("[role=slider], [role=radio][tabindex='0']")?.focus();
@@ -127,7 +135,7 @@ function focusFieldOf(event: MouseEvent<HTMLElement>): void {
 // its column shows; an alignment its column's, else left; a column's
 // content at its top; an image its own shape. A colour depends on the
 // band around the block, so none is checked for it.
-function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle: unknown): string | null {
+export function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle: unknown): string | null {
   switch (key) {
     case "background":
       return block.type === "section" || block.type === "column" ? "none" : block.type === "button" ? "accent" : null;
@@ -167,19 +175,23 @@ interface Setting {
   ring: string | null;
 }
 
-export function StyleTab({ block }: { block: Block }) {
-  const commands = useBlockCommands(block.id);
-  const preview = useUi((u) => u.preview);
-  const siteStyle = useUi((u) => u.siteStyle);
-  // The column a widget stands in: what it takes on when it sets nothing.
-  const columnStyle = useEditor((s) => {
-    const found = locate(s.document, block.id);
+// The column a widget stands in, its style: what the widget takes on when
+// it sets nothing.
+export function useColumnStyle(id: string): unknown {
+  return useEditor((s) => {
+    const found = locate(s.document, id);
     const parent = found?.parentId ? locate(s.document, found.parentId)?.block : undefined;
     return parent?.type === "column" ? parent.style : undefined;
   });
-  const keys = (STYLE_KEYS_BY_TYPE[block.type] as readonly (keyof StyleTokens)[])
-    .filter((k): k is StyleKey => k !== "visibility")
-    .sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
+}
+
+// The block's settings of `keys`, those its type accepts.
+export function StyleFields({ block, keys: wanted }: { block: Block; keys: readonly StyleKey[] }) {
+  const commands = useBlockCommands(block.id);
+  const preview = useUi((u) => u.preview);
+  const siteStyle = useUi((u) => u.siteStyle);
+  const columnStyle = useColumnStyle(block.id);
+  const keys = acceptedKeys(block.type, wanted);
   const style: unknown = block.style;
   const device = deviceOf(preview);
 
@@ -248,13 +260,6 @@ export function StyleTab({ block }: { block: Block }) {
 
   return (
     <>
-      {device !== "base" && (
-        <p className="note device-note">
-          <Icon name={device} />
-          <span>Editing for <strong>{device}</strong>. Changes you make now apply to {DEVICE_WORDS[device].plural} only.</span>
-        </p>
-      )}
-      {keys.length === 0 && <p className="hint">This widget has no style settings of its own.</p>}
       {keys.map((key) => {
         // A column's two alignments as one field, as the design draws
         // them: drawn where the vertical one stands.

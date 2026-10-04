@@ -1,11 +1,14 @@
-// The Content tabs of the two blocks that hold others. A section's content
-// is its columns: how many, and how they share the width on desktop. A
-// column's is its widgets, which the canvas and the navigator show.
-import { makeSetColumnCount, makeSetColumnWidths } from "../../document/commands.ts";
+// A section's own groups (design/layout/, the section state). Columns: how
+// many, and how they share the width on desktop. Name and link: the
+// section's label, which only the editor shows, and its anchor for links
+// to it, the one block that has one (widgets have none in the real
+// editor, so the layout draws none for them).
+import { makeSetColumnCount, makeSetColumnWidths, REMOVE } from "../../document/commands.ts";
 import { plural } from "../../document/labels.ts";
-import { COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type SectionBlock } from "../../shared/document.ts";
-import { RadioField } from "../controls.tsx";
+import { COLUMN_WIDTHS_BY_COUNT, type ColumnWidthsToken, type SectionBlock } from "../../shared/document.ts";
+import { RadioField, TextField } from "../controls.tsx";
 import { useEnv, useRun } from "../context.tsx";
+import { useBlockCommands } from "./hooks.ts";
 
 // A preset drawn as its columns side by side, each as wide as its share.
 function WidthsPicture({ parts }: { parts: readonly number[] }) {
@@ -16,7 +19,12 @@ function WidthsPicture({ parts }: { parts: readonly number[] }) {
   );
 }
 
-export function SectionContent({ block }: { block: SectionBlock }) {
+// What Columns says closed: "2, equal", "2, 2:1".
+export function columnsWords(block: SectionBlock): string {
+  return `${block.children.length}, ${block.props.columnWidths ?? "equal"}`;
+}
+
+export function SectionColumns({ block }: { block: SectionBlock }) {
   const { store, newId } = useEnv();
   const run = useRun();
   const count = block.children.length as 1 | 2 | 3 | 4;
@@ -51,15 +59,38 @@ export function SectionContent({ block }: { block: SectionBlock }) {
   );
 }
 
-export function ColumnContent({ block }: { block: ColumnBlock }) {
-  const count = block.children.length;
+// What Name and link says closed: "Join, #join", "No label yet".
+export function nameWords(block: SectionBlock): string {
+  const anchor = block.props.anchor ? `#${block.props.anchor}` : null;
+  return [block.props.label ?? "No label yet", anchor].filter((part) => part !== null).join(", ");
+}
+
+export function SectionName({ block }: { block: SectionBlock }) {
+  const commands = useBlockCommands(block.id);
   return (
-    <div className="field">
-      <span className="label">Widgets</span>
-      <p className="hint">
-        {count === 0 ? "This column is empty." : `This column holds ${count} ${count === 1 ? "widget" : "widgets"}, top to bottom.`}
-        {" "}To add one here, keep the column selected and pick a widget in Add.
-      </p>
-    </div>
+    <>
+      <TextField
+        label="Section label"
+        value={block.props.label ?? ""}
+        blockId={block.id}
+        field="/props/label"
+        rules={{ kind: "line", maxLength: 60 }}
+        hint="Only you see it, in the outline, the bottom line and history."
+        onCommit={(label) => commands.setProps({ label: label.trim() === "" ? REMOVE : label })}
+      />
+      <TextField
+        label="Anchor id"
+        icon="anchor"
+        value={block.props.anchor ?? ""}
+        blockId={block.id}
+        field="/props/anchor"
+        rules={{ kind: "anchor" }}
+        hint={block.props.anchor ? `Links to #${block.props.anchor} scroll to this section.` : "A name for links to this section, such as #join."}
+        onCommit={(anchor) => {
+          const name = anchor.trim().replace(/^#/, "");
+          return commands.setProps({ anchor: name === "" ? REMOVE : name });
+        }}
+      />
+    </>
   );
 }

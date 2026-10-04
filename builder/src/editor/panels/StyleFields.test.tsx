@@ -1,42 +1,48 @@
-// The Style tab: only the settings the block's type accepts, each from the
-// site's tokens, each by the style command on the base; a reset takes the
-// key out. Previewing a tablet or a phone, it writes that device's values,
-// says of each whether it is the device's own or the desktop's, and its
-// Remove takes the device's key out, the focus back on the setting.
+// A block's style settings, in the Block tab's groups: only the settings
+// the block's type accepts, each from the site's tokens, each by the style
+// command on the base; a reset takes the key out. Previewing a tablet or a
+// phone, they write that device's values, say of each whether it is the
+// device's own or the desktop's, and Remove takes the device's key out,
+// the focus back on the setting.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
-import { describedText, editorKit, widgetPage } from "../../../test/editor-kit.tsx";
+import { describedText, editorKit, groupNames, openGroups, widgetPage } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { BlockPanel } from "./EditPanel.tsx";
 
-const NAMES = (container: HTMLElement) => [...container.querySelectorAll(".field > .label, .field > .label-row > .label")].map((e) => e.textContent);
+// The settings' names in the groups that hold style keys, top to bottom.
+const NAMES = (container: HTMLElement) => [...container.querySelectorAll(".grp:not([data-group=content]):not([data-group=shown]) .field > .label, .grp:not([data-group=content]):not([data-group=shown]) .field > .label-row > .label")].map((e) => e.textContent);
 
-test("each type shows the settings it accepts and no other", () => {
+test("each type shows the settings it accepts and no other, in the groups that name them", () => {
   const kit = editorKit({ document: widgetPage(), selection: "image" });
-  kit.ui.getState().setPanelTab("style");
   const { container, rerender } = kit.render(<BlockPanel id="image" />);
+  expect(groupNames()).toEqual(["Image", "Shape", "Shown on"]);
+  openGroups("Shape");
   expect(NAMES(container)).toEqual(["Crop"]);
   rerender(<BlockPanel id="button" />);
-  expect(NAMES(container)).toEqual(["Background", "Alignment", "Text color"]);
+  expect(groupNames()).toEqual(["Button", "Colors", "Alignment", "Shown on"]);
+  openGroups("Colors", "Alignment");
+  expect(NAMES(container)).toEqual(["Background", "Text color", "Alignment"]);
   rerender(<BlockPanel id="video" />);
+  expect(groupNames()).toEqual(["Video", "Shown on"]);
   expect(NAMES(container)).toEqual([]);
-  expect(screen.getByText("This widget has no style settings of its own.")).toBeTruthy();
 });
 
-test("a column's settings come in the approved design's order: space, then background, then type and placement", () => {
+test("a column's settings come in the approved layout's groups and order: space, background, type and colour, placement", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
-  kit.ui.getState().setPanelTab("style");
   const { container } = kit.render(<BlockPanel id="c1" />);
-  expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Alignment", "Text color"]);
+  expect(groupNames()).toEqual(["Spacing", "Background", "Text size and color", "Alignment", "Shown on"]);
+  openGroups("Background", "Text size and color", "Alignment");
+  expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Text color", "Alignment"]);
   // The design's Alignment: vertical, then horizontal, side by side.
   expect([...container.querySelectorAll(".pair .label")].map((e) => e.textContent)).toEqual(["Vertical alignment", "Horizontal alignment"]);
 });
 
 test("a choice sets the base value, in the site's colours, and Reset takes it out", () => {
   const kit = editorKit({ document: widgetPage(), selection: "button" });
-  kit.ui.getState().setPanelTab("style");
   kit.render(<BlockPanel id="button" />);
+  openGroups("Colors");
   const background = () => within(screen.getByRole("radiogroup", { name: "Background" }));
   const primary = background().getByRole("radio", { name: "Primary, Sea" });
   expect(primary.getAttribute("style")).toContain("#1E5B4C");
@@ -56,10 +62,10 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
 const fieldOf = (label: string) => screen.getAllByText(label, { selector: ".label" })[0]!.closest<HTMLElement>(".field")!;
 const scopeOf = (label: string) => fieldOf(label).querySelector(".scope")?.textContent;
 
-test("on the desktop the tab writes the base, and names the values a block has of its own on a tablet or a phone", () => {
+test("on the desktop the settings write the base, and name the values a block has of its own on a tablet or a phone", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
-  kit.ui.setState({ panelTab: "style" });
   kit.render(<BlockPanel id="c1" />);
+  openGroups("Alignment");
   expect(document.querySelector(".device-note")).toBeNull();
   expect(within(fieldOf("Space inside")).getByText("Tablets have their own: L.")).toBeTruthy();
   expect(within(fieldOf("Alignment")).getByText("Tablets have their own: Center.")).toBeTruthy();
@@ -68,11 +74,12 @@ test("on the desktop the tab writes the base, and names the values a block has o
   expect(kit.lastCommand()?.label).toBe("Set Alignment to Right, Column 1 in Hero");
 });
 
-test("previewing a tablet, the tab edits the tablet's values, each said as the tablet's own or from the desktop", () => {
+test("previewing a tablet, the settings edit the tablet's values, each said as the tablet's own or from the desktop", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
-  kit.ui.setState({ panelTab: "style", preview: "tablet" });
+  kit.ui.setState({ preview: "tablet" });
   kit.render(<BlockPanel id="c1" />);
-  expect(document.querySelector(".device-note")?.textContent).toBe("Editing for tablet. Changes you make now apply to tablets only.");
+  expect(document.querySelector(".device-note")?.textContent).toBe("Editing for tablet. Changes to its look apply to tablets only.");
+  openGroups("Alignment", "Background");
 
   // Space inside: L of its own, the desktop's M marked with a ring.
   expect(scopeOf("Space inside")).toBe("Tablet only");
@@ -106,8 +113,9 @@ test("previewing a tablet, the tab edits the tablet's values, each said as the t
 
 test("Remove takes the tablet's key out, never the desktop's value written in its place, and the last one the tablet's part", async () => {
   const kit = editorKit({ document: page(), selection: "c1" });
-  kit.ui.setState({ panelTab: "style", preview: "tablet" });
+  kit.ui.setState({ preview: "tablet" });
   kit.render(<BlockPanel id="c1" />);
+  openGroups("Alignment");
   fireEvent.click(screen.getByRole("button", { name: "Remove the tablet override of Space inside" }));
   expect(kit.block("c1")?.style).toEqual({ base: { spaceInside: "m" }, tablet: { align: "center" } });
   expect(kit.lastCommand()?.label).toBe("Cleared Space inside on tablet, Column 1 in Hero");
@@ -124,9 +132,9 @@ test("Remove takes the tablet's key out, never the desktop's value written in it
   expect(screen.queryByRole("button", { name: /^Remove the tablet override/ })).toBeNull();
 });
 
-test("previewing a phone, the tab edits the phone's values, which never take the tablet's", () => {
+test("previewing a phone, the settings edit the phone's values, which never take the tablet's", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
-  kit.ui.setState({ panelTab: "style", preview: "phone" });
+  kit.ui.setState({ preview: "phone" });
   const { rerender } = kit.render(<BlockPanel id="c1" />);
   // The tablet's L is the tablet's alone: the phone shows the desktop's M.
   expect(scopeOf("Space inside")).toBe("From desktop");
@@ -136,14 +144,16 @@ test("previewing a phone, the tab edits the phone's values, which never take the
   expect(fieldOf("Space inside").querySelector(".override p")?.textContent).toBe("Phone override: S on all four sides. Desktop uses M, marked with a ring; tablets have their own, L.");
 
   rerender(<BlockPanel id="h1" />);
+  expect(document.querySelector(".device-note")?.textContent).toBe("Editing for phone. Changes to its look apply to phones only; its words are the same everywhere.");
+  openGroups("Size and color");
   expect(scopeOf("Text size")).toBe("Phone only");
   expect(fieldOf("Text size").querySelector(".override p")?.textContent).toBe("Phone override: Heading 1. Desktop and tablet use Display.");
 });
 
 test("a setting the block leaves unset checks the value in use, as the design does: None and Body for a column, the column's for its text, the desktop's on a tablet", () => {
   const kit = editorKit({ document: page(), selection: "c2" });
-  kit.ui.setState({ panelTab: "style" });
   const { rerender } = kit.render(<BlockPanel id="c2" />);
+  openGroups("Background", "Text size and color", "Alignment");
   const checked = (label: string) => within(fieldOf(label)).getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true").map((r) => r.getAttribute("aria-label") ?? r.textContent);
   const names = (label: string) => within(fieldOf(label)).getAllByRole("radio").map((r) => (r.getAttribute("aria-label") ?? r.textContent ?? "").split(",")[0]);
   expect(checked("Background")).toEqual(["None"]);
@@ -167,8 +177,10 @@ test("a setting the block leaves unset checks the value in use, as the design do
   // A text takes its column's size; a heading its level's.
   act(() => kit.store.getState().select("t1"));
   rerender(<BlockPanel id="t1" />);
+  openGroups("Size and color");
   expect(checked("Text size")).toEqual(["Body"]);
   act(() => kit.store.getState().select("q1"));
   rerender(<BlockPanel id="q1" />);
+  openGroups("Size and color");
   expect(checked("Text size")).toEqual(["Heading 3"]);
 });

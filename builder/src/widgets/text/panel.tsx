@@ -1,7 +1,7 @@
-// The text widget's Content tab. The text is written on the canvas, where
-// it stands, in the text editor (../../editor/rich/): this tab opens it
+// The text widget's Text group. The text is written on the canvas, where
+// it stands, in the text editor (../../editor/rich/): this group opens it
 // there and says how. What the server refused in the text shows above the
-// tabs, with the panel's other unclaimed refusals.
+// groups, with the panel's other unclaimed refusals.
 import { useId } from "react";
 import { useEnv } from "../../editor/context.tsx";
 import { startEditing } from "../../editor/rich/tools.ts";
@@ -21,4 +21,4 @@ function TextContent({ block }: ContentProps<"text">) {
   );
 }
 
-export const panel: WidgetPanel<"text"> = { Content: TextContent };
+export const panel: WidgetPanel<"text"> = { content: { name: "Text", Content: TextContent } };

@@ -1,53 +1,77 @@
 // The sidebar's panels (../Sidebar.tsx): the Page tab's, the page's own
-// settings, and the Block tab's, the selected block's, with its three tabs
-// (design/shots, editor.png and empty.png).
-import { useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
+// settings, and the Block tab's, the selected block's, each under its
+// collapsible groups (./groups.tsx; design/layout/, the editor and
+// page-tab states).
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { makeSetPage, REMOVE } from "../../document/commands.ts";
-import type { Block, WidgetBlock } from "../../shared/document.ts";
-import type { FieldError } from "../../storage/adapter.ts";
+import type { Block } from "../../shared/document.ts";
+import type { BlockFieldError, FieldError } from "../../storage/adapter.ts";
 import { cmsAddress } from "../../storage/config.ts";
-import { WIDGET_PANELS } from "../../widgets/panels.ts";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
 import { describedBy, ErrorList, TextField, useFieldClaims } from "../controls.tsx";
 import { useEditor, useEnv, useRun, useUi } from "../context.tsx";
+import { deviceOf } from "../device-style.ts";
 import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, placeLine } from "../names.ts";
 import { shownAddress } from "../Publish.tsx";
 import { useSession } from "../session.tsx";
-import { PANEL_TABS, type PanelTab } from "../ui-store.ts";
-import { AdvancedTab } from "./AdvancedTab.tsx";
+import { openSiteStyle } from "../Sidebar.tsx";
+import { GroupList, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
-import { StyleTab } from "./StyleTab.tsx";
-import { ColumnContent, SectionContent } from "./structure.tsx";
+import { DEVICE_WORDS } from "./StyleFields.tsx";
 
 // ------------------------------------------------------------- the page
 
-export function PagePanel() {
+// The page's own settings in two groups, Title and address and Search
+// results, every one open until the person closes it; then `after`, the
+// way to the site style.
+export function PagePanel({ after }: { after?: ReactNode }) {
   const title = useEditor((s) => s.document.title);
   const description = useEditor((s) => s.document.description);
   const { store } = useEnv();
   const run = useRun();
-  return (
-    <>
-      <div className="ed-title">
-        <span className="ed-icon"><Icon name="page" className="i i-tile" /></span>
-        <div><strong>Page</strong><span>This page’s own settings</span></div>
-      </div>
-      <div className="tray-body">
+  const session = useSession();
+  const current = session.current;
+  const all = useUi((u) => u.serverErrors);
+  const errors = useMemo(() => all.filter((e) => e.blockId === null), [all]);
+  const line = !current
+    ? "This page’s own settings"
+    : current.home
+      ? "The home page, the first one visitors see"
+      : `/${current.slug}, ${current.published ? "published" : "not published yet"}`;
+  const specs: GroupSpec[] = [
+    {
+      id: "title",
+      name: "Title and address",
+      keys: [],
+      holds: (field) => field === "/title",
+      summary: current ? `${title}, /${current.home ? "" : current.slug}` : title,
+      body: (
+        <>
+          <TextField
+            label="Title"
+            value={title}
+            blockId={null}
+            field="/title"
+            rules={{ kind: "line", maxLength: 120 }}
+            hint="Shown in the browser tab and in search results."
+            onCommit={(next) => run(makeSetPage(store.getState().document, { title: next }))}
+          />
+          <AddressField />
+        </>
+      ),
+    },
+    {
+      id: "search",
+      name: "Search results",
+      keys: [],
+      holds: (field) => field === "/description",
+      summary: description ?? "No description yet",
+      body: (
         <TextField
-          label="Title"
-          value={title}
-          blockId={null}
-          field="/title"
-          rules={{ kind: "line", maxLength: 120 }}
-          hint="Shown in the browser tab and in search results."
-          onCommit={(next) => run(makeSetPage(store.getState().document, { title: next }))}
-        />
-        <AddressField />
-        <TextField
-          label="Description in search results"
+          label="Description"
           multiline
           rows={3}
           value={description ?? ""}
@@ -58,6 +82,18 @@ export function PagePanel() {
           hint="Search engines show it under the title. Up to 160 characters."
           onCommit={(next) => run(makeSetPage(store.getState().document, { description: next.trim() === "" ? REMOVE : next }))}
         />
+      ),
+    },
+  ];
+  return (
+    <>
+      <div className="ed-title">
+        <span className="ed-icon"><Icon name="page" className="i i-tile" /></span>
+        <div><strong>{title}</strong><span>{line}</span></div>
+      </div>
+      <div className="sb-body">
+        <GroupList owner="page" specs={specs} openFirst={() => true} style={null} errors={errors} />
+        {after}
       </div>
     </>
   );
@@ -127,8 +163,6 @@ function AddressField() {
 
 // ------------------------------------------------------------ a block
 
-const TAB_NAMES: Readonly<Record<PanelTab, string>> = { content: "Content", style: "Style", advanced: "Advanced" };
-
 function blockIcon(block: Block) {
   if (block.type === "section") return <Icon name="section" className="i i-tile" />;
   if (block.type === "column") return <Icon name="column" className="i i-tile" />;
@@ -138,24 +172,19 @@ function blockIcon(block: Block) {
 export function BlockPanel({ id }: { id: string }) {
   const block = useBlock(id);
   const doc = useEditor((s) => s.document);
-  const tab = useUi((u) => u.panelTab);
-  const { ui } = useEnv();
   const serverErrors = useUi((u) => u.serverErrors);
+  const preview = useUi((u) => u.preview);
+  const { ui } = useEnv();
   const { provider, claimed } = useFieldClaims();
-  const tabsId = useId();
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listId = useId();
   if (!block) return null;
 
   const name = block.type === "section" ? "Section" : blockName(doc, block.id);
-  const unclaimed = serverErrors.filter((e) => e.blockId === block.id && !claimed.has(e.field));
-  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (step === 0) return;
-    event.preventDefault();
-    const next = (index + step + PANEL_TABS.length) % PANEL_TABS.length;
-    ui.getState().setPanelTab(PANEL_TABS[next]!);
-    tabRefs.current[next]?.focus();
-  };
+  const own = serverErrors.filter((e) => e.blockId === block.id);
+  const unclaimed = own.filter((e) => !claimed.has(e.field));
+  const device = deviceOf(preview);
+  // Blocks with words of their own, which no device changes.
+  const words = !["section", "column", "divider", "spacer"].includes(block.type);
 
   return (
     <>
@@ -163,54 +192,34 @@ export function BlockPanel({ id }: { id: string }) {
         <span className="ed-icon">{blockIcon(block)}</span>
         <div><strong>{name}</strong><span>{placeLine(doc, block.id)}</span></div>
       </div>
-      <div className="subtabs" role="tablist" aria-label={`${name} properties`}>
-        {PANEL_TABS.map((t, index) => (
-          <button
-            key={t}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
-            id={`${tabsId}-${t}`}
-            role="tab"
-            type="button"
-            aria-selected={t === tab}
-            aria-controls={`${tabsId}-panel`}
-            tabIndex={t === tab ? 0 : -1}
-            onClick={() => ui.getState().setPanelTab(t)}
-            onKeyDown={(event) => onTabKey(event, index)}
-          >
-            {TAB_NAMES[t]}
-          </button>
-        ))}
-      </div>
-      <div className={`tray-body${tab === "style" ? " tray-body-dense" : ""}`} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`}>
+      {device !== "base" && (
+        <p className="note device-note">
+          <Icon name={device} />
+          <span>Editing for <strong>{device}</strong>. Changes to its look apply to {DEVICE_WORDS[device].plural} only{words ? "; its words are the same everywhere" : ""}.</span>
+        </p>
+      )}
+      <div className="sb-body">
         {unclaimed.length > 0 && (
-          <div className="field">
+          <div className="field sb-refused">
             <p className="note"><Icon name="warning" /><span>The server refused the last save of this {block.type === "section" || block.type === "column" ? block.type : "widget"}:</span></p>
-            <ErrorList id={`${tabsId}-unclaimed`} errors={unclaimed.map((e) => e.message)} />
+            <ErrorList id={`${listId}-unclaimed`} errors={unclaimed.map((e) => e.message)} />
           </div>
         )}
         {provider(
-          // A new panel for each block, so a field never shows another
+          // New groups for each block, so a field never shows another
           // block's text while it is being typed.
-          <TabBody key={`${block.id} ${tab}`} block={block} tab={tab} />,
+          <BlockGroups key={block.id} block={block} errors={own} />,
         )}
+        <p className="sb-foot-hint">
+          Closed groups show their current value. Colors and sizes come from{" "}
+          <button className="link link-inline" type="button" onClick={() => openSiteStyle(ui)}>Site style</button>.
+        </p>
       </div>
     </>
   );
 }
 
-function TabBody({ block, tab }: { block: Block; tab: PanelTab }) {
-  if (tab === "style") return <StyleTab block={block} />;
-  if (tab === "advanced") return <AdvancedTab block={block} />;
-  if (block.type === "section") return <SectionContent block={block} />;
-  if (block.type === "column") return <ColumnContent block={block} />;
-  return <WidgetContent block={block} />;
-}
-
-// The widget's own Content tab, from its folder. The map is keyed by
-// type, so the panel given a block is the one written for that type.
-function WidgetContent({ block }: { block: WidgetBlock }) {
-  const Content = WIDGET_PANELS[block.type].Content as unknown as ComponentType<{ block: WidgetBlock }>;
-  return <Content block={block} />;
+function BlockGroups({ block, errors }: { block: Block; errors: readonly BlockFieldError[] }) {
+  const specs = useBlockGroups(block);
+  return <GroupList owner={block.type} specs={specs} openFirst={(index) => index === 0} style={block.style} errors={errors} />;
 }

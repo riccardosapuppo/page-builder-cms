@@ -1,7 +1,7 @@
-// The heading's Content tab: its text, its level and an optional link, as
-// the approved design draws them (design/index.html, the #editor state).
-// Its size and colour are the Style tab's, from the site's type scale and
-// palette.
+// The heading's Text group: its text, its level and an optional link, as
+// the approved layout draws them (design/layout/, the editor state). Its
+// size and colour are the Size and color group's, from the site's type
+// scale and palette.
 import { REMOVE } from "../../document/commands.ts";
 import { RadioField, TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
@@ -44,12 +44,8 @@ function HeadingContent({ block }: ContentProps<"heading">) {
         rules={{ kind: "href", maxLength: 2048 }}
         onCommit={(href) => commands.setProps({ href: href.trim() === "" ? REMOVE : href.trim() })}
       />
-      <div className="field">
-        <span className="label">Size and color</span>
-        <p className="hint">Set in the Style tab, from your site’s type scale and palette.</p>
-      </div>
     </>
   );
 }
 
-export const panel: WidgetPanel<"heading"> = { Content: HeadingContent };
+export const panel: WidgetPanel<"heading"> = { content: { name: "Text", Content: HeadingContent } };

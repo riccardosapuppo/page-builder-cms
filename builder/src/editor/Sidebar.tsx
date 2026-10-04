@@ -1,21 +1,23 @@
 // The one sidebar, on the right (the approved layout, design/layout/): the
 // Page tab, the page's own settings and the way to the site style; the
-// Block tab, the selected block's panel (./panels/EditPanel.tsx). The tab
-// follows the selection: a block chosen shows Block, nothing selected shows
-// Page, and either can be chosen by hand in between. Site style opens a
-// level below Page, in the sidebar's place, and closes back to it. The top
-// bar's sidebar key, or the sidebar's own close button, hides it, and the
-// canvas takes its room.
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+// Block tab, the selected block's panel (./panels/EditPanel.tsx), each in
+// its collapsible groups. The tab follows the selection: a block chosen
+// shows Block, nothing selected shows Page, and either can be chosen by
+// hand in between; the choice holds for that selection only (ui-store's
+// sideTab), so a key that edits the block's words finds its tab. Site
+// style opens a level below Page, in the sidebar's place, and closes back
+// to it. The top bar's sidebar key, or the sidebar's own close button,
+// hides it, and the canvas takes its room.
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { afterRender } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { BlockPanel, PagePanel } from "./panels/EditPanel.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
-import type { UiStore } from "./ui-store.ts";
+import type { SideTab, UiStore } from "./ui-store.ts";
 
-const TABS = ["page", "block"] as const;
-type Tab = (typeof TABS)[number];
+const TABS: readonly SideTab[] = ["page", "block"];
+type Tab = SideTab;
 const TAB_NAMES: Readonly<Record<Tab, string>> = { page: "Page", block: "Block" };
 
 // Opens the site style in the sidebar, the sidebar shown if it was hidden,
@@ -37,7 +39,7 @@ export function toggleSidebar(ui: UiStore): void {
 }
 
 export function Sidebar() {
-  const { ui } = useEnv();
+  const { store, ui } = useEnv();
   const open = useUi((u) => u.sidebarOpen);
   const tray = useUi((u) => u.tray);
   if (!open) return null;
@@ -46,8 +48,9 @@ export function Sidebar() {
       <aside className="sidebar chrome" aria-label="Site style">
         <SiteStylePanel
           onClose={() => {
-            ui.getState().setTray("edit");
-            // A level up: the Page tab, the focus on the way back in.
+            // A level up: the Page tab, whatever is selected, the focus on
+            // the way back in.
+            ui.setState({ tray: "edit", sideTab: { tab: "page", selection: store.getState().selection } });
             afterRender(() => document.querySelector<HTMLElement>(".sidebar [data-site-style]")?.focus());
           }}
         />
@@ -60,16 +63,19 @@ export function Sidebar() {
 function Settings() {
   const { ui } = useEnv();
   const selection = useEditor((s) => s.selection);
+  const pick = useUi((u) => u.sideTab);
   const id = useId();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
-  // Follows the selection, as React keeps state that follows a value from
-  // outside: adjusted while drawing.
-  const [tab, setTab] = useState<Tab>(selection === null ? "page" : "block");
-  const [seen, setSeen] = useState(selection);
-  if (selection !== seen) {
-    setSeen(selection);
-    setTab(selection === null ? "page" : "block");
-  }
+  // The tab chosen by hand while this selection holds, else the one the
+  // selection asks for.
+  const tab: Tab = pick !== null && pick.selection === selection ? pick.tab : selection === null ? "page" : "block";
+  const setTab = (next: Tab) => ui.getState().setSideTab({ tab: next, selection });
+  // A choice made for another selection is let go, so it does not come
+  // back when that selection does.
+  useEffect(() => {
+    const now = ui.getState().sideTab;
+    if (now !== null && now.selection !== selection) ui.getState().setSideTab(null);
+  }, [selection, ui]);
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
@@ -114,20 +120,21 @@ function PageTab() {
   const { ui } = useEnv();
   const id = useId();
   return (
-    <>
-      <PagePanel />
-      <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
-        <Icon name="style" />
-        <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
-        <Icon name="chevron-right" className="i i-xs" />
-      </button>
-    </>
+    <PagePanel
+      after={(
+        <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
+          <Icon name="style" />
+          <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
+          <Icon name="chevron-right" className="i i-xs" />
+        </button>
+      )}
+    />
   );
 }
 
 function NoBlock() {
   return (
-    <div className="tray-body">
+    <div className="sb-body sb-body-pad">
       <p className="hint">Nothing is selected. Select a block on the page, in the Outline or in the bottom line, and its settings show here.</p>
     </div>
   );
