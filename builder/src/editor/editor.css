@@ -218,7 +218,13 @@ body {
 .dtabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--graphite); }
 .drawer-where { margin: 10px 0 4px; font-size: 12px; line-height: 16px; color: var(--steel); }
 .drawer-where strong { color: var(--graphite); font-weight: 600; }
-.drawer-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+/* Each scroll box of a drawer or of the sidebar (.drawer-body, .sb-body,
+   .tray-body) holds what is placed absolutely inside it: a toggle's
+   hidden checkbox, a word only a screen reader hears. Held by the window
+   instead, the ones below the box's foot reached past the window's: the
+   whole editor scrolled, its scrollbar took 15 from the canvas, and
+   focusing such a checkbox moved every part of the editor up. */
+.drawer-body { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 .drawer-body > .group-title { margin: 14px 0 8px; }
 .drawer-body-tight { padding: 2px 8px 16px; }
 .drawer-body-tree { padding: 8px 8px 12px; }
@@ -310,7 +316,7 @@ body {
 .tray-head-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 8px 6px 16px; }
 .tray-head-title > h2 { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; line-height: 20px; font-weight: 600; }
 .tray-head-title > h2 .i { color: var(--steel); }
-.tray-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.tray-body { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 
 .search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; margin-top: 8px; background: var(--white); border: 1px solid var(--rule); border-radius: var(--r-field); color: var(--steel); }
 .search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--graphite); outline: none; }
@@ -347,7 +353,7 @@ body {
 .ed-title strong { display: block; font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-title span:not(.ed-icon) { display: block; color: var(--steel); font-size: 12px; line-height: 16px; }
 .sidebar .device-note { flex: none; margin: 0 16px 12px; }
-.sb-body { flex: 1; min-height: 0; overflow: auto; padding-bottom: 12px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.sb-body { position: relative; flex: 1; min-height: 0; overflow: auto; padding-bottom: 12px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 .sb-body-pad { padding: 4px 16px 20px; }
 .sb-refused { margin: 0 16px 12px; }
 /* A group: a head that opens and closes it, with its value in words when

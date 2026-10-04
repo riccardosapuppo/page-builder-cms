@@ -303,7 +303,10 @@ block, and a version kept, a publish and a preview from inside the text,
 each with what was just typed), `sidebar.spec.ts` (closed groups saying
 their values; the groups open kept in the browser per block type, across
 a reload and not in another profile; a value the CMS refuses opening the
-group that holds it; the Page tab's description saved), `devices.spec.ts` (a tablet's and a
+group that holds it; the Page tab's description saved; a gallery's six
+images in the sidebar and a long page's Outline each scrolling inside
+itself, the window never, the page 1088 and 807 wide as before, in a
+browser that draws its scrollbar), `devices.spec.ts` (a tablet's and a
 phone's own space set in the column's Spacing group, the canvas at 768 and 390 and the
 page the CMS serves in windows of those widths showing the same; Remove
 leaving the draft with no tablet part, the focus on the ruler, undo and

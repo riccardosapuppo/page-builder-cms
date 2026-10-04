@@ -3,10 +3,12 @@
 // ones saying their values; which groups are open kept in this browser for
 // the person, per block type, across a reload and not in another browser's
 // profile; a value the CMS refuses opening the group that holds its field;
-// and the Page tab's own groups, saved to the CMS, with the site style one
-// click below.
-import { block } from "./helpers/canvas.ts";
-import { column, draftOf, expect, heading, makePage, open, openGroup, outlineRow, saved, section, test, widget } from "./helpers/site.ts";
+// the Page tab's own groups, saved to the CMS, with the site style one
+// click below; and a sidebar or a drawer taller than the window scrolling
+// inside itself, never the window.
+import { chromium } from "@playwright/test";
+import { block, clampKeysCovered, visibleShare } from "./helpers/canvas.ts";
+import { answerElsewhere, column, draftOf, drawer, expect, heading, makePage, open, openGroup, outlineRow, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -120,4 +122,73 @@ test("the Page tab holds the page's title, address and description in its groups
   await expect(style).toBeVisible();
   await style.getByRole("button", { name: "Back to Page" }).click();
   await expect(sidebar.getByRole("button", { name: "Site style", exact: true })).toBeFocused();
+});
+
+// The sidebar and a drawer taller than the window each scroll inside
+// themselves, and the window never does, measured as a Windows browser
+// draws it: with its scrollbar shown. A gallery of six images has six
+// Decorative toggles, and a long page's Outline a locked footer row below
+// its tree; their hidden checkboxes and words were held by the window, so
+// those below the box's foot made the whole editor scroll: its scrollbar
+// took 15 from the canvas, and beside the Outline the page, 807 wide, fell
+// under the desktop's 800 and was drawn smaller.
+test("a sidebar and a drawer taller than the window scroll inside themselves: the window never scrolls, and the page keeps its width", async ({ request, baseURL }) => {
+  const images = Array.from({ length: 6 }, (_, i) => ({ url: `https://images.example.org/bay-${i + 1}.jpg`, alt: `The bay, ${i + 1}` }));
+  const bands = Array.from({ length: 36 }, (_, i) => section(`b${i}`, `Band ${i + 1}`, [column(`bc${i}`, [heading(`bh${i}`, `Band ${i + 1}`)])]));
+  const { id } = await makePage(request, "Long sidebar", [
+    section("s", "Pictures", [column("c", [heading("h", "Before the pictures"), widget("g", "gallery", { items: images }), heading("h2", "After the pictures")])]),
+    ...bands,
+  ]);
+  const barred = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  try {
+    const page = await barred.newPage({ viewport: { width: 1440, height: 900 }, baseURL: baseURL!, locale: "en-US" });
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await answerElsewhere(page);
+    await open(page, id);
+    const still = () => page.evaluate(() => {
+      const root = document.documentElement;
+      const frame = document.querySelector<HTMLElement>(".canvas .frame")!;
+      return { reach: root.scrollHeight - root.clientHeight, scrolled: window.scrollY, canvas: document.querySelector<HTMLElement>(".canvas")!.clientWidth, page: frame.offsetWidth, scaled: frame.hasAttribute("data-scale") };
+    });
+    const plain = await still();
+    expect(plain).toMatchObject({ reach: 0, scrolled: 0, page: 1088, scaled: false });
+    // The scrollbar is drawn, or the widths here would mean nothing.
+    expect(await page.locator(".canvas").evaluate((element: HTMLElement) => element.offsetWidth - element.clientWidth)).toBeGreaterThanOrEqual(6);
+
+    // The gallery chosen: its six images make the sidebar scroll.
+    await block(page, "g").click();
+    const body = page.getByRole("complementary", { name: "Settings" }).locator(".sb-body");
+    const toggles = body.getByRole("switch", { name: "Decorative" });
+    await expect(toggles).toHaveCount(6);
+    expect(await body.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeGreaterThan(400);
+    expect(await still(), "the gallery chosen").toEqual(plain);
+    // The last toggle focused, as Tab reaches it: the sidebar scrolls to
+    // it, and the window stays where it is.
+    await toggles.last().focus();
+    expect(await still(), "its last toggle focused").toEqual(plain);
+    expect(await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    const [shown, toggle] = await Promise.all([body.boundingBox(), toggles.last().locator("xpath=..").boundingBox()]);
+    expect(toggle!.y).toBeGreaterThanOrEqual(shown!.y);
+    expect(toggle!.y + toggle!.height).toBeLessThanOrEqual(shown!.y + shown!.height);
+
+    // The Outline, its tree longer than the drawer: the page beside it is
+    // 807 wide in its desktop layout, and stays so.
+    const tree = (await drawer(page, "Outline")).locator(".drawer-body");
+    expect(await tree.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeGreaterThan(200);
+    const pushed = await still();
+    expect(pushed, "the Outline open").toMatchObject({ reach: 0, scrolled: 0, page: 807, scaled: false });
+    // The gallery reached by the arrows from the heading before it: in
+    // view, every key of its clamp too, and the page as it was.
+    await block(page, "h").click();
+    await page.locator(".canvas").evaluate((element) => element.scrollTo(0, 0));
+    await page.keyboard.press("ArrowDown");
+    await expect(block(page, "g")).toBeFocused();
+    await expect.poll(() => visibleShare(block(page, "g"))).toBeGreaterThan(0.95);
+    await expect.poll(() => clampKeysCovered(page)).toEqual([]);
+    expect(await still(), "the gallery reached beside the Outline").toEqual(pushed);
+    expect(errors).toEqual([]);
+  } finally {
+    await barred.close();
+  }
 });
