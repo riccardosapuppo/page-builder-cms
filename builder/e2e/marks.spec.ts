@@ -241,3 +241,34 @@ test("the selection's bar moves to the right corner where the left one would cov
   const barBox = (await page.locator('.canvas [data-block-id="t2"] .ov-bar').boundingBox())!;
   expect((await field.boundingBox())!.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
 });
+
+test("a text being written never has its bar over the words above, even where the place under it covers the next block", async ({ page, request }) => {
+  const text = (words: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] } });
+  // Columns a third of the page wide, narrower than the bar of a text being
+  // written: both its top corners cover the heading above. Under the text,
+  // a rule as wide as the column, or a button: every place covers something.
+  const { id } = await makePage(request, "Bar crowded", [
+    section("s1", "Rule", [column("c1", [heading("h1", "Swim by the keys"), widget("t1", "text", text("Tide notes")), widget("d1", "divider", {})]), column("c2", []), column("c3", [])]),
+    section("s2", "Button", [column("c4", [{ ...heading("h2", "Swim at slack water"), props: { level: 1, text: "Swim at slack water" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series.")), widget("b2", "button", { label: "Join a trial swim", href: "#" })]), column("c5", []), column("c6", [])]),
+  ]);
+  await open(page, id);
+  for (const [selected, above, below] of [["t1", "h1", "d1"], ["t2", "h2", "b2"]] as const) {
+    await block(page, selected).click();
+    // Selected, not written, the bar keeps to the top, as the design draws it.
+    expect((await barOver(page, selected, above)).place).toMatch(/^(|right)$/);
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("group", { name: "Formatting" })).toBeVisible();
+    await expect.poll(async () => (await barOver(page, selected, above)).place).toMatch(/^below( right)?$/);
+    expect((await barOver(page, selected, above)).covered).toBe(0);
+    // The bar is drawn under the block.
+    const bar = (await block(page, selected).locator(".ov-bar").boundingBox())!;
+    const own = (await block(page, selected).boundingBox())!;
+    expect(bar.y).toBeGreaterThan(own.y + own.height);
+    // There it lies over the rule, or the button: no place was free.
+    const next = (await block(page, below).locator("hr, .sw-btn").first().boundingBox())!;
+    expect(Math.min(bar.x + bar.width, next.x + next.width) - Math.max(bar.x, next.x)).toBeGreaterThan(0);
+    expect(Math.min(bar.y + bar.height, next.y + Math.max(next.height, 1)) - Math.max(bar.y, next.y)).toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("group", { name: "Formatting" })).toHaveCount(0);
+  }
+});

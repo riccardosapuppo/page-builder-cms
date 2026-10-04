@@ -421,8 +421,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 }
 /* Where the bar stands when the top left corner would cover the block
    above (Canvas.tsx, placeBar): the top right corner, as the design says;
-   while a text is written, under the block, its link field under the bar,
-   and the dimension line it would cover not drawn. */
+   while a text is written and both top corners would, under the block,
+   its link field under the bar, and the dimension line it would cover not
+   drawn. */
 .ov-sel[data-bar~="right"] > .ov-bar { left: auto; right: -8px; }
 .ov-sel[data-bar~="below"] > .ov-bar { bottom: auto; top: calc(100% + 11px); }
 .ov-sel[data-bar~="below"] > .ov-link { top: calc(100% + 51px); }

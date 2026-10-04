@@ -313,14 +313,17 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
 // The selection's bar stands at the block's top left corner, as the design
 // draws it, and moves to the top right corner when the left one would
 // cover what the block above shows and the right one would not
-// (design/NOTES.md, section 4). While a text is being written, its bar,
-// wider with bold, italic and link, may also stand under the block, the
-// link's field under it, when both top corners would cover something and
-// a place below would not. Where every place covers something, it stays at
-// the top, in the corner that covers less. What a block shows is its words, as their lines lie,
-// and its pictures and buttons; the editor's own marks are not counted.
-// Placed again when the bar, the block or the page changes size, and when
-// the page is drawn at a new scale.
+// (design/NOTES.md, section 4); where both would, it stays in the corner
+// that covers less. While a text is being written, its bar, wider with
+// bold, italic and link, never covers what the block above shows: where
+// both top corners would, it stands under the block, the link's field
+// under it, in the bottom corner that covers less of what lies there,
+// even when that is the next block's words or button, as the link's field
+// covers them: the words above are what a person writing reads on from.
+// What a block shows is its words, as their lines lie, and its pictures,
+// buttons and rules; the editor's own marks are not counted. Placed again
+// when the bar, the block or the page changes size, and when the page is
+// drawn at a new scale.
 const BAR_PLACES = ["", "right"] as const;
 const WRITING_PLACES = ["", "right", "below", "below right"] as const;
 const INK = "img, svg, iframe, video, canvas, .sw-btn, hr";
@@ -364,10 +367,11 @@ function placeBar(frame: HTMLElement): void {
     .filter((block) => block !== own && !own.contains(block) && !block.contains(own) && block.dataset.blockType !== "section" && block.dataset.blockType !== "column")
     .flatMap((block) => inkOf(block, area));
   const covered = boxes.map((box) => ink.reduce((sum, rect) => sum + overlap(box, rect), 0));
-  // The first place that covers nothing; else, at the top, the corner
-  // that covers less (a place below would hide the next block instead).
+  // The first place that covers nothing; else the top corner that covers
+  // less, or, a text being written, the bottom one.
   const free = covered.indexOf(0);
-  const best = free >= 0 ? free : (covered[1] ?? Infinity) < (covered[0] ?? Infinity) ? 1 : 0;
+  const first = places === WRITING_PLACES ? 2 : 0;
+  const best = free >= 0 ? free : (covered[first + 1] ?? Infinity) < (covered[first] ?? Infinity) ? first + 1 : first;
   frame.dataset.bar = places[best] ?? "";
 }
 
