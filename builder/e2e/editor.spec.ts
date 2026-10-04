@@ -20,7 +20,7 @@
 // own, since the tests of a run share one CMS.
 import { chromium, type Page } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, device, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique, widget } from "./helpers/site.ts";
+import { cms, column, device, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique, watchQuietly, widget } from "./helpers/site.ts";
 
 const row = async (page: Page, name: string) => {
   await drawer(page, "Outline");
@@ -314,10 +314,13 @@ test("the theme's header and footer are drawn around the page, locked, and the O
 // the desktop page of 800 drawn at 81% (design/layout/NOTES.md, 4.8).
 test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desktop layout at 1280; the Outline and History make it 807, and 800 drawn at 81%", async ({ request, baseURL }) => {
   const { id } = await makePage(request, "Widths shown", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+  // A browser of the test's own, which the shared fixture does not watch:
+  // each of its pages is held to the same checks by the same function.
   const barred = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
   try {
     for (const [windowWidth, windowHeight, least, pushed] of [[1440, 900, 1088, { page: 807, scaled: false, words: "Page 807 wide, desktop layout" }], [1280, 800, 800, { page: 800, scaled: true, words: "Page 800 wide, desktop layout, drawn at 81%" }]] as const) {
-      const shown = await barred.newPage({ viewport: { width: windowWidth, height: windowHeight }, baseURL: baseURL!, locale: "en-US" });
+      const shown = await barred.newPage({ viewport: { width: windowWidth, height: windowHeight }, baseURL: baseURL!, locale: "en-US", timezoneId: "UTC" });
+      const errors = await watchQuietly(shown, baseURL!);
       await open(shown, id);
       const measure = () => shown.evaluate(() => {
         const canvas = document.querySelector<HTMLElement>(".canvas")!;
@@ -349,6 +352,7 @@ test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desk
         expect(over!.x + over!.width, `${windowWidth}, ${name}: the drawer's right edge`).toBeLessThanOrEqual(canvas!.x);
         expect(site!.x, `${windowWidth}, ${name}: the page's left edge`).toBeGreaterThanOrEqual(over!.x + over!.width);
       }
+      expect(errors, `${windowWidth}: errors and requests outside the run's servers`).toEqual([]);
       await shown.close();
     }
   } finally {

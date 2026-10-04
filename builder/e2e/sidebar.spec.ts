@@ -8,7 +8,7 @@
 // inside itself, never the window.
 import { chromium } from "@playwright/test";
 import { block, clampKeysCovered, visibleShare } from "./helpers/canvas.ts";
-import { answerElsewhere, column, draftOf, drawer, expect, heading, makePage, open, openGroup, outlineRow, saved, section, test, widget } from "./helpers/site.ts";
+import { column, draftOf, drawer, expect, heading, makePage, open, openGroup, outlineRow, saved, section, test, watchQuietly, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -49,15 +49,17 @@ test("closed groups say their values, and which are open is kept in this browser
   await expect(head("Alignment")).toHaveAttribute("aria-expanded", "true");
 
   // Another browser's profile has its own: there, the heading's groups as
-  // they first are.
+  // they first are. Its page is held to what the test's own is.
   const other = await browser.newContext({ ...(baseURL ? { baseURL } : {}), viewport: { width: 1440, height: 900 }, locale: "en-US", timezoneId: "UTC" });
   try {
     const second = await other.newPage();
+    const errors = await watchQuietly(second, baseURL!);
     await open(second, id);
     await block(second, "h").click();
     const there = second.getByRole("complementary", { name: "Settings" });
     await expect(there.getByRole("button", { name: "Text", exact: true })).toHaveAttribute("aria-expanded", "true");
     await expect(there.getByRole("button", { name: "Alignment", exact: true })).toHaveAttribute("aria-expanded", "false");
+    expect(errors).toEqual([]);
   } finally {
     await other.close();
   }
@@ -139,12 +141,12 @@ test("a sidebar and a drawer taller than the window scroll inside themselves: th
     section("s", "Pictures", [column("c", [heading("h", "Before the pictures"), widget("g", "gallery", { items: images }), heading("h2", "After the pictures")])]),
     ...bands,
   ]);
+  // A browser of the test's own, which the shared fixture does not watch:
+  // its page is held to the same checks by the same function.
   const barred = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
   try {
-    const page = await barred.newPage({ viewport: { width: 1440, height: 900 }, baseURL: baseURL!, locale: "en-US" });
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    await answerElsewhere(page);
+    const page = await barred.newPage({ viewport: { width: 1440, height: 900 }, baseURL: baseURL!, locale: "en-US", timezoneId: "UTC" });
+    const errors = await watchQuietly(page, baseURL!);
     await open(page, id);
     const still = () => page.evaluate(() => {
       const root = document.documentElement;

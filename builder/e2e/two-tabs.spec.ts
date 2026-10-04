@@ -18,38 +18,26 @@ import type { Browser, BrowserContext, Page, Request } from "@playwright/test";
 import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState } from "./helpers/heading.ts";
 import { block } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
-import { cms, column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique } from "./helpers/site.ts";
+import { cms, column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique, watchQuietly } from "./helpers/site.ts";
 
 const VIEWPORT = { width: 1440, height: 900 };
-test.use({
-  viewport: VIEWPORT,
-  // The browser's own lines for what these tests make happen: the CMS's
-  // 409 to a save from a revision another tab moved on from, and a save
-  // the network drops.
-  allowConsole: /status of 409 \(Conflict\)|net::ERR_INTERNET_DISCONNECTED/,
-});
+// The browser's own lines for what these tests make happen: the CMS's 409
+// to a save from a revision another tab moved on from, and a save the
+// network drops.
+const ALLOWED = /status of 409 \(Conflict\)|net::ERR_INTERNET_DISCONNECTED/;
+test.use({ viewport: VIEWPORT, allowConsole: ALLOWED });
 
 const fixture = () => [section("s", "Story", [column("c", [heading("h", "First words")])])];
 const DRAFT = "**/api/pages/*/draft";
 
-// The second tab: a context of its own, held to what the first tab's is
-// held to by the shared fixture (helpers/site.ts): no error on the page or
-// in its console but the lines this file allows, and no request outside
-// the run's two servers.
+// The second tab: a context of its own, held by the same function to what
+// the first tab's is held to by the shared fixture (helpers/site.ts): no
+// error on the page or in its console but the lines this file allows, and
+// no request outside the run's two servers.
 async function secondTab(browser: Browser, baseURL: string): Promise<{ context: BrowserContext; page: Page; errors: string[] }> {
   const context = await browser.newContext({ baseURL, viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC" });
   const page = await context.newPage();
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error" && !/status of 409 \(Conflict\)|net::ERR_INTERNET_DISCONNECTED/.test(message.text())) errors.push(message.text());
-  });
-  await page.route("**/*", async (route) => {
-    const url = route.request().url();
-    if (url.startsWith(baseURL) || url.startsWith(cms())) return route.fallback();
-    errors.push(`request outside the run's servers: ${url}`);
-    return route.abort();
-  });
+  const errors = await watchQuietly(page, baseURL, ALLOWED);
   return { context, page, errors };
 }
 

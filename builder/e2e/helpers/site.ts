@@ -16,40 +16,45 @@ export const cms = (): string => {
   return url;
 };
 
-// Every test ends with no error on the page, none in its console (but the
-// browser's own line for a request the CMS answered 422, which some tests
-// ask for, and the lines a test names in allowConsole: the failures it
-// makes the network have) and no request that went anywhere but the run's
-// two servers.
+// What every page a test drives is held to: no error on the page, none in
+// its console (but the browser's own line for a request the CMS answered
+// 422, which some tests ask for, and the lines `allow` names: the failures
+// a test makes the network have), and no request anywhere but the run's
+// two servers, which is refused and noted; the pictures "from another
+// site" are answered inside the browser. What went wrong, as it comes:
+// the test checks the list is empty at its end. The fixture below holds
+// each test's own page to it; a page of a context or a browser a test
+// opens for itself (a second tab, a browser that draws its scrollbars) is
+// not that page, and is held to it by the test with this same function.
+export async function watchQuietly(page: Page, editor: string, allow: RegExp | null = null): Promise<string[]> {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    const text = message.text();
+    if (message.type() === "error" && !/status of 422/.test(text) && !allow?.test(text)) errors.push(text);
+  });
+  await page.route("**/*", async (route) => {
+    const url = route.request().url();
+    if (url.startsWith(ELSEWHERE)) return route.fulfill({ body: PIXEL, contentType: "image/png" });
+    if ((editor !== "" && url.startsWith(editor)) || url.startsWith(cms())) return route.fallback();
+    errors.push(`request outside the run's servers: ${url}`);
+    return route.abort();
+  });
+  return errors;
+}
+
+// Every test ends with its page held to the above, allowConsole naming the
+// console lines it lets through.
 export const test = base.extend<{ quiet: void; allowConsole: RegExp | null }>({
   allowConsole: [null, { option: true }],
   quiet: [async ({ page, baseURL, allowConsole }, use) => {
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    page.on("console", (message) => {
-      const text = message.text();
-      if (message.type() === "error" && !/status of 422/.test(text) && !allowConsole?.test(text)) errors.push(text);
-    });
-    await page.route("**/*", async (route) => {
-      const url = route.request().url();
-      if (url.startsWith(ELSEWHERE)) return route.fulfill({ body: PIXEL, contentType: "image/png" });
-      if (url.startsWith(baseURL ?? "") || url.startsWith(cms())) return route.fallback();
-      errors.push(`request outside the run's servers: ${url}`);
-      return route.abort();
-    });
+    const errors = await watchQuietly(page, baseURL ?? "", allowConsole);
     await use();
     expect(errors).toEqual([]);
   }, { auto: true }],
 });
 
 export { expect };
-
-// The same picture, for a page of a browser a test launches for itself
-// (one that draws its scrollbars, say), which the fixture above does not
-// watch: nothing leaves the machine there either.
-export async function answerElsewhere(page: Page): Promise<void> {
-  await page.route(`${ELSEWHERE}**`, (route) => route.fulfill({ body: PIXEL, contentType: "image/png" }));
-}
 
 let made = 0;
 export const unique = (stem: string): string => `${stem}-${process.pid}-${Date.now().toString(36)}-${++made}`;
