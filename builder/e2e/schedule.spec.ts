@@ -44,7 +44,8 @@ test("a publish scheduled a few seconds ahead goes live at its time, with the dr
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: "More publish options" })).toBeFocused();
 
-  const when = siteTime(8_000);
+  // Far enough ahead for a slow machine to fill the dialog in time.
+  const when = siteTime(12_000);
   await schedule(page, when);
   await expect(page.locator(".topbar .tb-status")).toHaveText(`Not published yet · scheduled for ${when.said}`);
   const history = await drawer(page, "History");
@@ -73,7 +74,8 @@ test("a scheduled publish cancelled from the history does nothing at its time", 
   await open(page, kept.id);
   await retitle(page, "Words that never go live");
   await saved(page);
-  const cancelledAt = siteTime(6_000);
+  // Far enough ahead to be cancelled from the history before its time.
+  const cancelledAt = siteTime(12_000);
   await schedule(page, cancelledAt);
   await expect(page.locator(".topbar .tb-status")).toHaveText(`Published, 1 change not live · scheduled for ${cancelledAt.said}`);
 
