@@ -31,11 +31,16 @@ test("the + on the selected block's edge opens its yellow line and the block pic
   const drawn = (await plus.boundingBox())!;
   expect(Math.abs(drawn.x + drawn.width / 2 - (frame.x + frame.width / 2))).toBeLessThan(1);
   expect(Math.abs(drawn.y + drawn.height / 2 - (frame.y + frame.height - 2))).toBeLessThan(1.5);
+  // The gap below the heading has its dimension line, which waits while
+  // the picker's line opens there, as the layout draws it.
+  const dimension = page.locator('.canvas [data-block-id="h"] > .ov-dim-v');
+  await expect(dimension).toBeVisible();
   await plus.click();
   // The line opens in the column, between the heading and the button,
   // pushing the button down by its own height and the column's gap.
   const slot = page.locator('.canvas [data-block-id="c1"] > .ins-slot-wrap');
   await expect(slot).toBeVisible();
+  await expect(dimension).toHaveCount(0);
   const heading = (await block(page, "h").boundingBox())!;
   const line = (await slot.boundingBox())!;
   const button = (await block(page, "b").boundingBox())!;

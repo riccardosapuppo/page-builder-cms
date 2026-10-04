@@ -408,6 +408,10 @@ interface Pluses {
   // drawer's line stands.
   slot: number | null;
   point: number | null;
+  // A picker is open: the selected block's dimension line waits, as the
+  // gap it measures may be where the picker's yellow line opens (the
+  // layout draws none there, design/layout/shots/add.png).
+  picking: boolean;
 }
 
 // The section the selection is in (the section itself when it is one).
@@ -447,6 +451,7 @@ function usePluses(block: RawBlock, id: string | null, relation: Relation): Plus
     section,
     slot,
     point: picking ? null : point,
+    picking,
   };
 }
 
@@ -486,7 +491,7 @@ function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs
           {kind === "section" && <span className="veil-note"><Icon name="block" className="i i-xs" />{mark.note}</span>}
         </div>
       )}
-      {relation === "selected" && dimension && <DimensionLine dimension={dimension} />}
+      {relation === "selected" && dimension && !pluses.picking && <DimensionLine dimension={dimension} />}
       {relation === "selected" && (
         <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? selectionHug : undefined} data-writing={tools ? "true" : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
