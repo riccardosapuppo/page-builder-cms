@@ -8,7 +8,8 @@ no behaviour beyond switching between still states.
 
 **This folder is frozen.** It stays as it was approved on 1 October 2026,
 so it can always be compared with what the code draws; it is not edited to
-follow the code. In particular `design/tokens.json` is the mock's own copy
+follow the code. The one later addition is `layout/` (below), the editor's
+layout approved on 3 October 2026, frozen in the same way. In particular `design/tokens.json` is the mock's own copy
 and no longer the project's tokens: [`../schema/tokens.json`](../schema/tokens.json)
 is the canonical file, and it has moved on (the palette slots and their
 curated tones, the type scales, the image crops and other additions the
@@ -20,6 +21,37 @@ on the canonical file.
 **Accent:** Tool yellow `#EDC200`, always with graphite edges and graphite
 text on it, chosen on 1 October 2026 from three candidates shown in the same
 editor (`shots-extra/accent-choice.png`).
+
+## Two references: the identity and the layout
+
+- **The identity** comes from this folder's mock, the one approved on
+  1 October 2026, and it is unchanged: the palette, Tool yellow with its
+  graphite edges, the three typefaces, the mark, the icons, the controls,
+  the example site.
+- **The layout** comes from [`layout/`](layout/), approved on 3 October
+  2026, which replaced the stage-0 mock's arrangement of the editor (the
+  widget panel on the left, the navigator in a fixed column, the Content,
+  Style and Advanced tabs). It keeps this identity and rearranges the same
+  editor: a top bar with Insert, Outline and History; round "+" buttons
+  on the page; the selected block's tools in a clamp in the page's
+  margin; one sidebar with Page and Block tabs and named groups; the
+  selection's path, the devices and the page's width in a bottom line.
+  `layout/NOTES.md` is its designer's record: where each part came from,
+  the rules the clamp and the "+" follow, the keys, what was left out and
+  why. Open `layout/index.html` from disk; the hash picks the state, as
+  here, and the shots of every state are in `layout/shots/` (1440 by 900,
+  `editor-1280` at 1280 by 800) and `layout/shots-extra/`
+  (`insert-drawer-1280` and `outline-col1` at 1280 by 800).
+
+The layout is copied as it was approved, with two changes: its theme,
+images and fonts are this folder's (`../theme.css`, `../img/`,
+`../fonts/`), not copied again; and its notes call the written request it
+was drawn from "the mix's brief", a document that is not in the
+repository. The two scripts that shot it, which its notes name, stayed
+with the drawings' working folder, outside the repository too.
+
+Where the editor departs from the layout, on purpose, is listed in
+[`../builder/src/editor/README.md`](../builder/src/editor/README.md).
 
 ## Opening it
 
@@ -72,6 +104,8 @@ the accent comparison).
 - `NOTES.md`: the designer's record, round by round; where an earlier
   passage and a later one disagree, the later one wins. `CHANGES.md`: the
   list of changes asked for after the three directions were judged.
+- `layout/`: the editor's approved layout (above): `index.html`,
+  `styles.css`, `script.js`, `NOTES.md`, `shots/` and `shots-extra/`.
 
 ## Tools
 
