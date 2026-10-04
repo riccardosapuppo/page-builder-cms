@@ -349,9 +349,10 @@ the run's own library as the editor uploads an image, with the library's
 ids in place of the fixture's own; the rest is the fixture as it is. (Ten
 of its images name another site, which this machine cannot fetch.) Each
 command that needs servers starts them, on ports of its own (3902 for the
-production CMS; 3901 and 4901 for the e2e CMS and the editor), with
-databases and an Active Storage root of its own, and deletes them when it
-ends.
+production CMS; 3901 and 4901 for the e2e CMS and the editor;
+`MEASURE_SERVER_PORT`, `MEASURE_CMS_PORT` and `MEASURE_EDITOR_PORT` move
+them), with databases and an Active Storage root of its own, and deletes
+them when it ends.
 
 How a number is taken:
 - **On a quiet machine.** A command waits until two readings in a row,
