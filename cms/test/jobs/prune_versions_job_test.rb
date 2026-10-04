@@ -102,7 +102,12 @@ class PruneVersionsJobTest < ActiveSupport::TestCase
       assert_equal [ "PruneVersionsJob", "every day at 3:30am" ], tasks.fetch("prune_versions").values_at("class", "schedule"), env
       assert_equal [ "PurgeMediaJob", "every day at 4am" ], tasks.fetch("purge_media").values_at("class", "schedule"), env
     end
-    cron = Fugit.parse("#{Fugit.parse('every day at 3:30am').to_cron_s} #{Rails.application.config.time_zone}")
+    # By the site's clock: Solid Queue's scheduler reads a schedule with no
+    # zone in its own default zone (SolidQueue.time_zone, which it takes
+    # from config.time_zone), as RecurringTask#next_time does here. The
+    # task's model needs the queue's tables, which the tests do not have.
+    assert_equal "Europe/London", SolidQueue.time_zone
+    cron = Fugit.parse("#{Fugit.parse(config.dig('production', 'prune_versions', 'schedule')).to_cron_s} #{SolidQueue.time_zone}")
     assert_equal Time.utc(2026, 7, 2, 2, 30), cron.next_time(Time.utc(2026, 7, 1, 12, 0)).to_t.utc, "3:30 in London is 2:30 UTC in summer"
     assert_equal Time.utc(2026, 12, 2, 3, 30), cron.next_time(Time.utc(2026, 12, 1, 12, 0)).to_t.utc, "and 3:30 UTC in winter"
   end
