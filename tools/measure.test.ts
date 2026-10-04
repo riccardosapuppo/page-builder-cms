@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { createServer, type AddressInfo } from "node:net";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { graph, dynamicImports, staticImports } from "./lib/bundle-graph.ts";
@@ -176,6 +177,38 @@ test("node tools/measure.cjs with a name that is none of the three starts nothin
   const ran = spawnSync(process.execPath, ["tools/measure.cjs", "everything"], { cwd: repoRoot, encoding: "utf8" });
   assert.equal(ran.status, 2, `${ran.stdout}${ran.stderr}`);
   assert.match(ran.stdout, /Measure what\?/);
+});
+
+// A port held by this test, which the measurement is told to use: it must
+// say so and start nothing, exit 2, and not measure beside another server.
+async function withPortHeld(body: (port: number) => Promise<void>): Promise<void> {
+  const holder = createServer();
+  await new Promise<void>((done, fail) => {
+    holder.once("error", fail);
+    holder.listen(0, "127.0.0.1", done);
+  });
+  try {
+    await body((holder.address() as AddressInfo).port);
+  } finally {
+    await new Promise((done) => holder.close(done));
+  }
+}
+
+test("a measurement whose port is held by another process starts nothing and exits 2", async () => {
+  await withPortHeld(async (port) => {
+    const server = spawnSync(process.execPath, ["tools/measure.cjs", "server"], { cwd: repoRoot, encoding: "utf8", env: { ...process.env, MEASURE_SERVER_PORT: String(port) } });
+    assert.match(server.stdout, new RegExp(`port ${port} is already taken .*: nothing was started`));
+    assert.equal(server.status, 2, `${server.stdout}${server.stderr}`);
+    const builder = spawnSync(process.execPath, ["tools/measure.cjs", "builder"], { cwd: repoRoot, encoding: "utf8", env: { ...process.env, MEASURE_CMS_PORT: String(port) } });
+    assert.match(builder.stdout, new RegExp(`port ${port}, for the CMS, is already taken .*: nothing was started`));
+    assert.equal(builder.status, 2, `${builder.stdout}${builder.stderr}`);
+  });
+});
+
+test("a port that is not a port number is refused before anything starts", () => {
+  const ran = spawnSync(process.execPath, ["tools/measure.cjs", "server"], { cwd: repoRoot, encoding: "utf8", env: { ...process.env, MEASURE_SERVER_PORT: "seventy" } });
+  assert.match(ran.stdout, /MEASURE_SERVER_PORT must be a port number, not "seventy": nothing was started/);
+  assert.equal(ran.status, 2);
 });
 
 test("the page the measurements run on has 500 blocks, and its library ids replace the fixture's, all of them", () => {

@@ -60,7 +60,7 @@ import { bySelf, byTotal, reduce, type Profile } from "./lib/cpu-profile.ts";
 import { buildEditor } from "./lib/editor-build.ts";
 import { banner, busyRange, discardedWords, median, ms, newTally, percentile, quietLimit, quietRun, runsFrom, summary, waitForQuiet, type Tally } from "./lib/measure.ts";
 import { publishLargePage, publishSmallPage } from "./lib/measure-site.ts";
-import { CouldNotRun } from "./lib/processes.ts";
+import { CouldNotRun, listeners } from "./lib/processes.ts";
 
 const port = (name: string, fallback: number): number => {
   const raw = process.env[name];
@@ -585,6 +585,11 @@ try {
   const cmsPort = port("MEASURE_CMS_PORT", 3901);
   const editorPort = port("MEASURE_EDITOR_PORT", 4901);
   const runs = runsFrom("MEASURE_RUNS_BUILDER", 9);
+  // Before the minute the build takes: the ports must be free.
+  for (const [what, number] of [["the CMS", cmsPort], ["the editor", editorPort]] as const) {
+    const taken = listeners(number);
+    if (taken.length) throw new CouldNotRun(`port ${number}, for ${what}, is already taken (${taken.map((l) => `${l.address}, process ${l.pid}`).join("; ")}): nothing was started`);
+  }
   console.log(banner("measure-builder"));
   const quiet = await waitForQuiet({ say: (line) => console.log(line) });
   console.log(`the machine was ${quiet.readings.map((r) => `${r.toFixed(0)}%`).join(" then ")} busy before the run (waited ${quiet.waited.toFixed(0)} s)`);
