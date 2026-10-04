@@ -275,7 +275,7 @@ class PageCacheTest < ActionDispatch::IntegrationTest
   end
 
   # With forgery protection on, as in production (see PublicPagesTest).
-  test "no answer of a cached page sets a cookie or carries a CSRF token: drawn, read whole, or 304" do
+  test "no answer of a cached page sets a cookie or carries a CSRF token, and one read whole keeps the policy of one drawn" do
     published
     before = ActionController::Base.allow_forgery_protection
     ActionController::Base.allow_forgery_protection = true
@@ -284,10 +284,13 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_nil response.headers["Set-Cookie"]
     assert_select "meta[name=csrf-token], meta[name=csrf-param]", false
+    policy = response.headers["Content-Security-Policy"]
+    assert_includes policy, "script-src 'none'"
     whole = with_page_cache { get "/tides" }
     assert_response :ok
     assert_nil response.headers["Set-Cookie"]
     assert_select "meta[name=csrf-token], meta[name=csrf-param]", false
+    assert_equal policy, response.headers["Content-Security-Policy"], "a page read whole from the cache keeps its policy"
     with_page_cache { get "/tides", headers: { "If-None-Match" => response.headers["ETag"] } }
     assert_response :not_modified
     assert_nil response.headers["Set-Cookie"]
