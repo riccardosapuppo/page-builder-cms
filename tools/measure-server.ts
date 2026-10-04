@@ -4,6 +4,9 @@
 // (contract/fixtures/large-500.json), in production mode, over HTTP on
 // 127.0.0.1:3902 (MEASURE_SERVER_PORT moves it), in each state its caches
 // can be in:
+// - the floor: the health check, /up, which touches no database and draws
+//   nothing, so that what a request costs on this stack by itself is read
+//   beside what the page costs;
 // - drawn with no cache at all: the draft preview, which goes through the
 //   same layout and partials and neither reads nor writes a fragment;
 // - cold: Solid Cache emptied, then one visit, which draws the 500 blocks
@@ -41,7 +44,7 @@ import { Agent, request as httpRequest } from "node:http";
 import { existsSync, mkdirSync, openSync, closeSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { banner, busyRange, cpuBusy, kib, ms, quietLimit, runsFrom, summary, waitForQuiet, type Summary } from "./lib/measure.ts";
+import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
 import { api, countBlocks, headings, publishLargePage, withHeadingText, type Document } from "./lib/measure-site.ts";
 import { CouldNotRun, listeners, startTree, stopTree } from "./lib/processes.ts";
 
@@ -206,27 +209,51 @@ interface Phase {
   name: string;
   what: string;
   runs: Visit[];
+  // The load before and after each run (a batch has one pair).
   busy: number[];
   // Rows in the cache before and after each run.
   rows: Array<[number, number]>;
+  // The runs thrown away because the machine was busy.
+  tally: Tally;
 }
 
 const phases: Phase[] = [];
 let underLoad = false;
 
-async function phase(name: string, what: string, runs: number, body: (index: number) => Promise<Visit>, cache: Cache, perRun = true): Promise<Phase> {
-  const done: Phase = { name, what, runs: [], busy: [], rows: [] };
+// A phase is `runs` visits in one state, each taken on a quiet machine
+// (quietRun: one that is followed by a busy one is thrown away and taken
+// again, with a new attempt number for a body that changes state). With
+// perRun false the visits go in one batch, as a short stretch of requests
+// the load is read around once.
+async function phase(name: string, what: string, runs: number, body: (attempt: number) => Promise<Visit>, cache: Cache, perRun = true): Promise<Phase> {
+  const done: Phase = { name, what, runs: [], busy: [], rows: [], tally: newTally() };
   console.log(`${name}: ${runs} runs`);
-  if (!perRun) done.busy.push(await cpuBusy(1000));
-  for (let i = 0; i < runs; i++) {
-    if (perRun) done.busy.push(await cpuBusy(1000));
+  const sample = async (attempt: number): Promise<{ visit: Visit; rows: [number, number] }> => {
     const before = cache.entries();
-    done.runs.push(await body(i));
-    done.rows.push([before, cache.entries()]);
-    if (perRun) done.busy.push(await cpuBusy(1000));
+    const visit = await body(attempt);
+    return { visit, rows: [before, cache.entries()] };
+  };
+  const keep = (taken: { visit: Visit; rows: [number, number] }): void => {
+    done.runs.push(taken.visit);
+    done.rows.push(taken.rows);
+  };
+  if (perRun) {
+    for (let i = 0; i < runs; i++) {
+      const kept = await quietRun(sample, done.tally, { say: (line) => console.log(`${name}: ${line}`) });
+      keep(kept.value);
+      done.busy.push(...kept.busy);
+      underLoad ||= kept.loud;
+    }
+  } else {
+    const kept = await quietRun(async (attempt) => {
+      const batch: Array<{ visit: Visit; rows: [number, number] }> = [];
+      for (let i = 0; i < runs; i++) batch.push(await sample(attempt));
+      return batch;
+    }, done.tally, { say: (line) => console.log(`${name}: ${line}`) });
+    kept.value.forEach(keep);
+    done.busy.push(...kept.busy);
+    underLoad ||= kept.loud;
   }
-  if (!perRun) done.busy.push(await cpuBusy(1000));
-  if (done.busy.some((b) => b >= quietLimit())) underLoad = true;
   phases.push(done);
   return done;
 }
@@ -334,11 +361,13 @@ try {
 
   // --- One block changed ------------------------------------------------------------
   const changes = runsFrom("MEASURE_RUNS_CHANGED", 15);
-  const changed = await phase("one block changed", "a heading edited, saved and published, then one visit", changes, async (i) => {
-    const target = edits[Math.min(edits.length - 1, Math.floor(((i + 0.5) * edits.length) / changes))]!;
+  const changed = await phase("one block changed", "a heading edited, saved and published, then one visit", changes, async (attempt) => {
+    // The headings in turn, spread over the page; a run thrown away is
+    // followed by an edit of the next one.
+    const target = edits[Math.min(edits.length - 1, Math.floor(((attempt - 0.5) * edits.length) / changes))]!;
     const draft = await api(BASE, "GET", `/api/pages/${page.id}/draft`);
-    document = withHeadingText(document, target.id, `A heading changed for run ${i + 1}`);
-    await api(BASE, "PUT", `/api/pages/${page.id}/draft`, { revision: draft.revision, document, saveId: `measure-edit-${i + 1}` });
+    document = withHeadingText(document, target.id, `A heading changed for attempt ${attempt}`);
+    await api(BASE, "PUT", `/api/pages/${page.id}/draft`, { revision: draft.revision, document, saveId: `measure-edit-${attempt}` });
     await api(BASE, "POST", `/api/pages/${page.id}/publish`, {});
     const sent = await visit(path);
     return sent;
@@ -361,10 +390,11 @@ try {
       }
     }
   }
-  const flips = Math.min(runsFrom("MEASURE_RUNS_STYLE", 15), unused.length);
-  check(flips >= 5, "the site has enough styles to change to a new one each run", `${unused.length} styles besides the current`);
-  const styled = await phase("site style changed", "the style changed to one this page was never drawn in, then one visit", flips, async (i) => {
-    await api(BASE, "PUT", "/api/site-style", unused[i]);
+  // Ten styles are kept back for runs thrown away and taken again.
+  const flips = Math.min(runsFrom("MEASURE_RUNS_STYLE", 15), unused.length - 10);
+  check(flips >= 5, "the site has enough styles to change to a new one each run, and some to spare", `${unused.length} styles besides the current`);
+  const styled = await phase("site style changed", "the style changed to one this page was never drawn in, then one visit", flips, async (attempt) => {
+    await api(BASE, "PUT", "/api/site-style", unused[attempt - 1]);
     return visit(path);
   }, cache);
   check(styled.runs.every((v) => v.status === 200 && v.blocks === 500), "each visit after a style change answers 200 with the 500 blocks");
@@ -382,10 +412,10 @@ try {
   console.log(`# Solid Cache rows: ${kinds(cache.keys())}`);
   console.log("");
   console.log("One visit, ms: median (min to max) over the runs; the server's time is X-Runtime, the application's own, the client's runs from the request to the last byte:");
-  console.log("| What | Server, X-Runtime, ms | Client, last byte, ms | Runs | CPU busy before and after |");
-  console.log("| --- | --- | --- | --- | --- |");
+  console.log("| What | Server, X-Runtime, ms | Client, last byte, ms | Runs | CPU busy before and after the runs kept | Runs thrown away, machine busy |");
+  console.log("| --- | --- | --- | --- | --- | --- |");
   for (const p of phases) {
-    console.log(`| ${p.name} | ${cell(column(p, (v) => v.runtime))} | ${cell(column(p, (v) => v.total))} | ${p.runs.length} | ${busyRange(p.busy)} |`);
+    console.log(`| ${p.name} | ${cell(column(p, (v) => v.runtime))} | ${cell(column(p, (v) => v.total))} | ${p.runs.length} | ${busyRange(p.busy)} | ${discardedWords(p.tally)} |`);
   }
   console.log("");
   console.log("Counted as the store receives the calls, one visit each, apart from the timed runs:");

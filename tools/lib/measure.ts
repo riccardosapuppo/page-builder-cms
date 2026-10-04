@@ -55,13 +55,15 @@ export function kib(bytes: number): string {
   return (bytes / 1024).toFixed(1);
 }
 
-// "median 12.3 ms (min 11.0, max 15.2, 15 runs)".
-export function describe(values: readonly number[], unit = "ms"): string {
-  const s = summary(values);
-  return `median ${ms(s.median)} ${unit} (min ${ms(s.min)}, max ${ms(s.max)}, ${s.n} ${s.n === 1 ? "run" : "runs"})`;
-}
+export type Times = { idle: number; busy: number };
 
-type Times = { idle: number; busy: number };
+// The share of the time between two readings of the counters that the
+// processors spent working, in percent.
+export function percentBusy(before: Times, after: Times): number {
+  const busy = after.busy - before.busy;
+  const total = busy + (after.idle - before.idle);
+  return total <= 0 ? 0 : (100 * busy) / total;
+}
 
 function cpuTimes(): Times {
   let idle = 0;
@@ -79,10 +81,7 @@ function cpuTimes(): Times {
 export async function cpuBusy(window = 2000): Promise<number> {
   const before = cpuTimes();
   await new Promise((done) => setTimeout(done, window));
-  const after = cpuTimes();
-  const busy = after.busy - before.busy;
-  const total = busy + (after.idle - before.idle);
-  return total <= 0 ? 0 : (100 * busy) / total;
+  return percentBusy(before, cpuTimes());
 }
 
 export interface QuietOptions {
@@ -92,6 +91,8 @@ export interface QuietOptions {
   window?: number;
   // How long to wait for the machine to settle, ms.
   within?: number;
+  // How long to leave it alone between two tries, ms.
+  pause?: number;
   say?: (line: string) => void;
 }
 
@@ -133,7 +134,7 @@ export async function waitForQuiet(options: QuietOptions = {}): Promise<Quiet> {
     if (readings.length === 2 && readings.every((r) => r < limit)) return { readings, waited: (Date.now() - started) / 1000, underLoad: false };
     if (Date.now() - started > within) break;
     say(`the machine is ${last.toFixed(0)}% busy (the limit is ${limit}%); waiting`);
-    await new Promise((done) => setTimeout(done, 5000));
+    await new Promise((done) => setTimeout(done, options.pause ?? 5000));
   }
   const why = `the machine did not get quiet within ${Math.round(within / 60_000)} minutes (the last reading was ${last.toFixed(0)}% busy, the limit ${limit}%)`;
   if (!allowBusy()) throw new CouldNotRun(`${why}: nothing was measured (MEASURE_ALLOW_BUSY=1 measures anyway, and the result then says it was taken under load)`);
@@ -160,17 +161,62 @@ export function busyRange(readings: readonly number[]): string {
   return `${Math.min(...readings).toFixed(0)} to ${Math.max(...readings).toFixed(0)}%`;
 }
 
-// Runs a body `times` times, reading how busy the machine is before and
-// after each, and gives back what each run returned together with those
-// readings. A body that throws stops the whole run.
-export async function repeated<T>(times: number, body: (index: number) => Promise<T>, readings: number[]): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; i < times; i++) {
-    readings.push(await cpuBusy(1000));
-    out.push(await body(i));
-    readings.push(await cpuBusy(1000));
+// What a measurement kept count of while it took its runs: how many it
+// started, and the readings of those it threw away because the machine
+// was busy before or after them.
+export interface Tally {
+  attempts: number;
+  // The load before and after each run that was thrown away, percent.
+  discarded: Array<[number, number]>;
+}
+
+export const newTally = (): Tally => ({ attempts: 0, discarded: [] });
+
+// One run, taken only on a quiet machine: it waits until a reading is under
+// the limit, runs the body, and reads the load again. A run after which the
+// machine was busy is not a measurement of the program: it is thrown away,
+// counted in the tally, and the body is run again (its attempt number tells
+// it apart from the one before, for a body that changes state). Gives up,
+// as could-not-run, when too many are thrown away or the machine does not
+// settle. With MEASURE_ALLOW_BUSY=1 a busy run is kept, and `loud` says so.
+export interface QuietRunOptions {
+  say?: (line: string) => void;
+  maxDiscards?: number;
+  // How the load is read (a second's reading of the machine), and how long
+  // to leave it alone between two tries, ms: given by a test.
+  read?: () => Promise<number>;
+  pause?: number;
+}
+
+export async function quietRun<T>(body: (attempt: number) => Promise<T>, tally: Tally, options: QuietRunOptions = {}): Promise<{ value: T; busy: [number, number]; loud: boolean }> {
+  const limit = quietLimit();
+  const say = options.say ?? (() => undefined);
+  const maxDiscards = options.maxDiscards ?? 25;
+  const read = options.read ?? (() => cpuBusy(1000));
+  for (;;) {
+    const settling = Date.now();
+    let before = await read();
+    while (before >= limit && !allowBusy()) {
+      if (Date.now() - settling > number("MEASURE_QUIET_WAIT_MINUTES", 15) * 60_000) throw new CouldNotRun(`the machine did not get quiet again within the time given (the last reading was ${before.toFixed(0)}% busy, the limit ${limit}%): nothing more was measured`);
+      say(`the machine is ${before.toFixed(0)}% busy (the limit is ${limit}%); waiting`);
+      await new Promise((done) => setTimeout(done, options.pause ?? 3000));
+      before = await read();
+    }
+    tally.attempts += 1;
+    const value = await body(tally.attempts);
+    const after = await read();
+    const loud = before >= limit || after >= limit;
+    if (!loud || allowBusy()) return { value, busy: [before, after], loud };
+    tally.discarded.push([before, after]);
+    say(`the machine was ${after.toFixed(0)}% busy after that run (the limit is ${limit}%): the run is thrown away and taken again`);
+    if (tally.discarded.length > maxDiscards) throw new CouldNotRun(`${tally.discarded.length} runs were thrown away because the machine was busy: nothing more was measured`);
   }
-  return out;
+}
+
+// "3 (load after: 24%, 16%, 21%)", or "none".
+export function discardedWords(tally: Tally): string {
+  if (tally.discarded.length === 0) return "none";
+  return `${tally.discarded.length} (load after: ${tally.discarded.map(([before, after]) => `${Math.max(before, after).toFixed(0)}%`).join(", ")})`;
 }
 
 // A whole number of runs from an environment variable, or the default.

@@ -57,7 +57,7 @@ import { chromium, type Browser, type CDPSession, type Page } from "playwright";
 import { startBuilder, startCms, type Server } from "../builder/e2e/harness/servers.ts";
 import { bySelf, byTotal, reduce, type Profile } from "./lib/cpu-profile.ts";
 import { buildEditor } from "./lib/editor-build.ts";
-import { banner, busyRange, cpuBusy, ms, percentile, quietLimit, runsFrom, summary, waitForQuiet, median } from "./lib/measure.ts";
+import { banner, busyRange, discardedWords, median, ms, newTally, percentile, quietLimit, quietRun, runsFrom, summary, waitForQuiet, type Tally } from "./lib/measure.ts";
 import { publishLargePage, publishSmallPage } from "./lib/measure-site.ts";
 import { CouldNotRun } from "./lib/processes.ts";
 
@@ -321,10 +321,12 @@ interface Form {
   large: Run[];
   small: Run[];
   chromium: string;
+  // The runs thrown away because the machine was busy after them.
+  tally: Tally;
 }
 
 async function measureForm(name: string, what: string, preview: string | undefined, cmsPort: number, editorPort: number, runs: number, stops: number): Promise<Form> {
-  const form: Form = { name, what, open: [], large: [], small: [], chromium: "" };
+  const form: Form = { name, what, open: [], large: [], small: [], chromium: "", tally: newTally() };
   let cms: Server | undefined;
   let editor: Server | undefined;
   let browser: Browser | undefined;
@@ -346,8 +348,9 @@ async function measureForm(name: string, what: string, preview: string | undefin
     await warmPage.locator(".canvas [data-block-id][data-block-type]").nth(499).waitFor({ state: "attached", timeout: 120_000 });
     await warm.close();
 
-    const visit = async (id: number, expected: number, withDrag: boolean): Promise<Run> => {
-      const busy = [await cpuBusy(1000)];
+    // One visit in a fresh context. Run again, by the caller, when the
+    // machine was busy after it (quietRun).
+    const visitOnce = async (id: number, expected: number, withDrag: boolean): Promise<Omit<Run, "busy">> => {
       const context = await browser!.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC" });
       try {
         const page = await context.newPage();
@@ -381,11 +384,14 @@ async function measureForm(name: string, what: string, preview: string | undefin
         const swept = withDrag ? await drag(page, stops) : null;
         // A beat for anything the page was still doing before it is judged.
         await page.waitForTimeout(300);
-        busy.push(await cpuBusy(1000));
-        return { opened, drag: swept, busy, errors, writes, elsewhere: elsewhere.length };
+        return { opened, drag: swept, errors, writes, elsewhere: elsewhere.length };
       } finally {
         await context.close();
       }
+    };
+    const visit = async (id: number, expected: number, withDrag: boolean): Promise<Run> => {
+      const kept = await quietRun(() => visitOnce(id, expected, withDrag), form.tally, { say: (line) => console.log(`${name}: ${line}`) });
+      return { ...kept.value, busy: kept.busy };
     };
 
     for (let i = 0; i < runs; i++) {
@@ -547,6 +553,8 @@ function report(forms: Form[], stops: number, underLoad: boolean): void {
       console.log(`| ${f.name} | ${label} | ${runsOf(list.map((r) => framesOf(r.drag!).reduce((a, b) => a + b, 0)))} | ${runsOf(t.map((x) => x.task))} | ${runsOf(t.map((x) => x.script))} | ${runsOf(t.map((x) => x.layout))} | ${runsOf(t.map((x) => x.style))} | ${runsOf(t.map((x) => x.layouts))} | ${runsOf(t.map((x) => x.styles))} |`);
     }
   }
+  console.log("");
+  for (const f of forms) console.log(`${f.name}: runs thrown away because the machine was busy after them, and taken again: ${discardedWords(f.tally)}`);
   console.log("");
   for (const f of forms) console.log(`The live region said, in the first run of ${f.name}, on 500 blocks: ${f.large[0]!.drag!.sentences.map((s) => `"${s}"`).join("; ")}`);
   const elsewhere = forms.flatMap((f) => [...f.large, ...f.small]).map((r) => r.elsewhere);
