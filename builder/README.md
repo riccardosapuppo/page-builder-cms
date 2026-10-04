@@ -299,7 +299,9 @@ default the origin of an absolute `VITE_API_BASE`, else
     25.7 s and later 30.8 s; four faults planted in the renderer were each
     found within 39 pages. On 3 October, with the generator held to the
     schema's new rules on marks and anchors, the default run drew 4411
-    nodes, in 6.9 s on the virtual machine of the root README);
+    nodes, in 6.9 s on the virtual machine of the root README; on
+    4 October, each page also published three times, the same 4411
+    nodes in 18.8 s, in `npm run check`);
   - the twins: the URL policy and rich text against the CMS's own Ruby on
     values the schema refuses too (57000 policy answers and 1500 rich
     texts the same);
