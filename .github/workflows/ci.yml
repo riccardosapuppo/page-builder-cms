@@ -1,8 +1,11 @@
 # The checks of stage 1 (domain, API and server rendering) and of stage 2
 # (the editor, the render contract, accessibility, and npm start), at every
 # push to main and on every pull request; on Linux, and on Windows where the
-# code takes another path there (npm start and its tools). Each job has a
-# time limit: a job that hangs is a failure, not a wait.
+# code takes another path there (npm start and its tools). The later stages
+# add tests to these jobs, not jobs: stage 4's caching and scheduled
+# publishing run in the Rails tests and in the editor's browser tests, where
+# the CMS runs Solid Queue in a forked process. Each job has a time limit: a
+# job that hangs is a failure, not a wait.
 name: CI
 
 on:
