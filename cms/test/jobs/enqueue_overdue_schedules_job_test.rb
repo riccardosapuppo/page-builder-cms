@@ -1,4 +1,5 @@
 require "test_helper"
+require "fugit"
 
 # The sweep that runs every minute while the server is up: a scheduled
 # publish whose job was lost, or failed for good, is set going again
