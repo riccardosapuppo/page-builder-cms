@@ -38,16 +38,18 @@ them (`open-groups.ts`).
 | `panels/` | The sidebar's panels, each in collapsible groups named after what they hold (`groups.tsx`; design/layout/, the editor, style, section and page-tab states): the page's Title and address and Search results; a block's in its type's order, a widget's own group first (its folder's, `../widgets/<widget>/panel.tsx`: Text, Button, Questions...), then its style settings by what they set (Size and color, Colors, Line color, Spacing, Background, Alignment...), then Shown on, and for a section Columns and Name and link. Every style key a type accepts is in exactly one group. A closed group says its value in words, the theme's in use where the block sets none ("Display, theme color", "Every device"); a group whose settings have a tablet's or a phone's own value says which device differs, open or closed; a value the server refused opens the group that holds it, until it is closed by hand. The first group opens at first, every group of the page; then the person's choice, per block type. The style settings (`StyleFields.tsx`) edit the device the canvas previews: the base on the desktop; with a tablet or a phone previewed, that device's values only, each setting saying "From desktop" or "Tablet only", an override naming the desktop's value (a ring on the ruler) with a Remove that takes the device's key out, the focus back on the setting |
 | `device-style.ts` | A block's style per device as the page's container queries apply it: a tablet or a phone shows its own value, else the base, a phone never the tablet's; the devices a block has values of its own on; "back to desktop" as the key taken out, never the desktop's value written in its place |
 | `controls.tsx`, `errors.ts` | The panels' fields, each with its label, hint and errors tied to it; a finding of the editor's checks or of the server's 422 said as a sentence about the field |
-| `Canvas.tsx`, `presets.ts` | The page on the bench, flush with its frame (19 on each side, the scrollbar's gutter kept), between the theme's header and footer (locked), drawn smaller when the canvas has less room than the page (the bottom line saying its width and the scale), the editor's own controls and words on it kept at their size; Block edges; a provider's player kept with no address, so it never loads on the canvas, not even when a drag's preview puts its block back into the page; the marks of the selection and its floating bar (at the block's top left corner, at the right one where the left would cover the words above, and, while a text is written, under the block where both would), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the section's tab (grip, name, +), the dimension lines, the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its bar carrying bold, italic and link and its link's field under it |
+| `Canvas.tsx`, `presets.ts` | The page on the bench, flush with its frame (19 on each side, the scrollbar's gutter kept), between the theme's header and footer (locked), drawn smaller when the canvas has less room than the page (the bottom line saying its width and the scale), the editor's own controls and words on it kept at their size; Block edges; a provider's player kept with no address, so it never loads on the canvas, not even when a drag's preview puts its block back into the page; the marks of the selection and its clamp (`Clamp.tsx`), the canvas's one Tab stop (the selection, or, where the device previewed does not draw it, the nearest block around it that is drawn), the round "+" that add on the page (on the selected widget's bottom edge; on the seam below the section that holds the selection, and on any seam under the pointer with a hairline and a tip naming the place; large in every empty column) and the yellow line a "+" opens, a gap of the column's own or a line across a seam; while Insert is open, its yellow line where a click in it lands, its words at the line's right end under the drawer; the dimension lines (the gap's in the block's left quarter, clear of the "+"), the hover outline (a button's hugging its pill) and its name, beside the block or, where the canvas has no room there, above its right end, over the frame of a selection just before it, and placed again when the window's size changes the page's scale; the name stands where the block's outline is, so a block taller than the canvas, scrolled past its top on a page drawn smaller, shows it again only when its top is back in view, as a column's and a section's names do (kept so: a name pinned to the canvas's edge would stand apart from the block it names); the empty page's invitation and its ready-made sections; a text block opened where it stands (a click on the text already selected, a double click, Enter, or its panel's button), its clamp carrying bold, italic and link and its link's field under it |
+| `Clamp.tsx`, `clamp-place.ts` | The selected block's clamp (design/layout/NOTES.md, section 4.2): a vertical graphite bar in the page's margin, from the top the yellow head (the block's type; the block menu), the grip (a drag, or Space), the moves (up and down; left and right for a column; one command each, the focus kept on the key, at an end saying why not), More (the right click's items). Every block gets it, a section inside its own margin; beside a short block it runs on below it, and a block brought into view by the keyboard brings its whole clamp; beside a block taller than the canvas it keeps to the canvas's top. Where it stands (`clamp-place.ts`, plain geometry): the full clamp, tied to the frame, in a margin of 48 or more; the narrow one, centred, in a gutter of 28 to 47; out to the page's nearer margin under 28; on the block's right side where an open drawer covers its left; drawn back to its size on a page drawn smaller. One Tab stop after the block's own: the arrows go along it, Esc back. While a text is written the moves give their place to bold, italic and link; the grip and More stay |
+| `InsertPicker.tsx`, `insert-place.ts`, `canvas-ui.ts`, `canvas.css` | The picker a "+" opens beside its yellow line, a non-modal dialog offering only what fits there: the widgets in a column (one needing an image or a video asks for it first, as Insert does), 1 to 4 columns or a ready-made section at a seam; its search takes the focus, the arrows go along its rows and between them, Enter adds by one command at the place, the new block focused; Esc, or a press elsewhere, closes it, Esc giving the focus back to the "+", or to what opened it (the block, for the "+" key; the clamp's key, for its menu's Insert before and after). The places (`insert-place.ts`), and the canvas's own state beside the interface's store (`canvas-ui.ts`: the picker's place, the seam under the pointer, which of the clamp's menus is open). The clamp's, the "+"'s, the lines' and the picker's styles (`canvas.css`) |
 | `Navigator.tsx` | The Outline drawer. Blocks: the page as an ARIA tree, in step with the selection both ways, the row of the selection taking the focus when the drawer opens, the selection's path open; the theme's header and footer as two locked rows around it; a block with a tablet's or a phone's own values flagged with the device's glyph, said as the row's description; one hidden on some device grayed out. Headings: the page's headings in order, by level, each one a button that selects it |
 | `act.ts`, `pending.ts` | The one way every command runs, from a button, a key, the block's menu or a drop: the text still waiting in a panel's field or in a text on the canvas is handed over first, as a command of its own, and a text the page refuses keeps the command from running; then the command; then the focus where its result says (the neighbour after a delete, the new block after an insert, a paste or a duplicate, the block touched after an undo), on the canvas or on the outline's row |
-| `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the floating bar's grip, or Space) and each key of the Insert drawer as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the sentence the bottom line's live region says (`DragLayer.tsx`, `../StatusBar.tsx`) |
-| `rich/` | Rich text on the canvas: TipTap with exactly the schema's nodes and marks, the link cut to its href and held to the URL policy and the schema (`extensions.ts`, `link-check.ts`); a paste cleaned to what the schema allows (`paste.ts`); what the page takes of a text held while it is written, from the schema's counts and the page's nesting at the block's place: a key, a mark or a link past it not done and said, a paste cut to what fits and said (`limits.ts`); the editor as the canvas makes it (`setup.ts`), loaded on demand with TipTap in a chunk of its own (`TextEditor.tsx`, through `tools.ts`), opened in the same moment once the chunk is here, the focus in it at once, and the keys pressed while it is still on its way kept from the block and typed into it when it opens (`../keys.ts`, `waitForText`), unless another block is chosen first, which gives up the opening and its keys (`tools.ts`, `forgetLeftText`); one text being edited and its two histories (`text-session.ts`: the typing becomes ONE command of the page when the person pauses or leaves the text, before any other command and at a drag's start, and TipTap's history is closed there, so Ctrl+Z in the text is TipTap's and outside it the page's; a text the page refuses all the same is never dropped: the editor stays open saying why, and the commands, drags and the leaving that would lose it wait); its buttons and link field on the block's bar (`FormatBar.tsx`) |
-| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor and the text editor take their keys from it, every title and `aria-keyshortcuts` names its keys from it (a test reads the source for a key written anywhere else), and the "?" window lists it, in the layout's three columns; the arrows' order through the page. The layout's chords are Alt and Shift with a letter or a digit (Preview, Insert, the Outline, the three devices), never Ctrl and Alt, which many keyboards type as AltGr; off a text they go by the key's place. While the person types (a field, a text on the canvas) the typing keys are the text's: only the entries marked `typing` work there (Save a named version, Preview, Publish now), looked for before the text editor cancels Enter; a chord with Alt counts there by the key it types, never with AltGr |
-| `BlockMenu.tsx`, `Menu.tsx`, `clipboard.ts` | The block's menu (right click, or the menu key): copy, paste, duplicate, delete; copy and paste through the browser's clipboard events, so a copied block is on the system clipboard as text |
+| `drag/` | Drag and drop on the store's drag, behind one module for the drag library (`drag/dnd.ts`, `@dnd-kit` 0.5.0): the selected block (the clamp's grip, or Space) and each key of the Insert drawer as sources; where a block would land, from the pointer's coordinates or from the keyboard's steps (`place.ts`, `steps.ts`); the marks the canvas draws (`marks.ts`); the sentence the bottom line's live region says (`DragLayer.tsx`, `../StatusBar.tsx`) |
+| `rich/` | Rich text on the canvas: TipTap with exactly the schema's nodes and marks, the link cut to its href and held to the URL policy and the schema (`extensions.ts`, `link-check.ts`); a paste cleaned to what the schema allows (`paste.ts`); what the page takes of a text held while it is written, from the schema's counts and the page's nesting at the block's place: a key, a mark or a link past it not done and said, a paste cut to what fits and said (`limits.ts`); the editor as the canvas makes it (`setup.ts`), loaded on demand with TipTap in a chunk of its own (`TextEditor.tsx`, through `tools.ts`), opened in the same moment once the chunk is here, the focus in it at once, and the keys pressed while it is still on its way kept from the block and typed into it when it opens (`../keys.ts`, `waitForText`), unless another block is chosen first, which gives up the opening and its keys (`tools.ts`, `forgetLeftText`); one text being edited and its two histories (`text-session.ts`: the typing becomes ONE command of the page when the person pauses or leaves the text, before any other command and at a drag's start, and TipTap's history is closed there, so Ctrl+Z in the text is TipTap's and outside it the page's; a text the page refuses all the same is never dropped: the editor stays open saying why, and the commands, drags and the leaving that would lose it wait); its link's field under the block (`FormatBar.tsx`), its bold, italic and link in the clamp (`../Clamp.tsx`) |
+| `keymap.ts`, `keys.ts`, `ShortcutsDialog.tsx`, `selection.ts` | The keyboard map in one table: the editor's one keydown listener runs it, the drag library's keyboard sensor and the text editor take their keys from it, every title and `aria-keyshortcuts` names its keys from it (a test reads the source for a key written anywhere else), and the "?" window lists it, in the layout's three columns; the arrows' order through the page. The layout's "+" opens the picker after the selection, whichever key types it (Shift and "=", its own key, the number pad's); Tab from the selected block goes to its clamp. The layout's chords are Alt and Shift with a letter or a digit (Preview, Insert, the Outline, the three devices), never Ctrl and Alt, which many keyboards type as AltGr; off a text they go by the key's place. While the person types (a field, a text on the canvas) the typing keys are the text's: only the entries marked `typing` work there (Save a named version, Preview, Publish now), looked for before the text editor cancels Enter; a chord with Alt counts there by the key it types, never with AltGr |
+| `BlockMenu.tsx`, `Menu.tsx`, `clipboard.ts` | The block's menus (design/layout/shots-extra/more.png, block-menu.png): More, from the clamp or a right click (copy, paste after, duplicate, insert before and after, select the column or section around it, delete), and the block menu, from the clamp's head or the menu key (the moves first, each saying why it cannot be made at an end, then all of More's); beside the clamp, upward from its foot where the window has no room below; the focus back on the clamp's key, the block or the outline's row; copy and paste through the browser's clipboard events, so a copied block is on the system clipboard as text |
 | `plain-words.ts` | The words the history, the media library and the keymap's notes share, so they read alike: a day against the clock's ("Today", "Yesterday", "Sep 28", "Dec 30, 2025") and a list in a sentence ("A, B and C") |
 | `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, the drawer open, the sidebar shown and what it shows, its tab chosen by hand and the groups open, Block edges, the page's width as laid out, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
-| `icons.tsx`, `editor.css` | The design's icons (and the layout's few of its own, Block edges) and stylesheet, laid out as the layout's; the design's resets of bare elements are kept off the canvas |
+| `icons.tsx`, `editor.css` | The design's icons (and the layout's few of its own, Block edges, bold and italic) and stylesheet, laid out as the layout's; the design's resets of bare elements are kept off the canvas |
 
 ## Not here yet
 
@@ -62,8 +64,8 @@ owner to undo:
   the layout does not draw: under Text, while you write, a note on Ctrl+Z
   there, on Delete and Backspace deleting letters and on the keys that
   work while typing; under Adding and looking, Enter on a block of Insert
-  adding it after the selection. The layout's "+" and the clamp's Tab
-  stop are not listed until the canvas has them. The window is the
+  adding it after the selection, and a line on the page's "+". The
+  window is the
   keymap written out, so every key that works is in it. Enter, "Edit the
   text of a block", also goes to the first field of a widget whose words
   are in its panel. Its keys stand 8 pixels from their words, not 12, so
@@ -131,22 +133,30 @@ owner to undo:
   a chevron on Primary and Accent, which open to their tones; contrast
   ratios cut to one decimal, not rounded ("8.8 to 1" for 8.86), so a
   ratio never reads above a threshold it misses.
+- **The clamp:** while a text is written, the layout draws its clamp as
+  the head, bold, italic and link; here the grip and More stay too, so the
+  block can still be dragged, duplicated or deleted without leaving the
+  text first (the text is handed over as the drag or the command starts),
+  as it could from the floating bar. The head's block menu opens beside
+  the clamp from its head, and upward from the clamp's foot only where the
+  window has no room below it. A column takes no Insert before or after:
+  a block goes inside it, from its "+" or the "+" key, which opens at its
+  end. A clamp in a gutter under 28 goes out to the page's margin, which
+  the layout describes and does not draw. Beside a block taller than the
+  canvas whose top has scrolled away, the clamp keeps to the canvas's top
+  while the block is there, which the layout lists as not drawn.
+- **The "+":** a page has seams above its first section and below its
+  last as well as between two; each answers the pointer within 12 pixels
+  of it. A seam's "+" names the place it adds at ("Add a section after
+  Hero"); under the pointer, between two sections, it names both. The
+  picker for a column says where the block lands in words beside the
+  line ("after Heading", "at the top of Column 1", "in Column 2"). The
+  bottom line's hint while the pointer is over a seam, with nothing
+  selected, is the layout's sentence.
 - **Rich text:** the design draws no text being written. While a text is
-  open, the block's own bar (grip, name, duplicate, delete) also carries
-  bold, italic and link, between thin rules, a button that is on drawn
-  graphite with the bar's yellow; the link's field opens under the block
-  in the panel's field style. The bar keeps the design's rule, the right
-  corner where the left one would cover the block above. While a text is
-  written, the bar never covers the block above: where both top corners
-  would (a heading as wide as its column, or one wider than what is left
-  of a narrow column beside the bar), it stands under the block, its link
-  field under it, in the bottom corner that covers less, even over the
-  next block (a button, a divider), as the link field does; there the
-  canvas scrolls just enough to show it, as long as the caret stays in
-  view. Not writing,
-  where both top corners would cover the block above, the bar stays in
-  the one that covers less, as the design draws a selected block's bar
-  at the top. The text widget's Text group has no text
+  open, the block's clamp carries bold, italic and link (above); the
+  link's field opens under the block in the panel's field style. The
+  bottom line says "Writing. Esc to finish". The text widget's Text group has no text
   field: its words are written on the page, and the group opens the editor
   there and says how; while the text is written, it lists the keys that
   work in it, from the keymap, Leave the text among them.
@@ -219,9 +229,10 @@ width; sections anchored with the editor's own ids, which hold an
 underscore no anchor can; the theme's header and footer, locked; the
 page 1088 wide at 1440 and in its desktop layout at 1280, measured in a
 browser that draws its scrollbar; in a 1280 by 800 window the pages
-whole, a stacked column's tab and the page's title kept whole; and in a
+whole, a short block's clamp running on beside a stacked column, drawn
+whole over it, and the page's title kept whole; and in a
 1024 by 768 window the pages drawn smaller to fit, the editor's own
-controls and words on them kept at their size and in their place, a
+controls and words on them (the clamp, the "+") kept at their size and in their place, a
 hovered block's name kept inside the canvas, drawn over the frame of a
 selection just before it and placed again when the window's size changes
 under the pointer),
@@ -229,7 +240,16 @@ under the pointer),
 button held, refused drops, Esc, a drag on a page drawn smaller, its
 words at their size, a block moved past a video without the provider's
 player loading),
-`focus.spec.ts` (the focus after every command), `keyboard.spec.ts`
+`focus.spec.ts` (the focus after every command, a move from the clamp's
+key and an add from a "+" among them), `clamp.spec.ts` (the clamp in
+every preview and window over no block and no words, its moves and head
+in view; on the block's right side under Insert; its head's menu and
+More, its moves one step each), `insert.spec.ts` (the "+" on a block's
+edge, its line and its picker by the mouse and the keys, an empty
+column's large "+" with a video asking first, the seams under the
+pointer, the page's top and foot among them, the "+" key after each kind
+of selection, Insert's yellow line, Insert before and after),
+`keyboard.spec.ts`
 (every key of the map, and the "?" window listing them; in a text being
 written, Delete, Backspace and Ctrl+D changing letters and never the
 block, and a version kept, a publish and a preview from inside the text,
@@ -246,14 +266,19 @@ on the tablet's), `rich-text.spec.ts`
 (a text opened where it was clicked and laid out as the page lays it out;
 typing and a drag of the same block at once, the text a step before the
 move; undo and redo inside the text and outside it to the CMS's very
-draft; bold, italic and a link from the bar, a refused address and its
+draft; bold, italic and a link from the clamp, a refused address and its
 reason; a word processor's paste and a web page copied in the browser,
 as the CMS saves them; the editor's code fetched only once a text is
 selected; axe with the link's field open), `menu.spec.ts`
 (the block's menu), `marks.spec.ts` (the canvas's marks leaving the
 page's layout alone, a button's hugging its pill wherever its own or
-its column's alignment moves it, the section's tab,
-the dimension lines), `save.spec.ts` (a slowed network, a save the
+its column's alignment moves it, the seam's "+" below the selection's
+section and its picker, a section's clamp and its grip, the dimension
+lines; the clamp full, narrow or out in the page's margin by its gutter,
+over no block and no words, with that check planted to see it fail; a
+written text's clamp with bold, italic and link; a text opened at the
+canvas's bottom edge staying under the pointer, and a tall text's clamp
+at the canvas's top), `save.spec.ts` (a slowed network, a save the
 network drops and its same saveId, an answer lost, a second writer
 through the API, words not yet handed over when the tab closes, a 422
 whose fix was typed meanwhile, a page left while the next one loads),
@@ -271,9 +296,10 @@ saying why; a delete the CMS refuses naming the page; axe on the open
 library), `publish.spec.ts`
 (the preview, a publish, the live page the CMS serves), `site-style.spec.ts`
 (the canvas and the published page following a change), `identity.spec.ts`
-(the mark read back at 16 px), `a11y.spec.ts` (axe in thirty-two states, at 1440 by 900 and at 1280 by 800,
+(the mark read back at 16 px), `a11y.spec.ts` (axe in thirty-five states, at 1440 by 900 and at 1280 by 800,
 among them each drawer and the Outline's headings, Block edges and the
-Page tab, the sidebar hidden, a text being written and its link's field,
+Page tab, the sidebar hidden, the clamp's block menu, the block picker and
+the section picker, a text being written and its link's field,
 a tablet's override, the history and its name field, the media library;
 and on the published page), `widgets.spec.ts` (each widget's accessibility
 test) and `keyboard-path.spec.ts` (the whole path with no pointer:
