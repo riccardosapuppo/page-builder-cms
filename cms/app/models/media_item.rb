@@ -78,6 +78,29 @@ class MediaItem < ApplicationRecord
     item
   end
 
+  # How long an image nothing uses any more stays in the library before
+  # PurgeMediaJob deletes it: the same time an automatic version is kept
+  # (PageVersion::KEEP_AUTOMATIC_FOR), so an image taken off a page stays
+  # at hand for as long as the history around it.
+  KEEP_UNUSED_FOR = 30.days
+
+  # Deletes, with their files, the items no draft and no kept version
+  # names, and none has named for more than KEEP_UNUSED_FOR before `at`
+  # (last_used_at; in UTC days of 24 hours, and one named exactly that
+  # long ago stays, as an automatic version made then does). An item
+  # never placed on a page has no last_used_at:
+  # it was put in the library on purpose, and stays. Each item is looked
+  # at again as it goes (destroy_unless_used!), so a save that placed it
+  # meanwhile keeps it. Returns the public ids deleted.
+  def self.purge_unused!(at: Time.current)
+    where.missing(:usages).where(last_used_at: ...(at.utc - KEEP_UNUSED_FOR)).find_each.filter_map do |item|
+      item.destroy_unless_used!
+      item.public_id
+    rescue InUse
+      nil
+    end
+  end
+
   # Deletes the item and its file, unless a draft or a kept version still
   # names it: then nothing changes and InUse says who uses it.
   def destroy_unless_used!

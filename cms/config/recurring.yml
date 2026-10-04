@@ -1,15 +1,23 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
-
-production:
+# The jobs Solid Queue's scheduler enqueues on a clock, by the site's time
+# zone (config.time_zone, from config/site.yml). Every environment that
+# runs Solid Queue has its key: one without would have this whole file
+# read as its list of tasks.
+#
+# - PruneVersionsJob: the retention rule of the versions (PageVersion.prune!).
+# - PurgeMediaJob: the images and uploads nothing uses any more, after the
+#   pruning, which may have let the last version showing one go.
+# - Solid Queue's own finished jobs, kept a day for a look (clear_finished_jobs_after).
+production: &jobs
+  prune_versions:
+    class: PruneVersionsJob
+    schedule: every day at 3:30am
+  purge_media:
+    class: PurgeMediaJob
+    schedule: every day at 4am
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+
+development: *jobs
+
+e2e: *jobs

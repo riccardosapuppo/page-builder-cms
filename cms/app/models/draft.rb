@@ -67,7 +67,7 @@ class Draft < ApplicationRecord
           raise Conflict.new(current_revision: draft.revision, last_save_id: draft.last_save_id)
         end
       else
-        MediaUsage.index_draft!(draft, BlockDocument.media_refs(draft.document))
+        MediaUsage.index_draft!(draft, BlockDocument.media_refs(draft.document), at: at)
         PageVersion.record_automatic!(page_id: page_id, document: draft.document, at: at)
       end
       draft
@@ -96,7 +96,7 @@ class Draft < ApplicationRecord
     self.class.where(id: id)
       .update_all([ "document = ?, revision = revision + 1, last_save_id = NULL, updated_at = ?", JSON.generate(document), at ])
     reload
-    MediaUsage.index_draft!(self, BlockDocument.media_refs(self.document))
+    MediaUsage.index_draft!(self, BlockDocument.media_refs(self.document), at: at)
     self
   end
 
