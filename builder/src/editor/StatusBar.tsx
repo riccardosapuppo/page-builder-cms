@@ -14,7 +14,6 @@ import { locate } from "../document/tree.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { DESKTOP_MIN, PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
-import { BlockIcon } from "./block-icon.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { dropSentence } from "./drag/DragLayer.tsx";
 import { draggedOf } from "./drag/marks.ts";
@@ -97,18 +96,14 @@ function Crumbs({ hints }: { hints: boolean }) {
             <Icon name="page" className="i i-xs" />Page
           </button>
         </li>
-        {path.map((id, index) => {
-          const block = locate(doc, id)!.block;
-          return (
-            <li key={id}>
-              <Icon name="chevron-right" className="i i-xs crumb-sep" />
-              <button type="button" className="crumb" aria-current={index === path.length - 1 ? "location" : undefined} onClick={() => choose(ui, select, id)}>
-                {index === path.length - 1 && <BlockIcon type={block.type} className="i i-xs" />}
-                {blockName(doc, id)}
-              </button>
-            </li>
-          );
-        })}
+        {path.map((id, index) => (
+          <li key={id}>
+            <Icon name="chevron-right" className="i i-xs crumb-sep" />
+            <button type="button" className="crumb" aria-current={index === path.length - 1 ? "location" : undefined} onClick={() => choose(ui, select, id)}>
+              {blockName(doc, id)}
+            </button>
+          </li>
+        ))}
       </ol>
       {hints && selection === null && hint("Nothing selected. Click a block, or press", "selectNext", " on the page.")}
       {hints && (kind === "section" || kind === "column") && hint("Select inside:", "selectFirstChild")}

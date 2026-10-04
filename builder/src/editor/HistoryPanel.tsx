@@ -134,97 +134,97 @@ export function HistoryPanel() {
   const notLive = page ? changesNotLive(page, snapshot) : 0;
 
   return (
-        <div className="drawer-body drawer-body-tight hist-body">
-          <h3 className="group-title group-title-pad" id="history_session">This session</h3>
-          {steps.length === 0
-            ? <p className="hint hint-pad">No changes yet. Each change you make shows here, and you can go back to any of them.</p>
-            : (
-              <ol className="hist" aria-labelledby="history_session">
-                {steps.map((step) => (
-                  <li key={keyOf(step.entry.command)} className={step.now ? "hist-now" : step.undone ? "hist-undone" : undefined}>
-                    <button
-                      type="button"
-                      aria-current={step.now ? "step" : undefined}
-                      title={step.now ? "The page is as it was right after this" : step.undone ? "Redo up to this" : "Go back to right after this"}
-                      onClick={() => choose(step.entry.command)}
-                    >
-                      <span className="hist-what">{step.entry.command.label}</span>
-                      <span className="visually-hidden">, </span>
-                      <span className="hist-when">{step.undone ? "Undone" : stepTime(step.entry.at, now)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          <p className="hint hint-pad hint-keys">
-            Select an action to go back to it.<br />
-            <span className="keys-inline" aria-label={entryKeysText(undoKeys)}><KeyCaps caps={entryCaps(undoKeys)} small /></span> steps back one.
-          </p>
-
-          <div className="hist-versions-head">
-            <h3 className="group-title" id="history_versions">Versions</h3>
-            <button
-              ref={saveButton}
-              className="btn btn-small btn-secondary"
-              type="button"
-              data-save-version=""
-              // The drawer gives it the focus when it opens.
-              data-autofocus=""
-              aria-expanded={naming}
-              aria-keyshortcuts={ariaKeyShortcuts(saveKeys)}
-              title={`Save version (${entryKeysText(saveKeys)})`}
-              onClick={() => ui.getState().setNamingVersion(!naming)}
-            >
-              <Icon name="bookmark" />Save version
-            </button>
-          </div>
-          {naming && <NameForm onDone={() => {
-            ui.getState().setNamingVersion(false);
-            saveButton.current?.focus();
-          }} />}
-          <ul className="versions" aria-labelledby="history_versions" aria-busy={versions.phase === "loading" ? true : undefined}>
-            {page && (
-              <li className="ver ver-draft">
-                <span className="ver-kind">Current draft</span>
-                <span className="ver-name">{draftLine(page.published !== null, notLive)}</span>
-                {snapshot?.savedAt && <span className="ver-when">{serverTime(snapshot.savedAt, now)}</span>}
+    <div className="drawer-body drawer-body-tight hist-body">
+      <h3 className="group-title group-title-pad" id="history_session">This session</h3>
+      {steps.length === 0
+        ? <p className="hint hint-pad">No changes yet. Each change you make shows here, and you can go back to any of them.</p>
+        : (
+          <ol className="hist" aria-labelledby="history_session">
+            {steps.map((step) => (
+              <li key={keyOf(step.entry.command)} className={step.now ? "hist-now" : step.undone ? "hist-undone" : undefined}>
+                <button
+                  type="button"
+                  aria-current={step.now ? "step" : undefined}
+                  title={step.now ? "The page is as it was right after this" : step.undone ? "Redo up to this" : "Go back to right after this"}
+                  onClick={() => choose(step.entry.command)}
+                >
+                  <span className="hist-what">{step.entry.command.label}</span>
+                  <span className="visually-hidden">, </span>
+                  <span className="hist-when">{step.undone ? "Undone" : stepTime(step.entry.at, now)}</span>
+                </button>
               </li>
-            )}
-            {versions.items.map((version) => {
-              const words = versionWords(version, versions.items, now);
-              const busy = restoring !== null;
-              return (
-                <li key={version.number} className={`ver${words.live ? " ver-live" : ""}`}>
-                  <div>
-                    <span className="ver-kind">{words.live && <i className="dot-live" aria-hidden="true" />}{words.kind}{words.live && <span className="visually-hidden">, live now</span>}</span>
-                    {words.name !== null && <span className="ver-name">{words.name}</span>}
-                    <span className="ver-when">{words.when}</span>
-                  </div>
-                  <button
-                    className="btn btn-small btn-secondary"
-                    type="button"
-                    aria-label={`Restore: ${words.sentence}`}
-                    aria-disabled={busy ? true : undefined}
-                    onClick={() => {
-                      if (!busy) void session.restoreVersion(version.number);
-                    }}
-                  >
-                    {restoring === version.number ? "Restoring…" : "Restore"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {versions.phase === "loading" && versions.items.length === 0 && <p className="hint hint-pad" role="status">Reading the versions…</p>}
-          {versions.phase === "ready" && versions.items.length === 0 && <p className="hint hint-pad">No versions yet. One is kept when you publish, when you save a version, and as you edit.</p>}
-          {versions.phase === "failed" && (
-            <div className="hist-failed hint-pad">
-              <p className="error"><Icon name="error" />{versions.message}</p>
-              <button className="btn btn-small btn-secondary" type="button" onClick={loadVersions}>Try again</button>
-            </div>
-          )}
-          <p className="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
+            ))}
+          </ol>
+        )}
+      <p className="hint hint-pad hint-keys">
+        Select an action to go back to it.<br />
+        <span className="keys-inline" aria-label={entryKeysText(undoKeys)}><KeyCaps caps={entryCaps(undoKeys)} small /></span> steps back one.
+      </p>
+
+      <div className="hist-versions-head">
+        <h3 className="group-title" id="history_versions">Versions</h3>
+        <button
+          ref={saveButton}
+          className="btn btn-small btn-secondary"
+          type="button"
+          data-save-version=""
+          // The drawer gives it the focus when it opens.
+          data-autofocus=""
+          aria-expanded={naming}
+          aria-keyshortcuts={ariaKeyShortcuts(saveKeys)}
+          title={`Save version (${entryKeysText(saveKeys)})`}
+          onClick={() => ui.getState().setNamingVersion(!naming)}
+        >
+          <Icon name="bookmark" />Save version
+        </button>
+      </div>
+      {naming && <NameForm onDone={() => {
+        ui.getState().setNamingVersion(false);
+        saveButton.current?.focus();
+      }} />}
+      <ul className="versions" aria-labelledby="history_versions" aria-busy={versions.phase === "loading" ? true : undefined}>
+        {page && (
+          <li className="ver ver-draft">
+            <span className="ver-kind">Current draft</span>
+            <span className="ver-name">{draftLine(page.published !== null, notLive)}</span>
+            {snapshot?.savedAt && <span className="ver-when">{serverTime(snapshot.savedAt, now)}</span>}
+          </li>
+        )}
+        {versions.items.map((version) => {
+          const words = versionWords(version, versions.items, now);
+          const busy = restoring !== null;
+          return (
+            <li key={version.number} className={`ver${words.live ? " ver-live" : ""}`}>
+              <div>
+                <span className="ver-kind">{words.live && <i className="dot-live" aria-hidden="true" />}{words.kind}{words.live && <span className="visually-hidden">, live now</span>}</span>
+                {words.name !== null && <span className="ver-name">{words.name}</span>}
+                <span className="ver-when">{words.when}</span>
+              </div>
+              <button
+                className="btn btn-small btn-secondary"
+                type="button"
+                aria-label={`Restore: ${words.sentence}`}
+                aria-disabled={busy ? true : undefined}
+                onClick={() => {
+                  if (!busy) void session.restoreVersion(version.number);
+                }}
+              >
+                {restoring === version.number ? "Restoring…" : "Restore"}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {versions.phase === "loading" && versions.items.length === 0 && <p className="hint hint-pad" role="status">Reading the versions…</p>}
+      {versions.phase === "ready" && versions.items.length === 0 && <p className="hint hint-pad">No versions yet. One is kept when you publish, when you save a version, and as you edit.</p>}
+      {versions.phase === "failed" && (
+        <div className="hist-failed hint-pad">
+          <p className="error"><Icon name="error" />{versions.message}</p>
+          <button className="btn btn-small btn-secondary" type="button" onClick={loadVersions}>Try again</button>
         </div>
+      )}
+      <p className="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
+    </div>
   );
 }
 
