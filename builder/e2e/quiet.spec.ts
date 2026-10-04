@@ -6,7 +6,8 @@
 // before it leaves the machine, and a picture "from another site" is
 // answered inside the browser.
 import { chromium } from "@playwright/test";
-import { expect, test, watchQuietly } from "./helpers/site.ts";
+import { cms, expect, test, watchQuietly } from "./helpers/site.ts";
+import { visitor } from "./helpers/visitor.ts";
 
 test("a browser a test launches for itself is held to the shared checks, which catch what is planted", async ({ baseURL }) => {
   const own = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
@@ -34,5 +35,31 @@ test("a browser a test launches for itself is held to the shared checks, which c
     await expect.poll(() => errors).toEqual(expect.arrayContaining(["a planted console error", "a planted page error", "request outside the run's servers: https://elsewhere.example.net/beacon"]));
   } finally {
     await own.close();
+  }
+});
+
+// A visitor of the published pages (helpers/visitor.ts) is never routed,
+// since routing turns Chromium's HTTP cache off, and is held to the same
+// checks by listening. Planted on the CMS's /up, a page with no policy of
+// its own that would refuse them: an error on the page, one in its
+// console, and a request outside the CMS, to the editor's server, so that
+// nothing leaves the machine. Each is caught.
+test("a visitor's browser, never routed, is held to the same checks by listening, which catch what is planted", async ({ browser, baseURL }) => {
+  const reader = await visitor(browser);
+  try {
+    expect((await reader.visit(`${cms()}/up`)).status).toBe(200);
+    expect(reader.problems).toEqual([]);
+
+    const elsewhere = `${baseURL!}/`;
+    await reader.tab.evaluate(async (address) => {
+      await fetch(address, { mode: "no-cors" });
+      console.error("a planted console error");
+      setTimeout(() => {
+        throw new Error("a planted page error");
+      });
+    }, elsewhere);
+    await expect.poll(() => reader.problems).toEqual(expect.arrayContaining(["a planted console error", "a planted page error", `request outside the CMS: ${elsewhere}`]));
+  } finally {
+    await reader.close();
   }
 });
