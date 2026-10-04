@@ -258,16 +258,20 @@ export function GroupList({ owner, specs, openFirst, style, errors }: GroupListP
   const { ui } = useEnv();
   const chosen = useUi((u) => u.openGroups[owner]);
   const all = useUi((u) => u.serverErrors);
-  // The groups closed by hand since the last refusal: those stay closed
-  // though they hold a refused field. A new refusal opens them again.
-  const [shut, setShut] = useState<{ since: readonly BlockFieldError[]; ids: ReadonlySet<string> }>({ since: all, ids: new Set() });
-  const closedByHand = shut.since === all ? shut.ids : new Set<string>();
+  const refusedIds = (list: readonly BlockFieldError[]) => specs.filter((spec) => list.some((error) => spec.holds(error.field))).map((spec) => spec.id);
+  // The groups a refusal opened: open while the panel is, so a field the
+  // person is putting right does not close under them once the next save
+  // is taken, until closed by hand. Each new refusal opens its groups
+  // again; the person's own choice is left as it was. Adjusted while
+  // drawing, as React keeps state that follows a value from outside.
+  const [held, setHeld] = useState<{ seen: readonly BlockFieldError[]; ids: ReadonlySet<string> }>(() => ({ seen: all, ids: new Set(refusedIds(errors)) }));
+  if (held.seen !== all) setHeld({ seen: all, ids: new Set([...held.ids, ...refusedIds(errors)]) });
   return (
     <>
       {specs.map((spec, index) => {
         const refused = errors.some((error) => spec.holds(error.field));
         const wanted = chosen?.[spec.id] ?? openFirst(index);
-        const open = wanted || (refused && !closedByHand.has(spec.id));
+        const open = wanted || held.ids.has(spec.id);
         return (
           <Group
             key={spec.id}
@@ -277,7 +281,7 @@ export function GroupList({ owner, specs, openFirst, style, errors }: GroupListP
             differs={style === null ? [] : differsOn(style, spec.keys)}
             onToggle={() => {
               ui.getState().setGroupOpen(owner, spec.id, !open);
-              if (open && refused) setShut({ since: all, ids: new Set(closedByHand).add(spec.id) });
+              if (open && held.ids.has(spec.id)) setHeld({ seen: held.seen, ids: new Set([...held.ids].filter((id) => id !== spec.id)) });
             }}
           />
         );

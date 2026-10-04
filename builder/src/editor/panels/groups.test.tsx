@@ -140,7 +140,7 @@ test("which groups are open is the person's, per block type: a heading's hold fo
 
 test("a value the server refused opens the group that holds it, until closed by hand; closed, the group and the panel say so", () => {
   const kit = editorKit({ document: page(), selection: "h1" });
-  kit.render(<BlockPanel id="h1" />);
+  const { rerender } = kit.render(<BlockPanel id="h1" />);
   expect(head("Alignment").getAttribute("aria-expanded")).toBe("false");
   act(() => kit.refuse("h1", "/style/base/align", "enum", "is not an alignment"));
   expect(head("Alignment").getAttribute("aria-expanded")).toBe("true");
@@ -161,6 +161,19 @@ test("a value the server refused opens the group that holds it, until closed by 
   // A new refusal opens it again.
   act(() => kit.refuse("h1", "/style/base/align", "enum", "is still not an alignment"));
   expect(head("Alignment").getAttribute("aria-expanded")).toBe("true");
+  // Put right and taken by the next save, it stays open under the person's
+  // hand, the focus where it was.
+  const right = screen.getByRole("radio", { name: "Center" });
+  act(() => right.focus());
+  fireEvent.click(right);
+  act(() => kit.ui.getState().setServerErrors([]));
+  expect(head("Alignment").getAttribute("aria-expanded")).toBe("true");
+  expect(says("Alignment")).toBe("");
+  expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Center" }));
+  // Another block, and back: the person's own choice again, closed.
+  rerender(<BlockPanel id="t1" />);
+  rerender(<BlockPanel id="h1" />);
+  expect(head("Alignment").getAttribute("aria-expanded")).toBe("false");
 });
 
 test("a group's head is a button named by the group, which says whether it is open and what it controls", () => {
