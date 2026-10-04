@@ -2,6 +2,8 @@
 // and macOS. The repository's tools that start a server of their own use
 // these, so a check written on one system runs on the others.
 import { spawn, spawnSync, type ChildProcess, type SpawnOptions } from "node:child_process";
+import { readFileSync, readlinkSync } from "node:fs";
+import { posix } from "node:path";
 
 export interface Listener {
   // The local address, as the system prints it: 127.0.0.1:3902, [::1]:3902.
@@ -66,16 +68,49 @@ export function fromLsof(out: string, port: number): Listener[] {
 }
 
 // The name of a running process, for a sentence such as "port 3900 is
-// held by ruby.exe (process 4242)"; undefined when the system does not say
-// (the process has gone, or belongs to another user).
+// held by ruby.exe (process 4242)": the program it runs, not what it calls
+// itself; undefined when the system does not say (the process has gone).
 // - Windows: tasklist /FI "PID eq n" /FO CSV /NH, one quoted CSV line; when
 //   nothing matches it prints a sentence in Windows' language instead.
-// - elsewhere: ps -p n -o comm=.
+// - Linux: the files of /proc (fromProc). Not ps -o comm, nor
+//   /proc/<pid>/comm: they hold the name of the main thread, which a
+//   program may change, and Node 24 names its own MainThread.
+// - elsewhere: ps -p n -o comm=, which macOS prints as the program's path.
 export function processName(pid: string): string | undefined {
   if (!/^\d+$/.test(pid)) return undefined;
   if (windows) return fromTasklist(spawnSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], { encoding: "utf8" }).stdout ?? "", pid);
-  const name = (spawnSync("ps", ["-p", pid, "-o", "comm="], { encoding: "utf8" }).stdout ?? "").trim();
-  return name || undefined;
+  if (process.platform === "linux") return fromProc(pid, systemProc);
+  return fromPs(spawnSync("ps", ["-p", pid, "-o", "comm="], { encoding: "utf8" }).stdout ?? "");
+}
+
+// What fromProc reads under /proc: the target of a link, the contents of a
+// file. Each throws, as node:fs does, when it cannot read; a test gives
+// fromProc a /proc of its own.
+export interface ProcFiles {
+  readlink(path: string): string;
+  readFile(path: string): string;
+}
+
+const systemProc: ProcFiles = { readlink: (path) => readlinkSync(path), readFile: (path) => readFileSync(path, "utf8") };
+
+// Linux: the last part of the program's path, from the link
+// /proc/<pid>/exe ("/usr/bin/node", "/usr/bin/node (deleted)" once an
+// upgrade has replaced the file), which only the process's own user may
+// read. For another user's, the first argument in /proc/<pid>/cmdline,
+// which anyone may: a path, a bare name, or a title the program wrote over
+// its arguments ("puma 8.0.2 (tcp://127.0.0.1:3900)"), whose first word is
+// the program.
+export function fromProc(pid: string, proc: ProcFiles): string | undefined {
+  const exe = attempt(() => proc.readlink(`/proc/${pid}/exe`));
+  if (exe) return lastPart(exe.replace(/ \(deleted\)$/, ""));
+  const first = attempt(() => proc.readFile(`/proc/${pid}/cmdline`))?.split("\0")[0] ?? "";
+  return lastPart(first.startsWith("/") ? first : first.split(" ")[0]!);
+}
+
+// ps -o comm=: the program's path on macOS, its name elsewhere; nothing
+// when no process has the id.
+export function fromPs(out: string): string | undefined {
+  return lastPart(out.trim());
 }
 
 // '"ruby.exe","4242","Console","1","45.000 K"': the image name, from the
@@ -99,6 +134,18 @@ export function describeListeners(found: Listener[]): string {
 function portOf(address: string | undefined): number | undefined {
   const match = /:(\d+)$/.exec(address ?? "");
   return match ? Number(match[1]) : undefined;
+}
+
+function lastPart(path: string): string | undefined {
+  return posix.basename(path) || undefined;
+}
+
+function attempt(read: () => string): string | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
 }
 
 function has(command: string): boolean {
