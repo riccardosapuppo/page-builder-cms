@@ -237,12 +237,15 @@ test("while Insert is open, the block's + waits and Insert's yellow line marks w
   const divider = (await page.locator('.canvas [data-block-id="c1"] > [data-block-type="divider"]').boundingBox())!;
   await expect.poll(async () => (await point.boundingBox())!.y).toBeGreaterThan(divider.y);
   // Under the last block of its column, selected (Down from the new
-  // divider, which has the focus), the line and its words stand clear of
-  // the selection's frame, as the layout draws them.
+  // divider, which has the focus), the line's words and end caps stand
+  // clear of the selection's frame and its corner marks, as the layout
+  // draws them.
   await page.keyboard.press("ArrowDown");
   await expect(block(page, "b")).toHaveAttribute("data-editor-selected", "true");
-  const frame = (await page.locator('.canvas [data-block-id="b"] > .ov-sel').boundingBox())!;
-  await expect.poll(async () => (await point.locator(".ins-label").boundingBox())!.y).toBeGreaterThanOrEqual(frame.y + frame.height + 1);
+  const corner = (await page.locator('.canvas [data-block-id="b"] > .ov-sel > .br-bl').boundingBox())!;
+  await expect.poll(async () => (await point.locator(".ins-label").boundingBox())!.y).toBeGreaterThanOrEqual(corner.y + corner.height + 1);
+  const caps = (await point.locator(".ins-line").boundingBox())!;
+  expect(caps.y - 6 - 1).toBeGreaterThanOrEqual(corner.y + corner.height);
   await insert.getByRole("button", { name: "Close Insert" }).click();
   await expect(point).toHaveCount(0);
 });

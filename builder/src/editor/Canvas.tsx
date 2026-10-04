@@ -568,9 +568,10 @@ function InsertSlot({ index }: { index: number }) {
 }
 
 // How far under the selected block, the last of its column, the line
-// stands: clear of the selection's frame (6 out, with its edge) and of
-// half its words' height, as the layout draws it (insert-drawer-1280).
-const POINT_CLEAR = 18;
+// stands: its words (10 above it) and its end caps clear of the
+// selection's frame and corner marks (14 out, and their 1 pixel edge), as
+// the layout draws it (insert-drawer-1280).
+const POINT_CLEAR = 26;
 
 // Where a click in the Insert drawer lands (its drawer-where sentence
 // says it in words): the yellow line between the blocks around the place,
