@@ -309,7 +309,8 @@ four columns whose first a floating drawer would cover, at 1440 and 1280:
 beside the Outline or History a block focused by a command, the arrows or
 Undo is in view whole with its clamp; Insert gives way to a block it covers
 wholly, and leaves one it covers in part with its clamp on the other
-side; Esc in the Outline keeps the block chosen there, the measure
+side; at 1280, where it covers the first column's margins on both sides,
+that block's clamp goes out to the page's right margin and works; Esc in the Outline keeps the block chosen there, the measure
 shown to tell a block under a drawer from one in view), `marks.spec.ts` (the canvas's marks leaving the
 page's layout alone, a button's hugging its pill wherever its own or
 its column's alignment moves it, the seam's "+" below the selection's

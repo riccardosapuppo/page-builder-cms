@@ -3,9 +3,11 @@
 // four columns, whose first is 204 wide and begins at the page's left margin.
 // The Outline and History stand beside the page, so a block chosen in them or
 // focused by a command is in view whole with its clamp; Insert floats over the
-// page's left, so a block it covers wholly gives it way, and one it covers in
-// part has its clamp on its other side. Esc in the Outline, after another
-// block was chosen there, keeps that choice.
+// page's left, so a block it covers wholly gives it way, one it covers in
+// part has its clamp on its other side, and one whose margins it covers on
+// both sides (the first of four columns at 1280) has its clamp out in the
+// page's right margin. Esc in the Outline, after another block was chosen
+// there, keeps that choice.
 import type { Page } from "@playwright/test";
 import { block, clampFaults, clampKeysCovered, clampPlace, visibleShare } from "./helpers/canvas.ts";
 import { column, drawer, expect, heading, makePage, open, outlineRow, section, test, widget } from "./helpers/site.ts";
@@ -131,6 +133,41 @@ test.describe("Insert, which floats over the page's left", () => {
       });
     });
   }
+});
+
+test.describe("Insert over the first of four columns in a 1280 by 800 window", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("covers the block's margins on both sides: its clamp goes out to the page's right margin, clear of the drawer, and its keys work", async ({ page, request }) => {
+    const { id } = await makePage(request, "Insert covers both sides", four());
+    await open(page, id);
+    await block(page, "h1").click();
+    const insert = await drawer(page, "Insert");
+    const cover = (await insert.boundingBox())!;
+    const h1 = (await block(page, "h1").boundingBox())!;
+    const last = (await block(page, "k4").boundingBox())!;
+    // Both places beside the block are under the drawer: the page's left
+    // margin, and the gutter to Column 2, where the full clamp would stand
+    // 14 from the block.
+    expect(cover.x).toBeLessThanOrEqual((await page.locator(".canvas .frame").boundingBox())!.x);
+    expect(cover.x + cover.width).toBeGreaterThan(h1.x + h1.width + 14);
+    // So the clamp stands in the page's right margin, past the last column,
+    // untied, the drawer's edge far from it; nothing covers any of its keys.
+    await expect.poll(() => clampPlace(page)).toEqual({ size: "full", side: "right", tie: "none" });
+    const clamp = (await page.locator(".canvas .clamp").boundingBox())!;
+    expect(clamp.x).toBeGreaterThanOrEqual(last.x + last.width);
+    expect(clamp.x).toBeGreaterThan(cover.x + cover.width);
+    expect(await clampKeysCovered(page)).toEqual([]);
+    expect(await clampFaults(page)).toEqual([]);
+    // Pressed where it is drawn, More opens the block's actions; Insert stays.
+    const more = page.locator(".canvas .clamp").getByRole("button", { name: /^More/ });
+    const key = (await more.boundingBox())!;
+    await page.mouse.click(key.x + key.width / 2, key.y + key.height / 2);
+    await expect(page.getByRole("menu", { name: "Heading actions" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(more).toBeFocused();
+    await expect(page.locator(".drawer")).toHaveCount(1);
+  });
 });
 
 test.describe("Esc in the Outline", () => {
