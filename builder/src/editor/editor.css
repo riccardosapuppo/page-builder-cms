@@ -1,7 +1,8 @@
 /* ==========================================================================
-   The editor's chrome, from the approved design's design/styles.css: its
-   tokens, its top bar, trays, fields, navigator, canvas bench and the
-   marks it draws over the page. The page on the canvas is styled by the
+   The editor's chrome, from the approved design's design/styles.css (its
+   tokens, fields, canvas bench and the marks it draws over the page),
+   laid out as the approved layout's design/layout/styles.css: the top
+   bar, the drawers, the sidebar and the bottom line. The page on the canvas is styled by the
    published page's own stylesheets (../shared/site.css), so nothing here
    may reach into it except the editor's marks (.ov) and the bench rules
    at the end of section 3.
@@ -43,9 +44,17 @@
   --r-control: 6px;
   --r-tray: 10px;
   --lift: 0 0 0 1px rgb(27 31 36 / .1), 0 18px 44px -12px rgb(27 31 36 / .42);
-  --tray-left: 288px;
-  --tray-right: 264px;
+  /* A divider inside a toolbar or between groups: Rule at half strength. */
+  --hair: rgb(126 134 144 / .45);
+  /* The approved layout's sizes: the top bar, a drawer, the sidebar. */
+  --bar: 52px;
+  --drawer: 280px;
+  --side: 296px;
+  /* The room the sidebar takes from the window, its margin with it: what
+     the bottom-centred notice centres away from (0 while it is hidden). */
+  --side-room: calc(var(--side) + 8px);
 }
+body:has(.app-wide) { --side-room: 0px; }
 
 /* After site.css, which paints the published page's body white. */
 body {
@@ -81,23 +90,30 @@ body {
 }
 
 /* ---------- 2. Chrome ---------- */
-/* Three rows: the top bar, the conflict banner (empty, so no height, while
-   there is no conflict), and the trays with the canvas. */
+/* The approved layout's frame (design/layout/): four rows, the top bar,
+   the conflict banner (empty, so no height, while there is no conflict),
+   the canvas, the bottom line; two columns, the canvas's and the
+   sidebar's, which runs from under the top bar to the window's foot. A
+   drawer shares the canvas's cell, over its left: the page keeps its
+   width under it. With the sidebar hidden, its column is empty and the
+   canvas takes the room. */
 .app {
   display: grid;
-  grid-template-columns: var(--tray-left) minmax(0, 1fr) var(--tray-right);
-  grid-template-rows: 52px auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: var(--bar) auto minmax(0, 1fr) auto;
   height: 100vh;
 }
-.app.nav-closed { grid-template-columns: var(--tray-left) minmax(0, 1fr) 56px; }
 
-/* Top bar. Two even sides keep the device switch in the middle; the left
-   side never gets less than --tb-left-min, its need as far as the right
-   side leaves room for it (TopBar.tsx, useLeftRoom). */
+/* Top bar. The title in the middle; the two sides share the rest evenly,
+   so the title is centred, and neither gets less than its need
+   (--tb-left-min, --tb-right-min: TopBar.tsx, useBarRoom). */
 .topbar {
   grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  z-index: 30;
   display: grid;
-  grid-template-columns: minmax(var(--tb-left-min, 0px), 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(var(--tb-left-min, 0px), 1fr) minmax(0, auto) minmax(var(--tb-right-min, 0px), 1fr);
   align-items: center;
   gap: 12px;
   padding: 0 8px;
@@ -105,21 +121,25 @@ body {
 }
 .tb-left, .tb-right { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .tb-right { justify-content: flex-end; }
+.tb-center { display: flex; justify-content: center; min-width: 0; }
 .tb-mark { display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 0 4px 0 6px; border-radius: var(--r-control); color: var(--steel); }
-.tb-mark:hover, .tb-page:hover, .tb-mark[aria-expanded="true"], .tb-page[aria-expanded="true"] { background: var(--key); }
-.tb-page { display: inline-flex; align-items: center; gap: 6px; height: 36px; min-width: 0; padding: 0 8px; margin-right: 4px; border-radius: var(--r-control); white-space: nowrap; }
-.tb-page > .i:first-child { color: var(--steel); }
-/* Short of room, the address gives way first, all of it, and only then
-   the title: "Sp…" beside a whole "/spring-series" named the page by the
-   lesser half. The title never shrinks, but it is never wider than the
-   room the two share; the address takes what is left. */
-.tb-page-name { display: flex; align-items: baseline; min-width: 0; overflow: hidden; }
-.tb-page-title { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
-.tb-page-path { min-width: 0; padding-left: 6px; overflow: hidden; text-overflow: ellipsis; color: var(--steel); }
-.tb-page > .i-xs { color: var(--steel); }
-.chip { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-.chip-draft { gap: 6px; background: var(--key); color: var(--steel); margin-right: 4px; white-space: nowrap; }
-.dot-draft { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--steel); }
+.tb-mark:hover, .tb-mark[aria-expanded="true"] { background: var(--key); }
+.tb-sep { flex: none; width: 1px; height: 22px; margin: 0 6px 0 4px; background: var(--hair); }
+.tb-left > .btn, .tb-left > .ibtn { flex: none; }
+/* The page's title, in the middle, like a document's name; it also
+   switches pages. Short of room, the title is cut, never the line under
+   it, which says whether the page is live. */
+.tb-switch { position: relative; display: flex; min-width: 0; }
+.tb-title { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; max-width: 100%; padding: 3px 12px 4px; border-radius: var(--r-control); white-space: nowrap; }
+.tb-title:hover, .tb-title[aria-expanded="true"] { background: var(--key); }
+.tb-title-row { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.tb-title-row .i { flex: none; color: var(--steel); }
+.tb-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 14px; line-height: 20px; font-weight: 600; }
+.tb-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--steel); }
+.tb-right > .btn-secondary { margin-left: 4px; }
+.ibtn-side { flex: none; margin-left: 4px; }
+.ibtn-side[aria-pressed="true"] { background: var(--key); }
+.dot-draft { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--steel); }
 .dot-live { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
 /* Published, with changes not live yet: a live ring half filled. */
 .dot-part { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--live); background: linear-gradient(90deg, var(--live) 50%, transparent 50%); }
@@ -164,24 +184,123 @@ body {
 .seg > button:hover { background: var(--key); color: var(--graphite); }
 .seg > button[aria-pressed="true"], .seg > button[aria-checked="true"], .seg > button[aria-selected="true"] { background: var(--graphite); color: var(--white); }
 .seg-icons > button { padding: 0 6px; }
-.seg-devices > button { gap: 6px; padding: 0 11px 0 9px; }
-.seg-devices .i { width: 16px; height: 16px; stroke-width: 1.875; }
 .seg-wide { display: flex; width: 100%; }
 .seg-wide > button { flex: 1; height: 30px; }
 .seg-fill { display: flex; }
 .seg-fill > button { flex: 1; }
 .seg-text > button { min-width: 44px; }
 
-/* Trays */
-.tray { display: flex; flex-direction: column; min-height: 0; background: var(--plate); border-radius: var(--r-tray); overflow: hidden; }
-.tray-left { grid-column: 1; grid-row: 3; margin: 8px 0 8px 8px; }
-.tray-right { grid-column: 3; grid-row: 3; margin: 8px 8px 8px 0; }
+/* Drawers (design/layout/, section 4): Insert, Outline and History, one
+   at a time, floating over the left of the canvas in its own cell, so the
+   breadcrumb under it stays readable and the page keeps its width. */
+.drawer {
+  grid-column: 1; grid-row: 3; z-index: 25; align-self: stretch; justify-self: start;
+  display: flex; flex-direction: column; width: var(--drawer); min-height: 0; margin: 8px 0 0 8px;
+  background: var(--plate); border-radius: var(--r-tray); overflow: hidden; box-shadow: var(--lift);
+}
+.drawer-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 8px 2px 16px; }
+.drawer-head h2 { font-size: 14px; line-height: 20px; font-weight: 600; }
+.drawer-tools { flex: none; padding: 6px 16px 0; }
+.drawer-tools .search { margin: 0 0 4px; }
+/* Tabs inside a drawer: words with a graphite underline. */
+.dtabs { display: flex; gap: 20px; margin-top: 6px; box-shadow: inset 0 -1px 0 var(--alloy); }
+.dtabs button { position: relative; height: 34px; font-weight: 600; color: var(--steel); }
+.dtabs button:hover, .dtabs button[aria-selected="true"] { color: var(--graphite); }
+.dtabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--graphite); }
+.drawer-where { margin: 10px 0 4px; font-size: 12px; line-height: 16px; color: var(--steel); }
+.drawer-where strong { color: var(--graphite); font-weight: 600; }
+.drawer-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.drawer-body > .group-title { margin: 14px 0 8px; }
+.drawer-body-tight { padding: 2px 8px 16px; }
+.drawer-body-tree { padding: 8px 8px 12px; }
+.drawer-foot { flex: none; padding: 10px 16px 12px; font-size: 12px; line-height: 18px; color: var(--steel); box-shadow: inset 0 1px 0 var(--alloy); }
+/* Insert > Blocks: two columns of named keys. */
+.bitems { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.bitem {
+  display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px;
+  border-radius: var(--r-control); background: var(--key); color: var(--graphite);
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+  box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14);
+}
+.bitem:hover { background: var(--alloy); }
+/* Insert > Sections: the ready-made sections, one under the other. */
+.drawer-presets { display: grid; gap: 8px; }
+/* Outline > Headings: each at its level. */
+.heads { list-style: none; padding: 0; display: grid; gap: 1px; }
+.head-row { display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 28px; padding: 4px 8px; border-radius: 5px; text-align: left; }
+.head-row:hover, .head-row[aria-current] { background: var(--key); }
+.head-row[aria-current] { font-weight: 600; }
+.head-row:focus-visible { outline-offset: -2px; }
+.head-level { flex: none; min-width: 20px; font-size: 12px; font-weight: 600; color: var(--steel); }
+.head-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-hint { margin-top: 10px; }
+
+/* The sidebar (design/layout/, section 1): Page and Block, or the site
+   style a level below Page. */
+.sidebar {
+  grid-column: 2; grid-row: 2 / 5;
+  display: flex; flex-direction: column; width: var(--side); min-height: 0; margin: 8px 8px 8px 0;
+  background: var(--plate); border-radius: var(--r-tray); overflow: hidden;
+}
+.sb-tabs { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 0 16px; box-shadow: inset 0 -1px 0 var(--alloy); }
+.sb-tabs [role="tablist"] { display: flex; gap: 22px; }
+.sb-tab { position: relative; height: 40px; padding: 0 2px; font-weight: 600; color: var(--steel); }
+.sb-tab:hover, .sb-tab[aria-selected="true"] { color: var(--graphite); }
+.sb-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--graphite); }
+.sb-tab:focus-visible, .sb-link:focus-visible { outline-offset: -3px; }
+.sb-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sb-link { flex: none; display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; box-shadow: inset 0 1px 0 var(--alloy); text-align: left; }
+.sb-link:hover { background: var(--key); }
+.sb-link > .i { color: var(--steel); }
+.sb-link > span { flex: 1; display: flex; flex-direction: column; }
+.sb-link strong { font-weight: 600; }
+.sb-link small { font-size: 12px; line-height: 16px; color: var(--steel); }
+
+/* The bottom line (design/layout/, section 7): where you are, or, while a
+   block moves, where it will land, the line graphite; then how the page
+   is looked at. */
+.statusbar { grid-column: 1; grid-row: 4; display: flex; align-items: center; gap: 12px; min-width: 0; height: 36px; margin: 8px; padding: 0 4px 0 5px; border-radius: var(--r-tray); background: var(--plate); }
+.statusbar-moving { background: var(--graphite); }
+.statusbar-moving .sb-width { color: var(--alloy); }
+.crumbs { display: flex; align-items: center; gap: 14px; min-width: 0; overflow: hidden; }
+.crumbs ol { list-style: none; padding: 0; margin: 0; display: flex; align-items: center; gap: 2px; min-width: 0; }
+.crumbs li { display: inline-flex; align-items: center; gap: 2px; }
+.crumb { position: relative; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 7px; border-radius: 5px; font-weight: 500; color: var(--graphite); white-space: nowrap; }
+.crumb:hover { background: var(--key); }
+.crumb .i, .crumb-sep { color: var(--steel); }
+/* The selection, marked as the outline's selected row: two corner brackets. */
+.crumb[aria-current] { background: var(--key); font-weight: 600; }
+.crumb[aria-current]::before, .crumb[aria-current]::after { content: ""; position: absolute; width: 7px; height: 7px; border: 0 solid var(--mark-line); }
+.crumb[aria-current]::before { left: 0; top: 0; border-width: 2px 0 0 2px; border-top-left-radius: 2px; }
+.crumb[aria-current]::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; border-bottom-right-radius: 2px; }
+.crumbs-hint { display: inline-flex; align-items: center; gap: 4px; color: var(--steel); font-size: 12px; white-space: nowrap; }
+.crumbs-hint .keys-inline { vertical-align: 0; }
+.sb-view { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
+.sb-edges { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px 0 7px; border-radius: 6px; color: var(--graphite); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sb-edges:hover { background: var(--key); }
+.sb-edges .i { color: var(--steel); }
+.sb-edges[aria-pressed="true"] { background: var(--graphite); color: var(--white); }
+.sb-edges[aria-pressed="true"] .i { color: var(--white); }
+/* In a narrower window the toggle keeps its icon, and its name for a
+   screen reader. */
+@media (max-width: 1359px) {
+  .sb-edges { padding: 0 6px; }
+  .sb-edges-word { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+/* The device: three keys, one click each, the one chosen graphite. */
+.devices { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--key); }
+.devices button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 7px; border-radius: 6px; color: var(--graphite); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.devices button:hover { background: var(--alloy); }
+.devices button[aria-checked="true"] { background: var(--graphite); color: var(--white); }
+.devices button:focus-visible { outline-offset: 1px; }
+.dev-w { margin-left: 1px; color: var(--steel); font-weight: 500; }
+.devices button[aria-checked="true"] .dev-w { color: var(--alloy); }
+.sb-width { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 168px; padding: 0 8px 0 6px; color: var(--graphite); font-size: 12px; font-weight: 500; white-space: nowrap; }
+
 .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.tray-head { padding: 12px 12px 4px; }
 .tray-head-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 8px 6px 16px; }
 .tray-head-title > h2 { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; line-height: 20px; font-weight: 600; }
 .tray-head-title > h2 .i { color: var(--steel); }
-.tray-closed .tray-head-title { padding: 10px 12px; }
 .tray-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 .tray-body-tight { padding: 2px 8px 16px; }
 .tray-body-dense .field { margin-top: 15px; }
@@ -192,30 +311,26 @@ body {
 .search:focus-within { outline: 2px solid var(--graphite); outline-offset: 2px; }
 .search input:focus-visible { outline: none; }
 
-.group { margin-top: 18px; }
 .group-title { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); margin-bottom: 8px; }
 .palette-none { margin-top: 18px; color: var(--steel); }
 
-.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+/* The tile a dragged block follows the pointer as (.tile-ghost, below). */
 .tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
   height: 70px; border-radius: var(--r-control); background: var(--key); color: var(--graphite);
   font-size: 12px; line-height: 16px; font-weight: 500;
   box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14);
 }
-.tile:hover { background: var(--alloy); }
-.tile-row { flex-direction: row; justify-content: flex-start; gap: 10px; height: 44px; padding: 0 12px; width: 100%; font-size: 13px; }
-.tile-section { display: grid; gap: 6px; }
 .colpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.colpick button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 48px; border-radius: var(--r-control); background: var(--key); color: var(--graphite); font-size: 12px; font-weight: 600; box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
+.colpick button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 50px; border-radius: var(--r-control); background: var(--key); color: var(--graphite); font-size: 12px; font-weight: 600; box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
 .colpick button:hover { background: var(--alloy); }
-/* A tile that can be dragged says so to the pointer; the three that ask
-   for an image or a video first are clicked only. */
-.tile[data-draggable], .colpick button[data-draggable] { cursor: grab; }
-/* The tile being dragged: its dashed place, as the design draws it, and
+/* A key of Insert that can be dragged says so to the pointer; the ones
+   that ask for an image or a video first are clicked only. */
+.bitem[data-draggable], .colpick button[data-draggable] { cursor: grab; }
+/* The key being dragged: its dashed place, as the design draws it, and
    with keyboard focus the usual ring outside it. */
-.tile.is-sel, .colpick button.is-sel { background: transparent; box-shadow: none; outline: 1.5px dashed var(--rule); outline-offset: -1.5px; color: var(--steel); }
-.tile.is-sel:focus-visible, .colpick button.is-sel:focus-visible { box-shadow: 0 0 0 2px var(--plate), 0 0 0 4px var(--graphite); }
+.bitem.is-sel, .colpick button.is-sel { background: transparent; box-shadow: none; outline: 1.5px dashed var(--rule); outline-offset: -1.5px; color: var(--steel); }
+.bitem.is-sel:focus-visible, .colpick button.is-sel:focus-visible { box-shadow: 0 0 0 2px var(--plate), 0 0 0 4px var(--graphite); }
 
 /* Edit views */
 .ed-title { display: flex; align-items: center; gap: 10px; padding: 12px 16px 10px; }
@@ -354,14 +469,15 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .t-hidden > .t-row { color: var(--steel); }
 .t-hidden > .t-row > span { text-decoration: line-through; text-decoration-color: var(--rule); }
 .t-empty { margin: 6px 4px; padding: 12px; border-radius: var(--r-control); background: var(--key); color: var(--steel); font-size: 12px; line-height: 16px; }
-.nav-foot { flex: none; padding: 10px 16px 12px; color: var(--steel); font-size: 12px; line-height: 16px; }
 
 /* ---------- 3. Canvas: the bench the page sits on ---------- */
-.canvas { grid-column: 2; grid-row: 3; position: relative; min-width: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
-/* The page starts right under the width rule, with the site's header, as
-   the design draws it: the first section's floating bar and its tab go
-   over the header. */
-.frame-fit { margin: 0 28px 32px; }
+/* The page flush with the frame (design/layout/, section 4.8): 19 each
+   side, and the scrollbar's gutter kept whether or not the page scrolls,
+   so the room the page has (Canvas.tsx) does not change as it grows. The
+   page starts a little under the top bar, with the site's header: the
+   first section's floating bar and its tab go over the header. */
+.canvas { grid-column: 1; grid-row: 3; position: relative; min-width: 0; overflow: hidden auto; scrollbar-gutter: stable; padding-top: 28px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.frame-fit { margin: 0 19px 32px; }
 .frame-fit.frame-fixed { margin: 0 auto 32px; }
 /* A page drawn smaller to fit (Canvas.tsx, fitPreview) is scaled from its
    top left corner; the box around it takes its scaled size. */
@@ -371,18 +487,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site [data-theme-part] { position: relative; }
 .canvas-drag .site [data-theme-part]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: repeating-linear-gradient(135deg, rgb(86 96 107 / .5) 0 2px, transparent 2px 9px), rgb(220 224 229 / .78); }
 
-/* The width rule: the canvas width as a dimension line, notched where the
-   page changes layout (tokens.json breakpoints, 560 and 800), each named
-   in words under it. */
-.wrule { position: sticky; top: 0; z-index: 12; height: 42px; margin: 0 28px; background: var(--alloy); }
-.wrule.frame-fixed { margin: 0 auto; }
-.wrule-line { position: absolute; left: 0; right: 0; top: 6px; height: 14px; border-left: 2px solid var(--graphite); border-right: 2px solid var(--graphite); }
-.wrule-line::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: var(--graphite); }
-.wrule-label { position: absolute; left: 50%; top: 3px; transform: translateX(-50%); padding: 0 10px; background: var(--alloy); font-size: 12px; line-height: 20px; font-weight: 600; white-space: nowrap; }
-.wrule-notch { position: absolute; top: 12px; left: calc(var(--x) * var(--s, 1) * 1px); width: 2px; height: 13px; margin-left: -1px; background: var(--graphite); }
-.wrule-notch span { position: absolute; left: 1px; top: 14px; transform: translateX(-50%); color: var(--graphite); font-size: 12px; line-height: 14px; font-weight: 500; white-space: nowrap; }
-/* a name that would run past the end of the rule stops at the end instead */
-.wrule-notch-end span { left: auto; right: calc((var(--x) - var(--w)) * var(--s, 1) * 1px); transform: none; }
+/* Block edges (the bottom line): every block's edges dashed, sections and
+   columns too, drawn inside each block so the page's layout does not
+   move; a block with the keyboard's focus keeps its ring instead. */
+.canvas-edges .site [data-block-id]:not(:focus-visible) { outline: 1px dashed var(--rule); outline-offset: -1px; }
 
 /* The published page's rules that speak to a whole window, undone on the
    bench: a short page is as tall as its sections, not as the window. */
@@ -392,10 +500,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    so nothing is asked of a provider while editing. */
 .canvas .site :is(a, summary, button, input, textarea, select, label, iframe) { pointer-events: none; }
 .canvas .sec, .canvas .col, .canvas .w { position: relative; }
-/* A block brought into view keeps its floating bar, 41 above it, clear of
-   the width rule, 42 tall and sticky. A written text's bar under the block
-   is brought into view where it is placed (Canvas.tsx, showBarBelow). */
-.canvas .site [data-block-id] { scroll-margin: 96px 0 24px; }
+/* A block brought into view keeps its floating bar, 41 above it, in view.
+   A written text's bar under the block is brought into view where it is
+   placed (Canvas.tsx, showBarBelow). */
+.canvas .site [data-block-id] { scroll-margin: 56px 0 24px; }
 .canvas .site [data-block-id]:focus { outline: none; }
 .canvas .site [data-block-id]:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; box-shadow: 0 0 0 2px var(--white); }
 
@@ -563,8 +671,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .bench-note p { margin-top: 8px; color: var(--graphite); font-size: 14px; line-height: 20px; }
 .bench-note .btn { margin-top: 16px; }
 
-/* A sentence about what just happened, under the top bar. */
-.notice { position: fixed; left: 50%; bottom: 20px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(640px, calc(100vw - 32px)); padding: 10px 12px 10px 16px; border-radius: 8px; background: var(--graphite); color: var(--white); font-size: 13px; line-height: 18px; box-shadow: 0 10px 24px -10px rgb(27 31 36 / .6); }
+/* A sentence about what just happened, over the foot of the canvas, above
+   the bottom line, in the middle of the canvas's width. */
+.notice { position: fixed; left: calc((100vw - var(--side-room)) / 2); bottom: 64px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(640px, calc(100vw - 32px)); padding: 10px 12px 10px 16px; border-radius: 8px; background: var(--graphite); color: var(--white); font-size: 13px; line-height: 18px; box-shadow: 0 10px 24px -10px rgb(27 31 36 / .6); }
 .notice .ibtn { color: var(--white); }
 .notice .ibtn:hover { background: rgb(255 255 255 / .14); }
 .notice .ibtn:focus-visible { outline-color: var(--white); }
@@ -589,8 +698,29 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .menu-item-rich small { color: var(--steel); font-size: 12px; line-height: 16px; }
 .menu-sep { height: 6px; border: 0; margin: 0; }
 .menu-app { top: 50px; left: 8px; }
-.menu-pages { top: 50px; left: 48px; width: 320px; max-height: calc(100vh - 80px); overflow: auto; }
 .menu-group { padding: 6px 10px 4px; color: var(--steel); font-size: 12px; font-weight: 600; }
+
+/* A small window under its button that is no menu (the pages, with their
+   search): design/layout/shots-extra/pages.png. */
+.pop { position: absolute; z-index: 70; padding: 8px; border-radius: var(--r-tray); background: var(--plate); box-shadow: var(--lift); color: var(--graphite); }
+.pop-pages { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: 384px; max-height: calc(100vh - 80px); overflow: auto; }
+.pop-pages .search { margin: 2px 2px 6px; }
+.pages-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; }
+.page-row { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border-radius: var(--r-control); color: var(--graphite); text-align: left; }
+.page-row:hover { background: var(--key); }
+.page-row:focus-visible { outline-offset: -2px; }
+.page-row > .i { color: var(--steel); }
+.page-row-name { display: flex; flex-direction: column; min-width: 0; }
+.page-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.page-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; color: var(--steel); }
+.pr-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--steel); white-space: nowrap; }
+/* The page open, marked as the selection is: two corner brackets. */
+.page-row[aria-current] { background: var(--key); }
+.page-row[aria-current]::before, .page-row[aria-current]::after { content: ""; position: absolute; width: 8px; height: 8px; border: 0 solid var(--mark-line); }
+.page-row[aria-current]::before { left: 0; top: 0; border-width: 2px 0 0 2px; }
+.page-row[aria-current]::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
+.pages-none { margin: 6px 10px 8px; }
+.pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 8px 4px 2px; box-shadow: inset 0 1px 0 var(--alloy); }
 
 /* ---------- 5. Dragging, the keyboard and the block's menu ---------- */
 /* While a block is dragged (design/shots/drag.png): the dragged block, in
@@ -668,16 +798,13 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .drag-ghost { position: absolute; width: 0; height: 0; pointer-events: none; }
 .tile-ghost { position: absolute; left: 12px; top: -40px; flex-direction: row; gap: 8px; width: auto; height: 38px; padding: 0 14px 0 10px; background: var(--plate); color: var(--graphite); transform: rotate(-3deg); box-shadow: 0 0 0 1px var(--rule), 0 14px 24px -10px rgb(27 31 36 / .45); font: 500 13px/16px var(--font-ui); white-space: nowrap; }
 
-/* Where the block will go, said and shown at the foot of the canvas. */
-.live-caption {
-  position: fixed; bottom: 20px; left: calc(var(--tray-left) + (100vw - var(--tray-left) - var(--tray-right)) / 2); transform: translateX(-50%);
-  display: flex; flex-direction: column; gap: 2px; max-width: calc(100vw - var(--tray-left) - var(--tray-right) - 32px); padding: 10px 16px; border-radius: 8px;
-  background: var(--graphite); color: var(--white); font-size: 13px; line-height: 18px; z-index: 45;
-  box-shadow: 0 10px 24px -10px rgb(27 31 36 / .6);
-}
-.live-caption strong { font-weight: 600; }
-.live-caption span { color: var(--alloy); font-size: 12px; line-height: 16px; }
-.live-caption-quiet { position: absolute; left: 0; bottom: auto; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; transform: none; box-shadow: none; }
+/* Where the block will go, said and shown in the bottom line, in the
+   breadcrumb's place (StatusBar.tsx). Quiet, it is kept for a screen
+   reader only. */
+.live-caption { display: flex; align-items: baseline; gap: 10px; min-width: 0; padding-left: 9px; color: var(--white); font-size: 13px; line-height: 18px; white-space: nowrap; overflow: hidden; }
+.live-caption strong { flex: none; font-weight: 600; }
+.live-caption span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--alloy); font-size: 12px; line-height: 16px; }
+.live-caption-quiet { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 
 /* The navigator during a drag: the line where the block would land. */
 .t-target { background: var(--key); }
@@ -686,11 +813,11 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .t-insert::after { content: ""; position: absolute; left: 22px; right: 0; top: 4px; height: 10px; border-left: 2px solid var(--mark-line); border-right: 2px solid var(--mark-line); }
 .t-insert span { position: absolute; left: 32px; top: 1px; z-index: 1; padding: 1px 5px; border-radius: 3px; background: var(--mark); color: var(--on-mark); font-size: 12px; line-height: 16px; font-weight: 600; }
 
-/* The keyboard shortcuts window (design/shots/shortcuts.png), and keys
-   wherever there is room for them. */
-.dlg-keys { width: min(1000px, calc(100vw - 32px)); }
+/* The keyboard shortcuts window (design/layout/shots/shortcuts.png), and
+   keys wherever there is room for them. */
+.dlg-keys { width: min(1080px, calc(100vw - 32px)); }
 .search-keys { width: 260px; margin: 0; }
-.keys-body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 40px; padding: 4px 24px 28px; }
+.keys-body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 40px; padding: 4px 24px 24px; }
 .keys-group h3 { margin: 14px 0 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--steel); }
 /* The design's 12 px between words and keys, but 8: at its font's size in
    this browser, "Select the parent column or section" needs a pixel more
@@ -699,10 +826,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .keys-group dt { line-height: 17px; }
 .keys-group dd { display: flex; gap: 4px; flex: none; margin: 0; }
 .keys-group .hint { margin-top: 8px; }
-/* The Text group, under the design's rows: two columns wide, its entries
-   side by side in them. */
-.keys-group-wide { grid-column: span 2; }
-.keys-group-wide dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
 kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--rule); border-bottom-width: 2.5px; border-radius: 5px; background: var(--plate); color: var(--graphite); font: 600 12px/1 var(--font-ui); }
 kbd .i-key { width: 14px; height: 14px; stroke-width: 2.15; }
 .keys { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; flex: none; }
@@ -725,15 +848,17 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .split-off .btn { background: var(--key); color: var(--steel); box-shadow: none; cursor: not-allowed; }
 .tb-right > a.btn { margin-left: 2px; }
 
-.menu-publish { top: 56px; right: 8px; width: 372px; }
+/* Under the split button, its right edge on the button's, the sidebar's key
+   beside it (design/layout/shots/publish.png). */
+.menu-publish { top: 48px; right: 48px; width: 372px; }
 .menu-item-rich strong { font-weight: 600; }
 .menu-item-rich .menu-addr { color: var(--graphite); font-weight: 500; }
 .menu-item-rich > span.keys { flex-direction: row; gap: 3px; margin-top: 0; }
 .menu-link:hover strong { text-decoration: underline; }
 
-/* The conflict, under the top bar and across the window
-   (design/shots/save-states.png). */
-.banner-inplace { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 16px 8px 20px; background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); font-size: 13px; line-height: 18px; z-index: 13; }
+/* The conflict, under the top bar and across the canvas, the sidebar
+   beside it (design/layout/shots-extra/conflict.png). */
+.banner-inplace { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 16px 8px 20px; background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); font-size: 13px; line-height: 18px; z-index: 13; }
 .banner-inplace > .i { color: var(--warn); }
 .banner-inplace p { flex: 1; }
 .banner-inplace strong { font-weight: 700; }
@@ -744,9 +869,10 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .banner-inplace .btn:disabled { cursor: progress; }
 
 /* A save whose outcome is unknown: why, and Retry now; at the foot of the
-   canvas's left side, apart from the notice in its middle. */
+   canvas's left side, above the bottom line, apart from the notice in its
+   middle (design/layout/shots-extra/offline.png). */
 .toast { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 8px; background: var(--graphite); color: var(--white); font-size: 12px; line-height: 16px; box-shadow: 0 10px 22px -12px rgb(27 31 36 / .6); }
-.toast-save { position: fixed; left: calc(var(--tray-left) + 24px); bottom: 20px; z-index: 41; width: 332px; }
+.toast-save { position: fixed; left: 24px; bottom: 57px; z-index: 41; width: 332px; }
 .toast strong { font-weight: 700; }
 .toast-busy { color: var(--alloy); white-space: nowrap; }
 

@@ -103,7 +103,7 @@ async function start(site = new VersionSite(), adapter: StorageAdapter = site.ad
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   render(<App env={env} adapter={adapter} address={{ read: () => 1, write: () => {} }} cmsOrigin="http://127.0.0.1:3900" tabs={{ open: () => true }} />);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await screen.findByRole("button", { name: /^Switch page\. Open:/ });
   act(() => env.ui.getState().setHistoryOpen(true));
   const versions = await screen.findByRole("list", { name: "Versions" });
   await waitFor(() => expect(within(versions).getAllByRole("button", { name: /^Restore: / })).toHaveLength(site.versions.length));

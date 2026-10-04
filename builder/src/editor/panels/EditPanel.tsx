@@ -1,6 +1,6 @@
-// The left tray's Edit view: the panel of the selected block, with its
-// three tabs, or, with nothing selected, the page's own (design/shots,
-// editor.png and empty.png).
+// The sidebar's panels (../Sidebar.tsx): the Page tab's, the page's own
+// settings, and the Block tab's, the selected block's, with its three tabs
+// (design/shots, editor.png and empty.png).
 import { useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 import { makeSetPage, REMOVE } from "../../document/commands.ts";
 import type { Block, WidgetBlock } from "../../shared/document.ts";
@@ -22,11 +22,6 @@ import { useBlock } from "./hooks.ts";
 import { StyleTab } from "./StyleTab.tsx";
 import { ColumnContent, SectionContent } from "./structure.tsx";
 
-export function EditPanel() {
-  const selection = useEditor((s) => s.selection);
-  return selection === null ? <PagePanel /> : <BlockPanel id={selection} />;
-}
-
 // ------------------------------------------------------------- the page
 
 export function PagePanel() {
@@ -38,7 +33,7 @@ export function PagePanel() {
     <>
       <div className="ed-title">
         <span className="ed-icon"><Icon name="page" className="i i-tile" /></span>
-        <div><strong>Page</strong><span>Nothing selected, so you are editing the page</span></div>
+        <div><strong>Page</strong><span>This page’s own settings</span></div>
       </div>
       <div className="tray-body">
         <TextField

@@ -1,4 +1,4 @@
-// The page's panel, with nothing selected: title and description by the
+// The page's panel, the sidebar's Page tab: title and description by the
 // page command; the address through the storage adapter, whose refusal
 // shows on the Address field; the server's 422 on the title on its field.
 // @vitest-environment jsdom
@@ -7,13 +7,13 @@ import { expect, test } from "vitest";
 import { describedText, editorKit } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { errorsByBlock } from "../../storage/adapter.ts";
-import { EditPanel } from "./EditPanel.tsx";
+import { PagePanel } from "./EditPanel.tsx";
 
 const current = { id: 7, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
 
 test("title and description change the page by the page command", () => {
   const kit = editorKit({ document: page(), session: { current } });
-  kit.render(<EditPanel />);
+  kit.render(<PagePanel />);
   const title = screen.getByLabelText("Title");
   fireEvent.change(title, { target: { value: "Winter swims" } });
   fireEvent.blur(title);
@@ -29,7 +29,7 @@ test("title and description change the page by the page command", () => {
 
 test("a page not published yet shows the address it will have on the CMS, as the design does", () => {
   const kit = editorKit({ document: page(), session: { current, cmsOrigin: "http://127.0.0.1:3900" } });
-  kit.render(<EditPanel />);
+  kit.render(<PagePanel />);
   expect(describedText(screen.getByLabelText("Address"))).toBe("127.0.0.1:3900/winter-series");
 });
 
@@ -45,7 +45,7 @@ test("the address goes through the adapter, and its refusal shows on the Address
       },
     },
   });
-  kit.render(<EditPanel />);
+  kit.render(<PagePanel />);
   const address = screen.getByLabelText("Address");
   fireEvent.change(address, { target: { value: "/notices" } });
   fireEvent.keyDown(address, { key: "Enter" });
@@ -58,7 +58,7 @@ test("the address goes through the adapter, and its refusal shows on the Address
 
 test("the server's 422 on the title shows on the Title field", () => {
   const kit = editorKit({ document: page(), session: { current } });
-  kit.render(<EditPanel />);
+  kit.render(<PagePanel />);
   act(() => kit.ui.getState().setServerErrors(errorsByBlock(kit.doc(), [{ pointer: "/document/title", keyword: "maxLength", blockPointer: null, message: "is longer than 120 characters" }])));
   const title = screen.getByLabelText("Title");
   expect(title.getAttribute("aria-invalid")).toBe("true");

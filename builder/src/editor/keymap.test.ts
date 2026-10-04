@@ -56,11 +56,31 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(matches({ key: "c", mod: true }, press("C", { ctrlKey: true, shiftKey: true }))).toBe(false);
   expect(actions(press("Enter", { ctrlKey: true, shiftKey: true }))).toEqual(["publish"]);
   expect(actions(press("Enter", { ctrlKey: true }))).toEqual([]);
-  expect(actions(press("p", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
-  // Cmd+Option+P on a Mac types "π": the key's place still says P.
-  expect(actions(press("π", { metaKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
-  expect(actions(press("π", { metaKey: true, code: "KeyP" }))).toEqual([]);
-  expect(actions(press("p", { ctrlKey: true, code: "KeyP" }))).toEqual([]);
+  expect(actions(press("F10", { shiftKey: true }))).toEqual(["blockMenu"]);
+  expect(actions(press("F10"))).toEqual([]);
+  expect(actions(press("P", { altKey: true, shiftKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  // Option+Shift+P on a Mac types "∏": the key's place still says P.
+  expect(actions(press("∏", { altKey: true, shiftKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  expect(actions(press("∏", { shiftKey: true, code: "KeyP" }))).toEqual([]);
+  expect(actions(press("p", { altKey: true, code: "KeyP" }))).toEqual([]);
+  // The old chord, Ctrl+Alt, is AltGr on many keyboards: it does nothing.
+  expect(actions(press("p", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual([]);
+  expect(actions(press("N", { altKey: true, shiftKey: true, code: "KeyN" }))).toEqual(["openInsert"]);
+  expect(actions(press("O", { altKey: true, shiftKey: true, code: "KeyO" }))).toEqual(["openOutline"]);
+  // A digit with Shift types a sign, a different one on each layout ("!"
+  // and "@" on one, "!" and the quote on another): the place says which.
+  expect(actions(press("!", { altKey: true, shiftKey: true, code: "Digit1" }))).toEqual(["deviceDesktop"]);
+  expect(actions(press("@", { altKey: true, shiftKey: true, code: "Digit2" }))).toEqual(["deviceTablet"]);
+  expect(actions(press("\"", { altKey: true, shiftKey: true, code: "Digit2" }))).toEqual(["deviceTablet"]);
+  expect(actions(press("#", { altKey: true, shiftKey: true, code: "Digit3" }))).toEqual(["devicePhone"]);
+  expect(actions(press("1", { altKey: true, code: "Digit1" }))).toEqual([]);
+});
+
+test("no chord holds Ctrl and Alt together, which many keyboards type as AltGr", () => {
+  expect(KEYMAP.flatMap((e) => e.chords.filter((c) => c.mod && c.alt).map(() => e.action))).toEqual([]);
+  // Every chord with Alt names its key's place, so it does not depend on
+  // what the key types.
+  expect(KEYMAP.flatMap((e) => e.chords.filter((c) => c.alt && c.key.length === 1 && !c.code).map(() => e.action))).toEqual([]);
 });
 
 test("while the person types, only the entries marked so, each by the key it types and never by AltGr", () => {
@@ -74,16 +94,19 @@ test("while the person types, only the entries marked so, each by the key it typ
   // The keys no text takes.
   expect(typing(press("s", { ctrlKey: true }))).toEqual(["saveVersion"]);
   expect(typing(press("Enter", { ctrlKey: true, shiftKey: true }))).toEqual(["publish"]);
-  expect(typing(press("p", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual(["preview"]);
-  // AltGr+P types "ö" on one layout and "p" with AltGr on none that needs
-  // the shortcut: in a text, both stay the text's. Off the text, the key's
-  // place still opens the preview.
-  expect(typing(press("ö", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
-  expect(typing(press("p", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
-  expect(typing(press("ö", { ctrlKey: true, altKey: true, code: "KeyP" }))).toEqual([]);
-  expect(actions(press("ö", { ctrlKey: true, altKey: true, code: "KeyP", altGraph: true }))).toEqual(["preview"]);
+  expect(typing(press("P", { altKey: true, shiftKey: true, code: "KeyP" }))).toEqual(["preview"]);
+  // In a text a chord with Alt is the key it types: Option+Shift+P types
+  // "∏" on a Mac, which stays the text's; and AltGr, Ctrl and Alt
+  // together, never presses it.
+  expect(typing(press("∏", { altKey: true, shiftKey: true, code: "KeyP" }))).toEqual([]);
+  expect(typing(press("P", { ctrlKey: true, altKey: true, shiftKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
+  expect(actions(press("P", { ctrlKey: true, altKey: true, shiftKey: true, code: "KeyP", altGraph: true }))).toEqual([]);
+  // The drawers and the devices are not opened from inside a text: their
+  // keys are the text's there.
+  expect(typing(press("N", { altKey: true, shiftKey: true, code: "KeyN" }))).toEqual([]);
+  expect(typing(press("!", { altKey: true, shiftKey: true, code: "Digit1" }))).toEqual([]);
   // The window says which ones, from the table.
-  expect(GROUP_NOTES.Text).toContain("Save a named version, Preview and Publish now work while you type");
+  expect(GROUP_NOTES["Text, while you write"]).toContain("Save a named version, Preview and Publish now work while you type");
 });
 
 // Keys written by hand anywhere but the keymap, in code and words a person
@@ -124,9 +147,15 @@ test("the window and the menus name the keys as the design does", () => {
   expect(ariaKeyShortcuts(entry("delete"))).toBe("Delete Backspace");
   expect(ariaKeyShortcuts(entry("pickUp"))).toBe("Space");
   expect(entryCaps(entry("publish"))).toEqual([{ text: "Ctrl" }, { text: "Shift" }, { text: "Enter" }]);
-  expect(entryCaps(entry("preview"))).toEqual([{ text: "Ctrl" }, { text: "Alt" }, { text: "P" }]);
+  expect(entryCaps(entry("preview"))).toEqual([{ text: "Alt" }, { text: "Shift" }, { text: "P" }]);
   expect(entryKeysText(entry("publish"))).toBe("Ctrl+Shift+Enter");
   expect(entryCaps(entry("saveVersion"))).toEqual([{ text: "Ctrl" }, { text: "S" }]);
   expect(ariaKeyShortcuts(entry("saveVersion"))).toBe("Control+S");
-  expect(ariaKeyShortcuts(entry("preview"))).toBe("Control+Alt+P");
+  expect(ariaKeyShortcuts(entry("preview"))).toBe("Alt+Shift+P");
+  expect(entryCaps(entry("openInsert"))).toEqual([{ text: "Alt" }, { text: "Shift" }, { text: "N" }]);
+  expect(entryCaps(entry("deviceTablet"))).toEqual([{ text: "Alt" }, { text: "Shift" }, { text: "2" }]);
+  expect(ariaKeyShortcuts(entry("devicePhone"))).toBe("Alt+Shift+3");
+  expect(entryCaps(entry("blockMenu"))).toEqual([{ text: "Shift" }, { text: "F10" }]);
+  // The words of the approved layout's window.
+  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", "On tablet, 768 wide", "On phone, 390 wide"]);
 });

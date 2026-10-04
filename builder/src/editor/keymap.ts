@@ -2,36 +2,45 @@
 // (./ShortcutsDialog.tsx), the editor's one keydown listener runs the
 // entries carried by the keymap (./keys.ts), the drag library's keyboard
 // sensor is given the keys of the entries it carries (sensorCodes), and the
-// browser carries the rest itself: Enter on a widget tile is a button's
-// key, and Ctrl+C and Ctrl+V become its copy and paste events, which the
-// editor answers (./keys.ts). e2e/keyboard.spec.ts presses every entry and
-// checks what it did.
+// browser carries the rest itself: Enter on a block in Insert is a button's
+// key, Shift+F10 the context menu's, and Ctrl+C and Ctrl+V become its copy
+// and paste events, which the editor answers (./keys.ts).
+// e2e/keyboard.spec.ts presses every entry and checks what it did.
 //
 // Plain data, with no React and no DOM, so the tests of every kind can
 // read it.
 //
 // Undo and redo run on the store's history, as the top bar's buttons do;
-// Ctrl+S opens the history panel on "Save version", asking for the name.
+// Ctrl+S opens the history drawer on "Save version", asking for the name.
 // The text of a text block is edited on the canvas (./rich/): Enter opens
 // it, and inside it the text editor carries its own keys, listed in the
 // Text group.
+//
+// The chords the approved layout adds (its NOTES.md, section 6) are
+// Alt+Shift with a letter or a digit: never Ctrl+Alt, which is AltGr
+// on many keyboards (the Italian one among them), and none of the letters
+// the browsers keep for themselves with Alt+Shift or open their menus with
+// Alt. They are matched by the key's place, so a Mac's Option characters
+// and other layouts do not change them.
+import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { listed } from "./plain-words.ts";
 
 export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
   | "addTile"
-  | "editText" | "copy" | "paste" | "duplicate" | "delete"
+  | "editText" | "blockMenu" | "copy" | "paste" | "duplicate" | "delete"
   | "bold" | "italic" | "link" | "leaveText"
   | "undo" | "redo" | "saveVersion"
   | "preview" | "publish"
+  | "openInsert" | "openOutline" | "deviceDesktop" | "deviceTablet" | "devicePhone"
   | "showShortcuts";
 
 // Where an entry works:
 // - canvas: a block of the canvas has the focus;
 // - selection: a block of the canvas, or a row of the navigator;
 // - editor: anywhere in the editor;
-// - tile: a tile of the widget panel;
+// - tile: a block of the Insert drawer;
 // - moving: while a block is picked up with the keyboard;
 // - text: in the text of a text block, edited on the canvas.
 // Never in a menu or a dialog, which keep their keys, and never in a text
@@ -59,12 +68,10 @@ export interface Chord {
   alt?: boolean;
 }
 
-// In the approved window's order, with two groups it does not have: Text,
-// the keys inside a text being edited, after Editing; Adding after Publish.
-// In the order the "?" window lays them out (./ShortcutsDialog.tsx): the
-// approved design's two rows of three, then the Text and Adding groups
-// the design does not draw.
-export const KEY_GROUPS = ["Selection", "Moving", "Editing", "History", "Publish", "This list", "Text", "Adding"] as const;
+// The approved layout's groups (design/layout/shots/shortcuts.png), in the
+// order its "?" window lays them out, three columns of them
+// (./ShortcutsDialog.tsx).
+export const KEY_GROUPS = ["Selection", "Editing", "Moving", "Text, while you write", "Adding and looking", "History", "Publish"] as const;
 export type KeyGroup = (typeof KEY_GROUPS)[number];
 
 export interface KeyEntry {
@@ -105,27 +112,36 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "drop", group: "Moving", label: "Drop it here", chords: [SPACE], scope: "moving", via: "drag" },
   { action: "cancelMove", group: "Moving", label: "Cancel and put it back", chords: [ESCAPE], scope: "moving", via: "drag" },
 
-  { action: "addTile", group: "Adding", label: "Add the widget of a tile after the selection", chords: [{ key: "Enter" }], scope: "tile", via: "native" },
+  { action: "addTile", group: "Adding and looking", label: "Add the block chosen in Insert", chords: [{ key: "Enter" }], scope: "tile", via: "native" },
 
   { action: "editText", group: "Editing", label: "Edit the text of a block", chords: [{ key: "Enter" }], scope: "canvas", via: "keymap" },
+  // The browser raises the context menu event for it, which the canvas and
+  // the outline answer with the block's menu (./BlockMenu.tsx).
+  { action: "blockMenu", group: "Editing", label: "Open the block menu", chords: [{ key: "F10", shift: true }], scope: "selection", via: "native" },
   { action: "copy", group: "Editing", label: "Copy", chords: [{ key: "c", mod: true }], scope: "selection", via: "native" },
   { action: "paste", group: "Editing", label: "Paste after the selection", chords: [{ key: "v", mod: true }], scope: "selection", via: "native" },
   { action: "duplicate", group: "Editing", label: "Duplicate", chords: [{ key: "d", mod: true }], scope: "selection", via: "keymap" },
   { action: "delete", group: "Editing", label: "Delete", chords: [{ key: "Delete" }, { key: "Backspace" }], scope: "selection", via: "keymap" },
 
-  { action: "bold", group: "Text", label: "Bold", chords: [{ key: "b", mod: true }], scope: "text", via: "text" },
-  { action: "italic", group: "Text", label: "Italic", chords: [{ key: "i", mod: true }], scope: "text", via: "text" },
-  { action: "link", group: "Text", label: "Link the selected words", chords: [{ key: "k", mod: true }], scope: "text", via: "text" },
-  { action: "leaveText", group: "Text", label: "Leave the text", chords: [ESCAPE], scope: "text", via: "text" },
+  { action: "bold", group: "Text, while you write", label: "Bold", chords: [{ key: "b", mod: true }], scope: "text", via: "text" },
+  { action: "italic", group: "Text, while you write", label: "Italic", chords: [{ key: "i", mod: true }], scope: "text", via: "text" },
+  { action: "link", group: "Text, while you write", label: "Link the selected words", chords: [{ key: "k", mod: true }], scope: "text", via: "text" },
+  { action: "leaveText", group: "Text, while you write", label: "Leave the text", chords: [ESCAPE], scope: "text", via: "text" },
 
   { action: "undo", group: "History", label: "Undo", chords: [{ key: "z", mod: true }], scope: "editor", via: "keymap" },
   { action: "redo", group: "History", label: "Redo", chords: [{ key: "z", mod: true, shift: true }, { key: "y", mod: true }], scope: "editor", via: "keymap" },
   { action: "saveVersion", group: "History", label: "Save a named version", chords: [{ key: "s", mod: true }], scope: "editor", via: "keymap", typing: true },
 
-  { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", mod: true, alt: true }], scope: "editor", via: "keymap", typing: true },
+  { action: "preview", group: "Publish", label: "Preview", chords: [{ key: "p", code: "KeyP", alt: true, shift: true }], scope: "editor", via: "keymap", typing: true },
   { action: "publish", group: "Publish", label: "Publish now", chords: [{ key: "Enter", mod: true, shift: true }], scope: "editor", via: "keymap", typing: true },
 
-  { action: "showShortcuts", group: "This list", label: "Show keyboard shortcuts", chords: [{ key: "?" }], scope: "editor", via: "keymap" },
+  { action: "openInsert", group: "Adding and looking", label: "Open Insert", chords: [{ key: "n", code: "KeyN", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "openOutline", group: "Adding and looking", label: "Open the outline", chords: [{ key: "o", code: "KeyO", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "deviceDesktop", group: "Adding and looking", label: "Look at it on desktop", chords: [{ key: "1", code: "Digit1", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "deviceTablet", group: "Adding and looking", label: `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, chords: [{ key: "2", code: "Digit2", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "devicePhone", group: "Adding and looking", label: `On phone, ${PREVIEW_WIDTHS.phone} wide`, chords: [{ key: "3", code: "Digit3", alt: true, shift: true }], scope: "editor", via: "keymap" },
+
+  { action: "showShortcuts", group: "Publish", label: "Show this list", chords: [{ key: "?" }], scope: "editor", via: "keymap" },
 ];
 
 // The entries that keep their keys while the person types, in words: "Save
@@ -136,9 +152,9 @@ function typingWords(): string {
 
 // What the window says under a group.
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
-  Moving: "While you move a block, the editor reads out where it will land.",
-  Text: `While you write in a text on the page. There Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the panel’s fields.`,
-  Adding: "Enter on a tile of the Add panel, or drag the tile onto the page.",
+  Moving: "While a block moves, the bottom line says where it will land, and screen readers hear the same sentence.",
+  "Text, while you write": `In a text on the page, Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the sidebar’s fields.`,
+  "Adding and looking": "A block in Insert goes after the selection with Enter, or where it is dragged on the page.",
 };
 
 // The keys of an event, as the chords name them. altGraph: the AltGr key

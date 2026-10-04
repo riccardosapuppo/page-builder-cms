@@ -16,11 +16,13 @@ import { locate } from "../document/tree.ts";
 import { afterRender, runCommand, runRedo, runUndo, focusBlock, placeFocus, regionOf, type Region } from "./act.ts";
 import { copySelection, pasteText } from "./clipboard.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
+import { openDrawer, toggleDrawer } from "./Drawer.tsx";
 import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
 import { useOptionalSession, type Session } from "./session.tsx";
 import { publishPaused } from "./Publish.tsx";
 import { startEditing } from "./rich/tools.ts";
+import type { Preview } from "./ui-store.ts";
 
 const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
 
@@ -100,6 +102,11 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     return true;
   };
   const selected = () => store.getState().selection;
+  // The bottom line's device, the focus staying where it is.
+  const device = (preview: Preview) => {
+    ui.getState().setPreview(preview);
+    return true;
+  };
   const command = (make: (id: string) => Parameters<typeof runCommand>[1], region: Region) => {
     const id = selected();
     if (id === null) {
@@ -141,8 +148,9 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
         return true;
       }
       if (["section", "column", "divider", "spacer"].includes(block.type)) return false;
-      ui.setState({ tray: "edit", panelTab: "content" });
-      afterRender(() => document.querySelector<HTMLElement>(".tray-left [role=tabpanel] :is(input:not([type=hidden]), textarea)")?.focus());
+      // The sidebar shown if it was hidden, on the block's Content tab.
+      ui.setState({ tray: "edit", panelTab: "content", sidebarOpen: true });
+      afterRender(() => document.querySelector<HTMLElement>(".sidebar [role=tabpanel] :is(input:not([type=hidden]), textarea)")?.focus());
       return true;
     },
     undo: (region) => {
@@ -153,11 +161,11 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
       runRedo(env, region === "panel" ? "canvas" : region);
       return true;
     },
-    // The history panel, open on "Save version" with its name field, which
-    // takes the focus (./HistoryPanel.tsx).
+    // The history's drawer, open on "Save version" with its name field,
+    // which takes the focus (./HistoryPanel.tsx).
     saveVersion: () => {
       if (!session()?.current) return false;
-      ui.getState().setHistoryOpen(true);
+      openDrawer(ui, "history");
       ui.getState().setNamingVersion(true);
       // Already open, the field takes the focus back.
       setTimeout(() => document.querySelector<HTMLElement>(".ver-form input")?.focus(), 0);
@@ -178,6 +186,18 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
       else if (!now.publishing) void now.publish();
       return true;
     },
+    // The drawers open and close as their top bar keys do (./Drawer.tsx).
+    openInsert: () => {
+      toggleDrawer(ui, "insert");
+      return true;
+    },
+    openOutline: () => {
+      toggleDrawer(ui, "outline");
+      return true;
+    },
+    deviceDesktop: () => device("desktop"),
+    deviceTablet: () => device("tablet"),
+    devicePhone: () => device("phone"),
     showShortcuts: () => {
       ui.getState().setShortcutsOpen(true);
       return true;

@@ -1,5 +1,5 @@
 // Every change the interface asks of the page goes through here, from the
-// floating bar, the keyboard, the block's menu, the widget panel or a drop:
+// floating bar, the keyboard, the block's menu, the Insert drawer or a drop:
 //
 // 1. the text still waiting in a panel's field is handed over first, as a
 //    command of its own (./pending.ts); a text the page refuses keeps the
@@ -8,7 +8,7 @@
 // 3. the focus goes where the command's result says (../document/reducer.ts,
 //    focusAfter): after a delete to the neighbour, after an insert, a paste
 //    or a duplicate to the new block, after an undo to the block it touched;
-//    on the canvas, or on the navigator's row when the command came from
+//    on the canvas, or on the outline's row when the command came from
 //    there;
 // 4. a refusal is said, in one sentence, and the page stays as it was.
 import { useMemo } from "react";
@@ -72,7 +72,7 @@ export function regionOf(element: EventTarget | null): Region {
   if (!(element instanceof Element)) return "canvas";
   if (element.closest(".tree")) return "navigator";
   if (element.closest(".canvas")) return "canvas";
-  if (element.closest(".tray-left")) return "panel";
+  if (element.closest(".sidebar")) return "panel";
   return "canvas";
 }
 

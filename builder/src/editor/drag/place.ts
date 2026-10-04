@@ -33,7 +33,7 @@ export interface Point {
 }
 
 // What is dragged: a block of the page (its id), or a new one from the
-// widget panel, which the page does not hold (its id is the new block's).
+// Insert drawer, which the page does not hold (its id is the new block's).
 export interface Dragged {
   id: string;
   type: BlockType;

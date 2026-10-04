@@ -145,6 +145,16 @@ class FakeSite {
   }
 }
 
+// The page is open: its title is on the top bar's page switch.
+const opened = () => screen.findByRole("button", { name: /^Switch page\. Open:/ });
+
+// The page's structure, the Outline drawer opened from the top bar if it is
+// not open yet.
+function outline(): HTMLElement {
+  if (!screen.queryByRole("tree", { name: "Page structure" })) fireEvent.click(screen.getByRole("button", { name: "Outline" }));
+  return screen.getByRole("tree", { name: "Page structure" });
+}
+
 function start(wanted: number | null) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
@@ -160,11 +170,11 @@ function start(wanted: number | null) {
 
 test("the shell opens the page the address names, and its edits reach the adapter through the autosave", async () => {
   const { env, site, clock, written } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   expect(screen.getByRole("button", { name: "Switch page. Open: Winter series" })).toBeTruthy();
   expect(written).toEqual([1]);
 
-  fireEvent.click(within(screen.getByRole("tree")).getByText("Hero"));
+  fireEvent.click(within(outline()).getByText("Hero"));
   fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
   const label = screen.getByLabelText("Section label");
   fireEvent.change(label, { target: { value: "Winter" } });
@@ -187,7 +197,7 @@ test("without an address the home page opens", async () => {
 
 test("a save refused with a 422 puts the error on the block's field, and the next edit clears it", async () => {
   const { env, site, clock } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   site.refuseNext = [{
     pointer: "/document/sections/0/children/0/children/2/props/href",
     keyword: "pattern",
@@ -202,12 +212,12 @@ test("a save refused with a 422 puts the error on the block's field, and the nex
   expect(site.saves).toHaveLength(1);
 
   // The server named the button's link: the error is on the Link field and
-  // on the button's navigator row, and the save state says so.
+  // on the button's outline row, and the save state says so.
   const link = await screen.findByLabelText("Link");
   await waitFor(() => expect(link.getAttribute("aria-invalid")).toBe("true"));
   expect(describedText(link)).toContain("Use a full address (https://…)");
   expect(screen.getByRole("textbox", { name: "Text" }).getAttribute("aria-invalid")).toBeNull();
-  expect(screen.getByRole("treeitem", { name: "Button: Join us, refused by the server" })).toBeTruthy();
+  expect(within(outline()).getByRole("treeitem", { name: "Button: Join us, refused by the server" })).toBeTruthy();
   expect(screen.getAllByRole("status").some((s) => s.textContent === "Not saved: a value was refused")).toBe(true);
 
   // A new edit is a new attempt: the errors go with the answer to it.
@@ -221,9 +231,9 @@ test("a save refused with a 422 puts the error on the block's field, and the nex
 
 test("a new page is made, its address offered from its title, and opened; a taken address is said on its field", async () => {
   const { env, written } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
-  fireEvent.click(screen.getByRole("menuitem", { name: "New page…" }));
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Pages" })).getByRole("button", { name: "New page" }));
   const dialog = screen.getByRole("dialog", { name: "New page" });
   fireEvent.change(within(dialog).getByLabelText("Title"), { target: { value: "Winter Series" } });
   expect((within(dialog).getByLabelText("Address") as HTMLInputElement).value).toBe("winter-series");
@@ -238,12 +248,13 @@ test("a new page is made, its address offered from its title, and opened; a take
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(written).toEqual([1, 3]);
   expect(env.store.getState().document).toEqual({ schemaVersion: 1, title: "Winter Series", sections: [] });
-  expect(screen.getByText("/spring-series")).toBeTruthy();
+  // Nothing selected on the new page: the sidebar's Page tab, its address.
+  expect((screen.getByLabelText("Address") as HTMLInputElement).value).toBe("spring-series");
 });
 
 // An edit the shell's autosave has not sent yet: the first section's label.
 function relabel(label: string) {
-  fireEvent.click(within(screen.getByRole("tree")).getAllByRole("treeitem")[0]!.querySelector(".t-row")!);
+  fireEvent.click(within(outline()).getAllByRole("treeitem")[0]!.querySelector(".t-row")!);
   fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
   const field = screen.getByLabelText("Section label");
   fireEvent.change(field, { target: { value: label } });
@@ -252,8 +263,8 @@ function relabel(label: string) {
 
 test("Publish sends the edit still waiting, then publishes at the revision it made, and links to the live page", async () => {
   const { site, env } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
-  expect(document.querySelector(".chip")?.textContent).toBe("Not published yet");
+  await opened();
+  expect(document.querySelector(".tb-status")?.textContent).toBe("Not published yet");
   relabel("Winter");
   expect(site.saves).toHaveLength(0);
 
@@ -262,7 +273,7 @@ test("Publish sends the edit still waiting, then publishes at the revision it ma
   // revision that save made.
   expect(site.saves).toHaveLength(1);
   expect(site.publishes).toEqual([{ id: 1, revision: 4 }]);
-  await waitFor(() => expect(document.querySelector(".chip")?.textContent).toBe("Published"));
+  await waitFor(() => expect(document.querySelector(".tb-status")?.textContent).toBe("Published"));
   expect(env.ui.getState().notice).toBe("Published: visitors see this page at 127.0.0.1:3900/winter-series.");
   const live = screen.getByRole("link", { name: "View live page" });
   expect(live.getAttribute("href")).toBe("http://127.0.0.1:3900/winter-series");
@@ -277,7 +288,7 @@ test("Publish sends the edit still waiting, then publishes at the revision it ma
 
 test("Preview opens a tab at once, and sends it to the CMS's preview once the edit waiting is saved", async () => {
   const { site, tabs } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   relabel("Spring");
   fireEvent.click(screen.getByRole("link", { name: "Preview" }));
   expect(tabs).toHaveLength(1);
@@ -288,7 +299,7 @@ test("Preview opens a tab at once, and sends it to the CMS's preview once the ed
 
 test("a conflict stops saving until the person chooses: Reload takes the server's page, Keep mine saves this one over it, and either is undone from the history", async () => {
   const { site, env, clock } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   const theirs = page();
   theirs.sections[0]!.props.label = "Theirs";
   site.savedElsewhere(1, theirs);
@@ -330,7 +341,7 @@ test("a conflict stops saving until the person chooses: Reload takes the server'
 
 test("Keep mine saves over the page on the server now, keeps each page it saves over once, and says done only once the CMS has it", async () => {
   const { site, env, clock } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   const labelled = (label: string) => {
     const doc = page();
     doc.sections[0]!.props.label = label;
@@ -379,7 +390,7 @@ test("Keep mine saves over the page on the server now, keeps each page it saves 
 
 test("a site style change shows on the canvas at once and goes to the CMS; refused, the canvas goes back", async () => {
   const { site, env } = start(1);
-  await screen.findByRole("tree", { name: "Navigator" });
+  await opened();
   const root = () => document.querySelector(".canvas .site")!;
   fireEvent.click(screen.getByRole("button", { name: "Site style" }));
   fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));

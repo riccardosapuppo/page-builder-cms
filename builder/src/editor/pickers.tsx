@@ -1,7 +1,7 @@
 // What three widgets need before they can be added (../widgets/types.ts,
 // `needs`): an image, at least one image, or a video. A new block is valid
 // from the moment it exists, and an image is not valid without its source
-// and its alt text, so the widget panel asks first.
+// and its alt text, so the Insert drawer asks first.
 //
 // Images come from the media library (./library/MediaLibrary.tsx), where
 // they can also be uploaded, or from another site's https:// address; each

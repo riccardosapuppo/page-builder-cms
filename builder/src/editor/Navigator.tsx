@@ -1,8 +1,10 @@
-// The navigator: the page's structure as a tree (design/shots/editor.png),
+// The Outline drawer (the approved layout, design/layout/shots/
+// structure.png), in two tabs. Blocks: the page's structure as a tree,
 // sections holding columns holding widgets, in step with the selection
 // both ways. Selecting a row selects the block on the canvas and brings it
 // into view; selecting on the canvas opens the rows down to it and marks
-// it here.
+// it here. Headings: only the page's headings, in order and by level, to
+// check the page reads well; one chosen is selected and brought into view.
 //
 // The tree follows the ARIA tree pattern: one Tab stop, the arrows move
 // along the rows shown (and the selection with them), Right opens a row or
@@ -20,9 +22,9 @@
 //
 // While a block is dragged the tree shows the store's preview: the
 // dragged block as a line where it would land, its container marked.
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { blockName } from "../document/labels.ts";
-import { locate } from "../document/tree.ts";
+import { allBlocks, locate } from "../document/tree.ts";
 import type { Block, PageDocument, StyleTokens } from "../shared/document.ts";
 import { widgetDefinition } from "../widgets/registry.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
@@ -86,7 +88,6 @@ export function Navigator() {
     return { id, target: drag.target && drag.verdict?.allowed ? drag.target.parentId : undefined, name: draggedName(drag) };
   }, [drag]);
   const selection = useEditor((s) => s.selection);
-  const open = useUi((u) => u.navigatorOpen);
   const serverErrors = useUi((u) => u.serverErrors);
   const site = useUi((u) => u.site);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -94,6 +95,9 @@ export function Navigator() {
   const [active, setActive] = useState<string | null>(null);
   const [seen, setSeen] = useState<string | null>(null);
   const items = useRef(new Map<string, HTMLLIElement>());
+  const [tab, setTab] = useState<(typeof OUTLINE_TABS)[number]>("blocks");
+  const tabsId = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   // A block selected anywhere opens the rows down to it, once, when it is
   // selected, and closes the others: design/shots/advanced.png and
@@ -185,31 +189,47 @@ export function Navigator() {
     if (target) choose(target.block.id, true, true);
   };
 
-  if (!open) {
-    return (
-      <aside className="tray tray-right tray-closed chrome" aria-label="Navigator">
-        <div className="tray-head-title">
-          <button className="ibtn" type="button" aria-label="Open navigator" aria-expanded="false" title="Open navigator" onClick={() => ui.getState().setNavigatorOpen(true)}><Icon name="tree" /></button>
-        </div>
-      </aside>
-    );
-  }
-
   const sections = base.sections.length;
   const widgets = countWidgets(base);
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = OUTLINE_TABS[(index + 1) % OUTLINE_TABS.length]!;
+    setTab(next);
+    tabRefs.current[OUTLINE_TABS.indexOf(next)]?.focus();
+  };
   return (
-    <aside className="tray tray-right chrome" aria-label="Navigator">
-      <section className="view">
-        <div className="tray-head tray-head-title">
-          <h2 id="navigator_title"><Icon name="tree" />Navigator</h2>
-          <button className="ibtn" type="button" aria-label="Collapse navigator" aria-expanded="true" title="Collapse navigator" onClick={() => ui.getState().setNavigatorOpen(false)}><Icon name="panel-right" /></button>
+    <>
+      <div className="drawer-tools">
+        <div className="dtabs" role="tablist" aria-label="Outline">
+          {OUTLINE_TABS.map((t, index) => (
+            <button
+              key={t}
+              ref={(element) => {
+                tabRefs.current[index] = element;
+              }}
+              id={`${tabsId}-${t}`}
+              role="tab"
+              type="button"
+              aria-selected={tab === t}
+              aria-controls={`${tabsId}-panel`}
+              tabIndex={tab === t ? 0 : -1}
+              title={t === "headings" ? "Only the headings, in order: check the page reads well" : undefined}
+              onClick={() => setTab(t)}
+              onKeyDown={(event) => onTabKey(event, index)}
+            >
+              {t === "blocks" ? "Blocks" : "Headings"}
+            </button>
+          ))}
         </div>
-        <div className="tray-body tray-body-tight">
+      </div>
+      <div className="drawer-body drawer-body-tree" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`}>
+        {tab === "headings" ? <Headings /> : (<>
           {site && <ThemeRow part="header" />}
           {sections === 0 ? (
             <p className="t-empty">No sections yet. Each section you add shows up here, with its columns and widgets inside.</p>
           ) : (
-            <ul className="tree" role="tree" aria-labelledby="navigator_title">
+            <ul className="tree" role="tree" aria-label="Page structure">
               {doc.sections.map((section) => (
                 <TreeItem
                   key={section.id}
@@ -231,10 +251,45 @@ export function Navigator() {
             </ul>
           )}
           {site && <ThemeRow part="footer" />}
-        </div>
-        <p className="nav-foot">{sections} {sections === 1 ? "section" : "sections"}, {widgets} {widgets === 1 ? "widget" : "widgets"}</p>
-      </section>
-    </aside>
+          {sections > 0 && <p className="hint hint-pad tree-hint">Select a row and the page scrolls to it.</p>}
+        </>)}
+      </div>
+      <p className="drawer-foot drawer-foot-count">{sections} {sections === 1 ? "section" : "sections"}, {widgets} {widgets === 1 ? "widget" : "widgets"}</p>
+    </>
+  );
+}
+
+const OUTLINE_TABS = ["blocks", "headings"] as const;
+
+// The page's headings in reading order, each at its level: a page whose
+// levels skip one, or with two H1s, shows it here.
+function Headings() {
+  const { store, ui } = useEnv();
+  const doc = useEditor((s) => s.document);
+  const selection = useEditor((s) => s.selection);
+  const headings = [...allBlocks(doc)].flatMap((found) => (found.block.type === "heading" ? [found.block] : []));
+  if (headings.length === 0) return <p className="t-empty">No headings yet. Each heading you add shows up here, at its level.</p>;
+  return (
+    <ul className="heads" aria-label="Headings">
+      {headings.map((heading) => (
+        <li key={heading.id}>
+          <button
+            type="button"
+            className="head-row"
+            style={{ paddingLeft: 8 + (heading.props.level - 1) * 14 }}
+            aria-current={selection === heading.id ? "true" : undefined}
+            onClick={() => {
+              store.getState().select(heading.id);
+              ui.setState({ tray: "edit", notice: null });
+              document.querySelector(`.canvas [data-block-id="${heading.id}"]`)?.scrollIntoView?.({ block: "nearest" });
+            }}
+          >
+            <span className="head-level">H{heading.props.level}</span>
+            <span className="head-text">{heading.props.text}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -289,6 +344,8 @@ function TreeItem(props: TreeItemProps) {
       aria-label={`${detail && block.type !== "section" ? `${name}: ${detail}` : name}${errorsOn.has(block.id) ? ", refused by the server" : ""}`}
       aria-describedby={overrides.length > 0 ? flagsId : undefined}
       tabIndex={tabStop === block.id ? 0 : -1}
+      // The row the drawer gives the focus to when it opens.
+      data-autofocus={tabStop === block.id ? "" : undefined}
       className={hidden ? "t-hidden" : undefined}
       data-row-id={block.id}
       onKeyDown={(event) => {

@@ -1,55 +1,44 @@
-// The top bar of the approved design (design/shots/editor.png): the mark
-// and its menu (with the media library, to look after it outside any
-// block), the open page and the switch to another one, whether the
-// page is live, Site style, the device the canvas previews, undo, redo and
-// the history (design/shots/history.png), where the edits are, Preview and
-// Publish.
+// The top bar of the approved layout (design/layout/shots/editor.png): on
+// the left, the mark and its menu (Site style, the pages, the media
+// library, the shortcuts, About), the three drawers (Insert, Outline and
+// History, each opening and closing its own, ./Drawer.tsx), undo and redo;
+// in the middle, the page's title, which switches pages, with whether it
+// is live and how many saved changes are not (./PageSwitch.tsx); on the
+// right, where the edits are, Preview, Publish and the sidebar's key.
 //
 // What the design draws here and the editor does not have yet is not drawn
 // (no control that does nothing).
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { runRedo, runUndo } from "./act.ts";
 import { BlockIcon } from "./block-icon.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
-import { Icon, Mark } from "./icons.tsx";
-import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
+import { DRAWER_NAMES, toggleDrawer } from "./Drawer.tsx";
+import { Icon, Mark, type IconName } from "./icons.tsx";
+import { ariaKeyShortcuts, entry, entryCaps, entryKeysText, type KeyEntry } from "./keymap.ts";
 import { useMediaService } from "./library/context.tsx";
 import { MediaLibrary } from "./library/MediaLibrary.tsx";
 import { Menu } from "./Menu.tsx";
-import { NewPageDialog } from "./NewPageDialog.tsx";
-import { changesNotLive, PreviewButton, PublishButton } from "./Publish.tsx";
-import { changes, SaveState, useSaveSnapshot, when } from "./SaveStatus.tsx";
-import { useSession, type OpenPage } from "./session.tsx";
+import { PageSwitch } from "./PageSwitch.tsx";
+import { PreviewButton, PublishButton } from "./Publish.tsx";
+import { SaveState } from "./SaveStatus.tsx";
+import { useSession } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
-import { PREVIEWS, type Preview } from "./ui-store.ts";
-import { DESKTOP_MIN, PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
-
-const PREVIEW_LABELS: Readonly<Record<Preview, { name: string; title: string; icon: "desktop" | "tablet" | "phone" }>> = {
-  desktop: { name: "Desktop", title: `Desktop: the canvas at its full width, drawn smaller when that is under ${DESKTOP_MIN}`, icon: "desktop" },
-  tablet: { name: "Tablet", title: `Tablet: the canvas at ${PREVIEW_WIDTHS.tablet} wide`, icon: "tablet" },
-  phone: { name: "Phone", title: `Phone: the canvas at ${PREVIEW_WIDTHS.phone} wide`, icon: "phone" },
-};
+import { openSiteStyle, toggleSidebar } from "./Sidebar.tsx";
+import type { Drawer } from "./ui-store.ts";
 
 export function TopBar() {
   const session = useSession();
   const { ui } = useEnv();
-  const preview = useUi((u) => u.preview);
-  const tray = useUi((u) => u.tray);
-  const title = useSessionTitle();
   const [menu, setMenu] = useState<"app" | "pages" | null>(null);
-  const [creating, setCreating] = useState(false);
   // The media library opened from the menu, to look after it.
   const media = useMediaService();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const markButton = useRef<HTMLButtonElement>(null);
-  const pageButton = useRef<HTMLButtonElement>(null);
   const current = session.current;
-  const siteStyleOpen = tray === "site-style";
-  const toggleSiteStyle = (open: boolean) => ui.getState().setTray(open ? "site-style" : "edit");
-  const bar = useLeftRoom();
+  const bar = useBarRoom();
 
   return (
-    <header ref={bar} className="topbar chrome">
+    <header ref={bar} className="topbar chrome" aria-label="Editor">
       <div className="tb-left">
         <button
           ref={markButton}
@@ -72,9 +61,8 @@ export function TopBar() {
               tabIndex={-1}
               onClick={() => {
                 setMenu(null);
-                toggleSiteStyle(true);
-                // The menu goes; the focus goes to the panel it opened.
-                requestAnimationFrame(() => document.querySelector<HTMLElement>(".site-style [data-autofocus]")?.focus());
+                // The menu goes; the focus goes to the site style it opened.
+                openSiteStyle(ui);
               }}
             >
               <Icon name="style" /><span>Site style</span>
@@ -97,93 +85,48 @@ export function TopBar() {
             </button>
           </Menu>
         )}
-        <button
-          ref={pageButton}
-          className="tb-page"
-          type="button"
-          aria-label={current ? `Switch page. Open: ${title}` : "Pages"}
-          aria-haspopup="menu"
-          aria-expanded={menu === "pages"}
-          onClick={() => setMenu(menu === "pages" ? null : "pages")}
-        >
-          <Icon name="page" />
-          <span className="tb-page-name">
-            <span className="tb-page-title">{current ? title : "Pages"}</span>
-            {current && !current.home && <span className="tb-page-path">/{current.slug}</span>}
-          </span>
-          <Icon name="chevron-down" className="i i-xs" />
-        </button>
-        {menu === "pages" && (
-          <Menu label="Pages" className="menu-pages" button={pageButton} onClose={() => setMenu(null)}>
-            {session.pages.map((page) => (
-              <button
-                key={page.id}
-                className="menu-item menu-item-rich"
-                role="menuitem"
-                type="button"
-                tabIndex={-1}
-                aria-current={current?.id === page.id ? "page" : undefined}
-                onClick={() => {
-                  setMenu(null);
-                  if (current?.id !== page.id) void session.openPage(page.id).then((why) => ui.getState().say(why));
-                }}
-              >
-                <Icon name="page" />
-                <span><strong>{current?.id === page.id ? title : page.title}</strong><small>{page.home ? "/, the home page" : `/${page.slug}`}{page.published ? "" : ", not published yet"}</small></span>
-              </button>
-            ))}
-            {session.pages.length > 0 && <hr className="menu-sep" />}
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); pageButton.current?.focus(); setCreating(true); }}>
-              <Icon name="plus" /><span>New page…</span>
-            </button>
-          </Menu>
+        {current && (
+          <>
+            <span className="tb-sep" aria-hidden="true" />
+            <DrawerKey which="insert" icon="plus" keys={entry("openInsert")} title={`Insert: every block and ready-made section (${entryKeysText(entry("openInsert"))})`} />
+            <DrawerKey which="outline" icon="tree" keys={entry("openOutline")} title={`Outline: the page's blocks and headings (${entryKeysText(entry("openOutline"))})`} />
+            <DrawerKey which="history" icon="history" title={`History: this session's changes and the page's versions. ${entryKeysText(entry("saveVersion"))} saves a version.`} />
+            <span className="tb-sep" aria-hidden="true" />
+            <UndoRedo />
+          </>
         )}
-        {current && <PublishedChip page={current} />}
-        <button className="btn btn-quiet" type="button" data-site-style="" aria-pressed={siteStyleOpen} title="The site's palette and type scale, for every page" onClick={() => toggleSiteStyle(!siteStyleOpen)}>
-          <Icon name="style" />Site style
-        </button>
       </div>
 
       <div className="tb-center">
-        <div className="seg seg-devices" role="group" aria-label="Device">
-          {PREVIEWS.map((p) => (
-            <button key={p} type="button" aria-pressed={preview === p} title={PREVIEW_LABELS[p].title} onClick={() => ui.getState().setPreview(p)}>
-              <Icon name={PREVIEW_LABELS[p].icon} />{PREVIEW_LABELS[p].name}
-            </button>
-          ))}
-        </div>
+        <PageSwitch open={menu === "pages"} onOpen={(open) => setMenu(open ? "pages" : null)} />
       </div>
 
       <div className="tb-right">
-        {current && <HistoryButtons />}
         {session.autosave && <SaveState />}
         <PreviewButton />
         <PublishButton />
+        <SidebarKey />
       </div>
-      {creating && <NewPageDialog onClose={() => setCreating(false)} />}
       {libraryOpen && <MediaLibrary purpose={{ kind: "manage" }} onClose={() => setLibraryOpen(false)} />}
     </header>
   );
 }
 
-// The bar's three groups share it evenly, so the device switch sits in the
-// middle (editor.css, .topbar). When the left group needs more than half,
-// for a long chip ("Published, 3 changes not live") beside the page's
-// title, it takes it from the room the right group does not use, and the
-// switch moves right; only past that does the page switch shorten, its
-// address first, then its title. CSS cannot weigh one group's need against
-// the other's, so the bar is measured with each group at its natural
-// width, and the left group's floor, --tb-left-min, is the smaller of its
-// need and what the other two leave it. The page's address gives way
-// first; before the page's title would, the save state draws closer to
-// its neighbours (.tb-snug, a dozen pixels), and only then does the right
-// group give up the words it can do without (History's and Preview's;
-// history.css, .tb-tight), each keeping its icon and its name for a
-// screen reader. The
-// save state takes the same room saying Saved as saying Saving… (editor.css),
-// so a save does not move the bar. Measured again whenever the bar's width
-// or anything drawn in it changes.
-function useLeftRoom(): RefObject<HTMLElement | null> {
+// The bar's three groups: the title in the middle, the two sides sharing
+// what is left evenly, so the title is centred. A side that needs more than
+// half takes it from the room the other side does not use, and the title
+// moves over; only past that is the title cut. CSS cannot weigh one
+// group's need against the other's, so the bar is measured with each group
+// at its natural width, and each side's floor (--tb-left-min,
+// --tb-right-min) is its need. Before the title would be cut, the save
+// state draws closer to its neighbours (.tb-snug, a dozen pixels), and then
+// the side buttons give up the words they can do without (Insert's,
+// Outline's, History's and Preview's; history.css, .tb-tight), each keeping
+// its icon and its name for a screen reader. The save state takes the
+// same room saying Saved as saying Saving… (editor.css), so a save does
+// not move the bar. Measured again whenever the bar's width or anything
+// drawn in it changes.
+function useBarRoom(): RefObject<HTMLElement | null> {
   const bar = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const element = bar.current;
@@ -196,35 +139,25 @@ function useLeftRoom(): RefObject<HTMLElement | null> {
       element.style.gridTemplateColumns = "max-content max-content max-content";
       const style = getComputedStyle(element);
       const inside = element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0) - 2 * (parseFloat(style.columnGap) || 0);
-      // Every word first; the right group tight only if the left would
-      // otherwise be cut past the page's address, which gives way first.
       element.classList.remove("tb-tight", "tb-snug");
-      const need = left.getBoundingClientRect().width;
-      const path = left.querySelector<HTMLElement>(".tb-page-path");
-      let core = need;
-      if (path) {
-        const shown = path.style.display;
-        path.style.display = "none";
-        core = left.getBoundingClientRect().width;
-        path.style.display = shown;
-      }
-      const middle = center.getBoundingClientRect().width;
-      let others = right.getBoundingClientRect().width;
-      const short = () => Math.ceil(core) > Math.floor(inside - middle - Math.ceil(others));
+      const width = (group: HTMLElement) => Math.ceil(group.getBoundingClientRect().width);
+      const middle = width(center);
+      const short = () => width(left) + middle + width(right) > Math.floor(inside);
       // A few pixels short: the save state draws closer to its neighbours
       // first (history.css, .tb-snug); more, and the words go.
       if (short()) {
         element.classList.add("tb-snug");
-        others = right.getBoundingClientRect().width;
-        if (short()) {
-          element.classList.replace("tb-snug", "tb-tight");
-          others = right.getBoundingClientRect().width;
-        }
+        if (short()) element.classList.replace("tb-snug", "tb-tight");
       }
+      const leftNeed = width(left);
+      const rightNeed = width(right);
       element.style.gridTemplateColumns = shared;
-      const floor = Math.max(0, Math.min(Math.ceil(need), Math.floor(inside - middle - Math.ceil(others))));
-      const value = `${floor}px`;
-      if (element.style.getPropertyValue("--tb-left-min") !== value) element.style.setProperty("--tb-left-min", value);
+      const set = (name: string, px: number) => {
+        const value = `${Math.max(0, px)}px`;
+        if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
+      };
+      set("--tb-left-min", leftNeed);
+      set("--tb-right-min", rightNeed);
       // The bar was just measured as it now is: the class measuring set and
       // took back is no change to answer.
       changed?.takeRecords();
@@ -242,15 +175,35 @@ function useLeftRoom(): RefObject<HTMLElement | null> {
   return bar;
 }
 
+// A drawer's key: pressed while its drawer is open; its words give way to
+// its icon when the bar is short of room (useBarRoom).
+function DrawerKey({ which, icon, keys, title }: { which: Drawer; icon: IconName; keys?: KeyEntry; title: string }) {
+  const { ui } = useEnv();
+  const open = useUi((u) => u.drawer === which);
+  return (
+    <button
+      className="btn btn-quiet tb-word-btn"
+      type="button"
+      data-drawer={which}
+      aria-pressed={open}
+      aria-controls={open ? `drawer_${which}` : undefined}
+      aria-keyshortcuts={keys ? ariaKeyShortcuts(keys) : undefined}
+      title={title}
+      onClick={() => toggleDrawer(ui, which)}
+    >
+      <Icon name={icon} /><span className="tb-word">{DRAWER_NAMES[which]}</span>
+    </button>
+  );
+}
+
 // Undo and redo, on the store's history, as their keys do (./act.ts: the
 // text still waiting in a field goes first, the focus to the block the
 // step touched); with nothing to undo or redo they stay where they are,
-// greyed, and say so. History opens the panel in the navigator's place.
-function HistoryButtons() {
+// greyed, and say so.
+function UndoRedo() {
   const env = useEnv();
   const last = useEditor((s) => s.past.at(-1));
   const next = useEditor((s) => s.future.at(-1));
-  const open = useUi((u) => u.historyOpen);
   const undoKeys = entry("undo");
   const redoKeys = entry("redo");
   return (
@@ -277,46 +230,17 @@ function HistoryButtons() {
       >
         <Icon name="redo" />
       </button>
-      <button
-        className="btn btn-quiet tb-word-btn"
-        type="button"
-        data-history=""
-        aria-pressed={open}
-        title="History: this session's changes and the page's versions"
-        onClick={() => env.ui.getState().setHistoryOpen(!open)}
-      >
-        {/* The word gives way to the icon when the bar is short of room
-            (useLeftRoom), so the page's title keeps its own. */}
-        <Icon name="history" /><span className="tb-word">History</span>
-      </button>
     </>
   );
 }
 
-// The open page's title as the document holds it now.
-function useSessionTitle(): string {
-  const { store } = useEnv();
-  return useSyncExternalStore(store.subscribe, () => store.getState().document.title);
-}
-
-// Whether visitors see the page, and how much of it: each save since the
-// draft revision the live version was taken from is a change visitors do
-// not see yet (the CMS's draftRevision), and a new address waits for the
-// next publish too.
-export function PublishedChip({ page }: { page: OpenPage }) {
-  const snapshot = useSaveSnapshot();
-  if (!page.published) {
-    return <span className="chip chip-draft"><span className="dot-draft" aria-hidden="true" />Not published yet</span>;
-  }
-  const notLive = changesNotLive(page, snapshot);
-  const moved = page.published.slug !== page.slug && !page.home;
-  const since = `Published ${when(page.published.publishedAt)}.`;
-  if (notLive > 0) {
-    const what = changes(notLive);
-    return <span className="chip chip-draft" title={`${since} Your ${what} since then are saved but not live yet: Publish sends them.`}><span className="dot-part" aria-hidden="true" />Published, {what} not live</span>;
-  }
-  if (moved) {
-    return <span className="chip chip-draft" title={`${since} The page’s new address, /${page.slug}, is not live yet: Publish sends it.`}><span className="dot-part" aria-hidden="true" />Published, new address not live</span>;
-  }
-  return <span className="chip chip-draft" title={since}><span className="dot-live" aria-hidden="true" />Published</span>;
+// The sidebar's key: pressed while the sidebar shows.
+function SidebarKey() {
+  const { ui } = useEnv();
+  const open = useUi((u) => u.sidebarOpen);
+  return (
+    <button className="ibtn ibtn-side" type="button" data-sidebar="" aria-pressed={open} aria-label="Settings sidebar" title={open ? "Hide the settings sidebar" : "Show the settings sidebar"} onClick={() => toggleSidebar(ui)}>
+      <Icon name="panel-right" />
+    </button>
+  );
 }

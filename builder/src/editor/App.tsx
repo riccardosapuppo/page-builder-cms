@@ -1,6 +1,9 @@
-// The editor's shell, on the approved design (design/shots/editor.png): top
-// bar, the widget and property tray on the left, the canvas, the navigator
-// on the right. It holds the page being edited: it reads the site's pages,
+// The editor's shell, on the approved layout (design/layout/shots/
+// editor.png): the top bar; the drawer open (Insert, Outline or History),
+// floating over the left of the canvas; the canvas, the page flush with its
+// frame; the sidebar on the right, with its Page and Block tabs; the bottom
+// line under the canvas, with the selection's path, the devices and the
+// page's width. It holds the page being edited: it reads the site's pages,
 // media library, site style and theme through the storage adapter, opens a
 // page (its draft upgraded and checked, openDocument, before the store
 // takes it), and gives every new document the store makes to the page's
@@ -36,18 +39,21 @@ import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { DragLayer } from "./drag/DragLayer.tsx";
+import { DrawerShell } from "./Drawer.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
-import { LeftTray } from "./LeftTray.tsx";
 import { MediaProvider } from "./library/context.tsx";
 import { Navigator } from "./Navigator.tsx";
 import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
+import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
 import { NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
+import { Sidebar } from "./Sidebar.tsx";
+import { StatusBar } from "./StatusBar.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 // Where the open page is remembered, so a reload opens it again: the
@@ -640,22 +646,27 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
   }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
-  const navigatorOpen = useStoreNavigator(env);
-  // The right tray holds the history in the navigator's place; it is open
-  // whenever the history is, even with the navigator collapsed.
-  const historyOpen = useStore(env.ui, (state) => state.historyOpen) && current !== null;
+  // A drawer shows only with a page open: each is about the page.
+  const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
+  const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
 
   return (
     <EditorProvider env={env}>
       <SessionProvider value={session}>
         <MediaProvider adapter={adapter}>
           <DragLayer>
-            <div className={`app${navigatorOpen || historyOpen ? "" : " nav-closed"}`}>
+            {/* In the order the Tab key goes: the top bar, the drawer, the
+                canvas, the sidebar (Tab from the selection reaches its
+                settings), then the bottom line. The grid places each. */}
+            <div className={`app${sidebarOpen ? "" : " app-wide"}`}>
               <TopBar />
               <ConflictBanner />
-              <LeftTray />
+              {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
+              {drawer === "outline" && <DrawerShell which="outline"><Navigator /></DrawerShell>}
+              {drawer === "history" && <DrawerShell which="history"><HistoryPanel /></DrawerShell>}
               {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
-              {historyOpen ? <HistoryPanel /> : <Navigator />}
+              <Sidebar />
+              <StatusBar />
             </div>
           </DragLayer>
           <EditorKeys />
@@ -712,11 +723,6 @@ function unsavedWhy(phase: SavePhase): string {
     default:
       return "the changes are not saved yet.";
   }
-}
-
-// Read here, above the provider the other parts read it through.
-function useStoreNavigator(env: EditorEnv): boolean {
-  return useStore(env.ui, (state) => state.navigatorOpen);
 }
 
 // The canvas's place while there is no page to show on it.

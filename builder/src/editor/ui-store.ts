@@ -1,9 +1,9 @@
 // What the interface agrees on besides the page itself: which block the
-// pointer is over, the width the canvas previews, which tab each tray
-// shows, the media library and the site style the canvas draws with, the
-// errors of the last save the server refused, whether the shortcuts window
-// or the About window is open, and the text typed in a field and not
-// handed over yet. A
+// pointer is over, the width the canvas previews and the width it lays the
+// page out at, which drawer is open and what the sidebar shows, the media
+// library and the site style the canvas draws with, the errors of the last
+// save the server refused, whether the shortcuts window or the About
+// window is open, and the text typed in a field and not handed over yet. A
 // vanilla zustand store, like the editor's own (../store), so each part of
 // the interface subscribes to the one value it draws and nothing else
 // redraws.
@@ -21,9 +21,22 @@ export type Preview = (typeof PREVIEWS)[number];
 export const PANEL_TABS = ["content", "style", "advanced"] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
-// The left tray: the widget panel, the panel of the selection (of the page
-// itself when nothing is selected), or the site style.
-export type Tray = "add" | "edit" | "site-style";
+// What the sidebar shows: the settings of the page and of the selection
+// (its Page and Block tabs), or the site style, a level below Page.
+export type Tray = "edit" | "site-style";
+
+// The top bar's drawers, floating over the left of the canvas, one open at
+// a time (./Drawer.tsx).
+export const DRAWERS = ["insert", "outline", "history"] as const;
+export type Drawer = (typeof DRAWERS)[number];
+
+// The page as the canvas lays it out: its width (its own, not the canvas's
+// when it is drawn smaller) and the scale it is drawn at, for the bottom
+// line's words.
+export interface PageView {
+  width: number;
+  scale: number;
+}
 
 // A link a notice offers, opened in a new tab (the live page, after a
 // publish).
@@ -43,7 +56,12 @@ export interface UiState {
   preview: Preview;
   tray: Tray;
   panelTab: PanelTab;
-  navigatorOpen: boolean;
+  // The sidebar is shown; hidden, the canvas takes its room.
+  sidebarOpen: boolean;
+  drawer: Drawer | null;
+  // Every block's edges drawn on the canvas (the bottom line's Block edges).
+  blockEdges: boolean;
+  pageView: PageView | null;
   media: ReadonlyMap<string, MediaItem>;
   // Images a page names that the library did not have, while it is read
   // again for them (./library/service.ts, ensure).
@@ -61,8 +79,9 @@ export interface UiState {
   shortcutsOpen: boolean;
   // The About window (./AboutDialog.tsx) is open.
   aboutOpen: boolean;
-  // The right tray shows the history (./HistoryPanel.tsx) instead of the
-  // navigator, and its "Save version" asks for a name.
+  // The drawer open is the history (./HistoryPanel.tsx), kept beside
+  // `drawer` for the parts that ask only that; its "Save version" asks for
+  // a name.
   historyOpen: boolean;
   namingVersion: boolean;
   // The block this tab copied last, as the clipboard carries it: what the
@@ -89,7 +108,12 @@ export interface UiState {
   setPreview(preview: Preview): void;
   setTray(tray: Tray): void;
   setPanelTab(tab: PanelTab): void;
-  setNavigatorOpen(open: boolean): void;
+  setSidebarOpen(open: boolean): void;
+  // Opens a drawer, the one open closing; null closes it. Leaving the
+  // history closes its name field too.
+  setDrawer(drawer: Drawer | null): void;
+  setBlockEdges(on: boolean): void;
+  setPageView(view: PageView | null): void;
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
   setSite(site: Site | null): void;
@@ -97,7 +121,7 @@ export interface UiState {
   say(notice: string | null, link?: NoticeLink | null): void;
   setShortcutsOpen(open: boolean): void;
   setAboutOpen(open: boolean): void;
-  // Closing the history closes its name field too.
+  // The history's drawer opened, or closed if it is the one open.
   setHistoryOpen(open: boolean): void;
   setNamingVersion(naming: boolean): void;
   setBlockMenu(menu: BlockMenuAt | null): void;
@@ -105,13 +129,17 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "panelTab" | "navigatorOpen" | "siteStyle" | "site">> = {}): UiStore {
-  return createStore<UiState>()((set) => ({
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "panelTab" | "sidebarOpen" | "drawer" | "siteStyle" | "site">> = {}): UiStore {
+  const drawer = initial.drawer ?? null;
+  return createStore<UiState>()((set, get) => ({
     hover: null,
     preview: initial.preview ?? "desktop",
     tray: initial.tray ?? "edit",
     panelTab: initial.panelTab ?? "content",
-    navigatorOpen: initial.navigatorOpen ?? true,
+    sidebarOpen: initial.sidebarOpen ?? true,
+    drawer,
+    blockEdges: false,
+    pageView: null,
     media: new Map(),
     mediaLooking: new Set(),
     siteStyle: initial.siteStyle ?? null,
@@ -121,7 +149,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     noticeLink: null,
     shortcutsOpen: false,
     aboutOpen: false,
-    historyOpen: false,
+    historyOpen: drawer === "history",
     namingVersion: false,
     copied: null,
     blockMenu: null,
@@ -135,7 +163,11 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setPreview: (preview) => set({ preview }),
     setTray: (tray) => set({ tray }),
     setPanelTab: (panelTab) => set({ panelTab }),
-    setNavigatorOpen: (navigatorOpen) => set({ navigatorOpen }),
+    setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+    setDrawer: (next) => set(next === "history" ? { drawer: next, historyOpen: true } : { drawer: next, historyOpen: false, namingVersion: false }),
+    setBlockEdges: (blockEdges) => set({ blockEdges }),
+    // The same width and scale again change nothing, so nothing redraws.
+    setPageView: (pageView) => set((state) => (state.pageView?.width === pageView?.width && state.pageView?.scale === pageView?.scale ? {} : { pageView })),
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
     setSiteStyle: (siteStyle) => set({ siteStyle }),
     setSite: (site) => set({ site }),
@@ -143,7 +175,10 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     say: (notice, link = null) => set({ notice, noticeLink: notice === null ? null : link }),
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     setAboutOpen: (aboutOpen) => set({ aboutOpen }),
-    setHistoryOpen: (historyOpen) => set(historyOpen ? { historyOpen } : { historyOpen, namingVersion: false }),
+    setHistoryOpen: (open) => {
+      if (open) get().setDrawer("history");
+      else if (get().drawer === "history") get().setDrawer(null);
+    },
     setNamingVersion: (namingVersion) => set({ namingVersion }),
     setBlockMenu: (blockMenu) => set({ blockMenu }),
   }));

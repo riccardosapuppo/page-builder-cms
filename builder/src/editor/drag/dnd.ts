@@ -59,8 +59,8 @@ export const SELECTION_SENSORS = [
   }),
 ];
 
-// A widget panel's tile is dragged with the mouse; its keys are a
-// button's (Enter adds it after the selection).
+// A key of the Insert drawer is dragged with the mouse; its keyboard keys
+// are a button's (Enter adds it after the selection).
 export const TILE_SENSORS = [
   PointerSensor.configure({
     // A press that does not move is a click, however long it lasts.

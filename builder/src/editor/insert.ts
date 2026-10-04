@@ -1,4 +1,4 @@
-// Where a block from the widget panel goes, and putting it there. The place
+// Where a block from the Insert drawer goes, and putting it there. The place
 // follows the selection, as a paste does (../document/commands.ts,
 // pasteTarget): after the selected block when its container can hold the
 // new one, else inside it at the end, else after the nearest block above
@@ -25,7 +25,7 @@ export function insertTarget(doc: PageDocument, type: BlockType, selection: stri
 // Why a block has nowhere to go: for a widget on a page with no section,
 // the approved design's own sentence.
 export function nowhereMessage(doc: PageDocument, type: BlockType): string {
-  if (type !== "section" && doc.sections.length === 0) return "Widgets go inside a column, so the section comes first: add one from Layout.";
+  if (type !== "section" && doc.sections.length === 0) return "Widgets go inside a column, so the section comes first: add one by its number of columns.";
   return nestingMessage(type, "page");
 }
 

@@ -3,7 +3,7 @@
 // servers; pages made through the CMS's API as the editor would make
 // them, each under an address of its own (the tests of a run share one
 // CMS); and the CMS's draft read back.
-import { test as base, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { test as base, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 // A picture for the images these pages take "from another site": answered
 // inside the browser, so nothing leaves the machine (a 1 by 1 PNG).
@@ -84,7 +84,28 @@ export function shape(sections: readonly DraftBlock[]): unknown {
 
 export async function open(page: Page, id: number): Promise<void> {
   await page.goto(`/?page=${id}`);
-  await expect(page.getByRole("tree", { name: "Navigator" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
+  await expect(page.locator(".canvas .frame")).toBeVisible();
+}
+
+// One of the top bar's drawers, opened from its key if it is not open yet.
+export async function drawer(page: Page, name: "Insert" | "Outline" | "History"): Promise<Locator> {
+  const box = page.getByRole("complementary", { name, exact: true });
+  if (!(await box.isVisible())) await page.locator(".topbar").getByRole("button", { name, exact: true }).click();
+  await expect(box).toBeVisible();
+  return box;
+}
+
+// A row of the Outline's tree, clicked where a person clicks it: on the row
+// itself, not in the middle of the item, which holds the rows under it too.
+export async function outlineRow(page: Page, name: string): Promise<Locator> {
+  await drawer(page, "Outline");
+  return page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
+}
+
+// The device, from the bottom line.
+export function device(page: Page, name: "Desktop" | "Tablet" | "Phone"): Locator {
+  return page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: new RegExp(`^${name}`) });
 }
 
 export const saved = (page: Page) => expect(page.getByRole("status").filter({ hasText: /^Saved$/ })).toBeVisible();

@@ -1,6 +1,6 @@
-// The navigator: a tree of the page (tree, treeitem, aria-level,
+// The Outline drawer: a tree of the page (tree, treeitem, aria-level,
 // aria-expanded), in step with the selection both ways, moved through with
-// the keys of the ARIA tree pattern.
+// the keys of the ARIA tree pattern; and the page's headings, in order.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
@@ -15,7 +15,7 @@ const rows = () => screen.getAllByRole("treeitem").map((i) => `${i.getAttribute(
 test("the tree shows the sections closed, each with its count, and the totals", () => {
   const kit = editorKit({ document: page() });
   kit.render(<Navigator />);
-  expect(screen.getByRole("tree", { name: "Navigator" })).toBeTruthy();
+  expect(screen.getByRole("tree", { name: "Page structure" })).toBeTruthy();
   expect(rows()).toEqual(["1 Hero closed", "1 Join closed"]);
   expect(within(item("Hero")).getByText("2 columns")).toBeTruthy();
   expect(screen.getByText("2 sections, 7 widgets")).toBeTruthy();
@@ -119,11 +119,31 @@ test("a block with values of its own on a tablet or a phone carries the device's
   expect(item("Column 1").hasAttribute("aria-describedby")).toBe(false);
 });
 
-test("collapsing the navigator leaves a button that opens it again", () => {
+test("Headings lists the page's headings in order and by level; one chosen is selected; the arrows go back to Blocks", () => {
   const kit = editorKit({ document: page() });
   kit.render(<Navigator />);
-  fireEvent.click(screen.getByRole("button", { name: "Collapse navigator" }));
+  const blocks = screen.getByRole("tab", { name: "Blocks" });
+  expect(blocks.getAttribute("aria-selected")).toBe("true");
+  fireEvent.click(screen.getByRole("tab", { name: "Headings" }));
   expect(screen.queryByRole("tree")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Open navigator" }));
-  expect(screen.getByRole("tree")).toBeTruthy();
+  const list = screen.getByRole("list", { name: "Headings" });
+  expect(within(list).getAllByRole("button").map((b) => b.textContent)).toEqual(["H1Winter series"]);
+  fireEvent.click(within(list).getByRole("button", { name: /Winter series/ }));
+  expect(kit.store.getState().selection).toBe("h1");
+  expect(within(list).getByRole("button", { name: /Winter series/ }).getAttribute("aria-current")).toBe("true");
+  // The tab stop is the chosen tab; Left or Right reaches the other.
+  const headings = screen.getByRole("tab", { name: "Headings" });
+  expect(headings.tabIndex).toBe(0);
+  fireEvent.keyDown(headings, { key: "ArrowLeft" });
+  expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Blocks" }));
+  expect(screen.getByRole("tree", { name: "Page structure" })).toBeTruthy();
+});
+
+test("the row the drawer gives the focus to when it opens is the tree's one Tab stop", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<Navigator />);
+  act(() => kit.store.getState().select("q1"));
+  const marked = screen.getAllByRole("treeitem").filter((row) => row.hasAttribute("data-autofocus"));
+  expect(marked.map((row) => row.getAttribute("aria-label"))).toEqual(["Quote: Cold, then glad."]);
+  expect(marked[0]!.tabIndex).toBe(0);
 });

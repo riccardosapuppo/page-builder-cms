@@ -6,13 +6,13 @@
 // (Esc) throws the preview away.
 //
 // The sources are the canvas's selected block (./dnd.ts, SELECTION_SOURCE)
-// and the widget panel's tiles, each a new block made when its drag
+// and the Insert drawer's keys, each a new block made when its drag
 // begins and validated by the store as a moved block is. Before either
 // starts, the text still waiting in a panel's field is handed over.
 //
 // One live region says where the block will go while it moves, and how
-// the drag ended; it is the caption at the bottom of the canvas
-// (design/shots/drag.png).
+// the drag ended; it is the bottom line's (../StatusBar.tsx), drawn
+// graphite while the block moves (design/layout/shots/drag.png).
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { Block, PageDocument } from "../../shared/document.ts";
 import { describeDrop, verdictFor, type DragSession, type DropTarget } from "../../document/drag.ts";
@@ -20,15 +20,15 @@ import { locate } from "../../document/tree.ts";
 import { focusBlock, handOver, placeFocus } from "../act.ts";
 import { BlockIcon } from "../block-icon.tsx";
 import type { CommandError } from "../../document/check.ts";
-import { useEditor, useEnv, useUi, type EditorEnv } from "../context.tsx";
+import { useEnv, type EditorEnv } from "../context.tsx";
 import { DragDropProvider, DragOverlay, isKeyboardEvent, plugins, type DragDropManager } from "./dnd.ts";
 import { draggedName, draggedOf, homeRule } from "./marks.ts";
 import { PAGE_TARGET, placeAtPoint, placeFromSide, targetForPlace, type Point, type Rect, type Side } from "./place.ts";
 import { stepPlace, type Direction } from "./steps.ts";
 import { sensorCodes } from "../keymap.ts";
 
-// What a drag source carries: the canvas's selection, or a widget panel
-// tile, which makes its new block (with ids the page does not have) from
+// What a drag source carries: the canvas's selection, or a key of the
+// Insert drawer, which makes its new block (with ids the page does not have) from
 // the page as it is when the drag begins.
 export type SourceData =
   | { kind: "selection" }
@@ -284,7 +284,6 @@ export function DragLayer({ children }: { children: ReactNode }) {
           </span>
         )}
       </DragOverlay>
-      <LiveCaption />
     </DragDropProvider>
   );
 }
@@ -294,22 +293,4 @@ export function dropSentence(session: DragSession): string {
   const own = ownPlace(session);
   if (own && session.target && same(own, session.target)) return `${draggedName(session)} is where it was.`;
   return describeDrop(session) ?? `Nowhere to drop it here. ${homeRule(session.type)}.`;
-}
-
-function LiveCaption() {
-  const session = useEditor((s) => s.drag);
-  const mode = useUi((u) => u.dragMode);
-  const said = useUi((u) => u.dragSaid);
-  const moving = session !== null && mode !== null;
-  // A tile of the widget panel adds a block; a block of the page moves.
-  const adding = session !== null && !draggedOf(session).fromPage;
-  const help = mode === "keyboard"
-    ? "The arrows move it, Space drops it here, Esc puts it back."
-    : `Release, or press Space, to ${adding ? "add" : "drop"} it.${session && session.type !== "section" ? ` Shaded areas cannot hold ${session.type === "column" ? "columns" : "widgets"}.` : ""} Esc cancels.`;
-  // One element for the life of the editor, so a screen reader follows it.
-  return (
-    <p className={`live-caption chrome${moving ? "" : " live-caption-quiet"}`} role="status" aria-live="polite">
-      {moving ? <><strong>{dropSentence(session)}</strong><span>{help}</span></> : said}
-    </p>
-  );
 }

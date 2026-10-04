@@ -8,6 +8,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
+import { makeSetProps } from "../document/commands.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { Canvas, dimensionOf, relationOf, tabStopOf } from "./Canvas.tsx";
 
@@ -88,16 +89,56 @@ test("hovering a block outlines it with its name", () => {
   expect(root("q1").querySelector(":scope > .ov-hover")?.textContent).toBe("Quote");
 });
 
-test("the width previewed is the page root's, and the rule says it", () => {
+test("the width previewed is the page root's, and the canvas tells the bottom line", () => {
   const kit = editorKit({ document: page() });
-  kit.render(<Canvas />);
+  const { unmount } = kit.render(<Canvas />);
   act(() => kit.ui.getState().setPreview("tablet"));
   expect(document.querySelector<HTMLElement>(".canvas .site")!.style.width).toBe("768px");
-  expect(document.querySelector(".wrule-label")?.textContent).toBe("Tablet, 768 wide");
-  expect([...document.querySelectorAll(".wrule-notch")].map((n) => n.textContent)).toEqual(["Tablet layout"]);
+  expect(kit.ui.getState().pageView).toEqual({ width: 768, scale: 1 });
   act(() => kit.ui.getState().setPreview("phone"));
   expect(document.querySelector<HTMLElement>(".canvas .site")!.style.width).toBe("390px");
-  expect(document.querySelectorAll(".wrule-notch")).toHaveLength(0);
+  expect(kit.ui.getState().pageView).toEqual({ width: 390, scale: 1 });
+  // No canvas, no width to say.
+  unmount();
+  expect(kit.ui.getState().pageView).toBeNull();
+});
+
+test("a provider's player on the canvas keeps no address, not even once its block is moved or given a new video", () => {
+  const doc = page();
+  const video = { id: "v1", type: "video", props: { provider: "youtube", videoId: "dawn-swim01", title: "A dawn swim" }, children: [], style: { base: {} } };
+  (doc.sections[1]!.children[0]!.children as unknown[]).push(video);
+  const kit = editorKit({ document: doc });
+  kit.render(<Canvas />);
+  const players = () => [...document.querySelectorAll(".canvas .site iframe")].map((frame) => frame.getAttribute("src"));
+  expect(players()).toEqual([null]);
+  // The page's renderer wrote it: without the canvas, the frame has one.
+  expect(root("v1").querySelector("iframe")?.getAttribute("title")).toBe("A dawn swim");
+  // Moved to the top of its column, as a drag's preview moves a block.
+  act(() => {
+    kit.store.getState().startDrag({ kind: "block", id: "v1" });
+    kit.store.getState().dragOver({ parentId: "c3", index: 0 });
+  });
+  expect(players()).toEqual([null]);
+  act(() => void kit.store.getState().drop());
+  expect(players()).toEqual([null]);
+  // A new video: React writes the new address, the canvas takes it out.
+  act(() => {
+    const made = makeSetProps(kit.doc(), "v1", { videoId: "night-swim02" });
+    if (!made.ok) throw new Error(made.error.message);
+    kit.store.getState().dispatch(made.command);
+  });
+  expect(players()).toEqual([null]);
+});
+
+test("Block edges draws every block's edges on the canvas, and only while it is on", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<Canvas />);
+  const canvas = document.querySelector(".canvas")!;
+  expect(canvas.classList.contains("canvas-edges")).toBe(false);
+  act(() => kit.ui.getState().setBlockEdges(true));
+  expect(canvas.classList.contains("canvas-edges")).toBe(true);
+  act(() => kit.ui.getState().setBlockEdges(false));
+  expect(canvas.classList.contains("canvas-edges")).toBe(false);
 });
 
 test("an empty page offers its first section", () => {

@@ -176,15 +176,20 @@ test("in a text written on the canvas, Delete, Backspace and Ctrl+D are the text
 
   expect(fireEvent.keyDown(text, { key: "s", ctrlKey: true })).toBe(false);
   expect(kit.ui.getState()).toMatchObject({ historyOpen: true, namingVersion: true });
-  expect(fireEvent.keyDown(text, { key: "p", code: "KeyP", ctrlKey: true, altKey: true })).toBe(false);
+  expect(fireEvent.keyDown(text, { key: "P", code: "KeyP", altKey: true, shiftKey: true })).toBe(false);
   expect(previews).toBe(1);
   expect(fireEvent.keyDown(text, { key: "Enter", ctrlKey: true, shiftKey: true })).toBe(false);
   expect(publishes).toBe(1);
   // AltGr types a letter in the text: not a preview.
-  const altGr = new KeyboardEvent("keydown", { key: "ö", code: "KeyP", ctrlKey: true, altKey: true, bubbles: true, cancelable: true, modifierAltGraph: true } as KeyboardEventInit);
+  const altGr = new KeyboardEvent("keydown", { key: "Ö", code: "KeyP", ctrlKey: true, altKey: true, shiftKey: true, bubbles: true, cancelable: true, modifierAltGraph: true } as KeyboardEventInit);
   text.dispatchEvent(altGr);
   expect(altGr.defaultPrevented).toBe(false);
+  // Option and Shift with P type "∏" on a Mac: in a text, the character.
+  expect(fireEvent.keyDown(text, { key: "∏", code: "KeyP", altKey: true, shiftKey: true })).toBe(true);
   expect(previews).toBe(1);
+  // The drawers are not opened from inside a text.
+  expect(fireEvent.keyDown(text, { key: "O", code: "KeyO", altKey: true, shiftKey: true })).toBe(true);
+  expect(kit.ui.getState().drawer).toBe("history");
 });
 
 test("? opens the window, which lists every entry of the keymap with its keys, and finds them", () => {

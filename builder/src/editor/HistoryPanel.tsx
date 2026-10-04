@@ -1,5 +1,5 @@
-// The history (design/shots/history.png), in the right tray in the
-// navigator's place, opened from the top bar's History or by Ctrl+S:
+// The history (design/layout/shots/history.png), the History drawer's
+// content, opened from the top bar's History or by Ctrl+S:
 //
 // - This session: the commands of the store's history, newest first, each
 //   with its label and its time; those undone, above, say so. Choosing one
@@ -120,12 +120,6 @@ export function HistoryPanel() {
     if (pageId !== null && revision !== null) loadVersions();
   }, [pageId, revision, loadVersions]);
 
-  const close = () => {
-    ui.getState().setHistoryOpen(false);
-    // The focus goes back to the button that opens it again.
-    afterRender(() => document.querySelector<HTMLElement>(".topbar [data-history]")?.focus());
-  };
-
   const choose = (target: Command) => {
     const outcome = goToStep(env, target);
     if (outcome?.ok && outcome.focus) {
@@ -140,13 +134,7 @@ export function HistoryPanel() {
   const notLive = page ? changesNotLive(page, snapshot) : 0;
 
   return (
-    <aside className="tray tray-right chrome" aria-label="History">
-      <section className="view">
-        <div className="tray-head tray-head-title">
-          <h2 id="history_title"><Icon name="history" />History</h2>
-          <button className="ibtn" type="button" aria-label="Close history" title="Close history" onClick={close}><Icon name="close" /></button>
-        </div>
-        <div className="tray-body tray-body-tight hist-body">
+        <div className="drawer-body drawer-body-tight hist-body">
           <h3 className="group-title group-title-pad" id="history_session">This session</h3>
           {steps.length === 0
             ? <p className="hint hint-pad">No changes yet. Each change you make shows here, and you can go back to any of them.</p>
@@ -180,6 +168,8 @@ export function HistoryPanel() {
               className="btn btn-small btn-secondary"
               type="button"
               data-save-version=""
+              // The drawer gives it the focus when it opens.
+              data-autofocus=""
               aria-expanded={naming}
               aria-keyshortcuts={ariaKeyShortcuts(saveKeys)}
               title={`Save version (${entryKeysText(saveKeys)})`}
@@ -235,8 +225,6 @@ export function HistoryPanel() {
           )}
           <p className="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
         </div>
-      </section>
-    </aside>
   );
 }
 

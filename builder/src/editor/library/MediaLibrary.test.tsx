@@ -12,7 +12,7 @@ import { editorKit, widgetPage } from "../../../test/editor-kit.tsx";
 import type { SectionBlock } from "../../shared/document.ts";
 import { StorageError, type InUse, type Invalid, type MediaItem, type Outcome } from "../../storage/adapter.ts";
 import type { UiStore } from "../ui-store.ts";
-import { LeftTray } from "../LeftTray.tsx";
+import { Palette } from "../Palette.tsx";
 import { BlockPanel } from "../panels/EditPanel.tsx";
 import { MediaLibrary } from "./MediaLibrary.tsx";
 import type { Preparation } from "./resize.ts";
@@ -63,8 +63,7 @@ function library(items: MediaItem[]) {
 const lastWidget = (kit: ReturnType<typeof editorKit>) => (kit.doc().sections[0] as SectionBlock).children[0]!.children.at(-1)!;
 
 function openImageTile(kit: ReturnType<typeof editorKit>) {
-  kit.ui.getState().setTray("add");
-  kit.render(<LeftTray />);
+  kit.render(<Palette />);
   fireEvent.click(screen.getByRole("button", { name: "Image" }));
   return screen.getByRole("dialog", { name: "Media library" });
 }

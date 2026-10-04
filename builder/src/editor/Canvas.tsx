@@ -42,7 +42,7 @@ import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
-import { COLUMN_GAP_DEFAULT, LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
+import { COLUMN_GAP_DEFAULT } from "../shared/site-tokens.ts";
 import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
@@ -55,6 +55,7 @@ import { useInsert } from "./insert.ts";
 import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
+import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
@@ -393,7 +394,7 @@ function showBarBelow(frame: HTMLElement, bar: HTMLElement): void {
   if (!canvas || !own || canvas.clientHeight === 0) return;
   const view = canvas.getBoundingClientRect();
   const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
-  const top = canvas.querySelector(".wrule")?.getBoundingClientRect().bottom ?? view.top + canvas.clientTop;
+  const top = view.top + canvas.clientTop;
   const past = bar.getBoundingClientRect().bottom - bottom;
   if (past <= 0) return;
   const caret = caretOf(own);
@@ -606,8 +607,6 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
 
 // ------------------------------------------------------------- the canvas
 
-const PREVIEW_NAMES = { desktop: "Desktop", tablet: "Tablet", phone: "Phone" } as const;
-
 export function Canvas() {
   const env = useEnv();
   const { store, ui } = env;
@@ -620,6 +619,8 @@ export function Canvas() {
   const media = useUi((u) => u.media);
   const siteStyle = useUi((u) => u.siteStyle);
   const site = useUi((u) => u.site);
+  // The bottom line's Block edges: every block's edges drawn (editor.css).
+  const edges = useUi((u) => u.blockEdges);
   const frame = useRef<HTMLDivElement>(null);
   const bench = useRef<HTMLElement>(null);
   const fit = useRef<HTMLDivElement>(null);
@@ -642,21 +643,21 @@ export function Canvas() {
   const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), useDecoration }), [media]);
   const { width, scale } = fitPreview(preview, room);
 
-  // The room the canvas has for the page: its own width (its border box,
-  // which its scrollbar does not change), less the page's margins and a
-  // scrollbar's width, so a page scaled to fit never makes the canvas
-  // scroll sideways, whether or not it scrolls down.
+  // The room the canvas has for the page: its width inside its scrollbar's
+  // gutter (kept whether or not the page scrolls, editor.css .canvas), less
+  // the page's margins, so the page is as wide as the window allows and a
+  // page scaled to fit never makes the canvas scroll sideways.
   useLayoutEffect(() => {
     const element = bench.current;
     if (!element) return undefined;
-    const measure = () => setRoom(Math.floor(element.getBoundingClientRect().width) - FRAME_ROOM);
+    const measure = () => setRoom(element.clientWidth - 2 * FRAME_MARGIN);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
-  // The page's own width, as the width rule names it, when it fills the
+  // The page's own width, as the bottom line names it, when it fills the
   // canvas: its layout width, which a scale would not change.
   useLayoutEffect(() => {
     const element = frame.current;
@@ -666,6 +667,13 @@ export function Canvas() {
     observer.observe(element);
     return () => observer.disconnect();
   }, [preview]);
+
+  // The bottom line says the page's width and its scale (./StatusBar.tsx).
+  const shownWidth = width ?? measured;
+  useEffect(() => {
+    ui.getState().setPageView({ width: shownWidth, scale });
+  }, [ui, shownWidth, scale]);
+  useEffect(() => () => ui.getState().setPageView(null), [ui]);
 
   // A page scaled to fit takes the room of its scaled size: the box around
   // it is as tall as the page drawn smaller, kept so as the page grows.
@@ -696,6 +704,16 @@ export function Canvas() {
     frame.current?.querySelectorAll<HTMLElement>(".site a[href], .site summary, .site button, .site input, .site textarea, .site select, .site iframe").forEach((element) => {
       if (!element.closest(".ov, .rte")) element.tabIndex = -1;
     });
+  }, [document]);
+
+  // A provider's player never loads on the canvas. Its lazy frame waits in
+  // a closed disclosure, but a frame put back into the page loads at once,
+  // and React puts a block back when a block dragged past it lands before
+  // it in the drag's preview: the canvas keeps no address in the frame,
+  // taken out as soon as React draws it. React writes it again only for a
+  // new address, which this takes out again.
+  useLayoutEffect(() => {
+    frame.current?.querySelectorAll<HTMLIFrameElement>(".site iframe[src]").forEach((player) => player.removeAttribute("src"));
   }, [document]);
 
   // The container a block is dragged out of keeps the height it has once
@@ -735,7 +753,6 @@ export function Canvas() {
   // was already selected edits it.
   const selectedAtPress = useRef<string | null>(null);
 
-  const shown = width ?? measured;
   const dragClass = dragType === null ? "" : ` canvas-drag canvas-drag-${dragType === "section" || dragType === "column" ? dragType : "widget"}`;
   // A page drawn smaller also says by how much to draw the editor's own
   // controls and words on it back up to their size (editor.css).
@@ -745,7 +762,7 @@ export function Canvas() {
   return (
     <main
       ref={bench}
-      className={`canvas${dragClass}`}
+      className={`canvas${dragClass}${edges ? " canvas-edges" : ""}`}
       aria-label="Page canvas"
       aria-describedby="canvas_keys"
       tabIndex={-1}
@@ -758,7 +775,6 @@ export function Canvas() {
           sections their anchors as ids, and an ARIA reference takes the
           first element with its id. */}
       <p id="canvas_keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
-      <WidthRule preview={preview} width={shown} fixed={width !== undefined} scale={scale} />
       <SourceRef.Provider value={source.ref}>
         <div ref={fit} className={`frame-fit${width !== undefined ? " frame-fixed" : ""}`} style={width === undefined ? undefined : { width: `${width * scale}px` }}>
           <div
@@ -839,34 +855,11 @@ function themePartAt(frame: Element, x: number, y: number): "header" | "footer" 
   return null;
 }
 
-// The canvas's width as a dimension line, notched where the page changes
-// layout, each notch named under it (design/styles.css, .wrule).
-// A page drawn smaller to fit keeps its true width in the words, and its
-// notches where they fall on the page as drawn.
-function WidthRule({ preview, width, fixed, scale }: { preview: keyof typeof PREVIEW_NAMES; width: number; fixed: boolean; scale: number }) {
-  const notches = [
-    { x: LAYOUT_BREAKPOINTS.phone, label: "Tablet layout" },
-    { x: LAYOUT_BREAKPOINTS.tablet, label: "Desktop layout" },
-  ].filter((n) => width > 0 && n.x <= width);
-  return (
-    <div
-      className={`wrule${fixed ? " frame-fixed" : ""}`}
-      style={fixed ? { width: `${width * scale}px` } : undefined}
-      aria-hidden="true"
-      title={`The page changes layout at ${LAYOUT_BREAKPOINTS.phone} (tablet) and ${LAYOUT_BREAKPOINTS.tablet} (desktop)${scale < 1 ? `. It is drawn at ${Math.round(scale * 100)}% to fit the canvas.` : ""}`}
-    >
-      <span className="wrule-line" />
-      {notches.map((n) => (
-        <span key={n.x} className={`wrule-notch${n.x + 60 > width ? " wrule-notch-end" : ""}`} style={{ "--x": n.x, "--w": width, "--s": scale } as CSSProperties}><span>{n.label}</span></span>
-      ))}
-      <span className="wrule-label">{PREVIEW_NAMES[preview]}{width > 0 ? `, ${width} wide` : ""}{scale < 1 ? `, drawn at ${Math.round(scale * 100)}%` : ""}</span>
-    </div>
-  );
-}
-
-// The canvas's room for the page: its width less the page's margins (28
-// each side, editor.css .frame-fit) and a thin scrollbar's width.
-const FRAME_ROOM = 2 * 28 + 12;
+// The page's margin on each side of the canvas (editor.css, .frame-fit):
+// with a thin scrollbar showing, the page is 1088 wide in a 1440 window
+// and gets its desktop layout in a 1280 one (design/layout/NOTES.md,
+// section 4.8).
+const FRAME_MARGIN = 19;
 
 // ------------------------------------------------------- the empty page
 
@@ -878,11 +871,6 @@ function Invite() {
   const addPreset = (preset: Preset, image?: ImageRef) => {
     const doc = store.getState().document;
     return insertMade(makeInsert(doc, presetSection(doc, preset, newId, image), { parentId: null, index: doc.sections.length }));
-  };
-  const pictures: Record<Preset, ReactNode> = {
-    intro: <span className="preset-pic preset-intro" aria-hidden="true"><i className="pp-h" /><i className="pp-t" /><i className="pp-t pp-short" /><i className="pp-b" /></span>,
-    picture: <span className="preset-pic preset-split" aria-hidden="true"><i className="pp-img" /><span><i className="pp-h" /><i className="pp-t" /><i className="pp-t pp-short" /></span></span>,
-    icons: <span className="preset-pic preset-three" aria-hidden="true">{[0, 1, 2].map((n) => <span key={n}><i className="pp-dot" /><i className="pp-t" /></span>)}</span>,
   };
   return (
     <div className="invite chrome">
@@ -908,11 +896,11 @@ function Invite() {
               aria-haspopup={preset === "picture" ? "dialog" : undefined}
               onClick={() => (preset === "picture" ? setPicking(true) : addPreset(preset))}
             >
-              {pictures[preset]}<span>{PRESET_LABELS[preset]}</span>
+              {PRESET_PICTURES[preset]}<span>{PRESET_LABELS[preset]}</span>
             </button>
           ))}
         </div>
-        <p className="invite-alt"><Icon name="block" className="i i-xs" />Widgets go inside a column, so the section comes first; then drag them in from Add, on the left.</p>
+        <p className="invite-alt"><Icon name="block" className="i i-xs" />Blocks go inside a column, so the section comes first; then add them from Insert, in the top bar.</p>
       </div>
       {picking && (
         <ImagePicker

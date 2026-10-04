@@ -30,7 +30,7 @@ test("Preview is a link to the draft's preview on the CMS, and a plain click goe
   expect(link.getAttribute("href")).toBe("http://127.0.0.1:3901/preview/7");
   expect(link.getAttribute("target")).toBe("_blank");
   expect(link.getAttribute("rel")).toBe("noopener");
-  expect(link.getAttribute("aria-keyshortcuts")).toBe("Control+Alt+P");
+  expect(link.getAttribute("aria-keyshortcuts")).toBe("Alt+Shift+P");
   fireEvent.click(link);
   expect(previews).toBe(1);
   // A click asking for a tab of its own is the browser's.

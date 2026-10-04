@@ -1,16 +1,18 @@
 // node e2e/shots/editor-shots.ts <folder>
 //
-// Photographs the editor in the states the approved design's shots show
-// (design/shots/editor.png, drag.png, shortcuts.png, empty.png, style.png,
-// publish.png, site-style.png, history.png, save-states.png, media.png, and design/shots-extra/
-// advanced.png, context.png, app-menu.png and about.png), plus the widget
-// panel, the phone preview with the hero's phone values, the home page as
-// the CMS serves it to a tablet and a phone (served-tablet,
-// served-phone), a save retrying, and a text written on the
-// canvas with its link's field (text, text-link), headless, in two windows: 1280 by 800, and
-// 1440 by 900, the size the design itself was shot at, whose canvas is
-// wide enough for the page's desktop layout (832, past the 800 where it
-// starts). The shots of the larger window go in <folder>/1440.
+// Photographs the editor in the states of the approved layout's shots
+// (design/layout/shots: editor, structure, history, tablet, publish,
+// empty, shortcuts; design/layout/shots-extra: insert-drawer, pages,
+// page-tab, conflict, offline), named as they are, plus the states the
+// editor has that the layout draws elsewhere or not at all: the block's
+// menu, the "?" window, a text written on the canvas with its link's field
+// (text, text-link), a section's Advanced tab, the phone preview with the
+// hero's phone values, a drag from Insert, Block edges, the mark's menu,
+// About, the media library and the site style; and the home page as the
+// CMS serves it to a tablet and a phone (served-tablet, served-phone).
+// Headless, in two windows: 1280 by 800, and 1440 by 900, the size the
+// layout itself was shot at. The shots of the larger window go in
+// <folder>/1440.
 //
 // It starts a CMS and an editor server of its own (../harness/servers.ts)
 // on E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), puts the example
@@ -18,7 +20,7 @@
 //
 // Fails on a console error, a page error, or a request that leaves the two
 // servers. Exits 2 on a missing argument.
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, type Browser, type Locator, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { repoRoot } from "../../build/paths.ts";
@@ -42,9 +44,29 @@ const problems: string[] = [];
 const servers: Server[] = [];
 let shots = 0;
 
-// A navigator row, clicked where a person clicks it: on the row itself, not
+// A top bar drawer, opened from its key if it is not open yet.
+async function drawer(page: Page, name: "Insert" | "Outline" | "History"): Promise<Locator> {
+  const box = page.getByRole("complementary", { name, exact: true });
+  if (!(await box.isVisible())) await page.locator(".topbar").getByRole("button", { name, exact: true }).click();
+  await box.waitFor();
+  return box;
+}
+
+async function closeDrawers(page: Page): Promise<void> {
+  for (const name of ["Insert", "Outline", "History"] as const) {
+    const close = page.getByRole("button", { name: `Close ${name}`, exact: true });
+    if (await close.isVisible()) await close.click();
+  }
+}
+
+// An Outline row, clicked where a person clicks it: on the row itself, not
 // in the middle of the item, which holds the rows under it too.
-const row = (page: Page, name: string) => page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
+async function row(page: Page, name: string): Promise<Locator> {
+  await drawer(page, "Outline");
+  return page.getByRole("treeitem", { name, exact: true }).first().locator(":scope > .t-row");
+}
+
+const device = (page: Page, name: "Desktop" | "Tablet" | "Phone") => page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: new RegExp(`^${name}`) }).click();
 
 async function photograph(browser: Browser, url: string, allowed: readonly string[], window: (typeof WINDOWS)[number], first: boolean): Promise<void> {
   mkdirSync(window.folder, { recursive: true });
@@ -52,40 +74,53 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   const label = `${window.width}x${window.height}`;
   const cmsUrl = allowed[0]!;
   page.on("console", (message) => {
-    // The conflict and the dropped save the save-states shots make on
-    // purpose leave the browser's own lines.
+    // The conflict and the dropped save the shots make on purpose leave
+    // the browser's own lines.
     if (message.type() === "error" && !/status of 409 \(Conflict\)|net::ERR_INTERNET_DISCONNECTED/.test(message.text())) problems.push(`${label}: console error: ${message.text()}`);
   });
   page.on("pageerror", (error) => problems.push(`${label}: page error: ${error.message}`));
+  // The last shot taken, to say where a problem came after.
+  let after = "the start";
   page.on("request", (request) => {
     // An image made ready for upload is shown from the editor's own blob:
     // address, which never leaves the browser.
-    if (!allowed.some((origin) => request.url().startsWith(origin) || request.url().startsWith(`blob:${origin}`))) problems.push(`${label}: request outside the servers: ${request.url()}`);
+    if (!allowed.some((origin) => request.url().startsWith(origin) || request.url().startsWith(`blob:${origin}`))) problems.push(`${label}, after ${after}: request outside the servers: ${request.url()}`);
   });
   const away = () => page.mouse.move(window.width - 6, window.height - 6);
   const shoot = async (name: string) => {
     await page.waitForTimeout(150);
     await page.screenshot({ path: join(window.folder, `${name}.png`) });
     shots += 1;
+    after = name;
     console.log(`shot ${label} ${name}.png`);
+  };
+  const heading = page.locator('.canvas [data-block-id="hero-heading"] h1');
+  const sidebar = page.getByRole("complementary", { name: "Settings" });
+  // Nothing selected: Esc on the selected block lets it go.
+  const deselect = async () => {
+    const selected = page.locator(".canvas [data-editor-selected=true]");
+    if ((await selected.count()) === 0) return;
+    await selected.focus();
+    await page.keyboard.press("Escape");
+    await page.locator(".canvas [data-editor-selected=true]").waitFor({ state: "detached" });
   };
 
   await page.goto(url);
-  await page.getByRole("tree", { name: "Navigator" }).waitFor();
+  await page.getByRole("button", { name: /^Switch page\. Open:/ }).waitFor();
   await page.locator(".canvas img").first().waitFor();
 
-  // #editor: the hero heading selected, its Content tab, the pointer on
-  // the button.
-  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
-  await page.locator('.canvas [data-block-id="hero-button"]').hover();
+  // #editor: the hero heading selected, its settings in the Block tab, the
+  // focus on its Text field, as the layout draws it.
+  await heading.click();
+  await sidebar.getByRole("textbox", { name: "Text", exact: true }).focus();
+  await away();
   await shoot("editor");
 
-  // #context: the heading's menu, opened by a right click on it, low on
-  // its second line, where the design's pointer stands.
-  const title = page.locator('.canvas [data-block-id="hero-heading"] h1');
-  const titleBox = await title.boundingBox();
+  // The heading's menu, opened by a right click on it, low on its second
+  // line.
+  const titleBox = await heading.boundingBox();
   if (!titleBox) throw new Error("the hero's heading is not on screen");
-  await title.click({ button: "right", position: { x: titleBox.width * 0.64, y: titleBox.height * 0.84 } });
+  await heading.click({ button: "right", position: { x: titleBox.width * 0.64, y: titleBox.height * 0.84 } });
   await page.getByRole("menu", { name: "Heading actions" }).waitFor();
   await shoot("context");
   await page.keyboard.press("Escape");
@@ -97,9 +132,8 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("shortcuts");
   await page.keyboard.press("Escape");
 
-  // #text: the hero's text written on the canvas, its first two words made
-  // bold from the block's bar, which carries bold, italic and link while
-  // the text is open; then the link's field, refusing an address with its
+  // A text written on the canvas, its first two words made bold from the
+  // block's bar, then the link's field refusing an address with its
   // reason. Undone after, so the shots below show the seed's page.
   const lead = page.locator('.canvas [data-block-id="hero-text"]');
   await lead.click();
@@ -120,31 +154,38 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+z");
 
-  // #style: the tablet width, the hero's first column, its Style tab.
+  // #tablet: Tablet in the bottom line, the hero's first column chosen in
+  // the Outline, its Style tab with its tablet-only space.
   await away();
-  await page.getByRole("button", { name: "Tablet" }).click();
-  await row(page, "Column 1").click();
-  await page.getByRole("tab", { name: "Style" }).click();
-  // The undo above saved, as the design's top bar says.
+  await device(page, "Tablet");
+  await (await row(page, "Column 1")).click();
+  await closeDrawers(page);
+  await sidebar.getByRole("tab", { name: "Style" }).click();
+  // The undo above saved.
   await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await away();
-  await shoot("style");
+  await shoot("tablet");
 
-  // #advanced: the desktop width, the Join section, its Advanced tab.
-  await page.getByRole("button", { name: "Desktop" }).click();
-  await row(page, "Join").click();
-  await page.getByRole("tab", { name: "Advanced" }).click();
+  // The desktop, the Join section, its Advanced tab.
+  await device(page, "Desktop");
+  await (await row(page, "Join")).click();
+  await closeDrawers(page);
+  await sidebar.getByRole("tab", { name: "Advanced" }).click();
   await away();
   await shoot("advanced");
 
-  // The widget panel, the Join section still selected.
-  await page.getByRole("tab", { name: "Add" }).click();
-  await shoot("add");
+  // #insert-drawer: the Questions' accordion selected, Insert open, its
+  // sentence saying where a click puts a block.
+  await page.locator('.canvas [data-block-id="questions-list"]').click();
+  await sidebar.getByRole("tab", { name: "Content" }).click();
+  await drawer(page, "Insert");
+  await away();
+  await shoot("insert-drawer");
 
-  // #drag: the Quote tile held over See the bay's second column, after
-  // its text, then the pointer on the line where it would land, as in the
-  // design (the line is the new block's own place, so it stays there);
-  // then Esc, and nothing changed.
+  // #drag: the Quote key held over See the bay's second column, after its
+  // text, then the pointer on the line where it would land (the line is
+  // the new block's own place, so it stays there); then Esc, and nothing
+  // changed.
   await pickUp(page, page.getByRole("group", { name: "Content" }).getByRole("button", { name: "Quote" }));
   await moveOnto(page, page.locator('.canvas [data-block-id="meet-text"]'), "bottom");
   await page.locator(".live-caption:not(.live-caption-quiet)").waitFor();
@@ -155,21 +196,21 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("drag");
   await page.keyboard.press("Escape");
   await page.mouse.up();
-  await page.getByRole("tab", { name: "Add" }).click();
+  await closeDrawers(page);
 
   // The phone preview of the home page, the hero selected, its Style tab:
   // the hero's own space above and below on phones.
-  await page.getByRole("button", { name: "Phone" }).click();
-  await row(page, "Hero").click();
-  await page.getByRole("tab", { name: "Style" }).click();
+  await device(page, "Phone");
+  await (await row(page, "Hero")).click();
+  await closeDrawers(page);
+  await sidebar.getByRole("tab", { name: "Style" }).click();
   await away();
   await shoot("phone");
-  await page.getByRole("button", { name: "Desktop" }).click();
+  await device(page, "Desktop");
 
   // The same page as the CMS serves it to a tablet and a phone, to set
-  // beside the canvas at 768 (style) and 390 (phone): the page's own
-  // container queries, in a window of that width. Once, in the first
-  // window's folder.
+  // beside the canvas at 768 and 390: the page's own container queries, in
+  // a window of that width. Once, in the first window's folder.
   if (first) {
     for (const [name, width, height] of [["served-tablet", 768, 1024], ["served-phone", 390, 844]] as const) {
       const served = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
@@ -184,11 +225,27 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
     }
   }
 
-  // design/shots-extra/app-menu.png: the mark's menu, opened from the
-  // keyboard; then About, from it. The heading's Content tab under them,
-  // as in the design, not the Advanced tab an earlier shot left open.
-  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
-  await page.getByRole("tab", { name: "Content" }).click();
+  // #structure: the Outline open, the text in See the bay's second column
+  // chosen in it, the focus on its row; in step with the canvas and the
+  // breadcrumb.
+  await page.locator('.canvas [data-block-id="meet-text"]').click();
+  await drawer(page, "Outline");
+  await page.locator('.tree [data-row-id="meet-text"]').focus();
+  await away();
+  await shoot("structure");
+  await closeDrawers(page);
+
+  // Block edges: every block's edges, nothing selected.
+  await deselect();
+  await page.getByRole("button", { name: "Block edges" }).click();
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await away();
+  await shoot("block-edges");
+  await page.getByRole("button", { name: "Block edges" }).click();
+
+  // The mark's menu, opened from the keyboard; then About, from it.
+  await heading.click();
+  await sidebar.getByRole("tab", { name: "Content" }).click();
   await page.getByRole("button", { name: "Page Builder CMS menu" }).focus();
   await page.keyboard.press("Enter");
   await page.getByRole("menu", { name: "Page Builder CMS" }).waitFor();
@@ -202,22 +259,28 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await shoot("about");
   await page.keyboard.press("Escape");
 
-  // #publish: the hero's heading selected, its Content tab, the Publish
-  // menu open.
-  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
-  await page.getByRole("tab", { name: "Content" }).click();
+  // #publish: the hero's heading selected, the Publish menu open.
+  await heading.click();
   await page.getByRole("button", { name: "More publish options" }).click();
   await page.getByRole("menu", { name: "Publish options" }).waitFor();
   await away();
   await shoot("publish");
   await page.keyboard.press("Escape");
 
-  // #media: the hero's image selected, Replace image; the buoy picture
-  // uploaded with no alt text yet, chosen, its field asking for the text;
-  // the rock pools on their way, their bytes held back for the shot. Then
-  // both go on and are deleted, so the library is as the seed has it.
+  // #pages: the page switch open over the same page.
+  await page.getByRole("button", { name: /^Switch page\. Open:/ }).click();
+  await page.getByRole("dialog", { name: "Pages" }).waitFor();
+  await away();
+  await shoot("pages");
+  await page.keyboard.press("Escape");
+
+  // The media library: the hero's image selected, Replace image; the buoy
+  // picture uploaded with no alt text yet, chosen, its field asking for
+  // the text; the rock pools on their way, their bytes held back for the
+  // shot. Then both go on and are deleted, so the library is as the seed
+  // has it.
   await page.locator('.canvas [data-block-id="hero-image"]').click();
-  await page.getByRole("tab", { name: "Content" }).click();
+  await sidebar.getByRole("tab", { name: "Content" }).click();
   await page.getByRole("button", { name: "Replace image" }).click();
   const library = page.getByRole("dialog", { name: "Media library" });
   const files = library.getByLabel("Images to upload");
@@ -246,9 +309,18 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   }
   await page.keyboard.press("Escape");
 
-  // #site-style: Primary open, Harbour chosen; then back to Sea, so the
-  // other shots show the site as the seed has it.
-  await page.getByRole("button", { name: "Site style", exact: true }).click();
+  // #page-tab: nothing selected, the page's own settings, the focus on
+  // its title.
+  await deselect();
+  await sidebar.getByRole("tab", { name: "Page", selected: true }).waitFor();
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await sidebar.getByRole("textbox", { name: "Title" }).focus();
+  await away();
+  await shoot("page-tab");
+
+  // Site style, from the Page tab: Primary open, Harbour chosen; then back
+  // to Sea, so the other shots show the site as the seed has it.
+  await sidebar.getByRole("button", { name: "Site style", exact: true }).click();
   const style = page.getByRole("complementary", { name: "Site style" });
   await style.getByRole("button", { name: /^Primary/ }).click();
   await style.getByRole("radio", { name: "Harbour" }).click();
@@ -261,71 +333,70 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await style.getByRole("button", { name: "Close site style" }).click();
 
   // #history: three changes made in this session, the last undone, and a
-  // version kept under a name (the first time; the second window finds it).
-  // Then the changes are undone, so the page is as the seed has it again.
-  const change = async (id: string, tab: "Content", field: string, words: string) => {
+  // version kept under a name (the first time; the second window finds it);
+  // nothing selected, so the Page tab. Then the changes are undone, so the
+  // page is as the seed has it again.
+  const change = async (id: string, field: string, words: string) => {
     await page.locator(`.canvas [data-block-id="${id}"]`).click();
-    await page.getByRole("tab", { name: tab }).click();
-    const box = page.getByRole("textbox", { name: field, exact: true });
+    await sidebar.getByRole("tab", { name: "Content" }).click();
+    const box = sidebar.getByRole("textbox", { name: field, exact: true });
     await box.fill(words);
     await box.blur();
   };
-  await change("join-button", "Content", "Text", "Write to us");
-  await change("quote-text", "Content", "Quote", "I came for the cold water and stayed for the tea and the talk.");
+  await change("join-button", "Text", "Write to us");
+  await change("quote-text", "Quote", "I came for the cold water and stayed for the tea and the talk.");
   await page.locator('.canvas [data-block-id="gallery-heading"]').click();
   await page.keyboard.press("Delete");
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   // The block the undo brought back has the focus: Esc lets it go, so the
-  // page shows no selection, as in the design.
+  // page shows no selection, as in the layout.
   await page.locator('.canvas [data-block-id="gallery-heading"]:focus').waitFor();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "History" }).click();
-  const history = page.getByRole("complementary", { name: "History" });
+  const history = await drawer(page, "History");
   if (first) {
     await history.getByRole("button", { name: "Save version" }).click();
     await history.getByRole("textbox", { name: /^Name/ }).fill("Before the winter series");
     await history.getByRole("textbox", { name: /^Name/ }).press("Enter");
     await history.getByText("Before the winter series").waitFor();
-    // The notice saying so goes, as the design draws no notice.
+    // The notice saying so goes, as the layout draws no notice.
     await page.locator(".notice").getByRole("button", { name: "Dismiss" }).click();
   }
   await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await history.getByRole("button", { name: /^Restore: / }).first().waitFor();
-  // As the design draws it: the widget panel, the top of the page.
-  await page.getByRole("tab", { name: "Add" }).click();
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  await history.getByRole("button", { name: "Save version" }).focus();
   await away();
   await shoot("history");
   for (let step = 0; step < 2; step += 1) await page.getByRole("button", { name: "Undo", exact: true }).click();
   await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
-  await history.getByRole("button", { name: "Close history" }).click();
+  await history.getByRole("button", { name: "Close History" }).click();
 
-  // #save-states: the page saved elsewhere while this tab edits it, the
-  // banner across the window; Reload settles it (the other save left the
-  // page as it was). Then a save the network drops: its countdown and
-  // toast; Retry now once the network is back.
+  // #conflict: the page saved elsewhere while this tab edits it, the
+  // banner across the canvas; Reload settles it (the other save left the
+  // page as it was). Then #offline: a save the network drops, its
+  // countdown and toast; Retry now once the network is back.
   const pageId = new URL(page.url()).searchParams.get("page");
   const draft = await (await fetch(`${cmsUrl}/api/pages/${pageId}/draft`)).json() as { revision: number; document: unknown };
   const elsewhere = await fetch(`${cmsUrl}/api/pages/${pageId}/draft`, { method: "PUT", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ revision: draft.revision, saveId: `shots-elsewhere-${window.width}`, document: draft.document }) });
   if (!elsewhere.ok) throw new Error(`the save from elsewhere answered ${elsewhere.status}`);
-  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
-  await page.getByRole("tab", { name: "Content" }).click();
-  const text = page.getByRole("textbox", { name: "Text" });
+  await heading.click();
+  await sidebar.getByRole("tab", { name: "Content" }).click();
+  const text = sidebar.getByRole("textbox", { name: "Text", exact: true });
   await text.fill("Swim at slack water, together");
   await text.blur();
   await page.getByRole("alert").waitFor();
   await away();
-  await shoot("save-states");
+  await shoot("conflict");
   await page.getByRole("alert").getByRole("button", { name: "Reload" }).click();
   await page.getByRole("alert").waitFor({ state: "detached" });
 
   await page.route("**/api/pages/*/draft", (route) => (route.request().method() === "PUT" ? route.abort("internetdisconnected") : route.fallback()));
-  await page.locator('.canvas [data-block-id="hero-heading"] h1').click();
+  await heading.click();
   await text.fill("Swim at slack water, together");
   await text.blur();
   await page.getByRole("group", { name: "Not saved" }).waitFor();
   await away();
-  await shoot("retrying");
+  await shoot("offline");
   await page.unroute("**/api/pages/*/draft");
   // Back as the seed has it, and saved.
   await text.fill("Swim at slack water");
@@ -335,14 +406,14 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
 
   // #empty: a new page, nothing on it yet; made the first time, opened the
   // second.
-  await page.getByRole("button", { name: "Desktop" }).click();
   await page.getByRole("button", { name: /^Switch page/ }).click();
+  const pages = page.getByRole("dialog", { name: "Pages" });
   if (first) {
-    await page.getByRole("menuitem", { name: "New page…" }).click();
+    await pages.getByRole("button", { name: "New page" }).click();
     await page.getByLabel("Title").fill("Spring series");
     await page.getByRole("button", { name: "Create page" }).click();
   } else {
-    await page.getByRole("menuitem", { name: /^Spring series/ }).click();
+    await pages.getByRole("button", { name: /^Spring series/ }).click();
   }
   await page.getByRole("heading", { name: "Start this page with a section" }).waitFor();
   await away();

@@ -1,8 +1,8 @@
 // While the store holds a drag, the canvas draws its preview: the dragged
 // block as the indicator where it would land, the container framed and
-// named, the sections a widget cannot go into shaded; the navigator shows
-// the same place as a line; the live region says where the block will go,
-// and why not when it cannot. Dropping makes one command; cancelling
+// named, the sections a widget cannot go into shaded; the outline shows
+// the same place as a line; the live region, in the bottom line, says
+// where the block will go, and why not when it cannot. Dropping makes one command; cancelling
 // leaves the page as it was; a drag starts only once the text being typed
 // is in. The pointer and the keys themselves are Chromium's
 // (e2e/drag.spec.ts): jsdom lays nothing out.
@@ -14,6 +14,7 @@ import { page } from "../../../test/document-page.ts";
 import { Canvas } from "../Canvas.tsx";
 import { Navigator } from "../Navigator.tsx";
 import { BlockPanel } from "../panels/EditPanel.tsx";
+import { StatusBar } from "../StatusBar.tsx";
 import { WIDGETS } from "../../widgets/registry.ts";
 import { newWidget } from "../../widgets/types.ts";
 import { beginDrag, DragLayer, dropSentence } from "./DragLayer.tsx";
@@ -22,7 +23,7 @@ const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-
 
 function drawn() {
   const kit = editorKit({ document: page(), selection: "q1" });
-  kit.render(<DragLayer><div className="app"><Canvas /><Navigator /></div></DragLayer>);
+  kit.render(<DragLayer><div className="app"><Canvas /><Navigator /><StatusBar /></div></DragLayer>);
   act(() => {
     kit.ui.setState({ dragMode: "pointer" });
     kit.store.getState().startDrag({ kind: "block", id: "q1" });
@@ -50,17 +51,20 @@ test("the dragged block is drawn as a line where it would land, its column frame
   expect(caption.getAttribute("role")).toBe("status");
   expect(caption.querySelector("strong")?.textContent).toBe("Quote will move to Column 1 in Hero, after Heading.");
   expect(caption.querySelector("span")?.textContent).toBe("Release, or press Space, to drop it. Shaded areas cannot hold widgets. Esc cancels.");
+  // It is the bottom line's, in the breadcrumb's place, the line graphite.
+  expect(caption.closest(".statusbar")?.classList.contains("statusbar-moving")).toBe(true);
+  expect(screen.queryByRole("navigation", { name: "Selection" })).toBeNull();
 
-  // The navigator shows the same place, as a line, its column open.
+  // The outline shows the same place, as a line, its column open.
   const line = document.querySelector(".tree .t-insert");
   expect(line?.textContent).toBe("Quote");
   expect(line?.previousElementSibling?.getAttribute("data-row-id")).toBe("h1");
   expect(document.querySelector('.tree [data-row-id="c1"] > .t-row')?.classList.contains("t-target")).toBe(true);
 });
 
-test("a tile of the widget panel is added, not moved: the live region says so", () => {
+test("a block from Insert is added, not moved: the live region says so", () => {
   const kit = editorKit({ document: page() });
-  kit.render(<DragLayer><div className="app"><Canvas /></div></DragLayer>);
+  kit.render(<DragLayer><div className="app"><Canvas /><StatusBar /></div></DragLayer>);
   const divider = WIDGETS.find((w) => w.type === "divider")!;
   act(() => {
     kit.ui.setState({ dragMode: "pointer" });
@@ -92,6 +96,9 @@ test("the drop is one command; a cancel leaves the page and the history as they 
   expect(kit.doc().sections[0]!.children[1]!.children.map((w) => w.id)).toEqual(["i1", "q1"]);
   expect(root("q1").dataset.dragSlot).toBeUndefined();
   expect(document.querySelector(".live-caption")?.classList.contains("live-caption-quiet")).toBe(true);
+  // The breadcrumb is back, on the block just moved.
+  expect(screen.getByRole("navigation", { name: "Selection" })).toBeTruthy();
+  expect(document.querySelector(".statusbar")?.classList.contains("statusbar-moving")).toBe(false);
 
   const before = kit.doc();
   act(() => {
