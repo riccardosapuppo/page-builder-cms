@@ -22,8 +22,7 @@
 # fragment on a digest of its subtree and the revision of the token CSS,
 # under the release (PublicPage's fragment_cache_key). The ETag's digest
 # is made here rather than by fresh_when, whose digest of the action's
-# template does not see the layout, and which reads the flash and with it
-# the session.
+# template does not see the layout or the partials a helper renders.
 module PageCache
   # The files of a release that can change what a page looks like, from
   # the app's root. Broad on purpose: a change that cannot alter a page

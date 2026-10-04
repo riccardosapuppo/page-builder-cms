@@ -2,7 +2,8 @@
 
 module Api
   # The theme's parts around every page (config/site.yml): the site's name,
-  # the header's menu and action button, the footer's line. Read only: the
+  # the header's menu and action button, the footer's line; and the site's
+  # time zone, in which the editor sets scheduled publishes. Read only: the
   # editor draws them on its canvas, locked, as the published layout draws
   # them (layouts/public.html.erb), so the page is edited in its place.
   #
@@ -17,7 +18,10 @@ module Api
         name: site[:name].to_s,
         menu: Array(site[:menu]).filter_map { |link| site_link_json(link) },
         action: site_link_json(site[:action]),
-        footer: { lead: site.dig(:footer, :lead).to_s, text: site.dig(:footer, :text).to_s }
+        footer: { lead: site.dig(:footer, :lead).to_s, text: site.dig(:footer, :text).to_s },
+        # The IANA name, which a browser's Intl reads: the editor works
+        # out from it the offset of any date, summer time included.
+        timeZone: Time.zone.tzinfo.name
       }
     end
 

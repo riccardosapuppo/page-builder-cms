@@ -5,7 +5,7 @@ module Api
   class PagesController < BaseController
     # GET /api/pages
     def index
-      pages = Page.includes(:draft, :published_version).order(:id)
+      pages = Page.includes(:draft, :published_version, pending_schedule: :version).order(:id)
       render json: { "pages" => pages.map { |page| page_summary_json(page) } }
     end
 
@@ -57,7 +57,7 @@ module Api
     private
 
     def find_page
-      Page.includes(:draft, :published_version).find(path_integer(:id))
+      Page.includes(:draft, :published_version, pending_schedule: :version).find(path_integer(:id))
     end
   end
 end

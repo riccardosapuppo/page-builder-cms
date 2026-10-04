@@ -18,6 +18,7 @@ module Api
         "revision" => draft.revision,
         "updatedAt" => iso([ page.updated_at, draft.updated_at ].max),
         "published" => published_json(page),
+        "scheduled" => page.pending_schedule && schedule_json(page.pending_schedule),
         "links" => page_links_json(page)
       }
     end
@@ -33,7 +34,27 @@ module Api
         },
         "draft" => draft_json(page.draft),
         "published" => published_json(page),
+        "scheduled" => page.pending_schedule && schedule_json(page.pending_schedule),
         "links" => page_links_json(page)
+      }
+    end
+
+    # A publish set for a time. at is when it goes live; revision and
+    # versionNumber are what goes live: the draft as it was at that
+    # revision, kept as that version. state is pending until it is
+    # published, cancelled, replaced by a newer one, superseded (a publish
+    # had already put that revision or a later one live) or failed;
+    # settledAt says when it stopped being pending.
+    def schedule_json(schedule)
+      {
+        "id" => schedule.id,
+        "at" => iso(schedule.publish_at),
+        "revision" => schedule.revision,
+        "versionNumber" => schedule.version.number,
+        "state" => schedule.state,
+        "createdAt" => iso(schedule.created_at),
+        "settledAt" => iso(schedule.settled_at),
+        "publishedVersionNumber" => schedule.published_version&.number
       }
     end
 
@@ -67,6 +88,7 @@ module Api
         "draft" => "#{base}/draft",
         "versions" => "#{base}/versions",
         "publish" => "#{base}/publish",
+        "schedules" => "#{base}/schedules",
         "preview" => "/preview/#{page.id}",
         "live" => page.live_path
       }

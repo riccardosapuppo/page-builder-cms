@@ -68,6 +68,29 @@ module Api
       end
     end
 
+    # A time as the API writes them: ISO 8601 in UTC, "Z", to the second or
+    # the millisecond ("2026-10-05T08:00:00Z", "2026-10-05T08:00:00.000Z").
+    # The date and the time must exist: Time.iso8601 would turn February 30
+    # into March 2 and 24:00 into the next day without a word.
+    UTC_TIME = /\A(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?Z\z/
+
+    def utc_time(name, required: false)
+      return unless present?(name, required)
+
+      value = body[name]
+      parts = value.is_a?(String) && UTC_TIME.match(value)
+      if !value.is_a?(String)
+        fail_at("/#{name}", "type", "must be a string")
+      elsif !parts
+        fail_at("/#{name}", "pattern", "must be an ISO 8601 time in UTC, such as 2026-10-05T08:00:00Z")
+      else
+        year, month, day, hour, minute, second = parts.captures.map(&:to_i)
+        unless Date.valid_date?(year, month, day) && hour < 24 && minute < 60 && second < 60
+          fail_at("/#{name}", "format", "is not a date and time that exists")
+        end
+      end
+    end
+
     def boolean(name, required: false)
       return unless present?(name, required)
 

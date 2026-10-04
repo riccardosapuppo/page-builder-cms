@@ -25,3 +25,8 @@ shared:
   footer:
     lead: Slack Water swimming club.
     text: Tide times are a guide, not a promise.
+  # The site's time zone, an IANA name. The editor shows and takes the
+  # time of a scheduled publish in it, the same for every visitor, and
+  # config.time_zone is set from it (config/application.rb); the API's
+  # times stay ISO 8601 in UTC.
+  time_zone: Europe/London

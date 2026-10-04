@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_213000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_160100) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -81,7 +81,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_213000) do
     t.integer "restored_from"
     t.datetime "created_at", null: false
     t.index ["page_id", "number"], name: "index_page_versions_on_page_id_and_number", unique: true
-    t.check_constraint "reason IN ('publish', 'restore', 'before-restore', 'manual', 'auto')", name: "page_versions_reason"
+    t.check_constraint "reason IN ('publish', 'restore', 'before-restore', 'manual', 'auto', 'scheduled')", name: "page_versions_reason"
   end
 
   create_table "pages", force: :cascade do |t|
@@ -95,6 +95,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_213000) do
     t.index ["home"], name: "index_pages_one_home", unique: true, where: "home"
     t.index ["published_version_id"], name: "index_pages_on_published_version_id"
     t.index ["slug"], name: "index_pages_on_slug", unique: true
+  end
+
+  create_table "scheduled_publications", force: :cascade do |t|
+    t.integer "page_id", null: false
+    t.integer "page_version_id", null: false
+    t.integer "revision", null: false
+    t.datetime "publish_at", null: false
+    t.string "state", default: "pending", null: false
+    t.datetime "settled_at"
+    t.integer "published_version_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["page_id", "id"], name: "index_scheduled_publications_on_page_id_and_id"
+    t.index ["page_id"], name: "index_scheduled_publications_one_pending", unique: true, where: "state = 'pending'"
+    t.index ["page_version_id"], name: "index_scheduled_publications_on_page_version_id"
+    t.index ["published_version_id"], name: "index_scheduled_publications_on_published_version_id"
+    t.index ["state", "publish_at"], name: "index_scheduled_publications_on_state_and_publish_at"
+    t.check_constraint "(state = 'pending') = (settled_at IS NULL)", name: "scheduled_publications_settled"
+    t.check_constraint "state IN ('pending', 'published', 'cancelled', 'replaced', 'superseded', 'failed')", name: "scheduled_publications_state"
   end
 
   create_table "site_styles", force: :cascade do |t|
@@ -122,5 +141,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_213000) do
   add_foreign_key "media_usages", "page_versions", on_delete: :cascade
   add_foreign_key "page_versions", "pages", on_delete: :cascade
   add_foreign_key "pages", "page_versions", column: "published_version_id"
+  add_foreign_key "scheduled_publications", "page_versions", column: "published_version_id", on_delete: :nullify
+  add_foreign_key "scheduled_publications", "page_versions", on_delete: :cascade
+  add_foreign_key "scheduled_publications", "pages", on_delete: :cascade
   add_foreign_key "slug_redirects", "pages", on_delete: :cascade
 end

@@ -12,13 +12,15 @@
 #                   any;
 #   auto            made while someone edits, at most one every
 #                   Draft::AUTO_VERSION_EVERY, so there is always
-#                   something recent to go back to.
+#                   something recent to go back to;
+#   scheduled       the draft as it was when a publish was set for a time
+#                   (ScheduledPublication): what that publish puts live.
 #
 # The pruning of old versions (stage 4) keeps before-restore versions as it
 # keeps manual and restore ones: a before-restore version may be the only
 # copy of the edits it holds.
 class PageVersion < ApplicationRecord
-  REASONS = %w[publish restore before-restore manual auto].freeze
+  REASONS = %w[publish restore before-restore manual auto scheduled].freeze
   NAME_MAX_LENGTH = 80
 
   belongs_to :page

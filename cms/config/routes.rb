@@ -17,6 +17,10 @@ Rails.application.routes.draw do
 
     post "pages/:id/publish", to: "publications#create"
 
+    get "pages/:id/schedules", to: "schedules#index"
+    post "pages/:id/schedules", to: "schedules#create"
+    post "pages/:id/schedules/:schedule_id/cancel", to: "schedules#cancel"
+
     get "pages/:id/versions", to: "versions#index"
     post "pages/:id/versions", to: "versions#create"
     get "pages/:id/versions/:number", to: "versions#show"

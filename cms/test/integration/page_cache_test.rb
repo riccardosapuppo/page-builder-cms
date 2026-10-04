@@ -297,6 +297,23 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     ActionController::Base.allow_forgery_protection = before
   end
 
+  # A browser sends this host's cookies to every port of it: another app
+  # on 127.0.0.1, or a session cookie of the app's own name, arrives with
+  # the visit. A page that looked at the session would answer with one.
+  test "a visitor who brings cookies gets none back, from a drawn page, a cached one or a 304" do
+    published
+    cookies = { "Cookie" => "_cms_session=not-a-session-of-this-app; theme=dark" }
+
+    with_page_cache { get "/tides", headers: cookies }
+    assert_response :ok
+    assert_nil response.headers["Set-Cookie"]
+    with_page_cache { get "/tides", headers: cookies }
+    assert_nil response.headers["Set-Cookie"]
+    with_page_cache { get "/tides", headers: cookies.merge("If-None-Match" => response.headers["ETag"]) }
+    assert_response :not_modified
+    assert_nil response.headers["Set-Cookie"]
+  end
+
   private
 
   # The blocks of a document drawn straight by their partials, with no

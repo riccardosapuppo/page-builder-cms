@@ -9,6 +9,10 @@ class Page < ApplicationRecord
   has_many :versions, class_name: "PageVersion", inverse_of: :page, dependent: :delete_all
   belongs_to :published_version, class_name: "PageVersion", optional: true
   has_many :slug_redirects, dependent: :delete_all
+  has_many :scheduled_publications, dependent: :delete_all
+  # The publish set for a time and still waiting for it, if any: a page has
+  # at most one (a unique index says so).
+  has_one :pending_schedule, -> { pending }, class_name: "ScheduledPublication", inverse_of: :page
 
   validates :slug, slug: true, allow_nil: true
   validates :slug, uniqueness: { message: "is already the address of another page" }, allow_nil: true
@@ -80,22 +84,64 @@ class Page < ApplicationRecord
         raise Draft::Conflict.new(current_revision: draft.revision, last_save_id: draft.last_save_id)
       end
 
-      document = draft.checked_document
-      version = PageVersion.record!(page_id: id, document: document, reason: "publish", at: at)
-      previous_slug = slug
-      self.slug = draft.slug
-      self.published_version = version
-      # The draft's saves after this one are what is not live yet.
-      self.published_revision = draft.revision
-      # Never earlier than the last publish, even if the clock went back.
-      self.published_at = [ published_at, at ].compact.max
-      # A live page wins over a redirect: the address is this page's now.
-      SlugRedirect.where(from_slug: slug).delete_all
-      save!
-      if previous_slug && previous_slug != slug
-        SlugRedirect.create!(from_slug: previous_slug, page: self)
+      put_live!(draft.checked_document, revision: draft.revision, slug: draft.slug, at: at)
+    end
+  end
+
+  # Sets a publish for publish_at: the draft as it is now, at revision,
+  # is kept as a "scheduled" version, and PublishPageJob puts that version
+  # live when the time comes, whatever the draft holds by then. A pending
+  # schedule of the page is replaced. Returns the schedule and the one it
+  # replaced (or nil).
+  #
+  # revision is the draft revision the person scheduling has seen: if
+  # someone saved since, Draft::Conflict, as for a publish. Refused with
+  # ActiveRecord::RecordInvalid: a time not after `at` or more than
+  # ScheduledPublication::FURTHEST ahead (:publish_at), and a revision
+  # already live, since that publish would change nothing (:revision).
+  def schedule_publish!(revision:, publish_at:, at: Time.current)
+    schedule, replaced = transaction do
+      draft = Draft.find_by!(page_id: id)
+      raise Draft::Conflict.new(current_revision: draft.revision, last_save_id: draft.last_save_id) if revision != draft.revision
+
+      schedule = ScheduledPublication.new(page: self, revision: revision, publish_at: publish_at, state: "pending", created_at: at, updated_at: at)
+      if publish_at <= at
+        schedule.errors.add(:publish_at, :in_the_past, message: "must be later than now")
+      elsif publish_at > at + ScheduledPublication::FURTHEST
+        schedule.errors.add(:publish_at, :too_far, message: "must be within a year from now")
       end
-      version
+      if published? && published_revision >= revision
+        schedule.errors.add(:revision, :already_live, message: "is already live: there is nothing to schedule")
+      end
+      raise ActiveRecord::RecordInvalid, schedule if schedule.errors.any?
+
+      replaced = ScheduledPublication.pending.find_by(page_id: id)
+      replaced&.settle!("replaced", at: at)
+      schedule.version = PageVersion.record!(page_id: id, document: draft.checked_document, reason: "scheduled", at: at)
+      schedule.save!
+      [ schedule, replaced ]
+    end
+    # After the commit: the job must find the row when it runs, however
+    # soon that is. If the queue refuses the job, the schedule says it
+    # failed rather than staying pending with nothing to fire it.
+    begin
+      PublishPageJob.set(wait_until: schedule.publish_at).perform_later(schedule.id)
+    rescue StandardError
+      schedule.settle!("failed", at: at)
+      raise
+    end
+    [ schedule, replaced ]
+  end
+
+  # Puts a scheduled version live (ScheduledPublication#run!): its
+  # document, upgraded to the current schema and checked again, as a new
+  # "publish" version. What is live is then the draft as it was at the
+  # schedule's revision. The address is the draft's as it is now, as for
+  # any publish: the next address takes effect at the next publish.
+  def publish_scheduled!(schedule, at: Time.current)
+    transaction do
+      draft = Draft.find_by!(page_id: id)
+      put_live!(Draft.upgrade_and_check(schedule.version.document), revision: schedule.revision, slug: draft.slug, at: at)
     end
   end
 
@@ -134,6 +180,27 @@ class Page < ApplicationRecord
   end
 
   private
+
+  # Every publish, now or scheduled, ends here: a new "publish" version of
+  # document, served from now on at slug. revision is the draft revision
+  # document was taken from: the draft's saves after it are what is not
+  # live yet.
+  def put_live!(document, revision:, slug:, at:)
+    version = PageVersion.record!(page_id: id, document: document, reason: "publish", at: at)
+    previous_slug = self.slug
+    self.slug = slug
+    self.published_version = version
+    self.published_revision = revision
+    # Never earlier than the last publish, even if the clock went back.
+    self.published_at = [ published_at, at ].compact.max
+    # A live page wins over a redirect: the address is this page's now.
+    SlugRedirect.where(from_slug: slug).delete_all
+    save!
+    if previous_slug && previous_slug != slug
+      SlugRedirect.create!(from_slug: previous_slug, page: self)
+    end
+    version
+  end
 
   def published_at_never_moves_back
     return unless published_at_changed? && published_at_was && published_at

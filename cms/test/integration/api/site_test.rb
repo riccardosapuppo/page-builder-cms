@@ -20,6 +20,15 @@ class Api::SiteTest < ActionDispatch::IntegrationTest
     assert_equal({ "lead" => "Slack Water swimming club.", "text" => "Tide times are a guide, not a promise." }, json["footer"])
   end
 
+  # The editor sets and shows the time of a scheduled publish in it; the
+  # IANA name lets a browser work out the offset of any date.
+  test "the site's time zone is the one site.yml names, and the app's own" do
+    api :get, "/api/site"
+
+    assert_equal "Europe/London", json["timeZone"]
+    assert_equal "Europe/London", Time.zone.tzinfo.name
+  end
+
   test "a link the published page would leave out is left out here too, and no action is null" do
     site = {
       name: "Elsewhere",

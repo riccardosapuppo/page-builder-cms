@@ -53,5 +53,12 @@ module Cms
 
     # The site's name, menu and footer line (config/site.yml).
     config.x.site = config_for(:site)
+
+    # The site's time zone, written out (config/site.yml) rather than left
+    # to the machine's: a scheduled publish is set in it, the editor shows
+    # it beside every such time, and the recurring jobs (config/
+    # recurring.yml) run by its clock, Solid Queue's default zone being
+    # this one. The database and the API keep UTC.
+    config.time_zone = config.x.site.fetch(:time_zone)
   end
 end
