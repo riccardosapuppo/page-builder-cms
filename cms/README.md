@@ -629,7 +629,20 @@ and macOS a child process (`:fork`). Development keeps its queue in
   cancelled at 2026-10-04T10:00:00Z, nothing to do`); run before its time,
   it sets itself again for it; otherwise it puts the scheduled version
   live as a new `publish` version, through the same method a publish by
-  hand uses, so the caches keyed on the published version follow.
+  hand uses, so the caches keyed on the published version follow. If the
+  pages database is busy past SQLite's 5 second timeout at that moment
+  (`ActiveRecord::StatementTimeout`; a pool with no free connection, or a
+  deadlock, are the same), the job waits 10 seconds and tries again, up to
+  12 times; it is safe to run again, since each run looks again at what
+  it finds.
+- **EnqueueOverdueSchedulesJob**, every minute: a schedule still pending
+  more than a minute after its time, whose job was lost or failed for
+  good after those tries, gets its job again
+  (`ScheduledPublication.sweep_overdue!`). A schedule set going again is
+  left alone for the next five minutes (its `updated_at` is when), so one
+  that fails every time is tried every five minutes, not every minute.
+  The editor says meanwhile that it "should have gone live" at its time,
+  and goes on reading the page every half minute until it has.
 - **PruneVersionsJob**, every night at 3:30 by the site's clock
   ([config/recurring.yml](config/recurring.yml)), deletes automatic
   versions only: of each page's, the newest 50 stay, and beyond them those
@@ -675,7 +688,8 @@ start. Then every pending schedule whose time has passed gets its job
 again (`ScheduledPublication.enqueue_overdue!`): a job that never reached
 the queue, or that Solid Queue marked failed for good, would otherwise
 leave its schedule pending forever; a job that was still coming runs too,
-and finds the schedule settled.
+and finds the schedule settled. While the server runs, the minute-by-minute
+sweep above does the same for a schedule that is more than a minute late.
 
 ## Where things are
 
@@ -688,9 +702,9 @@ and finds the schedule settled.
 - `app/models/`: `Page`, `Draft`, `PageVersion`, `ScheduledPublication`,
   `SlugRedirect`, `MediaItem`, `MediaUsage`, `SiteStyle`; for the
   rendering, `RenderPolicy`, `BlockStyle`, `MediaResolver` and `SiteIcons`.
-- `app/jobs/`: `PublishPageJob`, `PruneVersionsJob`, `PurgeMediaJob`;
-  `config/recurring.yml` sets the nightly ones, `lib/queue_orphans.rb`
-  clears what a hard stop left.
+- `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
+  `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
+  recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.
 - `app/controllers/pages_controller.rb`, `previews_controller.rb` and
   `concerns/public_page.rb`: the pages a visitor sees, their layout
   (`app/views/layouts/public.html.erb`) and their policy.

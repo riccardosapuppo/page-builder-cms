@@ -210,6 +210,72 @@ class Api::SchedulesTest < ActionDispatch::IntegrationTest
     travel_to(AT + 2.hours) { assert_equal [], ScheduledPublication.enqueue_overdue! }
   end
 
+  # SQLite answers a statement that waits longer than its busy timeout (5 s
+  # in config/database.yml) with ActiveRecord::StatementTimeout. The first
+  # `times` runs of a schedule meet that, as when the file stays locked
+  # past the publish's time; the next find the database free.
+  def with_busy_database(times:)
+    runs = 0
+    original = ScheduledPublication.instance_method(:run!)
+    ScheduledPublication.define_method(:run!) do |**options|
+      raise ActiveRecord::StatementTimeout, "SQLite3::BusyException: database is locked" if (runs += 1) <= times
+
+      original.bind_call(self, **options)
+    end
+    yield
+  ensure
+    ScheduledPublication.define_method(:run!, original)
+  end
+
+  test "a job that finds the database busy past its timeout is tried again, and the page goes live once it is free" do
+    save_draft @page, revision: 0, document: page_document(title: "After the lock")
+    schedule
+    id = json.dig("schedule", "id")
+
+    log = logged do
+      with_busy_database(times: 2) do
+        run_jobs_at(AT)
+        get "/spring"
+        assert_response :not_found
+        assert_equal "pending", ScheduledPublication.find(id).state
+        retry_at = enqueued_jobs.sole[:at]
+        assert_in_delta (AT + PublishPageJob::RETRY_WAIT).to_f, retry_at, 3, "and set again a little later, not at once"
+
+        run_jobs_at(AT + 15.seconds)
+        get "/spring"
+        assert_response :not_found
+        run_jobs_at(AT + 40.seconds)
+      end
+    end
+
+    visitor_sees "After the lock"
+    assert_equal "published", ScheduledPublication.find(id).state
+    assert_equal 2, log.scan(/Retrying PublishPageJob.*ActiveRecord::StatementTimeout/).size, log
+  end
+
+  test "a job that finds the database busy through every retry fails, and the sweep that runs every minute puts the page live" do
+    save_draft @page, revision: 0, document: page_document(title: "After the retries")
+    schedule
+    id = json.dig("schedule", "id")
+
+    with_busy_database(times: PublishPageJob::RETRY_ATTEMPTS) do
+      (PublishPageJob::RETRY_ATTEMPTS - 1).times { |n| run_jobs_at(AT + (n * 30).seconds) }
+      assert_raises(ActiveRecord::StatementTimeout) { run_jobs_at(AT + ((PublishPageJob::RETRY_ATTEMPTS - 1) * 30).seconds) }
+    end
+    get "/spring"
+    assert_response :not_found
+    assert_equal "pending", ScheduledPublication.find(id).state, "nothing went live, and nothing says so but the schedule still waiting"
+    clear_enqueued_jobs
+
+    travel_to(AT + 30.seconds) { assert_equal [], EnqueueOverdueSchedulesJob.perform_now, "not yet a minute late" }
+    travel_to(AT + 7.minutes) { assert_equal [ id ], EnqueueOverdueSchedulesJob.perform_now }
+    assert_enqueued_with(job: PublishPageJob, args: [ id ])
+    run_jobs_at(AT + 7.minutes)
+
+    visitor_sees "After the retries"
+    assert_equal "published", ScheduledPublication.find(id).state
+  end
+
   test "the scheduled publish takes the draft's address as it is at the time, like any publish" do
     save_draft @page, revision: 0, document: page_document(title: "Moved")
     schedule

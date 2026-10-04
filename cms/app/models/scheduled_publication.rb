@@ -44,17 +44,39 @@ class ScheduledPublication < ApplicationRecord
     state == "pending"
   end
 
+  # How late a pending schedule has to be before the sweep (below) sets
+  # its job again, and how long the sweep then leaves it alone. A job that
+  # is only retrying, or running, is late by seconds, and the retries
+  # (PublishPageJob) are over in a few minutes.
+  SWEEP_AFTER = 1.minute
+  SWEEP_LEASE = 5.minutes
+
   # Sets PublishPageJob again for every pending schedule whose time has
-  # passed: one whose job never reached the queue, or failed for good (a
-  # hard stop that Solid Queue found too late, a database busy past its
-  # retries), would otherwise stay pending forever. Run as the queue
-  # starts (config/initializers/solid_queue.rb). A job that was still
-  # coming anyway runs too, and finds the schedule settled. Returns the
-  # ids set again.
-  def self.enqueue_overdue!(at: Time.current)
-    pending.where(publish_at: ..at).order(:publish_at).pluck(:id).each do |id|
+  # passed by more than `after`, and that has not been set again in the
+  # last `lease` (when given): one whose job never reached the queue, or
+  # failed for good (a hard stop that Solid Queue found too late, a
+  # database busy past the retries), would otherwise stay pending forever.
+  # A job that was still coming anyway runs too, and finds the schedule
+  # settled. Returns the ids set again.
+  #
+  # Run as the queue starts (config/initializers/solid_queue.rb), for every
+  # overdue schedule, and every minute while it runs (the sweep, below).
+  # The row's updated_at is when it was last set again: a schedule whose
+  # job fails every time is tried every `lease`, not every minute.
+  def self.enqueue_overdue!(at: Time.current, after: 0.seconds, lease: nil)
+    due = pending.where(publish_at: ..(at - after))
+    due = due.where(updated_at: ..(at - lease)) if lease
+    due.order(:publish_at).pluck(:id).select do |id|
+      next false unless pending.where(id: id).update_all(updated_at: at).positive?
+
       PublishPageJob.perform_later(id)
+      true
     end
+  end
+
+  # The sweep EnqueueOverdueSchedulesJob runs each minute.
+  def self.sweep_overdue!(at: Time.current)
+    enqueue_overdue!(at: at, after: SWEEP_AFTER, lease: SWEEP_LEASE)
   end
 
   # Cancels it if it is still pending, and raises NotPending if it is not:

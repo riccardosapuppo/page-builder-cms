@@ -7,7 +7,14 @@
 # - PurgeMediaJob: the images and uploads nothing uses any more, after the
 #   pruning, which may have let the last version showing one go.
 # - Solid Queue's own finished jobs, kept a day for a look (clear_finished_jobs_after).
+# - EnqueueOverdueSchedulesJob, every minute: a scheduled publish whose
+#   time passed by more than a minute with the page still not live gets
+#   its job again (a lost job, or one that failed for good), so it
+#   happens while the server runs and not only at its next start.
 production: &jobs
+  enqueue_overdue_schedules:
+    class: EnqueueOverdueSchedulesJob
+    schedule: every minute
   prune_versions:
     class: PruneVersionsJob
     schedule: every day at 3:30am

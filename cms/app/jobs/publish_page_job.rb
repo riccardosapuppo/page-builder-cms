@@ -9,6 +9,19 @@
 class PublishPageJob < ApplicationJob
   queue_as :default
 
+  # What a publish can meet that passes: SQLite's file stays locked past
+  # its busy timeout (a long write, a backup copying it), or no connection
+  # is free. Without a retry, the job failed for good at the first of
+  # them and the page stayed unpublished with its schedule pending, while
+  # the server ran. run! looks again at everything, so running the job
+  # again is safe. About as long as a busy timeout and a wait, twelve
+  # times; past that the job fails, and the sweep that runs every minute
+  # (EnqueueOverdueSchedulesJob) sets the schedule going again.
+  RETRY_WAIT = 10.seconds
+  RETRY_ATTEMPTS = 12
+  retry_on ActiveRecord::StatementTimeout, ActiveRecord::ConnectionTimeoutError, ActiveRecord::Deadlocked,
+           wait: RETRY_WAIT, attempts: RETRY_ATTEMPTS
+
   def perform(schedule_id)
     schedule = ScheduledPublication.find_by(id: schedule_id)
     outcome = schedule ? schedule.run!(at: Time.current) : :missing
