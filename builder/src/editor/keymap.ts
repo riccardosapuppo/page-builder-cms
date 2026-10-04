@@ -22,7 +22,6 @@
 // the browsers keep for themselves with Alt+Shift or open their menus with
 // Alt. They are matched by the key's place, so a Mac's Option characters
 // and other layouts do not change them.
-import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { listed } from "./plain-words.ts";
 
 export type KeyAction =
@@ -138,8 +137,11 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "openInsert", group: "Adding and looking", label: "Open Insert", chords: [{ key: "n", code: "KeyN", alt: true, shift: true }], scope: "editor", via: "keymap" },
   { action: "openOutline", group: "Adding and looking", label: "Open the outline", chords: [{ key: "o", code: "KeyO", alt: true, shift: true }], scope: "editor", via: "keymap" },
   { action: "deviceDesktop", group: "Adding and looking", label: "Look at it on desktop", chords: [{ key: "1", code: "Digit1", alt: true, shift: true }], scope: "editor", via: "keymap" },
-  { action: "deviceTablet", group: "Adding and looking", label: `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, chords: [{ key: "2", code: "Digit2", alt: true, shift: true }], scope: "editor", via: "keymap" },
-  { action: "devicePhone", group: "Adding and looking", label: `On phone, ${PREVIEW_WIDTHS.phone} wide`, chords: [{ key: "3", code: "Digit3", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  // The widths are the previews' (../shared/preview-widths.ts), written out
+  // so the browser tests read this file without the tokens: keymap.test.ts
+  // holds them to it.
+  { action: "deviceTablet", group: "Adding and looking", label: "On tablet, 768 wide", chords: [{ key: "2", code: "Digit2", alt: true, shift: true }], scope: "editor", via: "keymap" },
+  { action: "devicePhone", group: "Adding and looking", label: "On phone, 390 wide", chords: [{ key: "3", code: "Digit3", alt: true, shift: true }], scope: "editor", via: "keymap" },
 
   { action: "showShortcuts", group: "Publish", label: "Show this list", chords: [{ key: "?" }], scope: "editor", via: "keymap" },
 ];

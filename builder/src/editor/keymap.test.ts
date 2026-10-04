@@ -8,6 +8,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
+import { PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { ariaKeyShortcuts, entriesFor, entry, entryCaps, entryKeysText, GROUP_NOTES, KEY_GROUPS, KEYMAP, matches, sensorCodes, type KeyPress } from "./keymap.ts";
 
 const press = (key: string, mods: Partial<Omit<KeyPress, "key">> = {}): KeyPress => ({ key, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods });
@@ -156,6 +157,6 @@ test("the window and the menus name the keys as the design does", () => {
   expect(entryCaps(entry("deviceTablet"))).toEqual([{ text: "Alt" }, { text: "Shift" }, { text: "2" }]);
   expect(ariaKeyShortcuts(entry("devicePhone"))).toBe("Alt+Shift+3");
   expect(entryCaps(entry("blockMenu"))).toEqual([{ text: "Shift" }, { text: "F10" }]);
-  // The words of the approved layout's window.
-  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", "On tablet, 768 wide", "On phone, 390 wide"]);
+  // The words of the approved layout's window, the widths the previews'.
+  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, `On phone, ${PREVIEW_WIDTHS.phone} wide`]);
 });
