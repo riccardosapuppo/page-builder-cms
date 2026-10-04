@@ -418,12 +418,19 @@ cache database (`storage/test_cache.sqlite3`) and count its calls.
 
 From the repository root, `node tools/check-production.ts` checks this
 from outside a production server: the headers, a 304, a publish seen at
-the next request, and production's Solid Cache rows (the page and each of
-its 45 blocks after the first visit, then exactly 4 more for one edited
-widget). In Chromium, `builder/e2e/published-cache.spec.ts` publishes
+the next request, and the fragments in production's Solid Cache (the
+page and each of its 45 blocks after the first visit, then exactly 4 more
+for one edited widget; Solid Cache's own row, an estimate of its size
+that its expiry writes at random, is not one of them). In Chromium, `builder/e2e/published-cache.spec.ts` publishes
 from the editor and visits from a browser with its cache on: a 200, then
 a 304 over the wire, then, after an edit is published, a 200 with the new
-words for the same old ETag.
+words for the same old ETag. `builder/e2e/publish-story.spec.ts` follows
+one page through all of it and counts the fragments in the run's Solid
+Cache: 7 kept at the first visit (the page and its six blocks), none at
+the 304, and 4 for one heading changed, whether published by hand or by a
+publish set for a time. The editor's random-page agreement check
+(`../builder/README.md`) compares random published pages with React, drawn,
+read block by block and read whole.
 
 ## The API
 
