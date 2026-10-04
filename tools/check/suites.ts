@@ -241,7 +241,7 @@ export const SUITES: Suite[] = [
       const why = packages(builderRoot, "builder");
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("lint"), { cwd: builderRoot });
-      return readOxlint(step.output, step.code, 327);
+      return readOxlint(step.output, step.code, 328);
     },
   },
   {
@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 640);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 642);
     },
   },
   {
@@ -399,7 +399,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 119);
+      return why ? notRun(why) : playwright(ctx, "e2e", 122);
     },
   },
   {

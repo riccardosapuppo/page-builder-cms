@@ -280,12 +280,12 @@ suites; `--only` and `--skip` take those names.
 On 4 October 2026, on the virtual machine of "Before you start", with
 `CMS_PORT`, `BUILDER_PORT` and `PRODUCTION_CHECK_PORT` set to 3901 and
 4901 so that every server it started was on the test ports, one whole
-run, from 01:03:08 to 01:19:39, took 16 minutes and ended `RESULT: 25
+run, from 03:13:34 to 03:29:59, took 16 minutes and ended `RESULT: 25
 passed, 1 could not run here`: bundler-audit, for want of its database.
-Its counts: 41 tools tests, 327 files linted, 640 unit tests and the
+Its counts: 41 tools tests, 328 files linted, 642 unit tests and the
 render contract's 22, 214 corpus files with no disagreement, 237 Rails
 runs with 201 API answers held to the description, 47 tests against a
-CMS of their own, 119 browser tests and 35 accessibility tests, 40
+CMS of their own, 122 browser tests and 35 accessibility tests, 40
 serving checks, 35 of the production boot, 7 of npm start's smoke run
 and 11 of its stops.
 The floors in `suites.ts` are those counts, and RuboCop's 110 files;
