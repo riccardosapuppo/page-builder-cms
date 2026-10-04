@@ -22,6 +22,16 @@ export function placeLine(doc: PageDocument, id: string): string {
   return `In ${blockName(doc, section.id)}, column ${(path[1] ?? 0) + 1}`;
 }
 
+// Where a block stands, for the sidebar while it is moved ("Moving, from
+// Hero, column 1"): "Hero, column 1" for a widget, "Hero" for a column, "the
+// page" for a section.
+export function fromLine(doc: PageDocument, id: string): string {
+  const found = locate(doc, id);
+  const section = doc.sections[found?.path[0] ?? -1];
+  if (!found || !section || found.block.type === "section") return "the page";
+  return found.block.type === "column" ? blockName(doc, section.id) : `${blockName(doc, section.id)}, column ${(found.path[1] ?? 0) + 1}`;
+}
+
 // A section's count, a widget's own words: what the navigator shows after
 // its name ("2 columns", "Swim at slack water").
 export function excerpt(block: Block): string {

@@ -293,6 +293,35 @@ export function GroupList({ owner, specs, openFirst, style, errors }: GroupListP
 const DIFFERS_WORDS = (devices: readonly OverrideDevice[]) =>
   devices.length === 2 ? "Tablet and phone differ" : devices[0] === "tablet" ? "Tablet differs" : "Phone differs";
 
+// The groups of a block that is being moved (design/layout/, the drag
+// state): closed, each with its value, and out of reach (no key, no field):
+// the page is about to change under the drag, so nothing is edited until it
+// is dropped, or put back with Esc.
+export function StaticGroups({ specs, style }: { specs: readonly GroupSpec[]; style: unknown }) {
+  return (
+    <>
+      {specs.map((spec) => {
+        const differs = style === null ? [] : differsOn(style, spec.keys);
+        return (
+          <div className="grp" data-group={spec.id} key={spec.id}>
+            <div className="grp-head grp-head-static">
+              <Icon name="chevron-right" className="i i-xs grp-chev" />
+              <span className="grp-name">{spec.name}</span>
+              <span className="grp-sum">{spec.dot}<span className="grp-sum-words">{spec.summary}</span></span>
+              {differs.length > 0 && (
+                <span className="grp-dev" title={DIFFERS_WORDS(differs)}>
+                  {differs.map((device) => <Icon key={device} name={device} className="i i-xs" />)}
+                  <span className="visually-hidden">{DIFFERS_WORDS(differs)}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // The head is a disclosure button named by the group's name alone, so a
 // person (or a voice command) finds it by that name; its value, the device
 // that differs and a refusal are its description, read after it, and kept

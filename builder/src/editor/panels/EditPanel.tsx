@@ -4,6 +4,7 @@
 // page-tab states).
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { makeSetPage, REMOVE } from "../../document/commands.ts";
+import { TYPE_NAMES } from "../../document/labels.ts";
 import type { Block } from "../../shared/document.ts";
 import type { BlockFieldError, FieldError } from "../../storage/adapter.ts";
 import { cmsAddress } from "../../storage/config.ts";
@@ -14,11 +15,11 @@ import { useEditor, useEnv, useRun, useUi } from "../context.tsx";
 import { deviceOf } from "../device-style.ts";
 import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
-import { blockName, placeLine } from "../names.ts";
+import { blockName, fromLine, placeLine } from "../names.ts";
 import { shownAddress } from "../Publish.tsx";
 import { useSession } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
-import { GroupList, useBlockGroups, type GroupSpec } from "./groups.tsx";
+import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
 import { DEVICE_WORDS } from "./StyleFields.tsx";
 
@@ -222,4 +223,59 @@ export function BlockPanel({ id }: { id: string }) {
 function BlockGroups({ block, errors }: { block: Block; errors: readonly BlockFieldError[] }) {
   const specs = useBlockGroups(block);
   return <GroupList owner={block.type} specs={specs} openFirst={(index) => index === 0} style={block.style} errors={errors} />;
+}
+
+// ------------------------------------------------------- a block moving
+
+// The Block tab while a block is dragged (design/layout/, the drag state):
+// what it is and where it comes from, its groups closed with their values
+// and out of reach, and why. The page is about to change under the drag, so
+// nothing is edited until the block is dropped, or put back with Esc.
+export const SETTINGS_WAIT = "Settings wait while you move the block. Drop it, or press Esc.";
+
+export function MovingPanel() {
+  const source = useEditor((s) => s.drag?.source ?? null);
+  if (!source) return null;
+  return source.kind === "block" ? <MovingBlock id={source.id} /> : <AddingBlock block={source.block} />;
+}
+
+function MovingBlock({ id }: { id: string }) {
+  const block = useBlock(id);
+  const doc = useEditor((s) => s.document);
+  if (!block) return null;
+  const name = blockName(doc, block.id);
+  return (
+    <>
+      <div className="ed-title">
+        <span className="ed-icon">{blockIcon(block)}</span>
+        <div><strong>{name}</strong><span>Moving, from {fromLine(doc, block.id)}</span></div>
+      </div>
+      <div className="sb-body sb-body-muted" role="group" aria-label={`${name}, being moved`}>
+        <MovingGroups block={block} />
+        <p className="sb-foot-hint">{SETTINGS_WAIT}</p>
+      </div>
+    </>
+  );
+}
+
+function MovingGroups({ block }: { block: Block }) {
+  const specs = useBlockGroups(block);
+  return <StaticGroups specs={specs} style={block.style} />;
+}
+
+// A new block from Insert on its way to the page: it has no place to come
+// from, and no settings until it is dropped.
+function AddingBlock({ block }: { block: Block }) {
+  const name = block.type === "section" ? "Section" : TYPE_NAMES[block.type];
+  return (
+    <>
+      <div className="ed-title">
+        <span className="ed-icon">{blockIcon(block)}</span>
+        <div><strong>{name}</strong><span>Adding to the page</span></div>
+      </div>
+      <div className="sb-body sb-body-muted">
+        <p className="sb-foot-hint">Settings wait while you add the block. Drop it, or press Esc.</p>
+      </div>
+    </>
+  );
 }

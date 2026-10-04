@@ -37,6 +37,50 @@ test("the tabs follow the selection, and either can be chosen by hand", () => {
   expect(screen.getByRole("tabpanel").textContent).toContain("Nothing is selected.");
 });
 
+test("while a block is dragged its settings wait: what moves and where from, its groups closed with their values and out of reach, the Page tab inert; all back once it is put down", () => {
+  const kit = editorKit({ document: page(), session: { current }, selection: "b1" });
+  kit.render(<Sidebar />);
+  // Before: the Button's own group open, its fields at hand.
+  const panel = () => screen.getByRole("tabpanel");
+  expect(within(panel()).getAllByRole("textbox").length).toBeGreaterThan(0);
+  expect(within(panel()).getAllByRole("button", { expanded: true }).length).toBeGreaterThan(0);
+
+  act(() => {
+    expect(kit.store.getState().startDrag({ kind: "block", id: "b1" }).ok).toBe(true);
+  });
+  expect(panel().querySelector(".ed-title strong")?.textContent).toBe("Button");
+  expect(within(panel()).getByText("Moving, from Hero, column 1")).toBeTruthy();
+  expect(within(panel()).getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeTruthy();
+  // Its groups, closed, each with its value, none a key or a field.
+  const groups = [...panel().querySelectorAll(".grp")].map((group) => [group.querySelector(".grp-name")?.textContent, group.querySelector(".grp-sum-words")?.textContent]);
+  expect(groups).toEqual([["Button", "Join"], ["Colors", "Buoy, theme text"], ["Alignment", "Left"], ["Shown on", "Every device"]]);
+  expect(within(panel()).queryAllByRole("textbox")).toHaveLength(0);
+  expect(within(panel()).queryAllByRole("button")).toHaveLength(0);
+  expect(panel().querySelectorAll("[aria-expanded]")).toHaveLength(0);
+  // The Page tab can be looked at; nothing in it can be reached.
+  fireEvent.click(tab("Page"));
+  expect(panel().querySelector(".sb-wait")?.hasAttribute("inert")).toBe(true);
+  fireEvent.click(tab("Block"));
+
+  // Esc puts the block back: the settings are the block's again.
+  act(() => kit.store.getState().cancelDrag());
+  expect(within(panel()).getAllByRole("textbox").length).toBeGreaterThan(0);
+  expect(within(panel()).queryByText(/Settings wait/)).toBeNull();
+  expect(panel().querySelector(".sb-wait")).toBeNull();
+});
+
+test("a new block from Insert on its way to the page has no settings yet: the sidebar names it and waits", () => {
+  const kit = editorKit({ document: page(), session: { current }, selection: "b1" });
+  kit.render(<Sidebar />);
+  act(() => {
+    expect(kit.store.getState().startDrag({ kind: "palette", block: { id: "fresh", type: "quote", props: { text: "Bring a cap." }, style: { base: {} }, children: [] } }).ok).toBe(true);
+  });
+  expect(screen.getByRole("tabpanel").querySelector(".ed-title strong")?.textContent).toBe("Quote");
+  expect(within(screen.getByRole("tabpanel")).getByText("Adding to the page")).toBeTruthy();
+  expect(within(screen.getByRole("tabpanel")).queryAllByRole("textbox")).toHaveLength(0);
+  expect(screen.getByText("Settings wait while you add the block. Drop it, or press Esc.")).toBeTruthy();
+});
+
 test("a tab chosen by hand holds for its selection only: the next one is followed, and the choice does not come back with the first", () => {
   const kit = editorKit({ document: page(), session: { current } });
   kit.render(<Sidebar />);

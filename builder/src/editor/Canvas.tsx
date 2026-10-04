@@ -57,6 +57,7 @@ import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
 import { giveWayTo } from "./Drawer.tsx";
 import { collisionPriority, SELECTION_SENSORS, SELECTION_SOURCE, useDraggable, useDropTarget } from "./drag/dnd.ts";
+import { isGhostId, withGhost } from "./drag/ghost.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
@@ -160,10 +161,20 @@ function priorityOf(state: EditorState, id: string | null): ReturnType<typeof co
   return collisionPriority(children);
 }
 
+// The copy of a widget left where it stood while it is dragged (./drag/
+// ghost.ts): dimmed, inert, out of every lookup, and with the "Moving" chip.
+const GHOST: Decoration = {
+  attributes: { inert: true, "aria-hidden": "true", "data-moving-ghost": "" },
+  after: <span className="moving-chip" aria-hidden="true">Moving</span>,
+};
+
 function useDecoration(block: RawBlock): Decoration | undefined {
   const { store, ui } = useEnv();
   const anonymous = useId();
-  const id = typeof block.id === "string" ? block.id : null;
+  const named = typeof block.id === "string" ? block.id : null;
+  // Not a block of the page: nothing below answers for it.
+  const ghost = isGhostId(named);
+  const id = ghost ? null : named;
   const relation = useStore(store, (s) => (s.drag ? null : relationOf(s.document, s.selection, id)));
   const hovered = useStore(ui, (u) => id !== null && u.hover === id);
   const name = useStore(store, (s) => nameOf(s.drag?.preview ?? s.document, id));
@@ -192,6 +203,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   }, [isText, relation]);
   const pluses = usePluses(block, id, relation);
 
+  if (ghost) return GHOST;
   if (id === null) return undefined;
   const kind = block.type === "section" ? "section" : block.type === "column" ? "column" : "widget";
   const empty = block.type === "column" && Array.isArray(block.children) && block.children.length === 0;
@@ -656,6 +668,10 @@ export function Canvas() {
   const env = useEnv();
   const { store, ui } = env;
   const document = useEditor((s) => s.drag?.preview ?? s.document);
+  // What is drawn while a widget is dragged: the preview, and a dimmed copy
+  // of the widget where it stood (./drag/ghost.ts).
+  const session = useEditor((s) => s.drag);
+  const drawn = useMemo(() => (session ? withGhost(session) : document), [session, document]);
   const dragType = useEditor((s) => s.drag?.type ?? null);
   const pageMark = useEditor(useShallow((s): DragMark => (s.drag ? containerMark(s.drag, s.drag.preview, PAGE_TARGET) : null)));
   const sections = useEditor((s) => (s.drag?.preview ?? s.document).sections.length);
@@ -912,7 +928,7 @@ export function Canvas() {
                 <Invite />
                 {site && <ThemeAround siteStyle={siteStyle}><SiteFooter site={site} locked /></ThemeAround>}
               </>
-            ) : <PageRoot document={document} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
+            ) : <PageRoot document={drawn} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
           </div>
         </div>
       </SourceRef.Provider>

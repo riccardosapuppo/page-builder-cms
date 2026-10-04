@@ -4,7 +4,10 @@
 // its collapsible groups. The tab follows the selection: a block chosen
 // shows Block, nothing selected shows Page, and either can be chosen by
 // hand in between; the choice holds for that selection only (ui-store's
-// sideTab), so a key that edits the block's words finds its tab. Site
+// sideTab), so a key that edits the block's words finds its tab. While a
+// block is dragged its settings wait: the Block tab says what moves and
+// where from, its groups closed and out of reach, and the Page tab is
+// inert, since the page changes under the drag. Site
 // style opens a level below Page, in the sidebar's place, and closes back
 // to it. The top bar's sidebar key, or the sidebar's own close button,
 // hides it, and the canvas takes its room.
@@ -12,7 +15,7 @@ import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { afterRender } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { BlockPanel, PagePanel } from "./panels/EditPanel.tsx";
+import { BlockPanel, MovingPanel, PagePanel } from "./panels/EditPanel.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
 import type { SideTab, UiStore } from "./ui-store.ts";
 
@@ -64,6 +67,7 @@ export function Sidebar() {
 function Settings() {
   const { ui } = useEnv();
   const selection = useEditor((s) => s.selection);
+  const moving = useEditor((s) => s.drag !== null);
   const pick = useUi((u) => u.sideTab);
   const id = useId();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -111,7 +115,12 @@ function Settings() {
         <button className="ibtn" type="button" aria-label="Hide the sidebar" title="Hide the sidebar" onClick={() => toggleSidebar(ui)}><Icon name="close" /></button>
       </div>
       <div className="sb-panel" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>
-        {tab === "page" ? <PageTab /> : selection === null ? <NoBlock /> : <BlockPanel id={selection} />}
+        {moving
+          // The page changes under a drag: its settings wait, out of reach.
+          ? tab === "page"
+            ? <div className="sb-wait" inert><PageTab /></div>
+            : <MovingPanel />
+          : tab === "page" ? <PageTab /> : selection === null ? <NoBlock /> : <BlockPanel id={selection} />}
       </div>
     </aside>
   );

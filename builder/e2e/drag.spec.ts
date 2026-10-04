@@ -7,7 +7,7 @@
 // The live region, in the bottom line, says where the block will go all
 // along.
 import type { Page } from "@playwright/test";
-import { block, canvasShape, caption, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
+import { block, canvasShape, caption, childIds, grip, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { column, draftOf, drawer, expect, heading, makePage, open, saved, section, shape, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -233,6 +233,68 @@ test.describe("with the mouse", () => {
     await expect.poll(() => canvasShape(page)).toEqual(after);
     await saved(page);
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(after);
+  });
+
+  test("while a widget moves, its old place keeps a dimmed copy with a Moving chip and the sidebar says what moves and waits; Esc puts everything back", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Moving");
+    await select(page, "b");
+    const panel = page.locator(".sidebar [role=tabpanel]");
+    // Before: the quote's own settings, to be edited.
+    await expect(panel.getByRole("textbox", { name: "Quote" })).toBeVisible();
+    const height = () => block(page, "c1").evaluate((element) => element.getBoundingClientRect().height);
+    await pickUp(page, grip(page));
+    await expect(panel.locator(".ed-title")).toContainText("Quote");
+    await expect(panel.locator(".ed-title")).toContainText("Moving, from First, column 1");
+    await expect(panel.getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeVisible();
+    // Its groups closed, with their values; none a key or a field.
+    await expect(panel.locator(".grp .grp-name")).toHaveText(["Quote", "Size and color", "Alignment", "Shown on"]);
+    await expect(panel.getByRole("textbox")).toHaveCount(0);
+    await expect(panel.getByRole("button")).toHaveCount(0);
+    // Where it stood, between the heading and the button: a dimmed copy,
+    // inert, with its chip; not a block of the page. There from the
+    // pick-up, the drop line beside it.
+    const ghost = page.locator(".canvas [data-moving-ghost]");
+    await expect(ghost).toHaveCount(1);
+    await expect(block(page, "b")).toHaveAttribute("data-drag-slot", "line");
+    const atStart = await height();
+
+    await moveOnto(page, block(page, "c2"), "bottom");
+    await expect(caption(page).locator("strong")).toHaveText("Quote will move to Column 2 in First, after Divider.");
+    await expect(ghost).toHaveCount(1);
+    await expect(ghost).toContainText("Bravo");
+    await expect(ghost).toHaveAttribute("inert", "");
+    await expect(ghost.locator(".moving-chip")).toHaveText("Moving");
+    await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-id]')).toHaveCount(3);
+    expect(await childIds(page, "c1")).toEqual(["a", "c"]);
+    expect(await page.locator('.canvas [data-block-id="c1"] > [data-block-id]').evaluateAll((all) => all.map((one) => one.getAttribute("data-block-id")))).toEqual(["a", "b~moving", "c"]);
+    // The column it left keeps its height as the pointer goes: nothing below
+    // it moves under the pointer.
+    expect(Math.abs((await height()) - atStart)).toBeLessThan(2);
+
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(ghost).toHaveCount(0);
+    await expect(panel.getByText(/Settings wait/)).toHaveCount(0);
+    await expect(panel.getByRole("textbox", { name: "Quote" })).toBeVisible();
+    await expect.poll(() => canvasShape(page)).toEqual(START);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
+  });
+
+  test("a widget picked up with the keyboard waits the same way, and its copy goes when it is dropped", async ({ page, request }) => {
+    await startPage(page, request, "Waiting");
+    await select(page, "a");
+    await page.keyboard.press("Space");
+    const panel = page.locator(".sidebar [role=tabpanel]");
+    await expect(panel.locator(".ed-title")).toContainText("Moving, from First, column 1");
+    await expect(panel.getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    const ghost = page.locator(".canvas [data-moving-ghost]");
+    await expect(ghost).toHaveCount(1);
+    await expect(ghost).toContainText("Alpha");
+    await page.keyboard.press("Space");
+    await expect(ghost).toHaveCount(0);
+    await expect(panel.getByText(/Settings wait/)).toHaveCount(0);
+    await expect(panel.locator(".ed-title")).toContainText("In First, column 2");
   });
 
   test("Esc while dragging puts the block back and changes nothing", async ({ page, request }) => {

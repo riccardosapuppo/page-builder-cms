@@ -254,7 +254,8 @@ test("a provider's player on the canvas keeps no address, not even once its bloc
     kit.store.getState().startDrag({ kind: "block", id: "v1" });
     kit.store.getState().dragOver({ parentId: "c3", index: 0 });
   });
-  expect(players()).toEqual([null]);
+  // The video, drawn as the drop line, and the copy left where it stood.
+  expect(players()).toEqual([null, null]);
   act(() => void kit.store.getState().drop());
   expect(players()).toEqual([null]);
   // A new video: React writes the new address, the canvas takes it out.
@@ -264,6 +265,43 @@ test("a provider's player on the canvas keeps no address, not even once its bloc
     kit.store.getState().dispatch(made.command);
   });
   expect(players()).toEqual([null]);
+});
+
+test("a dragged widget keeps a dimmed, inert copy of itself with a Moving chip where it stood, that no lookup takes for the block", () => {
+  const kit = editorKit({ document: page() });
+  kit.render(<Canvas />);
+  const ghosts = () => [...document.querySelectorAll<HTMLElement>(".canvas [data-moving-ghost]")];
+  expect(ghosts()).toEqual([]);
+  act(() => {
+    kit.store.getState().startDrag({ kind: "block", id: "t1" });
+  });
+  // Picked up: the copy where it is, the widget drawn as the drop line beside it.
+  expect(ghosts()).toHaveLength(1);
+  expect([...root("c1").children].filter((child) => child.hasAttribute("data-block-id")).map((child) => child.getAttribute("data-block-id"))).toEqual(["h1", "t1~moving", "t1", "b1"]);
+  act(() => {
+    kit.store.getState().dragOver({ parentId: "c3", index: 1 });
+  });
+  const [ghost] = ghosts();
+  expect(ghosts()).toHaveLength(1);
+  // In its old column, between the heading and the button, as the text was.
+  expect([...root("c1").children].filter((child) => child.hasAttribute("data-block-id")).map((child) => child.getAttribute("data-block-id"))).toEqual(["h1", "t1~moving", "b1"]);
+  expect(ghost!.hasAttribute("inert")).toBe(true);
+  expect(ghost!.getAttribute("aria-hidden")).toBe("true");
+  expect(ghost!.getAttribute("data-block-type")).toBe("text");
+  expect(ghost!.textContent).toContain("Meet at the slipway.");
+  expect(within(ghost!).getByText("Moving")).toBeTruthy();
+  // Not a block of the page: no tab stop, no label, no selection on it.
+  expect(ghost!.hasAttribute("tabindex")).toBe(false);
+  expect(ghost!.hasAttribute("aria-label")).toBe(false);
+  // The widget itself is where it would land, drawn as the drop line.
+  expect(root("t1").parentElement).toBe(root("c3"));
+  expect(root("t1").getAttribute("data-drag-slot")).toBe("line");
+  // Esc: the page as it was, the copy gone, nothing changed in the store.
+  act(() => {
+    kit.store.getState().cancelDrag();
+  });
+  expect(ghosts()).toEqual([]);
+  expect(root("t1").parentElement).toBe(root("c1"));
 });
 
 test("Block edges draws every block's edges on the canvas, and only while it is on", () => {
