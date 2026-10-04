@@ -67,7 +67,8 @@ The other ways, and why not:
   collection through a single partial, so `blocks/_block` hands each block
   to its type's.
 - **Development caches only in the browser** unless `ruby bin/rails
-  dev:cache` turns the server's caching on, as Rails does by default.
+  dev:cache` turns the server's caching on, as Rails does by default;
+  then in Solid Cache, on a cache database of its own, as production does.
 
 ## The proof
 
