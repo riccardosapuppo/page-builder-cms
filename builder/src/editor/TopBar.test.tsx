@@ -8,7 +8,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
-import type { PageSummary, Published } from "../storage/adapter.ts";
+import type { PageSummary, Published, Schedule } from "../storage/adapter.ts";
 import type { OpenPage } from "./session.tsx";
 import { TopBar } from "./TopBar.tsx";
 
@@ -29,6 +29,21 @@ test("the line under the title counts the saves visitors do not see yet, and des
     expect(status()).toBe(said);
     const title = screen.getByRole("button", { name: "Switch page. Open: Winter series" });
     expect(document.getElementById(title.getAttribute("aria-describedby")!)?.textContent).toBe(said);
+    unmount();
+  }
+});
+
+test("a publish set for a time follows on the line, by the site's clock, whatever the browser's zone", () => {
+  const scheduled: Schedule = { id: 3, at: "2026-10-05T06:15:00.000Z", revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null };
+  for (const [current, said] of [
+    [open({ revision: 9, scheduled }), "Published, 6 changes not live · scheduled for Oct 5 at 7:15 AM"],
+    [open({ published: null, scheduled }), "Not published yet · scheduled for Oct 5 at 7:15 AM"],
+  ] as const) {
+    const kit = editorKit({ document: page(), session: { current } });
+    kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+    const { unmount } = kit.render(<TopBar />);
+    expect(status()).toBe(said);
+    expect(document.querySelector(".tb-status")!.getAttribute("title")).toContain("A publish is scheduled for Oct 5 at 7:15 AM (UTC+1): the Publish menu cancels it.");
     unmount();
   }
 });
@@ -60,8 +75,8 @@ test("Insert, Outline and History each open their drawer and close it, one open 
 test("the page switch lists the site's pages with their addresses and whether they are live, finds them, and opens the one chosen", async () => {
   const opened: number[] = [];
   const summary = (id: number, title: string, slug: string, home: boolean, published: Published | null = null, revision = 1): PageSummary => ({
-    id, title, slug, home, revision, updatedAt: "2026-10-02T08:00:00.000Z", published,
-    links: { self: "", draft: "", versions: "", publish: "", preview: "", live: null },
+    id, title, slug, home, revision, updatedAt: "2026-10-02T08:00:00.000Z", published, scheduled: null,
+    links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null },
   });
   const kit = editorKit({
     document: page(),

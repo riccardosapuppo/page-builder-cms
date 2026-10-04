@@ -6,10 +6,11 @@
 // expect, and runs each case as a test of its own.
 //
 // A case says which optional operations it needs; a runner skips, and
-// counts as skipped, a case its adapter's capabilities lack. Scheduling
-// (stage 4) and form answers (stage 5) have no case yet beyond the one
-// that holds an adapter to refusing what it declares absent: they join
-// the battery when the CMS has them.
+// counts as skipped, a case its adapter's capabilities lack. Form answers
+// (stage 5) have no case yet beyond the one that holds an adapter to
+// refusing what it declares absent: they join the battery when the CMS
+// has them. The scheduling cases run on the real clock: one waits a few
+// seconds for a publish set to happen, watching the page until it does.
 //
 // Every case makes the pages it uses, under names no other case takes, so
 // the cases share one store and run in any order. The media library and
@@ -83,6 +84,23 @@ async function failure(promise: Promise<unknown>, what: string): Promise<Failure
     throw error;
   }
   throw new Error(`${what} did not fail`);
+}
+
+const HOUR = 3_600_000;
+
+// A time `ms` from now on the real clock, as the API writes times.
+const inMs = (ms: number): string => new Date(Date.now() + ms).toISOString();
+
+// Asks `read` again every half second until it gives something, and gives
+// that; fails after `withinMs` saying what it waited for.
+async function until<T>(read: () => Promise<T | null | undefined>, withinMs: number, what: string): Promise<T> {
+  const end = Date.now() + withinMs;
+  for (;;) {
+    const got = await read();
+    if (got !== null && got !== undefined) return got;
+    if (Date.now() > end) throw new Error(`waited ${withinMs / 1000} s for ${what}`);
+    await new Promise((done) => setTimeout(done, 500));
+  }
 }
 
 let blocks = 0;
@@ -432,6 +450,86 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  // --------------------------------------------------------- scheduling
+  {
+    name: "a publish set for a time waits on the page, listed, with the draft it was set from kept as a scheduled version",
+    needs: ["schedule"],
+    async run(env) {
+      const page = await newPage(env, "scheduled");
+      const document = documentOf("Set for later", section(heading("At the turn of the tide", 1)));
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document, saveId: "scheduled-1" });
+      const at = inMs(HOUR);
+      const result = value(await env.adapter.schedulePublish(page.id, { revision, at }), "the schedule");
+      env.expect(result.schedule).toMatchObject({ at, revision, state: "pending", settledAt: null, publishedVersionNumber: null });
+      env.expect(result.version).toMatchObject({ number: result.schedule.versionNumber, reason: "scheduled", published: false });
+      env.expect(result.replaced).toBe(null);
+      env.expect((await env.adapter.getVersion(page.id, result.schedule.versionNumber)).document).toEqual(document);
+      const read = await env.adapter.getPage(page.id);
+      env.expect(read.scheduled).toEqual(result.schedule);
+      env.expect(read.published).toBe(null);
+      env.expect((await env.adapter.listPages()).find((p) => p.id === page.id)?.scheduled).toEqual(result.schedule);
+      env.expect(await env.adapter.listSchedules(page.id)).toEqual([result.schedule]);
+    },
+  },
+  {
+    name: "a second schedule replaces the first; a cancel settles one, and cancelling one no longer pending says what became of it",
+    needs: ["schedule"],
+    async run(env) {
+      const page = await newPage(env, "rescheduled");
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Twice set", section(heading("Twice"))), saveId: "rescheduled-1" });
+      const first = value(await env.adapter.schedulePublish(page.id, { revision, at: inMs(HOUR) }), "the first schedule").schedule;
+      const second = value(await env.adapter.schedulePublish(page.id, { revision, at: inMs(2 * HOUR) }), "the second schedule");
+      env.expect(second.replaced).toMatchObject({ id: first.id, state: "replaced" });
+      env.expect((await env.adapter.getPage(page.id)).scheduled?.id).toBe(second.schedule.id);
+
+      const cancelled = value(await env.adapter.cancelScheduledPublish(page.id, second.schedule.id), "the cancel");
+      env.expect(cancelled).toMatchObject({ id: second.schedule.id, state: "cancelled" });
+      env.expect(cancelled.settledAt).not.toBe(null);
+      env.expect((await env.adapter.getPage(page.id)).scheduled).toBe(null);
+      env.expect(refusal(await env.adapter.cancelScheduledPublish(page.id, second.schedule.id), "cancelling it again")).toMatchObject({ kind: "not-pending", schedule: { state: "cancelled" } });
+      env.expect(refusal(await env.adapter.cancelScheduledPublish(page.id, first.id), "cancelling the replaced one")).toMatchObject({ kind: "not-pending", schedule: { state: "replaced" } });
+      env.expect((await env.adapter.listSchedules(page.id)).map((s) => [s.id, s.state])).toEqual([[second.schedule.id, "cancelled"], [first.id, "replaced"]]);
+      env.expect(await failure(env.adapter.cancelScheduledPublish(page.id, 987_654_321), "cancelling one never made")).toMatchObject({ kind: "not-found" });
+    },
+  },
+  {
+    name: "a time already past or more than a year away, and a revision already live, are refused at their field; a revision moved past is a conflict",
+    needs: ["schedule", "publish"],
+    async run(env) {
+      const page = await newPage(env, "unschedulable");
+      const r1 = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Seen"), saveId: "unschedulable-1" });
+      for (const at of [inMs(-60_000), inMs(370 * 24 * HOUR)]) {
+        const problem = refusal(await env.adapter.schedulePublish(page.id, { revision: r1, at }), `a schedule for ${at}`);
+        env.expect([problem.kind, problem.kind === "invalid" ? problem.errors.map((e) => e.pointer) : []], at).toEqual(["invalid", ["/at"]]);
+      }
+      const r2 = await saved(env.openTab(), page.id, { revision: r1, document: documentOf("Not seen"), saveId: "unschedulable-2" });
+      env.expect(refusal(await env.adapter.schedulePublish(page.id, { revision: r1, at: inMs(HOUR) }), "a schedule of a revision moved past"))
+        .toMatchObject({ kind: "conflict", currentRevision: r2, lastSaveId: "unschedulable-2" });
+      value(await env.adapter.publish(page.id, { revision: r2 }), "the publish");
+      const live = refusal(await env.adapter.schedulePublish(page.id, { revision: r2, at: inMs(HOUR) }), "a schedule of what is live");
+      env.expect([live.kind, live.kind === "invalid" ? live.errors.map((e) => e.pointer) : []]).toEqual(["invalid", ["/revision"]]);
+      env.expect(await env.adapter.listSchedules(page.id)).toEqual([]);
+    },
+  },
+  {
+    name: "at its time, a scheduled publish puts live the draft as it was when set, not as it is then",
+    needs: ["schedule"],
+    async run(env) {
+      const page = await newPage(env, "goes-live");
+      const scheduled = documentOf("Live at its time", section(heading("High water", 1)));
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: scheduled, saveId: "goes-live-1" });
+      const set = value(await env.adapter.schedulePublish(page.id, { revision, at: inMs(3_000) }), "the schedule").schedule;
+      await saved(env.adapter, page.id, { revision, document: documentOf("Edited since", section(heading("Not for now", 1))), saveId: "goes-live-2" });
+
+      const live = await until(async () => (await env.adapter.getPage(page.id)).published, 30_000, "the page to go live");
+      env.expect(live.draftRevision).toBe(revision);
+      env.expect(Date.parse(live.publishedAt)).toBeGreaterThan(Date.parse(set.at) - 1);
+      env.expect((await env.adapter.getVersion(page.id, live.versionNumber)).document).toEqual(scheduled);
+      env.expect((await env.adapter.listSchedules(page.id))[0]).toMatchObject({ id: set.id, state: "published", publishedVersionNumber: live.versionNumber });
+      env.expect((await env.adapter.getPage(page.id)).scheduled).toBe(null);
+    },
+  },
+
   // ------------------------------------------------------------- media
   {
     name: "an uploaded image is in the library with its size, type and alt text, and its address gives back the same bytes",
@@ -562,7 +660,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     async run(env) {
       const calls: Record<OptionalOperation, () => Promise<unknown>> = {
         publish: () => env.adapter.publish(1),
-        schedule: () => env.adapter.schedulePublish(1, { at: "2026-10-03T08:00:00.000Z" }),
+        schedule: () => env.adapter.schedulePublish(1, { revision: 0, at: "2026-10-03T08:00:00.000Z" }),
         responses: () => env.adapter.listResponses(),
       };
       const absent = OPTIONAL_OPERATIONS.filter((op) => !env.adapter.capabilities[op]);

@@ -1,9 +1,10 @@
 // The right end of the top bar (design/shots/publish.png): Preview, which
 // opens the draft as the CMS would serve it, and the split Publish button,
-// whose menu has Publish now and the live page's address. Scheduling is
-// stage 4 and the storage says it lacks it (capabilities), so its item is
-// not drawn; with no publishing at all (the browser demo's storage), neither
-// is Publish.
+// whose menu has Publish now, Schedule… (its own dialog, ./ScheduleDialog.tsx,
+// which the top bar opens), the scheduled publish's cancel while one waits,
+// and the live page's address. A storage without scheduling
+// (capabilities) gets no Schedule item; with no publishing at all (the
+// browser demo's storage), there is no Publish either.
 //
 // Publish waits while the page cannot go live as the editor shows it: a
 // save the server has not confirmed (retrying, refused), the draft changed
@@ -12,13 +13,14 @@
 import { useId, useRef, useState } from "react";
 import { cmsAddress } from "../storage/config.ts";
 import type { SaveSnapshot } from "../storage/autosave.ts";
-import { useEditor } from "./context.tsx";
+import { useEditor, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useSession, type OpenPage } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
+import { siteWhen } from "./site-time.ts";
 
 // Why Publish waits, or null when it can go.
 export function publishPaused(snapshot: SaveSnapshot | null, sections: number): string | null {
@@ -83,10 +85,22 @@ export function PreviewButton() {
   );
 }
 
-export function PublishButton() {
+// What the Schedule… item says under its name, and whether there is
+// anything to schedule: nothing when visitors already see the draft and no
+// publish waits.
+export function scheduleLine(page: OpenPage, notLive: number, zone: string): { line: string; nothing: boolean } {
+  const pending = page.scheduled ?? null;
+  if (pending) return { line: `Set for ${siteWhen(zone, pending.at)}. Choose another time.`, nothing: false };
+  if (!page.published) return { line: "Choose the day and time visitors first see this page.", nothing: false };
+  if (notLive === 0) return { line: "Visitors already see this draft: there is nothing to schedule.", nothing: true };
+  return { line: `Choose the day and time visitors see your ${changes(notLive)}.`, nothing: false };
+}
+
+export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
   const session = useSession();
   const snapshot = useSaveSnapshot();
   const sections = useEditor((s) => s.document.sections.length);
+  const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
   const whyId = useId();
@@ -94,11 +108,13 @@ export function PublishButton() {
   if (!session.capabilities.publish || !page) return null;
 
   const paused = publishPaused(snapshot, sections);
-  const busy = session.publishing;
+  const busy = session.publishing || session.scheduling;
   const keys = entry("publish");
   const off = paused !== null || busy;
   const notLive = changesNotLive(page, snapshot);
   const live = page.links.live === null ? null : cmsAddress(page.links.live, session.cmsOrigin);
+  const schedule = session.capabilities.schedule && onSchedule ? scheduleLine(page, notLive, zone) : null;
+  const pending = session.capabilities.schedule ? page.scheduled ?? null : null;
 
   return (
     <div className={`split${off ? " split-off" : ""}`}>
@@ -113,7 +129,7 @@ export function PublishButton() {
           if (!off) void session.publish();
         }}
       >
-        {busy ? "Publishing…" : "Publish"}
+        {session.publishing ? "Publishing…" : session.scheduling ? "Scheduling…" : "Publish"}
       </button>
       <button
         ref={more}
@@ -152,6 +168,50 @@ export function PublishButton() {
             </span>
             <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(keys)} small /></span>
           </button>
+          {schedule && onSchedule && (
+            <button
+              className="menu-item menu-item-rich"
+              role="menuitem"
+              type="button"
+              tabIndex={-1}
+              aria-haspopup="dialog"
+              aria-disabled={schedule.nothing || undefined}
+              onClick={() => {
+                if (schedule.nothing) return;
+                // The menu goes; the dialog takes the focus, and gives it
+                // back to the button that opened the menu.
+                setOpen(false);
+                more.current?.focus();
+                onSchedule();
+              }}
+            >
+              <Icon name="calendar" />
+              <span>
+                <strong>Schedule…</strong>
+                <small>{schedule.line}</small>
+              </span>
+            </button>
+          )}
+          {pending && (
+            <button
+              className="menu-item menu-item-rich"
+              role="menuitem"
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                setOpen(false);
+                more.current?.focus();
+                void session.cancelSchedule();
+              }}
+            >
+              <Icon name="close" />
+              <span>
+                <strong>Cancel scheduled publish</strong>
+                <small>Set for {siteWhen(zone, pending.at)}. The live page stays as it is.</small>
+              </span>
+            </button>
+          )}
+          {live && page.published && <hr className="menu-sep" />}
           {live && page.published && (
             <a
               className="menu-item menu-item-rich menu-link"

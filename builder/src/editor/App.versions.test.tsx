@@ -25,8 +25,8 @@ import { App, NO_PAGE } from "./App.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
-const SITE = { name: "Slack Water", menu: [], action: null, footer: { lead: "Slack Water.", text: "A guide." } };
-const LINKS = { self: "/api/pages/1", draft: "/api/pages/1/draft", versions: "/api/pages/1/versions", publish: "/api/pages/1/publish", preview: "/preview/1", live: null };
+const SITE = { name: "Slack Water", menu: [], action: null, footer: { lead: "Slack Water.", text: "A guide." }, timeZone: "Europe/London" };
+const LINKS = { self: "/api/pages/1", draft: "/api/pages/1/draft", versions: "/api/pages/1/versions", publish: "/api/pages/1/publish", schedules: "/api/pages/1/schedules", preview: "/preview/1", live: null };
 // The site style as a new site has it, from the tokens.
 const SLOTS = ["text", "background", "primary", "accent", "soft", "muted"] as const;
 const STYLE: SiteStyle = {
@@ -67,8 +67,8 @@ class VersionSite {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
       capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
-      listPages: async () => [{ id: 1, title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, links: LINKS }],
-      getPage: async (): Promise<Page> => ({ page: { id: 1, title: "Winter series", slug: "winter-series", home: false, createdAt: T }, draft: draft(), published: null, links: LINKS }),
+      listPages: async () => [{ id: 1, title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, scheduled: null, links: LINKS }],
+      getPage: async (): Promise<Page> => ({ page: { id: 1, title: "Winter series", slug: "winter-series", home: false, createdAt: T }, draft: draft(), published: null, scheduled: null, links: LINKS }),
       getDraft: async () => draft(),
       listMedia: async () => [],
       getSiteStyle: async () => STYLE,

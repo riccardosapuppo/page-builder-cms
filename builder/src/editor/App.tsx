@@ -13,7 +13,9 @@
 // It also publishes: the edits waiting are saved first (flush), then the
 // draft is put live at the revision just saved, so what goes live is what
 // the editor shows; the preview and the live page open on the CMS's own
-// origin (../storage/config.ts). It settles a conflict the person's way
+// origin (../storage/config.ts). A publish set for a time goes the same
+// way, saved first, and the page is read again when its time comes, since
+// the CMS's job puts it live. It settles a conflict the person's way
 // (reload, keep mine), and sends the site style's changes, one request at
 // a time, the latest change last.
 //
@@ -32,7 +34,7 @@ import { makeReplacePage } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
+import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
 import { cmsAddress, cmsOrigin as configuredCmsOrigin } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
@@ -53,6 +55,7 @@ import { shownAddress } from "./Publish.tsx";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
 import { NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
+import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { TopBar } from "./TopBar.tsx";
@@ -123,6 +126,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   const [autosave, setAutosave] = useState<Autosave | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const [styleSave, setStyleSave] = useState<StyleSave>({ phase: "idle" });
   const [versions, setVersions] = useState<VersionList>(NO_VERSIONS);
   const [restoring, setRestoring] = useState<number | null>(null);
@@ -227,7 +231,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       adopting: false,
     };
     setAutosave(saving);
-    setCurrent({ id: page.page.id, slug: page.page.slug, home: page.page.home, published: page.published, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live } });
+    setCurrent({ id: page.page.id, slug: page.page.slug, home: page.page.home, published: page.published, scheduled: page.scheduled, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live } });
     setStatus({ kind: "ready" });
     address.write(page.page.id);
     return null;
@@ -367,7 +371,14 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
         return;
       }
       const result = outcome.value;
-      setCurrent((open) => (open?.id === page.id ? { ...open, published: result.published, links: { preview: result.links.preview, live: result.links.live } } : open));
+      // A publish waiting for its time is superseded by this one, which
+      // puts its revision or a later one live (the CMS settles it so).
+      setCurrent((open) => (open?.id === page.id ? {
+        ...open,
+        published: result.published,
+        scheduled: open.scheduled && open.scheduled.revision > result.published.draftRevision ? open.scheduled : null,
+        links: { preview: result.links.preview, live: result.links.live },
+      } : open));
       // The publish is a version of its own, and the live one now: the
       // history, if it shows the versions, lists it.
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
@@ -378,6 +389,113 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       setPublishing(false);
     }
   }, [adapter, cmsOrigin, loadVersions, refreshPages, store, ui]);
+
+  // What is live and what waits to go live, read again from the CMS, for a
+  // page still open: the draft on the canvas and its autosave stay as
+  // they are.
+  const refreshLive = useCallback(async (id: number) => {
+    const page = await adapter.getPage(id);
+    setCurrent((open) => (open?.id === id ? { ...open, published: page.published, scheduled: page.scheduled, links: { preview: page.links.preview, live: page.links.live } } : open));
+    if (opened.current?.id === id && ui.getState().historyOpen) loadVersions();
+    await refreshPages().catch(() => undefined);
+  }, [adapter, loadVersions, refreshPages, ui]);
+
+  // Saves what waits, then sets the draft at the revision just saved to go
+  // live at `at`: what goes live then is what the editor shows now.
+  const schedulePublish = useCallback(async (at: string): Promise<FieldError[] | null> => {
+    const page = opened.current;
+    const saving = live.current.autosave;
+    if (!page || !saving || !adapter.capabilities.schedule) return null;
+    const problem = (keyword: string, message: string): FieldError[] => [{ pointer: "", keyword, blockPointer: null, message }];
+    setScheduling(true);
+    try {
+      ui.getState().pending.deliver();
+      const settled = await saving.flush();
+      if (settled.phase !== "saved") return problem("unsaved", `Not scheduled: ${unsavedWhy(settled.phase)}`);
+      if (store.getState().document.sections.length === 0) return problem("empty", "Not scheduled: an empty page has nothing to publish. Add a section first.");
+      let outcome;
+      try {
+        outcome = await adapter.schedulePublish(page.id, { revision: settled.revision, at });
+      } catch (error) {
+        const unknown = isStorageError(error) && error.failure.kind === "unknown";
+        if (unknown) void refreshLive(page.id).catch(() => undefined);
+        return problem("unknown", unknown
+          ? `No answer from the CMS about the schedule (${describe(error)}): it may be set or not. The top bar shows it once the CMS answers again.`
+          : `Not scheduled: ${describe(error)}`);
+      }
+      if (!outcome.ok) {
+        if (outcome.problem.kind === "conflict") return problem("conflict", "Not scheduled: the page was saved somewhere else after this tab's last save.");
+        return outcome.problem.errors.length > 0 ? outcome.problem.errors : problem("invalid", outcome.problem.message);
+      }
+      const { schedule } = outcome.value;
+      setCurrent((open) => (open?.id === page.id ? { ...open, scheduled: schedule } : open));
+      // The draft is kept as a version of its own: the history lists it.
+      if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
+      await refreshPages().catch(() => undefined);
+      const zone = ui.getState().site?.timeZone ?? "UTC";
+      ui.getState().say(`Scheduled: visitors see these changes from ${siteWhen(zone, schedule.at)}. Until then the live page stays as it is.`);
+      return null;
+    } finally {
+      setScheduling(false);
+    }
+  }, [adapter, loadVersions, refreshLive, refreshPages, store, ui]);
+
+  // Cancels the open page's pending schedule. Too late (its job ran, or
+  // another tab replaced or cancelled it), the CMS says what became of it,
+  // and the page is read again to show that.
+  const cancelSchedule = useCallback(async () => {
+    const page = opened.current;
+    const pending = page?.scheduled;
+    if (!page || !pending) return;
+    const say = ui.getState().say;
+    let outcome;
+    try {
+      outcome = await adapter.cancelScheduledPublish(page.id, pending.id);
+    } catch (error) {
+      say(`Not cancelled: ${describe(error)}`);
+      return;
+    }
+    if (!outcome.ok) {
+      await refreshLive(page.id).catch(() => undefined);
+      say(tooLateToCancel(outcome.problem.schedule.state));
+      return;
+    }
+    setCurrent((open) => (open?.id === page.id && open.scheduled?.id === pending.id ? { ...open, scheduled: null } : open));
+    await refreshPages().catch(() => undefined);
+    say("Scheduled publish cancelled: the live page stays as it is.");
+  }, [adapter, refreshLive, refreshPages, ui]);
+
+  // When a scheduled publish's time comes, the CMS's own job puts it live;
+  // the editor reads the page again then, so the top bar and the history
+  // stop saying it waits. A browser runs a timer of more than about 24
+  // days at once, so a long wait is taken in steps; past the time, the
+  // page is read every few seconds for a minute, in case the job is late.
+  const scheduledAt = current?.scheduled?.at ?? null;
+  const currentId = current?.id ?? null;
+  useEffect(() => {
+    if (scheduledAt === null || currentId === null) return undefined;
+    const due = Date.parse(scheduledAt);
+    let timer: ReturnType<typeof clock.setTimeout> | null = null;
+    let reads = 0;
+    let stopped = false;
+    const wait = (ms: number) => {
+      timer = clock.setTimeout(() => void check(), Math.min(Math.max(0, ms), LONGEST_TIMER_MS));
+    };
+    const check = async () => {
+      const left = due - clock.now();
+      if (left > 0) {
+        wait(left + 1_000);
+        return;
+      }
+      await refreshLive(currentId).catch(() => undefined);
+      if (!stopped && ++reads < 20) wait(3_000);
+    };
+    wait(due - clock.now() + 1_000);
+    return () => {
+      stopped = true;
+      if (timer !== null) clock.clearTimeout(timer);
+    };
+  }, [scheduledAt, currentId, clock, refreshLive]);
 
   // A draft the server holds, put on the canvas in place of this tab's
   // page: no edit, so the autosave sends nothing for it. The undo history
@@ -645,9 +763,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
 
   const session = useMemo<Session>(() => ({
     pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishing, styleSave,
-    openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle,
+    openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
@@ -711,6 +829,28 @@ export function restoredSentence(result: RestoreResult, shown: readonly Version[
   const which = source ? versionInSentence(source, now, timeZone) : `version ${result.version.restoredFrom ?? "?"}`;
   const kept = result.kept ? " The draft it replaced is kept in Versions, as “Before restoring”." : "";
   return `Restored ${which}.${kept} ${UNDO_AGAIN}`;
+}
+
+// The longest wait a browser's setTimeout keeps: past 2^31 - 1 ms it fires
+// at once.
+const LONGEST_TIMER_MS = 2_147_483_647;
+
+// What became of a scheduled publish that could not be cancelled any more.
+export function tooLateToCancel(state: ScheduleState): string {
+  switch (state) {
+    case "published":
+      return "Not cancelled: the scheduled publish has already happened. Visitors see those changes now.";
+    case "replaced":
+      return "Not cancelled: that scheduled publish was replaced by a newer one, shown now.";
+    case "cancelled":
+      return "That scheduled publish was already cancelled.";
+    case "superseded":
+      return "Not cancelled: a publish since then already put those changes live, so it had nothing left to do.";
+    case "failed":
+      return "Not cancelled: that scheduled publish failed, and nothing went live.";
+    case "pending":
+      return "Not cancelled: the CMS says it still waits. Try again.";
+  }
 }
 
 // Why what waits for a save did not go ahead, as the end of a sentence.

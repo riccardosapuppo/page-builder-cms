@@ -68,6 +68,9 @@ describe("the Rails adapter's requests", () => {
     ["saveDraft", (a) => a.saveDraft(7, { revision: 3, document, saveId: "s-1" }), "PUT", "/api/pages/7/draft", { revision: 3, document, saveId: "s-1" }],
     ["publishPage", (a) => a.publish(7), "POST", "/api/pages/7/publish", null],
     ["publishPage at a revision", (a) => a.publish(7, { revision: 4 }), "POST", "/api/pages/7/publish", { revision: 4 }],
+    ["listSchedules", (a) => a.listSchedules(7), "GET", "/api/pages/7/schedules", null],
+    ["schedulePublish", (a) => a.schedulePublish(7, { revision: 4, at: "2026-10-05T07:15:00.000Z" }), "POST", "/api/pages/7/schedules", { revision: 4, at: "2026-10-05T07:15:00.000Z" }],
+    ["cancelSchedule", (a) => a.cancelScheduledPublish(7, 12), "POST", "/api/pages/7/schedules/12/cancel", null],
     ["listVersions", (a) => a.listVersions(7), "GET", "/api/pages/7/versions", null],
     ["saveVersion", (a) => a.saveVersion(7), "POST", "/api/pages/7/versions", null],
     ["saveVersion with a name", (a) => a.saveVersion(7, { name: "Before" }), "POST", "/api/pages/7/versions", { name: "Before" }],
@@ -109,9 +112,7 @@ describe("the Rails adapter's requests", () => {
   test("asks nobody for what its capabilities say it lacks", async () => {
     const { fetch, sent } = fakeFetch();
     const adapter = createRailsAdapter({ fetch });
-    expect(adapter.capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false });
-    expect(await failureOf(adapter.schedulePublish(1, { at: "2026-10-03T08:00:00.000Z" }))).toMatchObject({ kind: "unsupported", operation: "schedule" });
-    expect(await failureOf(adapter.cancelScheduledPublish(1))).toMatchObject({ kind: "unsupported", operation: "schedule" });
+    expect(adapter.capabilities).toEqual({ publish: true, schedule: true, responses: false, imageVariants: false });
     expect(await failureOf(adapter.listResponses())).toMatchObject({ kind: "unsupported", operation: "responses" });
     expect(sent).toEqual([]);
   });
@@ -133,6 +134,29 @@ describe("the Rails adapter's answers", () => {
       ok: false,
       problem: { kind: "invalid", code: "invalid_document", message: "no", errors: [{ pointer: "/document/title", keyword: "minLength", blockPointer: null, message: "short" }] },
     });
+  });
+
+  test("a schedule, a conflict and a time refused are each an Outcome; so is a cancel that comes too late", async () => {
+    const schedule = { id: 12, at: "2026-10-05T07:15:00.000Z", revision: 4, versionNumber: 9, state: "pending", createdAt: "2026-10-04T09:00:00.000Z", settledAt: null, publishedVersionNumber: null };
+    const version = { number: 9, reason: "scheduled", name: null, restoredFrom: null, createdAt: "2026-10-04T09:00:00.000Z", published: false };
+    const published = { ...schedule, state: "published", settledAt: "2026-10-05T07:15:01.000Z", publishedVersionNumber: 10 };
+    const answers: Reply[] = [
+      { status: 201, body: { schedule, version, replaced: null } },
+      { status: 409, body: { error: "conflict", message: "moved", currentRevision: 5, lastSaveId: "other" } },
+      { status: 422, body: { error: "invalid_request", message: "no", errors: [{ pointer: "/at", keyword: "inThePast", blockPointer: null, message: "must be later than now" }] } },
+      { status: 200, body: { schedule: { ...schedule, state: "cancelled", settledAt: "2026-10-04T10:00:00.000Z" } } },
+      { status: 409, body: { error: "not_pending", message: "too late", schedule: published } },
+      { status: 200, body: { schedules: [published] } },
+    ];
+    const { fetch } = fakeFetch(() => answers.shift()!);
+    const adapter = createRailsAdapter({ fetch });
+    const request = { revision: 4, at: "2026-10-05T07:15:00.000Z" };
+    expect(await adapter.schedulePublish(7, request)).toEqual({ ok: true, value: { schedule, version, replaced: null } });
+    expect(await adapter.schedulePublish(7, request)).toEqual({ ok: false, problem: { kind: "conflict", message: "moved", currentRevision: 5, lastSaveId: "other" } });
+    expect(await adapter.schedulePublish(7, request)).toMatchObject({ ok: false, problem: { kind: "invalid", code: "invalid_request", errors: [{ pointer: "/at" }] } });
+    expect(await adapter.cancelScheduledPublish(7, 12)).toMatchObject({ ok: true, value: { id: 12, state: "cancelled" } });
+    expect(await adapter.cancelScheduledPublish(7, 12)).toEqual({ ok: false, problem: { kind: "not-pending", message: "too late", schedule: published } });
+    expect(await adapter.listSchedules(7)).toEqual([published]);
   });
 
   test("an image in use is an Outcome naming who uses it; a deleted one is null", async () => {

@@ -44,6 +44,7 @@ const MADE: Readonly<Record<Version["reason"], string>> = {
   auto: "autosaved",
   restore: "restored",
   "before-restore": "kept before a restore",
+  scheduled: "kept for a scheduled publish",
 };
 
 // A version inside a sentence, by its name or else by how it was made, and
@@ -56,7 +57,7 @@ export function versionInSentence(version: Version, now: number, timeZone?: stri
 
 export interface VersionWords {
   // Why it was made: "Published", "Saved", "Autosaved", "Restored",
-  // "Before restoring".
+  // "Before restoring", "Kept for a scheduled publish".
   kind: string;
   // The name given to it, quoted as given; or, for a restore, what it was
   // restored from; null when there is nothing more to say.
@@ -94,6 +95,11 @@ export function versionWords(version: Version, all: readonly Version[], now: num
     }
     case "before-restore":
       kind = "Before restoring";
+      break;
+    case "scheduled":
+      // The draft as it was when a publish was set for a time: when it
+      // was kept, not when it goes live (the pending one says that).
+      kind = "Kept for a scheduled publish";
       break;
   }
   const sentence = `${kind}${name === null ? "" : `, ${name}`}, ${when}${live ? ", live now" : ""}`;

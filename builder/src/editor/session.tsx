@@ -1,12 +1,13 @@
 // The page being edited, as the shell (./App.tsx) holds it: the site's
 // pages, the one open, its autosave, and the operations on pages that are
 // not commands on the document (open another, make a new one, change its
-// address, preview it, publish it, settle a conflict, keep a version of it
-// and restore one), and the site style's one way to the server. Given to the interface through a context, so a
-// panel or a test can be drawn with a session of its own making.
+// address, preview it, publish it now or at a set time, settle a conflict,
+// keep a version of it and restore one), and the site style's one way to
+// the server. Given to the interface through a context, so a panel or a
+// test can be drawn with a session of its own making.
 import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
-import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, SiteStyleChange, Version } from "../storage/adapter.ts";
+import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, Schedule, SiteStyleChange, Version } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
 
 export interface OpenPage {
@@ -21,6 +22,9 @@ export interface OpenPage {
   // Where its draft's preview and its live page are: paths on the CMS's
   // origin (Session.cmsOrigin).
   links: Pick<PageLinks, "preview" | "live">;
+  // The publish set for a time and still waiting for it; absent or null
+  // when there is none.
+  scheduled?: Schedule | null;
 }
 
 // Where the site style's last change is: on its way, confirmed, or refused
@@ -63,6 +67,15 @@ export interface Session {
   preview(): void;
   // Saves what waits, then puts the draft live; says how it went.
   publish(): Promise<void>;
+  // Saves what waits, then sets the draft at the revision just saved to go
+  // live at `at` (ISO 8601, UTC); resolves with the CMS's findings (at
+  // /at for the time), or null once it is set. A schedule on its way is
+  // `scheduling`.
+  schedulePublish(at: string): Promise<FieldError[] | null>;
+  scheduling: boolean;
+  // Cancels the open page's pending schedule; says how it went, or what
+  // became of it when it was too late.
+  cancelSchedule(): Promise<void>;
   // The draft moved on the server: take the server's (reload), or save
   // this tab's over it (keepMine).
   reload(): Promise<void>;
@@ -122,6 +135,9 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     setSlug: async () => null,
     preview: () => {},
     publish: async () => {},
+    schedulePublish: async () => null,
+    scheduling: false,
+    cancelSchedule: async () => {},
     reload: async () => {},
     keepMine: () => {},
     saveSiteStyle: () => {},

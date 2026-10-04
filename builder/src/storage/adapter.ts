@@ -32,6 +32,7 @@ export interface PageLinks {
   draft: string;
   versions: string;
   publish: string;
+  schedules: string;
   // The draft as the published page would look, and the live page (null
   // before the first publish): paths on the CMS's own origin, which the
   // editor's development proxy does not forward.
@@ -64,6 +65,8 @@ export interface PageSummary {
   revision: number;
   updatedAt: Time;
   published: Published | null;
+  // The publish set for a time and still waiting for it, or null.
+  scheduled: Schedule | null;
   links: PageLinks;
 }
 
@@ -79,6 +82,7 @@ export interface Page {
   page: PageInfo;
   draft: Draft;
   published: Published | null;
+  scheduled: Schedule | null;
   links: PageLinks;
 }
 
@@ -95,10 +99,11 @@ export interface Draft extends DraftSaved {
   document: PageDocument;
 }
 
-export const VERSION_REASONS = ["publish", "restore", "before-restore", "manual", "auto"] as const;
+export const VERSION_REASONS = ["publish", "restore", "before-restore", "manual", "auto", "scheduled"] as const;
 // publish; restore; before-restore (the draft a restore replaced); manual
 // ("Save version"); auto (kept while someone edits, at most every ten
-// minutes on the CMS).
+// minutes on the CMS); scheduled (the draft as it was when a publish was
+// set for a time: what that publish puts live).
 export type VersionReason = (typeof VERSION_REASONS)[number];
 
 export interface Version {
@@ -132,11 +137,35 @@ export interface RestoreResult {
   kept: Version | null;
 }
 
-// Stage 4 (scheduled publishing): the shape is this interface's guess
-// until the CMS has the operation, and is fixed against its API then.
-export interface ScheduledPublish {
+export const SCHEDULE_STATES = ["pending", "published", "cancelled", "replaced", "superseded", "failed"] as const;
+// pending until its time; then published, or superseded (by its time a
+// publish had already put its revision or a later one live), or failed.
+// Before its time: cancelled, or replaced by a newer schedule of the page,
+// which has at most one pending.
+export type ScheduleState = (typeof SCHEDULE_STATES)[number];
+
+// A publish set for a time. What goes live then is the draft as it was
+// when it was set (revision), kept as the version versionNumber: edits
+// made in between wait for the next publish.
+export interface Schedule {
+  id: number;
   at: Time;
   revision: number;
+  versionNumber: number;
+  state: ScheduleState;
+  createdAt: Time;
+  // When it stopped being pending; null while it is.
+  settledAt: Time | null;
+  // For a published one, the version the publish made.
+  publishedVersionNumber: number | null;
+}
+
+export interface ScheduleResult {
+  schedule: Schedule;
+  // The "scheduled" version, of what will go live.
+  version: Version;
+  // The pending schedule this one replaced, or null.
+  replaced: Schedule | null;
 }
 
 // ------------------------------------------------------------- media
@@ -219,6 +248,9 @@ export interface Site {
   // The header's button; null when there is none.
   action: SiteLink | null;
   footer: { lead: string; text: string };
+  // The site's time zone, an IANA name ("Europe/London"): a scheduled
+  // publish is set and shown in it, the same for every visitor.
+  timeZone: string;
 }
 
 // ---------------------------------------------------- form answers
@@ -264,8 +296,10 @@ export interface PublishRequest {
 }
 
 export interface ScheduleRequest {
+  // The draft revision the person scheduling has seen: what goes live.
+  revision: number;
+  // When, in UTC, later than now and at most a year ahead.
   at: Time;
-  revision?: number;
 }
 
 export interface NewVersion {
@@ -337,6 +371,14 @@ export interface InUse {
   kind: "in-use";
   message: string;
   usedBy: MediaUse;
+}
+
+// A scheduled publish cancelled too late: it is no longer pending, and
+// schedule says what became of it (published, replaced...).
+export interface NotPending {
+  kind: "not-pending";
+  message: string;
+  schedule: Schedule;
 }
 
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
@@ -416,9 +458,17 @@ export interface StorageAdapter {
   saveDraft(pageId: number, save: DraftSave, options?: CallOptions): Promise<Outcome<DraftSaved, Conflict | Invalid>>;
   // Puts live what the draft holds, as a new version (capability publish).
   publish(pageId: number, request?: PublishRequest, options?: CallOptions): Promise<Outcome<PublishResult, Conflict | Invalid>>;
-  // Capability schedule (stage 4).
-  schedulePublish(pageId: number, request: ScheduleRequest, options?: CallOptions): Promise<Outcome<ScheduledPublish, Conflict | Invalid>>;
-  cancelScheduledPublish(pageId: number, options?: CallOptions): Promise<void>;
+  // Capability schedule: the draft at request.revision goes live at
+  // request.at, kept as a "scheduled" version until then; a pending
+  // schedule of the page is replaced. A conflict if the draft has moved
+  // past the revision; invalid for a time not later than now or more than
+  // a year ahead (/at), or a revision already live (/revision).
+  schedulePublish(pageId: number, request: ScheduleRequest, options?: CallOptions): Promise<Outcome<ScheduleResult, Conflict | Invalid>>;
+  // Cancels a pending schedule; refused, saying what became of it, when
+  // it is no longer pending.
+  cancelScheduledPublish(pageId: number, scheduleId: number, options?: CallOptions): Promise<Outcome<Schedule, NotPending>>;
+  // The page's schedules, newest first, whatever became of them.
+  listSchedules(pageId: number, options?: CallOptions): Promise<Schedule[]>;
 
   // Versions, newest first, without their documents.
   listVersions(pageId: number, options?: CallOptions): Promise<Version[]>;

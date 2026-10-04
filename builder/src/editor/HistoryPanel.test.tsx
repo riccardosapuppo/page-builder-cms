@@ -219,6 +219,29 @@ test("a failed read of the versions says why, keeps the list, and tries again on
   expect(reads).toBe(2);
 });
 
+test("a publish set for a time waits under the draft, by the site's clock, and Cancel asks the session", async () => {
+  let cancelled = 0;
+  const scheduled = { id: 3, at: "2026-10-05T06:15:00.000Z", revision: 3, versionNumber: 2, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null } as const;
+  const kit = editorKit({
+    document: page(),
+    session: {
+      current: { ...open, scheduled },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false },
+      versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-02T08:00:00Z")], message: null },
+      cancelSchedule: async () => {
+        cancelled += 1;
+      },
+    },
+  });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.render(<HistoryPanel />);
+  const rows = within(screen.getByRole("list", { name: "Versions" })).getAllByRole("listitem");
+  expect(rows.map((row) => row.querySelector(".ver-kind")?.textContent)).toEqual(["Current draft", "Scheduled publish", "Kept for a scheduled publish"]);
+  expect(rows[1]!.querySelector(".ver-name")!.textContent).toBe("Goes live Oct 5 at 7:15 AM (UTC+1)");
+  await act(async () => fireEvent.click(within(rows[1]!).getByRole("button", { name: "Cancel the publish scheduled for Oct 5 at 7:15 AM (UTC+1)" })));
+  expect(cancelled).toBe(1);
+});
+
 test("the top bar's undo and redo run the store's history, name the step they would undo or redo, and with nothing to do say so", () => {
   const kit = editorKit({ document: page(), session: { current: open } });
   kit.render(<TopBar />);

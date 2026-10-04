@@ -16,15 +16,15 @@ import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
-import type { DraftSave, FieldError, Page, PageSummary, Published, SiteStyle, SiteStyleChange, StorageAdapter } from "../storage/adapter.ts";
+import type { DraftSave, FieldError, Page, PageSummary, Published, Schedule, ScheduleRequest, SiteStyle, SiteStyleChange, StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
 // The theme around every page, as the CMS answers it.
-const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." } };
-const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, preview: `/preview/${id}`, live: null });
+const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London" };
+const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, schedules: `/api/pages/${id}/schedules`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
 function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
@@ -47,9 +47,14 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
 // conflict), publishing at a revision, the site style, and a 422 when the
 // test asks for one.
 class FakeSite {
-  readonly drafts = new Map<number, { title: string; slug: string; home: boolean; revision: number; document: PageDocument; published: Published | null }>();
+  readonly drafts = new Map<number, { title: string; slug: string; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null }>();
   readonly saves: DraftSave[] = [];
   readonly publishes: Array<{ id: number; revision: number | undefined }> = [];
+  // Scheduling, when a test turns it on: what was asked, and how many
+  // schedules were made.
+  schedule = false;
+  readonly scheduleRequests: Array<{ id: number } & ScheduleRequest> = [];
+  private schedulesMade = 0;
   readonly styles: SiteStyleChange[] = [];
   // The versions "Save version" kept: the name and the draft's document.
   readonly versions: Array<{ id: number; name: string | null; document: PageDocument }> = [];
@@ -71,12 +76,20 @@ class FakeSite {
 
   summary(id: number): PageSummary {
     const d = this.drafts.get(id)!;
-    return { id, title: d.title, slug: d.slug, home: d.home, revision: d.revision, updatedAt: T, published: d.published, links: this.links(id) };
+    return { id, title: d.title, slug: d.slug, home: d.home, revision: d.revision, updatedAt: T, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
   }
 
   page(id: number): Page {
     const d = this.drafts.get(id)!;
-    return { page: { id, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, links: this.links(id) };
+    return { page: { id, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
+  }
+
+  // The CMS's job, at the schedule's time: the scheduled revision goes live.
+  fire(id: number): void {
+    const d = this.drafts.get(id)!;
+    const due = d.scheduled!;
+    d.published = { slug: d.slug, versionNumber: 50, draftRevision: due.revision, publishedAt: due.at };
+    d.scheduled = null;
   }
 
   // Another tab saves the page.
@@ -89,7 +102,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false },
       listPages: async () => [...this.drafts.keys()].map((id) => this.summary(id)),
       getPage: async (id) => this.page(id),
       getDraft: async (id) => this.page(id).draft,
@@ -134,6 +147,24 @@ class FakeSite {
         d.document = save.document;
         return { ok: true, value: { revision: d.revision, lastSaveId: save.saveId, updatedAt: T } };
       },
+      schedulePublish: async (id, request) => {
+        this.scheduleRequests.push({ id, ...request });
+        const d = this.drafts.get(id)!;
+        if (request.revision !== d.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: d.revision, lastSaveId: null } };
+        const schedule: Schedule = { id: ++this.schedulesMade, at: request.at, revision: request.revision, versionNumber: 40 + this.schedulesMade, state: "pending", createdAt: T, settledAt: null, publishedVersionNumber: null };
+        const replaced = d.scheduled ? { ...d.scheduled, state: "replaced" as const, settledAt: T } : null;
+        d.scheduled = schedule;
+        return { ok: true, value: { schedule, version: { number: schedule.versionNumber, reason: "scheduled", name: null, restoredFrom: null, createdAt: T, published: false }, replaced } };
+      },
+      cancelScheduledPublish: async (id, scheduleId) => {
+        const d = this.drafts.get(id)!;
+        if (d.scheduled?.id !== scheduleId) {
+          return { ok: false, problem: { kind: "not-pending", message: "too late", schedule: { id: scheduleId, at: T, revision: 1, versionNumber: 41, state: "published", createdAt: T, settledAt: T, publishedVersionNumber: 50 } } };
+        }
+        const cancelled = { ...d.scheduled, state: "cancelled" as const, settledAt: T };
+        d.scheduled = null;
+        return { ok: true, value: cancelled };
+      },
       createPage: async (request) => {
         if (request.slug === "winter-series") return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/slug", keyword: "taken", blockPointer: null, message: "is already the address of another page" }] } };
         const id = this.drafts.size + 1;
@@ -155,10 +186,11 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null) {
+function start(wanted: number | null, options: { schedule?: boolean } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
+  site.schedule = options.schedule ?? false;
   const written: number[] = [];
   const address: PageAddress = { read: () => wanted, write: (id) => written.push(id) };
   // The tabs the editor opens: where each went, once it was told.
@@ -284,6 +316,59 @@ test("Publish sends the edit still waiting, then publishes at the revision it ma
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
   expect(site.publishes.at(-1)).toEqual({ id: 1, revision: 4 });
   expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing went live.");
+});
+
+// Schedule… from the Publish menu, the dialog filled in the site's time
+// (London; the kit's clock is Fri Oct 2, 9:00 UTC, 10:00 AM there).
+async function scheduleFor(date: string, time: string): Promise<void> {
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /^Schedule…/ }));
+  fireEvent.change(screen.getByLabelText("Date"), { target: { value: date } });
+  fireEvent.change(screen.getByLabelText("Time"), { target: { value: time } });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: /^Schedule for / })));
+}
+
+test("Schedule saves the edit waiting first, sets the revision it made for the time chosen, and the page is read again when the time comes", async () => {
+  const { site, env, clock } = start(1, { schedule: true });
+  await opened();
+  relabel("Winter");
+
+  await scheduleFor("Oct 2, 2026", "3:00 PM");
+  expect(site.saves).toHaveLength(1);
+  expect(site.scheduleRequests).toEqual([{ id: 1, revision: 4, at: "2026-10-02T14:00:00.000Z" }]);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.querySelector(".tb-status")?.textContent).toBe("Not published yet · scheduled for Oct 2 at 3:00 PM");
+  expect(env.ui.getState().notice).toBe("Scheduled: visitors see these changes from Oct 2 at 3:00 PM (UTC+1). Until then the live page stays as it is.");
+
+  // The CMS's job puts it live at its time; a second after, the editor
+  // reads the page again, and says what is live.
+  site.fire(1);
+  await act(() => clock.advance(5 * 3_600_000 - 1_000));
+  expect(document.querySelector(".tb-status")?.textContent).toBe("Not published yet · scheduled for Oct 2 at 3:00 PM");
+  await act(() => clock.advance(2_000));
+  await waitFor(() => expect(document.querySelector(".tb-status")?.textContent).toBe("Published"));
+});
+
+test("a scheduled publish is cancelled from the Publish menu; too late, the editor says what became of it", async () => {
+  const { site, env } = start(1, { schedule: true });
+  await opened();
+  relabel("Winter");
+  await scheduleFor("Oct 3, 2026", "8:00 AM");
+  expect(site.drafts.get(1)!.scheduled?.state).toBe("pending");
+
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  await act(async () => fireEvent.click(screen.getByRole("menuitem", { name: /^Cancel scheduled publish/ })));
+  expect(site.drafts.get(1)!.scheduled).toBeNull();
+  expect(document.querySelector(".tb-status")?.textContent).toBe("Not published yet");
+  expect(env.ui.getState().notice).toBe("Scheduled publish cancelled: the live page stays as it is.");
+
+  await scheduleFor("Oct 3, 2026", "8:00 AM");
+  // The job ran before this tab heard of it.
+  site.fire(1);
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  await act(async () => fireEvent.click(screen.getByRole("menuitem", { name: /^Cancel scheduled publish/ })));
+  expect(env.ui.getState().notice).toBe("Not cancelled: the scheduled publish has already happened. Visitors see those changes now.");
+  await waitFor(() => expect(document.querySelector(".tb-status")?.textContent).toBe("Published"));
 });
 
 test("Preview opens a tab at once, and sends it to the CMS's preview once the edit waiting is saved", async () => {

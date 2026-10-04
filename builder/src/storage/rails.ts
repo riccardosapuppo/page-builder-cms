@@ -29,6 +29,7 @@ import {
   type MediaItem,
   type NewPage,
   type NewVersion,
+  type NotPending,
   type Outcome,
   type Page,
   type PageChanges,
@@ -36,6 +37,9 @@ import {
   type PublishRequest,
   type PublishResult,
   type RestoreResult,
+  type Schedule,
+  type ScheduleRequest,
+  type ScheduleResult,
   type Site,
   type SiteStyle,
   type SiteStyleChange,
@@ -69,6 +73,9 @@ export const RAILS_ROUTES = {
   getDraft: { method: "GET", path: "/pages/{id}/draft", body: "none" },
   saveDraft: { method: "PUT", path: "/pages/{id}/draft", body: "required" },
   publishPage: { method: "POST", path: "/pages/{id}/publish", body: "optional" },
+  listSchedules: { method: "GET", path: "/pages/{id}/schedules", body: "none" },
+  schedulePublish: { method: "POST", path: "/pages/{id}/schedules", body: "required" },
+  cancelSchedule: { method: "POST", path: "/pages/{id}/schedules/{scheduleId}/cancel", body: "none" },
   listVersions: { method: "GET", path: "/pages/{id}/versions", body: "none" },
   saveVersion: { method: "POST", path: "/pages/{id}/versions", body: "optional" },
   getVersion: { method: "GET", path: "/pages/{id}/versions/{number}", body: "none" },
@@ -88,9 +95,9 @@ export type OperationId = keyof typeof RAILS_ROUTES;
 
 export const RAILS_CAPABILITIES: Capabilities = {
   publish: true,
-  // Until the CMS has them: scheduled publishing in stage 4, form answers
-  // in stage 5.
-  schedule: false,
+  // A job of the CMS's queue publishes at the time set.
+  schedule: true,
+  // Until the CMS keeps them: form answers, in stage 5.
   responses: false,
   // The CMS keeps each file as uploaded: it has no image library to make
   // variants with (variant_processor :disabled, cms/config/application.rb),
@@ -129,7 +136,7 @@ interface Answer {
   body: unknown;
 }
 
-type Accepts = "conflict" | "invalid" | "in-use";
+type Accepts = "conflict" | "invalid" | "in-use" | "not-pending";
 
 export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdapter {
   const base = (config.apiBase ?? apiBase()).replace(/\/+$/, "");
@@ -143,7 +150,7 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
   const onCmsOrigin = (path: string) => (absoluteBase === null ? path : new URL(path, absoluteBase).href);
 
   function address(operation: OperationId, params: Record<string, string | number>): string {
-    const path = RAILS_ROUTES[operation].path.replace(/\{([a-z]+)\}/g, (_, name: string) => {
+    const path = RAILS_ROUTES[operation].path.replace(/\{([A-Za-z]+)\}/g, (_, name: string) => {
       const value = params[name];
       if (value === undefined) throw new Error(`${operation} needs the path parameter ${name}`);
       return encodeURIComponent(String(value));
@@ -235,6 +242,10 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
         const inUse: InUse = { kind: "in-use", message, usedBy: body.usedBy as InUse["usedBy"] };
         return { ok: false, problem: inUse as P };
       }
+      if (answer.status === 409 && body.error === "not_pending" && accepts.includes("not-pending")) {
+        const notPending: NotPending = { kind: "not-pending", message, schedule: body.schedule as Schedule };
+        return { ok: false, problem: notPending as P };
+      }
       const code = body.error;
       if (answer.status === 422 && accepts.includes("invalid") && (code === "invalid_request" || code === "invalid_document" || code === "duplicate_key")) {
         const invalid: Invalid = { kind: "invalid", code, message, errors: body.errors as FieldError[] };
@@ -284,11 +295,16 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
       const body = request.revision === undefined ? undefined : { revision: request.revision };
       return settle<PublishResult, Conflict | Invalid>(await call("publishPage", { id: pageId }, body, options), 200, ["conflict", "invalid"], "publishPage");
     },
-    async schedulePublish() {
-      throw unsupported("schedule", "rails");
+    async schedulePublish(pageId, request: ScheduleRequest, options) {
+      const body = { revision: request.revision, at: request.at };
+      return settle<ScheduleResult, Conflict | Invalid>(await call("schedulePublish", { id: pageId }, body, options), 201, ["conflict", "invalid"], "schedulePublish");
     },
-    async cancelScheduledPublish() {
-      throw unsupported("schedule", "rails");
+    async cancelScheduledPublish(pageId, scheduleId, options) {
+      const answer = settle<{ schedule: Schedule }, NotPending>(await call("cancelSchedule", { id: pageId, scheduleId }, undefined, options), 200, ["not-pending"], "cancelSchedule");
+      return answer.ok ? { ok: true, value: answer.value.schedule } : answer;
+    },
+    async listSchedules(pageId, options) {
+      return value<{ schedules: Schedule[] }>(await call("listSchedules", { id: pageId }, undefined, options), 200, "listSchedules").schedules;
     },
 
     async listVersions(pageId, options) {

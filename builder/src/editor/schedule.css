@@ -1,0 +1,19 @@
+/* The Schedule dialog (./ScheduleDialog.tsx), as design/layout/styles.css
+   draws it: the date wider than the time, the site's zone on a line of its
+   own with Change at its end. The hints the design does not draw (a time
+   the clocks repeat, a schedule this one replaces, where the zone is set)
+   are the same small hint, a little apart. */
+.schedule-fields { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; }
+.schedule-fields > * { min-width: 0; }
+.dlg-schedule { width: 468px; max-width: calc(100vw - 32px); }
+.sch-body { padding: 0 20px 6px; }
+.sch-body form > p:first-child { max-width: 52ch; margin-bottom: 16px; font-size: 13px; line-height: 19px; }
+.dlg-schedule .field { margin-top: 0; }
+.dlg-schedule .dlg-foot { justify-content: flex-end; }
+.sch-body .hint { margin-top: 0; }
+.sch-body .hint + .hint { margin-top: 6px; }
+.sch-body .sch-zone { margin-bottom: 10px; }
+.tz { display: flex; align-items: center; gap: 6px; margin: 10px 0 12px; font-size: 12px; line-height: 16px; }
+.tz .i { width: 16px; height: 16px; flex: none; color: var(--steel); stroke-width: 1.875; }
+.tz strong { font-weight: 600; }
+.tz .link { margin-left: auto; }

@@ -25,11 +25,13 @@ interface DialogProps {
   // above its title, then the title, the body and the footer, one under
   // the other; its footer closes it.
   plain?: { lead: ReactNode };
+  // The id of what says, under the title, what the dialog is for.
+  describedBy?: string;
 }
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
-export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain }: DialogProps) {
+export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -108,6 +110,7 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
+        aria-describedby={describedBy}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.stopPropagation();

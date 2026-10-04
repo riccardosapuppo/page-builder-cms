@@ -44,7 +44,8 @@ test("the preview shows the draft on the CMS; Publish puts it live; the live pag
 
   await page.getByRole("button", { name: "More publish options" }).click();
   const menu = page.getByRole("menu", { name: "Publish options" });
-  await expect(menu.getByRole("menuitem")).toHaveText([/^Publish now/, /^View live page/]);
+  // Schedule… is there, with nothing to schedule: visitors see the draft.
+  await expect(menu.getByRole("menuitem")).toHaveText([/^Publish now/, /^Schedule…Visitors already see this draft/, /^View live page/]);
   const view = menu.getByRole("menuitem", { name: /View live page/ });
   await expect(view).toHaveAttribute("href", live);
   const served = await tabOpenedBy(page, () => view.click(), live);

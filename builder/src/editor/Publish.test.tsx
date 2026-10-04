@@ -1,5 +1,5 @@
 // Preview and Publish in the top bar: drawn only for what the storage has
-// (no Publish without publishing, never a Schedule item before stage 4);
+// (no Publish without publishing, no Schedule item without scheduling);
 // the preview and the live page on the CMS's own origin; Publish waiting,
 // and saying why, while the page cannot go live as the editor shows it.
 // @vitest-environment jsdom
@@ -8,7 +8,7 @@ import { expect, test } from "vitest";
 import { editorKit, describedText } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { PageDocument } from "../shared/document.ts";
-import type { Published } from "../storage/adapter.ts";
+import type { Published, Schedule } from "../storage/adapter.ts";
 import type { SaveSnapshot } from "../storage/autosave.ts";
 import { changesNotLive, PreviewButton, publishPaused, PublishButton, shownAddress } from "./Publish.tsx";
 import type { OpenPage, Session } from "./session.tsx";
@@ -119,4 +119,58 @@ test("the changes not live are saves, counted from the CMS's draft revision", ()
   expect(changesNotLive(open({ published: null }), null)).toBe(0);
   expect(shownAddress("http://127.0.0.1:3900/")).toBe("127.0.0.1:3900");
   expect(shownAddress("https://cms.example/winter-series")).toBe("cms.example/winter-series");
+});
+
+const SCHEDULING = { publish: true, schedule: true, responses: false, imageVariants: false };
+const pending: Schedule = { id: 3, at: "2026-10-05T06:15:00.000Z", revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null };
+
+function drawScheduling(session: Partial<Session>, onSchedule: () => void) {
+  const kit = editorKit({ document: page(), session: { cmsOrigin: "http://127.0.0.1:3901", capabilities: SCHEDULING, ...session } });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.render(<PublishButton onSchedule={onSchedule} />);
+  return kit;
+}
+
+test("with scheduling, the menu holds Publish now, Schedule… and the live page; Schedule… opens its dialog and gives the focus back to the menu's button", () => {
+  let asked = 0;
+  drawScheduling({ current: open() }, () => { asked += 1; });
+  const more = screen.getByRole("button", { name: "More publish options" });
+  fireEvent.click(more);
+  const items = screen.getAllByRole("menuitem");
+  expect(items.map((item) => item.querySelector("strong")?.textContent)).toEqual(["Publish now", "Schedule…", "View live page"]);
+  expect(items[1]!.getAttribute("aria-haspopup")).toBe("dialog");
+  expect(items[1]!.textContent).toBe("Schedule…Choose the day and time visitors see your 6 changes.");
+  fireEvent.click(items[1]!);
+  expect(asked).toBe(1);
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(document.activeElement).toBe(more);
+});
+
+test("nothing to schedule when visitors already see the draft: the item says so and opens nothing", () => {
+  let asked = 0;
+  drawScheduling({ current: open({ revision: 3 }) }, () => { asked += 1; });
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  const schedule = screen.getAllByRole("menuitem")[1]!;
+  expect(schedule.getAttribute("aria-disabled")).toBe("true");
+  expect(schedule.textContent).toContain("Visitors already see this draft: there is nothing to schedule.");
+  fireEvent.click(schedule);
+  expect(asked).toBe(0);
+});
+
+test("a publish waiting for its time is in the menu, by the site's clock, with its cancel", async () => {
+  let cancelled = 0;
+  drawScheduling({ current: open({ scheduled: pending }), cancelSchedule: async () => { cancelled += 1; } }, () => {});
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  const items = screen.getAllByRole("menuitem");
+  expect(items.map((item) => item.querySelector("strong")?.textContent)).toEqual(["Publish now", "Schedule…", "Cancel scheduled publish", "View live page"]);
+  expect(items[1]!.textContent).toContain("Set for Oct 5 at 7:15 AM (UTC+1). Choose another time.");
+  expect(items[2]!.textContent).toContain("Set for Oct 5 at 7:15 AM (UTC+1). The live page stays as it is.");
+  await act(async () => fireEvent.click(items[2]!));
+  expect(cancelled).toBe(1);
+});
+
+test("a storage that cannot schedule shows neither item, even with a schedule on the page", () => {
+  drawScheduling({ current: open({ scheduled: pending }), capabilities: { publish: true, schedule: false, responses: false, imageVariants: false } }, () => {});
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  expect(screen.getAllByRole("menuitem").map((item) => item.querySelector("strong")?.textContent)).toEqual(["Publish now", "View live page"]);
 });

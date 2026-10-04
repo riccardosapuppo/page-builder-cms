@@ -35,6 +35,8 @@ test("a version inside a sentence goes by its name, else by how and when it was 
   expect(versionInSentence({ ...named, name: null, reason: "auto", createdAt: "2026-10-02T09:58:00Z" }, NOW, "UTC")).toBe("the version autosaved today at 9:58 AM");
   expect(versionInSentence({ ...named, name: null, reason: "publish", createdAt: "2026-09-28T07:02:00Z" }, NOW, "UTC")).toBe("the version published on Sep 28 at 7:02 AM");
   expect(versionInSentence({ ...named, name: null, reason: "before-restore" }, NOW, "UTC")).toBe("the version kept before a restore today at 10:20 AM");
+  expect(versionInSentence({ ...named, name: null, reason: "scheduled" }, NOW, "UTC")).toBe("the version kept for a scheduled publish today at 10:20 AM");
+  expect(versionWords({ ...named, name: null, reason: "scheduled" }, [], NOW, "UTC")).toMatchObject({ kind: "Kept for a scheduled publish", name: null, when: "Today, 10:20 AM" });
 });
 
 const version = (number: number, reason: Version["reason"], createdAt: string, extra: Partial<Version> = {}): Version => ({

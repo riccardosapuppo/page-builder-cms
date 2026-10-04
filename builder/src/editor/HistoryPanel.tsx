@@ -6,7 +6,8 @@
 //   undoes or redoes every step up to it, so the page is as it was right
 //   after it; the focus stays on the list, and the canvas shows the block
 //   the last step touched.
-// - Versions: the draft, with how far it is from the live page, then the
+// - Versions: the draft, with how far it is from the live page, the
+//   publish set for a time if one waits (with Cancel), then the
 //   versions the CMS keeps, newest first, each named by why it was made,
 //   its name and its time, never by an author (../storage/adapter.ts,
 //   Version); the live one marked. "Save version" asks for an optional
@@ -24,6 +25,7 @@ import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { changesNotLive } from "./Publish.tsx";
 import { useSaveSnapshot } from "./SaveStatus.tsx";
 import { useSession } from "./session.tsx";
+import { siteWhen } from "./site-time.ts";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import "./history.css";
 
@@ -106,6 +108,7 @@ export function HistoryPanel() {
   const future = useEditor((s) => s.future);
   const snapshot = useSaveSnapshot();
   const naming = useUi((u) => u.namingVersion);
+  const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
   const steps = sessionSteps(past, future);
   const now = clock.now();
   const page = session.current;
@@ -188,6 +191,23 @@ export function HistoryPanel() {
             <span className="ver-kind">Current draft</span>
             <span className="ver-name">{draftLine(page.published !== null, notLive)}</span>
             {snapshot?.savedAt && <span className="ver-when">{serverTime(snapshot.savedAt, now)}</span>}
+          </li>
+        )}
+        {page?.scheduled && session.capabilities.schedule && (
+          <li className="ver ver-sched">
+            <div>
+              <span className="ver-kind">Scheduled publish</span>
+              <span className="ver-name">Goes live {siteWhen(zone, page.scheduled.at)}</span>
+              <span className="ver-when">Set {serverTime(page.scheduled.createdAt, now)}</span>
+            </div>
+            <button
+              className="btn btn-small btn-secondary"
+              type="button"
+              aria-label={`Cancel the publish scheduled for ${siteWhen(zone, page.scheduled.at)}`}
+              onClick={() => void session.cancelSchedule()}
+            >
+              Cancel
+            </button>
           </li>
         )}
         {versions.items.map((version) => {

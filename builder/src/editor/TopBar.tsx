@@ -21,6 +21,7 @@ import { Menu } from "./Menu.tsx";
 import { PageSwitch } from "./PageSwitch.tsx";
 import { PreviewButton, PublishButton } from "./Publish.tsx";
 import { SaveState } from "./SaveStatus.tsx";
+import { ScheduleDialog } from "./ScheduleDialog.tsx";
 import { useSession } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { openSiteStyle, toggleSidebar } from "./Sidebar.tsx";
@@ -33,6 +34,9 @@ export function TopBar() {
   // The media library opened from the menu, to look after it.
   const media = useMediaService();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // Schedule… from the Publish menu opens its dialog here, beside the
+  // media library's.
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const markButton = useRef<HTMLButtonElement>(null);
   const current = session.current;
   const bar = useBarRoom();
@@ -104,10 +108,11 @@ export function TopBar() {
       <div className="tb-right">
         {session.autosave && <SaveState />}
         <PreviewButton />
-        <PublishButton />
+        <PublishButton onSchedule={() => setScheduleOpen(true)} />
         <SidebarKey />
       </div>
       {libraryOpen && <MediaLibrary purpose={{ kind: "manage" }} onClose={() => setLibraryOpen(false)} />}
+      {scheduleOpen && <ScheduleDialog onClose={() => setScheduleOpen(false)} />}
     </header>
   );
 }

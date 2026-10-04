@@ -14,10 +14,11 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, VERSION_REASONS,
+  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, SCHEDULE_STATES, VERSION_REASONS,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type InUse, type Invalid, type MediaItem,
   type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
-  type Published, type PublishRequest, type PublishResult, type RestoreResult, type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
+  type NotPending, type Published, type PublishRequest, type PublishResult, type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
+  type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
   type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId } from "./rails.ts";
@@ -43,13 +44,13 @@ const arr = { type: "array", nullable: false, required: true } as const;
 const orNull = <F extends { nullable: false }>(field: F) => ({ ...field, nullable: true }) as Omit<F, "nullable"> & { nullable: true };
 const optional = <F extends { required: true }>(field: F) => ({ ...field, required: false }) as Omit<F, "required"> & { required: false };
 
-const PAGE_LINKS = { self: str, draft: str, versions: str, publish: str, preview: str, live: orNull(str) } as const satisfies Shape<PageLinks>;
+const PAGE_LINKS = { self: str, draft: str, versions: str, publish: str, schedules: str, preview: str, live: orNull(str) } as const satisfies Shape<PageLinks>;
 const PUBLISHED = { slug: str, versionNumber: num, draftRevision: num, publishedAt: str } as const satisfies Shape<Published>;
 const PAGE_SUMMARY = {
-  id: num, title: str, slug: str, home: bool, revision: num, updatedAt: str, published: orNull(obj), links: obj,
+  id: num, title: str, slug: str, home: bool, revision: num, updatedAt: str, published: orNull(obj), scheduled: orNull(obj), links: obj,
 } as const satisfies Shape<PageSummary>;
 const PAGE_INFO = { id: num, title: str, slug: str, home: bool, createdAt: str } as const satisfies Shape<PageInfo>;
-const PAGE = { page: obj, draft: obj, published: orNull(obj), links: obj } as const satisfies Shape<Page>;
+const PAGE = { page: obj, draft: obj, published: orNull(obj), scheduled: orNull(obj), links: obj } as const satisfies Shape<Page>;
 const DRAFT_SAVED = { revision: num, lastSaveId: orNull(str), updatedAt: str } as const satisfies Shape<DraftSaved>;
 const DRAFT = { ...DRAFT_SAVED, document: obj } as const satisfies Shape<Draft>;
 const VERSION = {
@@ -68,7 +69,7 @@ const SITE_STYLE = { palette: obj, typeScale: str, updatedAt: orNull(str), choic
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
-const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj } as const satisfies Shape<Site>;
+const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj, timeZone: str } as const satisfies Shape<Site>;
 const SITE_LINK = { label: str, href: str } as const satisfies Shape<SiteLink>;
 const SITE_FOOTER = { lead: str, text: str } as const satisfies Shape<Site["footer"]>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
@@ -77,6 +78,11 @@ const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), mes
 const CONFLICT = { message: str, currentRevision: num, lastSaveId: orNull(str) } as const satisfies Shape<Omit<Conflict, "kind">>;
 const INVALID = { message: str, errors: arr } as const satisfies Shape<Omit<Invalid, "kind" | "code">>;
 const IN_USE = { message: str, usedBy: obj } as const satisfies Shape<Omit<InUse, "kind">>;
+const NOT_PENDING = { message: str, schedule: obj } as const satisfies Shape<Omit<NotPending, "kind">>;
+const SCHEDULE = {
+  id: num, at: str, revision: num, versionNumber: num, state: str, createdAt: str, settledAt: orNull(str), publishedVersionNumber: orNull(num),
+} as const satisfies Shape<Schedule>;
+const SCHEDULE_RESULT = { schedule: obj, version: obj, replaced: orNull(obj) } as const satisfies Shape<ScheduleResult>;
 // What DirectUpload hands back: the API's answer, less the direct_upload
 // member the library takes out.
 const DIRECT_UPLOAD_BLOB = {
@@ -88,6 +94,7 @@ const NEW_PAGE = { title: str, slug: str } as const satisfies Shape<NewPage>;
 const PAGE_CHANGES = { slug: optional(str), home: optional(bool) } as const satisfies Shape<PageChanges>;
 const DRAFT_SAVE = { revision: num, document: obj, saveId: str } as const satisfies Shape<DraftSave>;
 const PUBLISH_REQUEST = { revision: optional(num) } as const satisfies Shape<PublishRequest>;
+const SCHEDULE_REQUEST = { revision: num, at: str } as const satisfies Shape<ScheduleRequest>;
 const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>;
 const SITE_STYLE_CHANGE = { palette: obj, typeScale: str } as const satisfies Shape<SiteStyleChange>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
@@ -170,6 +177,8 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["Version", VERSION, "#/components/schemas/Version"],
     ["VersionWithDocument", VERSION_WITH_DOCUMENT, "#/components/schemas/VersionWithDocument"],
     ["PublishResult", PUBLISH_RESULT, response("/api/pages/{id}/publish", "post", 200)],
+    ["Schedule", SCHEDULE, "#/components/schemas/Schedule"],
+    ["ScheduleResult", SCHEDULE_RESULT, response("/api/pages/{id}/schedules", "post", 201)],
     ["RestoreResult", RESTORE_RESULT, response("/api/pages/{id}/versions/{number}/restore", "post", 200)],
     ["MediaItem", MEDIA_ITEM, "#/components/schemas/MediaItem"],
     ["MediaUse", MEDIA_USE, "#/components/schemas/MediaInUseError/properties/usedBy"],
@@ -188,11 +197,13 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["Invalid, as a document's", INVALID, "#/components/schemas/InvalidDocumentError", ["error"]],
     ["Invalid, as a key named twice", INVALID, "#/components/schemas/DuplicateKeyError", ["error", "pointer"]],
     ["InUse", IN_USE, "#/components/schemas/MediaInUseError", ["error"]],
+    ["NotPending", NOT_PENDING, "#/components/schemas/NotPendingError", ["error"]],
     ["DirectUpload's blob", DIRECT_UPLOAD_BLOB, "#/components/schemas/DirectUpload", ["direct_upload"]],
     ["NewPage", NEW_PAGE, requestBody("/api/pages", "post")],
     ["PageChanges", PAGE_CHANGES, requestBody("/api/pages/{id}", "patch")],
     ["DraftSave", DRAFT_SAVE, requestBody("/api/pages/{id}/draft", "put")],
     ["PublishRequest", PUBLISH_REQUEST, requestBody("/api/pages/{id}/publish", "post")],
+    ["ScheduleRequest", SCHEDULE_REQUEST, requestBody("/api/pages/{id}/schedules", "post")],
     ["NewVersion", NEW_VERSION, requestBody("/api/pages/{id}/versions", "post")],
     ["SiteStyleChange", SITE_STYLE_CHANGE, requestBody("/api/site-style", "put")],
     ["MediaCreate", MEDIA_CREATE, requestBody("/api/media", "post")],
@@ -207,6 +218,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     expect([...VERSION_REASONS]).toEqual(at("#/components/schemas/Version/properties/reason").enum);
     expect([...VERSION_REASONS]).toEqual(at("#/components/schemas/VersionWithDocument/properties/reason").enum);
     expect([...IMAGE_TYPES]).toEqual(at("#/components/schemas/ImageType").enum);
+    expect([...SCHEDULE_STATES]).toEqual(at("#/components/schemas/Schedule/properties/state").enum);
   });
 
   test("the largest upload and the largest side an image may have", () => {
@@ -227,7 +239,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(37);
+    expect(pairs).toHaveLength(41);
   });
 });
 
@@ -247,7 +259,7 @@ describe("the Rails adapter's routes match cms/openapi.yaml", () => {
   );
 
   test("every operation of the API has its route, with the API's method, path and body", () => {
-    expect(operations.length).toBeGreaterThanOrEqual(19);
+    expect(operations.length).toBeGreaterThanOrEqual(22);
     const routes = RAILS_ROUTES as Record<string, { method: string; path: string; body: string }>;
     const differing = operations.filter((op) => {
       const route = routes[op.id];

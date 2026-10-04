@@ -9,12 +9,13 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type RefObject } from "react";
 import type { PageSummary } from "../storage/adapter.ts";
 import { cmsAddress } from "../storage/config.ts";
-import { useEnv } from "./context.tsx";
+import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, shownAddress } from "./Publish.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useSession, type OpenPage } from "./session.tsx";
+import { shortWhen, siteWhen, wallClockAt } from "./site-time.ts";
 
 interface PageSwitchProps {
   open: boolean;
@@ -74,22 +75,29 @@ function useSessionTitle(): string {
 // draft revision the live version was taken from is a change visitors do
 // not see yet (the CMS's draftRevision), and a new address waits for the
 // next publish too.
+//
+// A publish set for a time follows, by the site's clock: "Published, 6
+// changes not live · scheduled for Oct 5 at 7:15 AM".
 export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
   const snapshot = useSaveSnapshot();
+  const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
+  const pending = page.scheduled ?? null;
+  const waiting = pending && <span className="tb-sched"> · scheduled for {shortWhen(wallClockAt(zone, Date.parse(pending.at)))}</span>;
+  const waitingTitle = pending ? ` A publish is scheduled for ${siteWhen(zone, pending.at)}: the Publish menu cancels it.` : "";
   if (!page.published) {
-    return <span className="tb-status" id={id}><span className="dot-draft" aria-hidden="true" />Not published yet</span>;
+    return <span className="tb-status" id={id} title={waitingTitle.trim() || undefined}><span className="dot-draft" aria-hidden="true" />Not published yet{waiting}</span>;
   }
   const notLive = changesNotLive(page, snapshot);
   const moved = page.published.slug !== page.slug && !page.home;
   const since = `Published ${when(page.published.publishedAt)}.`;
   if (notLive > 0) {
     const what = changes(notLive);
-    return <span className="tb-status" id={id} title={`${since} Your ${what} since then are saved but not live yet: Publish sends them.`}><span className="dot-part" aria-hidden="true" />Published, {what} not live</span>;
+    return <span className="tb-status" id={id} title={`${since} Your ${what} since then are saved but not live yet: Publish sends them.${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, {what} not live{waiting}</span>;
   }
   if (moved) {
-    return <span className="tb-status" id={id} title={`${since} The page’s new address, /${page.slug}, is not live yet: Publish sends it.`}><span className="dot-part" aria-hidden="true" />Published, new address not live</span>;
+    return <span className="tb-status" id={id} title={`${since} The page’s new address, /${page.slug}, is not live yet: Publish sends it.${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, new address not live{waiting}</span>;
   }
-  return <span className="tb-status" id={id} title={since}><span className="dot-live" aria-hidden="true" />Published</span>;
+  return <span className="tb-status" id={id} title={`${since}${waitingTitle}`}><span className="dot-live" aria-hidden="true" />Published{waiting}</span>;
 }
 
 const matches = (page: PageSummary, query: string) => {
