@@ -15,7 +15,12 @@
 // - the draft preview is never stored;
 // - in headless Chromium, the page as drawn: column widths, a palette
 //   colour, a type size, no sideways scroll down to 320 wide, and a focus
-//   ring that reads on every band (tools/lib/visitor-checks.ts).
+//   ring that reads on every band (tools/lib/visitor-checks.ts);
+// - the caches: the published page is "public, max-age=0,
+//   must-revalidate" with an ETag and no Last-Modified, its ETag sent back
+//   gets a 304, a publish shows at the next request, and production's
+//   Solid Cache holds the page and its blocks, gaining four entries when
+//   one widget changes (cacheChecks).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
@@ -53,6 +58,9 @@ const PORT = ((raw) => {
 })(process.env.PRODUCTION_CHECK_PORT);
 const BASE = `http://127.0.0.1:${PORT}`;
 const IMMUTABLE = "public, max-age=31536000, immutable";
+// A published page's Cache-Control, its directives in sorted order (Rails
+// writes them "max-age=0, public, must-revalidate").
+const PAGE_CACHE = "max-age=0, must-revalidate, public";
 // An address of TEST-NET-1 (RFC 5737), which no machine has: asked to
 // listen there, a server that failed to refuse could not open it either.
 const OUTSIDE = "192.0.2.1";
@@ -108,9 +116,52 @@ async function get(path: string, init: RequestInit = {}): Promise<Response> {
 }
 
 async function api(method: string, path: string, body: unknown): Promise<any> {
-  const response = await fetch(BASE + path, { method, headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(body) });
+  const response = await fetch(BASE + path, { method, headers: { "content-type": "application/json", accept: "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   if (!response.ok) throw new Error(`${method} ${path} answered ${response.status}: ${await response.text()}`);
   return response.json();
+}
+
+// The rows of production's Solid Cache, counted by the CMS's own model in
+// a process of its own, on the run's databases.
+function cacheEntries(): number {
+  const r = spawnSync("ruby", ["bin/rails", "runner", 'print "entries=#{SolidCache::Entry.count}"'], { cwd: cms, env, encoding: "utf8" });
+  if (r.error) throw new CouldNotRun(`counting the cache's entries: Ruby could not be started (${r.error.message})`);
+  const found = /entries=([0-9]+)/.exec(r.stdout ?? "");
+  if (r.status !== 0 || !found) throw new Error(`counting the cache's entries failed (exit ${r.status}): ${(r.stdout ?? "") + (r.stderr ?? "")}`);
+  return Number(found[1]);
+}
+
+// Every block of a document: the sections, their columns, their widgets.
+function blockCount(blocks: unknown): number {
+  return Array.isArray(blocks) ? blocks.reduce((n: number, b: { children?: unknown }) => n + 1 + blockCount(b.children), 0) : 0;
+}
+
+// What a visitor's browser and the server's cache keep of the published
+// home page, in production's own Solid Cache: a validator sent back gets
+// a 304; one widget changed and published shows at the next request, the
+// old validator getting the new page; and the cache holds the page and
+// each of its blocks after the first visit, and gains exactly four entries
+// for the change (the widget, its column, its section, the page), the
+// rest being read back.
+async function cacheChecks(id: number, title: string, etag: string): Promise<void> {
+  const again = await get("/", { headers: { "if-none-match": etag } });
+  const body = await again.text();
+  check(again.status === 304 && body === "" && again.headers.get("etag") === etag, "/ with its ETag sent back is a 304 with no body", `${again.status}, ${body.length} bytes, ETag ${again.headers.get("etag")}`);
+  check(again.headers.get("set-cookie") === null, "the 304 sets no cookie", again.headers.get("set-cookie") ?? "");
+
+  const document = fixture(title) as { sections: unknown[] };
+  const before = cacheEntries();
+  check(before === 1 + blockCount(document.sections), `after the first visit, Solid Cache holds the page and each of its ${blockCount(document.sections)} blocks`, `${before} entries`);
+
+  const edited = JSON.parse(JSON.stringify(document).replace(`"text":"${title}"`, `"text":"${title}, edited"`));
+  const draft = await api("GET", `/api/pages/${id}/draft`, undefined);
+  await api("PUT", `/api/pages/${id}/draft`, { revision: draft.revision, document: edited, saveId: "check-2" });
+  await api("POST", `/api/pages/${id}/publish`, {});
+  const next = await get("/", { headers: { "if-none-match": etag } });
+  const html = await next.text();
+  check(next.status === 200 && html.includes(`${title}, edited`) && next.headers.get("etag") !== etag, "after a publish, the old ETag gets 200 and the new page at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
+  const after = cacheEntries();
+  check(after - before === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before} entries, then ${after}`);
 }
 
 let taken: Listener[];
@@ -177,6 +228,10 @@ try {
     check((home.headers.get("content-security-policy") ?? "").includes("script-src 'none'"), "/ carries the static Content-Security-Policy", home.headers.get("content-security-policy") ?? "none");
     check(home.headers.get("set-cookie") === null, "/ sets no cookie", home.headers.get("set-cookie") ?? "");
     check(home.headers.get("strict-transport-security") === null, "/ sends no Strict-Transport-Security over plain HTTP", home.headers.get("strict-transport-security") ?? "");
+    const cacheControl = (home.headers.get("cache-control") ?? "").split(",").map((d) => d.trim()).sort().join(", ");
+    check(cacheControl === PAGE_CACHE, `/ may be kept by any cache and is asked for again at every visit (${PAGE_CACHE})`, home.headers.get("cache-control") ?? "no Cache-Control");
+    const etag = home.headers.get("etag");
+    check(etag !== null && home.headers.get("last-modified") === null, "/ has an ETag and no Last-Modified", `ETag ${etag}, Last-Modified ${home.headers.get("last-modified")}`);
 
     const moved = await get("/check");
     check(moved.status === 301 && moved.headers.get("location") === `${BASE}/`, "the home page's slug answers 301 to /", `${moved.status} ${moved.headers.get("location")}`);
@@ -214,6 +269,10 @@ try {
     check(robots.status === 200 && robots.headers.get("cache-control") !== IMMUTABLE, "robots.txt, outside /assets, is not marked immutable", `${robots.status} ${robots.headers.get("cache-control")}`);
 
     await visitorChecks(BASE, `/preview/${id}`, root, check);
+
+    // The caches, last: the edit below changes the draft the visitor
+    // checks read through the preview.
+    if (etag) await cacheChecks(id, title, etag);
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);
