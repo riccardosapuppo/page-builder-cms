@@ -166,14 +166,17 @@ loads the whole app first as production does and as CI runs it:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 52.309376s, 5.5822 runs/s, 26.9550 assertions/s.
-292 runs, 1410 assertions, 0 failures, 0 errors, 0 skips
-openapi: 272 API response(s) checked against cms/openapi.yaml
+Finished in 79.641026s, 3.8548 runs/s, 18.7592 assertions/s.
+307 runs, 1494 assertions, 0 failures, 0 errors, 0 skips
+openapi: 276 API response(s) checked against cms/openapi.yaml
 ```
 
-The run includes three tests that start Rails in processes of their own,
-in the development or e2e environment: `test/lib/tasks/db_drop_test.rb`,
-`test/db/migrations_keep_rows_test.rb` and `test/lib/queue_orphans_test.rb`.
+The run includes five tests that start Rails in processes of their own,
+in the development, test or e2e environment: `test/lib/tasks/db_drop_test.rb`,
+`test/db/migrations_keep_rows_test.rb`, `test/lib/queue_orphans_test.rb`,
+`test/bin/jobs_test.rb` (the jobs command, started for real) and the one in
+`test/models/page_cache_test.rb` that asks a process of its own for its
+release's digest before any visit.
 Each sends every database of that environment to a folder of its own
 ([test/support/own_databases.rb](test/support/own_databases.rb), which
 reads them from `config/database.yml`), and the first and last fail if the
@@ -254,7 +257,7 @@ emptied and deleted development's queue database at every run.
   finds no draft, version, redirect or usage left. So a migration here
   adds plain columns, or uses SQLite's own `ALTER TABLE ... DROP COLUMN`.
 
-Also run, from this folder: `ruby bin/rubocop` (130 files, no offenses on
+Also run, from this folder: `ruby bin/rubocop` (135 files, no offenses on
 4 October 2026, with `Layout/SpaceAroundOperators` switched on over the
 omakase style) and `ruby bin/brakeman` (79 checks, no warnings, the same
 day).

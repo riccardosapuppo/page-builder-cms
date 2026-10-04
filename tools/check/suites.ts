@@ -346,7 +346,7 @@ export const SUITES: Suite[] = [
         const prepare = await ctx.step("ruby", ["bin/rails", "db:test:prepare"], { cwd: cmsRoot });
         if (prepare.code !== 0) return failed("", `db:test:prepare failed (exit ${prepare.code})`);
         const tests = await ctx.step("ruby", ["bin/rails", "test"], { cwd: cmsRoot });
-        return readMinitest(tests.output, tests.code, 292, 272);
+        return readMinitest(tests.output, tests.code, 307, 276);
       });
     },
   },
