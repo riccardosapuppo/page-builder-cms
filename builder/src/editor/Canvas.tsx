@@ -562,9 +562,17 @@ function InsertSlot({ index }: { index: number }) {
   );
 }
 
+// How far under the selected block, the last of its column, the line
+// stands: clear of the selection's frame (6 out, with its edge) and of
+// half its words' height, as the layout draws it (insert-drawer-1280).
+const POINT_CLEAR = 18;
+
 // Where a click in the Insert drawer lands (its drawer-where sentence
 // says it in words): the yellow line between the blocks around the place,
-// its words at its right end where the drawer covers its left end.
+// its words at its right end where the drawer covers its left end. Under
+// the selection, the last block of its column, it keeps off the
+// selection's frame; between two blocks it stays in the middle of their
+// gap, off the next block's words.
 function InsertPoint({ index }: { index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -576,8 +584,9 @@ function InsertPoint({ index }: { index: number }) {
       const gap = parseFloat(getComputedStyle(column).rowGap) || 0;
       const before = blocks[index - 1];
       const after = blocks[index];
+      const under = before?.dataset.editorSelected === "true" ? POINT_CLEAR : 0;
       const y = before && after ? (before.offsetTop + before.offsetHeight + after.offsetTop) / 2
-        : before ? before.offsetTop + before.offsetHeight + gap / 2
+        : before ? before.offsetTop + before.offsetHeight + Math.max(gap / 2, under)
           : after ? after.offsetTop - gap / 2
             : column.clientHeight / 2;
       point.style.top = `${y}px`;

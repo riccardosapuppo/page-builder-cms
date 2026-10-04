@@ -231,6 +231,13 @@ test("while Insert is open, the block's + waits and Insert's yellow line marks w
   await expect.poll(() => types(page, "c1")).toEqual(["heading", "divider", "button"]);
   const divider = (await page.locator('.canvas [data-block-id="c1"] > [data-block-type="divider"]').boundingBox())!;
   await expect.poll(async () => (await point.boundingBox())!.y).toBeGreaterThan(divider.y);
+  // Under the last block of its column, selected (Down from the new
+  // divider, which has the focus), the line and its words stand clear of
+  // the selection's frame, as the layout draws them.
+  await page.keyboard.press("ArrowDown");
+  await expect(block(page, "b")).toHaveAttribute("data-editor-selected", "true");
+  const frame = (await page.locator('.canvas [data-block-id="b"] > .ov-sel').boundingBox())!;
+  await expect.poll(async () => (await point.locator(".ins-label").boundingBox())!.y).toBeGreaterThanOrEqual(frame.y + frame.height + 1);
   await insert.getByRole("button", { name: "Close Insert" }).click();
   await expect(point).toHaveCount(0);
 });
