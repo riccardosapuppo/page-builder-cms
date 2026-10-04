@@ -161,13 +161,14 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 4 October 2026 (Windows 10, Ruby 3.4.11), with `CI=1`, which
-loads the whole app first as production does and as CI runs it:
+The run of the night of 4 to 5 October 2026 (Windows 10, Ruby 3.4.11),
+with `CI=1`, which loads the whole app first as production does and as
+CI runs it:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 79.641026s, 3.8548 runs/s, 18.7592 assertions/s.
-307 runs, 1494 assertions, 0 failures, 0 errors, 0 skips
+Finished in 93.133055s, 3.3178 runs/s, 16.2563 assertions/s.
+309 runs, 1514 assertions, 0 failures, 0 errors, 0 skips
 openapi: 276 API response(s) checked against cms/openapi.yaml
 ```
 
@@ -261,10 +262,10 @@ no connection pool of that environment is connected.
   finds no draft, version, redirect or usage left. So a migration here
   adds plain columns, or uses SQLite's own `ALTER TABLE ... DROP COLUMN`.
 
-Also run, from this folder: `ruby bin/rubocop` (135 files, no offenses on
-4 October 2026, with `Layout/SpaceAroundOperators` switched on over the
-omakase style) and `ruby bin/brakeman` (79 checks, no warnings, the same
-day).
+Also run, from this folder: `ruby bin/rubocop` (136 files, no offenses on
+the night of 4 to 5 October 2026, with `Layout/SpaceAroundOperators`
+switched on over the omakase style) and `ruby bin/brakeman` (79 checks,
+no warnings, the same night).
 
 ## The pages a visitor sees
 
