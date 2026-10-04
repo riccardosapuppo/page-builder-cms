@@ -33,6 +33,9 @@ export interface Agreement {
   resolver: MediaResolver;
   // Saves the document as the page's draft; throws if the CMS refuses it.
   save(document: unknown): Promise<void>;
+  // Publishes the draft as it is, a new version each time, and gives the
+  // live page's path; throws if the CMS refuses.
+  publish(): Promise<string>;
   revision(): number;
   // Fetches the page at path (the preview by default) and compares it with
   // React's render of the document; throws with where they differ.
@@ -76,6 +79,13 @@ export async function startAgreement(cms: string, name: string): Promise<Agreeme
     revision = outcome.value.revision;
   };
 
+  const publish = async () => {
+    const published = await adapter.publish(pageId, { revision });
+    if (!published.ok) throw new Error(`publishing was refused: ${JSON.stringify(published.problem)}`);
+    if (published.value.links.live === null) throw new Error("a published page has no live address");
+    return published.value.links.live;
+  };
+
   // What the CMS answers for each library image, read off a page holding them.
   const known = new Map<string, MediaImage>();
   await save(checked(oneColumn(library.map((item, index) => ({ id: `img-${index}`, type: "image", props: { mediaId: item.id, alt: item.alt }, children: [], style: { base: {} } })))));
@@ -99,5 +109,5 @@ export async function startAgreement(cms: string, name: string): Promise<Agreeme
     return { nodes: result.nodes.react };
   };
 
-  return { adapter, pageId, slug, previewPath, library, resolver, save, revision: () => revision, agree, fetchText };
+  return { adapter, pageId, slug, previewPath, library, resolver, save, publish, revision: () => revision, agree, fetchText };
 }

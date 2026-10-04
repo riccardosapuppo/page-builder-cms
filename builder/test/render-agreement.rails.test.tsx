@@ -3,10 +3,13 @@
 // The random-page agreement check, whose examples nobody wrote by hand:
 // fast-check makes valid page documents (render-arbitraries.ts), each is
 // saved through the CMS's real API as a page's draft, and the page the CMS
-// then serves (its draft preview, and at the end the published page) is
-// compared with the React render of the same document, under the
-// normalization the render contract uses (html-compare.ts) and nothing
-// else. What React draws passes the safety check too.
+// then serves is compared with the React render of the same document,
+// under the normalization the render contract uses (html-compare.ts) and
+// nothing else: its draft preview, drawn afresh; then the page published,
+// which the run's CMS caches in Solid Cache (the e2e environment), three
+// ways: drawn and kept block by block, published again (a new version,
+// whose own entry is missed and whose blocks are all read back), and read
+// whole. What React draws passes the safety check too.
 // render-agreement-plants.rails.test.tsx shows it failing.
 //
 // Seeded and replayable: AGREEMENT_SEED picks the documents and
@@ -78,19 +81,23 @@ test(`the agreement check: ${RUNS} random valid pages draw on the CMS as in Reac
     fc.asyncProperty(page(cmsPage.library.map((item) => item.id)), async (document) => {
       await cmsPage.save(document);
       nodes += (await cmsPage.agree(document)).nodes;
+      const live = await cmsPage.publish();
+      await cmsPage.agree(document, live, "published, drawn and kept block by block");
+      await cmsPage.publish();
+      await cmsPage.agree(document, live, "published again, every block read from the cache");
+      await cmsPage.agree(document, live, "published, read whole from the cache");
       compared += 1;
     }),
     { seed: SEED, numRuns: RUNS, interruptAfterTimeLimit: 15 * 60_000, markInterruptAsFailure: true },
   );
-  console.log(`agreement check: ${compared} documents saved and compared (${RUNS} runs, seed ${SEED}), ${nodes} nodes, ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  console.log(`agreement check: ${compared} documents saved and compared, in the preview and published three ways (${RUNS} runs, seed ${SEED}), ${nodes} nodes, ${((performance.now() - started) / 1000).toFixed(1)} s`);
   expect(compared).toBeGreaterThanOrEqual(RUNS);
 }, 20 * 60_000);
 
 test("the published page draws as React does", async () => {
   const document = checked(oneColumn(WIDGETS.filter((w) => w.needs === null).map((widget, index) => newWidget(widget as WidgetDefinition<WidgetType>, `p${index}`, undefined as never))));
   await cmsPage.save(document);
-  const published = await cmsPage.adapter.publish(cmsPage.pageId, { revision: cmsPage.revision() });
-  if (!published.ok) throw new Error(`publishing was refused: ${JSON.stringify(published.problem)}`);
-  expect(published.value.links.live).toBe(`/${cmsPage.slug}`);
-  await cmsPage.agree(document, published.value.links.live!, "published");
+  const live = await cmsPage.publish();
+  expect(live).toBe(`/${cmsPage.slug}`);
+  await cmsPage.agree(document, live, "published");
 });
