@@ -699,7 +699,11 @@ the second answered 200 on `/up` and `{"pages":[]}` on `/api/pages`;
 No credentials file is committed. Production reads its secret from the
 `SECRET_KEY_BASE` environment variable and does not boot without it; for a
 local run with nothing to protect, `SECRET_KEY_BASE_DUMMY=1` uses a
-throwaway one. The databases are SQLite files in `storage/`.
+throwaway one. The databases are SQLite files in `storage/`, and the
+uploaded pictures are under `storage/` too; `DATABASE_URL`,
+`CACHE_DATABASE_URL`, `QUEUE_DATABASE_URL` and `CMS_STORAGE_ROOT` move
+them, as the e2e environment's do, which is how `tools/measure-server.ts`
+runs a production server on files of its own and deletes them.
 
 Production forces SSL and assumes a proxy in front that ends it;
 `CMS_FORCE_SSL=0` turns both off for a local run over plain HTTP, where

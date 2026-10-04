@@ -4,9 +4,12 @@ test:
   service: Disk
   root: <%= Rails.root.join("tmp/storage") %>
 
+# CMS_STORAGE_ROOT, when set, moves it: a production run for a measurement
+# (tools/measure-server.ts) uploads pictures into a folder of its own and
+# deletes it, instead of filling storage/.
 local:
   service: Disk
-  root: <%= Rails.root.join("storage") %>
+  root: <%= ENV.fetch("CMS_STORAGE_ROOT") { Rails.root.join("storage") } %>
 
 # The CMS the editor's browser tests start: uploads go to the folder the
 # harness makes for the run (CMS_STORAGE_ROOT) and deletes afterwards.
