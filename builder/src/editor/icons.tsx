@@ -65,7 +65,9 @@ export const ICONS = {
   "panel-right": { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "3.75", width: "14.5", height: "12.5", rx: "1" }], ["path", { d: "M12.25 3.75v12.5" }]] },
   tree: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "2.75", width: "6", height: "4", rx: ".75" }], ["path", { d: "M5.75 6.75v8.5h5M5.75 10.25h5" }], ["rect", { x: "10.75", y: "8.25", width: "6.5", height: "4", rx: ".75" }], ["rect", { x: "10.75", y: "13.25", width: "6.5", height: "4", rx: ".75" }]] },
   // The approved layout's (design/layout/index.html): the bottom line's
-  // Block edges.
+  // Block edges, and the clamp's bold and italic while a text is written.
+  bold: { viewBox: "0 0 20 20", shapes: [["path", { d: "M6 3.75h4.5a3.13 3.13 0 0 1 0 6.25H6zM6 10h5.25a3.13 3.13 0 0 1 0 6.25H6z" }]] },
+  italic: { viewBox: "0 0 20 20", shapes: [["path", { d: "M8.75 3.75h6.5M4.75 16.25h6.5M12 3.75L8 16.25" }]] },
   edges: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.25 6.5V3.25H6.5M13.5 3.25h3.25V6.5M16.75 13.5v3.25H13.5M6.5 16.75H3.25V13.5" }], ["path", { d: "M9 3.25h2M9 16.75h2M3.25 9v2M16.75 9v2" }]] },
   section: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "5.25", width: "14.5", height: "9.5", rx: "1" }]] },
   column: { viewBox: "0 0 20 20", shapes: [["rect", { x: "6.25", y: "2.75", width: "7.5", height: "14.5", rx: "1" }]] },
