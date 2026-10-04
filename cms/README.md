@@ -5,7 +5,9 @@ and versions, publishes them, keeps the media library and the site style,
 answers the editor through a JSON API under `/api`, and serves the pages a
 visitor sees, rendered on the server in the approved design's theme
 (`../design/`) and cached in the browser and in Solid Cache (see "How the
-pages are cached"). The background jobs arrive with stage 4.
+pages are cached"). Its jobs (a publish set for a time, the pruning of
+old versions, the purge of unused images) run in Solid Queue, inside the
+server (see "The jobs").
 
 Run the commands from this folder. They are written `ruby bin/rails ...`
 because Windows cannot start an extensionless script by itself; on Linux
@@ -439,13 +441,15 @@ the schema file) each failed it.
 | `GET /api/pages/:id`, `PATCH /api/pages/:id` | the page, its draft, what is live, links; set the next address `{slug}`, make it the home page `{home: true}` |
 | `GET /api/pages/:id/draft`, `PUT /api/pages/:id/draft` | read; save `{revision, document, saveId}` |
 | `POST /api/pages/:id/publish` | publish the draft, optionally only at `{revision}` |
+| `GET /api/pages/:id/schedules`, `POST ...` | the page's scheduled publishes, newest first; schedule the draft at `{revision}` for `{at}` (ISO 8601, UTC) |
+| `POST /api/pages/:id/schedules/:schedule_id/cancel` | cancel a pending one, or 409 `not_pending` saying what became of it |
 | `GET /api/pages/:id/versions`, `POST ...` | list; "Save version" `{name?}` |
 | `GET /api/pages/:id/versions/:number`, `POST .../restore` | read one; restore it into the draft |
 | `POST /api/media/direct_uploads` | start an image upload (Active Storage's request and answer) |
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
 | `GET /api/site-style`, `PUT /api/site-style` | the palette and type scale, with their curated values; replace them |
-| `GET /api/site` | the theme's header and footer (name, menu, action button, footer line), read only |
+| `GET /api/site` | the theme's header and footer (name, menu, action button, footer line) and the site's time zone, read only |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the
@@ -508,8 +512,9 @@ conflict; the same `saveId` with another document or another revision is
 a 409, so a second tab that numbers its saves the same way is never told
 that text the server dropped was saved.
 
-**Versions** are kept on publish, on restore, on "Save version", and at
-most every ten minutes while someone saves. A restore first keeps the
+**Versions** are kept on publish, on restore, on "Save version", on
+scheduling a publish, and at most every ten minutes while someone saves;
+the automatic ones are pruned every night (see "The jobs"). A restore first keeps the
 draft it is about to replace as a `before-restore` version (unless the
 draft is exactly the newest version already), so the edits made since the
 last automatic version are never lost to it; the answer names that
@@ -527,12 +532,30 @@ from, `published.draftRevision`: the draft's revision minus it is the
 number of saves visitors do not see yet, the editor's "N changes not
 live".
 
+**Scheduled publishing.** `POST /api/pages/:id/schedules` with
+`{revision, at}` keeps the draft at that revision as a version of kind
+`scheduled` and publishes that version at `at`, whatever the draft holds
+by then: edits made in between wait for the next publish. `revision` is
+the one the person scheduling has seen (409 if the draft moved on, as for
+a publish); `at` is ISO 8601 in UTC with `Z`, later than now and at most a
+year ahead (422 at `/at`, and February 30 or 24:00 are refused rather than
+rolled over); a revision already live is refused at `/revision`. A page
+has at most one pending schedule: a new one replaces it, and the answer
+names it as `replaced`. The page's own answers carry the pending one as
+`scheduled`. A publish by hand settles it as `superseded`: it put that
+revision, or a later one, live. The address applied is the draft's at the
+time of the publish, as for any publish. The site's time zone is written
+in [config/site.yml](config/site.yml) (`time_zone: Europe/London`), set as
+`config.time_zone` and given by `GET /api/site` as `timeZone`; the editor
+shows and takes times in it, and the API keeps UTC.
+
 **Media.** JPEG, PNG, WebP and GIF, never SVG, at most 10 MB, recognised
 by their first bytes. The upload goes to `/api/media/direct_uploads`, not
 to Active Storage's own endpoint, which wants a CSRF token the editor does
 not have (a test shows the stock one refusing with forgery protection on,
 and this one accepting). Every save indexes the images a draft or version
-uses, so a delete can answer 409 with them. An item's `url` is Active
+uses, so a delete can answer 409 with them; an image nothing has named
+for 30 days is purged by a job (see "The jobs"). An item's `url` is Active
 Storage's proxy route, the address the published page gives the image
 too: a path on this site, answered with the bytes, cacheable for good.
 
@@ -556,6 +579,68 @@ the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
 With Gentle's rules renamed away in `tokens.css`, it failed on every
 step and width, Gentle drawing Balanced's sizes.
 
+## The jobs
+
+Solid Queue, on a SQLite database of its own (`queue`), no Redis. Its
+supervisor runs inside Puma ([config/puma.rb](config/puma.rb)) in
+development and in e2e, and anywhere `SOLID_QUEUE_IN_PUMA` is set; a
+production run without it runs `ruby bin/jobs` beside the server, or no
+job at all. On Windows, which cannot fork, the supervisor and its workers
+are threads of Puma's own process (`solid_queue_mode :async`); on Linux
+and macOS a child process (`:fork`). Development keeps its queue in
+`storage/development_queue.sqlite3`, which `db:prepare` makes.
+
+- **PublishPageJob** is enqueued for a schedule's time and carries only
+  its id. When it runs it looks again ([app/models/scheduled_publication.rb](app/models/scheduled_publication.rb),
+  `run!`): cancelled, replaced, already run or superseded, it does
+  nothing and says so in one log line (`scheduled publish 12 of page 3:
+  cancelled at 2026-10-04T10:00:00Z, nothing to do`); run before its time,
+  it sets itself again for it; otherwise it puts the scheduled version
+  live as a new `publish` version, through the same method a publish by
+  hand uses, so the caches keyed on the published version follow.
+- **PruneVersionsJob**, every night at 3:30 by the site's clock
+  ([config/recurring.yml](config/recurring.yml)), deletes automatic
+  versions only: of each page's, the newest 50 stay, and beyond them those
+  made in the last 30 days (days of 24 hours, counted in UTC). Published,
+  scheduled, manual, restore and before-restore versions always stay, and
+  so does any version a page serves or a schedule names.
+- **PurgeMediaJob**, at 4:00, deletes with its file a library image that
+  no draft and no kept version names, and none has named for more than 30
+  days (each save and each new version records when it last named one);
+  an image never placed on a page stays, since a person put it in the
+  library on purpose. It also deletes an upload that never became a
+  library image, after two days.
+
+The jobs read the time when they run, so the tests set it with
+`travel_to` and run the queue's work with `perform_enqueued_jobs(at:
+Time.current)`, never the forms that run future jobs at once
+([test/integration/api/schedules_test.rb](test/integration/api/schedules_test.rb),
+[test/jobs/](test/jobs)).
+
+**A hard stop.** Windows stops a console server without a word (a closed
+window, `taskkill /F`, a test harness's tree kill), and Solid Queue's rows
+stay: its processes, and the jobs a dead worker held. Solid Queue itself
+would find those processes only once their heartbeat is five minutes old,
+and then mark their jobs failed for good. So as a supervisor starts, and
+before its workers take a job, [lib/queue_orphans.rb](lib/queue_orphans.rb)
+deregisters every row of this machine whose process is gone (or whose
+process id the new server was given), which puts their jobs back in the
+queue; every job here may run twice, since each looks again when it runs.
+[test/lib/queue_orphans_test.rb](test/lib/queue_orphans_test.rb) plants
+such rows on Solid Queue's real tables, in the e2e environment, and sees
+the held job back in the queue and a live process's row left alone. On
+4 October 2026 an e2e server on 127.0.0.1:3905, with a publish scheduled
+20 seconds ahead, was stopped with `taskkill /T /F` and started again
+after that time; the restart logged
+
+```
+Solid Queue: released 4 row(s) of a server that stopped abruptly (Supervisor(async) 13196, Dispatcher 13196, Worker 13196, Scheduler 13196); their jobs are back in the queue
+```
+
+and the overdue publish went live within the second the server was up.
+A publish whose time passes while no server runs happens at the next
+start.
+
 ## Where things are
 
 - `app/models/block_document.rb`: the checks a document passes before it
@@ -564,9 +649,12 @@ step and width, Gentle drawing Balanced's sizes.
   the editor's), then the schema, then `2.0` normalised to `2`.
 - `app/controllers/api/`: the API. `json_body.rb` reads every body from the
   raw bytes; `base_controller.rb` turns every failure into the error shape.
-- `app/models/`: `Page`, `Draft`, `PageVersion`, `SlugRedirect`,
-  `MediaItem`, `MediaUsage`, `SiteStyle`; for the rendering,
-  `RenderPolicy`, `BlockStyle`, `MediaResolver` and `SiteIcons`.
+- `app/models/`: `Page`, `Draft`, `PageVersion`, `ScheduledPublication`,
+  `SlugRedirect`, `MediaItem`, `MediaUsage`, `SiteStyle`; for the
+  rendering, `RenderPolicy`, `BlockStyle`, `MediaResolver` and `SiteIcons`.
+- `app/jobs/`: `PublishPageJob`, `PruneVersionsJob`, `PurgeMediaJob`;
+  `config/recurring.yml` sets the nightly ones, `lib/queue_orphans.rb`
+  clears what a hard stop left.
 - `app/controllers/pages_controller.rb`, `previews_controller.rb` and
   `concerns/public_page.rb`: the pages a visitor sees, their layout
   (`app/views/layouts/public.html.erb`) and their policy.
@@ -583,9 +671,9 @@ The CMS the editor's tests start for themselves
 ([../builder/e2e/harness/servers.ts](../builder/e2e/harness/servers.ts)),
 on port 3901: [config/environments/e2e.rb](config/environments/e2e.rb).
 It behaves as production does where that matters to them: forgery
-protection on, eager loading, `solid_cache` and `solid_queue` (the queue is
-not yet run inside Puma; that comes with the jobs of stage 4), only
-`127.0.0.1`, `localhost` and `[::1]` as host names. Its data is its own:
+protection on, eager loading, `solid_cache` and `solid_queue` (the queue
+run inside Puma, so a scheduled publish really happens while a test
+watches), only `127.0.0.1`, `localhost` and `[::1]` as host names. Its data is its own:
 three databases, primary, cache and queue, and an Active Storage root. The
 harness gives each run a folder under `tmp/`, passes the paths as
 `DATABASE_URL`, `CACHE_DATABASE_URL`, `QUEUE_DATABASE_URL` and
