@@ -349,7 +349,7 @@ function Picker({ place }: { place: InsertPlace }) {
           <p className="picker-keys">{place.kind === "block" ? <>Arrows choose, <kbd className="kc">Enter</kbd> adds, <kbd className="kc">Esc</kbd> closes</> : <><kbd className="kc">Esc</kbd> closes without adding anything</>}</p>
           <button className="link" type="button" onClick={() => {
             closeInserter(env, false);
-            openDrawer(env.ui, "insert");
+            openDrawer(env, "insert");
           }}>{place.kind === "block" ? "Browse everything in Insert" : "More in Insert"}</button>
         </div>
       </div>

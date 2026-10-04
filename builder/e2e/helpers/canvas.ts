@@ -159,6 +159,46 @@ export async function clampFaults(page: Page): Promise<string[]> {
   });
 }
 
+// How much of an element is really on screen, from 0 to 1: a grid of points
+// over the part of its box inside the canvas, each asked what the browser
+// draws there (elementFromPoint); a point the element, or something inside
+// it, answers is seen. 1 is whole in view; 0 is wholly hidden, under a
+// drawer say, though the element has the focus (WCAG 2.2, 2.4.11).
+export async function visibleShare(target: Locator): Promise<number> {
+  return target.evaluate((element) => {
+    const view = (element.closest(".canvas") ?? document.body).getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    const left = Math.max(box.left, view.left);
+    const right = Math.min(box.right, view.right);
+    const top = Math.max(box.top, view.top);
+    const bottom = Math.min(box.bottom, view.bottom);
+    if (right <= left || bottom <= top) return 0;
+    const steps = 12;
+    let seen = 0;
+    for (let i = 0; i < steps; i += 1) {
+      for (let j = 0; j < steps; j += 1) {
+        const hit = document.elementFromPoint(left + ((i + 0.5) * (right - left)) / steps, top + ((j + 0.5) * (bottom - top)) / steps);
+        if (hit && element.contains(hit)) seen += 1;
+      }
+    }
+    return seen / (steps * steps);
+  });
+}
+
+// The keys of the selected block's clamp that something else draws over
+// (a drawer, a picker): their names; none when all five are in view.
+export async function clampKeysCovered(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const clamp = document.querySelector(".canvas .clamp");
+    if (!clamp) return ["no clamp"];
+    return [...clamp.querySelectorAll<HTMLElement>(":scope > button")].flatMap((key) => {
+      const box = key.getBoundingClientRect();
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return top && clamp.contains(top) ? [] : [key.getAttribute("aria-label") ?? "a key"];
+    });
+  });
+}
+
 // The selected block's clamp: its size, the side of the block it stands
 // on, and whether it is tied to the selection's frame.
 export async function clampPlace(page: Page): Promise<{ size: string; side: string; tie: string } | null> {

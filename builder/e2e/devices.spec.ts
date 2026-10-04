@@ -70,8 +70,8 @@ test("a tablet's and a phone's own space, set in the column's Spacing group, is 
   await expect(block(page, "c")).toHaveCSS("padding-top", px("l"));
   await expect(page.locator('.canvas [data-block-id="c"] > .ov-pad')).toHaveText("L");
   await expect(page.locator('.canvas [data-block-id="c"] > .ov-pad')).toHaveAttribute("data-device", "tablet");
-  // The outline flags the column. It floats over the canvas: the page
-  // keeps its width under it.
+  // The outline flags the column. It opens beside the canvas, which gives
+  // up its room: the tablet page, 768 wide, still fits.
   await drawer(page, "Outline");
   await expect(page.locator('.tree [data-row-id="c"] > .t-row > .t-flags')).toHaveAttribute("title", "Has a tablet override");
   await expect(block(page, "c")).toHaveCSS("padding-top", px("l"));

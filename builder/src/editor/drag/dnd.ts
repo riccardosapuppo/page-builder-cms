@@ -73,11 +73,12 @@ export function collisionPriority(children: number): CollisionPriority | undefin
   return containerPriority(children) === "low" ? CollisionPriority.Low : undefined;
 }
 
-// The drawers float over the canvas (../Drawer.tsx), and the library
-// measures its targets' shapes, not what lies on top of them: a pointer
-// over a drawer would land on the hidden block under it, and a key of
-// Insert, picked up there, would already be on its way into that block.
-// Over a drawer, the pointer is on nothing of the page.
+// Insert floats over the canvas (../Drawer.tsx), and the library measures
+// its targets' shapes, not what lies on top of them: a pointer over it
+// would land on the hidden block under it, and a key of Insert, picked up
+// there, would already be on its way into that block. Over a drawer, the
+// pointer is on nothing of the page (the Outline and History, beside the
+// page, hold none of its blocks, so they are no place to drop either).
 function overDrawer(point: { x: number; y: number }): boolean {
   for (const drawer of document.querySelectorAll(".drawer")) {
     const box = drawer.getBoundingClientRect();

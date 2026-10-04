@@ -1,6 +1,7 @@
 // The editor's shell, on the approved layout (design/layout/shots/
-// editor.png): the top bar; the drawer open (Insert, Outline or History),
-// floating over the left of the canvas; the canvas, the page flush with its
+// editor.png): the top bar; the drawer open (Insert floating over the left
+// of the canvas, Outline or History beside it, pushing the page aside); the
+// canvas, the page flush with its
 // frame; the sidebar on the right, with its Page and Block tabs; the bottom
 // line under the canvas, with the selection's path, the devices and the
 // page's width. It holds the page being edited: it reads the site's pages,
@@ -55,6 +56,7 @@ import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { TopBar } from "./TopBar.tsx";
+import { pushes } from "./ui-store.ts";
 
 // Where the open page is remembered, so a reload opens it again: the
 // address's ?page=<id>.
@@ -649,6 +651,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
+  // The Outline and History take their room from the canvas.
+  const pushed = pushes(drawer);
 
   return (
     <EditorProvider env={env}>
@@ -658,7 +662,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
             {/* In the order the Tab key goes: the top bar, the drawer, the
                 canvas, the sidebar (Tab from the selection reaches its
                 settings), then the bottom line. The grid places each. */}
-            <div className={`app${sidebarOpen ? "" : " app-wide"}`}>
+            <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}`}>
               <TopBar />
               <ConflictBanner />
               {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}

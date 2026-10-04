@@ -178,7 +178,7 @@ function useBarRoom(): RefObject<HTMLElement | null> {
 // A drawer's key: pressed while its drawer is open; its words give way to
 // its icon when the bar is short of room (useBarRoom).
 function DrawerKey({ which, icon, keys, title }: { which: Drawer; icon: IconName; keys?: KeyEntry; title: string }) {
-  const { ui } = useEnv();
+  const env = useEnv();
   const open = useUi((u) => u.drawer === which);
   return (
     <button
@@ -189,7 +189,7 @@ function DrawerKey({ which, icon, keys, title }: { which: Drawer; icon: IconName
       aria-controls={open ? `drawer_${which}` : undefined}
       aria-keyshortcuts={keys ? ariaKeyShortcuts(keys) : undefined}
       title={title}
-      onClick={() => toggleDrawer(ui, which)}
+      onClick={() => toggleDrawer(env, which)}
     >
       <Icon name={icon} /><span className="tb-word">{DRAWER_NAMES[which]}</span>
     </button>

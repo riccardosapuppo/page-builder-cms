@@ -222,11 +222,9 @@ test.describe("with the mouse", () => {
 
   test("a section dragged over a column goes between sections, never into the column", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Sections");
-    const outline = await drawer(page, "Outline");
+    await drawer(page, "Outline");
     await page.getByRole("treeitem", { name: "First" }).locator(":scope > .t-row").click();
-    // The section's bar stands at its left end, under the floating Outline:
-    // closed, the grip is in reach.
-    await outline.getByRole("button", { name: "Close Outline" }).click();
+    // The Outline stays open, beside the page: the section's grip is in reach.
     await pickUp(page, grip(page));
     await moveOnto(page, block(page, "c4"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("First will move to the page, after Second.");

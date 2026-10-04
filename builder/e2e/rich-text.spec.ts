@@ -443,8 +443,7 @@ test("a text left for another block before its editor's code arrives is waited f
       await route.continue();
     });
     await open(page, id);
-    // The outline floats over the canvas's left; the column's blocks stand
-    // clear of it.
+    // The outline opens beside the canvas, so the column's blocks stand clear of it.
     if (where === "outline") await drawer(page, "Outline");
     await block(page, "h").click();
     await page.keyboard.press("ArrowDown");

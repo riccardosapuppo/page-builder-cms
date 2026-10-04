@@ -40,12 +40,12 @@ test("one drawer at a time; opened, it takes the focus; Esc closes it and the fo
   kit.render(<div className="app"><Drawers /><button type="button">Before</button></div>);
   const before = screen.getByRole("button", { name: "Before" });
   act(() => before.focus());
-  act(() => toggleDrawer(kit.ui, "insert"));
+  act(() => toggleDrawer(kit.env, "insert"));
   expect(screen.getByRole("complementary", { name: "Insert" })).toBeTruthy();
   expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Search" }));
   // Another drawer replaces it; the place the focus goes back to stays the
   // first one's.
-  act(() => toggleDrawer(kit.ui, "outline"));
+  act(() => toggleDrawer(kit.env, "outline"));
   expect(screen.queryByRole("complementary", { name: "Insert" })).toBeNull();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
   fireEvent.keyDown(document.activeElement!, { key: "Escape" });
@@ -58,7 +58,7 @@ test("a drawer whose content took the focus keeps it there; its close button clo
   kit.render(<div className="app"><Drawers /></div>);
   const key = screen.getByRole("button", { name: "Insert" });
   act(() => key.focus());
-  act(() => toggleDrawer(kit.ui, "history"));
+  act(() => toggleDrawer(kit.env, "history"));
   expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Name" }));
   expect(kit.ui.getState().historyOpen).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Close History" }));
@@ -69,7 +69,7 @@ test("a drawer whose content took the focus keeps it there; its close button clo
 test("closed from outside it, the focus stays where it is; a window opened from it keeps its own Esc", () => {
   const kit = editorKit({ document: page() });
   kit.render(<div className="app"><Drawers /><button type="button">Elsewhere</button></div>);
-  act(() => toggleDrawer(kit.ui, "insert"));
+  act(() => toggleDrawer(kit.env, "insert"));
   const inside = screen.getByRole("textbox", { name: "Search" });
   // A window's Esc inside the drawer: not the drawer's.
   const dialog = document.createElement("div");
@@ -79,9 +79,75 @@ test("closed from outside it, the focus stays where it is; a window opened from 
   expect(kit.ui.getState().drawer).toBe("insert");
   const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
   act(() => elsewhere.focus());
-  act(() => closeDrawer(kit.ui));
+  act(() => closeDrawer(kit.env));
   expect(kit.ui.getState().drawer).toBeNull();
   expect(document.activeElement).toBe(elsewhere);
+});
+
+const block = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
+
+test("Esc after choosing another block in the Outline gives the focus to that block, which stays selected, not to the block the Outline was opened from", async () => {
+  const kit = editorKit({ document: page(), selection: "h1" });
+  kit.render(<div className="app"><Canvas /><Drawers /><EditorKeys /></div>);
+  act(() => block("h1").focus());
+  act(() => toggleDrawer(kit.env, "outline"));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+  // The Outline chooses another block, as its rows do.
+  act(() => kit.store.getState().select("b1"));
+  fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  expect(kit.ui.getState().drawer).toBeNull();
+  await waitFor(() => expect(document.activeElement).toBe(block("b1")));
+  expect(kit.store.getState().selection).toBe("b1");
+
+  // The same block still chosen: the focus goes back to where it was.
+  const clamp = () => document.querySelector<HTMLElement>('.canvas [data-block-id="b1"] > .clamp [data-key="head"]');
+  act(() => clamp()!.focus());
+  act(() => toggleDrawer(kit.env, "outline"));
+  fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  await waitFor(() => expect(document.activeElement).toBe(clamp()));
+  expect(kit.store.getState().selection).toBe("b1");
+
+  // Nothing chosen any more: the canvas, which selects nothing by itself.
+  act(() => block("b1").focus());
+  act(() => toggleDrawer(kit.env, "history"));
+  act(() => kit.store.getState().select(null));
+  fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  await waitFor(() => expect(document.activeElement).toBe(document.querySelector(".canvas")));
+  expect(kit.store.getState().selection).toBeNull();
+});
+
+// jsdom lays nothing out: the boxes a test wants are given to the elements.
+function lay(element: Element | null, [left, top, right, bottom]: readonly [number, number, number, number]) {
+  element!.getBoundingClientRect = () => ({ left, top, right, bottom, width: right - left, height: bottom - top, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+}
+
+test("a block that takes the focus wholly under Insert makes Insert give way; one only partly under it, or out of view, leaves it open", async () => {
+  const kit = editorKit({ document: page(), selection: "h1" });
+  kit.render(<div className="app"><Canvas /><Drawers /><EditorKeys /></div>);
+  act(() => toggleDrawer(kit.env, "insert"));
+  const insert = () => screen.queryByRole("complementary", { name: "Insert" });
+  lay(document.querySelector(".canvas"), [0, 52, 1126, 848]);
+  lay(insert(), [8, 60, 288, 848]);
+
+  // Partly under it: the clamp has moved to its other side, the block shows.
+  lay(block("h1"), [83, 264, 637, 400]);
+  act(() => block("h1").focus());
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  expect(kit.ui.getState().drawer).toBe("insert");
+
+  // Scrolled out of view: nothing of it to hide.
+  lay(block("t1"), [83, 1000, 247, 1100]);
+  act(() => block("t1").focus());
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  expect(kit.ui.getState().drawer).toBe("insert");
+
+  // Wholly under it: Insert closes, the focus stays on the block, and says so.
+  lay(block("b1"), [83, 420, 247, 474]);
+  act(() => block("b1").focus());
+  await waitFor(() => expect(kit.ui.getState().drawer).toBeNull());
+  expect(document.activeElement).toBe(block("b1"));
+  expect(kit.ui.getState().notice).toBe("Insert closed: it was covering the block.");
+  expect(kit.store.getState().selection).toBe("b1");
 });
 
 test("Alt+Shift+N and Alt+Shift+O open Insert and the Outline from the canvas, and close them again", async () => {

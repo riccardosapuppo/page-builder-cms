@@ -4,8 +4,9 @@
 // the CMS keeps it, Insert saying where first; the bottom line's devices
 // narrow the page root and the page lays out by its own width, which the
 // bottom line says; the Outline and the canvas select together, and so do
-// the bottom line's steps; the drawers float, one at a time, the page
-// keeping its width; the sidebar's tabs follow the selection; a 422 from
+// the bottom line's steps; the drawers, one at a time, Insert floating with
+// the page keeping its width, the Outline and History pushing it aside; the
+// sidebar's tabs follow the selection; a 422 from
 // the CMS shows on the field it names; an empty page and a new one invite a
 // first section; sections anchored with the editor's own ids take none of
 // them; the theme's header and footer are drawn around the page, locked;
@@ -128,8 +129,8 @@ test("the Outline and the canvas select the same block, both ways, and so do the
   await expect(page.getByRole("navigation", { name: "Selection" })).toContainText("Nothing selected.");
 });
 
-test("the drawers float over the canvas, one at a time, and the page keeps its width; Esc closes one, the focus back where it was", async ({ page, request }) => {
-  const { id } = await makePage(request, "Floating", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
+test("Insert floats over the canvas and the page keeps its width; the Outline and History push the page aside; one at a time; Esc closes one, the focus back where it was", async ({ page, request }) => {
+  const { id } = await makePage(request, "Drawers", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
   await open(page, id);
   const site = page.locator(".canvas .site");
   const before = (await site.boundingBox())!;
@@ -138,14 +139,26 @@ test("the drawers float over the canvas, one at a time, and the page keeps its w
     const box = await drawer(page, name);
     await expect(page.locator(".drawer")).toHaveCount(1);
     await expect(page.locator(".topbar").getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
-    // Over the canvas's left, above the bottom line; the page as it was.
     const over = (await box.boundingBox())!;
     const canvas = (await page.locator(".canvas").boundingBox())!;
-    expect(over.x).toBeGreaterThanOrEqual(canvas.x);
     expect(over.y + over.height).toBeLessThanOrEqual(canvas.y + canvas.height + 0.5);
-    expect(over.x + over.width).toBeGreaterThan(before.x);
-    expect(await site.boundingBox()).toEqual(before);
-    await expect(width(page)).toHaveText("Page 1088 wide, desktop layout");
+    if (name === "Insert") {
+      // Over the canvas's left, the page as it was.
+      expect(over.x).toBeGreaterThanOrEqual(canvas.x);
+      expect(over.x + over.width).toBeGreaterThan(before.x);
+      expect(await site.boundingBox()).toEqual(before);
+      await expect(width(page)).toHaveText("Page 1088 wide, desktop layout");
+    } else {
+      // Beside the canvas, which gave up its room: nothing of the page under
+      // it, the page narrower but still the desktop layout (807 wide in a
+      // browser that draws a thin scrollbar, 817 in one that does not).
+      expect(over.x + over.width).toBeLessThanOrEqual(canvas.x + 0.5);
+      const pushed = (await site.boundingBox())!;
+      expect(pushed.x).toBeGreaterThanOrEqual(over.x + over.width);
+      expect(pushed.width).toBeGreaterThanOrEqual(800);
+      expect(pushed.width).toBeLessThan(before.width - 200);
+      await expect(width(page)).toHaveText(`Page ${Math.round(pushed.width)} wide, desktop layout`);
+    }
   }
   // History took the focus, on Save version; Esc gives it back to the key
   // that opened it.
@@ -295,13 +308,15 @@ test("the theme's header and footer are drawn around the page, locked, and the O
 
 // The page as wide as the approved layout promises, measured as a Windows
 // browser draws it: with its scrollbar shown, which a headless browser
-// hides unless told not to. 1088 wide at 1440, the desktop layout at 1280,
-// whichever drawer is open.
-test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desktop layout at 1280, a drawer open or not", async ({ request, baseURL }) => {
+// hides unless told not to. 1088 wide at 1440 and the desktop layout at
+// 1280 (928), Insert open or not; with the Outline or History open, which
+// push the page aside, 807 at 1440 (still the desktop layout) and at 1280
+// the desktop page of 800 drawn at 81% (design/layout/NOTES.md, 4.8).
+test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desktop layout at 1280; the Outline and History make it 807, and 800 drawn at 81%", async ({ request, baseURL }) => {
   const { id } = await makePage(request, "Widths shown", [section("s", "Two", [column("c1", [heading("h1", "Left")]), column("c2", [heading("h2", "Right")])])]);
   const barred = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
   try {
-    for (const [windowWidth, windowHeight, least] of [[1440, 900, 1088], [1280, 800, 800]] as const) {
+    for (const [windowWidth, windowHeight, least, pushed] of [[1440, 900, 1088, { page: 807, scaled: false, words: "Page 807 wide, desktop layout" }], [1280, 800, 800, { page: 800, scaled: true, words: "Page 800 wide, desktop layout, drawn at 81%" }]] as const) {
       const shown = await barred.newPage({ viewport: { width: windowWidth, height: windowHeight }, baseURL: baseURL!, locale: "en-US" });
       await open(shown, id);
       const measure = () => shown.evaluate(() => {
@@ -317,9 +332,22 @@ test("with the scrollbar shown, the page is 1088 wide at 1440 and keeps its desk
       expect(plain.sideways).toBe(0);
       await expect(shown.locator(".statusbar .sb-width")).toHaveText(`Page ${plain.page} wide, desktop layout`);
       console.log(`${windowWidth} by ${windowHeight}, the scrollbar ${plain.bar} wide: the page is ${plain.page} wide`);
-      for (const name of ["Insert", "Outline", "History"] as const) {
+      // Insert floats: the page as it was.
+      await drawer(shown, "Insert");
+      expect(await measure(), `${windowWidth}, Insert open`).toEqual(plain);
+      for (const name of ["Outline", "History"] as const) {
         await drawer(shown, name);
-        expect(await measure(), `${windowWidth}, ${name} open`).toEqual(plain);
+        const narrower = await measure();
+        expect(narrower, `${windowWidth}, ${name} open`).toEqual({ ...plain, page: pushed.page, scaled: pushed.scaled });
+        await expect(shown.locator(".statusbar .sb-width")).toHaveText(pushed.words);
+        // The drawer beside the page, none of it under the drawer.
+        const [over, canvas, site] = await Promise.all([
+          shown.getByRole("complementary", { name, exact: true }).boundingBox(),
+          shown.locator(".canvas").boundingBox(),
+          shown.locator(".canvas .frame").boundingBox(),
+        ]);
+        expect(over!.x + over!.width, `${windowWidth}, ${name}: the drawer's right edge`).toBeLessThanOrEqual(canvas!.x);
+        expect(site!.x, `${windowWidth}, ${name}: the page's left edge`).toBeGreaterThanOrEqual(over!.x + over!.width);
       }
       await shown.close();
     }

@@ -171,7 +171,7 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     // which takes the focus (./HistoryPanel.tsx).
     saveVersion: () => {
       if (!session()?.current) return false;
-      openDrawer(ui, "history");
+      openDrawer(env, "history");
       ui.getState().setNamingVersion(true);
       // Already open, the field takes the focus back.
       setTimeout(() => document.querySelector<HTMLElement>(".ver-form input")?.focus(), 0);
@@ -208,11 +208,11 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     },
     // The drawers open and close as their top bar keys do (./Drawer.tsx).
     openInsert: () => {
-      toggleDrawer(ui, "insert");
+      toggleDrawer(env, "insert");
       return true;
     },
     openOutline: () => {
-      toggleDrawer(ui, "outline");
+      toggleDrawer(env, "outline");
       return true;
     },
     deviceDesktop: () => device("desktop"),

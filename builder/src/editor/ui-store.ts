@@ -38,10 +38,14 @@ export type OpenGroups = Readonly<Record<string, Readonly<Record<string, boolean
 // (its Page and Block tabs), or the site style, a level below Page.
 export type Tray = "edit" | "site-style";
 
-// The top bar's drawers, floating over the left of the canvas, one open at
-// a time (./Drawer.tsx).
+// The top bar's drawers, one open at a time (./Drawer.tsx): Insert floats
+// over the left of the canvas; Outline and History push the page aside.
 export const DRAWERS = ["insert", "outline", "history"] as const;
 export type Drawer = (typeof DRAWERS)[number];
+
+// Whether a drawer takes its room from the canvas (the page is narrower, or
+// drawn smaller) rather than floating over it.
+export const pushes = (drawer: Drawer | null): boolean => drawer === "outline" || drawer === "history";
 
 // The page as the canvas lays it out: its width (its own, not the canvas's
 // when it is drawn smaller) and the scale it is drawn at, for the bottom

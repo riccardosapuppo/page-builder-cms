@@ -55,6 +55,7 @@ import "./canvas.css";
 import { Clamp } from "./Clamp.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
+import { giveWayTo } from "./Drawer.tsx";
 import { collisionPriority, SELECTION_SENSORS, SELECTION_SOURCE, useDraggable, useDropTarget } from "./drag/dnd.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
@@ -70,7 +71,7 @@ import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
-import type { Preview } from "./ui-store.ts";
+import { pushes, type Preview } from "./ui-store.ts";
 
 // How a block stands to the selection, for the marks it draws.
 type Relation =
@@ -689,17 +690,19 @@ export function Canvas() {
 
   // The room the canvas has for the page: its width inside its scrollbar's
   // gutter (kept whether or not the page scrolls, editor.css .canvas), less
-  // the page's margins, so the page is as wide as the window allows and a
-  // page scaled to fit never makes the canvas scroll sideways.
+  // the page's margins (12 on the left beside a pushed drawer), so the page
+  // is as wide as the window allows and a page scaled to fit never makes the
+  // canvas scroll sideways.
+  const pushed = useUi((u) => pushes(u.drawer));
   useLayoutEffect(() => {
     const element = bench.current;
     if (!element) return undefined;
-    const measure = () => setRoom(element.clientWidth - 2 * FRAME_MARGIN);
+    const measure = () => setRoom(element.clientWidth - (pushed ? FRAME_MARGIN_PUSHED : FRAME_MARGIN) - FRAME_MARGIN);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [pushed]);
 
   // The page's own width, as the bottom line names it, when it fills the
   // canvas: its layout width, which a scale would not change.
@@ -881,6 +884,8 @@ export function Canvas() {
               const element = event.target;
               if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined || store.getState().drag) return;
               if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
+              // A block wholly under the Insert drawer is not seen: Insert gives way.
+              giveWayTo(env, element);
             }}
             onPointerOver={(event) => {
               if (store.getState().drag) return;
@@ -956,8 +961,10 @@ function themePartAt(frame: Element, x: number, y: number): "header" | "footer" 
 // The page's margin on each side of the canvas (editor.css, .frame-fit):
 // with a thin scrollbar showing, the page is 1088 wide in a 1440 window
 // and gets its desktop layout in a 1280 one (design/layout/NOTES.md,
-// section 4.8).
+// section 4.8). Beside a pushed drawer (Outline, History) the left margin
+// is 12: the page is then 807 wide at 1440, still the desktop layout.
 const FRAME_MARGIN = 19;
+const FRAME_MARGIN_PUSHED = 12;
 
 // ------------------------------------------------------- the empty page
 
