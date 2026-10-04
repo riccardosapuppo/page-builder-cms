@@ -4,8 +4,8 @@ The Rails 8.1 application of the project: it stores the pages, their draft
 and versions, publishes them, keeps the media library and the site style,
 answers the editor through a JSON API under `/api`, and serves the pages a
 visitor sees, rendered on the server in the approved design's theme
-(`../design/`). Caching of those pages (ETag, Solid Cache fragments) and
-the background jobs arrive with stage 4.
+(`../design/`) and cached in the browser and in Solid Cache (see "How the
+pages are cached"). The background jobs arrive with stage 4.
 
 Run the commands from this folder. They are written `ruby bin/rails ...`
 because Windows cannot start an extensionless script by itself; on Linux
@@ -345,6 +345,81 @@ still differs:
   needs 359 px in a row, so at 320, the width WCAG's reflow criterion
   tests (a 1280 window at 400%), every page scrolled sideways by 39 px
   with Menu cut off, in the design's own mock as well.
+
+## How the pages are cached
+
+A published page is cached at three levels, and nothing is ever deleted
+to invalidate it: whatever changes a page's bytes changes a key, and
+entries under old keys are never asked for again (Solid Cache drops them
+as they age, two weeks by default, or as the cache fills, 256 MB in
+[config/cache.yml](config/cache.yml)). The keys are made in
+[PageCache](app/models/page_cache.rb).
+
+- **In the browser.** `Cache-Control: max-age=0, public, must-revalidate`
+  (Rails' order of the three directives), an ETag, and no
+  `Last-Modified`, which a restored version published again would move
+  back in time. Every visit asks again; a page that has not changed is a
+  304 with no body, answered before the version's document is read, and a
+  publish shows at the very next request. The ETag is a digest of the
+  published version, the site style and the release; `fresh_when` is not
+  used, because its digest of the action's template sees neither the
+  layout nor the partials a helper renders.
+- **The whole page in Solid Cache,** one entry per version and site
+  style: a visit after the first is one read.
+- **Each block in Solid Cache,** keyed on a digest of its subtree (its
+  own JSON and its children's digests) and the fingerprint of
+  `tokens.css`, rendered with Rails' collection caching through
+  [blocks/_block](app/views/blocks/_block.html.erb): one `read_multi` for
+  a page's sections, then one for the columns of each section it missed,
+  then one for the widgets of each column it missed, and one
+  `write_multi` per level for what it drew. Blocks are shared by every
+  page that holds the same ones.
+
+Every fragment key also starts with the release, so a deploy finds none
+of the old fragments. The release is a digest of `app/`, `config/`,
+`lib/`, `Gemfile.lock`, the schema folder's own files (its tokens,
+icons and enums), the Ruby version and a key derived from the secret,
+which signs library images' addresses; it is computed once per process,
+and again after an edited file where code reloads (development), so an
+edited partial is never answered with a 304 for the page it no longer
+draws.
+
+| What changes | Browser | Whole page | Blocks |
+| --- | --- | --- | --- |
+| a publish, a restored version published, a scheduled publish | new ETag | new entry | only the changed blocks and the column and section around each |
+| the site style | new ETag | new entry | all read back |
+| the release | new ETag | new entry | all drawn again |
+
+On the test page of 2 sections, 4 columns and 12 widgets
+([test/integration/page_cache_test.rb](test/integration/page_cache_test.rb)):
+the first visit writes 19 entries in 8 reads; the next is one read that
+finds the page; one widget changed and published reads 8 keys in 4 reads,
+finds 4 and writes 4 (the widget, its column, its section, the page); a
+new site style reads the page and the 2 sections and writes 1. The bytes
+are those the partials draw with no cache at all, on the 500-block
+fixture too.
+
+Not cached: the preview (`no-store`), the 404 page and the redirects
+(`no-cache`, Rails' default). No answer sets a cookie, from a drawn page,
+a cached one or a 304, even to a visitor who brings cookies (a browser
+sends 127.0.0.1's cookies to every port), and the layout has no CSRF
+meta tag.
+
+Production and the e2e environment cache in Solid Cache, each in its own
+cache database. Development keeps Rails' default, a memory store with
+caching off until `ruby bin/rails dev:cache` turns it on; the browser
+level works there either way. The tests keep the null store, except the
+cache tests, which put Solid Cache in place on the tests' own cache
+database (`storage/test_cache.sqlite3`) and count its calls.
+
+From the repository root, `node tools/check-production.ts` checks this
+from outside a production server: the headers, a 304, a publish seen at
+the next request, and production's Solid Cache rows (the page and each of
+its 45 blocks after the first visit, then exactly 4 more for one edited
+widget). In Chromium, `builder/e2e/published-cache.spec.ts` publishes
+from the editor and visits from a browser with its cache on: a 200, then
+a 304 over the wire, then, after an edit is published, a 200 with the new
+words for the same old ETag.
 
 ## The API
 
