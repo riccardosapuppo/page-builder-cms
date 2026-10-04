@@ -9,3 +9,7 @@ it holds.
 - [The editor opens the preview and the live page on the CMS's own origin](editor-links-to-the-cms-origin.md)
   (3 October 2026): `VITE_CMS_ORIGIN`, else an absolute API base's origin,
   else `npm start`'s CMS; the development server takes it from `CMS_URL`.
+- [Published pages are cached by key, and nothing is deleted to refresh them](published-pages-cached-by-key.md)
+  (4 October 2026): an ETag and Solid Cache keys made of the version, the
+  site style, the release and each block's subtree; every visit
+  revalidates, so a publish shows at the next request.
