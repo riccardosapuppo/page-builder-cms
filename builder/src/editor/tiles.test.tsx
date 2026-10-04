@@ -80,6 +80,8 @@ test("dropped, such a key opens the picker at the drop place with its window: Ca
   // What the drag layer does on such a drop: after the divider of Join.
   act(() => openInserter(kit.env, { kind: "block", parentId: "c3", index: 1 }, null, video));
   let window = screen.getByRole("dialog", { name: "Add a video" });
+  // The window says where the block will land, its column named.
+  expect(window.querySelector(".dlg-foot-note")?.textContent).toBe("Lands on the yellow line on the page, after Divider in Column 1.");
   // The place is kept, its yellow line drawn in the column; the picker's
   // own keys wait behind the window.
   expect(root("c3").querySelector(":scope > .ins-slot-wrap")).not.toBeNull();

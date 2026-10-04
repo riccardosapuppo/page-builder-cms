@@ -360,6 +360,9 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
       { id: "ready", title: "Ready-made", className: "pick-presets", from: layouts.length, to: keys.length },
     ];
   const searchWords = place.kind === "block" ? "Search blocks" : "Search sections";
+  // Said under the window that asks for an image or a video, which covers
+  // the line: where the block will land, its column named.
+  const landing = <>Lands on the yellow line on the page, <Lands words={words} kind={place.kind} />{place.kind === "block" && words.lands.before ? <> in <strong>{words.lands.within}</strong></> : null}.</>;
 
   return (
     <>
@@ -426,6 +429,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
       {asking === "picture" && (
         <ImagePicker
           confirm="Add section"
+          where={landing}
           onClose={unask}
           onPick={([image]) => (image ? addPreset("picture", image) : null)}
         />
@@ -434,12 +438,14 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
         <ImagePicker
           confirm={asking.needs === "image" ? "Add image" : "Add gallery"}
           multiple={asking.needs === "images"}
+          where={landing}
           onClose={unask}
           onPick={(images: ImageRef[]) => addWidget(asking, asking.needs === "image" ? images[0]! : (images as unknown as InputOf["gallery"]))}
         />
       )}
       {asking && asking !== "picture" && asking.needs === "video" && (
         <VideoPicker
+          where={landing}
           onClose={unask}
           onPick={(video: { provider: VideoProvider; videoId: string; title: string }) => {
             if (place.kind !== "block") return null;

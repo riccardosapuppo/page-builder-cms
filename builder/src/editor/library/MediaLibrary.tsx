@@ -16,7 +16,7 @@
 // Everything that reaches the CMS goes through the media service
 // (./service.ts) and so through the storage adapter; without one (a panel's
 // test) the library is only chosen from, and draws no control for the rest.
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { CommandError } from "../../document/check.ts";
 import type { ImageRef } from "../../shared/document.ts";
 import { MAX_UPLOAD_BYTES, type MediaItem } from "../../storage/adapter.ts";
@@ -35,8 +35,9 @@ import { countLine, inUseSentence, metaLine } from "./words.ts";
 
 export type LibraryPurpose =
   // Choosing images for a block: one, or several for a gallery. onPick
-  // returns null once they are placed, the refusal otherwise.
-  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null }
+  // returns null once they are placed, the refusal otherwise. where: the
+  // place they will land, said under the window (a "+" picker's place).
+  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode }
   // Looking after the library: nothing is placed.
   | { kind: "manage" };
 
@@ -318,6 +319,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
       closeLabel="Close media library"
       tools={<p className="dlg-count" aria-live="polite">{countLine(library.length, missing, sending)}</p>}
       onClose={onClose}
+      note={purpose.kind === "pick" && purpose.where ? <p className="hint">{purpose.where}</p> : undefined}
       footer={
         <>
           <p className="hint">{hint}</p>

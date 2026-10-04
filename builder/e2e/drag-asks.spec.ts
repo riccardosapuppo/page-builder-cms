@@ -68,9 +68,11 @@ test.describe("from Insert, with the mouse", () => {
     await expect(caption(page).locator("span")).toHaveText("Release, or press Space, to add it, then choose its images. Shaded areas cannot hold widgets. Esc cancels.");
     await page.mouse.up();
 
-    // The library, the place kept as the yellow line; nothing added yet.
+    // The library, the place kept as the yellow line, and named under the
+    // library, which covers it; nothing added yet.
     await expect(library(page)).toBeVisible();
     await expect(keptLine(page, "c2")).toHaveCount(1);
+    await expect(library(page).locator(".dlg-foot-note")).toHaveText("Lands on the yellow line on the page, after Divider in Column 2.");
     await expect(caption(page)).toHaveText("Gallery will be added to Column 2 in First, after Divider, once you choose its images.");
     // (The page behind the window is inert, which the shape helper skips.)
     expect(await types(page, "c2")).toEqual(["divider"]);

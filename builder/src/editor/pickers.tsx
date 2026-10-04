@@ -6,7 +6,7 @@
 // Images come from the media library (./library/MediaLibrary.tsx), where
 // they can also be uploaded, or from another site's https:// address; each
 // with its alt text or the mark that it is decorative.
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { CommandError } from "../document/check.ts";
 import type { ImageRef, VideoProvider } from "../shared/document.ts";
 import { describedBy, ErrorList } from "./controls.tsx";
@@ -26,10 +26,13 @@ interface ImagePickerProps {
   // Hands the images over; null when they were placed, the refusal otherwise.
   onPick: (images: ImageRef[]) => CommandError | null;
   onClose: () => void;
+  // Where the block will land, said under the window: a "+" picker's place,
+  // or a dropped key's (./InsertPicker.tsx).
+  where?: ReactNode;
 }
 
-export function ImagePicker({ confirm, multiple = false, onPick, onClose }: ImagePickerProps) {
-  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick }} onClose={onClose} />;
+export function ImagePicker({ confirm, multiple = false, onPick, onClose, where }: ImagePickerProps) {
+  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}) }} onClose={onClose} />;
 }
 
 // ------------------------------------------------------------ video
@@ -73,9 +76,11 @@ export const VIDEO_HINT = "Paste the address of the video’s page, or its id. O
 interface VideoPickerProps {
   onPick: (video: { provider: VideoProvider; videoId: string; title: string }) => CommandError | null;
   onClose: () => void;
+  // As the image picker's.
+  where?: ReactNode;
 }
 
-export function VideoPicker({ onPick, onClose }: VideoPickerProps) {
+export function VideoPicker({ onPick, onClose, where }: VideoPickerProps) {
   const id = useId();
   const [address, setAddress] = useState("");
   const [title, setTitle] = useState("Video");
@@ -96,6 +101,7 @@ export function VideoPicker({ onPick, onClose }: VideoPickerProps) {
     <Dialog
       title="Add a video"
       onClose={onClose}
+      note={where ? <p className="hint">{where}</p> : undefined}
       footer={
         <>
           <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
