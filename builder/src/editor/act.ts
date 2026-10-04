@@ -1,5 +1,5 @@
 // Every change the interface asks of the page goes through here, from the
-// floating bar, the keyboard, the block's menu, the Insert drawer or a drop:
+// clamp, the keyboard, the block's menu, the Insert drawer or a drop:
 //
 // 1. the text still waiting in a panel's field is handed over first, as a
 //    command of its own (./pending.ts); a text the page refuses keeps the

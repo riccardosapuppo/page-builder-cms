@@ -1,10 +1,11 @@
 // The bottom line under the canvas (the approved layout, design/layout/,
 // section 7 of its NOTES): on the left, where the person is, the
 // selection's path from the page down, each step a button that selects
-// it; while a block moves, the live region's sentence in its place, the
-// line drawn graphite. On the right, how the page is looked at: Block
-// edges, the device in one click (Desktop, Tablet 768, Phone 390) and the
-// page's width as the canvas lays it out, always shown.
+// it, and a hint for what to do next (the pointer over a seam, a text
+// being written); while a block moves, the live region's sentence in its
+// place, the line drawn graphite. On the right, how the page is looked
+// at: Block edges, the device in one click (Desktop, Tablet 768, Phone
+// 390) and the page's width as the canvas lays it out, always shown.
 //
 // The live region is one element for the life of the editor, so a screen
 // reader follows it: it says where the dragged block will land, and how
@@ -14,6 +15,7 @@ import { locate } from "../document/tree.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { DESKTOP_MIN, PREVIEW_WIDTHS } from "../shared/preview-widths.ts";
 import { LAYOUT_BREAKPOINTS } from "../shared/site-tokens.ts";
+import { useCanvasUi } from "./canvas-ui.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { dropSentence } from "./drag/DragLayer.tsx";
 import { draggedOf } from "./drag/marks.ts";
@@ -79,6 +81,10 @@ function Crumbs({ hints }: { hints: boolean }) {
   const selection = useEditor((s) => s.selection);
   const path = pathTo(doc, selection);
   const select = (id: string | null) => store.getState().select(id);
+  // The pointer over a seam between sections, and a text being written:
+  // the line says what to do there.
+  const seam = useCanvasUi((c) => c.seam !== null);
+  const writing = useUi((u) => u.editingText !== null || u.textTools !== null);
   const last = path.at(-1);
   const kind = last === undefined ? null : locate(doc, last)?.block.type ?? null;
   const hint = (words: string, action: KeyAction, after = "") => (
@@ -105,8 +111,11 @@ function Crumbs({ hints }: { hints: boolean }) {
           </li>
         ))}
       </ol>
-      {hints && selection === null && hint("Nothing selected. Click a block, or press", "selectNext", " on the page.")}
-      {hints && (kind === "section" || kind === "column") && hint("Select inside:", "selectFirstChild")}
+      {hints && selection === null && (seam
+        ? <span className="crumbs-hint">Nothing selected. Point between two sections to add one there.</span>
+        : hint("Nothing selected. Click a block, or press", "selectNext", " on the page."))}
+      {hints && writing && hint("Writing.", "leaveText", " to finish")}
+      {hints && !writing && (kind === "section" || kind === "column") && hint("Select inside:", "selectFirstChild")}
     </nav>
   );
 }

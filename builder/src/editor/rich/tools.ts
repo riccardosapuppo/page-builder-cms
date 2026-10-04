@@ -1,7 +1,7 @@
 // What the rest of the editor knows of the canvas's text editor, without
 // loading it: which text block is being edited and where its caret
 // starts, the state and the commands its formatting buttons and link field
-// use (drawn on the selection's floating bar, ../Canvas.tsx), and how to
+// use (drawn on the selection's clamp, ../Clamp.tsx), and how to
 // start editing. The editor itself, TipTap with ProseMirror, is a chunk of
 // its own (./TextEditor.tsx), loaded the first time a text is edited, or
 // as soon as one is selected; the page's static renderer draws every other

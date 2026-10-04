@@ -218,7 +218,7 @@ test("? opens the window, which lists every entry of the keymap with its keys, a
   expect(kit.ui.getState().shortcutsOpen).toBe(false);
 });
 
-test("a right click opens the block's menu: copy, paste, duplicate, delete, each with its keys", async () => {
+test("a right click opens the block's More: copy, paste after, duplicate, insert before and after, select its column, delete, each with its keys", async () => {
   const kit = shell();
   act(() => {
     fireEvent.contextMenu(root("q1"), { clientX: 300, clientY: 200 });
@@ -227,7 +227,9 @@ test("a right click opens the block's menu: copy, paste, duplicate, delete, each
   const menu = screen.getByRole("menu", { name: "Quote actions" });
   const items = within(menu).getAllByRole("menuitem");
   expect(items.map((item) => [item.textContent, item.getAttribute("aria-keyshortcuts")])).toEqual([
-    ["CopyCtrlC", "Control+C"], ["PasteCtrlV", "Control+V"], ["DuplicateCtrlD", "Control+D"], ["DeleteDel", "Delete Backspace"],
+    ["CopyCtrlC", "Control+C"], ["Paste afterCtrlV", "Control+V"], ["DuplicateCtrlD", "Control+D"],
+    ["Insert before", null], ["Insert after+", "Plus"], ["Select Column 1AltUp arrow", "Alt+ArrowUp"],
+    ["DeleteDel", "Delete Backspace"],
   ]);
   await waitFor(() => expect(document.activeElement).toBe(items[0]));
 
@@ -261,6 +263,64 @@ test("a right click opens the block's menu: copy, paste, duplicate, delete, each
   });
   expect(kit.lastCommand()?.label).toBe("Deleted Gallery in Join");
   expect(screen.queryByRole("menu")).toBeNull();
+
+  // Select Column 1: the column the quote is in, selected and focused.
+  act(() => {
+    fireEvent.contextMenu(root("q1"), { clientX: 300, clientY: 200 });
+  });
+  act(() => {
+    fireEvent.click(within(screen.getByRole("menu", { name: "Quote actions" })).getByRole("menuitem", { name: /^Select Column 1/ }));
+  });
+  expect(kit.store.getState().selection).toBe("c3");
+  await waitFor(() => expect(focused()).toBe("c3"));
+});
+
+test("the menu key opens the block menu: the moves first, one that cannot be made saying why, then all of More's; a move is one command", async () => {
+  const kit = shell();
+  // The menu key fires the context menu at the focused block, with no
+  // pointer position.
+  act(() => {
+    fireEvent.contextMenu(root("h1"), { clientX: 0, clientY: 0 });
+  });
+  const menu = screen.getByRole("menu", { name: "Heading: block menu" });
+  const items = within(menu).getAllByRole("menuitem");
+  expect(items.map((item) => [item.textContent, item.getAttribute("aria-disabled")])).toEqual([
+    ["Move upFirst in Column 1", "true"], ["Move down", null],
+    ["CopyCtrlC", null], ["Paste afterCtrlV", null], ["DuplicateCtrlD", null],
+    ["Insert before", null], ["Insert after+", null], ["Select Column 1AltUp arrow", null],
+    ["DeleteDel", null],
+  ]);
+  // The first that can be pressed takes the focus.
+  await waitFor(() => expect(document.activeElement).toBe(items[1]));
+  act(() => {
+    fireEvent.click(items[0]!);
+  });
+  expect(kit.store.getState().past).toHaveLength(0);
+  act(() => {
+    fireEvent.click(items[1]!);
+  });
+  expect(kit.lastCommand()).toMatchObject({ kind: "move", label: "Moved Heading in Hero" });
+  expect(kit.doc().sections[0]!.children[0]!.children.map((w) => w.id)).toEqual(["t1", "h1", "b1"]);
+  expect(kit.store.getState().past).toHaveLength(1);
+  await waitFor(() => expect(focused()).toBe("h1"));
+
+  // A column moves left and right; a section has no column around it to
+  // select, and a column takes no insert beside it.
+  act(() => {
+    fireEvent.contextMenu(root("c2"), { clientX: 0, clientY: 0 });
+  });
+  expect(within(screen.getByRole("menu", { name: "Column 2: block menu" })).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+    "Move left", "Move rightLast column", "CopyCtrlC", "Paste afterCtrlV", "DuplicateCtrlD", "Select HeroAltUp arrow", "DeleteDel",
+  ]);
+  act(() => {
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  });
+  act(() => {
+    fireEvent.contextMenu(root("hero"), { clientX: 0, clientY: 0 });
+  });
+  expect(within(screen.getByRole("menu", { name: "Hero: block menu" })).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+    "Move upFirst section", "Move down", "CopyCtrlC", "Paste afterCtrlV", "DuplicateCtrlD", "Insert before", "Insert after+", "DeleteDel",
+  ]);
 });
 
 test("Escape closes the block's menu and gives the focus back to the block", async () => {

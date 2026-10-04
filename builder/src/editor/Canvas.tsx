@@ -6,10 +6,16 @@
 //
 // What the editor adds to the page is drawn inside each block's root
 // (../render/context.ts, useDecoration): the selection's marks and its
-// floating bar (grip, duplicate, delete), the hover outline, the outlines
-// of the section and columns around the selection, an empty column's
-// place. Each block subscribes to its own part of the state, so a new
-// selection redraws the blocks it concerns and no others.
+// clamp in the page's margin (./Clamp.tsx), the hover outline, and the
+// round "+" that add on the page (the approved layout, design/layout/
+// NOTES.md, section 2): on the selected block's bottom edge, on the seam
+// below the section that holds the selection and on any seam the pointer
+// is over, and large inside every empty column. A "+" opens the yellow
+// insertion line at its place and its picker beside it
+// (./InsertPicker.tsx); while the Insert drawer is open, its own yellow
+// line marks where a click in it lands. Each block subscribes to its own
+// part of the state, so a new selection redraws the blocks it concerns
+// and no others.
 //
 // While a block is dragged (./drag/DragLayer.tsx) the canvas draws the
 // store's preview, a separate page with the block where it would land,
@@ -17,7 +23,7 @@
 // dragged block as the drop indicator, the container it would land in
 // framed, those that cannot take it shaded. Every block, and the page
 // itself, is a drop target of the drag library; the selected block is its
-// source, picked up by the bar's grip or by Space.
+// source, picked up by the clamp's grip or by Space.
 //
 // The page's own links, buttons and disclosures do nothing here: a click
 // selects the block it falls in, a right click opens its menu.
@@ -25,39 +31,43 @@
 // A text block is edited where it stands (./rich/): a click on the text
 // block already selected, or a double click on any, opens its editor with
 // the caret at the click, and Enter opens it at the end. While it is open
-// the block's bar carries the text's bold, italic and link, and the link's
-// field opens under the block.
+// the block's clamp carries the text's bold, italic and link, and the
+// link's field opens under the block.
 import {
   createContext, Suspense, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
   type CSSProperties, type ReactNode,
 } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
-import { makeDelete, makeDuplicate, makeInsert, makeInsertSection } from "../document/commands.ts";
+import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
 import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SiteFooter, SiteHeader } from "../render/theme.tsx";
-import type { ImageRef, PageDocument } from "../shared/document.ts";
+import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
 import { COLUMN_GAP_DEFAULT } from "../shared/site-tokens.ts";
-import { focusBlock, runCommand } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
+import { canvasUi } from "./canvas-ui.ts";
+import "./canvas.css";
+import { Clamp } from "./Clamp.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
 import { collisionPriority, SELECTION_SENSORS, SELECTION_SOURCE, useDraggable, useDropTarget } from "./drag/dnd.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
-import { useInsert } from "./insert.ts";
-import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
+import { insertTarget, useInsert } from "./insert.ts";
+import { placeBeside, placeKey, placeWords } from "./insert-place.ts";
+import { closeInserter, InsertPicker, openInserter, PICKER_ID } from "./InsertPicker.tsx";
+import { entry, entryKeysText } from "./keymap.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
-import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
+import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
 import type { Preview } from "./ui-store.ts";
@@ -179,10 +189,10 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   useEffect(() => {
     if (isText && relation === "selected") preloadTextEditor();
   }, [isText, relation]);
+  const pluses = usePluses(block, id, relation);
 
   if (id === null) return undefined;
   const kind = block.type === "section" ? "section" : block.type === "column" ? "column" : "widget";
-  const columns = block.type === "section" && Array.isArray(block.children) ? block.children.length : 0;
   const empty = block.type === "column" && Array.isArray(block.children) && block.children.length === 0;
   const slot = mark?.kind === "slot" ? mark : null;
   return {
@@ -198,7 +208,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     },
     after: slot
       ? <DropIndicator mode={slot.mode} label={slot.label} />
-      : <Marks id={id} kind={kind} name={name} relation={relation} hovered={hovered && mark === null} columns={columns} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} />,
+      : <Marks id={id} kind={kind} type={block.type as BlockType} name={name} relation={relation} hovered={hovered && mark === null} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} pluses={pluses} />,
     // While a drag lasts nothing is selected (relation null), so the
     // editor gives way to the page's drawing of the text.
     ...(editing && relation === "selected"
@@ -311,146 +321,8 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
   };
 }
 
-// The selection's bar stands at the block's top left corner, as the design
-// draws it, and moves to the top right corner when the left one would
-// cover what the block above shows and the right one would not
-// (design/NOTES.md, section 4); where both would, it stays in the corner
-// that covers less. While a text is being written, its bar, wider with
-// bold, italic and link, never covers what the block above shows: where
-// both top corners would, it stands under the block, the link's field
-// under it, in the bottom corner that covers less of what lies there,
-// even when that is the next block's words or button, as the link's field
-// covers them: the words above are what a person writing reads on from.
-// What a block shows is its words, as their lines lie, and its pictures,
-// buttons and rules; the editor's own marks are not counted. Placed again
-// when the bar, the block or the page changes size, and when the page is
-// drawn at a new scale.
-const BAR_PLACES = ["", "right"] as const;
-const WRITING_PLACES = ["", "right", "below", "below right"] as const;
-const INK = "img, svg, iframe, video, canvas, .sw-btn, hr";
-
-function inkOf(widget: Element, near: DOMRect): DOMRect[] {
-  const rects: DOMRect[] = [];
-  const range = document.createRange();
-  // A document that lays nothing out (a test's) has no line boxes to read.
-  if (typeof range.getClientRects !== "function") return rects;
-  const walker = document.createTreeWalker(widget, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => (node instanceof Element && node.matches(".ov, .ov *, .drop-ui, .drop-ui *") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
-  });
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node instanceof Text) {
-      if (node.data.trim() === "") continue;
-      range.selectNodeContents(node);
-      rects.push(...range.getClientRects());
-    } else if (node instanceof Element && node.matches(INK)) {
-      rects.push(node.getBoundingClientRect());
-    }
-  }
-  return rects.filter((r) => r.width > 0 && r.height > 0 && r.right > near.left && r.left < near.right && r.bottom > near.top && r.top < near.bottom);
-}
-
-const overlap = (a: DOMRect, b: DOMRect): number => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-
-function placeBar(frame: HTMLElement): void {
-  const bar = frame.querySelector<HTMLElement>(":scope > .ov-bar");
-  const own = frame.parentElement;
-  const page = frame.closest(".site");
-  if (!bar || !own || !page) return;
-  const places = frame.dataset.writing === "true" ? WRITING_PLACES : BAR_PLACES;
-  const boxes = places.map((place) => {
-    frame.dataset.bar = place;
-    return bar.getBoundingClientRect();
-  });
-  const near = new DOMRect(Math.min(...boxes.map((b) => b.left)), Math.min(...boxes.map((b) => b.top)), 0, 0);
-  const far = { right: Math.max(...boxes.map((b) => b.right)), bottom: Math.max(...boxes.map((b) => b.bottom)) };
-  const area = new DOMRect(near.left, near.top, far.right - near.left, far.bottom - near.top);
-  const ink = [...page.querySelectorAll<HTMLElement>("[data-block-id]")]
-    .filter((block) => block !== own && !own.contains(block) && !block.contains(own) && block.dataset.blockType !== "section" && block.dataset.blockType !== "column")
-    .flatMap((block) => inkOf(block, area));
-  const covered = boxes.map((box) => ink.reduce((sum, rect) => sum + overlap(box, rect), 0));
-  // The first place that covers nothing; else the top corner that covers
-  // less, or, a text being written, the bottom one.
-  const free = covered.indexOf(0);
-  const first = places === WRITING_PLACES ? 2 : 0;
-  const best = free >= 0 ? free : (covered[first + 1] ?? Infinity) < (covered[first] ?? Infinity) ? first + 1 : first;
-  frame.dataset.bar = places[best] ?? "";
-  if (frame.dataset.bar.startsWith("below")) showBarBelow(frame, bar);
-}
-
-// A written text's bar under the block is brought into the canvas's view
-// each time it is placed there: the blocks' scroll margin (editor.css)
-// keeps room for a bar above a block, not under it, and a text opening or
-// growing scrolls only its caret into view. The canvas scrolls just enough
-// to show the whole bar, with the blocks' 24 px under it where they fit,
-// and only while the caret is in view and stays there, below the sticky
-// width rule: a person who has scrolled away from the text, or a text
-// taller than the canvas written far above its end, keeps the view.
-const BAR_ROOM = 24;
-
-function showBarBelow(frame: HTMLElement, bar: HTMLElement): void {
-  const canvas = frame.closest<HTMLElement>(".canvas");
-  const own = frame.parentElement;
-  // A document that lays nothing out (a test's) has no view to scroll.
-  if (!canvas || !own || canvas.clientHeight === 0) return;
-  const view = canvas.getBoundingClientRect();
-  const bottom = Math.min(view.top + canvas.clientTop + canvas.clientHeight, window.innerHeight);
-  const top = view.top + canvas.clientTop;
-  const past = bar.getBoundingClientRect().bottom - bottom;
-  if (past <= 0) return;
-  const caret = caretOf(own);
-  if (caret.top < top || caret.bottom > bottom) return;
-  const by = Math.min(past + BAR_ROOM, caret.top - top);
-  if (by >= past) canvas.scrollTop += by;
-}
-
-// The caret's line box in a block being written, or, where the document's
-// selection lies elsewhere or draws no box, the block's own.
-function caretOf(own: HTMLElement): DOMRect {
-  const selection = document.getSelection();
-  if (selection && selection.rangeCount > 0 && selection.focusNode && own.contains(selection.focusNode)) {
-    const range = document.createRange();
-    range.setStart(selection.focusNode, selection.focusOffset);
-    const line = typeof range.getClientRects === "function" ? range.getClientRects()[0] : undefined;
-    if (line && line.height > 0) return line;
-  }
-  return own.getBoundingClientRect();
-}
-
-function barMark(frame: HTMLElement): () => void {
-  const place = () => placeBar(frame);
-  place();
-  const resized = new ResizeObserver(place);
-  const bar = frame.querySelector(":scope > .ov-bar");
-  if (bar) resized.observe(bar);
-  if (frame.parentElement) resized.observe(frame.parentElement);
-  const page = frame.closest(".site");
-  if (page) resized.observe(page);
-  const rescaled = new MutationObserver(place);
-  const scaled = frame.closest(".frame");
-  if (scaled) rescaled.observe(scaled, { attributes: true, attributeFilter: ["style", "data-scale"] });
-  rescaled.observe(frame, { attributes: true, attributeFilter: ["data-writing"] });
-  return () => {
-    resized.disconnect();
-    rescaled.disconnect();
-  };
-}
-
-// The selection's frame: placed on a button's pill when it hugs one, and
-// its bar placed.
-function selectionMark(hugs: boolean) {
-  return (frame: HTMLElement | null): (() => void) | undefined => {
-    if (!frame) return undefined;
-    const unhug = hugs ? hug(frame) : undefined;
-    const unplace = barMark(frame);
-    return () => {
-      unhug?.();
-      unplace();
-    };
-  };
-}
-
-const selectionPlain = selectionMark(false);
-const selectionHug = selectionMark(true);
+// The selection's frame on a button: placed on its pill.
+const selectionHug = (frame: HTMLElement | null): (() => void) | undefined => hug(frame);
 
 // A hovered block's name stands beside its outline, at its middle, as the
 // design draws it, unless there it would pass the canvas's right edge: a
@@ -510,20 +382,81 @@ export function DropIndicator({ mode, label }: { mode: "line" | "frame"; label: 
   );
 }
 
-// The keys the floating bar names, from the keymap (./keymap.ts).
-const BAR_KEYS = {
-  pickUp: entryKeysText(entry("pickUp")),
-  duplicate: entryKeysText(entry("duplicate")),
-  delete: entryKeysText(entry("delete")),
-};
+// The "+" a block draws (design/layout/NOTES.md, section 2, the rule for
+// when each shows), each block answering for its own:
+// - the selected widget's, on its bottom edge: hidden while its text is
+//   written, while the Insert drawer is open (its yellow line marks the
+//   spot instead) and while a picker is open;
+// - a section's seams: the one below the section that holds the
+//   selection, and any seam the pointer is over, the top of the first
+//   section and the foot of the last among them; with nothing selected,
+//   only the one under the pointer;
+// - the yellow line and the yellow "+" of a picker open at the block's
+//   place, and the Insert drawer's line in the column where a click in it
+//   lands;
+// - the large "+" of an empty column, always (./Marks draws it).
+type SeamState = "shown" | "hover" | "open" | null;
+
+interface Pluses {
+  after: boolean;
+  // The seam above the first section, and the one below this section.
+  above: SeamState;
+  below: SeamState;
+  // The index of the section, for its seams.
+  section: number;
+  // In a column: where a picker's line is open, and where the Insert
+  // drawer's line stands.
+  slot: number | null;
+  point: number | null;
+}
+
+// The section the selection is in (the section itself when it is one).
+function sectionOf(doc: PageDocument, selection: string | null): string | null {
+  if (selection === null) return null;
+  const found = locate(doc, selection);
+  return found ? (doc.sections[found.path[0] ?? -1]?.id ?? null) : null;
+}
+
+function usePluses(block: RawBlock, id: string | null, relation: Relation): Pluses {
+  const { store, ui } = useEnv();
+  const canvas = canvasUi(ui);
+  const type = block.type;
+  const writing = useStore(ui, (u) => id !== null && (u.editingText?.id === id || u.textTools?.id === id));
+  const insertOpen = useStore(ui, (u) => u.drawer === "insert");
+  const picking = useStore(canvas, (s) => s.inserting !== null);
+  const section = useStore(store, (s) => (type === "section" && id !== null && !s.drag ? s.document.sections.findIndex((x) => x.id === id) : -1));
+  const holds = useStore(store, (s) => type === "section" && id !== null && !s.drag && sectionOf(s.document, s.selection) === id);
+  const seam = (at: number) => (s: { inserting: ReturnType<typeof canvas.getState>["inserting"]; seam: number | null }): SeamState => {
+    if (section < 0) return null;
+    if (s.inserting?.kind === "section" && s.inserting.index === at) return "open";
+    if (s.seam === at) return "hover";
+    return null;
+  };
+  const below = useStore(canvas, seam(section + 1));
+  const above = useStore(canvas, section === 0 ? seam(0) : () => null);
+  const slot = useStore(canvas, (s) => (s.inserting?.kind === "block" && s.inserting.parentId === id ? s.inserting.index : null));
+  const point = useStore(store, (s) => {
+    if (!insertOpen || type !== "column" || id === null || s.drag) return null;
+    const at = insertTarget(s.document, "heading", s.selection);
+    return at?.parentId === id ? at.index : null;
+  });
+  return {
+    after: relation === "selected" && type !== "section" && type !== "column" && !writing && !insertOpen && !picking,
+    above,
+    below: below ?? (holds && !picking ? "shown" : null),
+    section,
+    slot,
+    point: picking ? null : point,
+  };
+}
 
 interface MarksProps {
   id: string;
   kind: "section" | "column" | "widget";
+  type: BlockType;
   name: string;
   relation: Relation;
   hovered: boolean;
-  columns: number;
   empty: boolean;
   mark: DragMark;
   // The outline and frame hug what the block draws (a button's pill).
@@ -532,29 +465,20 @@ interface MarksProps {
   dimension: Dimension | null;
   // A text being edited: its formatting buttons and link field.
   tools: TextTools | null;
+  pluses: Pluses;
 }
 
-function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: hugs, dimension, tools }: MarksProps) {
+const ADD_KEY = entryKeysText(entry("addHere"));
+
+function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs, dimension, tools, pluses }: MarksProps) {
   const env = useEnv();
-  const { store, ui, newId } = env;
-  const select = (target: string) => {
-    store.getState().select(target);
-    ui.setState({ tray: "edit" });
-    focusBlock(target);
-  };
-  const act = (command: "duplicate" | "delete") => {
-    runCommand(env, (doc) => (command === "duplicate" ? makeDuplicate(doc, id, newId) : makeDelete(doc, id)), "canvas");
-  };
-  const { insertMade } = useInsert();
-  // A section of one column, as the Section tile makes, right after this one.
-  const addSectionAfter = (sectionId: string) => {
-    const doc = store.getState().document;
-    const at = doc.sections.findIndex((s) => s.id === sectionId);
-    if (at >= 0) insertMade(makeInsertSection(doc, 1, at + 1, newId));
-  };
+  const dragging = useEditor((s) => s.drag !== null);
+  const after = pluses.after ? placeBeside(env.store.getState().document, id, "after") : null;
   return (
     <>
-      {empty && <div className="col-empty">Empty column</div>}
+      {empty && pluses.slot === null && <EmptyPlus id={id} name={name} />}
+      {pluses.slot !== null && <InsertSlot index={pluses.slot} />}
+      {pluses.point !== null && <InsertPoint index={pluses.point} />}
       {mark?.kind === "target" && <div className="ov ov-drop ov-drop-target" aria-hidden="true"><span className="ov-label">{mark.label}</span></div>}
       {mark?.kind === "open" && kind === "column" && <div className="ov ov-drop" aria-hidden="true" />}
       {mark?.kind === "shut" && (
@@ -564,43 +488,148 @@ function Marks({ id, kind, name, relation, hovered, columns, empty, mark, hug: h
       )}
       {relation === "selected" && dimension && <DimensionLine dimension={dimension} />}
       {relation === "selected" && (
-        <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? selectionHug : selectionPlain} data-writing={tools ? "true" : undefined}>
+        <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? selectionHug : undefined} data-writing={tools ? "true" : undefined}>
           <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
-          <div className="ov-bar" role="toolbar" aria-label={name}>
-            <button type="button" className="ov-grip" data-grip aria-label={`Move ${name}: drag, or press ${BAR_KEYS.pickUp} to pick it up`} title={`Drag to move. Or press ${BAR_KEYS.pickUp} to pick up.`}><Icon name="grip" /></button>
-            <span className="ov-name">{kind === "section" ? "Section" : name}</span>
-            {tools && <FormatButtons tools={tools} />}
-            <button type="button" aria-label={`Duplicate ${name}`} title={`Duplicate (${BAR_KEYS.duplicate})`} aria-keyshortcuts={ariaKeyShortcuts(entry("duplicate"))} onClick={() => act("duplicate")}><Icon name="duplicate" /></button>
-            <button type="button" aria-label={`Delete ${name}`} title={`Delete (${BAR_KEYS.delete})`} aria-keyshortcuts={ariaKeyShortcuts(entry("delete"))} onClick={() => act("delete")}><Icon name="trash" /></button>
-          </div>
+          {after && (
+            <button
+              className="ins ins-after"
+              type="button"
+              tabIndex={-1}
+              data-plus={placeKey(after)}
+              aria-label={`Add a block after ${name}`}
+              title={`Add a block after ${name} (${ADD_KEY})`}
+              onClick={(event) => openInserter(env, after, event.currentTarget)}
+            >
+              <Icon name="plus" />
+            </button>
+          )}
           {tools?.linkOpen && <LinkField tools={tools} />}
         </div>
       )}
+      {relation === "selected" && !dragging && <Clamp id={id} kind={kind} type={type} name={name} tools={tools} />}
+      {kind === "section" && pluses.above && <Seam at={0} state={pluses.above} edge="top" />}
+      {kind === "section" && pluses.below && <Seam at={pluses.section + 1} state={pluses.below} edge="bottom" />}
       {relation !== "selected" && hovered && (
         <div className={`ov ov-hover${hugs ? " ov-hug" : ""}`} ref={hugs ? hoverHug : hoverPlain} aria-hidden="true"><span className="ov-label">{name}</span></div>
       )}
-      {relation === "around" && (
-        <div className="ov ov-section">
-          {/* The section's tab: its grip moves the section (pressed, it
-              selects the section, which the drag then carries: ./drag/
-              dnd.ts listens on the whole page for a grip), its name
-              selects it, its + adds a section after it. */}
-          <div className="ov-tab ov-tab-section">
-            <span className="ov-tab-grip" data-grip aria-hidden="true" title="Drag to move this section" onPointerDown={() => select(id)}><Icon name="grip" className="i i-xs" /></span>
-            <button className="ov-tab-name" type="button" tabIndex={-1} aria-label={`Select section ${name}`} onClick={() => select(id)}>
-              {name} <em>{columns} {plural("column", columns)}</em>
-            </button>
-            <button className="ov-tab-add" type="button" tabIndex={-1} aria-label={`Add a section after ${name}`} title="Add a section after this one" onClick={() => addSectionAfter(id)}><Icon name="plus" className="i i-xs" /></button>
-          </div>
-        </div>
-      )}
-      {(relation === "parent" || relation === "column") && (
-        <div className="ov ov-col">
-          {relation === "parent" && (
-            <button className="ov-tab" type="button" tabIndex={-1} aria-label={`Select ${name}`} onClick={() => select(id)}>{name}</button>
-          )}
-        </div>
-      )}
+    </>
+  );
+}
+
+// The large "+" inside an empty column: it adds a block there.
+function EmptyPlus({ id, name }: { id: string; name: string }) {
+  const env = useEnv();
+  const place = { kind: "block", parentId: id, index: 0 } as const;
+  return (
+    <button className="ins-empty" type="button" tabIndex={-1} data-plus={placeKey(place)} aria-label={`Add a block to ${name}`} onClick={(event) => openInserter(env, place, event.currentTarget)}>
+      <span className="ins ins-big" aria-hidden="true"><Icon name="plus" /></span>
+      <span className="ins-empty-name">Add a block to {name}</span>
+      <small>Or drag one here from Insert</small>
+    </button>
+  );
+}
+
+// The picker's place in a column: a gap of the column's own, between the
+// blocks around it, with the yellow line and its "+", which closes the
+// picker. The column is a flex column: the gap is put in its place by
+// order, the blocks after it drawn after it, and the page's blocks keep
+// their elements.
+function InsertSlot({ index }: { index: number }) {
+  const env = useEnv();
+  const ref = useRef<HTMLDivElement>(null);
+  const title = useEditor((s) => {
+    const place = canvasUi(env.ui).getState().inserting;
+    return place ? placeWords(s.document, place).title : "";
+  });
+  useLayoutEffect(() => {
+    const slot = ref.current;
+    const column = slot?.parentElement;
+    if (!slot || !column) return undefined;
+    const blocks = [...column.children].filter((e): e is HTMLElement => e instanceof HTMLElement && e.dataset.blockId !== undefined);
+    blocks.forEach((element, at) => {
+      element.style.order = at >= index ? "2" : "";
+    });
+    slot.style.order = "1";
+    return () => blocks.forEach((element) => {
+      element.style.order = "";
+    });
+  }, [index]);
+  return (
+    <div ref={ref} className="ins-slot-wrap">
+      <div className="ins-slot" aria-hidden="true"><span className="ins-slot-line" /><span className="ins-slot-label">New block</span></div>
+      <button className="ins is-open" type="button" tabIndex={-1} aria-label={title} aria-expanded="true" aria-controls={PICKER_ID} onClick={() => closeInserter(env, true)}><Icon name="plus" /></button>
+    </div>
+  );
+}
+
+// Where a click in the Insert drawer lands (its drawer-where sentence
+// says it in words): the yellow line between the blocks around the place,
+// its words at its right end where the drawer covers its left end.
+function InsertPoint({ index }: { index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const point = ref.current;
+    const column = point?.parentElement;
+    if (!point || !column) return undefined;
+    const place = () => {
+      const blocks = [...column.children].filter((e): e is HTMLElement => e instanceof HTMLElement && e.dataset.blockId !== undefined);
+      const gap = parseFloat(getComputedStyle(column).rowGap) || 0;
+      const before = blocks[index - 1];
+      const after = blocks[index];
+      const y = before && after ? (before.offsetTop + before.offsetHeight + after.offsetTop) / 2
+        : before ? before.offsetTop + before.offsetHeight + gap / 2
+          : after ? after.offsetTop - gap / 2
+            : column.clientHeight / 2;
+      point.style.top = `${y}px`;
+      const line = point.getBoundingClientRect();
+      const covered = [...document.querySelectorAll(".drawer")].some((drawer) => drawer.getBoundingClientRect().right > line.left + line.width / 2 - 120);
+      if (covered) point.dataset.label = "right";
+      else delete point.dataset.label;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(column);
+    return () => observer.disconnect();
+  }, [index]);
+  return (
+    <div ref={ref} className="ins-point" aria-hidden="true">
+      <span className="ins-line" />
+      <span className="ins-label"><Icon name="plus" className="i i-xs" />A click in Insert lands here</span>
+    </div>
+  );
+}
+
+// A seam between two sections (or above the first, below the last): its
+// "+", the hairline and the tip naming the place while the pointer is
+// over it, the yellow line while its picker is open.
+function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>; edge: "top" | "bottom" }) {
+  const env = useEnv();
+  const doc = useEditor((s) => s.document);
+  const above = doc.sections[at - 1];
+  const below = doc.sections[at];
+  const label = state === "hover" && above && below
+    ? `Add a section between ${blockName(doc, above.id)} and ${blockName(doc, below.id)}`
+    : above ? `Add a section after ${blockName(doc, above.id)}` : below ? `Add a section before ${blockName(doc, below.id)}` : "Add a section";
+  const place = { kind: "section", index: at } as const;
+  return (
+    <>
+      {state === "hover" && <div className="seam-hover" data-edge={edge} aria-hidden="true"><span className="seam-hair" /></div>}
+      {state === "open" && <div className="seam" data-edge={edge} aria-hidden="true"><span className="seam-line" /><span className="seam-label">New section</span></div>}
+      <button
+        className={`ins ins-sec${state === "open" ? " is-open" : ""}${state === "hover" ? " is-hover" : ""}`}
+        type="button"
+        tabIndex={-1}
+        data-edge={edge}
+        data-plus={placeKey(place)}
+        aria-label={label}
+        aria-expanded={state === "open"}
+        aria-controls={state === "open" ? PICKER_ID : undefined}
+        title={label}
+        onClick={(event) => (state === "open" ? closeInserter(env, true) : openInserter(env, place, event.currentTarget))}
+      >
+        <Icon name="plus" />
+      </button>
+      {state === "hover" && <span className="seam-tip" data-edge={edge} aria-hidden="true">{label}</span>}
     </>
   );
 }
@@ -699,12 +728,19 @@ export function Canvas() {
 
   // The page's links, buttons and disclosures take no focus on the canvas:
   // Tab goes from block to block's tab stop, not through the page's links.
-  // The text being edited is its editor's to draw, links and all.
+  // The text being edited is its editor's to draw, links and all, and the
+  // clamp keeps its own Tab stop.
   useEffect(() => {
     frame.current?.querySelectorAll<HTMLElement>(".site a[href], .site summary, .site button, .site input, .site textarea, .site select, .site iframe").forEach((element) => {
-      if (!element.closest(".ov, .rte")) element.tabIndex = -1;
+      if (!element.closest(".ov, .rte, .clamp, .ins, .ins-empty")) element.tabIndex = -1;
     });
   }, [document]);
+
+  // A picker open at a place, or a drag: no seam answers the pointer.
+  const picking = useStore(canvasUi(ui), (s) => s.inserting !== null);
+  useEffect(() => {
+    if (picking || dragType !== null) canvasUi(ui).getState().setSeam(null);
+  }, [ui, picking, dragType]);
 
   // A provider's player never loads on the canvas. Its lazy frame waits in
   // a closed disclosure, but a frame put back into the page loads at once,
@@ -742,7 +778,7 @@ export function Canvas() {
 
   const pick = (target: EventTarget | null) => {
     const element = target instanceof Element ? target : null;
-    if (!element || element.closest(".ov-bar, .ov-tab")) return;
+    if (!element || element.closest(EDITOR_CONTROLS)) return;
     const root = element.closest<HTMLElement>("[data-block-id]");
     const id = root?.dataset.blockId ?? null;
     store.getState().select(id);
@@ -787,8 +823,9 @@ export function Canvas() {
             }}
             onClickCapture={(event) => {
               const element = event.target instanceof Element ? event.target : null;
-              // The text being edited and its link field take their own clicks.
-              if (element?.closest(".ov-bar, .ov-tab, .invite, .ov-link, .rte")) return;
+              // The editor's own controls, the text being edited and its link
+              // field take their own clicks.
+              if (element?.closest(`${EDITOR_CONTROLS}, .invite, .ov-link, .rte`)) return;
               // A link or a disclosure of the page does nothing on the canvas.
               event.preventDefault();
               // The theme's header and footer are inert, so a click on them
@@ -819,11 +856,22 @@ export function Canvas() {
             }}
             onPointerOver={(event) => {
               if (store.getState().drag) return;
-              const element = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
-              const id = element?.dataset.blockId ?? null;
+              // Over a "+" or a seam, no block is outlined.
+              const plus = event.target instanceof Element && event.target.closest(".ins, .ins-empty, .seam-tip") !== null;
+              const element = !plus && event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block-id]") : null;
+              const id = canvasUi(ui).getState().seam === null ? (element?.dataset.blockId ?? null) : null;
               if (ui.getState().hover !== id) ui.getState().setHover(id);
             }}
-            onPointerLeave={() => ui.getState().setHover(null)}
+            onPointerMove={(event) => {
+              if (store.getState().drag || canvasUi(ui).getState().inserting) return;
+              const seam = seamAt(event.currentTarget, event.clientX, event.clientY);
+              canvasUi(ui).getState().setSeam(seam);
+              if (seam !== null && ui.getState().hover !== null) ui.getState().setHover(null);
+            }}
+            onPointerLeave={() => {
+              ui.getState().setHover(null);
+              canvasUi(ui).getState().setSeam(null);
+            }}
           >
             {document.sections.length === 0 ? (
               <>
@@ -835,8 +883,30 @@ export function Canvas() {
           </div>
         </div>
       </SourceRef.Provider>
+      {/* Outside the page, which may be drawn smaller: at the editor's own
+          size, and scrolling with the page. */}
+      <InsertPicker />
     </main>
   );
+}
+
+// The editor's own controls on the page, whose clicks are their own.
+const EDITOR_CONTROLS = ".clamp, .ins, .ins-empty, .ins-slot-wrap, .seam, .seam-tip";
+
+// How near a seam between two sections the pointer must be for it to
+// answer, in the window's pixels.
+const SEAM_REACH = 12;
+
+// The seam the pointer is over: 0 above the first section, n below the
+// n-th; none away from them, or beside the page.
+function seamAt(frame: Element, x: number, y: number): number | null {
+  const sections = [...frame.querySelectorAll<HTMLElement>(".sw-main > [data-block-type=section]")];
+  if (sections.length === 0) return null;
+  const first = sections[0]!.getBoundingClientRect();
+  if (x < first.left || x > first.right) return null;
+  const edges = [first.top, ...sections.map((section) => section.getBoundingClientRect().bottom)];
+  const at = edges.findIndex((edge) => Math.abs(y - edge) <= SEAM_REACH);
+  return at < 0 ? null : at;
 }
 
 // A page root around the theme's header or footer alone, with the site's
@@ -875,7 +945,11 @@ function Invite() {
   return (
     <div className="invite chrome">
       <div className="invite-zone">
-        <h2>Start this page with a section</h2>
+        {/* The page's first seam, open: the section picker laid out on the page. */}
+        <div className="invite-title">
+          <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" /></span>
+          <h2>Start this page with a section</h2>
+        </div>
         <p>A section is a band across the page. Pick its columns; you can change them later.</p>
         {canPublish && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
         <div className="invite-layouts" role="group" aria-label="Add a section">
@@ -900,7 +974,7 @@ function Invite() {
             </button>
           ))}
         </div>
-        <p className="invite-alt"><Icon name="block" className="i i-xs" />Blocks go inside a column, so the section comes first; then add them from Insert, in the top bar.</p>
+        <p className="invite-alt"><Icon name="block" className="i i-xs" /><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span className="ins-glyph" role="img" aria-label="plus"><Icon name="plus" /></span> that offers them.</span></p>
       </div>
       {picking && (
         <ImagePicker

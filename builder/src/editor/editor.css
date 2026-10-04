@@ -501,8 +501,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* The page flush with the frame (design/layout/, section 4.8): 19 each
    side, and the scrollbar's gutter kept whether or not the page scrolls,
    so the room the page has (Canvas.tsx) does not change as it grows. The
-   page starts a little under the top bar, with the site's header: the
-   first section's floating bar and its tab go over the header. */
+   page starts a little under the top bar, with the site's header. */
 .canvas { grid-column: 1; grid-row: 3; position: relative; min-width: 0; overflow: hidden auto; scrollbar-gutter: stable; padding-top: 28px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
 .frame-fit { margin: 0 19px 32px; }
 .frame-fit.frame-fixed { margin: 0 auto 32px; }
@@ -527,10 +526,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    so nothing is asked of a provider while editing. */
 .canvas .site :is(a, summary, button, input, textarea, select, label, iframe) { pointer-events: none; }
 .canvas .sec, .canvas .col, .canvas .w { position: relative; }
-/* A block brought into view keeps its floating bar, 41 above it, in view.
-   A written text's bar under the block is brought into view where it is
-   placed (Canvas.tsx, showBarBelow). */
-.canvas .site [data-block-id] { scroll-margin: 56px 0 24px; }
+/* A block brought into view keeps room around it for its frame and its
+   "+"; the selected one, for a clamp that runs on below it too (Clamp.tsx
+   sets that one's own). */
+.canvas .site [data-block-id] { scroll-margin: 24px 0; }
 .canvas .site [data-block-id]:focus { outline: none; }
 .canvas .site [data-block-id]:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; box-shadow: 0 0 0 2px var(--white); }
 
@@ -540,7 +539,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* The theme sizes a block's children (a display heading's lines are at
    most 7.4em wide, .w-heading.size-display > *): the marks are children of
    the block too, and take none of it. */
-.canvas .site .ov, .canvas .site .col-empty { max-width: none; margin: 0; }
+.canvas .site .ov { max-width: none; margin: 0; }
 .ov-sel { inset: -6px; border: 2px solid var(--mark); border-radius: 2px; box-shadow: 0 0 0 1px var(--mark-key), inset 0 0 0 1px var(--mark-key); z-index: 7; }
 .sec > .ov-sel { inset: 8px; }
 .br { position: absolute; width: 16px; height: 16px; border: 0 solid var(--mark); filter: drop-shadow(1px 0 0 var(--mark-key)) drop-shadow(-1px 0 0 var(--mark-key)) drop-shadow(0 1px 0 var(--mark-key)) drop-shadow(0 -1px 0 var(--mark-key)); }
@@ -548,29 +547,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .br-tr { top: -8px; right: -8px; border-width: 3px 3px 0 0; }
 .br-bl { bottom: -8px; left: -8px; border-width: 0 0 3px 3px; }
 .br-br { bottom: -8px; right: -8px; border-width: 0 3px 3px 0; }
-.ov-bar {
-  position: absolute; left: -8px; bottom: calc(100% + 11px);
-  display: flex; align-items: center; gap: 1px; height: 30px; padding: 0 3px;
-  border-radius: var(--r-control); background: var(--mark); color: var(--on-mark);
-  font: 600 12px/1 var(--font-ui); pointer-events: auto; white-space: nowrap;
-  box-shadow: 0 0 0 1px var(--mark-key), 0 6px 14px -6px color-mix(in srgb, var(--mark) 60%, transparent);
-}
-/* Where the bar stands when the top left corner would cover the block
-   above (Canvas.tsx, placeBar): the top right corner, as the design says;
-   while a text is written and both top corners would, under the block,
-   its link field under the bar, and the dimension line it would cover not
-   drawn. */
-.ov-sel[data-bar~="right"] > .ov-bar { left: auto; right: -8px; }
-.ov-sel[data-bar~="below"] > .ov-bar { bottom: auto; top: calc(100% + 11px); }
-.ov-sel[data-bar~="below"] > .ov-link { top: calc(100% + 51px); }
-.ov-dim-v:has(~ .ov-sel[data-bar~="below"]) { visibility: hidden; }
-.ov-bar button, .ov-grip { display: grid; place-items: center; width: 26px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--on-mark); cursor: pointer; }
-.canvas .site .ov-bar button { pointer-events: auto; }
-.ov-bar button:hover { background: rgb(27 31 36 / .12); }
-.ov-bar button:focus-visible { outline: 2px solid var(--graphite); outline-offset: 1px; }
-.ov-grip { cursor: grab; }
-.ov-bar .i { width: 18px; height: 18px; }
-.ov-name { padding: 0 8px 0 2px; }
 
 /* A text being edited (./rich/). The editor's element stands where the
    page drew the text's paragraphs, one level down, so the page's space
@@ -585,13 +561,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    that ends one, with a break of its own: the page's empty character after
    each paragraph (site.css) would make a second. */
 .canvas .rte p::after { content: none; }
-/* Its buttons on the block's bar: bold, italic, link, between thin rules;
-   one that is on is graphite with the bar's yellow on it. */
-.ov-format { display: contents; }
-.ov-sep { width: 1px; height: 18px; margin: 0 3px; background: rgb(27 31 36 / .35); }
-.ov-bar .ov-fmt { font: 700 15px/1 var(--font-ui); }
-.ov-bar .ov-fmt-i { font-weight: 500; font-style: italic; }
-.ov-bar .ov-fmt[aria-pressed="true"] { background: var(--graphite); color: var(--mark); }
 /* The link's field, under the block, at the editor's own size. */
 .ov-link {
   position: absolute; left: -8px; top: calc(100% + 10px); z-index: 9; width: 320px; padding: 12px;
@@ -613,36 +582,18 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-hover[data-label-side="above"] .ov-label { left: auto; right: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
 /* There the name stands in the gap above the block, where the frame of a
    selection just before it runs: level with that frame, the hovered block,
-   later in the page, draws its name over the frame's line and corner. A
-   selection's bar, over the block before it, stays over that block's
-   marks, as before. */
+   later in the page, draws its name over the frame's line and corner. */
 .ov-hover[data-label-side="above"] { z-index: 7; }
 /* A button's root is as wide as its column, as on the published page; its
    outline and frame hug the pill it draws instead (Canvas.tsx, hug). */
 .ov-hover.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 4px); top: calc(var(--hug-y, 0px) - 4px); width: calc(var(--hug-w, 100%) + 8px); height: calc(var(--hug-h, 100%) + 8px); }
 .ov-sel.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 6px); top: calc(var(--hug-y, 0px) - 6px); width: calc(var(--hug-w, 100%) + 12px); height: calc(var(--hug-h, 100%) + 12px); }
 
-/* The section and the columns around the selection: dashed, graphite on plate. */
-.ov-section { inset: 0; outline: 1px dashed var(--rule); outline-offset: -1px; z-index: 4; }
-.ov-col { inset: -6px; outline: 1px dashed var(--rule); z-index: 4; }
-.ov-tab { position: absolute; display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--plate); color: var(--graphite); font: 600 12px/1 var(--font-ui); white-space: nowrap; pointer-events: auto; cursor: pointer; }
-.ov-tab em { font-style: normal; font-weight: 500; color: var(--steel); }
-.ov-tab:hover { background: var(--key); }
-.ov-tab:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
-.canvas .site .ov-tab, .canvas .site .ov-tab button { pointer-events: auto; }
-.ov-section .ov-tab { left: 50%; top: 0; transform: translate(-50%, -50%); }
-/* The section's tab holds three controls: the grip, the name, the +. */
-.ov-tab-section { gap: 2px; padding: 0 2px; cursor: default; }
-.ov-tab-section:hover { background: var(--plate); }
-.ov-tab-section > * { display: inline-flex; align-items: center; gap: 4px; height: 22px; margin: 0; padding: 0 4px; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; white-space: nowrap; cursor: pointer; }
-.ov-tab-section > :hover { background: var(--key); }
-.ov-tab-section > .ov-tab-grip { cursor: grab; color: var(--steel); padding: 0 2px; }
-.ov-tab-section > .ov-tab-add { color: var(--steel); padding: 0 3px; }
-.ov-tab-section > button:focus-visible { outline: 2px solid var(--graphite); outline-offset: 1px; }
-
 /* Dimension lines: the selected block's spacing measured in steps, never
-   in pixels, beside it (design/styles.css .ov-dim-v, .ov-pad). */
-.ov-dim-v { top: 100%; left: 46%; width: 12px; z-index: 8; }
+   in pixels, beside it (design/styles.css .ov-dim-v, .ov-pad); the gap's
+   in the block's left quarter, clear of the "+" on its bottom edge's
+   middle. */
+.ov-dim-v { top: 100%; left: 24%; width: 12px; z-index: 8; }
 .ov-pad { left: 62%; width: 12px; z-index: 8; }
 .ov-pad-top { top: 0; }
 .ov-dim-v::before, .ov-pad-top::before { content: ""; position: absolute; left: 5px; top: 1px; bottom: 1px; width: 2px; background: var(--mark-line); }
@@ -652,15 +603,6 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-pad-top span { top: 3px; }
 /* A step that is the previewed device's own carries its glyph. */
 .ov-dim-v span .i, .ov-pad span .i { width: 14px; height: 14px; stroke-width: 2; }
-
-.ov-col .ov-tab { left: -1px; bottom: -1px; transform: translateY(100%); border-radius: 0 0 var(--r-control) var(--r-control); }
-/* The tab hangs below its column: where the columns stack (a narrow page),
-   that is over the next column's dashed line, drawn later at the same
-   level, which would cross out the tab's name. */
-.ov-col:has(> .ov-tab) { z-index: 6; }
-
-/* An empty column on the canvas: a place to click and, later, to drop. */
-.col-empty { display: grid; place-items: center; min-height: 72px; padding: 12px; border-radius: 4px; outline: 1.5px dashed var(--rule); outline-offset: -1.5px; color: var(--steel); font: 500 12px/16px var(--font-ui); text-align: center; }
 
 /* Empty page: an invitation, not a void. */
 .invite { padding: 40px 48px 56px; color: var(--graphite); }
@@ -797,27 +739,20 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    smaller with it, since they hang from its blocks. The editor's own
    controls and words among them are drawn back up by the inverse of that
    scale, each from the point it hangs by, so they keep the design's size
-   and their place: the selection's bar, the section's and the column's
-   tabs, the names, the dimension badges, the drag's labels and notes, an
-   empty column's words, the empty page's invitation. The lines and
-   outlines stay with the blocks they surround. */
-.frame[data-scale] .ov-bar { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
-.frame[data-scale] .ov-sel[data-bar="right"] > .ov-bar { transform-origin: 100% 100%; }
-.frame[data-scale] .ov-sel[data-bar="below"] > .ov-bar { transform-origin: 0 0; }
-.frame[data-scale] .ov-sel[data-bar="below right"] > .ov-bar { transform-origin: 100% 0; }
+   and their place: the names, the dimension badges, the drag's labels and
+   notes, the empty page's invitation (the clamp, the "+" and their lines'
+   words: canvas.css). The lines and outlines stay with the blocks they
+   surround. */
 .frame[data-scale] .ov-link { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
 .frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] :is(.col, .sec) > .ov-hover .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
 .frame[data-scale] .ov-hover[data-label-side="above"] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 100% 100%; }
 .frame[data-scale] .sec > .ov-drop-target > .ov-label { transform-origin: 0 0; }
-.frame[data-scale] .ov-section .ov-tab { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); transform-origin: 50% 50%; }
-.frame[data-scale] .ov-col .ov-tab { transform: translateY(100%) scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] :is(.ov-dim-v, .ov-pad) span { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .drop-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] [data-drag-row] > .drop-slot .drop-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .veil-note { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
-.frame[data-scale] .col-empty { font-size: calc(12px * var(--canvas-unscale)); line-height: calc(16px * var(--canvas-unscale)); }
 .frame[data-scale] .invite { zoom: var(--canvas-unscale); }
 
 /* What follows the pointer: the tile of what is dragged, tilted. */

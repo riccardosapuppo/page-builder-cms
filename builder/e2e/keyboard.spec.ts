@@ -63,6 +63,22 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect(page.locator(".canvas [data-editor-selected=true]")).toHaveCount(0);
     await expect(page.locator(".canvas")).toBeFocused();
   },
+  async blockTools(page, pressed) {
+    // From the block, Tab goes to its clamp, one stop: the arrows go along
+    // it and Esc comes back; Tab from the clamp goes on to the sidebar.
+    await block(page, "a").click();
+    await press(page, pressed, "Tab");
+    const clamp = page.getByRole("toolbar", { name: "Heading tools" });
+    await expect(clamp.getByRole("button", { name: "Heading: block menu" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(clamp.getByRole("button", { name: /^Drag to move/ })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(block(page, "a")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(clamp.getByRole("button", { name: /^Drag to move/ })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect.poll(() => page.evaluate(() => document.activeElement?.closest(".sidebar") !== null)).toBe(true);
+  },
   async pickUp(page, pressed) {
     await block(page, "a").click();
     await press(page, pressed, "Space");
@@ -92,6 +108,32 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await press(page, pressed, "Escape");
     await expect(caption(page)).toHaveText("Cancelled: Heading is back where it was.");
     expect(await childIds(page, "c2")).toEqual(["a", "d"]);
+  },
+  async addHere(page, pressed) {
+    // The picker after the selected quote, its search taking the keys: the
+    // arrows go to its keys, Enter adds, by one command, focused; Esc
+    // closes it, the focus back on the block. Undone after, so the
+    // exercises below find the column as they expect it.
+    await block(page, "b").click();
+    await press(page, pressed, "+");
+    const picker = page.getByRole("dialog", { name: "Add a block after Quote" });
+    await expect(picker.getByRole("searchbox", { name: "Search blocks" })).toBeFocused();
+    await page.keyboard.type("div");
+    await page.keyboard.press("ArrowDown");
+    await expect(picker.getByRole("button", { name: "Divider" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(picker).toHaveCount(0);
+    await expect.poll(() => page.locator('.canvas [data-block-id="c1"] > [data-block-id]').evaluateAll((e) => e.map((x) => x.getAttribute("data-block-type")))).toEqual(["quote", "divider", "button"]);
+    await expect(page.locator('.canvas [data-block-id="c1"] > [data-block-type="divider"]')).toBeFocused();
+    await page.keyboard.press("Control+z");
+    await expect.poll(async () => (await childIds(page, "c1")).length).toBe(2);
+    await block(page, "b").click();
+    await page.keyboard.press("+");
+    await expect(picker.getByRole("searchbox", { name: "Search blocks" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(picker).toHaveCount(0);
+    await expect(block(page, "b")).toBeFocused();
+    expect(await childIds(page, "c1")).toEqual(["b", "c"]);
   },
   async addTile(page, pressed) {
     await block(page, "b").click();

@@ -54,6 +54,15 @@ test("a key press finds its entries, Ctrl or Cmd alike, Shift and Alt telling th
   expect(actions(press("?", { shiftKey: true }))).toEqual(["showShortcuts"]);
   expect(actions(press("?"))).toEqual(["showShortcuts"]);
   expect(actions(press("?", { ctrlKey: true }))).toEqual([]);
+  // So is "+": Shift and "=" on one keyboard, a key of its own on
+  // another, and the number pad's.
+  expect(actions(press("+", { shiftKey: true, code: "Equal" }))).toEqual(["addHere"]);
+  expect(actions(press("+", { code: "BracketRight" }))).toEqual(["addHere"]);
+  expect(actions(press("+", { code: "NumpadAdd" }))).toEqual(["addHere"]);
+  expect(actions(press("="))).toEqual([]);
+  expect(actions(press("+", { ctrlKey: true }))).toEqual([]);
+  // Tab is the browser's: from the selected block to its clamp.
+  expect(actions(press("Tab"))).toEqual(["blockTools"]);
   expect(matches({ key: "c", mod: true }, press("C", { ctrlKey: true, shiftKey: true }))).toBe(false);
   expect(actions(press("Enter", { ctrlKey: true, shiftKey: true }))).toEqual(["publish"]);
   expect(actions(press("Enter", { ctrlKey: true }))).toEqual([]);
@@ -157,6 +166,9 @@ test("the window and the menus name the keys as the design does", () => {
   expect(entryCaps(entry("deviceTablet"))).toEqual([{ text: "Alt" }, { text: "Shift" }, { text: "2" }]);
   expect(ariaKeyShortcuts(entry("devicePhone"))).toBe("Alt+Shift+3");
   expect(entryCaps(entry("blockMenu"))).toEqual([{ text: "Shift" }, { text: "F10" }]);
+  expect(entryCaps(entry("addHere"))).toEqual([{ text: "+" }]);
+  expect(ariaKeyShortcuts(entry("addHere"))).toBe("Plus");
+  expect(entryCaps(entry("blockTools"))).toEqual([{ text: "Tab" }]);
   // The words of the approved layout's window, the widths the previews'.
-  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, `On phone, ${PREVIEW_WIDTHS.phone} wide`]);
+  expect(KEYMAP.filter((e) => e.group === "Adding and looking").map((e) => e.label)).toEqual(["Add after the selection", "Add the block chosen in Insert", "Open Insert", "Open the outline", "Look at it on desktop", `On tablet, ${PREVIEW_WIDTHS.tablet} wide`, `On phone, ${PREVIEW_WIDTHS.phone} wide`]);
 });

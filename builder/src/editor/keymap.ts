@@ -25,9 +25,9 @@
 import { listed } from "./plain-words.ts";
 
 export type KeyAction =
-  | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection"
+  | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection" | "blockTools"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
-  | "addTile"
+  | "addHere" | "addTile"
   | "editText" | "blockMenu" | "copy" | "paste" | "duplicate" | "delete"
   | "bold" | "italic" | "link" | "leaveText"
   | "undo" | "redo" | "saveVersion"
@@ -104,6 +104,9 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "selectParent", group: "Selection", label: "Select the parent column or section", chords: [{ ...ARROW_UP, alt: true }], scope: "canvas", via: "keymap" },
   { action: "selectFirstChild", group: "Selection", label: "Select the first block inside", chords: [{ ...ARROW_DOWN, alt: true }], scope: "canvas", via: "keymap" },
   { action: "clearSelection", group: "Selection", label: "Clear the selection", chords: [ESCAPE], scope: "canvas", via: "keymap" },
+  // The selected block's clamp is the Tab stop after the block's own
+  // (./Clamp.tsx): the arrows go along it, Esc comes back to the block.
+  { action: "blockTools", group: "Selection", label: "Go to the block's clamp, then the sidebar", chords: [{ key: "Tab", code: "Tab" }], scope: "canvas", via: "native" },
 
   { action: "pickUp", group: "Moving", label: "Pick up the selected block", chords: [SPACE], scope: "canvas", via: "drag" },
   { action: "moveVertically", group: "Moving", label: "Move it up or down", chords: [ARROW_UP, ARROW_DOWN], each: true, scope: "moving", via: "drag" },
@@ -111,6 +114,11 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "drop", group: "Moving", label: "Drop it here", chords: [SPACE], scope: "moving", via: "drag" },
   { action: "cancelMove", group: "Moving", label: "Cancel and put it back", chords: [ESCAPE], scope: "moving", via: "drag" },
 
+  // The page's "+" from the keyboard: the picker after the selection,
+  // offering what fits there (./InsertPicker.tsx). "+" is a key of
+  // its own on some keyboards, Shift and "=" on others, and the number
+  // pad's.
+  { action: "addHere", group: "Adding and looking", label: "Add after the selection", chords: [{ key: "+" }], scope: "canvas", via: "keymap" },
   { action: "addTile", group: "Adding and looking", label: "Add the block chosen in Insert", chords: [{ key: "Enter" }], scope: "tile", via: "native" },
 
   { action: "editText", group: "Editing", label: "Edit the text of a block", chords: [{ key: "Enter" }], scope: "canvas", via: "keymap" },
@@ -156,7 +164,7 @@ function typingWords(): string {
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
   Moving: "While a block moves, the bottom line says where it will land, and screen readers hear the same sentence.",
   "Text, while you write": `In a text on the page, Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the sidebar’s fields.`,
-  "Adding and looking": "A block in Insert goes after the selection with Enter, or where it is dragged on the page.",
+  "Adding and looking": "On the page, + opens a picker beside the selection with only what fits there. A block in Insert goes after the selection with Enter, or where it is dragged on the page.",
 };
 
 // The keys of an event, as the chords name them. altGraph: the AltGr key
@@ -181,8 +189,9 @@ export function matches(chord: Chord, event: KeyPress, typing = false): boolean 
   if (Boolean(chord.mod) !== (event.ctrlKey || event.metaKey)) return false;
   if (Boolean(chord.alt) !== event.altKey) return false;
   if (typing && chord.alt && event.altGraph) return false;
-  // "?" is Shift and "/" on some keyboards and a key of its own on others.
-  if (chord.key === "?") return event.key === "?";
+  // "?" is Shift and "/" on some keyboards and a key of its own on others;
+  // so is "+", with "=".
+  if (chord.key === "?" || chord.key === "+") return event.key === chord.key;
   if (Boolean(chord.shift) !== event.shiftKey) return false;
   if (chord.key.length !== 1) return event.key === chord.key;
   if (event.key.toLowerCase() === chord.key.toLowerCase()) return true;
@@ -240,7 +249,8 @@ export function entryKeysText(entry: KeyEntry): string {
 
 // The keys as aria-keyshortcuts writes them: "Control+D", "Delete Backspace".
 export function ariaKeyShortcuts(entry: KeyEntry): string {
-  const one = (chord: Chord) => [chord.mod ? "Control" : null, chord.alt ? "Alt" : null, chord.shift ? "Shift" : null, chord.key === " " ? "Space" : chord.key.length === 1 ? chord.key.toUpperCase() : chord.key]
+  // "+" joins the keys of a chord there: the key itself is "Plus".
+  const one = (chord: Chord) => [chord.mod ? "Control" : null, chord.alt ? "Alt" : null, chord.shift ? "Shift" : null, chord.key === " " ? "Space" : chord.key === "+" ? "Plus" : chord.key.length === 1 ? chord.key.toUpperCase() : chord.key]
     .filter((part): part is string => part !== null).join("+");
   return entry.chords.map(one).join(" ");
 }

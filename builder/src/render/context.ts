@@ -35,8 +35,8 @@ export interface Decoration {
   // name: class, id and the data-block-* the contract reads stay the page's.
   attributes?: Readonly<Record<string, unknown>>;
   ref?: Ref<HTMLElement>;
-  // Drawn inside the root after the block's own content: the floating bar,
-  // an empty container's drop zone.
+  // Drawn inside the root after the block's own content: the selection's
+  // clamp, an empty container's "+".
   after?: ReactNode;
   // The block's content while the person edits it on the canvas, in place
   // of what the page draws: a text block's editor. Given what the page

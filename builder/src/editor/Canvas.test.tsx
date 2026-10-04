@@ -1,8 +1,10 @@
 // The canvas: every block of the page is a group with its role described;
-// a click selects the block it falls in and draws its marks and floating
-// bar there and nowhere else; the bar duplicates and deletes by their
-// commands; the page's links do nothing; the width previewed narrows the
-// page root; an empty page offers its first section.
+// a click selects the block it falls in and draws its marks and clamp
+// there and nowhere else; the clamp moves the block, its menus duplicate
+// and delete by their commands, and its keys give their place to bold,
+// italic and link while a text is written; a "+" opens its picker, which
+// adds by one command; the page's links do nothing; the width previewed
+// narrows the page root; an empty page offers its first section.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
@@ -10,6 +12,7 @@ import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import { makeSetProps } from "../document/commands.ts";
 import type { PageDocument } from "../shared/document.ts";
+import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas, dimensionOf, relationOf, tabStopOf } from "./Canvas.tsx";
 
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
@@ -27,23 +30,44 @@ test("every block is a group whose role is described, named as the navigator nam
   expect([...document.querySelectorAll<HTMLElement>(".canvas [data-block-id]")].filter((e) => e.tabIndex === 0).map((e) => e.dataset.blockId)).toEqual(["hero"]);
 });
 
-test("a click selects the block it falls in, whose marks and bar are drawn there only", () => {
+test("a click selects the block it falls in, whose marks and clamp are drawn there only, with the + on its edge and on the seam below its section", () => {
   const kit = editorKit({ document: page() });
   kit.render(<Canvas />);
   fireEvent.click(within(root("h1")).getByText("Winter series"));
   expect(kit.store.getState().selection).toBe("h1");
   expect(kit.ui.getState().tray).toBe("edit");
-  const bars = screen.getAllByRole("toolbar");
-  expect(bars).toHaveLength(1);
-  expect(bars[0]!.getAttribute("aria-label")).toBe("Heading");
-  expect(root("h1").contains(bars[0]!)).toBe(true);
+  const clamps = screen.getAllByRole("toolbar");
+  expect(clamps).toHaveLength(1);
+  expect(clamps[0]!.getAttribute("aria-label")).toBe("Heading tools");
+  expect(clamps[0]!.getAttribute("aria-orientation")).toBe("vertical");
+  expect(root("h1").contains(clamps[0]!)).toBe(true);
   expect(root("h1").tabIndex).toBe(0);
-  // The section and the columns around the selection are outlined, its own
-  // column named.
-  expect(root("hero").querySelector(":scope > .ov-section")?.textContent).toBe("Hero 2 columns");
-  expect(root("c1").querySelector(":scope > .ov-col")?.textContent).toBe("Column 1");
-  expect(root("c2").querySelector(":scope > .ov-col")?.textContent).toBe("");
-  expect(root("join").querySelector(":scope > .ov-section")).toBeNull();
+  // From the top: the head (the block menu), the grip, the moves, More.
+  expect(within(clamps[0]!).getAllByRole("button").map((key) => key.getAttribute("aria-label"))).toEqual([
+    "Heading: block menu", "Drag to move, or press Space to pick up", "Move up", "Move down", "More: copy, paste, duplicate, insert, delete",
+  ]);
+  // The "+" on its bottom edge, and on the seam below Hero only.
+  expect(within(root("h1")).getByRole("button", { name: "Add a block after Heading" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: /^Add a section/ }).map((plus) => plus.getAttribute("aria-label"))).toEqual(["Add a section after Hero"]);
+  expect(root("hero").querySelector(":scope > .ins-sec")).not.toBeNull();
+});
+
+test("the clamp is one Tab stop, its arrows go along it and Esc goes back to the block", () => {
+  const kit = editorKit({ document: page(), selection: "t1" });
+  kit.render(<Canvas />);
+  const clamp = screen.getByRole("toolbar", { name: "Text tools" });
+  const keys = within(clamp).getAllByRole("button");
+  expect(keys.map((key) => key.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+  keys[0]!.focus();
+  fireEvent.keyDown(keys[0]!, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(keys[1]);
+  expect(keys.map((key) => key.tabIndex)).toEqual([-1, 0, -1, -1, -1]);
+  fireEvent.keyDown(keys[1]!, { key: "End" });
+  expect(document.activeElement).toBe(keys[4]);
+  fireEvent.keyDown(keys[4]!, { key: "ArrowUp" });
+  expect(document.activeElement).toBe(keys[3]);
+  fireEvent.keyDown(keys[3]!, { key: "Escape" });
+  expect(document.activeElement).toBe(root("t1"));
 });
 
 test("the page's links do nothing on the canvas and take no focus", () => {
@@ -57,28 +81,139 @@ test("the page's links do nothing on the canvas and take no focus", () => {
   expect(kit.store.getState().selection).toBe("h1");
 });
 
-test("the bar duplicates and deletes the block by their commands", () => {
+test("the clamp's moves are one command each, the key kept; at an end the move says why it cannot be made", () => {
+  const kit = editorKit({ document: page(), selection: "t1" });
+  kit.render(<><Canvas /><BlockMenu /></>);
+  const column = () => kit.doc().sections[0]!.children[0]!.children.map((w) => w.id);
+  fireEvent.click(screen.getByRole("button", { name: "Move up" }));
+  expect(column()).toEqual(["t1", "h1", "b1"]);
+  expect(kit.lastCommand()).toMatchObject({ kind: "move", label: "Moved Text in Hero" });
+  // First in its column now: the key says so and does nothing.
+  const up = screen.getByRole("button", { name: "Move up" });
+  expect(up.getAttribute("aria-disabled")).toBe("true");
+  expect(up.getAttribute("title")).toBe("Already the first block in Column 1");
+  fireEvent.click(up);
+  expect(kit.store.getState().past).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Move down" }));
+  expect(column()).toEqual(["h1", "t1", "b1"]);
+  expect(kit.store.getState().past).toHaveLength(2);
+  // A column moves left and right.
+  act(() => kit.store.getState().select("c1"));
+  expect(screen.getByRole("toolbar", { name: "Column 1 tools" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Move left" }).getAttribute("title")).toBe("Already the first column");
+  fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+  expect(kit.doc().sections[0]!.children.map((c) => c.id)).toEqual(["c2", "c1"]);
+});
+
+test("More duplicates and deletes the block by their commands, the same menu a right click opens", () => {
   const kit = editorKit({ document: page(), selection: "b1" });
-  kit.render(<Canvas />);
-  fireEvent.click(screen.getByRole("button", { name: "Duplicate Button" }));
+  kit.render(<><Canvas /><BlockMenu /></>);
+  const more = () => fireEvent.click(screen.getByRole("button", { name: /^More: / }));
+  more();
+  expect(screen.getByRole("button", { name: /^More: / }).getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(within(screen.getByRole("menu", { name: "Button actions" })).getByRole("menuitem", { name: /^Duplicate/ }));
   const column = () => kit.doc().sections[0]!.children[0]!.children.map((w) => w.id);
   expect(column()).toEqual(["h1", "t1", "b1", "n1"]);
   expect(kit.lastCommand()).toMatchObject({ kind: "duplicate", label: "Duplicated Button in Hero" });
   expect(kit.store.getState().selection).toBe("n1");
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete Button" }));
+  more();
+  fireEvent.click(within(screen.getByRole("menu", { name: "Button actions" })).getByRole("menuitem", { name: /^Delete/ }));
   expect(column()).toEqual(["h1", "t1", "b1"]);
   expect(kit.lastCommand()).toMatchObject({ kind: "delete", label: "Deleted Button in Hero" });
   // The focus goes to the neighbour, now selected.
   expect(kit.store.getState().selection).toBe("b1");
+  // The head opens the block menu: the moves, then the same items.
+  fireEvent.click(screen.getByRole("button", { name: "Button: block menu" }));
+  expect(within(screen.getByRole("menu", { name: "Button: block menu" })).getAllByRole("menuitem").map((item) => item.getAttribute("data-item"))).toEqual([
+    "back", "on", "copy", "paste", "duplicate", "before", "after", "parent", "delete",
+  ]);
+  // Pressed again, it closes it.
+  fireEvent.click(screen.getByRole("button", { name: "Button: block menu" }));
+  expect(screen.queryByRole("menu")).toBeNull();
 });
 
-test("a refusal of the bar is said, and the page stays as it was", () => {
+test("a refusal from the clamp's menu is said, and the page stays as it was", () => {
   const kit = editorKit({ document: page(), selection: "c3" });
-  kit.render(<Canvas />);
-  fireEvent.click(screen.getByRole("button", { name: "Delete Column 1" }));
+  kit.render(<><Canvas /><BlockMenu /></>);
+  fireEvent.click(screen.getByRole("button", { name: /^More: / }));
+  fireEvent.click(within(screen.getByRole("menu", { name: "Column 1 actions" })).getByRole("menuitem", { name: /^Delete/ }));
   expect(kit.doc().sections[1]!.children).toHaveLength(1);
   expect(kit.ui.getState().notice).toBe("Join must keep at least 1 column.");
+});
+
+test("while a text is written, the clamp's moving keys give their place to bold, italic and link", () => {
+  const kit = editorKit({ document: page(), selection: "t1" });
+  const calls: string[] = [];
+  const tools = {
+    id: "t1", bold: true, italic: false, link: null, linkOpen: false,
+    run: { toggleBold: () => calls.push("bold"), toggleItalic: () => calls.push("italic"), openLink: () => calls.push("link"), closeLink: () => calls.push("close"), applyLink: () => null, removeLink: () => calls.push("remove") },
+  };
+  kit.render(<Canvas />);
+  act(() => kit.ui.setState({ textTools: tools }));
+  const clamp = screen.getByRole("toolbar", { name: "Text formatting" });
+  expect(within(clamp).getAllByRole("button").map((key) => [key.getAttribute("aria-label"), key.getAttribute("aria-pressed")])).toEqual([
+    ["Bold", "true"], ["Italic", "false"], ["Link", "false"],
+  ]);
+  expect(within(clamp).getByRole("img", { name: "Text, being written" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Move up" })).toBeNull();
+  // The "+" on the text's edge waits while it is written.
+  expect(screen.queryByRole("button", { name: "Add a block after Text" })).toBeNull();
+  for (const name of ["Bold", "Italic", "Link"]) fireEvent.click(within(clamp).getByRole("button", { name }));
+  expect(calls).toEqual(["bold", "italic", "link"]);
+  // Esc in the clamp goes back into the text.
+  fireEvent.keyDown(within(clamp).getByRole("button", { name: "Bold" }), { key: "Escape" });
+  expect(calls.at(-1)).toBe("close");
+  // The text closed: the moves are back.
+  act(() => kit.ui.setState({ textTools: null }));
+  expect(screen.getByRole("toolbar", { name: "Text tools" })).toBeTruthy();
+});
+
+test("a + opens its yellow line and the picker beside it, which offers only what fits there and adds by one command", async () => {
+  const kit = editorKit({ document: page(), selection: "h1" });
+  kit.render(<Canvas />);
+  fireEvent.click(screen.getByRole("button", { name: "Add a block after Heading" }));
+  const picker = screen.getByRole("dialog", { name: "Add a block after Heading" });
+  // The line opens in the column, after the heading, and its "+" is open.
+  const slot = root("c1").querySelector(":scope > .ins-slot-wrap")!;
+  expect(slot).not.toBeNull();
+  expect(within(slot as HTMLElement).getByRole("button", { name: "Add a block after Heading" }).getAttribute("aria-expanded")).toBe("true");
+  // Widgets only, all of them.
+  expect(within(picker).getAllByRole("button").filter((key) => key.classList.contains("pkey")).map((key) => key.textContent)).toEqual([
+    "Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion",
+  ]);
+  expect(picker.textContent).toContain("Lands on the yellow line, after Heading.");
+  // The search narrows them; Enter adds the first.
+  fireEvent.change(within(picker).getByRole("searchbox", { name: "Search blocks" }), { target: { value: "quo" } });
+  expect(within(picker).getAllByRole("button").filter((key) => key.classList.contains("pkey")).map((key) => key.textContent)).toEqual(["Quote"]);
+  fireEvent.keyDown(within(picker).getByRole("searchbox", { name: "Search blocks" }), { key: "Enter" });
+  expect(kit.doc().sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "text", "button"]);
+  expect(kit.lastCommand()).toMatchObject({ kind: "insert", label: "Added Quote to Column 1 in Hero" });
+  expect(kit.store.getState().past).toHaveLength(1);
+  expect(kit.store.getState().selection).toBe("n1");
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(root("c1").querySelector(":scope > .ins-slot-wrap")).toBeNull();
+});
+
+test("the seam's picker offers 1 to 4 columns and the ready-made sections, and Esc closes it with nothing added", () => {
+  const kit = editorKit({ document: page(), selection: "q1" });
+  kit.render(<Canvas />);
+  // Below Join, the section that holds the selection: the page's end.
+  fireEvent.click(screen.getByRole("button", { name: "Add a section after Join" }));
+  const picker = screen.getByRole("dialog", { name: "Add a section after Join" });
+  expect(within(picker).getByRole("group", { name: "Columns" }).textContent).toBe("1 column2 columns3 columns4 columns");
+  expect(within(within(picker).getByRole("group", { name: "Ready-made" })).getAllByRole("button").map((key) => key.textContent)).toEqual(["Heading and intro", "Picture beside text", "Three icon boxes"]);
+  expect(root("join").querySelector(":scope > .seam")).not.toBeNull();
+  fireEvent.keyDown(within(picker).getByRole("searchbox", { name: "Search sections" }), { key: "Escape" });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(kit.store.getState().past).toHaveLength(0);
+  // Open again: 2 columns, at the end of the page.
+  fireEvent.click(screen.getByRole("button", { name: "Add a section after Join" }));
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Add a section after Join" })).getByRole("button", { name: "2 columns" }));
+  expect(kit.doc().sections.map((s) => s.children.length)).toEqual([2, 1, 2]);
+  expect(kit.lastCommand()).toMatchObject({ kind: "insert", label: "Added a section with 2 columns" });
+  // Its two empty columns each hold a large "+".
+  expect(screen.getAllByRole("button", { name: /^Add a block to Column [12]$/ })).toHaveLength(2);
 });
 
 test("hovering a block outlines it with its name", () => {
@@ -150,8 +285,8 @@ test("an empty page offers its first section", () => {
   expect(kit.doc().sections).toHaveLength(1);
   expect(kit.doc().sections[0]!.children).toHaveLength(2);
   expect(kit.lastCommand()?.label).toBe("Added a section with 2 columns");
-  // Its empty columns are places to click.
-  expect(screen.getAllByText("Empty column")).toHaveLength(2);
+  // Its empty columns each hold a large "+" that adds a block there.
+  expect(screen.getAllByRole("button", { name: /^Add a block to Column [12]$/ })).toHaveLength(2);
 });
 
 test("a ready-made section comes with its widgets, the page's title as its heading", () => {

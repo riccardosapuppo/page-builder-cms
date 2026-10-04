@@ -9,6 +9,9 @@
 // (./drag/DragLayer.tsx): the new block is made, with its ids, when the
 // drag begins.
 //
+// At its foot, a sentence says the page's own "+" add where they sit
+// (./InsertPicker.tsx): the drawer is the catalogue, the "+" the way.
+//
 // Three widgets need something first (an image, images, a video), and so
 // does the ready-made section with a picture: their key asks for it, then
 // adds the block with it. Those are added by Enter or a click only, since a
@@ -212,6 +215,7 @@ export function Palette() {
         )}
         {tab === "sections" && presets.length === 0 && <p className="palette-none" role="status">No ready-made section is called “{query.trim()}”.{blocksFound ? " Blocks has one." : ""}</p>}
       </div>
+      <p className="drawer-foot">On the page, the round <span className="ins-glyph" role="img" aria-label="plus"><Icon name="plus" /></span> buttons add right where they sit, and offer only what fits there.</p>
 
       {asking === "picture" && (
         <ImagePicker

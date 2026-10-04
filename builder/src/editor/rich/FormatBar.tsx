@@ -1,45 +1,13 @@
-// The text's formatting controls on the canvas, drawn on the selected
-// text block's floating bar while its editor is open (../Canvas.tsx): bold,
-// italic and link, in the bar's own yellow, after the block's name; and
-// the link's field under the block. They act through the editor's
-// commands (./tools.ts), so they live in the editor's main chunk while
-// TipTap waits in its own.
-//
-// A press on a button keeps the focus in the text, with its selection, as
-// the keys do (Ctrl+B, Ctrl+I, Ctrl+K); from the keyboard, Tab reaches the
-// buttons from the text, and each puts the focus back in it.
+// The link's field of a text written on the canvas, opened from the
+// clamp's Link key or its keys (../Clamp.tsx carries bold, italic and
+// link while the text is written): under the block, at the editor's own
+// size. It acts through the editor's commands (./tools.ts), so it lives
+// in the editor's main chunk while TipTap waits in its own.
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { describedBy, ErrorList } from "../controls.tsx";
 import { Icon } from "../icons.tsx";
-import { ariaKeyShortcuts, entry, entryKeysText } from "../keymap.ts";
 import { usePageLinks } from "../session.tsx";
 import type { TextTools } from "./tools.ts";
-
-const keep = (event: { preventDefault(): void }) => event.preventDefault();
-
-export function FormatButtons({ tools }: { tools: TextTools }) {
-  return (
-    <span className="ov-format" role="group" aria-label="Formatting">
-      <span className="ov-sep" aria-hidden="true" />
-      <button type="button" className="ov-fmt ov-fmt-b" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()}>B</button>
-      <button type="button" className="ov-fmt ov-fmt-i" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()}>I</button>
-      <button
-        type="button"
-        className="ov-fmt"
-        aria-label={tools.link ? `Link to ${tools.link}` : "Link"}
-        aria-pressed={tools.link !== null}
-        aria-expanded={tools.linkOpen}
-        aria-keyshortcuts={ariaKeyShortcuts(entry("link"))}
-        title={`Link (${entryKeysText(entry("link"))})`}
-        onMouseDown={keep}
-        onClick={() => (tools.linkOpen ? tools.run.closeLink(true) : tools.run.openLink())}
-      >
-        <Icon name="link" />
-      </button>
-      <span className="ov-sep" aria-hidden="true" />
-    </span>
-  );
-}
 
 // The link's field: the address, refused with its reason as the server
 // would refuse it (./link-check.ts), the site's pages offered as the

@@ -1,0 +1,187 @@
+/* ==========================================================================
+   The canvas's own controls on the page (./Canvas.tsx, ./Clamp.tsx,
+   ./InsertPicker.tsx), from the approved layout's design/layout/styles.css,
+   section 6: the selected block's clamp in the page's margin, the round
+   "+" that add on the page, the yellow insertion line, the picker beside
+   it, the seams between sections, and the Insert drawer's line. After
+   editor.css, whose tokens they take.
+
+   They are drawn inside the page's blocks, so the theme's rules for a
+   block's children and for its buttons are undone here: no margin, no
+   width of the theme's, the pointer back, the editor's own focus ring.
+   1. The clamp   2. The "+"   3. Lines on the page   4. The picker
+   5. A page drawn smaller
+   ========================================================================== */
+
+/* ---------- 1. The clamp ---------- */
+/* A vertical graphite bar beside the block (./clamp-place.ts places it:
+   left and top come from there), its yellow head naming the block's kind;
+   the full clamp, 34 wide, with a tie to the selection's frame, or the
+   narrow one, 28, in a gutter under 48. */
+.clamp {
+  position: absolute; z-index: 9; left: 0; top: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 34px; max-width: none; margin: 0; padding: 0 0 3px;
+  border-radius: 8px; background: var(--graphite); color: var(--white);
+  box-shadow: 0 0 0 1px var(--white), 0 10px 20px -10px rgb(27 31 36 / .6);
+  font: 400 13px/18px var(--font-ui); letter-spacing: normal; text-align: left; pointer-events: auto;
+}
+/* The tie: from the clamp's side that faces the block to the frame. */
+.clamp[data-tie="on"]::after { content: ""; position: absolute; left: 100%; top: 14px; width: var(--tie, 8px); height: 6px; background: var(--graphite); box-shadow: 0 1px 0 var(--white), 0 -1px 0 var(--white); }
+.clamp[data-tie="on"][data-side="right"]::after { left: auto; right: 100%; }
+.canvas .site .clamp > :is(button, .clamp-head) {
+  display: grid; place-items: center; width: 28px; height: 28px; margin: 0; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: var(--white); font: inherit; cursor: pointer; pointer-events: auto;
+}
+.canvas .site .clamp > .clamp-head { width: 34px; height: 34px; border-radius: 8px 8px 5px 5px; background: var(--mark); color: var(--on-mark); box-shadow: inset 0 0 0 1.5px var(--graphite); }
+.clamp-head .i { stroke-width: 1.6; }
+.canvas .site .clamp > button:not(.clamp-head):hover { background: rgb(255 255 255 / .16); }
+.canvas .site .clamp > button[aria-pressed="true"], .canvas .site .clamp > button[aria-expanded="true"]:not(.clamp-head) { background: var(--white); color: var(--graphite); }
+.canvas .site .clamp > .clamp-head[aria-expanded="true"] { box-shadow: inset 0 0 0 2.5px var(--graphite); }
+.canvas .site .clamp > button[aria-disabled="true"] { color: rgb(255 255 255 / .42); cursor: default; }
+.canvas .site .clamp > button[aria-disabled="true"]:hover { background: none; }
+.canvas .site .clamp > .clamp-grip { cursor: grab; }
+.canvas .site .clamp > .clamp-head-static { cursor: default; }
+.canvas .site .clamp > hr { width: 16px; height: 1px; margin: 1px 0; padding: 0; border: 0; background: rgb(255 255 255 / .38); }
+.clamp .i-strong { stroke-width: 2.1; }
+/* On graphite the focus ring turns white; on the yellow head it stays
+   graphite, with a white keyline. */
+.canvas .site .clamp > :focus { outline: none; }
+.canvas .site .clamp > :focus-visible { outline: 2px solid var(--white); outline-offset: 1px; box-shadow: none; }
+.canvas .site .clamp > .clamp-head:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; box-shadow: 0 0 0 2px var(--white); }
+/* The narrow clamp: 28 wide, keys of 26, no tie. */
+.clamp[data-size="narrow"] { width: 28px; }
+.canvas .site .clamp[data-size="narrow"] > :is(button, .clamp-head) { width: 26px; height: 26px; }
+.canvas .site .clamp[data-size="narrow"] > .clamp-head { width: 28px; height: 28px; border-radius: 7px 7px 4px 4px; }
+.clamp[data-size="narrow"] > .clamp-head .i { width: 18px; height: 18px; }
+
+/* ---------- 2. The "+" ---------- */
+/* White with a graphite ring where a block can go, graphite where a
+   section can go, Tool yellow while its picker is open. */
+.canvas .site .ins, .invite .ins, .ins-glyph {
+  position: absolute; z-index: 9;
+  display: grid; place-items: center; width: 24px; height: 24px; max-width: none; margin: 0; padding: 0;
+  border: 0; border-radius: 50%; background: var(--white); color: var(--graphite);
+  box-shadow: inset 0 0 0 1.5px var(--graphite), 0 0 0 2px var(--white), 0 4px 10px -4px rgb(27 31 36 / .5);
+  cursor: pointer; pointer-events: auto;
+}
+.ins .i { width: 16px; height: 16px; stroke-width: 2; }
+.canvas .site .ins:hover { background: var(--key); }
+.canvas .site .ins-sec, .invite .ins-sec { width: 32px; height: 32px; background: var(--graphite); color: var(--white); }
+.canvas .site .ins-sec:hover, .canvas .site .ins-sec.is-hover { background: #2C323A; }
+.canvas .site .ins-sec.is-hover { box-shadow: inset 0 0 0 1.5px var(--graphite), 0 0 0 3px var(--white), 0 4px 10px -4px rgb(27 31 36 / .5); }
+.ins-sec .i { width: 18px; height: 18px; }
+.canvas .site .ins.is-open, .canvas .site .ins.is-open:hover { background: var(--mark); color: var(--on-mark); box-shadow: inset 0 0 0 1.5px var(--graphite), 0 0 0 2px var(--white); }
+.canvas .site .ins:focus { outline: none; }
+.canvas .site .ins:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
+.invite .ins.is-static { cursor: default; }
+/* On the selected block's bottom edge, in the middle: on the frame's line,
+   so on a button's pill. */
+.ov-sel > .ins-after { left: 50%; bottom: 0; transform: translate(-50%, 50%); }
+/* On a seam, in the middle of the page. */
+.sec > .ins-sec { left: 50%; bottom: 0; transform: translate(-50%, 50%); }
+.sec > .ins-sec[data-edge="top"] { top: 0; bottom: auto; transform: translate(-50%, -50%); }
+/* Inside an empty column: large, with words, filling the column. */
+.canvas .site .ins-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 100%; max-width: none; min-height: 220px; margin: 0; padding: 16px;
+  border: 1.5px dashed var(--mark-line); border-radius: 8px; background: var(--plate); color: var(--graphite);
+  text-align: center; font: 400 13px/18px var(--font-ui); letter-spacing: normal; cursor: pointer; pointer-events: auto;
+}
+.canvas .site .ins-empty:hover { background: var(--key); }
+.canvas .site .ins-empty:focus { outline: none; }
+.canvas .site .ins-empty:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
+.canvas .site .ins-empty > .ins { position: static; margin-bottom: 8px; pointer-events: none; }
+.canvas .site .ins-big { width: 44px; height: 44px; }
+.ins-big .i { width: 24px; height: 24px; stroke-width: 1.75; }
+.ins-empty-name { font-size: 14px; line-height: 20px; font-weight: 600; }
+.ins-empty small { color: var(--steel); font-size: 12px; line-height: 16px; }
+/* While a block moves, the empty column is a place to drop it. */
+.canvas-drag .site .ins-empty { pointer-events: none; }
+/* The sign in a sentence. */
+.ins-glyph { position: relative; display: inline-grid; width: 18px; height: 18px; margin: 0 2px; vertical-align: -4px; box-shadow: inset 0 0 0 1.5px var(--graphite); cursor: inherit; }
+.ins-glyph .i { width: 12px; height: 12px; stroke-width: 2; }
+/* The empty page: its first seam, open. */
+.invite-title { display: flex; align-items: center; gap: 12px; }
+.invite-title .ins { position: static; flex: none; }
+
+/* ---------- 3. Lines on the page ---------- */
+/* After a "+" is pressed: the yellow insertion line opens at its place, a
+   gap of the column's own; or across the page, on a seam. */
+.canvas .site .ins-slot-wrap { position: relative; z-index: 8; flex: none; max-width: none; margin: 0; }
+.ins-slot { position: relative; height: 40px; border-radius: 4px; outline: 1.5px dashed var(--mark-line); outline-offset: -1.5px; }
+.ins-slot-line, .seam-line, .ins-line { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
+:is(.ins-slot-line, .seam-line, .ins-line)::before, :is(.ins-slot-line, .seam-line, .ins-line)::after { content: ""; position: absolute; top: -6px; width: 3px; height: 15px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
+:is(.ins-slot-line, .seam-line, .ins-line)::before { left: 0; }
+:is(.ins-slot-line, .seam-line, .ins-line)::after { right: 0; }
+.ins-slot-label, .seam-label, .ins-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px var(--mark-key); font: 600 12px/16px var(--font-ui); letter-spacing: normal; white-space: nowrap; }
+.canvas .site .ins-slot-wrap > .ins { left: 50%; top: 20px; transform: translate(-50%, -50%); }
+.canvas .site .seam, .canvas .site .seam-hover { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; height: 0; max-width: none; margin: 0; pointer-events: none; }
+.canvas .site :is(.seam, .seam-hover)[data-edge="top"] { top: 0; bottom: auto; }
+.seam-line { left: 24px; right: 24px; top: 0; }
+.seam-label { left: 40px; top: 0; }
+/* The pointer over a seam: a hairline across the page, the seam's "+",
+   and a tip that names where the section goes. */
+.seam-hair { position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; background: repeating-linear-gradient(90deg, var(--graphite) 0 8px, transparent 8px 13px); }
+.canvas .site .seam-tip { position: absolute; z-index: 10; left: calc(50% + 30px); bottom: 0; max-width: none; margin: 0; transform: translateY(50%); padding: 5px 9px; border-radius: 6px; background: var(--graphite); color: var(--white); font: 600 12px/16px var(--font-ui); letter-spacing: normal; white-space: nowrap; pointer-events: none; }
+.canvas .site .seam-tip[data-edge="top"] { top: 0; bottom: auto; transform: translateY(-50%); }
+/* Where a click in the Insert drawer lands: the drop line's twin, its
+   words at its right end where the drawer covers its left end. */
+.canvas .site .ins-point { position: absolute; left: -8px; right: -8px; z-index: 8; height: 3px; max-width: none; margin: -1.5px 0 0; pointer-events: none; }
+.ins-line { top: 0; margin-top: 0; }
+.ins-point .ins-label { left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 5px; }
+.ins-point[data-label="right"] .ins-label { left: auto; right: 14px; transform: translateY(-50%); }
+.ins-label .i { stroke-width: 2.25; }
+
+/* ---------- 4. The picker ---------- */
+/* Beside its line, offering only what fits there; a short graphite
+   leader joins it to the line (InsertPicker.tsx places both). */
+.picker {
+  position: absolute; z-index: 30;
+  display: flex; flex-direction: column;
+  border-radius: var(--r-tray); background: var(--plate); box-shadow: var(--lift);
+  color: var(--graphite); font: 400 13px/18px var(--font-ui); text-align: left;
+}
+.picker::before { content: ""; position: absolute; top: var(--leader-y, 50%); width: 28px; height: 2px; margin-top: -1px; background: var(--graphite); }
+.picker[data-side="right"]::before { right: 100%; }
+.picker[data-side="left"]::before { left: 100%; }
+.picker[data-side="over"]::before, .picker-s::before { display: none; }
+.picker-w { width: 392px; }
+.picker-s { width: 456px; }
+.picker-head { padding: 12px 12px 10px; }
+.picker-head .search { margin-top: 0; }
+.picker-head-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 10px 14px; }
+.picker-head-title h2 { font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; }
+.search-small { width: 184px; height: 30px; }
+.picker-sub { padding: 0 14px 8px; color: var(--steel); font-size: 12px; line-height: 16px; font-weight: 600; }
+.pkeys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 12px 12px; }
+.pkey { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; border-radius: var(--r-control); background: var(--key); color: var(--graphite); font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
+.pkey:hover { background: var(--alloy); }
+.layouts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0 12px 12px; }
+.picker .layout-btn { gap: 8px; padding: 12px 6px 10px; font-size: 12px; line-height: 16px; }
+.picker .layout-pic { width: 56px; height: 28px; gap: 3px; }
+.pick-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 12px 14px; }
+.picker .preset { padding: 8px 8px 10px; gap: 8px; }
+.picker .preset-pic { height: 60px; padding: 10px; }
+.picker .preset-name { font-size: 12px; line-height: 16px; }
+.picker-none { padding: 0 14px 12px; color: var(--steel); }
+.picker-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 14px 11px; border-radius: 0 0 var(--r-tray) var(--r-tray); background: var(--key); color: var(--steel); font-size: 12px; line-height: 18px; }
+.picker-foot strong { color: var(--graphite); font-weight: 600; }
+.picker-foot .link { margin-top: 2px; font-size: 12px; line-height: 16px; }
+.picker-keys { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+
+/* ---------- 5. A page drawn smaller ---------- */
+/* The clamp, the "+" and the words on the lines keep their size and their
+   place on a page drawn smaller to fit (Canvas.tsx, fitPreview): each is
+   drawn back up from the point it hangs by. The clamp hangs by its top
+   left corner, where ./Clamp.tsx puts it. */
+.frame[data-scale] .clamp { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] .ov-sel > .ins-after, .frame[data-scale] .sec > .ins-sec { transform: translate(-50%, 50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] .sec > .ins-sec[data-edge="top"] { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] .ins-slot-wrap > .ins { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] :is(.ins-slot-label, .seam-label) { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
+.frame[data-scale] .ins-point .ins-label { transform: translate(-50%, -50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] .ins-point[data-label="right"] .ins-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 100% 50%; }
+.frame[data-scale] .seam-tip { transform: translateY(50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
+.frame[data-scale] .seam-tip[data-edge="top"] { transform: translateY(-50%) scale(var(--canvas-unscale)); }
+.frame[data-scale] .ins-empty > * { zoom: var(--canvas-unscale); }

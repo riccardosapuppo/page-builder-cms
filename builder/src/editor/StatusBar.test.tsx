@@ -1,6 +1,7 @@
 // The bottom line: the selection's path from the page, each step a button
 // that selects it; what to press when nothing is selected, or to go inside
-// a section or a column; Block edges; the device in one click, a radio
+// a section or a column, or to finish a text being written, and where a
+// section goes from the seam under the pointer; Block edges; the device in one click, a radio
 // group the arrows move along, and the Alt+Shift digits; the page's width
 // as the canvas lays it out, with its layout and the scale it is drawn at.
 // @vitest-environment jsdom
@@ -8,6 +9,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
+import { canvasUi } from "./canvas-ui.ts";
 import { EditorKeys } from "./keys.ts";
 import { pathTo, StatusBar, widthWords } from "./StatusBar.tsx";
 
@@ -28,6 +30,21 @@ test("the path goes from the page to the selection, each step a button that sele
   expect(crumbs().map((c) => c.getAttribute("aria-current"))).toEqual(["location"]);
   expect(screen.getByRole("navigation", { name: "Selection" }).textContent).toBe("PageNothing selected. Click a block, or pressDown arrow on the page.");
   expect(pathTo(kit.doc(), "nothing-here")).toEqual([]);
+});
+
+test("the line says what to do while a text is written, and where a section goes while the pointer is over a seam", () => {
+  const kit = editorKit({ document: page(), selection: "t1" });
+  kit.render(<StatusBar />);
+  const line = () => screen.getByRole("navigation", { name: "Selection" }).textContent;
+  act(() => kit.ui.setState({ editingText: { id: "t1", at: "end" } }));
+  expect(line()).toBe("PageHeroColumn 1TextWriting.Esc to finish");
+  act(() => kit.ui.setState({ editingText: null }));
+  expect(line()).toBe("PageHeroColumn 1Text");
+  act(() => kit.store.getState().select(null));
+  act(() => canvasUi(kit.ui).getState().setSeam(1));
+  expect(line()).toBe("PageNothing selected. Point between two sections to add one there.");
+  act(() => canvasUi(kit.ui).getState().setSeam(null));
+  expect(line()).toBe("PageNothing selected. Click a block, or pressDown arrow on the page.");
 });
 
 test("the device is one click, the arrows move along the three, and the Alt+Shift digits choose it from anywhere", () => {

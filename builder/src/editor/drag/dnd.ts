@@ -32,8 +32,8 @@ export function plugins(defaults: Plugins<DragDropManager>): Plugins<DragDropMan
 }
 
 // The source of a drag from the canvas: its selected block, carried by
-// the floating bar's grip with the mouse and by the keymap's keys (Space)
-// on the block itself or the grip.
+// the clamp's grip with the mouse and by the keymap's keys (Space) on
+// the block itself or the grip.
 export const SELECTION_SOURCE = "canvas-selection";
 
 const onGrip = (target: EventTarget | null): boolean => target instanceof Element && target.closest("[data-grip]") !== null;
@@ -45,9 +45,8 @@ export const SELECTION_SENSORS = [
     preventActivation: (event) => !onGrip(event.target),
     activationConstraints: [new PointerActivationConstraints.Distance({ value: 4 })],
     // A press is heard anywhere on the page, not only on the selected
-    // block: the grip of a section's tab sits outside the block selected
-    // inside that section. Pressed, it selects the section, which the drag
-    // then carries, as it carries whatever is selected when it starts.
+    // block's box: the clamp's grip stands in the margin beside it. The
+    // drag carries whatever is selected when it starts.
     activatorElements: (source) => {
       const page = source.element?.closest(".canvas .frame") ?? source.element;
       return page ? [page] : [];

@@ -17,6 +17,8 @@ import { afterRender, runCommand, runRedo, runUndo, focusBlock, placeFocus, regi
 import { copySelection, pasteText } from "./clipboard.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { openDrawer, toggleDrawer } from "./Drawer.tsx";
+import { placeForKey } from "./insert-place.ts";
+import { openInserter } from "./InsertPicker.tsx";
 import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
 import { useOptionalSession, type Session } from "./session.tsx";
@@ -44,8 +46,10 @@ export function inScope(scope: Scope, target: EventTarget | null, typing = false
   if (document.querySelector("[role=dialog][aria-modal=true]")) return false;
   if (!typing && isTyping(element)) return false;
   switch (scope) {
+    // The clamp is a toolbar of its own on the canvas: its keys are its
+    // buttons' (Enter presses one), its arrows go along it.
     case "canvas":
-      return Boolean(element?.closest(".canvas"));
+      return Boolean(element?.closest(".canvas")) && !element?.closest(".clamp");
     case "selection":
       return Boolean(element?.closest(".canvas, .tree"));
     case "editor":
@@ -186,6 +190,20 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
       const why = publishPaused(now.autosave?.getSnapshot() ?? null, store.getState().document.sections.length);
       if (why) ui.getState().say(why);
       else if (!now.publishing) void now.publish();
+      return true;
+    },
+    // The page's "+": the picker after the selection (./InsertPicker.tsx);
+    // on an empty page, the invitation's first section, which the page
+    // lays out already.
+    addHere: () => {
+      const doc = store.getState().document;
+      if (doc.sections.length === 0) {
+        document.querySelector<HTMLElement>(".canvas .invite-layouts button")?.focus();
+        return true;
+      }
+      const place = placeForKey(doc, selected());
+      if (!place) return false;
+      openInserter(env, place, document.activeElement);
       return true;
     },
     // The drawers open and close as their top bar keys do (./Drawer.tsx).
