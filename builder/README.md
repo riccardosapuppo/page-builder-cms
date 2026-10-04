@@ -62,8 +62,9 @@ refused while a page shows the image, with which page.
 
 **Stage 3 bis, the layout.** The same editor, rearranged as the layout
 approved on 3 October 2026 (`../design/layout/`): a top bar with
-Insert, Outline and History, each opening a drawer that floats over the
-canvas's left so the page keeps its width, undo and redo, the page's
+Insert, Outline and History, each opening a drawer (Insert floats over the
+canvas's left so the page keeps its width; the Outline and History push
+the page aside), undo and redo, the page's
 title in the middle (it opens the site's pages, with a search) with
 whether it is live under it, the save state, Preview and Publish; one
 sidebar on the right with a Page tab and a Block tab, their settings in

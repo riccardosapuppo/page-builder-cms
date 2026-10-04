@@ -217,8 +217,8 @@ itself.
   each image drawn again in the browser, with its alt text required
   before it is placed.
   Since stage 3 bis, the same editor is laid out as the approved layout:
-  a top bar with Insert, Outline and History, each a drawer floating over
-  the canvas's left; one sidebar with a Page tab and a Block tab, their
+  a top bar with Insert, Outline and History, each a drawer (Insert floating
+  over the canvas's left, the Outline and History pushing the page aside); one sidebar with a Page tab and a Block tab, their
   settings in groups named after what they hold, each saying its value
   when closed; the selected block's tools in a clamp in the page's
   margin; round "+" buttons on the page, each opening a picker of only
