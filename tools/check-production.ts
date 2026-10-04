@@ -121,14 +121,20 @@ async function api(method: string, path: string, body: unknown): Promise<any> {
   return response.json();
 }
 
-// The rows of production's Solid Cache, counted by the CMS's own model in
-// a process of its own, on the run's databases.
-function cacheEntries(): number {
-  const r = spawnSync("ruby", ["bin/rails", "runner", 'print "entries=#{SolidCache::Entry.count}"'], { cwd: cms, env, encoding: "utf8" });
+// The fragments of pages in production's Solid Cache (their keys hold
+// Rails' "views/"), counted by the CMS's own model in a process of its
+// own, on the run's databases; and its rows in all. Only the fragments are
+// the pages': Solid Cache adds a row of its own, an estimate of its size,
+// the first time its expiry runs, which it starts at random after about
+// one write in fifty, so the rows in all may be one more after the same
+// visits.
+function cacheEntries(): { fragments: number; rows: number } {
+  const ruby = "print \"fragments=#{SolidCache::Entry.pluck(:key).count { |key| key.include?('views/') }} rows=#{SolidCache::Entry.count}\"";
+  const r = spawnSync("ruby", ["bin/rails", "runner", ruby], { cwd: cms, env, encoding: "utf8" });
   if (r.error) throw new CouldNotRun(`counting the cache's entries: Ruby could not be started (${r.error.message})`);
-  const found = /entries=([0-9]+)/.exec(r.stdout ?? "");
+  const found = /fragments=([0-9]+) rows=([0-9]+)/.exec(r.stdout ?? "");
   if (r.status !== 0 || !found) throw new Error(`counting the cache's entries failed (exit ${r.status}): ${(r.stdout ?? "") + (r.stderr ?? "")}`);
-  return Number(found[1]);
+  return { fragments: Number(found[1]), rows: Number(found[2]) };
 }
 
 // Every block of a document: the sections, their columns, their widgets.
@@ -151,7 +157,7 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
 
   const document = fixture(title) as { sections: unknown[] };
   const before = cacheEntries();
-  check(before === 1 + blockCount(document.sections), `after the first visit, Solid Cache holds the page and each of its ${blockCount(document.sections)} blocks`, `${before} entries`);
+  check(before.fragments === 1 + blockCount(document.sections), `after the first visit, Solid Cache holds the page and each of its ${blockCount(document.sections)} blocks`, `${before.fragments} fragments (${before.rows} rows in all)`);
 
   const edited = JSON.parse(JSON.stringify(document).replace(`"text":"${title}"`, `"text":"${title}, edited"`));
   const draft = await api("GET", `/api/pages/${id}/draft`, undefined);
@@ -161,7 +167,7 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
   const html = await next.text();
   check(next.status === 200 && html.includes(`${title}, edited`) && next.headers.get("etag") !== etag, "after a publish, the old ETag gets 200 and the new page at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
   const after = cacheEntries();
-  check(after - before === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before} entries, then ${after}`);
+  check(after.fragments - before.fragments === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before.fragments} fragments, then ${after.fragments} (${before.rows} rows in all, then ${after.rows})`);
 }
 
 let taken: Listener[];
