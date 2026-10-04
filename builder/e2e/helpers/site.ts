@@ -47,7 +47,9 @@ export { expect };
 // The same picture, for a page of a browser a test launches for itself
 // (one that draws its scrollbars, say), which the fixture above does not
 // watch: nothing leaves the machine there either.
-export const answerElsewhere = (page: Page): Promise<void> => page.route(`${ELSEWHERE}**`, (route) => route.fulfill({ body: PIXEL, contentType: "image/png" }));
+export async function answerElsewhere(page: Page): Promise<void> {
+  await page.route(`${ELSEWHERE}**`, (route) => route.fulfill({ body: PIXEL, contentType: "image/png" }));
+}
 
 let made = 0;
 export const unique = (stem: string): string => `${stem}-${process.pid}-${Date.now().toString(36)}-${++made}`;
