@@ -128,18 +128,38 @@ class Api::SchedulesTest < ActionDispatch::IntegrationTest
     assert_equal [ "published", "replaced" ], json["schedules"].map { |s| s["state"] }
   end
 
-  test "a publish by hand of a later revision supersedes the schedule: the page does not go back" do
+  test "a publish by hand supersedes the schedule at once, and at its time the page does not go back" do
     save_draft @page, revision: 0, document: page_document(title: "Scheduled"), save_id: "a1"
     schedule
     id = json.dig("schedule", "id")
     save_draft @page, revision: 1, document: page_document(title: "Published by hand"), save_id: "a2"
     travel_to(NOW + 1.hour) { api :post, "/api/pages/#{@page.id}/publish", { "revision" => 2 } }
 
+    api :get, "/api/pages/#{@page.id}"
+    assert_nil json["scheduled"]
+    api :get, "/api/pages/#{@page.id}/schedules"
+    assert_equal [ "superseded", "2026-10-04T10:00:00.000Z" ], json["schedules"].sole.values_at("state", "settledAt")
+
     log = logged { run_jobs_at(AT) }
 
     visitor_sees "Published by hand"
-    api :get, "/api/pages/#{@page.id}/schedules"
-    assert_equal "superseded", json["schedules"].sole["state"]
+    assert_match "scheduled publish #{id} of page #{@page.id}: superseded at 2026-10-04T10:00:00Z, nothing to do", log
+  end
+
+  test "a job that finds its revision already live, however it got there, publishes nothing" do
+    save_draft @page, revision: 0, document: page_document(title: "Scheduled"), save_id: "a1"
+    schedule
+    id = json.dig("schedule", "id")
+    save_draft @page, revision: 1, document: page_document(title: "Live another way"), save_id: "a2"
+    # Live at revision 2 without passing through Page#publish!, which
+    # would have settled the schedule: the job's own look must hold.
+    live = @page.send(:put_live!, @page.draft.reload.checked_document, revision: 2, slug: "spring", at: NOW + 1.hour)
+
+    log = logged { run_jobs_at(AT) }
+
+    visitor_sees "Live another way"
+    assert_equal live.id, @page.reload.published_version_id
+    assert_equal "superseded", ScheduledPublication.find(id).state
     assert_match "scheduled publish #{id} of page #{@page.id}: revision 1 or a later one is already live, nothing to do", log
   end
 

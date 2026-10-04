@@ -84,7 +84,12 @@ class Page < ApplicationRecord
         raise Draft::Conflict.new(current_revision: draft.revision, last_save_id: draft.last_save_id)
       end
 
-      put_live!(draft.checked_document, revision: draft.revision, slug: draft.slug, at: at)
+      version = put_live!(draft.checked_document, revision: draft.revision, slug: draft.slug, at: at)
+      # A publish still waiting for its time would put this revision, or an
+      # earlier one, live again: it has nothing left to do, and the page
+      # says so now rather than when its job finds out.
+      scheduled_publications.pending.where(revision: ..draft.revision).find_each { |schedule| schedule.settle!("superseded", at: at) }
+      version
     end
   end
 
