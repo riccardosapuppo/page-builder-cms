@@ -735,15 +735,19 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .sec > .ov-drop, .sec > .ov-drop-target { inset: 0; background: none; z-index: 6; }
 .sec > .ov-drop-target > .ov-label { top: 4px; bottom: auto; left: 8px; }
 
-/* The dragged block, drawn as the indicator: a gap of 40 with a line and
-   its name where it will land, or the frame of the container it would
-   be alone in. Its own content waits, undrawn, until the drop. */
 /* The copy of a widget left where it stood while it is dragged: dimmed, with
-   a dashed edge and a "Moving" chip, out of the pointer's way. */
-.canvas .site [data-moving-ghost] { outline: 1.5px dashed var(--rule); outline-offset: -1.5px; pointer-events: none; }
+   a dashed edge and a "Moving" chip, out of the pointer's way. A tall widget
+   (a text of five hundred paragraphs) is shown by its first 240 pixels, as
+   the drop line shows it by 40: the section does not stay as tall as it
+   was, with the column beside it out of reach. */
+.canvas .site [data-moving-ghost] { max-height: 240px; overflow: hidden; outline: 1.5px dashed var(--rule); outline-offset: -1.5px; pointer-events: none; }
 .canvas .site [data-moving-ghost] > :not(.moving-chip) { opacity: .45; }
 .moving-chip { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); z-index: 4; padding: 1px 7px; border-radius: 4px; background: var(--white); border: 1px solid var(--rule); color: var(--graphite); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
 .frame[data-scale] .moving-chip { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 100% 50%; }
+
+/* The dragged block, drawn as the indicator: a gap of 40 with a line and
+   its name where it will land, or the frame of the container it would
+   be alone in. Its own content waits, undrawn, until the drop. */
 .canvas .site [data-drag-slot] { position: relative; height: 40px; min-height: 0; margin-block: 0; padding: 0; border: 0; background: none; box-shadow: none; z-index: 4; }
 .canvas .site [data-drag-slot] > :not(.drop-ui) { display: none !important; }
 .canvas .site [data-drag-slot="frame"], .canvas .site [data-drag-slot][data-drag-row] { height: auto; min-height: 72px; }

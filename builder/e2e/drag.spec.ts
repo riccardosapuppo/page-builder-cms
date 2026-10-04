@@ -280,6 +280,24 @@ test.describe("with the mouse", () => {
     expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
   });
 
+  test("a tall widget leaves only its first 240 pixels as the copy, so the section does not stay as tall as the widget was", async ({ page, request }) => {
+    const long = { type: "doc", content: Array.from({ length: 60 }, (_, n) => ({ type: "paragraph", content: [{ type: "text", text: `Paragraph ${n} of a long text` }] })) };
+    await startPage(page, request, "Tall", [section("s", "Tall", [column("c1", [widget("t", "text", { doc: long }), heading("h", "After")]), column("c2", [widget("d", "divider", {})])])]);
+    const heightOf = (id: string) => block(page, id).evaluate((element) => element.getBoundingClientRect().height);
+    const tall = await heightOf("t");
+    expect(tall).toBeGreaterThan(1000);
+    await select(page, "t");
+    await pickUp(page, grip(page));
+    const ghost = page.locator(".canvas [data-moving-ghost]");
+    await expect(ghost).toHaveCount(1);
+    expect((await ghost.boundingBox())!.height).toBeLessThanOrEqual(241);
+    expect(await heightOf("s")).toBeLessThan(tall / 2);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(ghost).toHaveCount(0);
+    expect(Math.abs((await heightOf("t")) - tall)).toBeLessThan(2);
+  });
+
   test("a widget picked up with the keyboard waits the same way, and its copy goes when it is dropped", async ({ page, request }) => {
     await startPage(page, request, "Waiting");
     await select(page, "a");

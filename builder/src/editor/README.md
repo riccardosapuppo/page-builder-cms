@@ -87,7 +87,8 @@ owner to undo:
   pick-up, so the drop line stands beside it while the widget is over its
   own place, where the layout draws the copy once the block has left; the
   place it takes is then the same wherever the line goes, and nothing
-  below moves under the pointer. A column or a section leaves no copy. A
+  below moves under the pointer; a tall widget is shown by its first 240
+  pixels. A column or a section leaves no copy. A
   new block from Insert, which has no place to come from, is named in the
   sidebar ("Adding to the page") and its settings wait the same way; the
   layout draws no such drag.
