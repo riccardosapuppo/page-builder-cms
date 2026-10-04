@@ -208,7 +208,7 @@ itself.
   undo and redo in the top bar and a history panel of the session's steps
   and the page's versions, with Save version and Restore; either choice
   of the two-tab conflict undoable from that history; a tablet's and a
-  phone's own style values, set in the Style tab with that device
+  phone's own style values, set in the sidebar's groups with that device
   previewed and taken back by Remove; every key the interface names in
   one keyboard map; and the media library, uploading straight to the CMS
   each image drawn again in the browser, with its alt text required

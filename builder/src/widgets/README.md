@@ -16,12 +16,14 @@ One folder per widget, named as its `type` in the schema: `heading/`,
   contract;
 - `icon.ts`: its tile, the approved design's `w-<type>` symbol
   (`design/index.html`), shape for shape;
-- `panel.tsx`: its Content tab in the editor's property panel, whose
-  controls make the widget's own commands; and `panel.test.tsx`, which
-  drives those controls, checks the page and the command, and finds the
-  server's 422 on the field it names. The Style and Advanced tabs are
-  the same for every block (`../editor/panels/`), drawn from the style
-  settings the type accepts;
+- `panel.tsx`: its own group in the editor's sidebar, first in the Block
+  tab and named after what it holds ("Text", "Button", "Questions"; none
+  for a divider, whose one setting is its line's colour), whose controls
+  make the widget's own commands; and `panel.test.tsx`, which drives
+  those controls, checks the page and the command, and finds the
+  server's 422 on the field it names. The groups of its style settings
+  and Shown on are drawn for every block (`../editor/panels/groups.tsx`)
+  from the style settings the type accepts;
 - `a11y.ts`: its accessibility test (below).
 
 `panels.ts` lists the panels by type, apart from `registry.ts`: the render

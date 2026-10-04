@@ -16,9 +16,9 @@ renderer and the twelve widgets' definitions, held to the server's pages
 (`src/render/`, `src/widgets/`). On those, the editor's interface
 (`src/editor/`): the shell of the approved design, the page switch, the
 widget panel, the canvas with its marks and the device widths, the
-property panels (Content, Style, Advanced) with each widget's Content in
-its folder, and the navigator; drag and drop on the canvas and from the
-widget panel, by mouse and by keyboard, with one drop indicator and a
+property panels (Content, Style, Advanced, grouped since stage 3 bis)
+with each widget's Content in its folder, and the navigator; drag and
+drop on the canvas and from the widget panel, by mouse and by keyboard, with one drop indicator and a
 live region saying where the block will go; one keyboard map, which the
 "?" window lists; the focus placed after every command; the block's
 menu (copy, paste, duplicate, delete); where the edits are (saved,
@@ -38,8 +38,8 @@ and before any other command or drag; inside the text Ctrl+Z is
 TipTap's, outside it the page's.
 
 **Stage 3, tablet and phone, and the keys.** With a tablet or a phone
-previewed, the Style tab edits that device's values only
-(`src/editor/panels/StyleTab.tsx`, `src/editor/device-style.ts`): each
+previewed, the style settings edit that device's values only
+(`src/editor/panels/StyleFields.tsx`, `src/editor/device-style.ts`): each
 setting says whether its value is the device's own or the desktop's, and
 Remove takes the device's key out of the page, never writing the
 desktop's value in its place. The canvas, 768 or 390 wide, shows them
@@ -65,7 +65,11 @@ Insert, Outline and History, each opening a drawer that floats over the
 canvas's left so the page keeps its width, undo and redo, the page's
 title in the middle (it opens the site's pages, with a search) with
 whether it is live under it, the save state, Preview and Publish; one
-sidebar on the right with a Page tab and a Block tab; a bottom line with
+sidebar on the right with a Page tab and a Block tab, their settings in
+collapsible groups named after what they hold (a closed one says its
+value, and which device differs; the ones a person keeps open are kept
+in the browser, per block type), the site style one level below the Page
+tab, with its way back; a bottom line with
 the selection's path (each step a button), Block edges, the devices in
 one click and the page's width. The page is 1088 wide in a 1440 window
 and keeps its desktop layout at 1280. The layout's own keys are Alt and
@@ -119,7 +123,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move, edit a heading's text and level in the sidebar, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-two states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish and Site style. |
 | `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports; prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. |
-| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved layout's states, named as its shots are (editor, structure, history, tablet, publish, empty, shortcuts, insert-drawer, pages, page-tab, conflict, offline, drag, media, site-style), and in the block's menu, a text written on the canvas with its link's field, a section's Advanced tab, the phone preview with the hero's phone values, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. |
+| `npm run shots:editor -- <folder>` | Photographs the editor, headless, in the approved layout's states, named as its shots are (editor, structure, history, tablet, style, publish, empty, shortcuts, insert-drawer, pages, page-tab, section, conflict, offline, drag, media, site-style), and in the block's menu, a text written on the canvas with its link's field, the phone preview with the hero's phone values, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900, on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 
