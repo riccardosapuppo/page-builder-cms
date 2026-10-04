@@ -140,7 +140,7 @@ test("insert, move, write, style a tablet, upload an image, undo, keep a version
   await page.keyboard.press("Control+Shift+ArrowLeft");
   await expect.poll(() => selectedText(page, "t")).toBe("swimmers");
   await page.keyboard.press("Control+b");
-  await expect(page.getByRole("group", { name: "Formatting" }).getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("End");
   await page.keyboard.press("Escape");
   await expect(rte).toHaveCount(0);
