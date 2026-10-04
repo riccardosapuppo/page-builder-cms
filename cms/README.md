@@ -177,11 +177,14 @@ in the development, test or e2e environment: `test/lib/tasks/db_drop_test.rb`,
 `test/bin/jobs_test.rb` (the jobs command, started for real) and the one in
 `test/models/page_cache_test.rb` that asks a process of its own for its
 release's digest before any visit.
-Each sends every database of that environment to a folder of its own
-([test/support/own_databases.rb](test/support/own_databases.rb), which
-reads them from `config/database.yml`), and the first and last fail if the
-tasks name any database outside it: before that, the `db:drop` test made,
-emptied and deleted development's queue database at every run.
+The first four send every database of their environment to a folder of
+their own ([test/support/own_databases.rb](test/support/own_databases.rb),
+which reads them from `config/database.yml`), and the `db:drop` and queue
+orphans tests fail if the tasks name any database outside it: before
+that, the `db:drop` test made, emptied and deleted development's queue
+database at every run. The fifth runs the test environment's own
+`bin/rails runner`, which opens no database: at its end no connection
+pool of that environment is connected.
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
