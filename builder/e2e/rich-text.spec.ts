@@ -427,3 +427,55 @@ test("keys pressed right after Enter opens a text are the text's, before its edi
     await expect.poll(async () => JSON.stringify(await storedText(request, id))).toContain('"Tide notes"');
   }
 });
+
+test("a text left for another block before its editor's code arrives is waited for no more: the keys are that block's, and the text chosen again is only selected", async ({ page, request }) => {
+  const { id } = await makePage(request, "Left early", [section("s", "Story", [column("c1", [heading("h", "Alpha"), widget("t", "text", { doc: { type: "doc", content: [p(t("Tide notes"))] } }), heading("h2", "Beta"), heading("h3", "Gamma")])])]);
+  // The editor's code held back until the other block is chosen, on the
+  // canvas and then in the navigator, each on a page loaded afresh.
+  for (const where of ["canvas", "navigator"] as const) {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/rich\/TextEditor/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await open(page, id);
+    await block(page, "h").click();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("oo");
+    if (where === "canvas") await block(page, "h2").click();
+    else await page.locator('.tree [data-row-id="h2"]').click();
+    await expect(block(page, "h2")).toHaveAttribute("data-editor-selected", "true");
+    const arrived = page.waitForResponse(/rich\/TextEditor/);
+    release();
+    await arrived;
+    await page.unroute(/rich\/TextEditor/);
+    await block(page, "h2").focus();
+    // The keys are the chosen block's: the next one is chosen, then deleted
+    // and back again; typing does nothing there.
+    await page.keyboard.press("ArrowDown");
+    await expect(block(page, "h3")).toHaveAttribute("data-editor-selected", "true");
+    await page.keyboard.press("Delete");
+    await expect(block(page, "h3")).toHaveCount(0);
+    await page.keyboard.press("Control+z");
+    await expect(block(page, "h3")).toHaveCount(1);
+    await page.keyboard.type("xx");
+    // The text chosen again: selected, not opened, its words as they were.
+    await block(page, "t").click();
+    await expect(block(page, "t")).toHaveAttribute("data-editor-selected", "true");
+    await page.waitForTimeout(500);
+    await expect(editor(page)).toHaveCount(0);
+    await expect(block(page, "t").locator("p")).toHaveText("Tide notes");
+    // And it opens as any text does.
+    await page.keyboard.press("Enter");
+    await settledTextEditor(page, "t");
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".topbar .save-state")).toHaveText("Saved", { timeout: 15_000 });
+    expect(await storedText(request, id)).toEqual({ type: "doc", content: [p(t("Tide notes"))] });
+    expect(await childIds(page, "c1")).toEqual(["h", "t", "h2", "h3"]);
+    expect(JSON.stringify((await draftOf(request, id)).document.sections)).toContain('"h3"');
+  }
+});

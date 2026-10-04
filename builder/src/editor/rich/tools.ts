@@ -96,3 +96,19 @@ export function startEditing(env: Pick<EditorEnv, "store" | "ui">, id: string, a
   if (ui.getState().editingText?.id === id) return;
   ui.setState({ editingText: { id, at }, tray: "edit", notice: null });
 }
+
+// A text asked to open whose editor is not there yet is asked no more once
+// another block is chosen or a drag starts: the keys kept for it go with
+// it, so they reach the block chosen now (../keys.ts) and are never typed
+// into the text when it is chosen again, which then waits for Enter or a
+// click like any text. An editor already open closes itself instead
+// (./text-session.ts), and keeps a text the page refuses open. Returns
+// the way to stop watching.
+export function forgetLeftText(env: Pick<EditorEnv, "store" | "ui">): () => void {
+  const { store, ui } = env;
+  return store.subscribe((state) => {
+    const { editingText, textTools } = ui.getState();
+    if (editingText === null || textTools?.id === editingText.id) return;
+    if (state.selection !== editingText.id || state.drag !== null) ui.setState({ editingText: null });
+  });
+}

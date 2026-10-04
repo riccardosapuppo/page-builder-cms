@@ -57,7 +57,7 @@ import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { FormatButtons, LinkField } from "./rich/FormatBar.tsx";
-import { preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
+import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { useOptionalSession } from "./session.tsx";
 import type { Preview } from "./ui-store.ts";
 
@@ -641,6 +641,9 @@ export function Canvas() {
     observer.observe(inner);
     return () => observer.disconnect();
   }, [scale]);
+
+  // A text left before its editor came is no longer waited for.
+  useEffect(() => forgetLeftText(env), [env]);
 
   // The page's links, buttons and disclosures take no focus on the canvas:
   // Tab goes from block to block's tab stop, not through the page's links.

@@ -67,8 +67,9 @@ const MODIFIERS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsL
 // A text asked to open whose editor is not there yet, its code on its way
 // (./rich/tools.ts): the keys meant for it are kept for it, and none
 // reaches the block, which still has the focus, where a Backspace would
-// delete the block and a Space pick it up. Esc gives up opening it; the
-// keys that work while typing (keep a version, preview, publish) still do.
+// delete the block and a Space pick it up. Esc gives up opening it, and so
+// does choosing another block (./rich/tools.ts, forgetLeftText); the keys
+// that work while typing (keep a version, preview, publish) still do.
 // True when the key was taken here.
 export function waitForText(env: Pick<EditorEnv, "ui">, event: KeyboardEvent): boolean {
   const { editingText, textTools } = env.ui.getState();
