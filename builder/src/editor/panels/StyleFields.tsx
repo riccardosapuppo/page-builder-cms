@@ -210,9 +210,22 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
       return {
         label, value, field, set, ring: null, hint: elsewhereWords(style, key),
         scoping: {
+          // Reset goes once the value does: the focus goes back to the
+          // setting, as after Remove.
           scope: base === null
             ? "Theme default"
-            : <button className="btn btn-small btn-quiet" type="button" aria-label={`Reset ${label}`} onClick={() => commands.setStyle("base", { [key]: REMOVE })}>Reset</button>,
+            : (
+              <button
+                className="btn btn-small btn-quiet"
+                type="button"
+                aria-label={`Reset ${label}`}
+                onClick={(event) => {
+                  if (commands.setStyle("base", { [key]: REMOVE }) === null) focusFieldOf(event);
+                }}
+              >
+                Reset
+              </button>
+            ),
         },
       };
     }

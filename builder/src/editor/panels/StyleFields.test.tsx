@@ -39,7 +39,7 @@ test("a column's settings come in the approved layout's groups and order: space,
   expect([...container.querySelectorAll(".pair .label")].map((e) => e.textContent)).toEqual(["Vertical alignment", "Horizontal alignment"]);
 });
 
-test("a choice sets the base value, in the site's colours, and Reset takes it out", () => {
+test("a choice sets the base value, in the site's colours, and Reset takes it out, the focus back on the setting", async () => {
   const kit = editorKit({ document: widgetPage(), selection: "button" });
   kit.render(<BlockPanel id="button" />);
   openGroups("Colors");
@@ -52,6 +52,9 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
   fireEvent.click(screen.getByRole("button", { name: "Reset Background" }));
   expect(kit.block("button")?.style).toEqual({ base: {} });
   expect(kit.lastCommand()?.label).toBe("Cleared Background, Button in Widgets");
+  // Reset is gone with the value: the focus is on the setting, its value
+  // in use chosen.
+  await waitFor(() => expect(document.activeElement).toBe(background().getByRole("radio", { name: "Accent, Buoy" })));
 
   // The site's own tone for a slot, where the site style has another.
   act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", updatedAt: null, choices: { palette: {}, typeScales: [] } }));
