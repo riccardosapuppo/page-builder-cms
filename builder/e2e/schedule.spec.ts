@@ -7,9 +7,10 @@
 // edit made after. A schedule cancelled from the history does nothing at
 // its time: a second page, scheduled for a little later, going live shows
 // the queue has passed the cancelled one's time.
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { retitle } from "./helpers/heading.ts";
+import { schedule, siteTime } from "./helpers/schedule.ts";
 import { cms, column, drawer, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -17,34 +18,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 // again after them.
 test.setTimeout(120_000);
 
-const ZONE = "Europe/London";
 const fixture = (words: string) => [section("s", "Story", [column("c", [heading("h", words)])])];
-
-// A whole second `ms` from now as the dialog's two fields take it, and as
-// its button and the top bar say it, in the site's zone: "Oct 4, 2026",
-// "4:25:13 PM", "Oct 4 at 4:25:13 PM" (no ":00" for a whole minute, as the
-// editor writes it). The seconds are kept: the dialog reads them, and a
-// schedule a few seconds ahead needs them.
-function siteTime(ms: number): { instant: number; date: string; time: string; said: string } {
-  const instant = Math.ceil((Date.now() + ms) / 1000) * 1000;
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: ZONE, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
-  }).formatToParts(instant).map((p) => [p.type, p.value]));
-  const day = `${parts.month} ${parts.day}`;
-  const time = `${parts.hour}:${parts.minute}${parts.second === "00" ? "" : `:${parts.second}`} ${parts.dayPeriod}`;
-  return { instant, date: `${day}, ${parts.year}`, time, said: `${day} at ${time}` };
-}
-
-async function schedule(page: Page, when: { date: string; time: string; said: string }): Promise<void> {
-  await page.getByRole("button", { name: "More publish options" }).click();
-  await page.getByRole("menu", { name: "Publish options" }).getByRole("menuitem", { name: /^Schedule…/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Schedule your changes" });
-  await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Date").fill(when.date);
-  await dialog.getByLabel("Time").fill(when.time);
-  await dialog.getByRole("button", { name: `Schedule for ${when.said}` }).click();
-  await expect(dialog).toBeHidden();
-}
 
 const served = async (request: APIRequestContext, slug: string) => {
   const response = await request.get(`${cms()}/${slug}`);
