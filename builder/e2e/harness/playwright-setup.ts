@@ -15,9 +15,11 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     throw error;
   }
   console.log(`e2e: the editor answers on ${builder.url}, its proxy pointed at ${cms.url}`);
-  // Both URLs, for tests that also ask the CMS directly.
+  // Both URLs, for tests that also ask the CMS directly; and the CMS's
+  // folder, for tests that read what its databases keep (helpers/cms-store.ts).
   process.env.E2E_CMS_URL = cms.url;
   process.env.E2E_BUILDER_URL = builder.url;
+  process.env.E2E_CMS_FOLDER = cms.folder;
 
   return async () => {
     for (const server of [builder, cms]) {
