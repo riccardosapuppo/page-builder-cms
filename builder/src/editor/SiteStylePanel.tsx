@@ -47,7 +47,7 @@ export function ratioWords(ratio: number): string {
 // design's sizes.
 const SAMPLE_PX = [26, 23, 20, 17, 16, 14, 12] as const;
 
-export function SiteStylePanel({ onClose }: { onClose: () => void }) {
+export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHide?: () => void }) {
   const style = useUi((u) => u.siteStyle);
   const session = useSession();
   const [open, setOpen] = useState<PaletteSlot | null>(null);
@@ -55,7 +55,7 @@ export function SiteStylePanel({ onClose }: { onClose: () => void }) {
   if (!style) {
     return (
       <section className="view site-style" aria-labelledby={headId}>
-        <Head id={headId} onClose={onClose} />
+        <Head id={headId} onClose={onClose} onHide={onHide} />
         <div className="tray-body"><p className="hint" role="status">The site style is not loaded yet.</p></div>
       </section>
     );
@@ -67,7 +67,7 @@ export function SiteStylePanel({ onClose }: { onClose: () => void }) {
 
   return (
     <section className="view site-style" aria-labelledby={headId}>
-      <Head id={headId} onClose={onClose} />
+      <Head id={headId} onClose={onClose} onHide={onHide} />
       <div className="tray-body">
         <h3 className="group-title">Palette</h3>
         <ul className="slots">
@@ -161,18 +161,22 @@ export function SiteStylePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Head({ id, onClose }: { id: string; onClose: () => void }) {
+// A level below the Page tab (design/layout/, the site-style state): the
+// way back to it first, then the title; the sidebar's own close button,
+// which hides the sidebar, as it does over the Page and Block tabs.
+function Head({ id, onClose, onHide }: { id: string; onClose: () => void; onHide?: (() => void) | undefined }) {
   const { styleSave } = useSession();
   return (
     <div className="tray-head tray-head-title">
       <div>
+        <button className="sb-back" type="button" aria-label="Back to Page" onClick={onClose}><Icon name="arrow-left" className="i i-xs" />Page</button>
         <h2 id={id}>Site style</h2>
         <p>Applies to every page of your site.</p>
         {styleSave.phase === "failed"
           ? <p className="error" role="alert"><Icon name="error" />{styleSave.message}</p>
           : <p className="style-save" role="status">{styleSave.phase === "saving" ? "Saving…" : styleSave.phase === "saved" ? "Saved for every page" : ""}</p>}
       </div>
-      <button className="ibtn" type="button" aria-label="Close site style" onClick={onClose}><Icon name="close" /></button>
+      {onHide && <button className="ibtn" type="button" aria-label="Hide the sidebar" title="Hide the sidebar" onClick={onHide}><Icon name="close" /></button>}
     </div>
   );
 }

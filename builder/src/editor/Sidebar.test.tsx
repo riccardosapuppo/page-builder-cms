@@ -59,20 +59,34 @@ test("Site style opens a level below Page, and closes back to it, the focus on t
   expect(kit.ui.getState().tray).toBe("site-style");
   const style = screen.getByRole("complementary", { name: "Site style" });
   expect(screen.queryByRole("tablist", { name: "Settings" })).toBeNull();
-  fireEvent.click(within(style).getByRole("button", { name: "Close site style" }));
+  fireEvent.click(within(style).getByRole("button", { name: "Back to Page" }));
   expect(kit.ui.getState().tray).toBe("edit");
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
 
-  // Opened from a block's panel, it closes back to the Page tab too, the
+  // Opened from a block's panel, it goes back to the Page tab too, the
   // block still selected.
   act(() => kit.store.getState().select("q1"));
   expect(tab("Block").getAttribute("aria-selected")).toBe("true");
   fireEvent.click(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Site style" }));
   expect(kit.ui.getState().tray).toBe("site-style");
-  fireEvent.click(within(screen.getByRole("complementary", { name: "Site style" })).getByRole("button", { name: "Close site style" }));
+  fireEvent.click(within(screen.getByRole("complementary", { name: "Site style" })).getByRole("button", { name: "Back to Page" }));
   expect(tab("Page").getAttribute("aria-selected")).toBe("true");
   expect(kit.store.getState().selection).toBe("q1");
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
+});
+
+test("over the site style too, the sidebar's close button hides the sidebar, which comes back on the site style", async () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  kit.render(<><header className="topbar"><button type="button" data-sidebar="">Settings sidebar</button></header><Sidebar /></>);
+  fireEvent.click(screen.getByRole("button", { name: "Site style" }));
+  const hide = within(screen.getByRole("complementary", { name: "Site style" })).getByRole("button", { name: "Hide the sidebar" });
+  act(() => hide.focus());
+  fireEvent.click(hide);
+  expect(kit.ui.getState()).toMatchObject({ sidebarOpen: false, tray: "site-style" });
+  expect(screen.queryByRole("complementary")).toBeNull();
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Settings sidebar" })));
+  act(() => toggleSidebar(kit.ui));
+  expect(screen.getByRole("complementary", { name: "Site style" })).toBeTruthy();
 });
 
 test("hidden, the sidebar is gone and the focus goes to the top bar's key; shown, it comes back to its tab", async () => {

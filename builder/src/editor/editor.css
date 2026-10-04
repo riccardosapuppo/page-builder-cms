@@ -907,6 +907,10 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 
 /* Site style (design/shots/site-style.png). */
 .tray-head-title > div > h2 { font-size: 14px; line-height: 20px; font-weight: 600; }
+/* The way back up from a level below the Page tab (site style). */
+.sb-back { display: inline-flex; align-items: center; gap: 6px; height: 28px; margin: -2px 0 4px -6px; padding: 0 8px 0 6px; border-radius: var(--r-control); font-weight: 600; color: var(--graphite); }
+.sb-back:hover { background: var(--key); }
+.sb-back .i { color: var(--steel); }
 .tray-head-title > div > p { color: var(--steel); font-size: 12px; line-height: 16px; }
 .tray-head-title > div > p.style-save:empty { display: none; }
 .tray-head-title > div > p.error { color: var(--err); }

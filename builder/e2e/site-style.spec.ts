@@ -60,13 +60,13 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     await expect(visitor.getByRole("heading", { name: "In the site's colours" })).toHaveCSS("color", HARBOUR);
     await visitor.close();
 
-    // Back to a new site's tone; the panel closes back to the Page tab, the
+    // Back to a new site's tone; the panel goes back to the Page tab, the
     // focus on the way in.
     await panel.getByRole("button", { name: "Reset to Sea" }).click();
     await expect(canvasHeading).toHaveCSS("color", SEA);
     await expect(panel.getByRole("status")).toHaveText("Saved for every page");
     expect((await siteStyle(request)).palette.primary).toBe("site-sea");
-    await panel.getByRole("button", { name: "Close site style" }).click();
+    await panel.getByRole("button", { name: "Back to Page" }).click();
     await expect(panel).toHaveCount(0);
     await expect(button).toBeFocused();
     await expect(page.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");

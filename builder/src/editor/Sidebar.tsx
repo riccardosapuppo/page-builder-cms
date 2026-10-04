@@ -53,6 +53,7 @@ export function Sidebar() {
             ui.setState({ tray: "edit", sideTab: { tab: "page", selection: store.getState().selection } });
             afterRender(() => document.querySelector<HTMLElement>(".sidebar [data-site-style]")?.focus());
           }}
+          onHide={() => toggleSidebar(ui)}
         />
       </aside>
     );

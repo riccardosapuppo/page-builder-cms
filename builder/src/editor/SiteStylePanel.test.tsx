@@ -98,9 +98,9 @@ test("the type scale is three choices, the arrows move it, and its steps are the
   expect(ratioWords(1.414)).toBe("two fifths");
 });
 
-test("the close button closes it, and the session's word on the last change is said in the head", () => {
+test("the way back to the Page tab closes it, and the session's word on the last change is said in the head", () => {
   const { closed } = draw();
-  fireEvent.click(screen.getByRole("button", { name: "Close site style" }));
+  fireEvent.click(screen.getByRole("button", { name: "Back to Page" }));
   expect(closed()).toBe(1);
 
   document.body.innerHTML = "";
