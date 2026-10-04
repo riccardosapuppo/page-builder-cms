@@ -404,20 +404,21 @@ How a number is taken:
 
 ### A published page, on the server
 
-`npm run measure:server`, on 4 October 2026 from 16:06 to 16:09 UTC, the
+`npm run measure:server`, on 4 October 2026 from 19:59 to 20:03 UTC, the
 machine 3% then 2% busy before it, no run thrown away. The CMS in
 production mode, Solid Cache on its own SQLite database, one visit at a
 time over one connection:
 
 | One visit | The application (X-Runtime), ms | The client, to the last byte, ms | Runs | Load before and after the runs |
 | --- | --- | --- | --- | --- |
-| The health check, `/up`: no database, no view | 0.91 (0.62 to 6.11) | 15.2 (9.87 to 21.2) | 100 | 1 to 1% |
-| Drawn with no cache (the draft preview) | 105 (94.2 to 153) | 114 (101 to 166) | 30 | 0 to 1% |
-| Cold: Solid Cache emptied | 382 (320 to 456) | 395 (332 to 470) | 15 | 1 to 4% |
-| Warm: the whole page read from Solid Cache | 3.98 (3.01 to 7.35) | 13.8 (4.50 to 21.6) | 100 | 1 to 1% |
-| A 304: the ETag sent back | 2.27 (1.62 to 3.92) | 15.1 (3.90 to 18.9) | 100 | 1 to 2% |
-| One heading changed and published | 23.5 (19.8 to 45.2) | 33.9 (24.0 to 51.2) | 15 | 0 to 3% |
-| The site style changed | 17.6 (15.2 to 23.8) | 30.8 (26.8 to 37.6) | 15 | 0 to 5% |
+| The health check, `/up`: no database, no view | 0.94 (0.58 to 1.56) | 15.1 (13.6 to 16.9) | 100 | 1 to 2% |
+| Drawn with no cache (the draft preview) | 108 (98.9 to 155) | 121 (104 to 172) | 30 | 2 to 2% |
+| Cold: Solid Cache emptied, on the server that is running | 385 (328 to 449) | 399 (343 to 464) | 15 | 0 to 4% |
+| The first visit after a start: a new server, Solid Cache empty | 553 (515 to 572) | 571 (532 to 591) | 8 | 0 to 4% |
+| Warm: the whole page read from Solid Cache | 4.04 (3.27 to 6.02) | 13.9 (8.55 to 22.5) | 100 | 1 to 2% |
+| A 304: the ETag sent back | 2.18 (1.74 to 3.86) | 15.3 (13.1 to 18.4) | 100 | 1 to 2% |
+| One heading changed and published | 22.6 (18.4 to 35.2) | 34.4 (24.5 to 45.4) | 15 | 0 to 6% |
+| The site style changed | 18.2 (14.7 to 23.9) | 31.4 (27.8 to 37.7) | 15 | 0 to 13% |
 
 Median, and the smallest to the largest run in brackets. What each visit
 read from Solid Cache and wrote to it, counted as the store receives the
@@ -434,12 +435,21 @@ one visit each):
 
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
   the preview does, and also makes the 501 keys, asks for them in 88
-  reads that find nothing, and writes them in 88 writes: 382 ms against
-  105. That is the price of the first visit after a deploy, or after the
-  cache is emptied; the visits after it cost what the rows above say.
-- **A warm visit is one read.** 3.98 ms in the application, 2.27 for a 304
-  that reads nothing: a difference of 1.7 ms, and 211 KB more on the wire.
-  Neither costs the client more than the health check does (15.2 ms),
+  reads that find nothing, and writes them in 88 writes: 385 ms against
+  108. That row empties Solid Cache from outside, on a server that has
+  already answered hundreds of requests: it is what a visit costs after
+  the cache is emptied, not what the first visit after a deploy costs.
+- **The first visit after a start is dearer still.** A deploy is a new
+  process, whose templates are not yet compiled and whose code has not yet
+  run, and whose cache finds nothing: 553 ms (515 to 572), 168 more than
+  the cold visit on a running server. Each of its 8 runs stops the server,
+  empties Solid Cache, starts the server again, waits for `/up` and a
+  second more, and visits once, so every run is on a server of its own
+  (`MEASURE_RUNS_START` sets the number). The visits after it cost what
+  the rows above and below say.
+- **A warm visit is one read.** 4.04 ms in the application, 2.18 for a 304
+  that reads nothing: a difference of 1.9 ms, and 211 KB more on the wire.
+  Neither costs the client more than the health check does (15.1 ms),
   which does no work at all, so on this stack the client cannot tell them
   from nothing: that 15 ms belongs to the stack (Puma, the loopback of
   Windows, Node's client; which of them is not looked into here), not to
@@ -447,9 +457,9 @@ one visit each):
   ones.
 - **One block changed: 497 of 500 are not drawn again.** Of the 37
   fragments asked for, 33 were found; the 4 written are the heading, its
-  column, its section and the page. 23.5 ms against 382 cold and 105 with
+  column, its section and the page. 22.6 ms against 385 cold and 108 with
   no cache. A new site style writes only the page's own fragment and finds
-  the other 25 in the cache: 17.6 ms.
+  the other 25 in the cache: 18.2 ms.
 - **No compression.** The CMS sends the HTML as it renders it, 211 KB; a
   proxy in front would compress it, and none was in the way here.
 

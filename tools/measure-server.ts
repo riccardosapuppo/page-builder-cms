@@ -9,8 +9,14 @@
 //   beside what the page costs;
 // - drawn with no cache at all: the draft preview, which goes through the
 //   same layout and partials and neither reads nor writes a fragment;
-// - cold: Solid Cache emptied, then one visit, which draws the 500 blocks
-//   and writes the page's fragments;
+// - cold: Solid Cache emptied from outside on the running server, then one
+//   visit, which draws the 500 blocks and writes the page's fragments;
+// - the first visit after a start: the server stopped and started again
+//   with Solid Cache emptied, then, a second after it answers /up, one
+//   visit (MEASURE_RUNS_START of them, 8 by default, each on a server of
+//   its own), which is what a deploy costs the first visitor: the same, and a new
+//   process whose templates are not yet compiled and whose code has not
+//   yet run;
 // - warm: the whole page read from Solid Cache in one fragment;
 // - one block changed: a heading edited, saved and published, then one
 //   visit, which redraws that heading, its column, its section and the
@@ -294,17 +300,24 @@ try {
   stage.precompiled = true;
   rails(["db:create", "db:schema:load"], `databases in cms/tmp/${run}`);
 
-  const log = join(tmp, "server.log");
-  main = server(["-p", String(PORT), "-P", join(tmp, "server.pid")], log);
-  let up = false;
-  for (let i = 0; i < 240 && !up; i++) {
-    if (main.exitCode !== null) break;
-    up = await fetch(`${BASE}/up`).then((r) => r.status === 200, () => false);
-    if (!up) await new Promise((done) => setTimeout(done, 500));
-  }
-  if (!up) throw new Error(main.exitCode !== null ? `the server exited (${main.exitCode}) before it answered` : "the server did not answer within 120 s");
+  // The server, started and waited for until it answers /up. Called for the
+  // first start and for each start of the "first visit after a start" runs.
+  let starts = 0;
+  const startServer = async (): Promise<ChildProcess> => {
+    const child = server(["-p", String(PORT), "-P", join(tmp, "server.pid")], join(tmp, `server-${++starts}.log`));
+    main = child;
+    let up = false;
+    for (let i = 0; i < 240 && !up; i++) {
+      if (child.exitCode !== null) break;
+      up = await fetch(`${BASE}/up`).then((r) => r.status === 200, () => false);
+      if (!up) await new Promise((done) => setTimeout(done, 500));
+    }
+    if (!up) throw new Error(child.exitCode !== null ? `the server exited (${child.exitCode}) before it answered` : "the server did not answer within 120 s");
+    return child;
+  };
+  const started = await startServer();
   const owners = listeners(PORT);
-  check(owners.length === 1 && owners[0]!.pid === String(main.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
+  check(owners.length === 1 && owners[0]!.pid === String(started.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
     `the server listens on 127.0.0.1:${PORT} only, and it is the process started here`, owners.map((l) => `${l.address} (process ${l.pid})`).join(", "));
 
   const page = await publishLargePage(BASE, SLUG);
@@ -323,8 +336,8 @@ try {
   // a state they make themselves.
   let document: Document = (await api(BASE, "GET", `/api/pages/${page.id}/draft`)).document as Document;
 
-  // Warm-up: the first public request computes the release's digest, and
-  // loads what is loaded lazily.
+  // Warm-up: the first public requests compile the templates and run what
+  // is loaded lazily.
   for (let i = 0; i < 3; i++) await visit(path);
 
   // --- The floor: what any answer costs on this stack -------------------------------
@@ -340,7 +353,7 @@ try {
   check(preview.rows.every(([a, b]) => a === b), "the preview wrote nothing to Solid Cache", `${preview.rows[0]![0]} rows, then ${preview.rows.at(-1)![1]}`);
 
   // --- Cold ------------------------------------------------------------------------
-  const cold = await phase("cold", "Solid Cache emptied, then one visit", runsFrom("MEASURE_RUNS_COLD", 15), async () => {
+  const cold = await phase("cold: Solid Cache emptied, server running", "Solid Cache emptied from outside on the running server, then one visit", runsFrom("MEASURE_RUNS_COLD", 15), async () => {
     cache!.clear();
     return visit(path);
   }, cache);
@@ -399,6 +412,32 @@ try {
   }, cache);
   check(styled.runs.every((v) => v.status === 200 && v.blocks === 500), "each visit after a style change answers 200 with the 500 blocks");
   check(styled.rows.every(([a, b]) => b - a === 1), "a style change writes one fragment, the page's, and no block", `new rows per run: ${seen(styled.rows.map(([a, b]) => b - a))}`);
+
+  // --- The first visit after a start ---------------------------------------------------
+  // What a deploy costs the first visitor, which "cold" above does not: a
+  // new process, its templates not yet compiled and its code not yet run,
+  // and fragment keys that find nothing. Each run stops the
+  // server, empties Solid Cache, starts the server again, waits for /up and
+  // one second more, and visits once. Last, so the state it leaves (a new
+  // process, the cache holding one page) is no other phase's.
+  const processes: Array<number | undefined> = [];
+  const emptyAtTheVisit: number[] = [];
+  const afterStart = await phase("first visit after a start", "the server stopped and started again with Solid Cache emptied, then one visit", runsFrom("MEASURE_RUNS_START", 8), async () => {
+    console.log(await stopTree(main!));
+    const open = listeners(PORT);
+    if (open.length) throw new Error(`port ${PORT} is still listening after the stop: ${open.map((l) => `${l.address}, process ${l.pid}`).join("; ")}`);
+    connection.destroy();
+    cache!.clear();
+    const child = await startServer();
+    processes.push(child.pid);
+    emptyAtTheVisit.push(cache!.entries());
+    await new Promise((done) => setTimeout(done, 1000));
+    return visit(path);
+  }, cache);
+  check(new Set(processes).size === processes.length && processes.length >= afterStart.runs.length, "every run of the first visit started a server of its own", `${processes.length} processes: ${processes.join(", ")}`);
+  check(emptyAtTheVisit.every((rows) => rows === 0), "Solid Cache held no fragment when each first visit came", `${seen(emptyAtTheVisit)} fragments`);
+  check(afterStart.runs.every((v) => v.status === 200 && v.blocks === 500), "the first visit after a start answers 200 with the 500 blocks, every time");
+  check(afterStart.rows.every(([, after]) => after === 501), "the first visit after a start writes the page's 501 fragments: the 500 blocks and the page", `${seen(afterStart.rows.map(([, after]) => after))} rows after`);
 
   // --- Report -------------------------------------------------------------------------------
   const rowBytes = cache.bytes();
