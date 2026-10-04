@@ -170,6 +170,13 @@
 .picker-foot .link { margin-top: 2px; font-size: 12px; line-height: 16px; }
 .picker-keys { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 
+/* While a block moves, its preview puts it in another column, and the
+   browser's scroll anchoring then moved the canvas to keep the node it
+   anchored to where it was: the page went out from under the pointer (a
+   block dragged into a tall empty column went back out). The pointer
+   decides the page's place while it moves, not the browser. */
+.canvas-drag { overflow-anchor: none; }
+
 /* ---------- 5. A page drawn smaller ---------- */
 /* The clamp, the "+" and the words on the lines keep their size and their
    place on a page drawn smaller to fit (Canvas.tsx, fitPreview): each is
