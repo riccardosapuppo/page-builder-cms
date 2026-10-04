@@ -44,6 +44,19 @@ class ScheduledPublication < ApplicationRecord
     state == "pending"
   end
 
+  # Sets PublishPageJob again for every pending schedule whose time has
+  # passed: one whose job never reached the queue, or failed for good (a
+  # hard stop that Solid Queue found too late, a database busy past its
+  # retries), would otherwise stay pending forever. Run as the queue
+  # starts (config/initializers/solid_queue.rb). A job that was still
+  # coming anyway runs too, and finds the schedule settled. Returns the
+  # ids set again.
+  def self.enqueue_overdue!(at: Time.current)
+    pending.where(publish_at: ..at).order(:publish_at).pluck(:id).each do |id|
+      PublishPageJob.perform_later(id)
+    end
+  end
+
   # Cancels it if it is still pending, and raises NotPending if it is not:
   # whoever cancels learns that the publish already happened, or that
   # someone else cancelled or replaced it. The job, when it comes, finds it

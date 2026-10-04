@@ -639,7 +639,11 @@ Solid Queue: released 4 row(s) of a server that stopped abruptly (Supervisor(asy
 
 and the overdue publish went live within the second the server was up.
 A publish whose time passes while no server runs happens at the next
-start.
+start. Then every pending schedule whose time has passed gets its job
+again (`ScheduledPublication.enqueue_overdue!`): a job that never reached
+the queue, or that Solid Queue marked failed for good, would otherwise
+leave its schedule pending forever; a job that was still coming runs too,
+and finds the schedule settled.
 
 ## Where things are
 

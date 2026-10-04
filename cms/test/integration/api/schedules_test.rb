@@ -191,6 +191,25 @@ class Api::SchedulesTest < ActionDispatch::IntegrationTest
     visitor_sees "Patience"
   end
 
+  test "as the queue starts, a pending schedule whose time has passed gets its job again, and only that one" do
+    save_draft @page, revision: 0, document: page_document(title: "Lost job")
+    schedule(at: AT)
+    overdue = json.dig("schedule", "id")
+    other = create_page(title: "Later", slug: "later")
+    save_draft other, revision: 0, document: page_document(title: "Later")
+    travel_to(NOW) { api :post, "/api/pages/#{other.id}/schedules", { "revision" => 1, "at" => (AT + 1.day).iso8601 } }
+    # The first job is lost (it failed for good, or never reached the queue).
+    clear_enqueued_jobs
+
+    travel_to(AT + 1.hour) { assert_equal [ overdue ], ScheduledPublication.enqueue_overdue! }
+
+    assert_enqueued_with(job: PublishPageJob, args: [ overdue ])
+    assert_equal 1, enqueued_jobs.size
+    run_jobs_at(AT + 1.hour)
+    visitor_sees "Lost job"
+    travel_to(AT + 2.hours) { assert_equal [], ScheduledPublication.enqueue_overdue! }
+  end
+
   test "the scheduled publish takes the draft's address as it is at the time, like any publish" do
     save_draft @page, revision: 0, document: page_document(title: "Moved")
     schedule
