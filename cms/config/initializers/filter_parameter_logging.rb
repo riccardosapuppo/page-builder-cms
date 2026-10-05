@@ -6,3 +6,9 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc
 ]
+
+# What a visitor writes in a form of the site (SubmissionsController):
+# names, email addresses, messages. Kept in the database for the site's
+# owner, never in the log. Its fields have generated names (field-2), so
+# the partial matches above would not catch an email address among them.
+Rails.application.config.filter_parameters += [ :answers ]

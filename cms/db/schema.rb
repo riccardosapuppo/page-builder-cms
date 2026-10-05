@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_160200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_062231) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -134,6 +134,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_160200) do
     t.index ["page_id"], name: "index_slug_redirects_on_page_id"
   end
 
+  create_table "submissions", force: :cascade do |t|
+    t.integer "page_id", null: false
+    t.integer "page_version_id", null: false
+    t.string "form_id", null: false
+    t.json "fields", null: false
+    t.json "answers", null: false
+    t.datetime "created_at", null: false
+    t.index ["page_id", "created_at"], name: "index_submissions_on_page_id_and_created_at"
+    t.index ["page_version_id"], name: "index_submissions_on_page_version_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "drafts", "pages", on_delete: :cascade
@@ -146,4 +157,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_160200) do
   add_foreign_key "scheduled_publications", "page_versions", on_delete: :cascade
   add_foreign_key "scheduled_publications", "pages", on_delete: :cascade
   add_foreign_key "slug_redirects", "pages", on_delete: :cascade
+  add_foreign_key "submissions", "page_versions"
+  add_foreign_key "submissions", "pages"
 end

@@ -23,7 +23,7 @@
     "cms/app/helpers/blocks_helper.rb": "37e2ab3dfb00effe2b09ff86bd46a48b6adb9be280b4912f825b350fd60ebfb9",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
     "cms/app/models/block_style.rb": "6303098b270a78c92af2de21d659d75a47d91e6aafab6985ec20a1b42f70a6db",
-    "cms/app/models/form_block.rb": "2089f09762c445596f10429d5be65b4eb7ae94bddf42ed23a5d218ce4ac6f2c2",
+    "cms/app/models/form_block.rb": "a66401ff4783c7a20ba28822fb9615ae6b3810e6fbc4d21adbec9e183bdeab91",
     "cms/app/models/render_policy.rb": "7f97f23b2d7176ba9bd8ae150d1eea8b82d408cf62b6ef8d26504c3157b60f22",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "b6d1c422b758c7ff3c6d60910c3c8b9d0cf454274eae4cc811630f55bff9f940",

@@ -22,7 +22,14 @@ class FormBlock
   EMAIL_LENGTH = 254
   MOST_FIELDS = 20
 
-  Field = Data.define(:name, :kind, :label, :required, :max_length)
+  Field = Data.define(:name, :kind, :label, :required, :max_length) do
+    # The field in the schema's own shape (formField), as an answer keeps a
+    # copy of it: maxLength only for the two kinds of text.
+    def as_stored
+      stored = { "name" => name, "kind" => kind, "label" => label, "required" => required }
+      LONGEST.key?(kind) ? stored.merge("maxLength" => max_length) : stored
+    end
+  end
 
   attr_reader :id, :fields, :confirmation
 

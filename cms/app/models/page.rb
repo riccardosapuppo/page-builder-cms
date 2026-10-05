@@ -6,6 +6,9 @@
 # Draft; every frozen copy is a PageVersion.
 class Page < ApplicationRecord
   has_one :draft, dependent: :delete
+  # What visitors sent with the page's forms: a page that has answers is
+  # not destroyed with them (nothing in the CMS destroys a page yet).
+  has_many :submissions, dependent: :restrict_with_exception
   has_many :versions, class_name: "PageVersion", inverse_of: :page, dependent: :delete_all
   belongs_to :published_version, class_name: "PageVersion", optional: true
   has_many :slug_redirects, dependent: :delete_all
