@@ -35,7 +35,7 @@ excerpt of each (`listResponses(pageId, { form, before })`); one
 response whole, with the published version it came from and its form's
 fields as that version had them (`getResponse`); and deleting one for
 good (`deleteResponse`). What a visitor wrote comes back as strings,
-which the editor shows as text.
+which the editor's Form responses (`../editor/responses/`) shows as text.
 `capabilities.imageVariants` says one thing more, not an operation:
 whether the storage makes smaller copies of an uploaded image for the
 pages to serve. The CMS does not (it has no image library: no libvips),

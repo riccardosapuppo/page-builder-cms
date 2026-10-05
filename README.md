@@ -197,7 +197,7 @@ itself.
   automatic versions and the purge of unused images. Since stage 5 it
   takes the forms visitors send from a published page, cached or not,
   and the editor lists, reads and deletes their answers through the same
-  API. `ruby bin/rails db:seed` loads the design's example site. Its README has the commands to
+  API, in Form responses from its menu. `ruby bin/rails db:seed` loads the design's example site. Its README has the commands to
   install, run and test it, and how the caches and the jobs work.
 - [`contract/`](contract/): the render contract, documents and the HTML the
   server renders for each, which the editor's renderer is held to.
