@@ -21,6 +21,10 @@
 //   gets a 304, a publish shows at the next request, and production's
 //   Solid Cache holds the page and its blocks, gaining four entries when
 //   one widget changes (cacheChecks);
+// - a visitor's form: sent with this site's Origin and no token, it is
+//   kept and leads to a confirmation that is never stored; with another
+//   site's, 403; from one address, the eleventh within ten minutes is 429,
+//   counted in production's Solid Cache (formChecks);
 // - the jobs, with `ruby bin/jobs` in a process of its own beside the
 //   server, as the CMS's README says a production run does: a page
 //   scheduled for 15 seconds ahead is not live before, and is live after
@@ -172,6 +176,55 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
   check(next.status === 200 && html.includes(`${title}, edited`) && next.headers.get("etag") !== etag, "after a publish, the old ETag gets 200 and the new page at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
   const after = cacheEntries();
   check(after.fragments - before.fragments === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before.fragments} fragments, then ${after.fragments} (${before.rows} rows in all, then ${after.rows})`);
+}
+
+// A visitor's form, in production: forgery protection on, as production
+// has it, and the forms counted in production's own store, Solid Cache.
+// Sent as a browser sends it, with this site's Origin and no token, the
+// form is kept and leads with 303 to a confirmation that is never stored;
+// with another site's Origin it is refused with 403; and from one address
+// the eleventh form within ten minutes is refused with 429. Each send
+// names its address in X-Forwarded-For, which the CMS takes from
+// 127.0.0.1, so the three counts are apart.
+async function formChecks(): Promise<void> {
+  const title = "Form in production";
+  const created = await api("POST", "/api/pages", { title, slug: "form" });
+  const id = created.page.id;
+  const field = { name: "name", kind: "text", label: "Name", required: true, maxLength: 100 };
+  const form = { id: "check-form", type: "form", props: { items: [field], submitLabel: "Send", confirmation: "Thank you, from production." }, children: [], style: { base: {} } };
+  const column = { id: "c", type: "column", props: {}, style: { base: {} }, children: [form] };
+  const document = { schemaVersion: 1, title, sections: [{ id: "s", type: "section", props: {}, style: { base: {} }, children: [column] }] };
+  await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document, saveId: "check-4" });
+  await api("POST", `/api/pages/${id}/publish`, {});
+
+  const send = async (origin: string, from: string): Promise<Response> => {
+    const response = await get("/form", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", origin, "x-forwarded-for": from },
+      body: new URLSearchParams({ form: "check-form", "answers[name]": "Ann Diver", website: "" }).toString(),
+    });
+    await response.text();
+    return response;
+  };
+
+  const sent = await send(BASE, "198.51.100.1");
+  check(sent.status === 303 && sent.headers.get("location") === `${BASE}/form/sent/check-form` && sent.headers.get("set-cookie") === null,
+    "a form sent with this site's Origin and no token is kept: 303 to its confirmation, and no cookie", `${sent.status} ${sent.headers.get("location")} ${sent.headers.get("set-cookie") ?? ""}`);
+  const shown = await get("/form/sent/check-form");
+  const html = await shown.text();
+  check(shown.status === 200 && html.includes("Thank you, from production.") && shown.headers.get("cache-control") === "no-store" && shown.headers.get("set-cookie") === null,
+    "the confirmation says the form's message, is never stored and sets no cookie", `${shown.status} ${shown.headers.get("cache-control")} ${shown.headers.get("set-cookie") ?? ""}`);
+
+  const foreign = await send("http://elsewhere.example", "198.51.100.2");
+  check(foreign.status === 403, "a form sent with another site's Origin is refused with 403", `${foreign.status}`);
+
+  const statuses: number[] = [];
+  for (let i = 0; i < 11; i++) statuses.push((await send(BASE, "198.51.100.3")).status);
+  check(statuses.slice(0, 10).every((s) => s === 303) && statuses[10] === 429, "from one address, the eleventh form within ten minutes is refused with 429", statuses.join(" "));
+
+  const r = spawnSync("ruby", ["bin/rails", "runner", `print "kept=#{Submission.where(page_id: ${Number(id)}).count}"`], { cwd: cms, env, encoding: "utf8" });
+  const kept = /kept=([0-9]+)/.exec(r.stdout ?? "");
+  check(r.status === 0 && kept?.[1] === "11", "the page's kept answers are the eleven its forms were let through with", kept ? `${kept[1]} kept` : `exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }
 
 // A publish set for a time, in production. No job runs inside this server
@@ -327,6 +380,9 @@ try {
     // The caches, last: the edit below changes the draft the visitor
     // checks read through the preview.
     if (etag) await cacheChecks(id, title, etag);
+
+    // A visitor's form, sent as a browser sends it.
+    await formChecks();
 
     // And the jobs, with a process of their own, as the README says.
     await scheduledChecks();

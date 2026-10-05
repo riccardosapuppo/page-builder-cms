@@ -268,8 +268,9 @@ itself.
   choice, and
   `tools/check-production.ts` (`npm run check:production`) checks a
   production boot on 127.0.0.1:3902 (`PRODUCTION_CHECK_PORT` moves it),
-  and in a browser the published page's layout, colours, reflow and
-  focus rings. `npm run test:tools` runs the tools' own tests: how they
+  a visitor's form sent to it, kept, refused from another site and held
+  to the limit, and in a browser the published page's layout, colours,
+  reflow and focus rings. `npm run test:tools` runs the tools' own tests: how they
   read, from netstat, ss or lsof, who listens on a port, npm start's
   parts, the check's readers, the CI file, and that no tracked file cites
   a document the repository does not hold, or a rule by its number

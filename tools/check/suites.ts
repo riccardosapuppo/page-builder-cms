@@ -436,7 +436,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(node, ["tools/check-production.ts"], { cwd: repoRoot });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? step.output.trim().split(/\r?\n/).slice(-1)[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 45);
+      return readChecks(step.output, step.code, 50);
     },
   },
   {
