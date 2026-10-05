@@ -249,6 +249,10 @@ itself.
   Gallery and Video included, which ask in their window first and then
   land where the key was dropped; and a flat light grey where a block
   cannot go.
+  Since stage 5: the form, from Insert's Forms group, its fields, button
+  and message set in the sidebar; and Form responses in the mark's menu,
+  which lists the answers kept for each form, newest first, opens one
+  whole and deletes it after asking.
   Its README has the commands; from here,
   `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
   `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
@@ -306,6 +310,38 @@ itself.
   Both are fixed in stage 4, which has not run there yet, nor have its own
   checks: the jobs in Solid Queue's forked process, the Rails tests'
   cache database in forked workers. Nothing has run on macOS.
+
+## Adding a widget
+
+What adding a widget takes is one commit, on both sides:
+[`b664d0a`, "Add the form widget, the whole of what a new widget takes"](https://github.com/riccardosapuppo/page-builder-cms/commit/b664d0a95307c6692de58b1a9cbcbe51fd9b35a4).
+The form was added alone in it, after the editor and the server were
+built; what the server does with a sent form, and Form responses, came
+after it in commits of their own. `git show --stat b664d0a` lists its 276
+files: 225 are the schema's corpus written again, and the other 51 are
+these places:
+
+- the schema: the type, one branch of the block dispatch, the widget's
+  props, and its valid and invalid cases for both validators;
+- a rule the schema cannot say, in TypeScript and in its Ruby twin: a
+  form's field names are unique in the form;
+- the editor's types, the widget's words, what the Outline shows after
+  its name, its sidebar groups, and the Forms group of Insert and of the
+  picker;
+- the widget's own folder: its definition, icon, React renderer, panel
+  with its test and accessibility test, and a line in each registry;
+- the server: the ERB partial, its type among a column's widgets, its
+  look in `site.css`, and its view test;
+- the render contract: a fixture of traps, with the goldens and the
+  manifest written again;
+- the random pages of the agreement and command checks, and the lists
+  and counts that name every widget.
+
+Two things no widget had needed before came with it, and are there for
+the next one: a sidebar with more than one group of a widget's own, and
+a safety check of the render contract that lets the form widget's own
+form through. [`builder/src/widgets/README.md`](builder/src/widgets/README.md#adding-a-widget)
+names each place by file, with the commands that check them.
 
 ## Checking it
 
@@ -612,10 +648,11 @@ text editor's chunk in any run above.
      rearranged as the layout approved on 3 October 2026
      (`design/layout/`). Done.
 4. **Publishing and performance.** HTTP and fragment caching, scheduled
-   publishing and background jobs, with measurements. In progress: all
-   four are in the repository (above, and [Measurements](#measurements));
-   the stage's reviews are next.
-5. **Forms**, submitted to Rails from published pages.
+   publishing and background jobs, with measurements. Done.
+5. **Forms**, submitted to Rails from published pages. In progress: the
+   form widget ([Adding a widget](#adding-a-widget)), the server that
+   takes and keeps what visitors send, and Form responses in the editor
+   are in the repository; the stage's reviews are next.
 6. **A browser-only demo** of the editor, then the full documentation.
 
 ## License
