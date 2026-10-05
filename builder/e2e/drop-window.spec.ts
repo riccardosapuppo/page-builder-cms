@@ -14,7 +14,10 @@
 //   has no room over or under a line in the middle of it (the review of the
 //   first fix): the page moves, back if it is at its end, or onto room the
 //   canvas is given at its foot if it is too short to scroll, and that room
-//   goes when the library closes.
+//   goes when the library closes;
+// - on narrower windows, where the page is drawn smaller (the review of the
+//   second fix: 1024 by 768, 1100 by 700, 900 by 900), off the line from
+//   the window's first frame, not only once the canvas has settled.
 import type { Locator, Page } from "@playwright/test";
 import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
@@ -72,6 +75,47 @@ async function dropped(page: Page, group: "Basic" | "Media" | "Content", name: s
   await page.mouse.up();
   await expect(library(page)).toBeVisible();
 }
+
+// From the frame a window first appears in and for the next ones: whether
+// it is over the line `selector` finds, or the line is out of the
+// canvas's view. Each frame is read first thing in the next one, before
+// anything else runs in it: as it was drawn. Armed before the drop, read
+// with framesSeen once there are FRAMES of them.
+const FRAMES = 6;
+const armFrames = (page: Page, selector: string) => page.evaluate(({ selector, frames }) => {
+  const seen: string[] = [];
+  (window as unknown as { framesSeen: string[] }).framesSeen = seen;
+  const box = (element: Element) => {
+    const { left, top, right, bottom } = element.getBoundingClientRect();
+    return { left, top, right, bottom };
+  };
+  const opened = new MutationObserver(() => {
+    if (!document.querySelector("[role=dialog][aria-modal=true]")) return;
+    opened.disconnect();
+    const read = () => {
+      const dialog = document.querySelector("[role=dialog][aria-modal=true]");
+      const line = document.querySelector(selector);
+      const canvas = document.querySelector(".canvas");
+      if (!dialog || !line || !canvas) {
+        seen.push("no window, line or canvas");
+      } else {
+        const [d, l, c] = [box(dialog), box(line), box(canvas)];
+        const over = d.left < l.right && l.left < d.right && d.top < l.bottom && l.top < d.bottom;
+        const out = l.top < c.top - 0.5 || l.bottom > c.bottom + 0.5;
+        const at = (b: typeof d) => `[${Math.round(b.left)},${Math.round(b.top)},${Math.round(b.right)},${Math.round(b.bottom)}]`;
+        seen.push(over ? `window ${at(d)} over line ${at(l)}` : out ? `line ${at(l)} out of the canvas ${at(c)}` : "clear");
+      }
+      if (seen.length < frames) requestAnimationFrame(read);
+    };
+    requestAnimationFrame(read);
+  });
+  opened.observe(document.body, { childList: true });
+}, { selector, frames: FRAMES });
+
+const framesSeen = async (page: Page): Promise<string[]> => {
+  await expect.poll(() => page.evaluate(() => (window as unknown as { framesSeen: string[] }).framesSeen.length)).toBe(FRAMES);
+  return page.evaluate(() => (window as unknown as { framesSeen: string[] }).framesSeen);
+};
 
 // What the browser finds at the middle of the line: the line itself, or
 // the scrim that dims it, and nothing of a window.
@@ -316,3 +360,44 @@ test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", (
     expect(await page.locator(".canvas").evaluate((element) => element.style.paddingBottom)).toBe("");
   });
 });
+
+// Narrower windows, where the canvas has less than the desktop page's 800
+// of room and draws the page smaller (the review of the second fix): the
+// box around the page drawn smaller followed the page a frame late, so a
+// window was placed against the height the drag's preview had given the
+// canvas, and the canvas, clamped a frame later, moved the line under it,
+// at 1024 by 768 by 152 px.
+for (const [width, height, keys] of [[1024, 768, ["Video", "Image"]], [1100, 700, ["Video", "Image"]], [900, 900, ["Image"]]] as const) {
+  const view: Box = { x: 0, y: 0, width, height };
+
+  test.describe(`on a window ${width} by ${height}, the page drawn smaller`, () => {
+    test.use({ viewport: { width, height } });
+
+    for (const key of keys) {
+      test(`${key} dropped in the empty last column of the review's page: from its first frame, its window is off the line`, async ({ page, request }) => {
+        const { id } = await makePage(request, `${key} at ${width} by ${height}`, fixture());
+        await open(page, id);
+        await drawer(page, "Insert");
+        await expect(page.locator(".canvas .frame"), "the page is drawn smaller").toHaveAttribute("data-scale", /^0\.\d+$/);
+        await pickUp(page, await insertKey(page, key === "Video" ? "Media" : "Basic", key));
+        await moveOnto(page, block(page, "c4"));
+        await armFrames(page, '.canvas [data-block-id="c4"] > .ins-slot-wrap .ins-slot');
+        await page.mouse.up();
+        const shown = key === "Video" ? videoWindow(page) : library(page);
+        await expect(shown).toBeVisible();
+        // Every frame from its first, not only once settled: a window
+        // placed against the canvas as the drag left it is over the line
+        // from the next frame on, until something stands it again.
+        expect(await framesSeen(page)).toEqual(Array(FRAMES).fill("clear"));
+
+        const found = await boxes(page, shown, line(page, "c4"));
+        expectLeavesTheLine(found, view);
+        expect(found.side, "it stands beside the line, not in the middle").not.toBeNull();
+        expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c4")));
+        await page.keyboard.press("Escape");
+        await expect(shown).toHaveCount(0);
+        expect(await types(page, "c4")).toEqual([]);
+      });
+    }
+  });
+}

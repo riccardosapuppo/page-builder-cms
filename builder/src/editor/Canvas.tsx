@@ -35,7 +35,7 @@
 // link's field opens under the block.
 import {
   createContext, Suspense, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
-  type CSSProperties, type ReactNode,
+  type CSSProperties, type ReactNode, type RefObject,
 } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
@@ -841,7 +841,9 @@ export function Canvas() {
   useEffect(() => () => ui.getState().setPageView(null), [ui]);
 
   // A page scaled to fit takes the room of its scaled size: the box around
-  // it is as tall as the page drawn smaller, kept so as the page grows.
+  // it is as tall as the page drawn smaller, kept so as the page grows
+  // (here, once the next frame is laid out; FitNow, in the commit that
+  // changes the page).
   useLayoutEffect(() => {
     const outer = fit.current;
     const inner = frame.current;
@@ -850,9 +852,7 @@ export function Canvas() {
       outer.style.height = "";
       return undefined;
     }
-    const place = () => {
-      outer.style.height = `${inner.offsetHeight * scale}px`;
-    };
+    const place = () => fitBox(inner, scale);
     place();
     const observer = new ResizeObserver(place);
     observer.observe(inner);
@@ -1032,6 +1032,7 @@ export function Canvas() {
               </>
             ) : <PageRoot document={drawn} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
           </div>
+          <FitNow frame={frame} scale={scale} />
         </div>
       </SourceRef.Provider>
       {/* Outside the page, which may be drawn smaller: at the editor's own
@@ -1083,6 +1084,32 @@ function themePartAt(frame: Element, x: number, y: number): "header" | "footer" 
 // is 12: the page is then 807 wide at 1440, still the desktop layout.
 const FRAME_MARGIN = 19;
 const FRAME_MARGIN_PUSHED = 12;
+
+// The box around a page drawn smaller (.frame-fit, its parent) made as
+// tall as the page drawn smaller: a transform leaves the page's own
+// height in the layout, and the canvas would scroll as far as that.
+function fitBox(page: HTMLElement, scale: number): void {
+  const box = page.parentElement;
+  if (box) box.style.height = `${page.offsetHeight * scale}px`;
+}
+
+// The same, in the commit that changes the page, where the Canvas's
+// observer does it only once the next frame is laid out: a window that
+// stands beside a place on the page (./place-dialog.ts) is placed by a
+// layout effect of the picker, in that commit, and reads how far the
+// canvas scrolls. React runs a
+// tree's layout effects in its order, and this comes before the picker.
+// Without it, a key dropped near the end of a page drawn smaller (a canvas
+// with less than the desktop page's 800 of room: a 1024 or 1100 window
+// with Insert open) had its window placed against the box still as tall
+// as the drag's preview, and the canvas, clamped a frame later, moved the
+// line under it: by 152 px at 1024 by 768.
+function FitNow({ frame, scale }: { frame: RefObject<HTMLDivElement | null>; scale: number }) {
+  useLayoutEffect(() => {
+    if (scale !== 1 && frame.current) fitBox(frame.current, scale);
+  });
+  return null;
+}
 
 // ------------------------------------------------------- the empty page
 
