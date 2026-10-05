@@ -388,9 +388,23 @@ files with no disagreement, 351 Rails runs with 322 API answers held to
 the description, 54 tests against a CMS of their own, 215 browser tests
 and 42 accessibility tests (the last 42 are among the 215, and run again
 on their own), 40 serving checks, 50 of the production boot, 7 of npm
-start's smoke run and 11 of its stops. The floors in `suites.ts` are
+start's smoke run and 11 of its stops. The floors in `suites.ts` were
 those counts, and RuboCop's 147 files; Brakeman's, 70, is under the 79
-checks it ran. The steps of the CI file's browser job (`builder-e2e`:
+checks it ran. The fix round that followed added tests and raised the
+floors to the counts of its own run on the same machine, 10:35 to
+11:07 UTC that day: 75 tools tests (a 76th, which needs process groups,
+is skipped on Windows and runs in CI), 820 unit tests, 355 Rails runs
+(still 322 API answers) and 216 browser tests, the rest as above. A floor
+left below the count of a run lets a deleted test pass unnoticed: a tools
+test skipped on purpose failed the check with 74, fewer than the 75. In
+the fix round's runs of the browser tests and the accessibility tests,
+between none and four tests failed each time, a different few each run
+(the keyboard drag from the picker, a save toast's Retry now button that
+detached as it was clicked, an image not yet decoded) and each passed
+when run again; the tree before the round, run the same way beside them,
+failed one test in each of the two suites. All 216 browser tests passed
+together in one run, and all 42 accessibility tests in another. The
+steps of the CI file's browser job (`builder-e2e`:
 the tests against a CMS of their own, the browser tests, the
 accessibility tests again, the serving checks) took 49.8, 779.2, 281.4
 and 22.7 seconds, 18.9 minutes in all; 17.9 in the last run of stage 4,

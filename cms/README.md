@@ -161,14 +161,15 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of the morning of 5 October 2026 (Windows 10, Ruby 3.4.11),
+The run of the afternoon of 5 October 2026 (Windows 10, Ruby 3.4.11),
 with `CI=1`, which loads the whole app first as production does and as
-CI runs it, with stage 5's forms and their responses:
+CI runs it, with stage 5's forms and their responses, after its first fix
+round (the morning's run had 351 runs and 1964 assertions):
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 105.102763s, 3.3396 runs/s, 18.6865 assertions/s.
-351 runs, 1964 assertions, 0 failures, 0 errors, 0 skips
+Finished in 103.026592s, 3.4457 runs/s, 19.6357 assertions/s.
+355 runs, 2023 assertions, 0 failures, 0 errors, 0 skips
 openapi: 322 API response(s) checked against cms/openapi.yaml
 ```
 
