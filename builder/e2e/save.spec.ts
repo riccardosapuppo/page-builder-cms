@@ -157,7 +157,12 @@ test("a save the network loses is retried with the same saveId: the countdown, t
   expect(await asksBeforeClosing(page)).toBe(true);
   await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveAttribute("aria-disabled", "true");
 
-  // The connection is back; Retry now sends at once.
+  // The connection is back; Retry now sends at once. The editor's own
+  // retry sends too, 2 s after the first loss, then 4 s after that, and
+  // one let through before the click would take the button away: the
+  // connection comes back once that first retry is lost, which leaves the
+  // click 4 s.
+  await expect.poll(() => sent.length).toBeGreaterThan(1);
   down = false;
   const tries = sent.length;
   await toast.getByRole("button", { name: "Retry now" }).click();
