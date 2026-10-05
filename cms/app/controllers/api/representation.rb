@@ -125,6 +125,35 @@ module Api
       }
     end
 
+    # An answer to a form, as a list shows it. versionNumber is the
+    # published version the form was read from; the row is loaded with it
+    # (ResponsesController#with_version_number), not with the version's
+    # document.
+    def response_summary_json(submission)
+      {
+        "id" => submission.id,
+        "formId" => submission.form_id,
+        "versionNumber" => submission.version_number,
+        "submittedAt" => iso(submission.created_at),
+        "excerpt" => submission.excerpt
+      }
+    end
+
+    # An answer whole: the form's fields as that version had them, and the
+    # answer to each by its name (text, "" when left empty, or whether the
+    # box was ticked). What a visitor wrote is returned as the string it
+    # was, never as markup.
+    def response_json(submission)
+      {
+        "id" => submission.id,
+        "formId" => submission.form_id,
+        "versionNumber" => submission.version_number,
+        "submittedAt" => iso(submission.created_at),
+        "fields" => submission.fields,
+        "answers" => submission.answers
+      }
+    end
+
     def site_style_json(style)
       colors = SiteTokens.read.fetch("color")
       {

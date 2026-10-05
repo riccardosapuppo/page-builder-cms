@@ -14,13 +14,15 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, SCHEDULE_STATES, VERSION_REASONS,
-  type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type InUse, type Invalid, type MediaItem,
-  type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
-  type NotPending, type Published, type PublishRequest, type PublishResult, type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
+  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type FormResponse, type FormResponseCount, type InUse, type Invalid,
+  type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
+  type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
+  type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
   type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
   type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
+import { FORM_FIELD_KINDS } from "../shared/document.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId } from "./rails.ts";
 
 // ------------------------------------------------- shapes, held by tsc
@@ -83,6 +85,12 @@ const SCHEDULE = {
   id: num, at: str, revision: num, versionNumber: num, state: str, createdAt: str, settledAt: orNull(str), publishedVersionNumber: orNull(num),
 } as const satisfies Shape<Schedule>;
 const SCHEDULE_RESULT = { schedule: obj, version: obj, replaced: orNull(obj) } as const satisfies Shape<ScheduleResult>;
+const KEPT_FIELD = { name: str, kind: str, label: str, required: bool, maxLength: optional(num) } as const satisfies Shape<KeptField>;
+const RESPONSE_EXCERPT = { label: str, text: str, truncated: bool } as const satisfies Shape<ResponseExcerpt>;
+const RESPONSE_SUMMARY = { id: num, formId: str, versionNumber: num, submittedAt: str, excerpt: orNull(obj) } as const satisfies Shape<ResponseSummary>;
+const FORM_RESPONSE = { id: num, formId: str, versionNumber: num, submittedAt: str, fields: arr, answers: obj } as const satisfies Shape<FormResponse>;
+const RESPONSE_LIST = { responses: arr, next: orNull(num), forms: arr } as const satisfies Shape<ResponseList>;
+const FORM_RESPONSE_COUNT = { formId: str, count: num } as const satisfies Shape<FormResponseCount>;
 // What DirectUpload hands back: the API's answer, less the direct_upload
 // member the library takes out.
 const DIRECT_UPLOAD_BLOB = {
@@ -99,6 +107,8 @@ const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>
 const SITE_STYLE_CHANGE = { palette: obj, typeScale: str } as const satisfies Shape<SiteStyleChange>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
+// Not a body: the list's query parameters, compared with the operation's.
+const RESPONSE_QUERY = { form: optional(str), before: optional(num) } as const satisfies Shape<ResponseQuery>;
 
 const INVALID_CODES = ["invalid_request", "invalid_document", "duplicate_key"] as const satisfies readonly Invalid["code"][];
 // And no code of Invalid's is missing from the list.
@@ -179,6 +189,12 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["PublishResult", PUBLISH_RESULT, response("/api/pages/{id}/publish", "post", 200)],
     ["Schedule", SCHEDULE, "#/components/schemas/Schedule"],
     ["ScheduleResult", SCHEDULE_RESULT, response("/api/pages/{id}/schedules", "post", 201)],
+    ["KeptField", KEPT_FIELD, "#/components/schemas/KeptField"],
+    ["ResponseExcerpt", RESPONSE_EXCERPT, "#/components/schemas/ResponseExcerpt"],
+    ["ResponseSummary", RESPONSE_SUMMARY, "#/components/schemas/FormResponseSummary"],
+    ["FormResponse", FORM_RESPONSE, "#/components/schemas/FormResponse"],
+    ["ResponseList", RESPONSE_LIST, response("/api/pages/{id}/responses", "get", 200)],
+    ["FormResponseCount", FORM_RESPONSE_COUNT, `${response("/api/pages/{id}/responses", "get", 200)}/properties/forms/items`],
     ["RestoreResult", RESTORE_RESULT, response("/api/pages/{id}/versions/{number}/restore", "post", 200)],
     ["MediaItem", MEDIA_ITEM, "#/components/schemas/MediaItem"],
     ["MediaUse", MEDIA_USE, "#/components/schemas/MediaInUseError/properties/usedBy"],
@@ -228,6 +244,16 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     expect([follow(media.width!).maximum, follow(media.height!).maximum]).toEqual([MAX_IMAGE_SIDE, MAX_IMAGE_SIDE]);
   });
 
+  test("the responses: a list's longest part, the kinds of a kept field, and the list's query", () => {
+    expect(RESPONSES_PER_PART).toBe(at(`${response("/api/pages/{id}/responses", "get", 200)}/properties/responses`).maxItems);
+    expect([...FORM_FIELD_KINDS]).toEqual(at("#/components/schemas/KeptField/properties/kind").enum);
+    const parameters = (at("#/paths/~1api~1pages~1{id}~1responses/get").parameters as Node[]).map(follow);
+    const query = Object.fromEntries(
+      parameters.filter((p) => p.in === "query").map((p) => [p.name as string, { ...describeSchema(p.schema as Node), required: p.required === true }]),
+    );
+    expect(sortKeys(query)).toEqual(sortKeys(RESPONSE_QUERY));
+  });
+
   test("the codes of an invalid request", () => {
     const codes = ["InvalidRequestError", "InvalidDocumentError", "DuplicateKeyError"].map((name) => at(`#/components/schemas/${name}/properties/error`).const);
     expect(codes).toEqual([...INVALID_CODES]);
@@ -239,7 +265,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(41);
+    expect(pairs).toHaveLength(47);
   });
 });
 

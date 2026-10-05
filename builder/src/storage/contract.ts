@@ -661,7 +661,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       const calls: Record<OptionalOperation, () => Promise<unknown>> = {
         publish: () => env.adapter.publish(1),
         schedule: () => env.adapter.schedulePublish(1, { revision: 0, at: "2026-10-03T08:00:00.000Z" }),
-        responses: () => env.adapter.listResponses(),
+        responses: () => env.adapter.listResponses(1),
       };
       const absent = OPTIONAL_OPERATIONS.filter((op) => !env.adapter.capabilities[op]);
       for (const operation of absent) {

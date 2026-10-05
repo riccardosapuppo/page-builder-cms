@@ -76,6 +76,11 @@ describe("the Rails adapter's requests", () => {
     ["saveVersion with a name", (a) => a.saveVersion(7, { name: "Before" }), "POST", "/api/pages/7/versions", { name: "Before" }],
     ["getVersion", (a) => a.getVersion(7, 2), "GET", "/api/pages/7/versions/2", null],
     ["restoreVersion", (a) => a.restoreVersion(7, 2), "POST", "/api/pages/7/versions/2/restore", null],
+    ["listResponses", (a) => a.listResponses(7), "GET", "/api/pages/7/responses", null],
+    ["listResponses of a form, before a response", (a) => a.listResponses(7, { form: "join form/x", before: 41 }), "GET", "/api/pages/7/responses?form=join+form%2Fx&before=41", null],
+    ["listResponses with only before", (a) => a.listResponses(7, { before: 41 }), "GET", "/api/pages/7/responses?before=41", null],
+    ["getResponse", (a) => a.getResponse(7, 41), "GET", "/api/pages/7/responses/41", null],
+    ["deleteResponse", (a) => a.deleteResponse(7, 41), "DELETE", "/api/pages/7/responses/41", null],
     ["listMedia", (a) => a.listMedia(), "GET", "/api/media", null],
     ["setMediaAlt", (a) => a.setMediaAlt("abc_D-9", "A pier"), "PATCH", "/api/media/abc_D-9", { alt: "A pier" }],
     ["deleteMedia", (a) => a.deleteMedia("abc_D-9"), "DELETE", "/api/media/abc_D-9", null],
@@ -109,12 +114,8 @@ describe("the Rails adapter's requests", () => {
     expect(sent.map((s) => s.url)).toEqual(["http://127.0.0.1:3901/api/pages", "/api/pages"]);
   });
 
-  test("asks nobody for what its capabilities say it lacks", async () => {
-    const { fetch, sent } = fakeFetch();
-    const adapter = createRailsAdapter({ fetch });
-    expect(adapter.capabilities).toEqual({ publish: true, schedule: true, responses: false, imageVariants: false });
-    expect(await failureOf(adapter.listResponses())).toMatchObject({ kind: "unsupported", operation: "responses" });
-    expect(sent).toEqual([]);
+  test("declares every optional operation, since the CMS has them all, and no smaller copies of images", () => {
+    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false });
   });
 });
 
@@ -166,6 +167,25 @@ describe("the Rails adapter's answers", () => {
     const adapter = createRailsAdapter({ fetch });
     expect(await adapter.deleteMedia("m1")).toEqual({ ok: false, problem: { kind: "in-use", message: "used", usedBy } });
     expect(await adapter.deleteMedia("m1")).toEqual({ ok: true, value: null });
+  });
+
+  test("a response list and a response are the API's answers; a deleted one is nothing, one already gone is not-found, a query refused is refused", async () => {
+    const list = { responses: [{ id: 41, formId: "join-form", versionNumber: 2, submittedAt: "2026-10-05T09:00:00.000Z", excerpt: null }], next: null, forms: [{ formId: "join-form", count: 1 }] };
+    const one = { id: 41, formId: "join-form", versionNumber: 2, submittedAt: "2026-10-05T09:00:00.000Z", fields: [], answers: { name: "<b>Ann</b>" } };
+    const answers: Reply[] = [
+      { status: 200, body: list },
+      { status: 200, body: one },
+      { status: 204 },
+      { status: 404, body: { error: "not_found", message: "nothing" } },
+      { status: 400, body: { error: "invalid_query", message: "no", parameter: "before" } },
+    ];
+    const { fetch } = fakeFetch(() => answers.shift()!);
+    const adapter = createRailsAdapter({ fetch });
+    expect(await adapter.listResponses(7)).toEqual(list);
+    expect(await adapter.getResponse(7, 41)).toEqual(one);
+    expect(await adapter.deleteResponse(7, 41)).toBeUndefined();
+    expect(await failureOf(adapter.deleteResponse(7, 41))).toEqual({ kind: "not-found", message: "nothing" });
+    expect(await failureOf(adapter.listResponses(7, { before: 41 }))).toEqual({ kind: "refused", status: 400, code: "invalid_query", message: "no" });
   });
 
   test("a refusal no retry changes is thrown as refused, a missing page as not-found", async () => {

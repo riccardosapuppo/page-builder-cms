@@ -16,7 +16,6 @@
 //   library is loaded only when an image is uploaded.
 import {
   StorageError,
-  unsupported,
   type CallOptions,
   type Capabilities,
   type Conflict,
@@ -24,6 +23,7 @@ import {
   type DraftSaved,
   type DraftSave,
   type FieldError,
+  type FormResponse,
   type InUse,
   type Invalid,
   type MediaItem,
@@ -36,6 +36,8 @@ import {
   type PageSummary,
   type PublishRequest,
   type PublishResult,
+  type ResponseList,
+  type ResponseQuery,
   type RestoreResult,
   type Schedule,
   type ScheduleRequest,
@@ -80,6 +82,9 @@ export const RAILS_ROUTES = {
   saveVersion: { method: "POST", path: "/pages/{id}/versions", body: "optional" },
   getVersion: { method: "GET", path: "/pages/{id}/versions/{number}", body: "none" },
   restoreVersion: { method: "POST", path: "/pages/{id}/versions/{number}/restore", body: "none" },
+  listResponses: { method: "GET", path: "/pages/{id}/responses", body: "none" },
+  getResponse: { method: "GET", path: "/pages/{id}/responses/{responseId}", body: "none" },
+  deleteResponse: { method: "DELETE", path: "/pages/{id}/responses/{responseId}", body: "none" },
   // Sent by DirectUpload itself, which writes POST and its own headers.
   startUpload: { method: "POST", path: "/media/direct_uploads", body: "required" },
   listMedia: { method: "GET", path: "/media", body: "none" },
@@ -97,8 +102,8 @@ export const RAILS_CAPABILITIES: Capabilities = {
   publish: true,
   // A job of the CMS's queue publishes at the time set.
   schedule: true,
-  // Until the CMS keeps them: form answers, in stage 5.
-  responses: false,
+  // The CMS keeps what visitors send with a published page's forms.
+  responses: true,
   // The CMS keeps each file as uploaded: it has no image library to make
   // variants with (variant_processor :disabled, cms/config/application.rb),
   // and the battery's upload case reads the same bytes back from an
@@ -149,18 +154,28 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
   const absoluteBase = /^[a-z][a-z0-9+.-]*:/i.test(base) ? base : null;
   const onCmsOrigin = (path: string) => (absoluteBase === null ? path : new URL(path, absoluteBase).href);
 
-  function address(operation: OperationId, params: Record<string, string | number>): string {
+  // The query takes the parameters given a value, in the order given; an
+  // undefined one is left out rather than sent empty.
+  function address(operation: OperationId, params: Record<string, string | number>, query: Record<string, string | number | undefined> = {}): string {
     const path = RAILS_ROUTES[operation].path.replace(/\{([A-Za-z]+)\}/g, (_, name: string) => {
       const value = params[name];
       if (value === undefined) throw new Error(`${operation} needs the path parameter ${name}`);
       return encodeURIComponent(String(value));
     });
-    return `${base}${path}`;
+    const search = new URLSearchParams();
+    for (const [name, value] of Object.entries(query)) if (value !== undefined) search.append(name, String(value));
+    return search.size === 0 ? `${base}${path}` : `${base}${path}?${search}`;
   }
 
-  async function call(operation: OperationId, params: Record<string, string | number>, body: unknown, options?: CallOptions): Promise<Answer> {
+  async function call(
+    operation: OperationId,
+    params: Record<string, string | number>,
+    body: unknown,
+    options?: CallOptions,
+    query?: Record<string, string | number | undefined>,
+  ): Promise<Answer> {
     const route: Route = RAILS_ROUTES[operation];
-    const url = address(operation, params);
+    const url = address(operation, params, query);
     const headers: Record<string, string> = { Accept: "application/json" };
     const init: RequestInit = { method: route.method, headers, cache: "no-store", credentials: "same-origin" };
     if (route.method === "POST" || route.method === "PUT" || route.method === "PATCH") {
@@ -350,8 +365,15 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
       return value<Site>(await call("getSite", {}, undefined, options), 200, "getSite");
     },
 
-    async listResponses() {
-      throw unsupported("responses", "rails");
+    async listResponses(pageId, query: ResponseQuery = {}, options) {
+      const answer = await call("listResponses", { id: pageId }, undefined, options, { form: query.form, before: query.before });
+      return value<ResponseList>(answer, 200, "listResponses");
+    },
+    async getResponse(pageId, responseId, options) {
+      return value<FormResponse>(await call("getResponse", { id: pageId, responseId }, undefined, options), 200, "getResponse");
+    },
+    async deleteResponse(pageId, responseId, options) {
+      value<null>(await call("deleteResponse", { id: pageId, responseId }, undefined, options), 204, "deleteResponse");
     },
   };
 

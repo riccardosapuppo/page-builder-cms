@@ -19,7 +19,7 @@
 // The answers' types are written by hand from what the CMS sends
 // (cms/openapi.yaml, whose request tests hold the CMS's real answers to
 // it); openapi.test.ts holds these types to that file, key by key.
-import type { PageDocument } from "../shared/document.ts";
+import type { FormFieldKind, PageDocument } from "../shared/document.ts";
 
 // ISO 8601, in UTC, as the server writes it ("2026-10-02T09:15:00.000Z").
 export type Time = string;
@@ -255,15 +255,76 @@ export interface Site {
 
 // ---------------------------------------------------- form answers
 
-// Stage 5 (forms): the shape is this interface's guess until the CMS keeps
-// answers, and is fixed against its API then.
-export interface FormResponse {
+// What visitors sent with the forms of a page's published versions. Each
+// response keeps the version its form was read from and a copy of the
+// form's fields as that version had them, so it reads the same after the
+// form changes. What a visitor wrote is text from a stranger: shown as
+// text, never as markup.
+
+// A field of the form, as the version the response came from had it (the
+// document's form field): maxLength only for the two kinds of text.
+export interface KeptField {
+  name: string;
+  kind: FormFieldKind;
+  label: string;
+  required: boolean;
+  maxLength?: number;
+}
+
+// The first text answer that is not empty, on one line, cut at 120
+// characters as a reader counts them; truncated says whether it was cut.
+export interface ResponseExcerpt {
+  label: string;
+  text: string;
+  truncated: boolean;
+}
+
+// A response as a list shows it.
+export interface ResponseSummary {
   id: number;
-  pageId: number;
+  // The form block's id in the page's document.
+  formId: string;
   versionNumber: number;
   submittedAt: Time;
-  fields: Array<{ label: string; value: string | boolean }>;
+  // null when every text answer is empty, or the form has only checkboxes.
+  excerpt: ResponseExcerpt | null;
 }
+
+// A response whole: each field's answer by its name, every field with one.
+// A text is the string sent ("" when left empty); a checkbox, whether it
+// was ticked.
+export interface FormResponse {
+  id: number;
+  formId: string;
+  versionNumber: number;
+  submittedAt: Time;
+  fields: KeptField[];
+  answers: Record<string, string | boolean>;
+}
+
+export interface FormResponseCount {
+  formId: string;
+  count: number;
+}
+
+// A part of a page's responses, newest first, at most RESPONSES_PER_PART.
+// next continues the list (ResponseQuery.before), null at its end. forms
+// counts the responses of each form of the page that has any, whatever the
+// query, so the editor offers only forms with responses.
+export interface ResponseList {
+  responses: ResponseSummary[];
+  next: number | null;
+  forms: FormResponseCount[];
+}
+
+export interface ResponseQuery {
+  // Only this form's responses, by its block's id.
+  form?: string;
+  // Only the responses that came before this one: a list's next.
+  before?: number;
+}
+
+export const RESPONSES_PER_PART = 50;
 
 // --------------------------------------------------------- requests
 
@@ -491,9 +552,13 @@ export interface StorageAdapter {
   // The theme's header and footer, as every page draws them.
   getSite(options?: CallOptions): Promise<Site>;
 
-  // Capability responses (stage 5): the answers sent from a page's forms,
-  // or from every page's.
-  listResponses(pageId?: number, options?: CallOptions): Promise<FormResponse[]>;
+  // Capability responses: what visitors sent with the page's forms, a part
+  // at a time, newest first.
+  listResponses(pageId: number, query?: ResponseQuery, options?: CallOptions): Promise<ResponseList>;
+  // One response, not-found unless it is this page's.
+  getResponse(pageId: number, responseId: number, options?: CallOptions): Promise<FormResponse>;
+  // Deletes it for good; not-found when it is already gone.
+  deleteResponse(pageId: number, responseId: number, options?: CallOptions): Promise<void>;
 }
 
 // --------------------------------------------- errors, block by block

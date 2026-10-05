@@ -5,10 +5,12 @@ info:
   summary: The JSON API the page editor saves and publishes through.
   description: |
     Pages, their draft and versions, publishing now or at a set time, the
-    media library, the site style of Page Builder CMS and, to read, the
-    theme's parts around every page. The editor talks to the CMS only through
-    this API, so another server that answers the same way can stand in for
-    it.
+    responses visitors send with the forms of published pages, the media
+    library, the site style of Page Builder CMS and, to read, the theme's
+    parts around every page. The editor talks to the CMS only through this
+    API, so another server that answers the same way can stand in for it.
+    (Visitors send their forms to the published page's own address, not to
+    this API.)
 
     The page document is not described here: it is the one schema both the
     editor and the server validate with, `schema/block-document.schema.json`,
@@ -22,9 +24,11 @@ info:
     422 `duplicate_key`; a body that is not JSON at all, with 400
     `malformed_json`. No string member of a request body may hold the
     character U+0000: 422, keyword `pattern`. A path whose id is not in the
-    form its parameter describes is 404. A failure the server did not
-    foresee is answered 500 `internal_error`, in the same shape, never as
-    an HTML page.
+    form its parameter describes is 404. A query parameter an operation
+    does not take, one named twice, or a value not in its parameter's form
+    is 400 `invalid_query`, naming the `parameter`. A failure the server
+    did not foresee is answered 500 `internal_error`, in the same shape,
+    never as an HTML page.
 
     The API has no authentication: the server listens on 127.0.0.1 only.
     Listening there keeps other machines out but not other sites open in a
@@ -48,6 +52,8 @@ tags:
     description: Pages, their draft, publishing.
   - name: versions
     description: Frozen copies of a page's document.
+  - name: responses
+    description: What visitors sent with the forms of a page's published versions.
   - name: media
     description: The media library.
   - name: site-style
@@ -585,6 +591,112 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/pages/{id}/responses:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    get:
+      operationId: listResponses
+      summary: List the responses to the page's forms
+      description: |
+        What visitors sent with the forms of the page's published versions,
+        newest first, at most 50 at a time. Each comes with an excerpt, its
+        first text answer that is not empty, so the responses can be told
+        apart without reading each. `next` continues the list: ask again
+        with `before` set to it. `forms` counts the responses of each form
+        of the page that has any, whatever the query says. What a visitor
+        wrote is a JSON string, never markup: show it as text.
+      tags: [responses]
+      parameters:
+        - name: form
+          in: query
+          required: false
+          description: Only the responses to this form, by its block's id.
+          schema:
+            $ref: '#/components/schemas/FormId'
+        - name: before
+          in: query
+          required: false
+          description: Only the responses that came before this one, by its id; the `next` of the previous answer.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: A part of the list, and the count of each form's responses.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [responses, next, forms]
+                properties:
+                  responses:
+                    type: array
+                    maxItems: 50
+                    items:
+                      $ref: '#/components/schemas/FormResponseSummary'
+                  next:
+                    description: The `before` that continues the list; null when nothing older is left.
+                    type: [integer, 'null']
+                  forms:
+                    description: Every form of the page with responses, by its id, each with how many it has.
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [formId, count]
+                      properties:
+                        formId:
+                          $ref: '#/components/schemas/FormId'
+                        count:
+                          type: integer
+                          minimum: 1
+        '400':
+          $ref: '#/components/responses/MalformedJsonOrInvalidQuery'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/pages/{id}/responses/{responseId}:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+      - $ref: '#/components/parameters/ResponseId'
+    get:
+      operationId: getResponse
+      summary: Read a response
+      description: The answers, with the form's fields as the published version they were sent from had them.
+      tags: [responses]
+      responses:
+        '200':
+          description: The response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormResponse'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteResponse
+      summary: Delete a response
+      description: Deletes it for good. The page and its versions are not changed.
+      tags: [responses]
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/media/direct_uploads:
     post:
       operationId: startUpload
@@ -879,6 +991,14 @@ components:
       description: The media item's id, the one documents name as mediaId.
       schema:
         $ref: '#/components/schemas/MediaId'
+    ResponseId:
+      name: responseId
+      in: path
+      required: true
+      description: The response's id, among the page's responses.
+      schema:
+        type: integer
+        minimum: 1
 
   responses:
     MalformedJson:
@@ -887,8 +1007,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/MalformedJsonError'
+    MalformedJsonOrInvalidQuery:
+      description: The request cannot be read (see MalformedJson), or its query names a parameter the operation does not take, names one twice, or gives a value not in its parameter's form.
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/MalformedJsonError'
+              - $ref: '#/components/schemas/InvalidQueryError'
     NotFound:
-      description: No such page, version or media item.
+      description: No such page, version, media item or response.
       content:
         application/json:
           schema:
@@ -1311,6 +1439,92 @@ components:
           description: The address as the published page writes it.
           type: string
 
+    FormId:
+      description: A form block's id in the page's document (blockId in the document's schema).
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+    KeptField:
+      description: A field of the form, as the published version the response came from had it (formField in the document's schema). maxLength only for the two kinds of text.
+      type: object
+      additionalProperties: false
+      required: [name, kind, label, required]
+      properties:
+        name:
+          description: The key its answer is kept under in `answers`.
+          type: string
+          pattern: '^[a-z][a-z0-9-]{0,39}$'
+        kind:
+          type: string
+          enum: [text, email, textarea, checkbox]
+        label:
+          type: string
+        required:
+          type: boolean
+        maxLength:
+          type: integer
+          minimum: 1
+          maximum: 5000
+    ResponseExcerpt:
+      description: The response's first text answer that is not empty, on one line (each run of white space made one space), at most 120 characters as a reader counts them.
+      type: object
+      additionalProperties: false
+      required: [label, text, truncated]
+      properties:
+        label:
+          description: The label of the answer's field.
+          type: string
+        text:
+          type: string
+          minLength: 1
+        truncated:
+          description: Whether the answer was longer and has been cut.
+          type: boolean
+    FormResponseSummary:
+      type: object
+      additionalProperties: false
+      required: [id, formId, versionNumber, submittedAt, excerpt]
+      properties:
+        id:
+          type: integer
+        formId:
+          $ref: '#/components/schemas/FormId'
+        versionNumber:
+          description: The published version the form was read from.
+          type: integer
+        submittedAt:
+          $ref: '#/components/schemas/Time'
+        excerpt:
+          description: Null when every text answer is empty, or the form has only checkboxes.
+          anyOf:
+            - $ref: '#/components/schemas/ResponseExcerpt'
+            - type: 'null'
+    FormResponse:
+      type: object
+      additionalProperties: false
+      required: [id, formId, versionNumber, submittedAt, fields, answers]
+      properties:
+        id:
+          type: integer
+        formId:
+          $ref: '#/components/schemas/FormId'
+        versionNumber:
+          description: The published version the form was read from.
+          type: integer
+        submittedAt:
+          $ref: '#/components/schemas/Time'
+        fields:
+          description: The form's fields, in order, as that version had them.
+          type: array
+          items:
+            $ref: '#/components/schemas/KeptField'
+        answers:
+          description: Each field's answer, by its name; every field has one. A text is the string sent ("" when left empty), never markup; a checkbox's answer is whether it was ticked.
+          type: object
+          propertyNames:
+            pattern: '^[a-z][a-z0-9-]{0,39}$'
+          additionalProperties:
+            type: [string, boolean]
+
     ErrorDetail:
       type: object
       additionalProperties: false
@@ -1344,6 +1558,18 @@ components:
         error:
           const: not_found
         message:
+          type: string
+    InvalidQueryError:
+      type: object
+      additionalProperties: false
+      required: [error, message, parameter]
+      properties:
+        error:
+          const: invalid_query
+        message:
+          type: string
+        parameter:
+          description: The query parameter refused, by its name as the query wrote it.
           type: string
     ForbiddenOriginError:
       type: object

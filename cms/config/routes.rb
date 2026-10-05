@@ -26,6 +26,10 @@ Rails.application.routes.draw do
     get "pages/:id/versions/:number", to: "versions#show"
     post "pages/:id/versions/:number/restore", to: "versions#restore"
 
+    get "pages/:id/responses", to: "responses#index"
+    get "pages/:id/responses/:response_id", to: "responses#show"
+    delete "pages/:id/responses/:response_id", to: "responses#destroy"
+
     post "media/direct_uploads", to: "direct_uploads#create"
     get "media", to: "media#index"
     post "media", to: "media#create"
