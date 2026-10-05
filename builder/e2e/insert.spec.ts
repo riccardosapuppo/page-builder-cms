@@ -182,20 +182,24 @@ test("seams: none shows until the pointer finds one, the page's top and foot amo
 test("the + key opens after the selection: a block after a widget, a section after a section, at a column's end, a section at the page's end with nothing selected", async ({ page, request }) => {
   const { id } = await makePage(request, "Plus key", fixture());
   await open(page, id);
-  const opens = async (title: string) => {
+  // Esc gives the focus back to the block the picker opened from, a frame
+  // after the picker is gone: the next key waits for it, or on a slow
+  // machine it lands on the page's body and nothing hears it.
+  const opens = async (title: string, from?: string) => {
     await page.keyboard.press("+");
     await expect(page.getByRole("dialog", { name: title })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    if (from) await expect(block(page, from)).toBeFocused();
   };
   await block(page, "q").click();
-  await opens("Add a block after Heading");
+  await opens("Add a block after Heading", "q");
   await page.keyboard.press("Alt+ArrowUp");
   await expect(block(page, "c3")).toBeFocused();
-  await opens("Add a block after Heading");
+  await opens("Add a block after Heading", "c3");
   await page.keyboard.press("Alt+ArrowUp");
   await expect(block(page, "s2")).toBeFocused();
-  await opens("Add a section after Questions");
+  await opens("Add a section after Questions", "s2");
   await page.keyboard.press("Escape");
   await expect(page.locator(".canvas [data-editor-selected=true]")).toHaveCount(0);
   await opens("Add a section after Questions");
