@@ -6,11 +6,11 @@
 // expect, and runs each case as a test of its own.
 //
 // A case says which optional operations it needs; a runner skips, and
-// counts as skipped, a case its adapter's capabilities lack. Form answers
-// (stage 5) have no case yet beyond the one that holds an adapter to
-// refusing what it declares absent: they join the battery when the CMS
-// has them. The scheduling cases run on the real clock: one waits a few
-// seconds for a publish set to happen, watching the page until it does.
+// counts as skipped, a case its adapter's capabilities lack. The cases of
+// form responses have a visitor send the forms through the runner
+// (ContractEnv.sendForm), since no adapter sends them. The scheduling
+// cases run on the real clock: one waits a few seconds for a publish set
+// to happen, watching the page until it does.
 //
 // Every case makes the pages it uses, under names no other case takes, so
 // the cases share one store and run in any order. The media library and
@@ -20,6 +20,7 @@ import {
   errorsByBlock,
   isStorageError,
   OPTIONAL_OPERATIONS,
+  RESPONSES_PER_PART,
   StorageError,
   type DraftSave,
   type Failure,
@@ -29,7 +30,7 @@ import {
   type StorageAdapter,
 } from "./adapter.ts";
 import { createAutosave, type Autosave, type SavePhase, type SaveSnapshot } from "./autosave.ts";
-import type { PageDocument, SectionBlock, WidgetBlock } from "../shared/document.ts";
+import type { FormBlock, FormField, PageDocument, SectionBlock, WidgetBlock } from "../shared/document.ts";
 
 // The part of a test runner's expect the battery uses (Vitest's fits).
 export interface Expectation {
@@ -56,6 +57,12 @@ export interface ContractEnv {
   unique(prefix: string): string;
   // The bytes at the address a library item gives.
   readBytes(url: string): Promise<Uint8Array>;
+  // A visitor sends a form of a live page: from the page's live address,
+  // the form block's id, and the answers by field name (a ticked box:
+  // "yes"). What a visitor does, outside the editor's storage, so the
+  // runner does it; only the cases that need responses ask for it, and a
+  // send the storage does not keep fails the case.
+  sendForm(live: string, formId: string, answers: Readonly<Record<string, string>>): Promise<void>;
 }
 
 export interface ContractCase {
@@ -112,6 +119,10 @@ function heading(text: string, level = 2): WidgetBlock {
 
 function section(...widgets: WidgetBlock[]): SectionBlock {
   return { id: id("s"), type: "section", props: {}, style: { base: {} }, children: [{ id: id("c"), type: "column", props: {}, style: { base: {} }, children: widgets }] };
+}
+
+function form(items: FormField[], formId = id("f")): FormBlock {
+  return { id: formId, type: "form", props: { items, submitLabel: "Send", confirmation: "Thank you." }, children: [], style: { base: {} } };
 }
 
 function documentOf(title: string, ...sections: SectionBlock[]): PageDocument {
@@ -650,6 +661,101 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       env.expect(typeof site.footer.lead).toBe("string");
       env.expect(typeof site.footer.text).toBe("string");
       env.expect(await env.adapter.getSite()).toEqual(site);
+    },
+  },
+
+  // ---------------------------------------------------- form responses
+  {
+    name: "a form sent from the live page is kept with the version and the fields it was sent with, listed newest first and counted by form",
+    needs: ["publish", "responses"],
+    async run(env) {
+      const page = await newPage(env, "answers");
+      const fields: FormField[] = [
+        { name: "name", kind: "text", label: "Your name", required: true, maxLength: 80 },
+        { name: "email", kind: "email", label: "Email", required: false },
+        { name: "swim", kind: "checkbox", label: "I can swim 200 meters", required: false },
+      ];
+      const join = form(fields);
+      const call = form([{ name: "notes", kind: "textarea", label: "Notes", required: false, maxLength: 500 }]);
+      const r1 = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Join", section(join, call)), saveId: "answers-1" });
+      const first = value(await env.adapter.publish(page.id, { revision: r1 }), "the publish");
+      const live = first.links.live!;
+      await env.sendForm(live, join.id, { name: "Ann <Diver>", email: "ann@example.org", swim: "yes" });
+      // The form changes, and goes live again: the first answer keeps the
+      // field as it was.
+      const renamed = form([{ ...fields[0]!, label: "Full name" }, fields[1]!], join.id);
+      const r2 = await saved(env.adapter, page.id, { revision: r1, document: documentOf("Join", section(renamed, call)), saveId: "answers-2" });
+      const second = value(await env.adapter.publish(page.id, { revision: r2 }), "the second publish");
+      await env.sendForm(live, join.id, { name: "Bo", email: "" });
+      await env.sendForm(live, call.id, { notes: "Cold   water\nis fine" });
+
+      const list = await env.adapter.listResponses(page.id);
+      env.expect(list.responses.map((r) => [r.formId, r.versionNumber, r.excerpt])).toEqual([
+        [call.id, second.version.number, { label: "Notes", text: "Cold water is fine", truncated: false }],
+        [join.id, second.version.number, { label: "Full name", text: "Bo", truncated: false }],
+        [join.id, first.version.number, { label: "Your name", text: "Ann <Diver>", truncated: false }],
+      ]);
+      env.expect(list.next).toBe(null);
+      const counts = [{ formId: call.id, count: 1 }, { formId: join.id, count: 2 }].sort((a, b) => (a.formId < b.formId ? -1 : 1));
+      env.expect(list.forms).toEqual(counts);
+
+      const [newest, middle, oldest] = list.responses;
+      env.expect(await env.adapter.getResponse(page.id, oldest!.id)).toEqual({
+        id: oldest!.id, formId: join.id, versionNumber: first.version.number, submittedAt: oldest!.submittedAt,
+        fields, answers: { name: "Ann <Diver>", email: "ann@example.org", swim: true },
+      });
+      env.expect((await env.adapter.getResponse(page.id, middle!.id)).fields).toEqual(renamed.props.items);
+      env.expect((await env.adapter.getResponse(page.id, newest!.id)).answers).toEqual({ notes: "Cold   water\nis fine" });
+      const byForm = await env.adapter.listResponses(page.id, { form: join.id });
+      env.expect(byForm.responses.map((r) => r.id)).toEqual([middle!.id, oldest!.id]);
+      env.expect(byForm.forms).toEqual(counts);
+    },
+  },
+  {
+    name: "the responses come a part at a time, newest first, and next continues them to the end",
+    needs: ["publish", "responses"],
+    async run(env) {
+      const page = await newPage(env, "many-answers");
+      const join = form([{ name: "name", kind: "text", label: "Name", required: true, maxLength: 80 }]);
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Many", section(join)), saveId: "many-1" });
+      const live = value(await env.adapter.publish(page.id, { revision }), "the publish").links.live!;
+      const sent = RESPONSES_PER_PART + 2;
+      for (let i = 1; i <= sent; i += 1) await env.sendForm(live, join.id, { name: `Visitor ${i}` });
+
+      const head = await env.adapter.listResponses(page.id);
+      env.expect(head.responses).toHaveLength(RESPONSES_PER_PART);
+      env.expect(head.next).toBe(head.responses[RESPONSES_PER_PART - 1]!.id);
+      const tail = await env.adapter.listResponses(page.id, { before: head.next! });
+      env.expect(tail.next).toBe(null);
+      const names = [...head.responses, ...tail.responses].map((r) => r.excerpt?.text);
+      env.expect(names).toEqual(Array.from({ length: sent }, (_, i) => `Visitor ${sent - i}`));
+      env.expect(tail.forms).toEqual([{ formId: join.id, count: sent }]);
+    },
+  },
+  {
+    name: "a response deleted is gone from the list and cannot be read, deleting it again is not found, and a response is found only under its own page",
+    needs: ["publish", "responses"],
+    async run(env) {
+      const page = await newPage(env, "deleted-answer");
+      const join = form([{ name: "name", kind: "text", label: "Name", required: true, maxLength: 80 }]);
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Deleted", section(join)), saveId: "deleted-1" });
+      const live = value(await env.adapter.publish(page.id, { revision }), "the publish").links.live!;
+      await env.sendForm(live, join.id, { name: "Ann" });
+      await env.sendForm(live, join.id, { name: "Bo" });
+      const [bo, ann] = (await env.adapter.listResponses(page.id)).responses;
+
+      await env.adapter.deleteResponse(page.id, ann!.id);
+      const after = await env.adapter.listResponses(page.id);
+      env.expect(after.responses.map((r) => r.id)).toEqual([bo!.id]);
+      env.expect(after.forms).toEqual([{ formId: join.id, count: 1 }]);
+      env.expect(await failure(env.adapter.getResponse(page.id, ann!.id), "reading a deleted response")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.deleteResponse(page.id, ann!.id), "deleting it again")).toMatchObject({ kind: "not-found" });
+
+      const other = await newPage(env, "not-its-page");
+      env.expect(await failure(env.adapter.getResponse(other.id, bo!.id), "reading it under another page")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.deleteResponse(other.id, bo!.id), "deleting it under another page")).toMatchObject({ kind: "not-found" });
+      env.expect(await env.adapter.listResponses(other.id)).toEqual({ responses: [], next: null, forms: [] });
+      env.expect((await env.adapter.getResponse(page.id, bo!.id)).answers).toEqual({ name: "Bo" });
     },
   },
 
