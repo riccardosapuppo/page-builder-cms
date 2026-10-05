@@ -26,8 +26,9 @@
 //
 // Around it all: drag and drop (./drag/DragLayer.tsx), the keyboard map
 // (./keys.ts) and its "?" window, the selected block's menu, the save
-// state's banner and toast (./SaveStatus.tsx), About, and the media
-// library's work on this adapter (./library/context.tsx).
+// state's banner and toast (./SaveStatus.tsx), About, the media library's
+// work on this adapter (./library/context.tsx), and the adapter's form
+// responses when it keeps them (./responses/context.ts).
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
@@ -47,6 +48,7 @@ import { HistoryPanel } from "./HistoryPanel.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { MediaProvider } from "./library/context.tsx";
+import { ResponsesProvider, responsesOf } from "./responses/context.ts";
 import { Navigator } from "./Navigator.tsx";
 import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
@@ -770,6 +772,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
   }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  // The form responses' screen reads through the adapter, when it keeps
+  // them (./responses/context.ts).
+  const responses = useMemo(() => responsesOf(adapter), [adapter]);
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
@@ -780,27 +785,29 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     <EditorProvider env={env}>
       <SessionProvider value={session}>
         <MediaProvider adapter={adapter}>
-          <DragLayer>
-            {/* In the order the Tab key goes: the top bar, the drawer, the
-                canvas, the sidebar (Tab from the selection reaches its
-                settings), then the bottom line. The grid places each. */}
-            <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}`}>
-              <TopBar />
-              <ConflictBanner />
-              {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
-              {drawer === "outline" && <DrawerShell which="outline"><Navigator /></DrawerShell>}
-              {drawer === "history" && <DrawerShell which="history"><HistoryPanel /></DrawerShell>}
-              {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
-              <Sidebar />
-              <StatusBar />
-            </div>
-          </DragLayer>
-          <EditorKeys />
-          <BlockMenu />
-          <ShortcutsDialog />
-          <AboutDialog />
-          <SaveToast />
-          <Notice />
+          <ResponsesProvider value={responses}>
+            <DragLayer>
+              {/* In the order the Tab key goes: the top bar, the drawer, the
+                  canvas, the sidebar (Tab from the selection reaches its
+                  settings), then the bottom line. The grid places each. */}
+              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}`}>
+                <TopBar />
+                <ConflictBanner />
+                {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
+                {drawer === "outline" && <DrawerShell which="outline"><Navigator /></DrawerShell>}
+                {drawer === "history" && <DrawerShell which="history"><HistoryPanel /></DrawerShell>}
+                {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
+                <Sidebar />
+                <StatusBar />
+              </div>
+            </DragLayer>
+            <EditorKeys />
+            <BlockMenu />
+            <ShortcutsDialog />
+            <AboutDialog />
+            <SaveToast />
+            <Notice />
+          </ResponsesProvider>
         </MediaProvider>
       </SessionProvider>
     </EditorProvider>

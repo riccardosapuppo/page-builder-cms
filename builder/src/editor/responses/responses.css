@@ -1,0 +1,69 @@
+/* Form responses (./ResponsesScreen.tsx), which the approved design does
+   not draw: the media library's window (../library/library.css, .dlg-media)
+   with its size, head and footer, holding three columns instead of the
+   grid and the details: the forms, the chosen form's responses, and the
+   response opened, on the same tint as the media library's details. */
+
+.dlg-responses { width: min(1060px, calc(100vw - 32px)); height: min(692px, calc(100vh - 48px)); }
+.dlg-responses .dlg-head { padding-bottom: 12px; }
+.dlg-responses .dlg-foot { justify-content: flex-start; padding: 14px 16px 16px 20px; }
+.dlg-responses .dlg-foot .hint { margin: 0; max-width: 420px; }
+.rs-note { margin-left: auto; color: var(--graphite); font-size: 12px; line-height: 16px; text-align: right; }
+.rs-note:empty { display: none; }
+.dlg-responses .dlg-foot .rs-note:empty + .btn { margin-left: auto; }
+
+.dlg-body.rs-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.rs-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 232px minmax(0, 1fr) 316px; }
+.rs-state { grid-column: 1 / -1; align-self: start; padding: 8px 20px; }
+.rs-state .btn, .rs-state-line .btn { margin-top: 10px; }
+.rs-empty-title { font-weight: 600; }
+.rs-none { color: var(--steel); }
+
+/* The forms. */
+.rs-forms { min-height: 0; overflow: auto; padding: 0 12px 16px 20px; }
+.rs-forms ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rs-form { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border-radius: var(--r-control); text-align: left; color: var(--graphite); }
+.rs-form:hover { background: var(--key); }
+.rs-form[aria-current="true"] { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }
+.rs-form-name { font-weight: 600; overflow-wrap: anywhere; }
+.rs-form-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--steel); font-size: 12px; line-height: 16px; }
+.rs-form-count { flex: none; }
+
+/* The chosen form's responses: a table whose rows open with a click
+   anywhere on them (the button in the row's head covers the row), and
+   with the keyboard on that button. */
+.rs-list { min-height: 0; overflow: auto; padding: 0 16px 16px 8px; }
+.rs-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.rs-table caption { padding: 0 8px 8px; text-align: left; overflow-wrap: anywhere; }
+.rs-caption-name { font-weight: 600; font-size: 14px; line-height: 20px; }
+.rs-caption-page { color: var(--steel); font-size: 12px; line-height: 16px; }
+.rs-table thead th { padding: 0 8px 6px; border-bottom: 1px solid var(--alloy); text-align: left; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); }
+.rs-table thead th:nth-child(1) { width: 150px; }
+.rs-table thead th:nth-child(2) { width: 72px; }
+.rs-table tbody tr { position: relative; border-bottom: 1px solid var(--alloy); }
+.rs-table tbody tr:hover { background: var(--key); }
+.rs-table tbody tr.rs-row-open { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }
+.rs-table tbody th, .rs-table td { padding: 9px 8px; text-align: left; font-weight: 400; vertical-align: top; }
+.rs-open { text-align: left; color: var(--graphite); font-weight: 500; white-space: nowrap; }
+.rs-open::after { content: ""; position: absolute; inset: 0; }
+.rs-open:focus-visible { outline: none; }
+.rs-open:focus-visible::after { outline: 2px solid var(--graphite); outline-offset: -2px; border-radius: 2px; }
+.rs-excerpt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-excerpt-label { color: var(--steel); }
+.rs-older { padding-top: 12px; }
+.rs-state-line { padding-top: 12px; }
+
+/* The response opened. */
+.rs-details { align-self: start; max-height: 100%; overflow: auto; margin: 0 20px 16px 0; padding: 16px; border-radius: 8px; background: var(--key); }
+.rs-details > .hint { margin-top: 0; }
+.rs-details-title { font-size: 14px; line-height: 20px; font-weight: 600; }
+.rs-details-meta { margin-top: 2px; color: var(--steel); font-size: 12px; line-height: 16px; }
+.rs-answers { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.rs-answer dt { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); overflow-wrap: anywhere; }
+/* What the visitor wrote, its lines and spaces kept. */
+.rs-answer dd { margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rs-delete { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--alloy); }
+.rs-delete-btn { margin-left: -10px; color: var(--err); }
+.rs-delete-btn > .i { margin-left: 0; }
+.rs-confirm p { font-size: 12px; line-height: 16px; }
+.rs-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }

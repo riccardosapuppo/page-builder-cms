@@ -1,6 +1,6 @@
 // The top bar of the approved layout (design/layout/shots/editor.png): on
 // the left, the mark and its menu (Site style, the pages, the media
-// library, the shortcuts, About), the three drawers (Insert, Outline and
+// library, the form responses, the shortcuts, About), the three drawers (Insert, Outline and
 // History, each opening and closing its own, ./Drawer.tsx), undo and redo;
 // in the middle, the page's title, which switches pages, with whether it
 // is live and how many saved changes are not (./PageSwitch.tsx); on the
@@ -20,6 +20,8 @@ import { MediaLibrary } from "./library/MediaLibrary.tsx";
 import { Menu } from "./Menu.tsx";
 import { PageSwitch } from "./PageSwitch.tsx";
 import { PreviewButton, PublishButton } from "./Publish.tsx";
+import { useResponsesStorage } from "./responses/context.ts";
+import { ResponsesScreen } from "./responses/ResponsesScreen.tsx";
 import { SaveState } from "./SaveStatus.tsx";
 import { ScheduleDialog } from "./ScheduleDialog.tsx";
 import { useSession } from "./session.tsx";
@@ -34,6 +36,11 @@ export function TopBar() {
   // The media library opened from the menu, to look after it.
   const media = useMediaService();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // The site's form responses, beside the media library: like it, about
+  // the whole site rather than the page open, so from the mark's menu and
+  // not the bar's drawers. Only when the storage keeps them.
+  const responses = useResponsesStorage();
+  const [responsesOpen, setResponsesOpen] = useState(false);
   // Schedule… from the Publish menu opens its dialog here, beside the
   // media library's.
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -79,6 +86,11 @@ export function TopBar() {
                 <BlockIcon type="image" className="i" /><span>Media library</span>
               </button>
             )}
+            {responses && (
+              <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-haspopup="dialog" onClick={() => { setMenu(null); markButton.current?.focus(); setResponsesOpen(true); }}>
+                <BlockIcon type="form" className="i" /><span>Form responses</span>
+              </button>
+            )}
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
               <Icon name="keyboard" /><span>Keyboard shortcuts</span>
               <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
@@ -112,6 +124,7 @@ export function TopBar() {
         <SidebarKey />
       </div>
       {libraryOpen && <MediaLibrary purpose={{ kind: "manage" }} onClose={() => setLibraryOpen(false)} />}
+      {responsesOpen && <ResponsesScreen onClose={() => setResponsesOpen(false)} />}
       {scheduleOpen && <ScheduleDialog onClose={() => setScheduleOpen(false)} />}
     </header>
   );
