@@ -19,6 +19,7 @@ export const RENDERER_SOURCES = [
   "cms/app/helpers/blocks_helper.rb",
   "cms/app/helpers/rich_text_helper.rb",
   "cms/app/models/block_style.rb",
+  "cms/app/models/form_block.rb",
   "cms/app/models/render_policy.rb",
   "cms/app/models/site_icons.rb",
   "cms/lib/site_theme/token_css.rb",
