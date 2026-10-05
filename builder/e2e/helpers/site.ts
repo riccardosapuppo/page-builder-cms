@@ -64,14 +64,20 @@ export const column = (id: string, children: unknown[]) => ({ id, type: "column"
 export const section = (id: string, label: string, children: unknown[]) => ({ id, type: "section", props: { label }, children, style: { base: {} } });
 export const heading = (id: string, text: string) => widget(id, "heading", { level: 2, text });
 
+// The start of a page's slug, from its title: cut so that the whole, with
+// unique()'s end, fits the CMS's 64 characters, then rid of a hyphen at
+// either end. The CMS takes a slug only as words joined by single hyphens
+// (Slug::FORMAT), and a cut that ended on a gap between words, or a title
+// that ended or began with a mark, left one there, which unique() doubled.
+export const slugStem = (title: string): string =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40).replace(/^-+|-+$/g, "") || "page";
+
 // A page with this document as its draft, made as the editor would: the
 // page, then a save at the draft's revision. The save's id keeps the
 // slug's unique end, cut to the 64 characters the CMS takes: a long test
 // name made a longer one, and the CMS refused the setup's save.
 export async function makePage(request: APIRequestContext, title: string, sections: unknown[]): Promise<{ id: number; slug: string }> {
-  // The stem is cut so that the whole fits the CMS's 64 characters, for a
-  // page whose title is longer than that.
-  const slug = unique(title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40));
+  const slug = unique(slugStem(title));
   const created = await request.post(`${cms()}/api/pages`, { data: { title, slug } });
   expect(created.status(), await created.text()).toBe(201);
   const { page } = (await created.json()) as { page: { id: number } };
