@@ -27,6 +27,9 @@
 .rs-form[aria-current="true"] { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }
 .rs-form-name { font-weight: 600; overflow-wrap: anywhere; }
 .rs-form-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--steel); font-size: 12px; line-height: 16px; }
+/* The page's title, which may be one long word: it gives way (and breaks
+   where it must) so that the count beside it stays inside the column. */
+.rs-form-page { min-width: 0; overflow-wrap: anywhere; }
 .rs-form-count { flex: none; }
 
 /* The chosen form's responses: a table whose rows open with a click
@@ -57,7 +60,7 @@
 .rs-details { align-self: start; max-height: 100%; overflow: auto; margin: 0 20px 16px 0; padding: 16px; border-radius: 8px; background: var(--key); }
 .rs-details > .hint { margin-top: 0; }
 .rs-details-title { font-size: 14px; line-height: 20px; font-weight: 600; }
-.rs-details-meta { margin-top: 2px; color: var(--steel); font-size: 12px; line-height: 16px; }
+.rs-details-meta { margin-top: 2px; color: var(--steel); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
 .rs-answers { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
 .rs-answer dt { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); overflow-wrap: anywhere; }
 /* What the visitor wrote, its lines and spaces kept. */

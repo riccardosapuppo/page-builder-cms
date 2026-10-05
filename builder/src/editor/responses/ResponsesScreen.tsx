@@ -333,7 +333,7 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
                         would read them with stray spaces around commas. */}
                     <button className="rs-form" type="button" data-form-key={f.key} aria-label={`${f.name}, ${f.pageTitle}, ${responsesCount(f.count)}`} aria-current={f.key === chosen ? "true" : undefined} onClick={() => choose(f.key)}>
                       <span className="rs-form-name">{f.name}</span>
-                      <span className="rs-form-meta">{f.pageTitle}<span className="rs-form-count">{responsesCount(f.count)}</span></span>
+                      <span className="rs-form-meta"><span className="rs-form-page">{f.pageTitle}</span><span className="rs-form-count">{responsesCount(f.count)}</span></span>
                     </button>
                   </li>
                 ))}

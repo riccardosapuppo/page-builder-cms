@@ -114,3 +114,53 @@ test("a form published from the editor and sent from the served page is read in 
   await expect(screen).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Page Builder CMS menu" })).toBeFocused();
 });
+
+// A page's title is the owner's own and may be one long word, which no
+// line breaks: in the forms' column it sits beside the count, and in the
+// opened response's line "Version N of <title>" it fills the whole panel.
+// Neither may push anything out of its column, and nothing may scroll
+// sideways. Measured in the browser, where the layout is.
+test("a page title of one long word keeps each form's count and the opened response's version line inside their columns", async ({ page, request, browser }) => {
+  const title = `Schwimmkursanmeldungsformular${"association".repeat(7)}${Date.now().toString(36)}`;
+  const made = await makePage(request, title, [
+    section("s", "Join", [column("c", [widget("join-form", "form", { items: FIELDS, submitLabel: "Send request", confirmation: "Thank you." })])]),
+  ]);
+  await open(page, made.id);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
+  const reader = await visitor(browser, { from: "198.51.100.42" });
+  try {
+    await send(reader.tab, `${cms()}/${made.slug}`, { name: "Bo Swimmer", email: "bo@example.org" });
+  } finally {
+    await reader.close();
+  }
+
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Form responses" }).click();
+  const screen = page.getByRole("dialog", { name: "Form responses" });
+  // Other tests' forms are in the CMS too: this one is found by its page.
+  await screen.getByRole("list", { name: "Forms" }).getByRole("button", { name: `Form in Join, ${title}, 1 response` }).click();
+  const table = screen.getByRole("table", { name: `Form in Join on ${title}` });
+  await table.getByRole("rowheader").getByRole("button").click();
+  await expect(screen.getByRole("region", { name: /^Sent Today, / }).getByText(`Version`, { exact: false }).filter({ hasText: title })).toBeVisible();
+
+  const measured = await page.evaluate((named) => {
+    const box = (element: Element) => element.getBoundingClientRect();
+    const forms = document.querySelector<HTMLElement>(".rs-forms")!;
+    const details = document.querySelector<HTMLElement>(".rs-details")!;
+    // This page's form among the forms listed.
+    const mine = [...document.querySelectorAll<HTMLElement>(".rs-form")].find((button) => button.getAttribute("aria-label")?.includes(named))!;
+    return {
+      formsScroll: [forms.scrollWidth, forms.clientWidth],
+      detailsScroll: [details.scrollWidth, details.clientWidth],
+      countRight: box(mine.querySelector(".rs-form-count")!).right,
+      columnRight: box(forms).right,
+      metaRight: box(document.querySelector(".rs-details-meta")!).right,
+      panelRight: box(details).right,
+    };
+  }, title);
+  expect(measured.formsScroll[0], "the forms' column scrolls sideways").toBeLessThanOrEqual(measured.formsScroll[1]!);
+  expect(measured.detailsScroll[0], "the opened response's panel scrolls sideways").toBeLessThanOrEqual(measured.detailsScroll[1]!);
+  expect(measured.countRight, "the count is inside the forms' column").toBeLessThanOrEqual(measured.columnRight);
+  expect(measured.metaRight, "the version line is inside the panel").toBeLessThanOrEqual(measured.panelRight);
+});
