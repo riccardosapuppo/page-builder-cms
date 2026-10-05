@@ -5,8 +5,9 @@
 // confirmation no one stores; a form the CMS refuses comes back with what
 // was written and each refusal by its field; past the limit, or from
 // another site, the CMS refuses it whole. Each visitor sends from an
-// address of its own (X-Forwarded-For), so one test's count of forms
-// never reaches another's limit.
+// address of its own (X-Forwarded-For, which the e2e CMS alone counts
+// under, helpers/visitor.ts), so one test's count of forms never reaches
+// another's limit.
 import { axe } from "./helpers/axe.ts";
 import { fragments, keptAnswers } from "./helpers/cms-store.ts";
 import { cms, column, expect, heading, makePage, section, test, widget } from "./helpers/site.ts";

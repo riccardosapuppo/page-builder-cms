@@ -78,5 +78,16 @@ module Cms
     # one count for every server process and across restarts; test.rb
     # names a memory store, which the tests empty before each one.
     config.x.submission_limit_store = :solid_cache_store
+
+    # The address a form is counted under: the socket's own peer, never
+    # what a header says. rate_limit's own default, request.remote_ip,
+    # takes X-Forwarded-For or Client-Ip from any peer, not only a
+    # proxy's, so a visitor could change one header and have a count of
+    # their own at every send, or name another visitor's address and use
+    # up that visitor's ten. Behind a front proxy on this machine every
+    # visitor's peer is the proxy, so they share one count (the README says
+    # so). SubmissionsController calls this with the request; config/
+    # environments/e2e.rb gives the harness's tests an address each.
+    config.x.submission_limit_by = ->(request) { request.remote_addr }
   end
 end

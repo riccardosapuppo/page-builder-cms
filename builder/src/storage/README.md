@@ -114,8 +114,9 @@ id and field (`/props/level`), the way the editor shows them.
   absent in its capabilities, that check failed). A visitor's form is
   sent by the runner as a browser sends it from the live page (form
   encoded, with the page's `Origin`), each from an address of its own
-  through `X-Forwarded-For`, which the CMS reads from 127.0.0.1 as from a
-  proxy: the cases send more forms than one address may in ten minutes.
+  through `X-Forwarded-For`, which only the CMS of this run
+  (`config/environments/e2e.rb`) counts under: the cases send more forms
+  than one address may in ten minutes.
   With the adapter planted to leave `before` out of the list's query, the
   case that reads the list to its end failed. It runs in jsdom, whose
   document is on the CMS's origin

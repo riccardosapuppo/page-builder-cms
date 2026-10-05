@@ -12,8 +12,10 @@
 # - the Origin header, which a browser sets on every form it posts: a form
 #   sent from another site, or with no Origin at all, is refused with 403
 #   and nothing is read;
-# - rate_limit: at most LIMIT forms in WINDOW from one address, counted in
-#   a store named for it (config.x.submission_limit_store, which says why);
+# - rate_limit: at most LIMIT forms in WINDOW from one address, the
+#   socket's own peer and no header's word for it
+#   (config.x.submission_limit_by, which says why), counted in a store
+#   named for it (config.x.submission_limit_store, which says why too);
 #   beyond, 429 with Retry-After;
 # - the field for robots ("website", never drawn): filled in, the form is
 #   answered as if its answers were kept, and nothing is kept.
@@ -45,7 +47,7 @@ class SubmissionsController < ApplicationController
 
 
   before_action :keep_out_of_caches
-  rate_limit to: LIMIT, within: WINDOW, store: LIMIT_STORE, with: :too_many, only: :create
+  rate_limit to: LIMIT, within: WINDOW, by: -> { Rails.configuration.x.submission_limit_by.call(request) }, store: LIMIT_STORE, with: :too_many, only: :create
   before_action :same_origin_only, :form_encoded_only, :within_size, only: :create
 
   # POST / and POST /:slug

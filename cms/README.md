@@ -387,7 +387,7 @@ that fails when its guard is taken out:
 | Guard | A form that breaks it gets |
 | --- | --- |
 | the `Origin` a browser sets on every form it posts must be this site's | 403, nothing read; the same with no `Origin`, or `null` |
-| `rate_limit`: ten forms per address within ten minutes | 429 with `Retry-After: 600`; refused forms count too |
+| `rate_limit`: ten forms per address (the socket's peer, below) within ten minutes | 429 with `Retry-After: 600`; refused forms count too |
 | the field for robots is empty | a 303 to the confirmation as if kept, and nothing kept |
 | only `application/x-www-form-urlencoded`, what a form without `enctype` sends | 415 |
 | a body no larger than the largest form sends (below) | 413 |
@@ -400,8 +400,33 @@ in `config/application.rb`, never left to the cache store: the tests'
 `:null_store` counts nothing, so the limit could never fire there. It is
 Solid Cache everywhere but in the tests, which count in memory and empty
 it before each test. `npm run check:production` sends eleven forms from
-one address to a production boot and gets ten 303s and a 429, counted in
-Solid Cache; with the store set to `:null_store` the check fails.
+one address to a production boot, each naming another address in
+`X-Forwarded-For`, and gets nine 303s, a 403 (the second, from another
+site, which counts) and a 429, counted in Solid Cache; with the store set
+to `:null_store` the check fails.
+
+**The address a form is counted under** is the socket's own peer
+(`request.remote_addr`), set in `config.x.submission_limit_by` in
+`config/application.rb` and read at every send. It is not Rails' default
+for `rate_limit`, `request.remote_ip`: that takes `X-Forwarded-For` or
+`Client-Ip` from any peer, not only a proxy's, so one header changed at
+every send gave a form a count of its own, and one naming another
+visitor's address used up that visitor's ten. A request test sends eleven
+forms from one peer, each naming another address in one header or the
+other, and the eleventh gets 429; with the limit keyed on `remote_ip` it
+fails. The cost is that every visitor reaching the CMS through one
+address shares one count: the CMS listens on `127.0.0.1` only
+(`config/puma.rb`), so behind a front proxy on this machine every
+visitor is `127.0.0.1`, and ten forms in ten minutes is the whole site's.
+A deployment that must count each visitor behind its proxy sets
+`config.x.submission_limit_by` in its environment's file to read the
+address the proxy names (`request.remote_ip`, with
+`config.action_dispatch.trusted_proxies` set to an array holding the
+proxy, which replaces Rails' default list), and its proxy must overwrite
+`X-Forwarded-For` with the peer it saw and drop `Client-Ip`; as the CMS
+listens on `127.0.0.1` only, the proxy is then the only process on the
+way in that can name an address. A visitor is counted by the whole IPv6
+address, so one with a whole prefix has many.
 
 **The body's limit** is computed, not picked: every field of the largest
 form the schema allows (20) at the longest limit (5000 characters), each
@@ -866,8 +891,10 @@ protection on, eager loading, `solid_cache` and `solid_queue` (the queue
 run inside Puma, so a scheduled publish really happens while a test
 watches), only `127.0.0.1`, `localhost` and `[::1]` as host names, and
 the forms' count in Solid Cache. The tests reach it from `127.0.0.1`,
-which Rails trusts as a proxy, so a test's `X-Forwarded-For` is the
-address its forms are counted under. Its data is its own:
+and this environment alone counts the forms under the address
+`X-Forwarded-For` names (`config.x.submission_limit_by`, set in
+`e2e.rb`), so each test's forms are counted under an address of its own;
+any other environment counts under the socket's peer. Its data is its own:
 three databases, primary, cache and queue, and an Active Storage root. The
 harness gives each run a folder under `tmp/`, passes the paths as
 `DATABASE_URL`, `CACHE_DATABASE_URL`, `QUEUE_DATABASE_URL` and

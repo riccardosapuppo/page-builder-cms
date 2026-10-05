@@ -183,9 +183,12 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
 // Sent as a browser sends it, with this site's Origin and no token, the
 // form is kept and leads with 303 to a confirmation that is never stored;
 // with another site's Origin it is refused with 403; and from one address
-// the eleventh form within ten minutes is refused with 429. Each send
-// names its address in X-Forwarded-For, which the CMS takes from
-// 127.0.0.1, so the three counts are apart.
+// the eleventh form within ten minutes is refused with 429, the refused
+// one before it counted. Every send here comes from this machine's one
+// address, so they are one count, and each names another address in
+// X-Forwarded-For, as a visitor trying to get past the limit would: the
+// count is under the socket's peer, so no header gives a form a count of
+// its own, and the eleventh is refused whatever it names.
 async function formChecks(): Promise<void> {
   const title = "Form in production";
   const created = await api("POST", "/api/pages", { title, slug: "form" });
@@ -197,17 +200,21 @@ async function formChecks(): Promise<void> {
   await api("PUT", `/api/pages/${id}/draft`, { revision: 0, document, saveId: "check-4" });
   await api("POST", `/api/pages/${id}/publish`, {});
 
-  const send = async (origin: string, from: string): Promise<Response> => {
+  // Each send names an address of its own, as a visitor trying to get past
+  // the limit would; the CMS counts under the socket's peer instead.
+  let named = 0;
+  const send = async (origin: string): Promise<Response> => {
+    named += 1;
     const response = await get("/form", {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", origin, "x-forwarded-for": from },
+      headers: { "content-type": "application/x-www-form-urlencoded", origin, "x-forwarded-for": `198.51.100.${named}` },
       body: new URLSearchParams({ form: "check-form", "answers[name]": "Ann Diver", website: "" }).toString(),
     });
     await response.text();
     return response;
   };
 
-  const sent = await send(BASE, "198.51.100.1");
+  const sent = await send(BASE);
   check(sent.status === 303 && sent.headers.get("location") === `${BASE}/form/sent/check-form` && sent.headers.get("set-cookie") === null,
     "a form sent with this site's Origin and no token is kept: 303 to its confirmation, and no cookie", `${sent.status} ${sent.headers.get("location")} ${sent.headers.get("set-cookie") ?? ""}`);
   const shown = await get("/form/sent/check-form");
@@ -215,16 +222,17 @@ async function formChecks(): Promise<void> {
   check(shown.status === 200 && html.includes("Thank you, from production.") && shown.headers.get("cache-control") === "no-store" && shown.headers.get("set-cookie") === null,
     "the confirmation says the form's message, is never stored and sets no cookie", `${shown.status} ${shown.headers.get("cache-control")} ${shown.headers.get("set-cookie") ?? ""}`);
 
-  const foreign = await send("http://elsewhere.example", "198.51.100.2");
+  const foreign = await send("http://elsewhere.example");
   check(foreign.status === 403, "a form sent with another site's Origin is refused with 403", `${foreign.status}`);
 
+  // Two forms have gone out of this address; nine more make the eleventh.
   const statuses: number[] = [];
-  for (let i = 0; i < 11; i++) statuses.push((await send(BASE, "198.51.100.3")).status);
-  check(statuses.slice(0, 10).every((s) => s === 303) && statuses[10] === 429, "from one address, the eleventh form within ten minutes is refused with 429", statuses.join(" "));
+  for (let i = 0; i < 9; i++) statuses.push((await send(BASE)).status);
+  check(statuses.slice(0, 8).every((s) => s === 303) && statuses[8] === 429, "from one address, the eleventh form within ten minutes is refused with 429, whatever address each names in X-Forwarded-For; the refused one before it counted", [sent.status, foreign.status, ...statuses].join(" "));
 
   const r = spawnSync("ruby", ["bin/rails", "runner", `print "kept=#{Submission.where(page_id: ${Number(id)}).count}"`], { cwd: cms, env, encoding: "utf8" });
   const kept = /kept=([0-9]+)/.exec(r.stdout ?? "");
-  check(r.status === 0 && kept?.[1] === "11", "the page's kept answers are the eleven its forms were let through with", kept ? `${kept[1]} kept` : `exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
+  check(r.status === 0 && kept?.[1] === "9", "the page's kept answers are the nine its forms were let through with", kept ? `${kept[1]} kept` : `exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }
 
 // A publish set for a time, in production. No job runs inside this server

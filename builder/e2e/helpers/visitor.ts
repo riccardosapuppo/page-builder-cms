@@ -33,8 +33,11 @@ export const directives = (header: string | undefined): string[] => (header ?? "
 
 // from: the address the CMS should take this visitor's requests as coming
 // from. The CMS counts the forms each address sends (its rate limit), and
-// every test reaches it from 127.0.0.1, which it trusts as a proxy, so an
-// X-Forwarded-For on every request gives a visitor a count of its own.
+// every test reaches it from 127.0.0.1. Only the CMS these tests start
+// (config/environments/e2e.rb) counts under the address X-Forwarded-For
+// names; any other counts under the socket's peer, so there an
+// X-Forwarded-For on every request would change nothing. Here it gives a
+// visitor a count of its own.
 export async function visitor(browser: Browser, options: { from?: string } = {}): Promise<Visitor> {
   const context = await browser.newContext({
     locale: "en-US",

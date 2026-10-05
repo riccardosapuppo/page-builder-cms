@@ -218,6 +218,55 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # The count is under the socket's peer. Rails' own remote_ip takes
+  # X-Forwarded-For and Client-Ip from any peer, so a limit keyed on it was
+  # no limit: one header changed at every send gave a count of its own, and
+  # one naming another visitor's address used that visitor's up. 203.0.113.9
+  # is a public address (RFC 5737), no proxy of ours.
+  test "the address a form is counted under is the socket's peer: a header naming another does not change it, and does not use up that address's count" do
+    publish
+    peer = "203.0.113.9"
+    victim = "198.51.100.77"
+    sent = ->(i, header) { send_form("/join", env: { "REMOTE_ADDR" => peer, header => i.even? ? victim : "192.0.2.#{i + 1}" }) }
+
+    SubmissionsController::LIMIT.times do |i|
+      sent.(i, i % 3 == 0 ? "HTTP_CLIENT_IP" : "HTTP_X_FORWARDED_FOR")
+      assert_response :see_other, "form #{i + 1} from one peer"
+    end
+    assert_no_difference -> { Submission.count } do
+      sent.(SubmissionsController::LIMIT, "HTTP_X_FORWARDED_FOR")
+    end
+    assert_response :too_many_requests, "the eleventh from one peer, whatever its headers name"
+
+    send_form("/join", env: { "REMOTE_ADDR" => victim })
+    assert_response :see_other, "the address those headers named still has its whole count"
+  end
+
+  # The harness's own way to give each test an address (config/environments/
+  # e2e.rb sets it): the limit asks config.x.submission_limit_by at every
+  # send, so this takes effect without a restart of anything.
+  test "the address the limit counts under is the one config.x.submission_limit_by names" do
+    publish
+    config = Rails.configuration.x
+    saved = config.submission_limit_by
+    config.submission_limit_by = ->(request) { request.remote_ip }
+    from = ->(address) { send_form("/join", env: { "REMOTE_ADDR" => "127.0.0.1", "HTTP_X_FORWARDED_FOR" => address }) }
+    begin
+      (SubmissionsController::LIMIT + 1).times do |i|
+        from.("198.51.100.#{i + 1}")
+        assert_response :see_other, "form #{i + 1}, each naming an address of its own"
+      end
+      (SubmissionsController::LIMIT - 1).times do |i|
+        from.("198.51.100.1")
+        assert_response :see_other, "form #{i + 2} of the first address"
+      end
+      from.("198.51.100.1")
+      assert_response :too_many_requests, "the eleventh of the first address"
+    ensure
+      config.submission_limit_by = saved
+    end
+  end
+
   test "a form with the field for robots filled in is answered as if kept, and nothing is kept" do
     publish
     assert_no_difference -> { Submission.count } do

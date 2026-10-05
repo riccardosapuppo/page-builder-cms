@@ -46,4 +46,13 @@ Rails.application.configure do
   config.hosts = [ "127.0.0.1", "localhost", "[::1]" ]
 
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Only for the tests that start this server: every one of them reaches it
+  # from 127.0.0.1, so a test says whose forms it sends in X-Forwarded-For
+  # and they are counted under that address, each test with a count of its
+  # own. Nowhere else does the limit take an address from a header
+  # (config/application.rb says why); here it is safe, because this server
+  # answers only the harness's tests (127.0.0.1 only, config/puma.rb), and
+  # the tests are the ones that choose the address.
+  config.x.submission_limit_by = ->(request) { request.remote_ip }
 end
