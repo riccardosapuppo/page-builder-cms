@@ -100,10 +100,26 @@ alone, after the twelve others, and its commit holds every place below.
   `src/editor/names.ts` says what the Outline shows after its name, and
   `src/editor/panels/groups.tsx` its groups and what its first says
   closed.
+- **A list of items**, for a widget that has one (a gallery's images, an
+  accordion's questions, a form's fields): the name of one item and of
+  many in `ITEM_NAMES` (`src/document/labels.ts`), and the order of an
+  item's keys in `itemList` (`src/document/commands.ts`), which picks it by
+  the widget's type: a key an item gains is written where that order puts
+  it, and a widget not named there gets an image's.
 - **This folder**: `<type>/` with its definition, icon, renderer, panel
   and its test, and accessibility test; a line in `registry.ts`,
   `panels.ts` and `a11y-all.ts`; in `types.ts`, what Insert must hand it
   first (`InputOf`) and, for a new group of the design's Insert, the group.
+- **The browser tests**: the widget's own, `e2e/<type>.spec.ts` (the
+  form's is `e2e/form.spec.ts`: its tile in Insert and in the picker, a
+  published form sent by the browser). What its accessibility test says a
+  screen reader is given is read in the browser's accessibility tree, not
+  the page's markup, by `e2e/widgets.spec.ts`, which runs every widget's
+  cases from `a11y-all.ts` and holds no list of its own, so a widget needs
+  no line there; the form needed it taught to check a field's `required`
+  (`required` and the roles of a field and a button in `Exposed` of
+  `src/widgets/a11y.ts`, the tree read by `e2e/helpers/ax.ts`), and a
+  widget with something else to say about the tree does the same.
 - **The server**: its partial in `cms/app/views/blocks/`, its type in
   `BlocksHelper::WIDGET_TYPES`, its look in
   `cms/app/assets/stylesheets/site.css`, and its view test in

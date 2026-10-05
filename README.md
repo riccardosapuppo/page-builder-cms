@@ -334,8 +334,12 @@ these places:
 - the editor's types, the widget's words, what the Outline shows after
   its name, its sidebar groups, and the Forms group of Insert and of the
   picker;
+- for a widget with a list of items, the name of an item and the order of
+  an item's keys in the editor's commands;
 - the widget's own folder: its definition, icon, React renderer, panel
   with its test and accessibility test, and a line in each registry;
+- the browser: the widget's own test, and what the accessibility tree is
+  asked in `e2e/widgets.spec.ts`, which runs every widget's cases;
 - the server: the ERB partial, its type among a column's widgets, its
   look in `site.css`, and its view test;
 - the render contract: a fixture of traps, with the goldens and the
