@@ -48,7 +48,7 @@ import { spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CouldNotRun, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
+import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -318,7 +318,7 @@ try {
     check(false, "the server answers /up", main.exitCode !== null ? `it exited (${main.exitCode}) before it answered` : "no answer within 120 s");
   } else {
     const owners = listeners(PORT);
-    check(owners.length === 1 && owners[0]!.pid === String(main.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
+    check(heldByTree(owners, main.pid, `127.0.0.1:${PORT}`),
       `started with no address, the server listens on 127.0.0.1:${PORT} only`,
       `listening: ${owners.map((l) => `${l.address} (process ${l.pid})`).join(", ")}; started: process ${main.pid}`);
 

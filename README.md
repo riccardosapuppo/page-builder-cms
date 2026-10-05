@@ -307,9 +307,15 @@ itself.
   before the production check) read a process's name from the kernel,
   which for Node 24 is its main thread's, and a browser test compared two
   screenshots byte for byte, which Linux's font smoothing told apart.
-  Both are fixed in stage 4, which has not run there yet, nor have its own
-  checks: the jobs in Solid Queue's forked process, the Rails tests'
-  cache database in forked workers. Nothing has run on macOS.
+  Both are fixed in stage 4. On 5 October 2026 it ran on stage 4: 10 of
+  its 12 jobs passed, among them the Rails tests on Ruby 3.3 and 3.4,
+  with the cache database in forked workers. Two failed on one fault only
+  Linux has: there Solid Queue forks its supervisor and its workers
+  inside Puma, they share Puma's listening socket, and the checks that ask
+  who holds the port (the browser job's harness, npm start's smoke run)
+  met a child of the server and took it for a stranger. They now accept
+  any process of the group the server leads, on its one address; that has
+  not run there yet. Nothing has run on macOS.
 
 ## Adding a widget
 

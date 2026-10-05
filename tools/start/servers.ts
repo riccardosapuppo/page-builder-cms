@@ -8,8 +8,9 @@
 // - Ready means answering for itself: the CMS's /up and its page
 //   list; the editor's own index and, through its proxy, the same page list
 //   the CMS gave. Then the system is asked who listens on each port, which
-//   must be the child started here, on 127.0.0.1 alone: a server
-//   left running by someone else answers like ours would.
+//   must be the child started here, or on Linux and macOS a process it
+//   forked (heldByTree), on 127.0.0.1 alone: a server left running by
+//   someone else answers like ours would.
 // - Stopping kills each child's whole tree (taskkill /T /F on Windows, the
 //   process group elsewhere: ../lib/processes.ts) and then asks the system
 //   again that nothing listens on its port.
@@ -17,7 +18,7 @@ import type { ChildProcess } from "node:child_process";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { builderRoot, cmsRoot } from "../lib/commands.ts";
-import { describeListeners, listeners, startTree, stopTree } from "../lib/processes.ts";
+import { describeListeners, heldByTree, listeners, startTree, stopTree } from "../lib/processes.ts";
 
 export interface Server {
   name: string;
@@ -128,11 +129,12 @@ export async function editorReady(editor: Server, cms: Server): Promise<boolean>
   return direct !== null && direct === proxied;
 }
 
-// null when the port is held by this server's process on 127.0.0.1 alone.
+// null when the port is held by this server's process, and on Linux and
+// macOS the processes it forked (heldByTree), on 127.0.0.1 alone.
 export function ownership(server: Server): string | null {
   const found = listeners(server.port);
-  const ours = found.length === 1 && found[0]!.pid === String(server.child.pid) && found[0]!.address === `127.0.0.1:${server.port}`;
-  return ours ? null : `${server.what} answered, but port ${server.port} is held by ${describeListeners(found) || "nobody"}, not by process ${server.child.pid} on 127.0.0.1 alone`;
+  const ours = heldByTree(found, server.child.pid, `127.0.0.1:${server.port}`);
+  return ours ? null : `${server.what} answered, but port ${server.port} is held by ${describeListeners(found) || "nobody"}, not by process ${server.child.pid} and what it forked, on 127.0.0.1 alone`;
 }
 
 // Stops the tree and says what it did; adds whether the port is closed.

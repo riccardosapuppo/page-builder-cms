@@ -6,10 +6,11 @@
 // samples follow the formats of netstat -a -n -o (Windows 11), ss -H -l -t
 // -n -p (iproute2) and lsof -F pn, with the lines a reader must skip next
 // to the ones it must find. The same for the readers of a process's name:
-// tasklist's, ps's, and the one of Linux's /proc, given a /proc of its own.
+// tasklist's, ps's, and the one of Linux's /proc, given a /proc of its own;
+// and for the reader of a process's group, and what heldByTree makes of it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fromLsof, fromNetstat, fromProc, fromPs, fromSs, fromTasklist, processName, type ProcFiles } from "./processes.ts";
+import { fromLsof, fromNetstat, fromProc, fromPs, fromSs, fromStat, fromTasklist, heldByTree, processGroup, processName, startTree, stopTree, type ProcFiles } from "./processes.ts";
 
 const NETSTAT = [
   "",
@@ -45,10 +46,12 @@ test("netstat: the listening lines on the port, IPv4 and IPv6, and no other", ()
   assert.deepEqual(fromNetstat(NETSTAT, 3900), []);
 });
 
-test("ss: the listening sockets on the port, with the first process ss names", () => {
+test("ss: the listening sockets on the port, once for each process ss names", () => {
   assert.deepEqual(fromSs(SS, 3902), [
     { address: "127.0.0.1:3902", pid: "4242" },
+    // Puma and a child it forked, sharing the socket.
     { address: "*:3902", pid: "4300" },
+    { address: "*:3902", pid: "4301" },
     // Another user's socket: ss does not say whose.
     { address: "[::1]:3902", pid: "?" },
   ]);
@@ -126,4 +129,42 @@ test("lsof: each address on the port under the process listed before it", () => 
   ]);
   // lsof prints nothing, and exits 1, when nothing listens.
   assert.deepEqual(fromLsof("", 3902), []);
+});
+
+test("/proc stat: the process group, counted from the name's last parenthesis", () => {
+  assert.equal(fromStat("3531 (ruby) S 3515 3484 3484 0 -1 4194624 512 0 0 0\n"), "3484");
+  // A title with spaces and a parenthesis of its own.
+  assert.equal(fromStat("4300 (puma 8.0.2 (tcp) S 1 4300 4300 0 -1 4194560\n"), "4300");
+  // A name with a closing parenthesis inside, as systemd names one.
+  assert.equal(fromStat("1234 ((sd-pam)) S 1 1233 1233 0 -1 1077936448\n"), "1233");
+  // The process has gone: nothing was read.
+  assert.equal(fromStat(""), undefined);
+});
+
+test("heldByTree: nothing, another address, or an unknown process is not the tree", () => {
+  const own = { address: "127.0.0.1:3900", pid: String(process.pid) };
+  assert.ok(heldByTree([own], process.pid, "127.0.0.1:3900"));
+  assert.ok(!heldByTree([], process.pid, "127.0.0.1:3900"));
+  assert.ok(!heldByTree([own], undefined, "127.0.0.1:3900"));
+  assert.ok(!heldByTree([own, { address: "[::1]:3900", pid: own.pid }], process.pid, "127.0.0.1:3900"));
+  assert.ok(!heldByTree([own, { address: own.address, pid: "?" }], process.pid, "127.0.0.1:3900"));
+});
+
+// What CI's Linux runner met: the CMS forks, and ss names a child before
+// the process started here. A child's own child is in the group startTree
+// made; this test's process is not.
+test("heldByTree: a child of the process started is in its tree, and another process is not", {
+  skip: process.platform === "win32" ? "no process groups on Windows, where taskkill /T finds the tree" : false,
+}, async () => {
+  const forks = "const c = require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'ignore' }); console.log(c.pid); setTimeout(() => {}, 30000)";
+  const child = startTree(process.execPath, ["-e", forks], { stdio: ["ignore", "pipe", "ignore"] });
+  try {
+    const grandchild = await new Promise<string>((done) => child.stdout!.once("data", (data) => done(String(data).trim())));
+    assert.equal(processGroup(grandchild), String(child.pid));
+    assert.notEqual(processGroup(String(process.pid)), String(child.pid));
+    assert.ok(heldByTree([{ address: "127.0.0.1:3900", pid: grandchild }, { address: "127.0.0.1:3900", pid: String(child.pid) }], child.pid, "127.0.0.1:3900"));
+    assert.ok(!heldByTree([{ address: "127.0.0.1:3900", pid: String(process.pid) }], child.pid, "127.0.0.1:3900"));
+  } finally {
+    await stopTree(child);
+  }
 });

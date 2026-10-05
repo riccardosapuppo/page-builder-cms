@@ -908,7 +908,9 @@ on port 3902 (`PRODUCTION_CHECK_PORT` moves it, so it can run beside
 another run that holds 3902) with throwaway databases under `tmp/`. It first asks the
 server to listen on 192.0.2.1, an address no machine has, and checks the
 refusal and that nothing listened; then starts it with no address and
-asks the system who listens: 127.0.0.1:3902 only, the process it started.
+asks the system who listens: 127.0.0.1:3902 only, the process it started
+(or, on Linux and macOS, a process of its group: a server that forks
+shares its listening socket with every child).
 It publishes a page through the API and checks the page, its policy, the
 absence of cookies and HSTS, the 301 and 404, the preview's `no-store`,
 the stylesheets and fonts as immutable and a missing asset without the
@@ -958,4 +960,10 @@ who listens from netstat, ss and lsof, on any system, with a sample of
 each system's output that holds lines to skip next to the ones to find.
 With three faults planted in the readers (netstat's established
 connections let through, ss's process name cut at its first space,
-lsof's process ids never read), all three tests failed.
+lsof's process ids never read), all three tests failed. On Linux the CMS
+forks Solid Queue's supervisor and its workers inside Puma, and they share
+Puma's listening socket, so ss names them all and the checks accept any
+process of the group the server leads. With three more faults planted
+(ss's processes cut to the first, a process's group counted from the
+first closing parenthesis of /proc/<pid>/stat, the address not compared),
+three tests failed.

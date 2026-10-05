@@ -52,7 +52,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
 import { api, countBlocks, headings, publishLargePage, withHeadingText, type Document } from "./lib/measure-site.ts";
-import { CouldNotRun, listeners, startTree, stopTree } from "./lib/processes.ts";
+import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "./lib/processes.ts";
 
 // The experimental-feature notice node:sqlite prints is the only warning
 // this tool filters out.
@@ -317,7 +317,7 @@ try {
   };
   const started = await startServer();
   const owners = listeners(PORT);
-  check(owners.length === 1 && owners[0]!.pid === String(started.pid) && owners[0]!.address === `127.0.0.1:${PORT}`,
+  check(heldByTree(owners, started.pid, `127.0.0.1:${PORT}`),
     `the server listens on 127.0.0.1:${PORT} only, and it is the process started here`, owners.map((l) => `${l.address} (process ${l.pid})`).join(", "));
 
   const page = await publishLargePage(BASE, SLUG);

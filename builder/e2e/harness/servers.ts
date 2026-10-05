@@ -10,9 +10,9 @@
 // - Each waits for the server to answer for itself: the CMS's
 //   /up and an API read on the empty database; the editor's index page and,
 //   through its proxy, the same API read. Then the system is asked who
-//   listens on the port, which must be the process started here and no
-//   other: a server left running by someone else answers like
-//   ours would.
+//   listens on the port, which must be the process started here, or on
+//   Linux and macOS a process it forked (heldByTree), and no other: a
+//   server left running by someone else answers like ours would.
 // - Stopping kills the whole tree (taskkill /T /F on Windows, the process
 //   group elsewhere: ../../../tools/lib/processes.ts), shows the port
 //   closed, and only then deletes the folder: Windows does not delete an
@@ -21,7 +21,7 @@ import { spawnSync, type ChildProcess } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { CouldNotRun, listeners, startTree, stopTree } from "../../../tools/lib/processes.ts";
+import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "../../../tools/lib/processes.ts";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
 
 const cmsRoot = join(repoRoot, "cms");
@@ -77,9 +77,9 @@ async function emptyPageList(url: string): Promise<boolean> {
 }
 
 function assertOwnListener(port: number, child: ChildProcess, what: string): void {
-  const owners = listeners(port);
-  const ours = owners.length === 1 && owners[0]!.pid === String(child.pid) && owners[0]!.address === `127.0.0.1:${port}`;
-  if (!ours) throw new Error(`${what} answered, but port ${port} is held by ${holders(port) || "nobody"}, not by process ${child.pid} on 127.0.0.1 alone`);
+  if (!heldByTree(listeners(port), child.pid, `127.0.0.1:${port}`)) {
+    throw new Error(`${what} answered, but port ${port} is held by ${holders(port) || "nobody"}, not by process ${child.pid} and what it forked, on 127.0.0.1 alone`);
+  }
 }
 
 async function stopServer(child: ChildProcess, port: number, folder: string, what: string): Promise<string[]> {

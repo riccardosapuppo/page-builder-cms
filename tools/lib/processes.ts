@@ -49,11 +49,51 @@ export function fromNetstat(out: string, port: number): Listener[] {
   ).map((cols) => ({ address: cols[1]!, pid: cols.at(-1) ?? "?" }));
 }
 
-// "LISTEN 0 1024 127.0.0.1:3902 0.0.0.0:* users:(("ruby",pid=4242,fd=7))"
+// "LISTEN 0 1024 127.0.0.1:3902 0.0.0.0:* users:(("ruby",pid=4242,fd=7))":
+// one listener for each process ss names, as lsof gives them. A server
+// that forks shares its listening socket with every child, and ss names
+// them all, in no order to rely on.
 export function fromSs(out: string, port: number): Listener[] {
   return out.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).filter((cols) =>
     cols[0] === "LISTEN" && portOf(cols[3]) === port,
-  ).map((cols) => ({ address: cols[3]!, pid: /pid=(\d+)/.exec(cols.slice(5).join(" "))?.[1] ?? "?" }));
+  ).flatMap((cols) => {
+    const pids = [...cols.slice(5).join(" ").matchAll(/pid=(\d+)/g)].map((m) => m[1]!);
+    return (pids.length ? pids : ["?"]).map((pid) => ({ address: cols[3]!, pid }));
+  });
+}
+
+// Whether the listeners found on a port are the tree startTree started
+// with the process id given, and it alone, on the one address given.
+// - Windows: the process itself.
+// - Linux and macOS: any process of its group, which startTree made the
+//   child lead. A server that forks shares its listening socket with every
+//   child: Puma with the supervisor Solid Queue forks in it, and that one
+//   with its workers.
+export function heldByTree(found: Listener[], pid: number | undefined, address: string): boolean {
+  const leader = String(pid);
+  return pid !== undefined && found.length > 0 && found.every((l) =>
+    l.address === address && (l.pid === leader || (!windows && processGroup(l.pid) === leader)));
+}
+
+// The process group of a running process; undefined when the system does
+// not say (the process has gone).
+// - Linux: /proc/<pid>/stat (fromStat), which anyone may read.
+// - elsewhere: ps -p n -o pgid=.
+export function processGroup(pid: string): string | undefined {
+  if (!/^\d+$/.test(pid)) return undefined;
+  if (process.platform === "linux") return fromStat(attempt(() => systemProc.readFile(`/proc/${pid}/stat`)) ?? "");
+  return (spawnSync("ps", ["-p", pid, "-o", "pgid="], { encoding: "utf8" }).stdout ?? "").trim() || undefined;
+}
+
+// "3531 (ruby) S 3515 3484 3484 0 -1 ...": after the name, the state, the
+// parent and the process group. The name may hold spaces and parentheses
+// of its own (a title such as "puma 8.0.2 (tcp"), so the fields are
+// counted from the last closing parenthesis.
+export function fromStat(stat: string): string | undefined {
+  const end = stat.lastIndexOf(")");
+  if (end < 0) return undefined;
+  const group = stat.slice(end + 1).trim().split(/\s+/)[2];
+  return group && /^\d+$/.test(group) ? group : undefined;
 }
 
 // One "p<pid>" line per process, then its "n<address>" lines.
