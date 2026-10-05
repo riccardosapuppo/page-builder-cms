@@ -5,7 +5,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons.tsx";
-import { leaveBeside, standBeside } from "./place-dialog.ts";
+import { keepBeside } from "./place-dialog.ts";
 
 interface DialogProps {
   title: string;
@@ -45,19 +45,13 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
     close.current = onClose;
   });
 
-  // Beside the element it is about, before the first paint, and again when
-  // the window changes size; the room it may have given the canvas to
-  // stand there is taken back as it closes.
+  // Beside the element it is about, before the first paint, and again
+  // when the page under it or the browser's window changes; the room it
+  // may have given the canvas to stand there is taken back as it closes.
   useLayoutEffect(() => {
     const dialog = box.current;
     if (!beside || !dialog) return undefined;
-    const stand = () => void standBeside(dialog, beside);
-    stand();
-    window.addEventListener("resize", stand);
-    return () => {
-      window.removeEventListener("resize", stand);
-      leaveBeside();
-    };
+    return keepBeside(dialog, beside);
   }, [beside]);
 
   useEffect(() => {

@@ -17,7 +17,9 @@
 //   goes when the library closes;
 // - on narrower windows, where the page is drawn smaller (the review of the
 //   second fix: 1024 by 768, 1100 by 700, 900 by 900), off the line from
-//   the window's first frame, not only once the canvas has settled.
+//   the window's first frame, not only once the canvas has settled;
+// - while the window is open, the page growing above the line: the window
+//   moves with the line.
 import type { Locator, Page } from "@playwright/test";
 import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
@@ -75,6 +77,9 @@ async function dropped(page: Page, group: "Basic" | "Media" | "Content", name: s
   await page.mouse.up();
   await expect(library(page)).toBeVisible();
 }
+
+// Two frames drawn since the window opened: it stands where it stays.
+const twoFrames = (page: Page) => page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
 
 // From the frame a window first appears in and for the next ones: whether
 // it is over the line `selector` finds, or the line is out of the
@@ -401,3 +406,30 @@ for (const [width, height, keys] of [[1024, 768, ["Video", "Image"]], [1100, 700
     }
   });
 }
+
+// The line may move while the window is open, and the window with it.
+test.describe("while the window is open", () => {
+  test("the page growing above the line (as an image of another site does when it arrives): the library moves with the line, and stays off it", async ({ page, request }) => {
+    const { id } = await makePage(request, "Library, the page grows", fixture());
+    await open(page, id);
+    await dropped(page, "Basic", "Image", "c3", "top");
+    await twoFrames(page);
+    const before = await boxes(page, library(page), line(page, "c3"));
+    expectLeavesTheLine(before);
+    expect(before.side, "the library stands under the line, where the line moving down would go").toBe("below");
+
+    // The quote of the first section, above the line, grows by 160 (the
+    // editor is inert while the library is open, so not block()'s find).
+    await page.locator('.canvas [data-block-id="b"]').evaluate((element) => {
+      (element as HTMLElement).style.paddingTop = "160px";
+    });
+    // The line moves at once; the window, the frame after.
+    await expect.poll(async () => {
+      const now = await boxes(page, library(page), line(page, "c3"));
+      return overlap(now.shown, now.line) ? `the window ${JSON.stringify(now.shown)} over the line ${JSON.stringify(now.line)}` : "off the line";
+    }).toBe("off the line");
+    const after = await boxes(page, library(page), line(page, "c3"));
+    expectLeavesTheLine(after);
+    expect(after.shown.y, "the library moved").not.toBe(before.shown.y);
+  });
+});

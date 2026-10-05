@@ -19,7 +19,8 @@
 // placeBeside is the choice for a line where it is, and moveFor the move
 // of the page that gives it one, functions of boxes and nothing else;
 // standBeside reads the boxes from the page and sets the window's style,
-// and leaveBeside gives the canvas's room back when the window closes.
+// keepBeside stands it again while it is open if the page changes under
+// it, and leaveBeside gives the canvas's room back when it closes.
 
 export interface Box {
   left: number;
@@ -144,7 +145,7 @@ const boxOf = (element: Element): Box => {
 
 // Takes away the room a window gave the canvas at its foot (moveFor), if
 // any: the canvas scrolls back as far as the page then goes.
-export function leaveBeside(): void {
+function leaveBeside(): void {
   for (const canvas of document.querySelectorAll<HTMLElement>(".canvas[data-room]")) {
     canvas.style.removeProperty("padding-bottom");
     delete canvas.dataset.room;
@@ -167,7 +168,7 @@ function pageHeight(canvas: HTMLElement): number {
 // leaves it centred when there is no such element or no room anywhere. The
 // canvas is scrolled first if the line is out of its view, and moved again
 // (moveFor) when the window has no room beside, over or under it there.
-export function standBeside(dialog: HTMLElement, selector: string): Stand | null {
+function standBeside(dialog: HTMLElement, selector: string): Stand | null {
   dialog.style.cssText = "";
   delete dialog.dataset.beside;
   leaveBeside();
@@ -206,4 +207,49 @@ export function standBeside(dialog: HTMLElement, selector: string): Stand | null
   if (stand.height !== null) dialog.style.height = `${stand.height}px`;
   dialog.dataset.beside = stand.side;
   return stand;
+}
+
+const sameBox = (a: Box | null, b: Box | null): boolean =>
+  a === b || (a !== null && b !== null && a.left === b.left && a.top === b.top && a.right === b.right && a.bottom === b.bottom);
+
+// Keeps `dialog` beside the element `selector` finds while it is open:
+// stood there now (standBeside), and again when the line has moved. The
+// page may change under a window that is open: grow or shrink above the
+// line, as an image of another site does, which has no size until it
+// arrives and is drawn lazily, once the canvas has scrolled to it. Such a
+// change is seen once it is laid out (the page's size, watched with the
+// element the Canvas's own observer watches, so the box of a page drawn
+// smaller has followed it by then), and the window is stood again in the
+// next frame if the line moved; the browser's window changing size stands
+// it again at once. Returns what undoes it all, the canvas's room included.
+export function keepBeside(dialog: HTMLElement, selector: string): () => void {
+  const lineNow = (): Box | null => {
+    const anchor = document.querySelector(selector);
+    return anchor ? boxOf(anchor) : null;
+  };
+  let left: Box | null = null;
+  const stand = () => {
+    standBeside(dialog, selector);
+    left = lineNow();
+  };
+  let next = 0;
+  const check = () => {
+    next = 0;
+    if (!sameBox(lineNow(), left)) stand();
+  };
+  const later = () => {
+    if (next === 0) next = requestAnimationFrame(check);
+  };
+
+  stand();
+  const page = document.querySelector(selector)?.closest(".canvas")?.querySelector(".frame") ?? null;
+  const resized = new ResizeObserver(later);
+  if (page) resized.observe(page);
+  window.addEventListener("resize", stand);
+  return () => {
+    if (next !== 0) cancelAnimationFrame(next);
+    resized.disconnect();
+    window.removeEventListener("resize", stand);
+    leaveBeside();
+  };
 }
