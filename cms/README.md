@@ -428,11 +428,12 @@ and one client can use up the count for everyone: a program other than a
 browser can name this site's `Origin`, and ten of its forms, kept or
 refused for what they hold, give every visitor 429 for ten minutes. A
 form refused for its `Origin` is refused before it is counted, so a page
-of another site cannot do this through its visitors' browsers; a request
-test sends eleven such forms from one address, then gets 303 for the
-address's own forms. A deployment that must count each visitor behind
-its proxy sets `config.x.submission_limit_by` in its environment's file
-to read the
+of another site cannot do this through its visitors' browsers: a request
+test sends eleven forms from one address, from another site or with no
+`Origin`, which get 403 each; then ten of the address's own, kept with
+303 or refused for what they hold with 422; and only the next gets 429.
+A deployment that must count each visitor behind its proxy sets
+`config.x.submission_limit_by` in its environment's file to read the
 address the proxy names (`request.remote_ip`, with
 `config.action_dispatch.trusted_proxies` set to an array holding the
 proxy, which replaces Rails' default list), and its proxy must overwrite
