@@ -39,4 +39,30 @@ class SubmissionTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::DeleteRestrictionError) { page.destroy }
     assert_equal 1, Submission.where(page: page).count
   end
+
+  def excerpt_of(answers, fields: ITEMS + [ { "name" => "notes", "kind" => "textarea", "label" => "Notes", "required" => false, "maxLength" => 5000 } ])
+    Submission.new(fields: fields, answers: answers).excerpt
+  end
+
+  test "the excerpt is the first text answer with more than white space, on one line, with its field's label" do
+    assert_equal({ "label" => "Name", "text" => "Ann", "truncated" => false }, excerpt_of({ "name" => "Ann", "email" => "a@example.org", "box" => true }))
+    assert_equal({ "label" => "Email", "text" => "a@example.org", "truncated" => false }, excerpt_of({ "name" => " \t ", "email" => "a@example.org", "box" => true }))
+    assert_equal({ "label" => "Notes", "text" => "Cold water is fine", "truncated" => false },
+                 excerpt_of({ "name" => "", "email" => "", "box" => true, "notes" => "\n Cold\n\n\twater  is fine\n" }))
+  end
+
+  test "an answer with only a ticked box, or none at all, has no excerpt" do
+    assert_nil excerpt_of({ "name" => "", "email" => "", "box" => true, "notes" => "" })
+    assert_nil excerpt_of({ "box" => true }, fields: [ ITEMS[2] ])
+  end
+
+  test "a long answer is cut at 120 characters as a reader counts them, never inside one, and says it was cut" do
+    accent = "é" # one letter, two code points
+    family = "\u{1F468}‍\u{1F469}‍\u{1F467}" # one emoji, five code points
+    exact = "a" * 119 + accent
+
+    assert_equal({ "label" => "Notes", "text" => exact, "truncated" => false }, excerpt_of({ "notes" => exact }))
+    assert_equal({ "label" => "Notes", "text" => exact, "truncated" => true }, excerpt_of({ "notes" => exact + "b" }))
+    assert_equal("a" * 119 + family, excerpt_of({ "notes" => "a" * 119 + family + family })["text"])
+  end
 end
