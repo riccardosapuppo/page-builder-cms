@@ -49,4 +49,14 @@ Rails.application.routes.draw do
   get "preview/:page_id", to: "previews#show", constraints: { page_id: /[0-9]+/ }, format: false
   root "pages#home"
   get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page
+
+  # A page's forms post to the page's own address (SubmissionsController),
+  # the preview's to the preview's. Once kept, the answers lead to
+  # <page address>/sent/<form block id>: two or three segments, so no
+  # confirmation ever shadows a page, and no slug needs reserving.
+  post "/", to: "submissions#create", format: false
+  post ":slug", to: "submissions#create", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false
+  post "preview/:page_id", to: "submissions#preview", constraints: { page_id: /[0-9]+/ }, format: false
+  get "sent/:form", to: "submissions#show", constraints: { form: /[A-Za-z0-9_-]{1,64}/ }, format: false
+  get ":slug/sent/:form", to: "submissions#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/, form: /[A-Za-z0-9_-]{1,64}/ }, format: false
 end

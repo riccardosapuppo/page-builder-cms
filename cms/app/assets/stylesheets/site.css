@@ -264,6 +264,14 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-trap { display: none; }
 .sw-form .sw-btn { justify-self: start; margin-top: var(--space-s); }
 .sw-btn-primary { background-color: var(--sw-primary); color: var(--sw-background); }
+/* Above a page drawn again for a refused form (pages/_form_errors): the
+   same words as under the fields, each a link to its field, in the same
+   ink border and bold, since the form may sit far down the page. */
+.sw-errors { padding-top: var(--space-xl); }
+.sw-errors-box { padding: var(--space-m) var(--space-l); border: 2.5px solid var(--sw-text); border-radius: 4px; }
+.sw-errors-box h2 { margin: 0 0 var(--space-s); font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 20px; font-weight: 700; font-stretch: 110%; }
+.sw-errors-box ul { margin: 0; padding-left: 1.2em; }
+.sw-errors-box a { font-weight: 650; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
 
 /* ---------- Tablet layout: the page root is narrower than 800 ---------- */
 @container site (width < 800px) {

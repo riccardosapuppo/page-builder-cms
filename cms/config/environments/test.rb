@@ -22,6 +22,10 @@ Rails.application.configure do
   config.consider_all_requests_local = true
   config.cache_store = :null_store
 
+  # Counted in memory, so the form submissions' limit fires in the tests
+  # (config/application.rb says why it is not the cache store).
+  config.x.submission_limit_store = :memory_store
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

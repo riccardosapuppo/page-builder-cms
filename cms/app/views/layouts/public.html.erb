@@ -1,6 +1,8 @@
 <%#
-  The layout of every page a visitor sees: published pages, the 404 page
-  and the draft preview. No csrf_meta_tags and no csp_meta_tag: either
+  The layout of every page a visitor sees: published pages, the 404 page,
+  the draft preview, and what a sent form is answered with (a confirmation,
+  a refusal, or the page drawn again above the list of what to put right,
+  @form_errors). No csrf_meta_tags and no csp_meta_tag: either
   would read the session, and a session writes a cookie onto a page meant
   to be cached and shared. No script either; the Content-Security-Policy
   (PublicPage) says script-src 'none'. The header and footer are the
@@ -27,6 +29,7 @@
 <a class="sw-skip" href="#main_content">Skip to content</a>
 <header class="sw-header"><div class="sw-inner sw-header-row"><a class="sw-brand" href="/"><%= theme_svg("mark", css_class: "sw-brand-mark") %><span><%= site[:name] %></span></a><nav class="sw-nav" aria-label="Main"><div class="sw-nav-links"><%= safe_join(site_links(site[:menu])) %></div><%= site_link(site[:action], class: "sw-btn sw-btn-small") %><details class="sw-menu"><summary class="sw-menu-button"><%= theme_svg("menu", css_class: "sw-menu-icon") %>Menu</summary><div class="sw-menu-sheet"><%= safe_join(site_links(site[:menu])) %></div></details></nav></div></header>
 <main id="main_content">
+<%= render("pages/form_errors", errors: @form_errors) if @form_errors -%>
 <%= yield %>
 </main>
 <footer class="sw-footer"><div class="sw-inner sw-footer-row"><%= theme_svg("mark", css_class: "sw-brand-mark sw-brand-mark-inv") %><p><strong><%= site.dig(:footer, :lead) %></strong> <%= site.dig(:footer, :text) %></p></div></footer>

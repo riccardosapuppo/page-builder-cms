@@ -70,5 +70,13 @@ module Cms
     # recurring.yml) run by its clock, Solid Queue's default zone being
     # this one. The database and the API keep UTC.
     config.time_zone = config.x.site.fetch(:time_zone)
+
+    # Where SubmissionsController counts the forms each visitor sends (its
+    # rate_limit), named here instead of left to the cache store: the
+    # tests' cache is a :null_store, which counts nothing, so the limit
+    # would never fire there and no test could show it. Solid Cache keeps
+    # one count for every server process and across restarts; test.rb
+    # names a memory store, which the tests empty before each one.
+    config.x.submission_limit_store = :solid_cache_store
   end
 end
