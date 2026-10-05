@@ -391,7 +391,7 @@ that fails when its guard is taken out:
 | Guard | A form that breaks it gets |
 | --- | --- |
 | the `Origin` a browser sets on every form it posts must be this site's | 403, nothing read; the same with no `Origin`, or `null` |
-| `rate_limit`: ten forms per address (the socket's peer, below) within ten minutes | 429 with `Retry-After: 600`; refused forms count too |
+| `rate_limit`: ten forms per address (the socket's peer, below) within ten minutes | 429 with `Retry-After: 600`; a form refused for its `Origin` is refused before it and does not count, the forms refused below count too |
 | the field for robots is empty | a 303 to the confirmation as if kept, and nothing kept |
 | only `application/x-www-form-urlencoded`, what a form without `enctype` sends | 415 |
 | a body no larger than the largest form sends (below) | 413 |
@@ -403,11 +403,12 @@ that fails when its guard is taken out:
 in `config/application.rb`, never left to the cache store: the tests'
 `:null_store` counts nothing, so the limit could never fire there. It is
 Solid Cache everywhere but in the tests, which count in memory and empty
-it before each test. `npm run check:production` sends eleven forms from
-one address to a production boot, each naming another address in
-`X-Forwarded-For`, and gets nine 303s, a 403 (the second, from another
-site, which counts) and a 429, counted in Solid Cache; with the store set
-to `:null_store` the check fails.
+it before each test. `npm run check:production` sends forms from one
+address to a production boot, each naming another address in
+`X-Forwarded-For`: one from the page, which gets 303; eleven from another
+site, which get 403 each and are not counted; then ten more from the
+page, which get nine 303s and, at the eleventh counted, a 429, counted in
+Solid Cache. With the store set to `:null_store` the check fails.
 
 **The address a form is counted under** is the socket's own peer
 (`request.remote_addr`), set in `config.x.submission_limit_by` in
@@ -422,7 +423,14 @@ fails. The cost is that every visitor reaching the CMS through one
 address shares one count: the CMS listens on `127.0.0.1` only
 (`config/puma.rb`), so behind a front proxy on this machine every
 visitor is `127.0.0.1`, and ten forms in ten minutes is the whole site's.
-A deployment that must count each visitor behind its proxy sets
+So the site's eleventh form in ten minutes is refused, whoever sends it,
+and one client can use up the count for everyone: a program other than a
+browser can name this site's `Origin`, and ten of its forms, kept or
+refused for what they hold, give every visitor 429 for ten minutes. A
+form refused for its `Origin` is refused before it is counted, so a page
+of another site cannot do this through its visitors' browsers, and a
+request test sends eleven such forms from one address and then gets 303
+for the address's own. A deployment that must count each visitor behind its proxy sets
 `config.x.submission_limit_by` in its environment's file to read the
 address the proxy names (`request.remote_ip`, with
 `config.action_dispatch.trusted_proxies` set to an array holding the

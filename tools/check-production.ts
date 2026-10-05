@@ -23,8 +23,8 @@
 //   one widget changes (cacheChecks);
 // - a visitor's form: sent with this site's Origin and no token, it is
 //   kept and leads to a confirmation that is never stored; with another
-//   site's, 403; from one address, the eleventh within ten minutes is 429,
-//   counted in production's Solid Cache (formChecks);
+//   site's, 403 and not counted; from one address, the eleventh within
+//   ten minutes is 429, counted in production's Solid Cache (formChecks);
 // - the jobs, with `ruby bin/jobs` in a process of its own beside the
 //   server, as the CMS's README says a production run does: a page
 //   scheduled for 15 seconds ahead is not live before, and is live after
@@ -182,9 +182,9 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
 // has it, and the forms counted in production's own store, Solid Cache.
 // Sent as a browser sends it, with this site's Origin and no token, the
 // form is kept and leads with 303 to a confirmation that is never stored;
-// with another site's Origin it is refused with 403; and from one address
-// the eleventh form within ten minutes is refused with 429, the refused
-// one before it counted. Every send here comes from this machine's one
+// with another site's Origin it is refused with 403, and not counted; and
+// from one address the eleventh form within ten minutes is refused with
+// 429. Every send here comes from this machine's one
 // address, so they are one count, and each names another address in
 // X-Forwarded-For, as a visitor trying to get past the limit would: the
 // count is under the socket's peer, so no header gives a form a count of
@@ -222,17 +222,22 @@ async function formChecks(): Promise<void> {
   check(shown.status === 200 && html.includes("Thank you, from production.") && shown.headers.get("cache-control") === "no-store" && shown.headers.get("set-cookie") === null,
     "the confirmation says the form's message, is never stored and sets no cookie", `${shown.status} ${shown.headers.get("cache-control")} ${shown.headers.get("set-cookie") ?? ""}`);
 
-  const foreign = await send("http://elsewhere.example");
-  check(foreign.status === 403, "a form sent with another site's Origin is refused with 403", `${foreign.status}`);
+  // Eleven from another site, one more than the limit: each is refused for
+  // its Origin before it is counted, so none is 429 and none uses up the
+  // count this address's own forms share.
+  const foreign: number[] = [];
+  for (let i = 0; i < 11; i++) foreign.push((await send("http://elsewhere.example")).status);
+  check(foreign.every((s) => s === 403), "forms sent with another site's Origin are refused with 403, past the limit too: they are not counted", foreign.join(" "));
 
-  // Two forms have gone out of this address; nine more make the eleventh.
+  // One form of this site's has gone out of this address; ten more make
+  // the eleventh.
   const statuses: number[] = [];
-  for (let i = 0; i < 9; i++) statuses.push((await send(BASE)).status);
-  check(statuses.slice(0, 8).every((s) => s === 303) && statuses[8] === 429, "from one address, the eleventh form within ten minutes is refused with 429, whatever address each names in X-Forwarded-For; the refused one before it counted", [sent.status, foreign.status, ...statuses].join(" "));
+  for (let i = 0; i < 10; i++) statuses.push((await send(BASE)).status);
+  check(statuses.slice(0, 9).every((s) => s === 303) && statuses[9] === 429, "from one address, the eleventh form within ten minutes is refused with 429, whatever address each names in X-Forwarded-For; the ones from another site before it did not count", [sent.status, ...statuses].join(" "));
 
   const r = spawnSync("ruby", ["bin/rails", "runner", `print "kept=#{Submission.where(page_id: ${Number(id)}).count}"`], { cwd: cms, env, encoding: "utf8" });
   const kept = /kept=([0-9]+)/.exec(r.stdout ?? "");
-  check(r.status === 0 && kept?.[1] === "9", "the page's kept answers are the nine its forms were let through with", kept ? `${kept[1]} kept` : `exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
+  check(r.status === 0 && kept?.[1] === "10", "the page's kept answers are the ten its forms were let through with", kept ? `${kept[1]} kept` : `exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }
 
 // A publish set for a time, in production. No job runs inside this server

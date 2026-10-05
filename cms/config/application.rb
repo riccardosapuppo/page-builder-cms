@@ -85,8 +85,9 @@ module Cms
     # proxy's, so a visitor could change one header and have a count of
     # their own at every send, or name another visitor's address and use
     # up that visitor's ten. Behind a front proxy on this machine every
-    # visitor's peer is the proxy, so they share one count (the README says
-    # so). SubmissionsController calls this with the request; config/
+    # visitor's peer is the proxy, so they share one count, which one client
+    # can use up (the README says so, and what a deployment does about it).
+    # SubmissionsController calls this with the request; config/
     # environments/e2e.rb gives the harness's tests an address each.
     config.x.submission_limit_by = ->(request) { request.remote_addr }
   end

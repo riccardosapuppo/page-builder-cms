@@ -193,9 +193,17 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the eleventh form from one address within ten minutes is refused with 429, another address is not, and after the window the first can send again" do
+  # Behind a front proxy every visitor is one address, so a form refused for
+  # its Origin must not count: a page of another site could use up the
+  # whole site's count. These come first and go past the limit; were they
+  # counted, the last would be 429 and the first kept form after them too.
+  test "the eleventh form from one address within ten minutes is refused with 429, forms from another site do not count, another address is not refused, and after the window the first can send again" do
     publish
     first = { "REMOTE_ADDR" => "198.51.100.7" }
+    (SubmissionsController::LIMIT + 1).times do |i|
+      send_form("/join", origin: i.even? ? "https://elsewhere.example" : nil, env: first)
+      assert_response :forbidden, "form #{i + 1} from another site, or with no Origin"
+    end
     SubmissionsController::LIMIT.times do |i|
       send_form("/join", i.even? ? GOOD : GOOD.merge("email" => "bad"), env: first)
       assert_includes [ 303, 422 ], response.status, "form #{i + 1}: refused ones count too"
