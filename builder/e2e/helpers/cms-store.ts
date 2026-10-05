@@ -1,8 +1,9 @@
 // What the run's CMS keeps in its own databases, read from outside as it
-// is: the fragments Solid Cache holds, and the jobs Solid Queue ran. The
-// harness makes those databases for the run (harness/servers.ts) and
-// names their folder in E2E_CMS_FOLDER. Only read: the CMS is the one
-// writing them, and a busy database is waited for, never written.
+// is: the fragments Solid Cache holds, the jobs Solid Queue ran, and the
+// answers visitors sent with the pages' forms. The harness makes those
+// databases for the run (harness/servers.ts) and names their folder in
+// E2E_CMS_FOLDER. Only read: the CMS is the one writing them, and a busy
+// database is waited for, never written.
 import { join } from "node:path";
 
 const folder = (): string => {
@@ -45,6 +46,20 @@ async function read<T>(file: string, query: (db: Database) => T): Promise<T> {
 // "views/"): a page's whole HTML, and each of its blocks.
 export const fragments = (): Promise<number> => read("e2e_cache.sqlite3", (db) =>
   Number((db.prepare("SELECT COUNT(*) AS n FROM solid_cache_entries WHERE instr(CAST(key AS TEXT), 'views/') > 0").get() as { n: number }).n));
+
+// The answers kept for a page's forms, oldest first, as the CMS stores
+// them: the form, the published version it was read from, and the
+// answers and the copy of the fields, as JSON.
+export interface KeptAnswer {
+  formId: string;
+  pageVersionId: number;
+  answers: Record<string, string | boolean>;
+  fields: Array<{ name: string; kind: string; label: string; required: boolean; maxLength?: number }>;
+}
+
+export const keptAnswers = (pageId: number): Promise<KeptAnswer[]> => read("e2e.sqlite3", (db) =>
+  (db.prepare("SELECT form_id AS formId, page_version_id AS pageVersionId, answers, fields FROM submissions WHERE page_id = ? ORDER BY id").all(pageId) as unknown as Array<{ formId: string; pageVersionId: number; answers: string; fields: string }>)
+    .map((row) => ({ ...row, answers: JSON.parse(row.answers), fields: JSON.parse(row.fields) })));
 
 export interface Job {
   scheduledAt: string | null;

@@ -31,8 +31,16 @@ export interface Visitor {
 // "max-age=0, public, must-revalidate" in any order, as a sorted list.
 export const directives = (header: string | undefined): string[] => (header ?? "").split(",").map((d) => d.trim()).filter(Boolean).sort();
 
-export async function visitor(browser: Browser): Promise<Visitor> {
-  const context = await browser.newContext({ locale: "en-US", timezoneId: "UTC" });
+// from: the address the CMS should take this visitor's requests as coming
+// from. The CMS counts the forms each address sends (its rate limit), and
+// every test reaches it from 127.0.0.1, which it trusts as a proxy, so an
+// X-Forwarded-For on every request gives a visitor a count of its own.
+export async function visitor(browser: Browser, options: { from?: string } = {}): Promise<Visitor> {
+  const context = await browser.newContext({
+    locale: "en-US",
+    timezoneId: "UTC",
+    ...(options.from ? { extraHTTPHeaders: { "X-Forwarded-For": options.from } } : {}),
+  });
   const tab = await context.newPage();
   const problems: string[] = [];
   tab.on("pageerror", (error) => problems.push(error.message));
