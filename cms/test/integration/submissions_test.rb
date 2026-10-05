@@ -267,6 +267,24 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # What a visitor writes is kept in the database, never in the log. The
+  # parameters line of the request is where Rails would write it.
+  test "what a visitor wrote is filtered from the log" do
+    publish
+    log = StringIO.new
+    saved = ActionController::Base.logger
+    ActionController::Base.logger = ActiveSupport::Logger.new(log)
+    begin
+      send_form("/join", GOOD.merge("name" => "Ann Diver", "email" => "ann.diver@example.org", "notes" => "I swim at dawn, call me Ishmael"))
+    ensure
+      ActionController::Base.logger = saved
+    end
+
+    assert_response :see_other
+    assert_includes log.string, %("answers" => "[FILTERED]"), "the request's parameters were logged, answers filtered"
+    [ "Ann Diver", "ann.diver@example.org", "Ishmael" ].each { |answer| refute_includes log.string, answer }
+  end
+
   test "a form with the field for robots filled in is answered as if kept, and nothing is kept" do
     publish
     assert_no_difference -> { Submission.count } do

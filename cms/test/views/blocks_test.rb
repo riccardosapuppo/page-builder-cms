@@ -169,7 +169,7 @@ class BlocksTest < ActionView::TestCase
 
   test "a refused form, drawn again, keeps what was written and ties each refusal to its field" do
     html = form_html(answer: {
-      "values" => { "name" => "Ann <b>", "email" => "ann@", "notes" => "\nFirst line\nsecond", "distance" => true },
+      "values" => { "name" => "Ann <b>", "email" => "ann@", "notes" => "\nFirst line</textarea><b>x</b><script>y</script>\nsecond", "distance" => true },
       "errors" => { "email" => "Enter an email address, like name@example.org.", "distance" => "Tick this box to send the form." }
     })
 
@@ -182,11 +182,14 @@ class BlocksTest < ActionView::TestCase
     assert box.key?("checked")
     assert_equal "Tick this box to send the form.", html.css("[id]").find { |e| e["id"] == box["aria-describedby"] }&.text
     # What the visitor wrote comes back as text, line breaks and all; a
-    # field with no refusal is not marked.
+    # field with no refusal is not marked. Markup in an attribute's value
+    # is never an element (Rails always escapes the quotes there), so the
+    # one that can become one is the textarea's text: the answer closes the
+    # textarea and opens a b and a script, which stay text, whole.
     name = labelled(html, "Name (required)")
     assert_equal [ "Ann <b>", nil, nil ], [ name["value"], name["aria-invalid"], name["aria-describedby"] ]
-    assert_equal "\nFirst line\nsecond", labelled(html, "Anything we should know?").text
-    assert_empty html.css("b")
+    assert_equal "\nFirst line</textarea><b>x</b><script>y</script>\nsecond", labelled(html, "Anything we should know?").text
+    assert_empty html.css("b, script")
   end
 
   test "a page drawn with a visitor's answers gives each form its own, down through its section and column, and is never cached" do
