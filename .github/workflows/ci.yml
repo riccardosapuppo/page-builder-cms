@@ -231,7 +231,12 @@ jobs:
         # taskkill, ss and process groups, the registry and systemd.
         os: [ubuntu-24.04, windows-2025]
     steps:
+      # The whole history: tools/readme-widget.test.ts reads the commit the
+      # README links, which a shallow clone has not got, and the test fails
+      # rather than skips when it is missing.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       # Ruby for the tests that ask Bundler where it writes the launchers
       # (tools/start/install.test.ts) and that check Ruby's version.
       - uses: ruby/setup-ruby@v1

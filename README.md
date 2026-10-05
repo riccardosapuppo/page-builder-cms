@@ -353,6 +353,14 @@ a safety check of the render contract that lets the form widget's own
 form through. [`builder/src/widgets/README.md`](builder/src/widgets/README.md#adding-a-widget)
 names each place by file, with the commands that check them.
 
+[`tools/readme-widget.test.ts`](tools/readme-widget.test.ts) holds this
+section to the repository, in `npm run test:tools`: the commit linked
+exists in this history with the subject, the 276, 225 and 51 files given
+here, and one new widget folder, which the registry lists; and every file
+the widgets README names exists. A shallow clone fails it, so CI's tools
+job checks out the whole history. A wrong count, a changed hash and a
+renamed file each made it fail when planted.
+
 ## Checking it
 
 `npm run check` runs every check of the repository, one after another,

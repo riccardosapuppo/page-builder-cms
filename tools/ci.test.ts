@@ -72,6 +72,17 @@ test("the jobs of stages 1 and 2 are all there", () => {
   }
 });
 
+// tools/readme-widget.test.ts reads the commit the README links and fails,
+// not skips, when this checkout has not got it, which a shallow clone (the
+// checkout action's default) never has.
+test("the job that runs the tools' tests checks out the whole history", () => {
+  const job = workflow.jobs.tools!;
+  assert.ok(job.steps.some((step) => step.run === "npm run test:tools"), "the tools job does not run npm run test:tools");
+  const checkout = job.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+  assert.ok(checkout, "the tools job has no checkout step");
+  assert.equal(checkout.with?.["fetch-depth"], 0, "the tools job's checkout is shallow, and tools/readme-widget.test.ts needs the linked commit");
+});
+
 test("every command a step runs exists in the folder it runs in", () => {
   let checked = 0;
   for (const { job, folder, line } of commands()) {
