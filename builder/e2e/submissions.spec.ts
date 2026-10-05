@@ -118,9 +118,26 @@ test("a form the CMS refuses comes back with what was written, each refusal by i
     expect(report.serious).toEqual([]);
     expect(await keptAnswers(form.id)).toEqual([]);
 
-    // The list's link takes the visitor to the field, far down the page.
-    await alert.getByRole("link", { name: /^Email:/ }).click();
-    await expect(email).toBeInViewport();
+    // The list's link takes a keyboard user to the field, far down the
+    // page, and the field alone in view is not enough: its label and its
+    // message must be too, or they land on an empty box that has no name
+    // and no reason (scroll-margin-top, site.css). In a desktop window
+    // short enough that the page scrolls, and in a phone's, where a
+    // message takes more lines.
+    const link = alert.getByRole("link", { name: /^Email:/ });
+    const label = tab.locator('label[for="join-form:email"]');
+    const message = tab.locator('[id="join-form:email:error"]');
+    for (const size of [{ width: 1280, height: 480 }, { width: 390, height: 520 }]) {
+      await tab.setViewportSize(size);
+      await tab.evaluate(() => window.scrollTo(0, 0));
+      await link.focus();
+      await tab.keyboard.press("Enter");
+      await expect(email).toBeFocused();
+      expect(await tab.evaluate(() => window.scrollY), `at ${size.width} wide the page scrolled to the field`).toBeGreaterThan(0);
+      await expect(email).toBeInViewport();
+      await expect(label).toBeInViewport({ ratio: 1 });
+      await expect(message).toBeInViewport({ ratio: 1 });
+    }
 
     // Put right, the form is kept.
     await email.fill("ann@example.org");

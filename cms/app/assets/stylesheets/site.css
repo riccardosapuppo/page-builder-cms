@@ -258,6 +258,15 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-field-error { margin: 0 0 6px; font-size: 15px; font-weight: 650; }
 .sw-check .sw-field-error { grid-column: 2; margin: 4px 0 0; }
 .sw-field [aria-invalid="true"] { border: 2.5px solid var(--sw-text); }
+/* A link to a field (the list above a refused form) and a focus that
+   scrolls both put the field at the top edge of the window, and its label
+   and, on a refused page, its message sit above it, out of sight: a
+   keyboard user would land on an empty box with no name and no reason.
+   This leaves room above a text field for a label of two lines and a
+   message of three, as a phone shows them. A box's label sits beside it
+   and its message below, so it needs only a little air. */
+.sw-field input, .sw-field textarea { scroll-margin-top: 8rem; }
+.sw-check input { scroll-margin-top: 1rem; }
 /* The field for robots: never drawn, so no person and no browser's
    autofill meets it. Its aria-hidden and tabindex keep it from screen
    readers and the keyboard should this sheet fail to load. */
