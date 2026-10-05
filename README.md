@@ -358,27 +358,27 @@ over from a production build, which development would serve in place of
 the stylesheets being edited. `npm run check -- --list` names the
 suites; `--only` and `--skip` take those names.
 
-In the night of 4 to 5 October 2026, on the virtual machine of "Before
-you start", with `CMS_PORT`, `BUILDER_PORT` and `PRODUCTION_CHECK_PORT`
-set to 3901, 4901 and 3901 so that every server it started was on the
-test ports, one run of the whole check (`npm run check`), from 01:18:54
-to 01:43:39 UTC on the 5th, took 24.8 minutes and ended `RESULT: 25
-passed, 1 could not run here`: bundler-audit, for want of its database.
-Its counts, with the third fix round that followed stage 4's review: 68
-tools tests, 375 files linted, 771 unit tests and the render contract's
-22, 214 corpus files with no disagreement, 309 Rails runs with 276 API
-answers held to the description, 51 tests against a CMS of their own,
-206 browser tests and 38 accessibility tests (the last 38 are among the
-206, and run again on their own), 40 serving checks, 45 of the
-production boot, 7 of npm start's smoke run and 11 of its stops. The
-floors in `suites.ts` are those counts, and RuboCop's 136 files;
-Brakeman's, 70, is under the 79 checks it ran. The steps of the CI
-file's browser job (`builder-e2e`: the tests against a CMS of their own,
-the browser tests, the accessibility tests again, the serving checks)
-took 48.4, 747.6, 258.3 and 22.2 seconds, 17.9 minutes in all; 17.9 in
-the second fix round's run, with 200 browser tests, 17.4 in the first
-fix round's, with 192, and 17.0 in the earlier run of stage 4, whose
-browser tests were 178.
+On 5 October 2026, on the virtual machine of "Before you start", with
+`CMS_PORT`, `BUILDER_PORT`, `PRODUCTION_CHECK_PORT`, `E2E_CMS_PORT` and
+`E2E_BUILDER_PORT` set to 3901, 4901, 3901, 3901 and 4901 so that every
+server it started was on the test ports, one run of the whole check
+(`npm run check`), from 06:32:29 to 06:58:36 UTC, took 26.1 minutes and
+ended `RESULT: 25 passed, 1 could not run here`: bundler-audit, for want
+of its database. Its counts, with stage 5's forms: 68 tools tests, 394
+files linted, 815 unit tests and the render contract's 25, 249 corpus
+files with no disagreement, 351 Rails runs with 322 API answers held to
+the description, 54 tests against a CMS of their own, 215 browser tests
+and 42 accessibility tests (the last 42 are among the 215, and run again
+on their own), 40 serving checks, 50 of the production boot, 7 of npm
+start's smoke run and 11 of its stops. The floors in `suites.ts` are
+those counts, and RuboCop's 147 files; Brakeman's, 70, is under the 79
+checks it ran. The steps of the CI file's browser job (`builder-e2e`:
+the tests against a CMS of their own, the browser tests, the
+accessibility tests again, the serving checks) took 49.8, 779.2, 281.4
+and 22.7 seconds, 18.9 minutes in all; 17.9 in the last run of stage 4,
+with 206 browser tests, 17.9 in its second fix round's run, with 200,
+17.4 in its first fix round's, with 192, and 17.0 in its earlier run,
+whose browser tests were 178.
 
 The Vitest projects are made to hold on a busy machine without hiding a
 failure. Each runs alone, with at most half the processors as workers (up

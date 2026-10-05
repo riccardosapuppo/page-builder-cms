@@ -163,13 +163,13 @@ database. The two commands above do not depend on the launcher.
 
 The run of the morning of 5 October 2026 (Windows 10, Ruby 3.4.11),
 with `CI=1`, which loads the whole app first as production does and as
-CI runs it:
+CI runs it, with stage 5's forms and their responses:
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 97.598162s, 3.4632 runs/s, 18.9450 assertions/s.
-338 runs, 1849 assertions, 0 failures, 0 errors, 0 skips
-openapi: 276 API response(s) checked against cms/openapi.yaml
+Finished in 105.102763s, 3.3396 runs/s, 18.6865 assertions/s.
+351 runs, 1964 assertions, 0 failures, 0 errors, 0 skips
+openapi: 322 API response(s) checked against cms/openapi.yaml
 ```
 
 The run includes six tests that start Rails in processes of their own,
@@ -262,10 +262,10 @@ no connection pool of that environment is connected.
   finds no draft, version, redirect or usage left. So a migration here
   adds plain columns, or uses SQLite's own `ALTER TABLE ... DROP COLUMN`.
 
-Also run, from this folder: `ruby bin/rubocop` (136 files, no offenses on
-the night of 4 to 5 October 2026, with `Layout/SpaceAroundOperators`
+Also run, from this folder: `ruby bin/rubocop` (147 files, no offenses on
+the morning of 5 October 2026, with `Layout/SpaceAroundOperators`
 switched on over the omakase style) and `ruby bin/brakeman` (79 checks,
-no warnings, the same night).
+no warnings, the same morning).
 
 ## The pages a visitor sees
 
