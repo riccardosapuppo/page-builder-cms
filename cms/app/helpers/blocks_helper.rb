@@ -12,9 +12,9 @@
 module BlocksHelper
   WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion form].freeze
 
-  def render_document(document, media:, cached: false)
+  def render_document(document, media:, cached: false, answers: nil)
     sections = document.is_a?(Hash) ? document["sections"] : nil
-    render_blocks(sections, allow: %w[section], media: media, cached: cached)
+    render_blocks(sections, allow: %w[section], media: media, cached: cached, answers: answers)
   end
 
   # The blocks of one level (a page's sections, a section's columns, a
@@ -27,14 +27,26 @@ module BlocksHelper
   # blocks/_block hands each block to its type's partial. The published
   # pages are cached; the preview, the 404 page and the contract goldens
   # are not.
-  def render_blocks(blocks, allow:, media:, cached: false)
+  #
+  # answers: what a visitor sent, by form block id, when a page is drawn
+  # again for a form the server refused (SubmissionsController); that form
+  # gets its own as the partial's answer, with the values kept and each
+  # refusal by its field. Such a page is never cached, since a fragment
+  # holds what every visitor sees.
+  def render_blocks(blocks, allow:, media:, cached: false, answers: nil)
+    raise ArgumentError, "a page drawn with a visitor's answers is never cached" if cached && answers
+
     blocks = Array(blocks).select { |block| block.is_a?(Hash) && allow.include?(block["type"]) }
     if cached
       @block_keys ||= PageCache::BlockKeys.new
       keys = @block_keys
       render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media }, cached: ->(block) { keys.call(block) }) || "".html_safe
     else
-      safe_join(blocks.map { |block| render(partial: "blocks/#{block['type']}", locals: { block: block, media: media }) })
+      safe_join(blocks.map do |block|
+        locals = { block: block, media: media }
+        locals.merge!(answers: answers, answer: answers[block["id"]]) if answers
+        render(partial: "blocks/#{block['type']}", locals: locals)
+      end)
     end
   end
 

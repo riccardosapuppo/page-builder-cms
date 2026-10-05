@@ -1,2 +1,2 @@
-<%# The page's blocks: each a fragment of the cache on a published page (@cache_blocks, PublicPage#render_published), drawn afresh in the preview and on the 404 page. -%>
-<%= render_document(@document, media: @media, cached: @cache_blocks) %>
+<%# The page's blocks: each a fragment of the cache on a published page (@cache_blocks, PublicPage#render_published), drawn afresh in the preview, on the 404 page and on a page drawn again for a form the server refused, which carries the visitor's answers (@answers, SubmissionsController). -%>
+<%= render_document(@document, media: @media, cached: @cache_blocks, answers: @answers) %>

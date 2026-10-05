@@ -189,6 +189,18 @@ class BlocksTest < ActionView::TestCase
     assert_empty html.css("b")
   end
 
+  test "a page drawn with a visitor's answers gives each form its own, down through its section and column, and is never cached" do
+    other = block("other", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send", "confirmation" => "Thank you." })
+    document = page(block("f", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }), other)
+    answers = { "f" => { "values" => { "email" => "ann@" }, "errors" => { "email" => "Enter an email address, like name@example.org." } } }
+    html = Nokogiri::HTML5.fragment(render_document(document, media: MEDIA, answers: answers))
+
+    assert_equal [ "ann@", nil ], html.css("input[name='answers[email]']").map { |input| input["value"] }
+    assert_equal [ "f:email:error" ], html.css(".sw-field-error").map { |p| p["id"] }
+    error = assert_raises(ArgumentError) { render_document(document, media: MEDIA, cached: true, answers: answers) }
+    assert_equal "a page drawn with a visitor's answers is never cached", error.message
+  end
+
   test "the video and the map are closed details holding a lazy frame, and nothing else names the provider" do
     html = html_of(page(*every_widget))
 
