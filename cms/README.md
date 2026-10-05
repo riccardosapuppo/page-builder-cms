@@ -275,6 +275,9 @@ no warnings, the same night).
 | `/<slug>` | any other published page; an address it had before answers 301 to where it is now, and the home page's own slug answers 301 to `/` |
 | `/preview/<page id>` | the page's draft, through the same layout and partials, with `Cache-Control: no-store`, `X-Robots-Tag: noindex` and a robots meta tag |
 | anything else shaped like a slug | the 404 page, a document of its own rendered in the site's look, with status 404 |
+| `POST /`, `POST /<slug>` | a form of that page, sent by a visitor ([Forms a visitor sends](#forms-a-visitor-sends)) |
+| `/sent/<form id>`, `/<slug>/sent/<form id>` | what the form says once its answers are kept, after the 303; `no-store` and `noindex` |
+| `POST /preview/<page id>` | a form sent from the draft preview: 403, a page saying forms are sent from the published page, and nothing kept |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
   fifteen in all, walked by `BlocksHelper#render_document`. Every block
@@ -363,6 +366,74 @@ still differs:
   needs 359 px in a row, so at 320, the width WCAG's reflow criterion
   tests (a 1280 window at 400%), every page scrolled sideways by 39 px
   with Menu cut off, in the design's own mock as well.
+
+## Forms a visitor sends
+
+A form block is plain HTML with no script
+([app/views/blocks/_form.html.erb](app/views/blocks/_form.html.erb)). It
+posts to the page's own address: the block's id in `form`, each answer
+under `answers[<field name>]` (a ticked box as `yes`), and `website`, a
+field for robots that no person sees.
+[SubmissionsController](app/controllers/submissions_controller.rb)
+takes it.
+
+**No CSRF token.** Rails keeps its token in the session, and a published
+page is cached and shared: it has no session, carries no token and sets
+no cookie. The controller says `skip_forgery_protection`, and on the
+same route these take the token's place, each with a request test in
+[test/integration/submissions_test.rb](test/integration/submissions_test.rb)
+that fails when its guard is taken out:
+
+| Guard | A form that breaks it gets |
+| --- | --- |
+| the `Origin` a browser sets on every form it posts must be this site's | 403, nothing read; the same with no `Origin`, or `null` |
+| `rate_limit`: ten forms per address within ten minutes | 429 with `Retry-After: 600`; refused forms count too |
+| the field for robots is empty | a 303 to the confirmation as if kept, and nothing kept |
+| only `application/x-www-form-urlencoded`, what a form without `enctype` sends | 415 |
+| a body no larger than the largest form sends (below) | 413 |
+| each answer within its field: required, one line where a line is asked, no control characters, the field's limit, an email's shape | 422, the page drawn again |
+| what no browser sends from the form (no `form`, an answer that is not text, a box that is not `yes`) | 400 |
+| a form id the published page no longer has | 409 |
+
+**The count's store** is named for it, `config.x.submission_limit_store`
+in `config/application.rb`, never left to the cache store: the tests'
+`:null_store` counts nothing, so the limit could never fire there. It is
+Solid Cache everywhere but in the tests, which count in memory and empty
+it before each test. `npm run check:production` sends eleven forms from
+one address to a production boot and gets ten 303s and a 429, counted in
+Solid Cache; with the store set to `:null_store` the check fails.
+
+**The body's limit** is computed, not picked: every field of the largest
+form the schema allows (20) at the longest limit (5000 characters), each
+character four bytes of UTF-8 sent as `%XX` escapes (12 bytes), with one
+character more, plus the names around them: 1,202,544 bytes. The largest
+form at every field's limit and one character over sends 1,200,406
+bytes, so a field over its own limit still gets its own message instead
+of a 413; a test sends exactly that, and fails with the limit set lower.
+A field's characters are counted as the schema counts them, code points,
+after each CR LF the browser sends is made one line break, as the
+browser counted it.
+
+**Kept, refused.** A kept form is a row of `submissions`: the page, the
+published version the form was read from, the form's id, a copy of its
+fields in the schema's own shape, and the answers by field name, every
+field included. So an answer still reads as it was sent after the form
+changes in a later version. Then 303 to `<page address>/sent/<form id>`,
+two or three path segments, which no page address can be. A refused form
+is the page drawn again, `no-store`, never from the cache
+(`render_blocks` raises if asked to cache a page drawn with a visitor's
+answers), with what was written, each message under its field and tied
+to it by `aria-describedby`, and the same list at the top as links to
+the fields, since the form may sit far down the page. The log shows
+`answers` as `[FILTERED]`.
+
+**From a cached page.** Nothing about a form depends on how the page was
+served: a page the browser kept (304) or the CMS read whole from Solid
+Cache posts the same way, and neither the post nor its refusal reads or
+writes the page's cache. After a post, the browser drops what it kept of
+that address (RFC 9111, section 4.4), so its next visit is a 200, read
+whole from Solid Cache. `builder/e2e/submissions.spec.ts` shows it in
+Chromium.
 
 ## How the pages are cached
 
@@ -739,14 +810,17 @@ sweep above does the same for a schedule that is more than a minute late.
 - `app/controllers/api/`: the API. `json_body.rb` reads every body from the
   raw bytes; `base_controller.rb` turns every failure into the error shape.
 - `app/models/`: `Page`, `Draft`, `PageVersion`, `ScheduledPublication`,
-  `SlugRedirect`, `MediaItem`, `MediaUsage`, `SiteStyle`; for the
-  rendering, `RenderPolicy`, `BlockStyle`, `MediaResolver` and `SiteIcons`.
+  `SlugRedirect`, `MediaItem`, `MediaUsage`, `SiteStyle`, `Submission`;
+  for the rendering, `RenderPolicy`, `BlockStyle`, `MediaResolver` and
+  `SiteIcons`; for forms, `FormBlock` (a form's fields, for the page and
+  the server alike) and `FormAnswers` (a visitor's answers checked).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
   `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
   recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.
 - `app/controllers/pages_controller.rb`, `previews_controller.rb` and
   `concerns/public_page.rb`: the pages a visitor sees, their layout
-  (`app/views/layouts/public.html.erb`) and their policy.
+  (`app/views/layouts/public.html.erb`) and their policy;
+  `submissions_controller.rb`: the forms visitors send from them.
 - `app/views/blocks/`: one partial per block type; `app/helpers/`:
   `BlocksHelper`, `RichTextHelper`, `SiteHelper`.
 - `app/assets/`: `stylesheets/site.css` (the theme), `stylesheets/tokens.css`
@@ -762,7 +836,10 @@ on port 3901: [config/environments/e2e.rb](config/environments/e2e.rb).
 It behaves as production does where that matters to them: forgery
 protection on, eager loading, `solid_cache` and `solid_queue` (the queue
 run inside Puma, so a scheduled publish really happens while a test
-watches), only `127.0.0.1`, `localhost` and `[::1]` as host names. Its data is its own:
+watches), only `127.0.0.1`, `localhost` and `[::1]` as host names, and
+the forms' count in Solid Cache. The tests reach it from `127.0.0.1`,
+which Rails trusts as a proxy, so a test's `X-Forwarded-For` is the
+address its forms are counted under. Its data is its own:
 three databases, primary, cache and queue, and an Active Storage root. The
 harness gives each run a folder under `tmp/`, passes the paths as
 `DATABASE_URL`, `CACHE_DATABASE_URL`, `QUEUE_DATABASE_URL` and
