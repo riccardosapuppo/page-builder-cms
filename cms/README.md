@@ -391,7 +391,7 @@ that fails when its guard is taken out:
 | Guard | A form that breaks it gets |
 | --- | --- |
 | the `Origin` a browser sets on every form it posts must be this site's | 403, nothing read; the same with no `Origin`, or `null` |
-| `rate_limit`: ten forms per address (the socket's peer, below) within ten minutes | 429 with `Retry-After: 600`; a form refused for its `Origin` is refused before it and does not count, the forms refused below count too |
+| `rate_limit`: ten forms per address (the socket's peer, below) within ten minutes | 429 with `Retry-After: 600`; a form refused for its `Origin` (above) is never counted, the forms refused below count too |
 | the field for robots is empty | a 303 to the confirmation as if kept, and nothing kept |
 | only `application/x-www-form-urlencoded`, what a form without `enctype` sends | 415 |
 | a body no larger than the largest form sends (below) | 413 |
@@ -428,10 +428,11 @@ and one client can use up the count for everyone: a program other than a
 browser can name this site's `Origin`, and ten of its forms, kept or
 refused for what they hold, give every visitor 429 for ten minutes. A
 form refused for its `Origin` is refused before it is counted, so a page
-of another site cannot do this through its visitors' browsers, and a
-request test sends eleven such forms from one address and then gets 303
-for the address's own. A deployment that must count each visitor behind its proxy sets
-`config.x.submission_limit_by` in its environment's file to read the
+of another site cannot do this through its visitors' browsers; a request
+test sends eleven such forms from one address, then gets 303 for the
+address's own forms. A deployment that must count each visitor behind
+its proxy sets `config.x.submission_limit_by` in its environment's file
+to read the
 address the proxy names (`request.remote_ip`, with
 `config.action_dispatch.trusted_proxies` set to an array holding the
 proxy, which replaces Rails' default list), and its proxy must overwrite
