@@ -425,7 +425,8 @@ is the page drawn again, `no-store`, never from the cache
 answers), with what was written, each message under its field and tied
 to it by `aria-describedby`, and the same list at the top as links to
 the fields, since the form may sit far down the page. The log shows
-`answers` as `[FILTERED]`.
+`answers` as `[FILTERED]`. The editor reads and deletes the kept
+answers through the API ("Responses" under "The API").
 
 **From a cached page.** Nothing about a form depends on how the page was
 served: a page the browser kept (304) or the CMS read whole from Solid
@@ -566,6 +567,8 @@ the schema file) each failed it.
 | `POST /api/pages/:id/schedules/:schedule_id/cancel` | cancel a pending one, or 409 `not_pending` saying what became of it |
 | `GET /api/pages/:id/versions`, `POST ...` | list; "Save version" `{name?}` |
 | `GET /api/pages/:id/versions/:number`, `POST .../restore` | read one; restore it into the draft |
+| `GET /api/pages/:id/responses?form=&before=` | what visitors sent with the page's forms, newest first, 50 at a time, each with an excerpt; `next` continues it; a count per form |
+| `GET /api/pages/:id/responses/:response_id`, `DELETE ...` | one response whole, with its version and its form's fields as they were; delete it for good |
 | `POST /api/media/direct_uploads` | start an image upload (Active Storage's request and answer) |
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
@@ -699,6 +702,31 @@ the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
 
 With Gentle's rules renamed away in `tokens.css`, it failed on every
 step and width, Gentle drawing Balanced's sizes.
+
+**Responses.** What visitors sent with a page's forms (see "Forms a
+visitor sends") is read and deleted under the page, and only there: a
+response asked for under another page is 404. The list is newest first,
+50 at a time; `next` is the `before` that continues it, `null` at its
+end, and `form` keeps one form's. `forms` counts each form of the page
+that has responses, whatever the query, so the editor offers only those.
+Each item has an excerpt, the first text answer with more than white
+space, on one line and cut at 120 characters as a reader counts them
+(grapheme clusters), saying whether it was cut. A response read whole
+has the number of the published version it came from, the form's fields
+as that version had them and every field's answer by name. Deleting one
+is for good, as a visitor may ask; the page and its versions stay. The
+query is read from the address itself, so a parameter named twice or
+written as `form[]` is 400 `invalid_query` with its name, rather than
+read as its last value or as a list. Rails 8.1 stopped escaping `<`, `>`
+and `&` in JSON answers; these answers, the only ones carrying what
+strangers wrote, ask for it, so the body holds no markup even if
+something reads it as HTML, and the strings are the same once parsed.
+[test/integration/api/responses_test.rb](test/integration/api/responses_test.rb)
+plants each fault and sees it fail: the escaping left out, the origin
+check skipped for the delete, the query read without its checks, a
+response found by id outside its page, the list oldest first, `next`
+never given, the counts following the query, and the version read from
+what is live now.
 
 ## The jobs
 

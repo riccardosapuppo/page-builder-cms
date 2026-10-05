@@ -22,15 +22,20 @@ create, read, set the next address or the home mark), the draft (read,
 save at a revision), publish, schedule, versions (list, read, "Save
 version", restore), the media library (list, upload, alt text, delete),
 the site style, the theme's header and footer (read only: `getSite`, which
-the canvas draws around the page), form answers, and `capabilities`,
-which says which of the optional
+the canvas draws around the page), the responses visitors send with a
+page's forms, and `capabilities`, which says which of the optional
 operations (publish, schedule, responses) this adapter has. The editor
 shows no control for one it lacks; the adapter refuses it as
-`unsupported` without asking anyone. The Rails adapter has scheduling
-(schedule a revision of the draft for a time, cancel, list; the times in
-UTC, the site's zone in `getSite`'s `timeZone`) and declares form answers
-(stage 5) absent until the CMS has them; their shape in `adapter.ts` is a
-guess until then.
+`unsupported` without asking anyone. The Rails adapter has all three:
+scheduling (schedule a revision of the draft for a time, cancel, list;
+the times in UTC, the site's zone in `getSite`'s `timeZone`), and
+responses: a page's list, newest first and `RESPONSES_PER_PART` (50) at
+a time, with the `next` that continues it, a count per form and an
+excerpt of each (`listResponses(pageId, { form, before })`); one
+response whole, with the published version it came from and its form's
+fields as that version had them (`getResponse`); and deleting one for
+good (`deleteResponse`). What a visitor wrote comes back as strings,
+which the editor shows as text.
 `capabilities.imageVariants` says one thing more, not an operation:
 whether the storage makes smaller copies of an uploaded image for the
 pages to serve. The CMS does not (it has no image library: no libvips),
@@ -86,8 +91,10 @@ id and field (`/props/level`), the way the editor shows them.
   adapter reads or writes is written out once more as a table of its keys,
   each with its JSON type, whether it may be null and whether it is
   required; the compiler holds the table to the type, and the test holds
-  it to the schema the API gives for it (34 of them, answers and requests),
-  with the version reasons, the image types and the refusal codes. The
+  it to the schema the API gives for it (47 of them, answers and requests),
+  with the version reasons, the image types, the kinds of a kept form
+  field, the longest part of a response list, the list's query
+  parameters (against `ResponseQuery`) and the refusal codes. The
   route table is held to the API's operations both ways: method, path and
   body. Planted, each failed: a required key added to `MediaItem` in the
   YAML, `getDraft`'s path changed, and `MediaItem.filename` made optional
@@ -102,9 +109,15 @@ id and field (`/props/level`), the way the editor shows them.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 32 cases, each named once, and
+  It first checks the battery holds its 35 cases, each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
-  absent in its capabilities, that check failed). It runs in jsdom, whose
+  absent in its capabilities, that check failed). A visitor's form is
+  sent by the runner as a browser sends it from the live page (form
+  encoded, with the page's `Origin`), each from an address of its own
+  through `X-Forwarded-For`, which the CMS reads from 127.0.0.1 as from a
+  proxy: the cases send more forms than one address may in ten minutes.
+  With the adapter planted to leave `before` out of the list's query, the
+  case that reads the list to its end failed. It runs in jsdom, whose
   document is on the CMS's origin
   (`../../vite.config.ts`), so `DirectUpload`'s requests are same-origin,
   as the editor's are through its proxy; jsdom fixes a window's origin
@@ -122,7 +135,8 @@ id and field (`/props/level`), the way the editor shows them.
 `contract.ts` exports `STORAGE_CONTRACT`, a list of cases, each with the
 optional operations it needs and a `run(env)`. The runner hands it the
 adapter, a way to open a second tab on the same storage, its `expect`,
-fresh names, and a way to read an image's bytes back; it runs each case as
+fresh names, a way to read an image's bytes back, and a way to send a
+visitor's form from a live page (`sendForm`); it runs each case as
 a test of its own, and skips (visibly) a case its adapter's capabilities
 lack. Every case makes its own pages; the site style is put back as it was
 found. The cases: pages and drafts, the conflict between two tabs, the
@@ -137,8 +151,11 @@ real clock, a few seconds ahead: the page watched until it goes live with
 the revision scheduled, not the draft edited since), the
 media library (upload and bytes read back, refusals at `/file`, alt text,
 deleting, an image in use naming who uses it, an image that does not
-exist), the site style, refusing what the capabilities declare absent,
-and the autosave on top of the adapter (a run of edits one request at a
+exist), the site style, the responses to a page's forms (kept with the
+version and the fields they were sent with across a change of the form,
+newest first, counted by form, a part at a time to the end, deleted for
+good, found only under their own page), refusing what the capabilities
+declare absent, and the autosave on top of the adapter (a run of edits one request at a
 time, a lost answer, a conflict resolved both ways). Stage 6 runs it
 unchanged on the browser's adapter, with two pages of one browser as the
 two tabs.
