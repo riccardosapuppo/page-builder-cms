@@ -81,7 +81,17 @@ const MUTANTS: Array<{ name: string; plants: Plant[]; expect: RegExp }> = [
   {
     name: "an inverse that writes undefined instead of taking the key out",
     plants: [{ file: "document/ops.ts", search: "if (\"before\" in op) inverse.after = op.before as Json;", replace: "inverse.after = op.before as Json;" }],
-    expect: /undoing .* (did not give back the same page|was refused|gave an invalid page)|does not survive JSON/,
+    // Which check meets it first depends on the sessions the run draws:
+    // the page after the undo, the command through JSON, or the inverse of
+    // the inverse.
+    expect: /undoing .* (did not give back the same page|was refused|gave an invalid page)|does not survive JSON|the inverse of the inverse of .* is not the command/,
+  },
+  {
+    // A change of a form field's type takes its longest answer out; the
+    // inverse must put it back, or a text field is left with none.
+    name: "an inverse that does not give a form field's longest answer back when its type changes",
+    plants: [{ file: "document/ops.ts", search: "if (\"before\" in op) inverse.after = op.before as Json;", replace: "if (\"before\" in op && op.key !== \"maxLength\") inverse.after = op.before as Json;" }],
+    expect: /undoing Changed field .* was refused: .*maxLength/,
   },
   {
     name: "a duplicate that draws its ids when it is applied, not when it is made",

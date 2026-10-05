@@ -38,7 +38,11 @@ test("random sessions keep every promise of the commands", { timeout: 180_000 },
   for (const kind of kinds) expect(tally.applied[kind] ?? 0, `${kind} applied`).toBeGreaterThan(0);
   for (const reason of ["nesting", "full", "empty"]) expect(tally.refused[reason] ?? 0, `refused for ${reason}`).toBeGreaterThan(0);
   expect(tally.texts, "texts handed over by the editor").toBeGreaterThan(0);
+  // A form's own edits, each of them: a fault in undoing a change of a
+  // field's type (its longest answer comes out and must go back) or of the
+  // button's text would pass a run that never made one.
+  for (const what of ["items", "props", "field type", "longest answer", "button text", "message"]) expect(tally.forms[what] ?? 0, `${what} of a form changed`).toBeGreaterThan(0);
   const applied = Object.values(tally.applied).reduce((a, b) => a + b, 0);
   expect(applied / tally.commands).toBeGreaterThan(0.5);
-  console.log(`property: ${tally.commands} commands, ${applied} applied (${tally.texts} texts from the editor) ${JSON.stringify(tally.applied)}, refused ${JSON.stringify(tally.refused)}`);
+  console.log(`property: ${tally.commands} commands, ${applied} applied (${tally.texts} texts from the editor) ${JSON.stringify(tally.applied)}, refused ${JSON.stringify(tally.refused)}, on forms ${JSON.stringify(tally.forms)}`);
 });

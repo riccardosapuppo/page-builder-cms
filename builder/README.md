@@ -253,9 +253,11 @@ default the origin of an absolute `VITE_API_BASE`, else
   byte for byte with every removed key absent, and redoing it gives the
   same page with the same ids (`src/document/property.test.ts`, 300
   sessions), the texts the canvas's text editor hands over, written as
-  TipTap writes them, among them. `src/document/mutants.test.ts` runs the
+  TipTap writes them, among them, and a form's own edits (a field's type
+  and longest answer, the button's text, the message), each of which the
+  run must have made. `src/document/mutants.test.ts` runs the
   same sessions on a copy of `src/document` and `src/store` with one fault
-  planted in its source, eight faults in all, and each one fails while the
+  planted in its source, nine faults in all, and each one fails while the
   unchanged copy passes. What the checks of a change cost on 500 blocks:
   `npx vitest run --config build/measure.config.ts`.
 - **The text editor** ([src/editor/README.md](src/editor/README.md)): its

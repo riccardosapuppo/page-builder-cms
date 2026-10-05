@@ -17,7 +17,7 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -249,6 +249,10 @@ export type Intent =
   | { kind: "count"; pick: number; count: number }
   | { kind: "page"; variant: number; value: number }
   | { kind: "items"; pick: number; action: "insert" | "remove" | "move" | "set"; index: number; other: number; item: number }
+  // One edit of a form: one of its fields (its label, whether it must be
+  // filled in, its type, its longest answer), or its button text, or its
+  // message.
+  | { kind: "form"; pick: number; index: number; variant: number; value: number }
   // The canvas's text editor handing a text over, as TipTap writes it.
   | { kind: "text"; pick: number; doc: AnyObject };
 
@@ -268,6 +272,10 @@ export const intent: fc.Arbitrary<Intent> = fc.oneof(
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("count" as const), pick: n, count: fc.integer({ min: 1, max: 5 }) }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("page" as const), variant: n, value: n }) },
   { weight: 3, arbitrary: fc.record({ kind: fc.constant("items" as const), pick: n, action: fc.constantFrom("insert" as const, "remove" as const, "move" as const, "set" as const), index: n, other: n, item: n }) },
+  // Weighted so that a run meets each edit of a form often, though a page
+  // has a form in one widget of twelve: each of its six edits is a sixth of
+  // these.
+  { weight: 6, arbitrary: fc.record({ kind: fc.constant("form" as const), pick: n, index: n, variant: n, value: n }) },
   { weight: 3, arbitrary: fc.record({ kind: fc.constant("text" as const), pick: n, doc: editorText }) },
 );
 
@@ -377,6 +385,19 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
         : variant === 1 ? { description: at(LINES, wish.value) as string } : { description: c.REMOVE };
       return { made: c.makeSetPage(doc, updates), mustAccept: true };
     }
+    case "form": {
+      const forms = blocks.filter((b) => b.block.type === "form");
+      const picked = at(forms, wish.pick);
+      if (!picked) return null;
+      const edit = wish.variant % 6;
+      if (edit >= 4) {
+        const updates = edit === 4 ? { submitLabel: at(LINES, wish.value) as string } : { confirmation: at(PARAGRAPHS, wish.value) as string };
+        return { made: c.makeSetProps(doc, picked.block.id, updates), mustAccept: true };
+      }
+      const items = (picked.block.props as { items: AnyObject[] }).items;
+      const index = wish.index % items.length;
+      return { made: c.makeSetItem(doc, picked.block.id, index, formFieldUpdates(c.REMOVE, items[index] as AnyObject, edit, wish.value)), mustAccept: true };
+    }
     case "items": {
       const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "form");
       const picked = at(lists, wish.pick);
@@ -402,7 +423,7 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
         case "set": {
           const updates: Commands.Updates = gallery
             ? (wish.other % 2 === 0 ? { alt: at(LINES, wish.item) as string, decorative: c.REMOVE } : { decorative: true, alt: c.REMOVE })
-            : form ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { required: wish.item % 2 === 0 })
+            : form ? formFieldUpdates(c.REMOVE, items[wish.index % items.length] as AnyObject, wish.other, wish.item)
               : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
@@ -417,6 +438,31 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: impl.richText.makeTextEdit(doc, picked.block.id, wish.doc), mustAccept: true };
     }
   }
+}
+
+// Valid changes of one field of a form, picked by `variant`: its label,
+// whether it must be filled in, its type, and its longest answer. A change
+// of type is built as the form's panel builds it (kindUpdates in
+// ../src/widgets/form/panel.tsx): the limit kept where the new type takes
+// it, the new type's own where it does not, and taken out (REMOVE) for an
+// email address or a checkbox, which have none. A change of the longest
+// answer is only for the two types of text; another gets the change of
+// type in its place, so that no turn of the wheel is wasted.
+function formFieldUpdates(REMOVE: typeof Commands.REMOVE, field: AnyObject, variant: number, value: number): Commands.Updates {
+  const kind = field.kind as (typeof FORM_FIELD_KINDS)[number];
+  const holdsText = kind === "text" || kind === "textarea";
+  const change = variant % 4 === 3 && !holdsText ? 2 : variant % 4;
+  if (change === 0) return { label: at(LINES, value) as string };
+  if (change === 1) return { required: value % 2 === 0 };
+  if (change === 3) {
+    const most = FORM_TEXT_LIMITS[kind as "text" | "textarea"];
+    return { maxLength: Math.min(at([1, 40, 100, 300, 1000, most], value) as number, most) };
+  }
+  const next = at(FORM_FIELD_KINDS, value) as (typeof FORM_FIELD_KINDS)[number];
+  if (next === "email" || next === "checkbox") return { kind: next, maxLength: REMOVE };
+  const own = field.maxLength;
+  const fitting = typeof own === "number" && own <= FORM_TEXT_LIMITS[next];
+  return { kind: next, maxLength: fitting ? own : next === "text" ? 100 : 1000 };
 }
 
 // Valid changes of props for each type, picked by `variant`.
@@ -448,6 +494,8 @@ function propUpdates(REMOVE: typeof Commands.REMOVE, type: BlockType, props: Any
         return [{ icon: pick(ICON_NAMES) }, { title: pick(LINES) }, { text: pick(PARAGRAPHS) }];
       case "quote":
         return [{ text: pick(PARAGRAPHS) }, { attribution: pick(LINES) }, { attribution: REMOVE }];
+      case "form":
+        return [{ submitLabel: pick(LINES) }, { confirmation: pick(PARAGRAPHS) }];
       default:
         return [];
     }
@@ -463,9 +511,31 @@ export interface Tally {
   commands: number;
   // Texts the editor handed over that the page took.
   texts: number;
+  // What the commands the page took did to a form, by what they changed:
+  // its items (fields inserted, removed, moved or changed), its props,
+  // and a field's type, a field's longest answer, the button's text, the
+  // message. A fault only a form's own edit meets passes a run that made
+  // none of them.
+  forms: Record<string, number>;
 }
 
-export const newTally = (): Tally => ({ applied: {}, refused: {}, commands: 0, texts: 0 });
+export const newTally = (): Tally => ({ applied: {}, refused: {}, commands: 0, texts: 0, forms: {} });
+
+// A command the page took, counted by what it changed in a form (none: it
+// was not about a form). `before` is the page it was applied to.
+function tallyForm(impl: Implementation, before: PageDocument, command: Commands.Command, tally: Tally): void {
+  if (!command.subject || impl.tree.locate(before, command.subject.id)?.block.type !== "form") return;
+  const keys = command.ops.flatMap((op) => (op.op === "set" ? [op.key] : []));
+  const count = (what: string): void => {
+    tally.forms[what] = (tally.forms[what] ?? 0) + 1;
+  };
+  if (command.kind === "items") count("items");
+  if (command.kind === "props") count("props");
+  if (keys.includes("kind")) count("field type");
+  else if (keys.includes("maxLength")) count("longest answer");
+  if (keys.includes("submitLabel")) count("button text");
+  if (keys.includes("confirmation")) count("message");
+}
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
@@ -509,6 +579,7 @@ export function session(impl: Implementation, start: PageDocument, wishes: reado
       continue;
     }
     tally.applied[command.kind] = (tally.applied[command.kind] ?? 0) + 1;
+    tallyForm(impl, doc, command, tally);
     if (wish.kind === "text") tally.texts += 1;
     const after = deepFreeze(applied.document);
 

@@ -137,15 +137,21 @@ be taken again on an idle machine before any of them is quoted.
   link attribute and a title, list starts of 0 and 250000, tabs, a run over
   10000 characters), onto pages whose stored texts take every form the
   schema allows: each must be taken, kept in the canonical form, and
-  undone to the stored text exactly. The seed is
+  undone to the stored text exactly. Among them, a form's own edits: a
+  field's label, whether it must be filled in, its type (built as the
+  form's panel builds it, with the longest answer kept, given its default
+  or taken out), its longest answer, the button's text and the message; the
+  test fails if a run made none of any one of them (`tally.forms`), since
+  a fault in undoing a change of type would pass it. The seed is
   fixed; a failure prints the seed and path that replay it:
   `DOC_PROPERTY_SEED=<seed> DOC_PROPERTY_PATH=<path> npm test -- src/document/property.test.ts`
   (`DOC_PROPERTY_RUNS` sets the number of sessions, 300 by default).
 - `mutants.test.ts`: the same sessions against a copy of this folder and of
   `../store` with one fault planted in the copy's source; each must fail,
   and the unchanged copy must pass first. The faults: an inverse that
-  writes `undefined` instead of taking a key out; a duplicate that draws its
-  ids when applied; an emptied override object left behind; a reducer that
+  writes `undefined` instead of taking a key out; an inverse that does not
+  give a form field's longest answer back when its type changes; a duplicate
+  that draws its ids when applied; an emptied override object left behind; a reducer that
   does not validate the container a change touches; column widths that
   outlive a change in the number of columns; a key put back at the end of
   its object instead of where it was; a text command whose undo puts back
