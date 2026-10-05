@@ -11,6 +11,7 @@ import { expect, test } from "vitest";
 import { editorKit } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { draftWith, FakeResponses, formBlock } from "../../../test/fake-responses.ts";
+import { StorageError } from "../../storage/adapter.ts";
 import { serverTime } from "../history-words.ts";
 import { TopBar } from "../TopBar.tsx";
 
@@ -238,6 +239,129 @@ test("a form's responses that come after another form was chosen are dropped, an
   await act(async () => release());
   expect(within(dialog).getByRole("table").querySelector("caption")?.textContent).toBe("Form in Sign up on Winter series");
   expect(rowsOf(dialog).map((r) => r[2])).toEqual(["Name: Bo"]);
+});
+
+// The next delete is held until the test lets it land, or fail.
+function holdDelete(fake: FakeResponses): { land: () => Promise<void>; fail: (message: string) => Promise<void> } {
+  const real = fake.deleteResponse;
+  let settle: { land: () => void; fail: (error: Error) => void } = { land: () => {}, fail: () => {} };
+  const held = new Promise<void>((resolve, reject) => (settle = { land: resolve, fail: reject }));
+  fake.deleteResponse = async (pageId, responseId) => {
+    await held;
+    return real(pageId, responseId);
+  };
+  return {
+    land: async () => act(async () => settle.land()),
+    fail: async (message) => act(async () => settle.fail(new StorageError({ kind: "unknown", cause: "network", status: null, message }))),
+  };
+}
+
+const forget = (dialog: HTMLElement) => within(dialog).getByRole("button", { name: "Delete" });
+
+test("a delete still on its way when another form is chosen changes the form it was for, and leaves the chosen form's table and focus alone", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  const bo = fake.send(1, "join", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  fake.send(2, "winter", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
+  const dialog = await openScreen(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${bo}"]`)!));
+  fireEvent.click(await within(dialog).findByRole("button", { name: "Delete response" }));
+  const delayed = holdDelete(fake);
+  await act(async () => fireEvent.click(forget(dialog)));
+
+  // Another form is chosen while the delete is on its way, and its
+  // responses come first.
+  await act(async () => fireEvent.click(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button")[1]!));
+  await within(dialog).findByRole("table", { name: /^Form in Sign up/ });
+  await within(dialog).findAllByRole("rowheader");
+  const focused = document.activeElement;
+  await delayed.land();
+
+  const table = within(dialog).getByRole("table");
+  expect(table.querySelector("caption")?.textContent).toBe("Form in Sign up on Winter series");
+  expect(table.getAttribute("aria-busy"), "the chosen form's table is not left reading").toBeNull();
+  expect(rowsOf(dialog).map((r) => r[2])).toEqual(["Name: Cy"]);
+  expect(within(dialog).queryByText("Reading the responses…")).toBeNull();
+  expect(fake.kept.map((r) => r.id)).toEqual([1, 3]);
+  // The form it was for counts one less; the chosen form is as it was.
+  expect(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button").map((b) => [b.getAttribute("aria-label"), b.getAttribute("aria-current")])).toEqual([
+    ["Form in Join, Home, 1 response", null],
+    ["Form in Sign up, Winter series, 1 response", "true"],
+  ]);
+  expect(within(dialog).getByText("2 responses to 2 forms")).toBeTruthy();
+  expect(dialog.querySelector(".rs-note")?.textContent).toBe(`The response sent ${when("2026-10-01T09:00:00.000Z")} was deleted.`);
+  expect(document.activeElement, "the focus is not taken from where the person is").toBe(focused);
+  // Going back, the form it was for has not got the deleted one.
+  await act(async () => fireEvent.click(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button")[0]!));
+  await within(dialog).findByRole("table", { name: /^Form in Join/ });
+  await within(dialog).findAllByRole("rowheader");
+  expect(rowsOf(dialog).map((r) => r[2])).toEqual(["Name: Ann"]);
+});
+
+test("a delete that empties a form that is not chosen any more takes that form out of the list and leaves the chosen one", async () => {
+  const fake = site();
+  const only = fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  fake.send(2, "winter", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
+  const dialog = await openScreen(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${only}"]`)!));
+  fireEvent.click(await within(dialog).findByRole("button", { name: "Delete response" }));
+  const delayed = holdDelete(fake);
+  await act(async () => fireEvent.click(forget(dialog)));
+  await act(async () => fireEvent.click(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button")[1]!));
+  await within(dialog).findAllByRole("rowheader");
+  await delayed.land();
+
+  expect(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button").map((b) => [b.getAttribute("aria-label"), b.getAttribute("aria-current")])).toEqual([
+    ["Form in Sign up, Winter series, 1 response", "true"],
+  ]);
+  expect(rowsOf(dialog).map((r) => r[2])).toEqual(["Name: Cy"]);
+  expect(within(dialog).getByRole("table").getAttribute("aria-busy")).toBeNull();
+});
+
+test("a delete still on its way when another response is opened leaves that response open, and its own delete as it was", async () => {
+  const fake = site();
+  const ann = fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  const bo = fake.send(1, "join", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  const cy = fake.send(1, "join", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
+  const dialog = await openScreen(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${bo}"]`)!));
+  fireEvent.click(await within(dialog).findByRole("button", { name: "Delete response" }));
+  const delayed = holdDelete(fake);
+  await act(async () => fireEvent.click(forget(dialog)));
+
+  // Cy is opened while Bo's delete is on its way.
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${cy}"]`)!));
+  await within(dialog).findByRole("region", { name: `Sent ${when("2026-10-01T10:00:00.000Z")}` });
+  await delayed.land();
+
+  expect(within(dialog).getByRole("region", { name: `Sent ${when("2026-10-01T10:00:00.000Z")}` }), "the response that was opened stays open").toBeTruthy();
+  expect(dialog.querySelector(`[data-response-id="${cy}"]`)?.getAttribute("aria-current")).toBe("true");
+  expect(rowsOf(dialog).map((r) => r[2])).toEqual(["Name: Cy", "Name: Ann"]);
+  expect(dialog.querySelector(`[data-response-id="${bo}"]`)).toBeNull();
+  expect(within(dialog).getByRole("button", { name: "Delete response" }).getAttribute("aria-disabled"), "Cy's delete is not left as the other's was").toBeNull();
+  expect(within(dialog).getByText("2 responses to 1 form")).toBeTruthy();
+  expect(fake.kept.map((r) => r.id)).toEqual([ann, cy]);
+  expect(dialog.querySelector(".rs-note")?.textContent).toBe(`The response sent ${when("2026-10-01T09:00:00.000Z")} was deleted.`);
+});
+
+test("a delete the CMS refuses after the person moved on is said in the note, not under the response now open", async () => {
+  const fake = site();
+  const bo = fake.send(1, "join", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  const cy = fake.send(1, "join", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
+  const dialog = await openScreen(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${bo}"]`)!));
+  fireEvent.click(await within(dialog).findByRole("button", { name: "Delete response" }));
+  const delayed = holdDelete(fake);
+  await act(async () => fireEvent.click(forget(dialog)));
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${cy}"]`)!));
+  await within(dialog).findByRole("region", { name: `Sent ${when("2026-10-01T10:00:00.000Z")}` });
+  await delayed.fail("The CMS did not answer.");
+
+  expect(within(dialog).queryByText(/^Not deleted/)).toBeNull();
+  expect(dialog.querySelector(".rs-note")?.textContent).toBe(`The response sent ${when("2026-10-01T09:00:00.000Z")} was not deleted: The CMS did not answer.`);
+  expect(fake.kept.map((r) => r.id)).toEqual([bo, cy]);
+  expect(rowsOf(dialog)).toHaveLength(2);
+  expect(within(dialog).getByRole("button", { name: "Delete response" }).getAttribute("aria-disabled")).toBeNull();
 });
 
 test("a read that fails says why, and Try again reads again", async () => {

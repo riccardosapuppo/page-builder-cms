@@ -119,6 +119,15 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     );
   }, [storage, chosen, formPage, formId]);
 
+  // What the screen shows now, as drawn last: read by a delete that was on
+  // its way when the person went elsewhere (another form, another response)
+  // and lands after, which must change what is there now and not what was
+  // there when it was asked.
+  const showing = useRef({ chosen, openedId: opened?.id ?? null, part, list });
+  useLayoutEffect(() => {
+    showing.current = { chosen, openedId: opened?.id ?? null, part, list };
+  });
+
   // After a delete, the focus goes where the screen said, once drawn.
   useLayoutEffect(() => {
     const selector = focusNext.current;
@@ -174,6 +183,7 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
   const remove = async () => {
     if (!form || !part || part.key !== chosen || opened?.phase !== "ready") return;
     const response = opened.response;
+    const from = form.key;
     setDeleting("working");
     setSaid(null);
     let already = false;
@@ -184,42 +194,67 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
       if (isStorageError(error) && error.failure.kind === "not-found") already = true;
       else {
         if (!mounted.current) return;
-        setDeleting(null);
-        setSaid(`Not deleted: ${describe(error)}`);
+        // Said where the person is: under this response while it is open,
+        // else in the note, which is not about the response now open.
+        if (showing.current.openedId === response.id) {
+          setDeleting(null);
+          setSaid(`Not deleted: ${describe(error)}`);
+        } else {
+          setNote(`The response sent ${serverTime(response.submittedAt, clock.now())} was not deleted: ${describe(error)}`);
+        }
         return;
       }
     }
     if (!mounted.current) return;
     const when = serverTime(response.submittedAt, clock.now());
     setNote(already ? `The response sent ${when} had already been deleted.` : `The response sent ${when} was deleted.`);
-    setDeleting(null);
-    setOpened(null);
-    const at = part.items.findIndex((r) => r.id === response.id);
-    const items = part.items.filter((r) => r.id !== response.id);
-    const count = Math.max(0, form.count - 1);
-    // The focus goes to the response that took its place, else the one
-    // above it, else the button that reads older ones; a form left with
-    // none leaves the list, and the focus goes to the form after it, or
-    // the one before, or, with no form left, to Close.
-    const neighbour = items[at] ?? items[at - 1];
-    if (neighbour) {
-      setActive(neighbour.id);
-      focusNext.current = `[data-response-id="${neighbour.id}"]`;
-    } else if (part.next !== null && count > 0) {
-      setActive(null);
-      focusNext.current = "[data-older]";
+
+    // From here on, what the screen shows now: the person may have chosen
+    // another form or opened another response while the delete was on its
+    // way. Only what belongs to this response and its form changes; the
+    // focus moves only if the person is still where the delete was asked.
+    const shown = showing.current;
+    const here = shown.chosen === from;
+    const open = shown.openedId === response.id;
+    if (open) {
+      setDeleting(null);
+      setOpened(null);
     }
-    setPart({ ...part, items });
-    if (count > 0 && (items.length > 0 || part.next !== null)) {
-      setForms((before) => (before.phase === "ready" ? { ...before, forms: before.forms.map((f) => (f.key === form.key ? { ...f, count } : f)) } : before));
+    const held = shown.part?.key === from ? shown.part : null;
+    const rest = held ? held.items.filter((r) => r.id !== response.id) : null;
+    setPart((before) => (before && before.key === from ? { ...before, items: before.items.filter((r) => r.id !== response.id) } : before));
+    const listed = shown.list.find((f) => f.key === from);
+    if (!listed) return;
+    const count = Math.max(0, listed.count - 1);
+    if (count > 0 && !(held && rest && rest.length === 0 && held.next === null)) {
+      setForms((before) => (before.phase === "ready" ? { ...before, forms: before.forms.map((f) => (f.key === from ? { ...f, count } : f)) } : before));
+      // The focus goes to the response that took its place, else the one
+      // above it, else the button that reads older ones.
+      if (open && held && rest) {
+        const at = held.items.findIndex((r) => r.id === response.id);
+        const neighbour = rest[at] ?? rest[at - 1];
+        if (neighbour) {
+          setActive(neighbour.id);
+          focusNext.current = `[data-response-id="${neighbour.id}"]`;
+        } else if (held.next !== null) {
+          setActive(null);
+          focusNext.current = "[data-older]";
+        }
+      }
       return;
     }
-    const index = list.findIndex((f) => f.key === form.key);
-    const left = list.filter((f) => f.key !== form.key);
+    // A form left with none leaves the list. If it is the one chosen, the
+    // next form is, or the one before, and the focus goes to it, or, with
+    // no form left, to Close.
+    const index = shown.list.findIndex((f) => f.key === from);
+    const left = shown.list.filter((f) => f.key !== from);
+    setForms((before) => (before.phase === "ready" ? { ...before, forms: before.forms.filter((f) => f.key !== from) } : before));
+    if (!here) return;
     const nextForm = left[index] ?? left[index - 1] ?? null;
-    setForms({ phase: "ready", forms: left });
     setChosen(nextForm?.key ?? null);
-    focusNext.current = nextForm ? `[data-form-key="${nextForm.key}"]` : "[data-close]";
+    setOpened(null);
+    setActive(null);
+    if (open) focusNext.current = nextForm ? `[data-form-key="${nextForm.key}"]` : "[data-close]";
   };
 
   // The table is one Tab stop: the arrows, Home and End move along its
