@@ -221,21 +221,30 @@ const sameBox = (a: Box | null, b: Box | null): boolean =>
 // element the Canvas's own observer watches, so the box of a page drawn
 // smaller has followed it by then), and the window is stood again in the
 // next frame if the line moved; the browser's window changing size stands
-// it again at once. Returns what undoes it all, the canvas's room included.
+// it again at once. The window may change too: it grows by itself when it
+// says what is wrong (the video window's error line, 22 px, against a gap
+// of 24 to a line under it), so its own size is watched the same way, and
+// a window that is no longer the size it was stood at is stood again.
+// Returns what undoes it all, the canvas's room included.
 export function keepBeside(dialog: HTMLElement, selector: string): () => void {
   const lineNow = (): Box | null => {
     const anchor = document.querySelector(selector);
     return anchor ? boxOf(anchor) : null;
   };
+  const sizeNow = (): Size => ({ width: dialog.offsetWidth, height: dialog.offsetHeight });
   let left: Box | null = null;
+  // The window's size once stood: shortened to the room, if it had to be.
+  let stood: Size = sizeNow();
   const stand = () => {
     standBeside(dialog, selector);
     left = lineNow();
+    stood = sizeNow();
   };
   let next = 0;
   const check = () => {
     next = 0;
-    if (!sameBox(lineNow(), left)) stand();
+    const size = sizeNow();
+    if (!sameBox(lineNow(), left) || size.width !== stood.width || size.height !== stood.height) stand();
   };
   const later = () => {
     if (next === 0) next = requestAnimationFrame(check);
@@ -245,6 +254,7 @@ export function keepBeside(dialog: HTMLElement, selector: string): () => void {
   const page = document.querySelector(selector)?.closest(".canvas")?.querySelector(".frame") ?? null;
   const resized = new ResizeObserver(later);
   if (page) resized.observe(page);
+  resized.observe(dialog);
   window.addEventListener("resize", stand);
   return () => {
     if (next !== 0) cancelAnimationFrame(next);

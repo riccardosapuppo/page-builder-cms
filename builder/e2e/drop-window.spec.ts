@@ -438,4 +438,57 @@ test.describe("while the window is open", () => {
     expectLeavesTheLine(after);
     expect(after.shown.y, "the library moved").not.toBe(before.shown.y);
   });
+
+  // The window grows by itself when it says what is wrong. Standing over
+  // the line, at 1024 by 768, the video window has 24 px between its foot
+  // and the line, and its error line takes 22 of them: a message of two
+  // lines, or a larger font, would put it over the line unless it stands
+  // again.
+  test.describe("on a window 1024 by 768", () => {
+    test.use({ viewport: { width: 1024, height: 768 } });
+
+    test("the video window standing over the line grows by itself, by its error line and then by more: it stands again each time, still off the line", async ({ page, request }) => {
+      const view: Box = { x: 0, y: 0, width: 1024, height: 768 };
+      const { id } = await makePage(request, "Video window grows", fixture());
+      await open(page, id);
+      await drawer(page, "Insert");
+      await pickUp(page, await insertKey(page, "Media", "Video"));
+      await moveOnto(page, block(page, "c4"));
+      await page.mouse.up();
+      const shown = videoWindow(page);
+      await expect(shown).toBeVisible();
+      await twoFrames(page);
+      const before = await boxes(page, shown, line(page, "c4"));
+      expectLeavesTheLine(before, view);
+      expect(before.side, "it stands over the line, where growing takes it down towards the line").toBe("above");
+
+      await shown.getByRole("textbox", { name: "Video address or id" }).fill("not a video");
+      await shown.getByRole("button", { name: "Add video" }).click();
+      await expect(shown.getByText("That is not the address of a video, or a video id, that the page can show.")).toBeVisible();
+      await twoFrames(page);
+      const said = await boxes(page, shown, line(page, "c4"));
+      expect(said.shown.height, "the error line made it taller").toBeGreaterThan(before.shown.height);
+      expectLeavesTheLine(said, view);
+
+      // As two more lines of a message would (the window is grown from the
+      // test, by less than the room over the line has left, so it stays
+      // whole).
+      await shown.locator(".dlg-body").evaluate((body) => {
+        const more = document.createElement("p");
+        more.style.height = "40px";
+        body.append(more);
+      });
+      await expect.poll(async () => {
+        const now = await boxes(page, shown, line(page, "c4"));
+        return overlap(now.shown, now.line) ? `the window ${JSON.stringify(now.shown)} over the line ${JSON.stringify(now.line)}` : "off the line";
+      }).toBe("off the line");
+      const grown = await boxes(page, shown, line(page, "c4"));
+      expect(grown.shown.height, "it grew").toBeGreaterThanOrEqual(said.shown.height + 40);
+      expectLeavesTheLine(grown, view);
+      expect(grown.side).toBe("above");
+      await page.keyboard.press("Escape");
+      await expect(shown).toHaveCount(0);
+      expect(await types(page, "c4")).toEqual([]);
+    });
+  });
 });
