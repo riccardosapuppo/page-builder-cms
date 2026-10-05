@@ -62,6 +62,11 @@ function fileChoosers(page: Page): (within?: number) => Promise<FileChooser> {
 }
 
 const focusedBlock = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.blockId ?? null);
+
+// The next frame. The editor puts the focus where a command leaves it in
+// the frame after the command (afterRender, src/editor/act.ts), and a
+// frame asked for after the command comes after that one.
+const drawn = (page: Page) => page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
 const order = (page: Page) => page.locator('.canvas [data-block-id="c"] > [data-block-id]').evaluateAll((e) => e.map((x) => (x as HTMLElement).dataset.blockType));
 
 test("insert from Insert and from the page's +, move, write, style a tablet, upload an image, undo, keep a version, publish and open the live page, by the keyboard alone", { tag: "@a11y" }, async ({ page, request }) => {
@@ -138,6 +143,10 @@ test("insert from Insert and from the page's +, move, write, style a tablet, upl
   await expect(moveUp).toBeFocused();
   await page.keyboard.press("Enter");
   await expect.poll(() => order(page)).toEqual(["heading", "text", "button", "quote", "divider"]);
+  // The key has the focus before the move too, so the check below could
+  // pass before the frame in which the move gives the key the focus, and
+  // an Esc pressed before that frame would be undone by it.
+  await drawn(page);
   await expect(moveUp).toBeFocused();
   await page.keyboard.press("Escape");
   await expect.poll(() => focusedBlock(page)).toBe(button);
