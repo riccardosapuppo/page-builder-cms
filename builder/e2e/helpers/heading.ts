@@ -1,10 +1,11 @@
 // What the tests of saving, publishing, the history and two tabs share:
 // a page whose first widget is the heading "h", changed through its panel
 // as a person would; its words on the canvas and in the CMS's draft; the
-// top bar's save state; and whether closing the tab would ask first.
+// top bar's save state; whether closing the tab would ask first; and the
+// save the toast holds, sent again.
 import type { Page } from "@playwright/test";
 import { block } from "./canvas.ts";
-import { draftOf } from "./site.ts";
+import { draftOf, expect } from "./site.ts";
 
 // Types new words into the heading's Text field and leaves the field,
 // which hands them over as a command.
@@ -31,3 +32,17 @@ export const asksBeforeClosing = (page: Page) => page.evaluate(() => {
   window.dispatchEvent(event);
   return event.defaultPrevented;
 });
+
+// The save the toast holds, sent again once the connection is back, and
+// `then`, what sending it leads to. Retry now sends it, but the editor
+// sends the very same save by itself too, each time its countdown ends,
+// and under load its own send can come between the connection's return
+// and the click and take the button away: the click is only for a button
+// still there, and either way `then` is waited for.
+export async function sendAgain(page: Page, then: () => Promise<void>): Promise<void> {
+  const retry = page.getByRole("group", { name: "Not saved" }).getByRole("button", { name: "Retry now" });
+  await expect(async () => {
+    if (await retry.isVisible()) await retry.click({ timeout: 1_000 });
+    await then();
+  }).toPass({ timeout: 30_000 });
+}

@@ -15,7 +15,7 @@
 //   conflict, which is definite, and Keep mine settles it;
 // - a restore made in one tab is a change the other is told about.
 import type { Browser, BrowserContext, Page, Request } from "@playwright/test";
-import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState } from "./helpers/heading.ts";
+import { asksBeforeClosing, headingText, headingWords as words, retitle, saveState, sendAgain } from "./helpers/heading.ts";
 import { block } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
 import { cms, column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, unique, watchQuietly } from "./helpers/site.ts";
@@ -178,12 +178,12 @@ test("a save the network drops in one tab while the other saves: the toast, clos
     await retitle(first, "Saved by the first tab");
     await saved(first);
 
-    // The connection is back: the very same save goes again, and the CMS,
-    // which never had it, answers with the conflict.
+    // The connection is back: the very same save goes again, from Retry
+    // now or from the editor's own retry, and the CMS, which never had it,
+    // answers with the conflict.
     down = false;
     const tries = saveIds.length;
-    await toast.getByRole("button", { name: "Retry now" }).click();
-    await inConflict(second);
+    await sendAgain(second, () => inConflict(second));
     await expect(toast).toHaveCount(0);
     expect(saveIds.length).toBeGreaterThan(tries);
     expect(new Set(saveIds).size).toBe(1);

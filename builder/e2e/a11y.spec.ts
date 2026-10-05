@@ -7,6 +7,7 @@ import type { Page } from "@playwright/test";
 import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import { axe } from "./helpers/axe.ts";
 import { block, settledTextEditor } from "./helpers/canvas.ts";
+import { sendAgain } from "./helpers/heading.ts";
 import { png } from "./helpers/images.ts";
 import { cms, column, device, drawer, expect, makePage, open, openGroup, openSiteStyle, section, test, unique, widget } from "./helpers/site.ts";
 
@@ -246,8 +247,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await expect(page.getByRole("group", { name: "Not saved" })).toBeVisible();
   await clean(page, "a save retrying, with its toast");
   await page.unroute("**/api/pages/*/draft");
-  await page.getByRole("button", { name: "Retry now" }).click();
-  await expect(page.locator(".topbar .save-state")).toHaveText("Saved");
+  await sendAgain(page, () => expect(page.locator(".topbar .save-state")).toHaveText("Saved"));
 
   // Another writer: the conflict's banner.
   const draft = (await (await request.get(`${cms()}/api/pages/${id}/draft`)).json()) as { revision: number; document: unknown };
