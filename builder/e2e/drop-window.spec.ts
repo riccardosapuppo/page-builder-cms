@@ -372,7 +372,13 @@ test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", (
 // window was placed against the height the drag's preview had given the
 // canvas, and the canvas, clamped a frame later, moved the line under it,
 // at 1024 by 768 by 152 px.
-for (const [width, height, keys] of [[1024, 768, ["Video", "Image"]], [1100, 700, ["Video", "Image"]], [900, 900, ["Image"]]] as const) {
+//
+// The library is not dropped at 1024 by 768: there it stands over the
+// line, and the canvas, clamped a frame late, moves the line down, away
+// from it, so that drop passed with the box sized a frame late and could
+// not fail on what this names. At 1100 by 700 and 900 by 900 the
+// library's drop does fail without the fix.
+for (const [width, height, keys] of [[1024, 768, ["Video"]], [1100, 700, ["Video", "Image"]], [900, 900, ["Image"]]] as const) {
   const view: Box = { x: 0, y: 0, width, height };
 
   test.describe(`on a window ${width} by ${height}, the page drawn smaller`, () => {
