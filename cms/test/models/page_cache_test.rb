@@ -8,12 +8,12 @@ class PageCacheModelTest < ActiveSupport::TestCase
 
   # The release's digest as a server computes it, over a folder laid out as
   # the repository is.
-  def digest_of(root, secret: "s")
+  def digest_of(root, key: "s")
     paths = { root: root.join("cms"), schema_dir: root.join("schema") }
     PageCache.release_digest(
       booted: PageCache.files_digest(PageCache.booted_files(**paths), root: root),
       reloaded: PageCache.files_digest(PageCache.reloaded_files(**paths), root: root),
-      secret: secret
+      key: key
     )
   end
 
@@ -37,7 +37,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
         change.call
         seen << digest_of(root)
       end
-      seen << digest_of(root, secret: "t")
+      seen << digest_of(root, key: "t")
       assert_equal seen.uniq, seen
     end
   end
@@ -134,12 +134,12 @@ class PageCacheModelTest < ActiveSupport::TestCase
     with_release_folder do |root, edit|
       # The server has started and has been asked for nothing. Its files
       # change, and only then does the first visitor come.
-      started = digest_of(root, secret: PageCache.release_secret)
+      started = digest_of(root, key: PageCache.release_key)
       edit.call("cms/config/site.yml", "name: Slack Water B")
       edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
       edit.call("cms/Gemfile.lock", "rails (8.1.5)")
 
-      on_disk = digest_of(root, secret: PageCache.release_secret)
+      on_disk = digest_of(root, key: PageCache.release_key)
       assert_not_equal started, on_disk, "the files on disk are not those it started on"
       assert_equal started, PageCache.revision, "and it names the ones it started on"
       PageCache.boot!
@@ -170,11 +170,11 @@ class PageCacheModelTest < ActiveSupport::TestCase
   end
 
   test "what the release's digest takes from the app's secret is a digest of a key derived from it, never the secret" do
-    secret = PageCache.release_secret
+    key = PageCache.release_key
 
-    assert_match(/\A[0-9a-f]{64}\z/, secret)
-    assert_not_includes secret, Rails.application.secret_key_base
-    assert_not_equal Digest::SHA256.hexdigest(Rails.application.secret_key_base), secret
+    assert_match(/\A[0-9a-f]{64}\z/, key)
+    assert_not_includes key, Rails.application.secret_key_base
+    assert_not_equal Digest::SHA256.hexdigest(Rails.application.secret_key_base), key
   end
 
   test "the token CSS revision is the fingerprint of tokens.css as the page names it" do

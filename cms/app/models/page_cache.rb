@@ -126,7 +126,7 @@ module PageCache
       @checker ||= Rails.application.config.file_watcher.new(reloaded_files, reloaded_directories) { @revision = @token_css = nil }
       @checker.execute_if_updated
     end
-    @revision ||= release_digest(booted: booted_digest, reloaded: files_digest(reloaded_files), secret: release_secret)
+    @revision ||= release_digest(booted: booted_digest, reloaded: files_digest(reloaded_files), key: release_key)
   end
 
   # The digest of the files the process read as it started.
@@ -186,11 +186,11 @@ module PageCache
   # and a page cached with the old ones would show none of its images; the
   # secret itself never enters the digest), and of the two digests of
   # files: the booted and the reloaded.
-  def release_digest(booted:, reloaded:, secret:)
-    Digest::SHA256.hexdigest([ RUBY_VERSION, secret, booted, reloaded ].join("\0"))
+  def release_digest(booted:, reloaded:, key:)
+    Digest::SHA256.hexdigest([ RUBY_VERSION, key, booted, reloaded ].join("\0"))
   end
 
-  def release_secret
+  def release_key
     Digest::SHA256.hexdigest(Rails.application.key_generator.generate_key("page-builder-cms/page-cache", 32))
   end
 
