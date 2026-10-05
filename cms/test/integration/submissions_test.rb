@@ -290,7 +290,8 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :see_other
-    assert_includes log.string, %("answers" => "[FILTERED]"), "the request's parameters were logged, answers filtered"
+    # Ruby 3.4 prints a hash as {"answers" => ...}, Ruby 3.3 as {"answers"=>...}.
+    assert_match(/"answers" ?=> ?"\[FILTERED\]"/, log.string, "the request's parameters were logged, answers filtered")
     [ "Ann Diver", "ann.diver@example.org", "Ishmael" ].each { |answer| refute_includes log.string, answer }
   end
 
