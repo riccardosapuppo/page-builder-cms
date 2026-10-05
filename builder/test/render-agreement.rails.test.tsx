@@ -31,6 +31,7 @@ import { oneColumn, startAgreement, type Agreement } from "./agreement-harness.t
 import { wholeNumberFromEnv } from "./env.ts";
 import { findElement } from "./html-compare.ts";
 import { checked, page } from "./render-arbitraries.ts";
+import { servedWithStyle } from "./style-served.ts";
 import { parse } from "parse5";
 
 const cms = inject("cmsUrl");
@@ -52,11 +53,13 @@ test("the CMS serves each library image at its size, the bytes the API's address
   }
 });
 
+// Read with the style stored while the page was served (./style-served.ts):
+// the storage contract, run at the same time, changes it for a moment.
 test("the page root carries the site style as the CMS writes it", async () => {
-  const served = parse(await cmsPage.fetchText(cmsPage.previewPath));
-  const site = findElement(served, (e) => e.attrs.some((a) => a.name === "class" && a.value === "site"));
+  const { served, stored } = await servedWithStyle(cmsPage.adapter, () => cmsPage.fetchText(cmsPage.previewPath));
+  const site = findElement(parse(served), (e) => e.attrs.some((a) => a.name === "class" && a.value === "site"));
   const attributes = Object.fromEntries(site!.attrs.filter((a) => a.name !== "class").map((a) => [a.name, a.value]));
-  expect(attributes).toEqual(siteStyleAttributes(await cmsPage.adapter.getSiteStyle()));
+  expect(attributes).toEqual(siteStyleAttributes(stored));
 });
 
 test("every widget as Insert makes it draws on the CMS as in React", async () => {

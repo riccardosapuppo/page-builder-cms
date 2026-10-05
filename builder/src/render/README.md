@@ -93,7 +93,7 @@ widgets import its helpers. Nothing here talks to a server.
 | The canvas, `canvas.test.tsx` | `npm test` | React DOM builds the tree the contract compared; the decoration reaches the root only; a change redraws its path and no more. |
 | The random-page agreement check, `../../test/render-agreement.rails.test.tsx` and its plants | `npm run test:rails` | Random valid pages saved through the API and compared with the preview the CMS serves, then a published page. `AGREEMENT_RUNS` (60) and `AGREEMENT_SEED` (20261002) set the run. |
 | The twins, `twins.rails.test.ts` | `npm run test:rails` | `policy.ts` and `rich-text.tsx` against the CMS's own `RenderPolicy` and `RichTextHelper`, in Ruby, on values the schema refuses too. |
-| Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 390 (the two previews) against the CMS's preview at those window widths: every element's box and computed style. |
+| Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 390 (the two previews) against the CMS's preview at those window widths: every element's box and computed style. Each preview must carry the site style the CMS stored while it was served, served again if another test file changed the style meanwhile (`../../test/style-served.ts`), and the roots are drawn in it. |
 
 The comparison and its normalization are in
 `../../test/html-compare.ts`; the safety check in

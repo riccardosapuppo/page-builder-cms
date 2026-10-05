@@ -13,8 +13,9 @@
 // - the editor's page root (src/render/page.tsx) with the published page's
 //   stylesheets (site.css and tokens.css, as the CMS has them), all four
 //   widths side by side in one window 1400 wide: only the root's width
-//   tells each how to lay out. Each is drawn in the site style its served
-//   page carries, since other test files change the CMS's for a moment.
+//   tells each how to lay out. Each is drawn in the site style the CMS
+//   stored while its page was served, which that page must carry (read as
+//   ./style-served.ts says: another test file changes it for a moment).
 // For every element of the page, in order, its box (from the left of the
 // page root and the top of the sections' container, to 1/64 of a pixel,
 // the unit layout works in) and the properties the stylesheets set must be
@@ -31,6 +32,7 @@ import type { PageDocument } from "../src/shared/document.ts";
 import { PREVIEW_WIDTHS } from "../src/shared/preview-widths.ts";
 import { createRailsAdapter } from "../src/storage/rails.ts";
 import { checked, page as randomPage } from "./render-arbitraries.ts";
+import { servedWithStyle } from "./style-served.ts";
 
 const cms = inject("cmsUrl");
 const WIDTHS = [1280, 900, PREVIEW_WIDTHS.tablet, PREVIEW_WIDTHS.phone] as const;
@@ -156,7 +158,6 @@ let browser: Browser;
 let pageId = 0;
 let revision = 0;
 let previewPath = "";
-let siteStyle: SiteStyleChoice;
 const adapter = createRailsAdapter({ apiBase: `${cms}/api` });
 
 beforeAll(async () => {
@@ -165,7 +166,6 @@ beforeAll(async () => {
   pageId = created.value.page.id;
   revision = created.value.draft.revision;
   previewPath = created.value.links.preview;
-  siteStyle = await adapter.getSiteStyle();
   browser = await chromium.launch({ headless: true });
 }, 120_000);
 
@@ -191,19 +191,6 @@ interface Difference {
   styles: string[];
 }
 
-// The site style whose attributes a served page's root carries (data-<slot>
-// and data-type-scale, as siteStyleAttributes writes them), with the
-// choices the CMS offers; read back, it must give those attributes again.
-function styleOf(carried: Record<string, string>): SiteStyleChoice {
-  const palette = Object.fromEntries(Object.keys(siteStyle.choices.palette).flatMap((slot) => {
-    const tone = carried[`data-${slot}`];
-    return tone === undefined ? [] : [[slot, tone]];
-  }));
-  const style: SiteStyleChoice = { ...siteStyle, palette, typeScale: carried["data-type-scale"] ?? "" };
-  expect(siteStyleAttributes(style), "the served page's site style, read back").toEqual(carried);
-  return style;
-}
-
 // The elements of the canvas that differ from the page's, at every width:
 // none, when the canvas lays the page out as the CMS's page is laid out.
 // The canvas uses the stylesheets named (both, unless a fault is planted).
@@ -212,20 +199,25 @@ async function compare(doc: PageDocument, label: string, stylesheets = ["site.cs
   if (!saved.ok) throw new Error(JSON.stringify(saved.problem));
   revision = saved.value.revision;
 
-  // The pages the CMS serves, first, each with the site style it was drawn
-  // in. That style is the CMS's, shared by every test file of the run, and
-  // the storage contract (src/storage/contract.ts) changes it for a moment
-  // to see that it can, then puts it back: a page served in that moment is
-  // drawn in another type scale (text of 22 px where the canvas, drawn in
-  // the style read before, had 24). So each width's root on the canvas is
-  // drawn in the style its served page carries.
+  // The pages the CMS serves, first, each with the site style the CMS
+  // stored while it was served. That style is shared by every test file
+  // of the run, and the storage contract (src/storage/contract.ts) changes
+  // it for a moment to see that it can, then puts it back: a page served in
+  // that moment is drawn in another type scale (text of 22 px where the
+  // canvas, drawn in the style read before, had 24). So the page is served
+  // again until the style held still around it (./style-served.ts), must
+  // then carry it on its root, and each width's root on the canvas is drawn
+  // in it.
   const served: { width: number; measured: Measured[]; style: SiteStyleChoice }[] = [];
   for (const width of WIDTHS) {
     const page = await newPage(width);
-    await page.goto(new URL(previewPath, cms).href);
+    const { served: carried, stored } = await servedWithStyle(adapter, async () => {
+      await page.goto(new URL(previewPath, cms).href);
+      return page.locator(".site").evaluate((root) => Object.fromEntries([...root.attributes].filter((a) => a.name !== "class").map((a) => [a.name, a.value])));
+    });
+    expect(carried, `the page served at ${width} carries the site style the CMS stores`).toEqual(siteStyleAttributes(stored));
     await settle(page);
-    const carried = await page.locator(".site").evaluate((root) => Object.fromEntries([...root.attributes].filter((a) => a.name !== "class").map((a) => [a.name, a.value])));
-    served.push({ width, measured: await measure(page, ".site"), style: styleOf(carried) });
+    served.push({ width, measured: await measure(page, ".site"), style: stored });
     await page.close();
   }
 
