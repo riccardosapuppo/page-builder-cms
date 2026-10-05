@@ -205,8 +205,9 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
       assert_response :forbidden, "form #{i + 1} from another site, or with no Origin"
     end
     SubmissionsController::LIMIT.times do |i|
-      send_form("/join", i.even? ? GOOD : GOOD.merge("email" => "bad"), env: first)
-      assert_includes [ 303, 422 ], response.status, "form #{i + 1}: refused ones count too"
+      kept = i.even?
+      send_form("/join", kept ? GOOD : GOOD.merge("email" => "bad"), env: first)
+      assert_response kept ? :see_other : :unprocessable_content, "form #{i + 1}: kept, or refused for what it holds, which counts too"
     end
 
     assert_no_difference -> { Submission.count } do
