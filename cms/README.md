@@ -352,10 +352,13 @@ Laid beside `design/shots/page.png` and `page-phone.png` on 1 October
 heights: at 390 wide every band edge falls on the same row down to the
 end of the quote band; at 1280 wide every edge from the hero down is
 9 px higher, because the hero's columns are 3:2, the preset nearest the
-design's 1.45 to 1, so its square image is 434 px instead of 444. What
-still differs:
-- the join band holds the design's form there, and a button here until
-  forms arrive (stage 5);
+design's 1.45 to 1, so its square image is 434 px instead of 444. Since
+stage 5 the join band holds the design's form, in the right column beside
+the heading and its text: Name, Email, "Anything we should know?", the
+box that must be ticked and "Send request" (a button that wrote an email
+stood there before); that comparison was made without it, and
+`test/integration/seed_test.rb` reads the band's fields. What still
+differs:
 - the video card's still frame has no swimmers, and the map card is a
   plain shore with the pin in the middle, not the design's slipway: both
   are the theme's own drawings in CSS, coloured from the site style, for

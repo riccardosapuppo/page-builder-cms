@@ -51,6 +51,42 @@ class SeedTest < ActionDispatch::IntegrationTest
     }, spaces)
   end
 
+  # design/index.html#page: the join band is two columns, the heading and
+  # its text on the left and the form on the right, with the design's four
+  # fields, the box that must be ticked, and "Send request". It was a
+  # mailto button here until forms arrived.
+  test "the home page's join band is the design's: the heading and text beside a form, and no mailto link" do
+    capture_io { ExampleSite.run }
+    SubmissionsController::LIMIT_STORE.clear
+
+    get "/"
+    band = Nokogiri::HTML5(response.body).at_css("[data-block-id=join]")
+    columns = band.css(".cols > .col")
+
+    assert_equal 2, columns.size
+    assert_equal [ "Join a trial swim" ], columns[0].css("h2").map(&:text)
+    assert_match(/\ATell us a little about your swimming\./, columns[0].at_css("p").text)
+    assert_empty columns[0].css("form")
+    form = columns[1].at_css("form.sw-form")
+    fields = form.css("input:not([type=hidden]):not([name=website]), textarea").map { |control| [ control["name"], control["type"] || control.name, band.at_css("label[for='#{control['id']}']").text, control.key?("required") ] }
+    assert_equal [
+      [ "answers[name]", "text", "Name", false ],
+      [ "answers[email]", "email", "Email", false ],
+      [ "answers[notes]", "textarea", "Anything we should know?", false ],
+      [ "answers[distance]", "checkbox", "I can swim 200 meters without stopping (required)", true ]
+    ], fields
+    assert_equal "Send request", form.at_css("button[type=submit]").text
+    assert_empty band.css("a[href^=mailto], [data-block-type=button]")
+
+    # The form takes what a visitor sends it: kept, then its confirmation.
+    assert_difference -> { Submission.count } => 1 do
+      post "/", params: { "form" => "join-form", "answers" => { "name" => "Ann Diver", "distance" => "yes" }, "website" => "" }, headers: { "Origin" => "http://www.example.com" }
+    end
+    assert_redirected_to "http://www.example.com/sent/join-form"
+    get response.location
+    assert_select "main", /We reply within two days/
+  end
+
   test "no page of the example site, nor its 404 page, shows a visitor the name of a provider or another brand" do
     capture_io { ExampleSite.run }
 

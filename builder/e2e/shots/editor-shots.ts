@@ -472,13 +472,14 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // version kept under a name (the first time; the second window finds it);
   // nothing selected, so the Page tab. Then the changes are undone, so the
   // page is as the seed has it again.
-  const change = async (id: string, field: string, words: string) => {
+  const change = async (id: string, field: string, words: string, opened?: string) => {
     await page.locator(`.canvas [data-block-id="${id}"]`).click();
+    if (opened) await group(page, opened);
     const box = sidebar.getByRole("textbox", { name: field, exact: true });
     await box.fill(words);
     await box.blur();
   };
-  await change("join-button", "Text", "Write to us");
+  await change("join-form", "Button text", "Write to us", "Button and message");
   await change("quote-text", "Quote", "I came for the cold water and stayed for the tea and the talk.");
   await page.locator('.canvas [data-block-id="gallery-heading"]').click();
   await page.keyboard.press("Delete");

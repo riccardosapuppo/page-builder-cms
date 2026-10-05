@@ -155,8 +155,15 @@ module ExampleSite
         section("join", [
           column("join-1", [
             heading("join-heading", "Join a trial swim"),
-            text("join-text", "Tell us a little about your swimming. We reply within two days with the next trial date and what to bring."),
-            button("join-button", "Write to the club", "mailto:join@slackwater.example", base: { background: "primary", color: "background" })
+            text("join-text", "Tell us a little about your swimming. We reply within two days with the next trial date and what to bring.")
+          ]),
+          column("join-2", [
+            form("join-form", [
+              [ "name", "text", "Name", false, 100 ],
+              [ "email", "email", "Email", false ],
+              [ "notes", "textarea", "Anything we should know?", false, 1000 ],
+              [ "distance", "checkbox", "I can swim 200 meters without stopping", true ]
+            ], submit: "Send request", confirmation: "Thank you. We reply within two days with the next trial date and what to bring.")
           ])
         ], anchor: "join", label: "Join", base: { spaceBelow: "section-l" })
       ]

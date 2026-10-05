@@ -78,6 +78,15 @@ module DocumentBuilder
     block(id, "button", { label: label, href: href }, **style)
   end
 
+  # A form: fields are [name, kind, label, required, max_length] (an email
+  # address and a checkbox have no max_length).
+  def form(id, fields, submit:, confirmation:, **style)
+    items = fields.map do |name, kind, label, required, max_length|
+      { "name" => name, "kind" => kind, "label" => label, "required" => required, "maxLength" => max_length }.compact
+    end
+    block(id, "form", { items: items, submitLabel: submit, confirmation: confirmation }, **style)
+  end
+
   def iconbox(id, icon, title, text, **style)
     block(id, "iconbox", { icon: icon, title: title, text: text }, **style)
   end
