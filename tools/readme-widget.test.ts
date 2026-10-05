@@ -113,7 +113,7 @@ test("each way the README can stop matching its repository is named", () => {
   assert.match(found(fake(), README, WIDGETS_README.replace("schema/block.json", "schema/gone.json"))[0] ?? "", /names schema\/gone\.json, which does not exist/);
   assert.match(found(fake(), README, WIDGETS_README.replace("e2e/<type>.spec.ts", "e2e/<type>.other.ts"))[0] ?? "", /names e2e\/form\.other\.ts, which does not exist/);
   assert.match(found(fake(), README.replace("#adding-a-widget", "#elsewhere"))[0] ?? "", /has no heading for #elsewhere/);
-  assert.match(found(fake(), README.replace("builder/src/widgets/README.md#adding-a-widget", "elsewhere.md"))[0] ?? "", /does not link builder\/src\/widgets\/README\.md#<heading>/);
+  assert.match(found(fake(), README.replace("builder/src/widgets/README.md#adding-a-widget", "elsewhere"))[0] ?? "", /does not link builder\/src\/widgets\/README\.md#<heading>/);
 });
 
 test("the README's section on adding a widget matches this repository, and the run read what it checks", () => {
