@@ -136,6 +136,33 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "uni-f",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "nom",
+                    "kind": "text",
+                    "label": "Prénom et nom",
+                    "required": true,
+                    "maxLength": 80
+                  },
+                  {
+                    "name": "accord",
+                    "kind": "checkbox",
+                    "label": "J’accepte d’être rappelé·e ☎",
+                    "required": false
+                  }
+                ],
+                "submitLabel": "Envoyer ✉",
+                "confirmation": "Merci ! À bientôt.\n— Le club"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {

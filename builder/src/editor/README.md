@@ -52,11 +52,6 @@ them (`open-groups.ts`).
 | `context.tsx`, `ui-store.ts`, `session.tsx` | What every part reaches: the editor store, the interface's own store (hover, preview, the drawer open, the sidebar shown and what it shows, its tab chosen by hand and the groups open, Block edges, the page's width as laid out, library, site style, the server's errors, the drag's mode and what the live region said), the page session |
 | `icons.tsx`, `editor.css` | The design's icons (and the layout's few of its own, Block edges, bold and italic) and stylesheet, laid out as the layout's; the design's resets of bare elements are kept off the canvas |
 
-## Not here yet
-
-Drawn by the layout and not built yet:
-- the Form block in the pickers and in Insert, which comes with stage 5.
-
 ## Where it departs from the approved design, on purpose
 
 Each of these is a choice, kept for a reason, and open to the design's

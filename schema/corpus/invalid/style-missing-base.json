@@ -685,6 +685,46 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "join-form",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "name",
+                    "kind": "text",
+                    "label": "Name",
+                    "required": true,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "email",
+                    "kind": "email",
+                    "label": "Email",
+                    "required": true
+                  },
+                  {
+                    "name": "swimming",
+                    "kind": "textarea",
+                    "label": "Anything we should know?",
+                    "required": false,
+                    "maxLength": 1000
+                  },
+                  {
+                    "name": "distance",
+                    "kind": "checkbox",
+                    "label": "I can swim 200 meters without stopping",
+                    "required": true
+                  }
+                ],
+                "submitLabel": "Send request",
+                "confirmation": "Thank you. We reply within two days\nwith the next trial date and what to bring."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {

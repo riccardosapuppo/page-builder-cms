@@ -10,7 +10,7 @@
 # out. A library image is looked up through media, which answers
 # call(media_id) with a MediaResolver::Image or nil.
 module BlocksHelper
-  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion].freeze
+  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion form].freeze
 
   def render_document(document, media:, cached: false)
     sections = document.is_a?(Hash) ? document["sections"] : nil

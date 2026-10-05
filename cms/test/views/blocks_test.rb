@@ -36,15 +36,38 @@ class BlocksTest < ActionView::TestCase
       block("w-map", "map", { "latitude" => 54.5, "longitude" => -3.25, "zoom" => 15, "label" => "Meeting point" }),
       block("w-iconbox", "iconbox", { "icon" => "sunrise", "title" => "Dawn swims", "text" => "Twice a week." }),
       block("w-quote", "quote", { "text" => "Cold water, hot tea.", "attribution" => "A member" }),
-      block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] })
+      block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] }),
+      block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." })
     ]
+  end
+
+  FORM_FIELDS = [
+    { "name" => "name", "kind" => "text", "label" => "Name", "required" => true, "maxLength" => 100 },
+    { "name" => "email", "kind" => "email", "label" => "Email", "required" => false },
+    { "name" => "notes", "kind" => "textarea", "label" => "Anything we should know?", "required" => false, "maxLength" => 1000 },
+    { "name" => "distance", "kind" => "checkbox", "label" => "I can swim 200 meters", "required" => true }
+  ].freeze
+
+  def form_html(answer: nil)
+    form = block("f", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." })
+    Nokogiri::HTML5.fragment(render(partial: "blocks/form", locals: { block: form, media: MEDIA, answer: answer }))
+  end
+
+  # The control a label names, found as a browser ties them: by the
+  # label's for, the id of one element.
+  def labelled(html, text)
+    label = html.css("label").find { |l| l.text == text }
+    assert label, "no label reads #{text.inspect}"
+    controls = html.css("input, textarea").select { |c| c["id"] == label["for"] }
+    assert_equal 1, controls.size, "the label #{text.inspect} names #{controls.size} controls"
+    controls.first
   end
 
   test "every block of every type has a root that names its id and its type, in document order" do
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion form], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -108,12 +131,62 @@ class BlocksTest < ActionView::TestCase
   end
 
   test "the accordion is details and summary, the first one open, and needs no script" do
-    html = html_of(page(every_widget.last))
+    html = html_of(page(every_widget.find { |w| w["type"] == "accordion" }))
 
     details = html.css("[data-block-type=accordion] details")
     assert_equal [ "How cold?", "Wetsuit?" ], details.map { |d| d.at_css("summary").text }
     assert_equal [ true, false ], details.map { |d| d.key?("open") }
     assert_empty html.css("script")
+  end
+
+  test "the form posts to the page's own address, each field tied to its label, the required ones said and checked by the browser" do
+    html = form_html
+    form = html.at_css("[data-block-type=form] form.sw-form")
+
+    assert_equal "post", form["method"]
+    assert_not form.key?("action"), "a form is sent to the page's own address"
+    assert_equal [ %w[form f] ], form.css("input[type=hidden]").map { |i| [ i["name"], i["value"] ] }
+    name = labelled(html, "Name (required)")
+    assert_equal [ "answers[name]", "text", "100", true ], [ name["name"], name["type"], name["maxlength"], name.key?("required") ]
+    email = labelled(html, "Email")
+    assert_equal [ "answers[email]", "email", "254", false, "email" ], [ email["name"], email["type"], email["maxlength"], email.key?("required"), email["autocomplete"] ]
+    notes = labelled(html, "Anything we should know?")
+    assert_equal [ "textarea", "answers[notes]", "1000", false ], [ notes.name, notes["name"], notes["maxlength"], notes.key?("required") ]
+    box = labelled(html, "I can swim 200 meters (required)")
+    assert_equal [ "answers[distance]", "checkbox", "yes", true, nil ], [ box["name"], box["type"], box["value"], box.key?("required"), box["maxlength"] ]
+    assert_equal "Send request", form.at_css("button[type=submit]").text
+    # Nothing tells a screen reader of a refusal the page has not had.
+    assert_empty html.css("[aria-describedby], [aria-invalid], .sw-field-error")
+    assert_empty html.css("script")
+  end
+
+  test "the field for robots is hidden from people and from screen readers, and takes no focus" do
+    trap = form_html.at_css(".sw-trap")
+
+    assert_equal "true", trap["aria-hidden"]
+    assert_equal [ [ "website", "-1", "off" ] ], trap.css("input").map { |i| [ i["name"], i["tabindex"], i["autocomplete"] ] }
+  end
+
+  test "a refused form, drawn again, keeps what was written and ties each refusal to its field" do
+    html = form_html(answer: {
+      "values" => { "name" => "Ann <b>", "email" => "ann@", "notes" => "\nFirst line\nsecond", "distance" => true },
+      "errors" => { "email" => "Enter an email address, like name@example.org.", "distance" => "Tick this box to send the form." }
+    })
+
+    email = labelled(html, "Email")
+    assert_equal "ann@", email["value"]
+    assert_equal "true", email["aria-invalid"]
+    message = html.css("[id]").find { |e| e["id"] == email["aria-describedby"] }
+    assert_equal "Enter an email address, like name@example.org.", message&.text
+    box = labelled(html, "I can swim 200 meters (required)")
+    assert box.key?("checked")
+    assert_equal "Tick this box to send the form.", html.css("[id]").find { |e| e["id"] == box["aria-describedby"] }&.text
+    # What the visitor wrote comes back as text, line breaks and all; a
+    # field with no refusal is not marked.
+    name = labelled(html, "Name (required)")
+    assert_equal [ "Ann <b>", nil, nil ], [ name["value"], name["aria-invalid"], name["aria-describedby"] ]
+    assert_equal "\nFirst line\nsecond", labelled(html, "Anything we should know?").text
+    assert_empty html.css("b")
   end
 
   test "the video and the map are closed details holding a lazy frame, and nothing else names the provider" do
@@ -198,12 +271,13 @@ class BlocksTest < ActionView::TestCase
       block("a", "accordion", { "items" => [ { "question" => trap, "answer" => trap } ] }),
       block("v", "video", { "provider" => "vimeo", "videoId" => "76979871", "title" => trap }),
       block("m", "map", { "latitude" => 1, "longitude" => 2, "zoom" => 3, "label" => trap }),
-      block("p", "image", { "mediaId" => "hero", "alt" => trap })
+      block("p", "image", { "mediaId" => "hero", "alt" => trap }),
+      block("f", "form", { "items" => [ { "name" => "n", "kind" => "text", "label" => trap, "required" => true, "maxLength" => 10 } ], "submitLabel" => trap, "confirmation" => trap })
     ))
 
     assert_empty html.css("b, [onerror]")
     assert_equal [ "hero.png" ], html.css("img").map { |img| img["src"].split("/").last }
-    %w[h t b i q a v m].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    %w[h t b i q a v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
     assert_equal trap, html.at_css("[data-block-id=p] img")["alt"]
   end
 

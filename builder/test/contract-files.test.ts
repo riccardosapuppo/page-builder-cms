@@ -13,7 +13,7 @@ import { readContractFiles, RENDERER_SOURCES } from "./contract-files.ts";
 test("the real goldens are current: six fixtures or more, each with its golden, every hash as recorded", () => {
   const files = readContractFiles(repoRoot);
   expect(files.problems).toEqual([]);
-  expect(files.fixtures).toEqual(["edge.json", "empty.json", "large-500.json", "traps-media.json", "traps-structure.json", "traps-text.json"]);
+  expect(files.fixtures).toEqual(["edge.json", "empty.json", "large-500.json", "traps-form.json", "traps-media.json", "traps-structure.json", "traps-text.json"]);
 });
 
 // A repository of the files the check reads, copied from the real one.
@@ -65,9 +65,9 @@ describe("a planted fault makes the goldens unusable", () => {
   test("a renderer source changed, or a partial added, and the goldens not written again", () => {
     const root = copyOfContract();
     appendFileSync(join(root, "cms", "app", "views", "blocks", "_heading.html.erb"), "\n");
-    writeFileSync(join(root, "cms", "app", "views", "blocks", "_form.html.erb"), "<form></form>\n");
+    writeFileSync(join(root, "cms", "app", "views", "blocks", "_carousel.html.erb"), "<div></div>\n");
     expect(readContractFiles(root).problems).toEqual([
-      "manifest.json (renderer) does not list cms/app/views/blocks/_form.html.erb",
+      "manifest.json (renderer) does not list cms/app/views/blocks/_carousel.html.erb",
       expect.stringMatching(/^manifest\.json \(renderer\) is stale for cms\/app\/views\/blocks\/_heading\.html\.erb: /),
     ]);
   });
@@ -75,7 +75,7 @@ describe("a planted fault makes the goldens unusable", () => {
   test("no manifest, and too few fixtures", () => {
     const root = copyOfContract();
     unlinkSync(join(root, "contract", "rendered", "manifest.json"));
-    for (const name of ["edge", "empty"]) {
+    for (const name of ["edge", "empty", "traps-form"]) {
       unlinkSync(join(root, "contract", "fixtures", `${name}.json`));
       unlinkSync(join(root, "contract", "rendered", `${name}.html`));
     }

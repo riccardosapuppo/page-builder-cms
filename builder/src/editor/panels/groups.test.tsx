@@ -44,6 +44,7 @@ test("each type's groups are named after what they hold, in the layout's order, 
     map: ["Map", "Shown on"],
     gallery: ["Images", "Spacing", "Shown on"],
     iconbox: ["Icon box", "Text color", "Alignment", "Shown on"],
+    form: ["Fields", "Button and message", "Shown on"],
   };
   for (const [id, names] of Object.entries(expected)) {
     rerender(<BlockPanel id={id} />);

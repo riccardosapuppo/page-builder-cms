@@ -40,14 +40,16 @@
       "enum": [
         "section", "column",
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion"
+        "gallery", "video", "map", "iconbox", "quote", "accordion",
+        "form"
       ]
     },
     "widgetType": {
       "description": "The block types a column may hold: every block type except section and column.",
       "enum": [
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion"
+        "gallery", "video", "map", "iconbox", "quote", "accordion",
+        "form"
       ]
     },
     "block": {
@@ -76,7 +78,8 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "map" } } }, "then": { "$ref": "#/$defs/mapBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "iconbox" } } }, "then": { "$ref": "#/$defs/iconboxBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "quote" } } }, "then": { "$ref": "#/$defs/quoteBlock" } },
-        { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } }
+        { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } }
       ]
     },
 
@@ -372,6 +375,76 @@
         "style": { "$ref": "#/$defs/lineStyle" }
       }
     },
+    "formBlock": {
+      "description": "A form a visitor fills in and sends, with no script: its fields in order, the text of its button, and the message shown once it is sent. The fields live here, in the page's version, and nowhere else; each answer the server keeps records the version it was sent from and a copy of its fields.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["items", "submitLabel", "confirmation"],
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "description": "The fields, in the order the page shows them. Their names are unique in the form: an application rule, since uniqueItems compares whole fields.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": { "$ref": "#/$defs/formField" }
+            },
+            "submitLabel": { "$ref": "#/$defs/line", "type": "string", "maxLength": 60 },
+            "confirmation": {
+              "description": "What the visitor reads once the server has kept the answer.",
+              "$ref": "#/$defs/paragraph",
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/plainStyle" }
+      }
+    },
+    "formField": {
+      "description": "One field: a line of text, an email address, a longer text, or a checkbox; its label, whether it must be filled in (a checkbox: ticked), and for the two kinds of text the most characters an answer may have.",
+      "type": "object",
+      "required": ["name", "kind", "label", "required"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The key its answer is kept under, the same from one version to the next while the field stays. Made by the editor, never shown: a label can change and the answers still line up.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "kind": { "enum": ["text", "email", "textarea", "checkbox"] },
+        "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
+        "required": { "type": "boolean" },
+        "maxLength": {
+          "description": "Characters, as code points: at most 300 for a line of text, 5000 for a longer one. An email address takes the standard's 254, and a checkbox has no text.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        }
+      },
+      "$comment": "One if/then per kind on maxLength, with the same 'properties: {x: ...}' beside each 'required' as imageRef, for ajv's strictRequired.",
+      "allOf": [
+        {
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "text" } } },
+          "then": { "type": "object", "properties": { "maxLength": { "type": "integer", "maximum": 300 } }, "required": ["maxLength"] }
+        },
+        {
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "textarea" } } },
+          "then": { "type": "object", "properties": { "maxLength": true }, "required": ["maxLength"] }
+        },
+        {
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "email" } } },
+          "then": { "not": { "type": "object", "properties": { "maxLength": true }, "required": ["maxLength"] } }
+        },
+        {
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "checkbox" } } },
+          "then": { "not": { "type": "object", "properties": { "maxLength": true }, "required": ["maxLength"] } }
+        }
+      ]
+    },
 
     "imageRef": {
       "description": "One image: from the media library ({mediaId}) or from another site ({url}), never both. It has alt text, or is marked decorative and has none. The image widget's props and each gallery item have this shape.",
@@ -625,7 +698,7 @@
       "properties": { "aspect": true, "visibility": true }
     },
     "plainStyle": {
-      "description": "Spacer, video and map: they can only be hidden per device.",
+      "description": "Spacer, video, map and form: they can only be hidden per device.",
       "type": "object",
       "properties": {
         "base": { "$ref": "#/$defs/plainStyleKeys" },

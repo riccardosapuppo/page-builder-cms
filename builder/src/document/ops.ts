@@ -36,7 +36,7 @@ export type Op =
   // given exactly when one side is absent.
   | { op: "set"; id: string | null; path: Path; key: string; before?: Json; after?: Json; at?: number }
   // One item of a list in a block's props (a gallery's images, an
-  // accordion's questions).
+  // accordion's questions, a form's fields).
   | { op: "insertItem"; id: string; path: Path; index: number; item: Json }
   | { op: "removeItem"; id: string; path: Path; index: number; item: Json }
   | { op: "moveItem"; id: string; path: Path; from: number; to: number };

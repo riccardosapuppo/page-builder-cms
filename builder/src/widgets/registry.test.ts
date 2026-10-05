@@ -55,8 +55,8 @@ test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
 });
 
-test("Insert's groups, order and labels are the approved design's widget tiles' (its Form tile comes with stage 5)", () => {
-  const panel = designPanel().filter((group) => group.title !== "Layout" && group.title !== "Forms");
+test("Insert's groups, order and labels are the approved design's widget tiles'", () => {
+  const panel = designPanel().filter((group) => group.title !== "Layout");
   expect(WIDGET_GROUPS.map((g) => g.label)).toEqual(panel.map((g) => g.title));
   const ours = WIDGET_GROUPS.map((g) => ({ title: g.label, tiles: WIDGETS.filter((w) => w.group === g.id).map((w) => ({ label: w.label, symbol: `w-${w.type}` })) }));
   expect(ours).toEqual(panel);
@@ -98,7 +98,7 @@ const library: ImageRef = { mediaId: "m1", alt: "The bay at dawn" };
 const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorative: true };
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
   heading: [undefined], text: [undefined], button: [undefined], divider: [undefined], spacer: [undefined],
-  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined],
+  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], form: [undefined],
   image: [library, external],
   gallery: [[library], [library, external]],
   video: [{ provider: "youtube", videoId: "M7lc1UVf-VE" }, { provider: "vimeo", videoId: "76979871" }],

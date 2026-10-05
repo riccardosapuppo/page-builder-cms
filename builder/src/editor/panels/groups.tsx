@@ -24,7 +24,7 @@ import { useEnv, useUi } from "../context.tsx";
 import { deviceOf, OVERRIDE_DEVICES, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
 import { Icon } from "../icons.tsx";
 import { excerpt } from "../names.ts";
-import type { ContentProps } from "./types.ts";
+import type { WidgetPanel } from "./types.ts";
 import { ShownOn, shownOnWords } from "./ShownOn.tsx";
 import { columnsWords, nameWords, SectionColumns, SectionName } from "./structure.tsx";
 import { acceptedKeys, inUseOf, StyleFields, useColumnStyle, type StyleKey } from "./StyleFields.tsx";
@@ -82,6 +82,7 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   map: ["content", "shown"],
   gallery: ["content", "spacing", "shown"],
   iconbox: ["content", "text-color", "alignment", "shown"],
+  form: ["content", "shown"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -188,6 +189,11 @@ function contentWords(block: WidgetBlock): string {
     return `${count} ${count === 1 ? "question" : "questions"}, the first open`;
   }
   if (block.type === "image" && block.props.decorative !== true && !block.props.alt) return "No alt text";
+  if (block.type === "form") {
+    const count = block.props.items.length;
+    const required = block.props.items.filter((field) => field.required).length;
+    return `${count} ${count === 1 ? "field" : "fields"}, ${required === 0 ? "none" : required} required`;
+  }
   return excerpt(block) || "Empty";
 }
 
@@ -203,10 +209,22 @@ export function useBlockGroups(block: Block): GroupSpec[] {
     switch (id) {
       case "content": {
         if (block.type === "section" || block.type === "column") return [];
-        const panel = WIDGET_PANELS[block.type].content as { name: string; Content: (props: ContentProps<WidgetBlock["type"]>) => ReactNode } | null;
-        if (!panel) return [];
-        const Content = panel.Content;
-        return [{ id, name: panel.name, keys: [], holds: (field) => field.startsWith("/props/"), summary: contentWords(block), body: <Content block={block as never} /> }];
+        const panel = WIDGET_PANELS[block.type] as WidgetPanel<WidgetBlock["type"]>;
+        if (!panel.content) return [];
+        const Content = panel.content.Content;
+        // A further group holds its props and everything under them; the
+        // first holds the other props.
+        const more = (panel.more ?? []).map((group) => ({
+          group,
+          holds: (field: string) => group.props.some((prop) => field === `/props/${prop}` || field.startsWith(`/props/${prop}/`)),
+        }));
+        return [
+          { id, name: panel.content.name, keys: [], holds: (field) => field.startsWith("/props/") && !more.some((m) => m.holds(field)), summary: contentWords(block), body: <Content block={block as never} /> },
+          ...more.map(({ group, holds }): GroupSpec => {
+            const More = group.Content;
+            return { id: group.id, name: group.name, keys: [], holds, summary: group.summary(block as never), body: <More block={block as never} /> };
+          }),
+        ];
       }
       case "columns":
         if (block.type !== "section") return [];

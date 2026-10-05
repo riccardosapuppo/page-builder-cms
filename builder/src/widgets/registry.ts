@@ -1,16 +1,18 @@
 // Every widget, in the Insert drawer's order (the approved design's: Basic,
-// Media, Content), and the renderer of each type. registry.test.ts holds
-// the list to the schema's widget types, one definition each.
+// Media, Content, Forms), and the renderer of each type. registry.test.ts
+// holds the list to the schema's widget types, one definition each.
 //
-// Adding a widget is one small commit: the schema's branch, its folder
-// here with its definition, renderer and icon, a line below, the server's
-// partial, and its traps in contract/fixtures.
+// Adding a widget is one commit: the schema's branch, its folder here
+// with its definition, renderer, icon, panel and accessibility test, a
+// line below, the server's partial, and its traps in contract/fixtures;
+// README.md here lists every place, with the form as the example.
 import type { ComponentType } from "react";
 import type { BlockRenderProps } from "../render/context.ts";
 import type { WidgetType } from "../shared/document.ts";
 import { accordion } from "./accordion/definition.ts";
 import { button } from "./button/definition.ts";
 import { divider } from "./divider/definition.ts";
+import { form } from "./form/definition.ts";
 import { gallery } from "./gallery/definition.ts";
 import { heading } from "./heading/definition.ts";
 import { iconbox } from "./iconbox/definition.ts";
@@ -26,6 +28,7 @@ export const WIDGETS: readonly AnyWidgetDefinition[] = [
   heading, text, image, button, divider, spacer,
   gallery, video, map,
   iconbox, quote, accordion,
+  form,
 ];
 
 export const WIDGET_RENDERERS: ReadonlyMap<string, ComponentType<BlockRenderProps>> = new Map(WIDGETS.map((w) => [w.type, w.render]));

@@ -335,6 +335,210 @@
     "keyword": "duplicateKey",
     "layer": "rules"
   },
+  "invalid/form-21-fields.json": {
+    "rule": "a form has at most twenty fields",
+    "pointer": "/sections/6/children/0/children/3/props/items",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/form-action-prop.json": {
+    "rule": "a form's address is the page's own: none is stored",
+    "pointer": "/sections/6/children/0/children/3/props/action",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/form-checkbox-with-limit.json": {
+    "rule": "a checkbox has no text to limit",
+    "pointer": "/sections/6/children/0/children/3/props/items/3",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/form-confirmation-bell.json": {
+    "rule": "no control characters in the message",
+    "pointer": "/sections/6/children/0/children/3/props/confirmation",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/form-confirmation-missing.json": {
+    "rule": "a form says what happens once it is sent",
+    "pointer": "/sections/6/children/0/children/3/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/form-confirmation-too-long.json": {
+    "rule": "the message has at most 500 characters",
+    "pointer": "/sections/6/children/0/children/3/props/confirmation",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/form-email-with-limit.json": {
+    "rule": "an email address takes the standard's length: no limit of its own",
+    "pointer": "/sections/6/children/0/children/3/props/items/1",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/form-field-extra-key.json": {
+    "rule": "fields are closed: no placeholder or default value",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/placeholder",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/form-kind-file.json": {
+    "rule": "no file uploads",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/kind",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/form-kind-unknown.json": {
+    "rule": "the kinds are text, email, textarea and checkbox: no hidden fields",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/kind",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/form-label-blank.json": {
+    "rule": "a label has a visible character",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-label-newline.json": {
+    "rule": "a label is one line",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/label",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/form-label-too-long.json": {
+    "rule": "a label has at most 200 characters",
+    "pointer": "/sections/6/children/0/children/3/props/items/3/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/form-limit-fraction.json": {
+    "rule": "a limit is a whole number of characters",
+    "pointer": "/sections/6/children/0/children/3/props/items/2/maxLength",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/form-limit-zero.json": {
+    "rule": "a limit is at least one character",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/maxLength",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/form-name-bracket.json": {
+    "rule": "a field name has no brackets, which would nest the answer in the request",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-name-duplicate-first-changed.json": {
+    "rule": "the second field with a name, in order, is the one refused, whichever of the two was changed",
+    "pointer": "/sections/6/children/0/children/3/props/items/2/name",
+    "keyword": "uniqueFieldName",
+    "layer": "rules"
+  },
+  "invalid/form-name-duplicate.json": {
+    "rule": "field names are unique in a form (a rule: uniqueItems would compare whole fields): two fields with one name would write over each other's answers",
+    "pointer": "/sections/6/children/0/children/3/props/items/1/name",
+    "keyword": "uniqueFieldName",
+    "layer": "rules"
+  },
+  "invalid/form-name-missing.json": {
+    "rule": "every field has a name",
+    "pointer": "/sections/6/children/0/children/3/props/items/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/form-name-space.json": {
+    "rule": "a field name has no spaces",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-name-too-long.json": {
+    "rule": "a field name has at most 40 characters",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-name-trailing-newline.json": {
+    "rule": "^...$ must not let a trailing newline through in a field name",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-name-uppercase.json": {
+    "rule": "a field name is lowercase letters, digits and hyphens, starting with a letter",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-no-fields.json": {
+    "rule": "a form has at least one field",
+    "pointer": "/sections/6/children/0/children/3/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/form-required-missing.json": {
+    "rule": "whether a field must be filled in is always said",
+    "pointer": "/sections/6/children/0/children/3/props/items/1",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/form-required-string.json": {
+    "rule": "required is true or false",
+    "pointer": "/sections/6/children/0/children/3/props/items/1/required",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/form-style-color.json": {
+    "rule": "a form can only be hidden per device: it takes the theme's colours",
+    "pointer": "/sections/6/children/0/children/3/style/base/color",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/form-submit-label-blank.json": {
+    "rule": "the button's text has a visible character",
+    "pointer": "/sections/6/children/0/children/3/props/submitLabel",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/form-submit-label-too-long.json": {
+    "rule": "the button's text has at most 60 characters",
+    "pointer": "/sections/6/children/0/children/3/props/submitLabel",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/form-text-limit-over.json": {
+    "rule": "a line of text takes at most 300 characters",
+    "pointer": "/sections/6/children/0/children/3/props/items/0/maxLength",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/form-text-without-limit.json": {
+    "rule": "a line of text says how long an answer may be",
+    "pointer": "/sections/6/children/0/children/3/props/items/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/form-textarea-limit-over.json": {
+    "rule": "a longer text takes at most 5000 characters",
+    "pointer": "/sections/6/children/0/children/3/props/items/2/maxLength",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/form-textarea-without-limit.json": {
+    "rule": "a longer text says how long an answer may be",
+    "pointer": "/sections/6/children/0/children/3/props/items/2",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/form-with-children.json": {
+    "rule": "a form holds no blocks",
+    "pointer": "/sections/6/children/0/children/3/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/gallery-item-missing-alt.json": {
     "rule": "every gallery image has alt text or is decorative",
     "pointer": "/sections/2/children/0/children/1/props/items/0",
@@ -1147,6 +1351,9 @@
   },
   "valid/every-icon-and-provider.json": {
     "rule": "every icon name, both video providers, map extremes"
+  },
+  "valid/form-fields-every-kind.json": {
+    "rule": "every kind of field, required and not; a line of text limited to 1 and to 300 characters, a longer text to 5000; names of one letter and of 40 characters, with digits and hyphens; twenty fields, the most a form holds; and a second form using the same names, since names are unique in a form, not on the page"
   },
   "valid/heading-link.json": {
     "rule": "a heading may carry a link, as in the approved mock"

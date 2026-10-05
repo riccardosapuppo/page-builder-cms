@@ -11,6 +11,7 @@ export const WIDGET_GROUPS = [
   { id: "basic", label: "Basic" },
   { id: "media", label: "Media" },
   { id: "content", label: "Content" },
+  { id: "forms", label: "Forms" },
 ] as const;
 export type WidgetGroup = (typeof WIDGET_GROUPS)[number]["id"];
 
@@ -44,6 +45,7 @@ export interface InputOf {
   iconbox: void;
   quote: void;
   accordion: void;
+  form: void;
 }
 export type Needs = null | "image" | "images" | "video";
 

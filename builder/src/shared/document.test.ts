@@ -7,7 +7,7 @@ import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
-  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, HEADING_LEVELS, ICON_NAMES, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
+  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
   ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
   SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
@@ -70,6 +70,20 @@ describe("the document's types match the schema", () => {
     expect(HEADING_LEVELS.length).toBe((level.maximum as number) - (level.minimum as number) + 1);
   });
 
+  test("a form field's kinds, and the most characters each kind of text takes", () => {
+    const field = def("formField");
+    expect([...FORM_FIELD_KINDS]).toEqual(enumOf(properties(field).kind as Node));
+    // The longer text's limit is the field's own maximum; the line's is
+    // its kind's branch's, lower.
+    expect(FORM_TEXT_LIMITS.textarea).toBe(properties(field).maxLength?.maximum);
+    const branchOf = (kind: string) => (field.allOf as Node[]).find((rule) => (properties(rule.if as Node).kind as Node).const === kind)!;
+    expect(FORM_TEXT_LIMITS.text).toBe((properties(branchOf("text").then as Node).maxLength as Node).maximum);
+    for (const kind of ["textarea", "text"]) expect((branchOf(kind).then as Node).required, kind).toEqual(["maxLength"]);
+    for (const kind of ["email", "checkbox"]) expect(((branchOf(kind).then as Node).not as Node).required, kind).toEqual(["maxLength"]);
+    // The standard's longest address, which no field may change.
+    expect(EMAIL_MAX_LENGTH).toBe(254);
+  });
+
   test("the style settings, and which ones each block type takes", () => {
     expect([...STYLE_TOKEN_KEYS].sort()).toEqual(Object.keys(properties(def("styleTokens"))).sort());
     // Each setting's tokens are the enum its key refers to.
@@ -94,6 +108,8 @@ describe("the document's types match the schema", () => {
     }
     const accordionItems = properties(branch("accordion").props).items as Node;
     expect(sorted(ACCORDION_ITEM_KEYS)).toEqual(sorted(keyTable(deref(accordionItems.items as Node))));
+    const formItems = properties(branch("form").props).items as Node;
+    expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
     expect(sorted(DOCUMENT_KEYS)).toEqual(sorted(keyTable(schema)));
     expect(properties(schema).schemaVersion?.const).toBe(SCHEMA_VERSION);
   });

@@ -17,6 +17,7 @@ export const BLOCK_TYPES = [
   "section", "column",
   "heading", "text", "image", "button", "divider", "spacer",
   "gallery", "video", "map", "iconbox", "quote", "accordion",
+  "form",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -24,6 +25,7 @@ export type BlockType = (typeof BLOCK_TYPES)[number];
 export const WIDGET_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
   "gallery", "video", "map", "iconbox", "quote", "accordion",
+  "form",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -74,6 +76,17 @@ export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
 
 export const HEADING_LEVELS = [1, 2, 3, 4] as const;
 export type HeadingLevel = (typeof HEADING_LEVELS)[number];
+
+// A form field's kinds: a line of text, an email address, a longer text, a
+// checkbox.
+export const FORM_FIELD_KINDS = ["text", "email", "textarea", "checkbox"] as const;
+export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
+
+// The most characters an answer may have, by kind: what a field may set
+// for itself (text, textarea), or what every one takes (email, the
+// standard's length of an address). A checkbox has no text.
+export const FORM_TEXT_LIMITS = { text: 300, textarea: 5000 } as const;
+export const EMAIL_MAX_LENGTH = 254;
 
 // ----------------------------------------------------------------- style
 
@@ -131,6 +144,7 @@ export const STYLE_KEYS_BY_TYPE = {
   spacer: PLAIN_STYLE,
   video: PLAIN_STYLE,
   map: PLAIN_STYLE,
+  form: PLAIN_STYLE,
   gallery: ["spaceBetween", "visibility"],
   iconbox: ["color", "align", "visibility"],
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
@@ -278,6 +292,25 @@ export interface AccordionItem {
 export interface AccordionProps {
   items: AccordionItem[];
 }
+// One field of a form. name is the key its answers are kept under, made by
+// the editor and never shown; unique in its form (an application rule).
+// maxLength is there for the two kinds of text and only for them.
+interface FormFieldOf<K extends FormFieldKind> {
+  name: string;
+  kind: K;
+  label: string;
+  required: boolean;
+}
+export type FormField =
+  | (FormFieldOf<"text" | "textarea"> & { maxLength: number })
+  | (FormFieldOf<"email" | "checkbox"> & { maxLength?: never });
+export interface FormProps {
+  // The fields, in the order the page shows them.
+  items: FormField[];
+  submitLabel: string;
+  // What the visitor reads once the server has kept the answer.
+  confirmation: string;
+}
 
 // ---------------------------------------------------------------- blocks
 
@@ -306,10 +339,12 @@ export type MapBlock = BlockOf<"map", MapProps, NoChildren>;
 export type IconboxBlock = BlockOf<"iconbox", IconboxProps, NoChildren>;
 export type QuoteBlock = BlockOf<"quote", QuoteProps, NoChildren>;
 export type AccordionBlock = BlockOf<"accordion", AccordionProps, NoChildren>;
+export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
 
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
-  | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock;
+  | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
+  | FormBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -348,12 +383,18 @@ export const PROP_KEYS = {
   iconbox: { icon: "required", title: "required", text: "required" },
   quote: { text: "required", attribution: "optional" },
   accordion: { items: "required" },
+  form: { items: "required", submitLabel: "required", confirmation: "required" },
 } as const satisfies { [T in Exclude<BlockType, "image" | "column" | "divider">]: KeyTable<PropsOf<T>> } & {
   column: Record<string, never>;
   divider: Record<string, never>;
 };
 
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
+// A field's keys whatever its kind: maxLength is optional here, and the
+// schema says for which kinds it is required and for which absent.
+export const FORM_FIELD_KEYS = {
+  name: "required", kind: "required", label: "required", required: "required", maxLength: "optional",
+} as const satisfies KeyTable<FormFieldOf<FormFieldKind> & { maxLength?: number }>;
 export const DOCUMENT_KEYS = {
   schemaVersion: "required",
   title: "required",

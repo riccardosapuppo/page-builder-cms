@@ -21,7 +21,8 @@ require "json"
 #      it does, that is a bug and it raises
 #   4. the tree: well-formed strings ("wellFormed"), finite numbers
 #      ("finite"), exact integers ("safeInteger"), unique block ids
-#      ("uniqueId"), unique section anchors ("uniqueAnchor")
+#      ("uniqueId"), unique section anchors ("uniqueAnchor"), unique field
+#      names in a form ("uniqueFieldName")
 #   5. normalisation: an integral Float becomes an Integer (2.0 -> 2)
 # Then the schema runs on the normalised document.
 module BlockDocument
@@ -114,6 +115,7 @@ module BlockDocument
           if value.is_a?(Array)
             value.each_with_index { |child, k| stack << [ child, "#{pointer}/#{k}", depth + 1 ] }
           else
+            errors.concat(duplicate_field_names(value, pointer)) if value["type"] == "form"
             value.each do |key, child|
               unless key.is_a?(String) && well_formed?(key)
                 errors << Error.new(pointer: pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair.")
@@ -154,6 +156,31 @@ module BlockDocument
           end
         end
         push_children.call(block["children"], "#{pointer}/children") if block["children"].is_a?(Array)
+      end
+      errors
+    end
+
+    # A form's field names, in order: the second field with a name is the
+    # one reported. A name is the key the field's answers are kept under,
+    # so two fields with one name would write over each other's answers.
+    # Read on every object that says it is a form, wherever the walk meets
+    # it, so a form checked on its own (the block one change brings in, in
+    # the editor) is checked as it is in its page.
+    def duplicate_field_names(form, pointer)
+      props = form["props"]
+      return [] unless props.is_a?(Hash) && props["items"].is_a?(Array)
+
+      errors = []
+      seen = {}
+      props["items"].each_with_index do |field, k|
+        name = field["name"] if field.is_a?(Hash)
+        next unless name.is_a?(String)
+
+        if seen.key?(name)
+          errors << Error.new(pointer: "#{pointer}/props/items/#{k}/name", keyword: "uniqueFieldName", message: "The field name \"#{name}\" is already used by another field of this form.")
+        else
+          seen[name] = true
+        end
       end
       errors
     end

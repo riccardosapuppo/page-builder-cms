@@ -81,6 +81,23 @@ test("the page's links do nothing on the canvas and take no focus", () => {
   expect(kit.store.getState().selection).toBe("h1");
 });
 
+test("a form's fields and button take no focus on the canvas, and its button sends nothing", () => {
+  const doc = page();
+  const form = { id: "f1", type: "form", props: { items: [{ name: "name", kind: "text", label: "Name", required: true, maxLength: 100 }, { name: "notes", kind: "textarea", label: "Notes", required: false, maxLength: 1000 }, { name: "ok", kind: "checkbox", label: "OK", required: true }], submitLabel: "Send", confirmation: "Sent." }, children: [], style: { base: {} } };
+  (doc.sections[0]!.children[0]!.children as unknown[]).push(form);
+  const kit = editorKit({ document: doc });
+  kit.render(<Canvas />);
+  // The three fields, the field for robots and the button.
+  const stops = [...root("f1").querySelectorAll<HTMLElement>(".sw-form input:not([type=hidden]), .sw-form textarea, .sw-form button")];
+  expect(stops.map((element) => [element.getAttribute("name") ?? element.textContent, element.tabIndex])).toEqual([
+    ["answers[name]", -1], ["answers[notes]", -1], ["answers[ok]", -1], ["website", -1], ["Send", -1],
+  ]);
+  const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+  within(root("f1")).getByRole("button", { name: "Send" }).dispatchEvent(click);
+  expect(click.defaultPrevented).toBe(true);
+  expect(kit.store.getState().selection).toBe("f1");
+});
+
 test("the clamp's moves are one command each, the key kept; at an end the move says why it cannot be made", () => {
   const kit = editorKit({ document: page(), selection: "t1" });
   kit.render(<><Canvas /><BlockMenu /></>);
@@ -181,7 +198,7 @@ test("a + opens its yellow line and the picker beside it, which offers only what
   expect(within(slot as HTMLElement).getByRole("button", { name: "Add a block after Heading" }).getAttribute("aria-expanded")).toBe("true");
   // Widgets only, all of them.
   expect(within(picker).getAllByRole("button").filter((key) => key.classList.contains("pkey")).map((key) => key.textContent)).toEqual([
-    "Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion",
+    "Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion", "Form",
   ]);
   expect(picker.textContent).toContain("Lands on the yellow line, after Heading.");
   // The search narrows them; Enter adds the first.

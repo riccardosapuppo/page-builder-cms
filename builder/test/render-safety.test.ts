@@ -14,7 +14,12 @@ test.each([
   ["a base", '<base href="https://evil.example/">', /a <base> element/],
   ["an object", '<object data="x.swf"></object>', /a <object> element/],
   ["an embed", '<embed src="x.swf">', /a <embed> element/],
-  ["a form", '<form action="https://evil.example/"></form>', /a <form> element/],
+  ["a form outside the form widget", '<form class="sw-form" method="post"></form>', /a <form> that is not the form widget's own/],
+  ["the form widget's form sent elsewhere", '<div class="w w-form" data-block-type="form"><form class="sw-form" method="post" action="https://evil.example/"></form></div>', /a <form> that is not the form widget's own/],
+  ["the form widget's form sent by get", '<div class="w w-form" data-block-type="form"><form class="sw-form" method="get"></form></div>', /a <form> that is not the form widget's own/],
+  ["a form deeper in the form widget than its own", '<div class="w w-form" data-block-type="form"><div class="sw-field"><form class="sw-form" method="post"></form></div></div>', /a <form> that is not the form widget's own/],
+  ["a button that sends the form elsewhere", '<div class="w w-form" data-block-type="form"><form class="sw-form" method="post"><button formaction="https://evil.example/">Send</button></form></div>', /formaction, which sends a form elsewhere/],
+  ["a button that sends the form to another window", '<button formtarget="_blank">Send</button>', /formtarget, which sends a form elsewhere/],
   ["an event handler", '<img src="/x.png" alt="" onerror="alert(1)">', /an event handler, onerror/],
   ["an event handler in capitals", '<div ONMOUSEOVER="alert(1)"></div>', /an event handler, onmouseover/],
   ["a javascript: link", '<a href="javascript:alert(1)">x</a>', /href is a javascript: address/],
@@ -38,7 +43,8 @@ test("finds nothing in markup that only looks dangerous", () => {
   expect(
     safetyProblems(wrap(
       '<h1>&lt;script&gt;alert(1)&lt;/script&gt; javascript:alert(1)</h1><a href="/javascript:not-a-scheme">x</a><a href="https://example.com/?u=javascript:x">y</a>' +
-        '<img src="/media/data:x.png" alt="data:"><p title="onclick">on</p><iframe src="https://www.openstreetmap.org/export/embed.html?bbox=1"></iframe>',
+        '<img src="/media/data:x.png" alt="data:"><p title="onclick">on</p><iframe src="https://www.openstreetmap.org/export/embed.html?bbox=1"></iframe>' +
+        '<div class="w w-form" data-block-type="form"><form method="post" class="sw-form"><input type="hidden" name="form" value="f"><button type="submit">Send</button></form></div>',
     )),
   ).toEqual([]);
 });

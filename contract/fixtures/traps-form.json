@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "title": "Form traps",
+  "description": "Forms with every kind of field, labels holding markup, a very long label, fields the renderers do not know, and limits the schema refuses.",
+  "sections": [
+    {
+      "id": "f-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "f-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            {
+              "id": "f-every-kind", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "name", "kind": "text", "label": "Name", "required": true, "maxLength": 100 },
+                  { "name": "nickname", "kind": "text", "label": "What the club calls you", "required": false, "maxLength": 300 },
+                  { "name": "email", "kind": "email", "label": "Email", "required": true },
+                  { "name": "email-2", "kind": "email", "label": "A second email", "required": false },
+                  { "name": "notes", "kind": "textarea", "label": "Anything we should know?", "required": false, "maxLength": 5000 },
+                  { "name": "story", "kind": "textarea", "label": "Your first swim, in one letter", "required": true, "maxLength": 1 },
+                  { "name": "distance", "kind": "checkbox", "label": "I can swim 200 meters without stopping", "required": true },
+                  { "name": "news", "kind": "checkbox", "label": "Send me the winter dates", "required": false }
+                ],
+                "submitLabel": "Send request",
+                "confirmation": "Thank you. We reply within two days."
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "f-markup", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "a", "kind": "text", "label": "Tom & Jerry's <script>alert(1)</script> \"quoted\" &amp; &copy", "required": true, "maxLength": 10 },
+                  { "name": "b\"><script>alert(2)</script>", "kind": "text", "label": "A name that closes the attribute", "required": false, "maxLength": 10 },
+                  { "name": "c", "kind": "checkbox", "label": "<b>Bold?</b> <em>(required)</em> <label for=\"a\">another label</label>", "required": true },
+                  { "name": "d", "kind": "textarea", "label": "</textarea><script>alert(3)</script>", "required": false, "maxLength": 20 },
+                  { "name": "e", "kind": "email", "label": "Line one\nline two", "required": false }
+                ],
+                "submitLabel": "<img src=x onerror=alert(4)> Send & go",
+                "confirmation": "<script>alert(5)</script>"
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "f-\"><b>id</b>", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "name", "kind": "text", "label": "A form whose id holds markup", "required": true, "maxLength": 30 }
+                ],
+                "submitLabel": "Send",
+                "confirmation": "Sent."
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "f-long", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "long", "kind": "text", "label": "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "required": true, "maxLength": 300 },
+                  { "name": "spaced", "kind": "checkbox", "label": "I have read the swim rules for the bay, including the ones about the tide, the buoys, the cold and the tea afterwards, and I will keep to them every time I swim with the club this season", "required": true },
+                  { "name": "unicode", "kind": "textarea", "label": "Città, 東京, עברית, 👋🏽 é  no-break", "required": false, "maxLength": 200 }
+                ],
+                "submitLabel": "Seeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeend",
+                "confirmation": "Sent."
+              },
+              "style": { "base": {}, "phone": { "visibility": "hidden" } }
+            },
+            {
+              "id": "f-unknown", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "secret", "kind": "password", "label": "A password", "required": true },
+                  { "name": "token", "kind": "hidden", "label": "A hidden value", "required": false },
+                  { "name": "upload", "kind": "file", "label": "A file", "required": false },
+                  { "kind": "text", "label": "No name", "required": false, "maxLength": 10 },
+                  { "name": "", "kind": "text", "label": "An empty name", "required": false, "maxLength": 10 },
+                  { "name": 7, "kind": "text", "label": "A name that is a number", "required": false, "maxLength": 10 },
+                  { "name": "nokind", "label": "No kind", "required": false },
+                  "a string where a field goes",
+                  null,
+                  ["a", "list"],
+                  { "name": "kept", "kind": "text", "label": "The one field kept", "required": false, "maxLength": 10 }
+                ],
+                "submitLabel": "Send",
+                "confirmation": "Sent."
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "f-limits", "type": "form", "children": [],
+              "props": {
+                "items": [
+                  { "name": "zero", "kind": "text", "label": "A limit of zero", "required": false, "maxLength": 0 },
+                  { "name": "negative", "kind": "text", "label": "A negative limit", "required": false, "maxLength": -5 },
+                  { "name": "over", "kind": "text", "label": "301 on a line", "required": false, "maxLength": 301 },
+                  { "name": "over-area", "kind": "textarea", "label": "5001 on a longer text", "required": false, "maxLength": 5001 },
+                  { "name": "string", "kind": "text", "label": "A limit written as a string", "required": false, "maxLength": "100" },
+                  { "name": "fraction", "kind": "textarea", "label": "A limit of 100.5", "required": false, "maxLength": 100.5 },
+                  { "name": "float", "kind": "text", "label": "A limit written 100.0", "required": false, "maxLength": 100.0 },
+                  { "name": "exponent", "kind": "textarea", "label": "A limit written 1e2", "required": false, "maxLength": 1e2 },
+                  { "name": "missing", "kind": "textarea", "label": "No limit", "required": false },
+                  { "name": "email-limit", "kind": "email", "label": "An email with a limit of its own", "required": false, "maxLength": 10 },
+                  { "name": "box-limit", "kind": "checkbox", "label": "A checkbox with a limit", "required": false, "maxLength": 10 },
+                  { "name": "yes", "kind": "text", "label": "Required written as a string", "required": "yes", "maxLength": 10 },
+                  { "name": "one", "kind": "checkbox", "label": "Required written as 1", "required": 1 },
+                  { "name": "absent", "kind": "email", "label": "Required left out" }
+                ],
+                "submitLabel": 42,
+                "confirmation": "Sent."
+              },
+              "style": { "base": { "visibility": "visible", "color": "primary" }, "tablet": { "visibility": "hidden" } }
+            },
+            {
+              "id": "f-no-items", "type": "form", "children": [],
+              "props": {},
+              "style": { "base": {} }
+            },
+            {
+              "id": "f-items-object", "type": "form", "children": [],
+              "props": { "items": { "name": "name", "kind": "text", "label": "A field that is not in a list", "required": true, "maxLength": 10 }, "submitLabel": "Send", "confirmation": "Sent." },
+              "style": { "base": {} }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

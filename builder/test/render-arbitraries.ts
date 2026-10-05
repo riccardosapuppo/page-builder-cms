@@ -13,7 +13,7 @@
 // from the schema fails loudly instead of testing less.
 import fc from "fast-check";
 import {
-  COLUMN_WIDTHS_BY_COUNT, DEVICES, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS, WIDGET_TYPES,
+  COLUMN_WIDTHS_BY_COUNT, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS, WIDGET_TYPES,
   type BlockType, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -144,6 +144,19 @@ const { richBlock } = fc.letrec<{ richBlock: AnyObject; listItem: AnyObject }>((
 }));
 const richDoc = fc.array(richBlock, { minLength: 1, maxLength: 4 }).map((content) => ({ type: "doc", content }));
 
+// A form's field: any name the schema takes, names unique in their form
+// (fc.uniqueArray, below); a limit on the two kinds of text only, from 1
+// to the kind's most.
+const formField = fc.record({
+  name: fc.stringMatching(/^[a-z][a-z0-9-]{0,39}$/),
+  kind: fc.constantFrom(...FORM_FIELD_KINDS),
+  label: line(200),
+  required: fc.boolean(),
+  limit: fc.double({ min: 0, max: 1, noNaN: true }),
+}).map(({ limit, ...field }): AnyObject => (field.kind === "email" || field.kind === "checkbox"
+  ? field
+  : { ...field, maxLength: Math.max(1, Math.ceil(limit * FORM_TEXT_LIMITS[field.kind])) }));
+
 function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
   switch (type) {
     case "heading": return fc.record({ level: fc.integer({ min: 1, max: 4 }), text: line(200), href: fc.option(href, { nil: undefined }) }).map(compact);
@@ -161,6 +174,11 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
     case "iconbox": return fc.record({ icon: fc.constantFrom(...ICON_NAMES), title: line(80), text: paragraph(300) });
     case "quote": return fc.record({ text: paragraph(500), attribution: fc.option(line(120), { nil: undefined }) }).map(compact);
     case "accordion": return fc.array(fc.record({ question: line(200), answer: paragraph(2000) }), { minLength: 1, maxLength: 4 }).map((items) => ({ items }));
+    case "form": return fc.record({
+      items: fc.uniqueArray(formField, { minLength: 1, maxLength: 5, selector: (field) => field.name }),
+      submitLabel: line(60),
+      confirmation: paragraph(500),
+    });
   }
 }
 

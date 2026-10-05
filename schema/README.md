@@ -59,7 +59,15 @@ The page document's one schema, and the design tokens it names.
   if/then branch per count, so adding or removing a column is also the
   moment the editor resets the widths.
 - **Widgets:** heading, text (rich text), image, button, divider, spacer,
-  gallery, video, map, icon box, quote, accordion.
+  gallery, video, map, icon box, quote, accordion, form.
+- **A form's fields live in the form**, in the page's version, and
+  nowhere else: a line of text, an email address, a longer text or a
+  checkbox, each with its label, whether it must be filled in, and for
+  the two kinds of text the most characters an answer may have (up to
+  300 and 5000; an email address takes the standard's 254). Each field
+  has a `name`, the key its answers are kept under, made by the editor
+  and never shown, so a label can change and the answers still line up.
+  The form stores no address to send to: it is sent to the page's own.
 - **Style is by token name.** `style.base` applies on every device;
   `style.tablet` and `style.phone` hold only what differs there. A key that
   is absent means "as in base"; nothing is ever `null`, and an empty
@@ -134,6 +142,7 @@ before the schema, identically in the editor and on the server.
 | `2.0` is the integer `2` | Both engines accept `2.0` where an integer is required, as the specification says, but Ruby keeps it a Float: the page would render `<h2.0>` | application rules: normalisation, after the checks |
 | The media item exists | The schema does not know the library | the server, when it saves (stage 1) |
 | Section anchors are unique on the page | Same reason as block ids: an anchor is a field of each section, and the sections are many items | application rules: `uniqueAnchor`, at the second section in page order. An anchor is the section's element id on the page, and a link reaches only the first element with an id |
+| A form's field names are unique in the form | `uniqueItems` compares whole fields, and two fields that differ only in their label would pass it; their answers would then be kept under one key | application rules: `uniqueFieldName`, at the second field in order. Two forms of one page may use the same names |
 | The video id exists at the provider | Only the provider knows | not checked: the player shows the provider's own error |
 | Older documents | Each `schemaVersion` has its own shape | upgrade functions, run when a document is read (none exist for version 1) |
 | Text length as people count it | `maxLength` counts code points in both engines: an emoji is 1, an accented letter written as letter plus accent is 2 | the editor counts code points too, never UTF-16 units or graphemes |
@@ -173,7 +182,8 @@ So every pattern here:
 - `valid/`: documents both must accept. The base page with every widget
   and overrides on every device, the smallest page, a page of exactly 500
   blocks, rich text nested to the depth limit, every token, every link
-  form, every icon and video provider, non-ASCII text, escapes, integral
+  form, every icon and video provider, every kind of form field,
+  non-ASCII text, escapes, integral
   floats.
 - `invalid/`: documents both must refuse. Each is the base page with **one**
   change.
@@ -252,19 +262,19 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 2 October 2026 (Windows 10, Node 24.19.0, Ruby 3.4.11):
+The run of 5 October 2026, with the form (Windows 10, Node 24.19.0, Ruby 3.4.11):
 
 ```
-corpus:  ../corpus: 214 files (24 valid, 190 invalid, 0 upgrade); the manifest lists 214
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 214 results in 0.7 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 214 results in 7.2 s
+corpus:  ../corpus: 249 files (25 valid, 224 invalid, 0 upgrade); the manifest lists 249
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 249 results in 0.8 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 249 results in 9.8 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 214; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 190/190, json_schemer 190/190
-identical {pointer, keyword} sets: 190/190 invalid files (refused by the rules: 28/28; by the schema: 162/162)
-errors on the invalid files: ajv 650, json_schemer 212; normalised: 437 ajv "if" errors dropped, 20 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
-normalised documents with the same numbers and values: 186/186
-RESULT: PASS (214 files, 0 disagreements, 0 exceptions)
+verdicts compared: 249; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 224/224, json_schemer 224/224
+identical {pointer, keyword} sets: 224/224 invalid files (refused by the rules: 30/30; by the schema: 194/194)
+errors on the invalid files: ajv 785, json_schemer 246; normalised: 538 ajv "if" errors dropped, 23 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
+normalised documents with the same numbers and values: 219/219
+RESULT: PASS (249 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail
@@ -284,6 +294,7 @@ before the column widths, image crops and section spacing added 13.
 | `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
 | `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
+| `node compare.ts` with `rules.rb` not calling `duplicate_field_names` (5 October 2026, on 249 files, the file restored afterwards) | the Ruby twin without the rule on a form's field names | six failures, three on each of the two files of repeated names: `verdicts differ on invalid/form-name-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 
 ## The lint of the schema
 
@@ -305,8 +316,9 @@ before the column widths, image crops and section spacing added 13.
 - **Dispatch.** Wherever if/then branches dispatch on a property's const,
   every value of that property's enum has exactly one branch, every branch
   is for a value of the enum, and every `if` requires the property, so a
-  block without a type runs no branch. That covers the 14 block types, the
-  video providers, the rich-text nodes and the marks.
+  block without a type runs no branch. That covers the 15 block types, the
+  video providers, the kinds of a form's field, the rich-text nodes and
+  the marks.
 - **Marks:** every mark type of the enum has exactly one entry in the rule
   that a run of text carries it at most once, so a mark type added later
   cannot be repeated for want of one.
@@ -331,16 +343,16 @@ before the column widths, image crops and section spacing added 13.
 - **The schema** is valid draft 2020-12 to both engines, and the example at
   the top of this README is the corpus file `valid/readme-example.json`.
 
-The run of 2 October 2026:
+The run of 5 October 2026, with the form:
 
 ```
-pattern style: 11/11 patterns in the portable subset
-pattern compile: 11/11 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.11)
-pattern probes: 23245 probes over 11 patterns, 9133 matched by both, 0 patterns with a disagreement
-keywords: 385 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
-dispatch: #/$defs/block on type: 14 values, 14 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
+pattern style: 12/12 patterns in the portable subset
+pattern compile: 12/12 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.11)
+pattern probes: 25847 probes over 12 patterns, 10349 matched by both, 0 patterns with a disagreement
+keywords: 422 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
+dispatch: #/$defs/block on type: 15 values, 15 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/formField on kind: 4 values, 4 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
 marks: 3 mark types, 3 of them at most once on a node
-hierarchy: page > section (1-4 columns) > column > 12 widget types, 12 of them with no children
+hierarchy: page > section (1-4 columns) > column > 13 widget types, 13 of them with no children
 column widths: 1 column: no preset(s), 2 columns: 4 preset(s), 3 columns: 3 preset(s), 4 columns: no preset(s); 7/7 presets offered
 tokens: spaceToken = 7 names, sectionSpaceToken = 9 names, typeStep = 7 names, aspectToken = 6 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices, 3 of them drawn
 schema: compiled by ajv, 0 meta-schema error(s) from json_schemer; README example compared with the corpus

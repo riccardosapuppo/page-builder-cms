@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "title": "Forms",
+  "sections": [
+    {
+      "id": "fm",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "fm-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "fm-every",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "a",
+                    "kind": "text",
+                    "label": "One character",
+                    "required": false,
+                    "maxLength": 1
+                  },
+                  {
+                    "name": "b",
+                    "kind": "text",
+                    "label": "Three hundred",
+                    "required": true,
+                    "maxLength": 300
+                  },
+                  {
+                    "name": "c",
+                    "kind": "email",
+                    "label": "Email",
+                    "required": false
+                  },
+                  {
+                    "name": "d",
+                    "kind": "email",
+                    "label": "Email, required",
+                    "required": true
+                  },
+                  {
+                    "name": "e",
+                    "kind": "textarea",
+                    "label": "Five thousand",
+                    "required": false,
+                    "maxLength": 5000
+                  },
+                  {
+                    "name": "f",
+                    "kind": "textarea",
+                    "label": "Short",
+                    "required": true,
+                    "maxLength": 1
+                  },
+                  {
+                    "name": "g",
+                    "kind": "checkbox",
+                    "label": "Optional box",
+                    "required": false
+                  },
+                  {
+                    "name": "h",
+                    "kind": "checkbox",
+                    "label": "Required box",
+                    "required": true
+                  },
+                  {
+                    "name": "a-9-9-9-9-9-9-9-9-9-9-9-9-9-9-9-9-9-9-9b",
+                    "kind": "text",
+                    "label": "A name of 40 characters",
+                    "required": false,
+                    "maxLength": 50
+                  },
+                  {
+                    "name": "field-10",
+                    "kind": "text",
+                    "label": "Field 10",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-11",
+                    "kind": "text",
+                    "label": "Field 11",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-12",
+                    "kind": "text",
+                    "label": "Field 12",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-13",
+                    "kind": "text",
+                    "label": "Field 13",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-14",
+                    "kind": "text",
+                    "label": "Field 14",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-15",
+                    "kind": "text",
+                    "label": "Field 15",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-16",
+                    "kind": "text",
+                    "label": "Field 16",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-17",
+                    "kind": "text",
+                    "label": "Field 17",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-18",
+                    "kind": "text",
+                    "label": "Field 18",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-19",
+                    "kind": "text",
+                    "label": "Field 19",
+                    "required": false,
+                    "maxLength": 100
+                  },
+                  {
+                    "name": "field-20",
+                    "kind": "text",
+                    "label": "Field 20",
+                    "required": false,
+                    "maxLength": 100
+                  }
+                ],
+                "submitLabel": "Send",
+                "confirmation": "Sent."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fm-again",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "a",
+                    "kind": "text",
+                    "label": "The same name as the first form's",
+                    "required": true,
+                    "maxLength": 10
+                  }
+                ],
+                "submitLabel": "Send this one",
+                "confirmation": "This one is sent too."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+<%# A form a visitor fills in and sends, with no script: its fields in order, each tied to its label by the field's id (the block's id and the field's name); a field that must be filled in carries required, which the browser checks before sending, and says "(required)" in its label. Then a field for robots, hidden from people and from screen readers, which a person leaves empty, and the button. It is sent to the page's own address: the form has no action, the block's id goes with the answers in "form", each answer under answers[<field name>], a ticked box as "yes". A field the renderer does not know (another kind, no name, not an object) is left out; a limit the schema refuses (not a whole number, out of its kind's range) gives way to the kind's own, 300 characters for a line of text and 5000 for a longer one, while an email address takes 254 and a checkbox none. A whole number written as 100.0 is a whole number here, as it is to the editor's renderer. answer, given only when the server draws the page again for a form it refused, holds by field name what the visitor wrote ("values": the text, or true for a ticked box) and why it was refused ("errors"): the message sits under the label, tied to its field by aria-describedby. The editor never has a visitor's answer, so its renderer draws the form without one. -%>
+<%- props = block_props(block) -%>
+<%- form_id = block["id"].to_s -%>
+<%- answer = local_assigns[:answer].is_a?(Hash) ? local_assigns[:answer] : {} -%>
+<%- values = answer["values"].is_a?(Hash) ? answer["values"] : {} -%>
+<%- errors = answer["errors"].is_a?(Hash) ? answer["errors"] : {} -%>
+<%- whole = ->(n) { n.is_a?(Integer) || (n.is_a?(Float) && n.finite? && n == n.floor) } -%>
+<%- fields = (props["items"].is_a?(Array) ? props["items"] : []).filter_map do |item|
+      next unless item.is_a?(Hash) && item["name"].is_a?(String) && !item["name"].empty? && %w[text email textarea checkbox].include?(item["kind"])
+
+      limit = { "text" => 300, "textarea" => 5000 }[item["kind"]]
+      own = item["maxLength"]
+      max_length = item["kind"] == "email" ? 254 : (limit && (whole.(own) && own.between?(1, limit) ? own.to_i : limit))
+      { name: item["name"], kind: item["kind"], label: prop_text(item, "label"), required: item["required"] == true, max_length: max_length }
+    end -%>
+<%- field_label = ->(field, id) { tag.label(field[:required] ? safe_join([ "#{field[:label]} ", tag.em("(required)") ]) : field[:label], for: id) } -%>
+<%= tag.div(**block_root(block, [ "w", "w-form", BlockStyle.visibility_classes(block_style(block)) ])) do %><%= tag.form(class: "sw-form", method: "post") do %><%= tag.input(type: "hidden", name: "form", value: form_id) %><%= safe_join(fields.map do |field|
+  id = "#{form_id}:#{field[:name]}"
+  error = errors[field[:name]] if errors[field[:name]].is_a?(String)
+  message = error && tag.p(error, class: "sw-field-error", id: "#{id}:error")
+  invalid = error ? { aria: { describedby: "#{id}:error", invalid: "true" } } : {}
+  value = values[field[:name]]
+  name = "answers[#{field[:name]}]"
+  if field[:kind] == "checkbox"
+    tag.div(safe_join([ tag.input(id: id, name: name, type: "checkbox", value: "yes", required: field[:required], checked: value == true, **invalid), field_label.(field, id), message ].compact), class: "sw-check")
+  elsif field[:kind] == "textarea"
+    tag.div(safe_join([ field_label.(field, id), message, tag.textarea(value.is_a?(String) ? value : nil, id: id, name: name, rows: 3, maxlength: field[:max_length], required: field[:required], **invalid) ].compact), class: "sw-field")
+  else
+    tag.div(safe_join([ field_label.(field, id), message, tag.input(id: id, name: name, type: field[:kind], maxlength: field[:max_length], required: field[:required], autocomplete: (field[:kind] == "email" ? "email" : nil), value: (value if value.is_a?(String)), **invalid) ].compact), class: "sw-field")
+  end
+end) %><%= tag.div(tag.label(safe_join([ "Leave this field empty ", tag.input(type: "text", name: "website", tabindex: "-1", autocomplete: "off") ])), class: "sw-trap", aria: { hidden: "true" }) %><%= tag.button(prop_text(props, "submitLabel"), class: "sw-btn sw-btn-primary", type: "submit") %><% end %><% end %>

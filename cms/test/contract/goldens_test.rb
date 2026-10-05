@@ -32,7 +32,7 @@ class ContractGoldensTest < ActiveSupport::TestCase
     schema/block-document.schema.json
   ].freeze
 
-  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion].freeze
+  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion form].freeze
 
   def self.fixture_names
     Dir.children(FIXTURES).select { |name| name.end_with?(".json") }.sort

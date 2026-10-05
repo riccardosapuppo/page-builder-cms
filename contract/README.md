@@ -30,6 +30,14 @@ the server writes for them. The editor's half is
     to five columns,
     and blocks out of place (a section in a column, a widget where a section
     goes, an unknown type, a string where a block goes).
+  - `traps-form.json`: forms with every kind of field, required and not;
+    labels, a button's text and a field's name holding markup, a block id
+    that closes its attribute, a label of 230 characters with no space;
+    fields the renderers leave out (a password, a hidden value, a file, no
+    name, an empty name, a name that is a number, no kind, items that are
+    no object); and limits the schema refuses (zero, negative, past the
+    kind's most, a string, 100.5), with 100.0 and 1e2, which both read as
+    the whole number 100.
   - `edge.json`: the smallest values, every icon, an empty section, a block
     with no props and no style, spaces at both ends of a text.
   - `empty.json`: a page with no sections.
@@ -104,7 +112,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 14 block types
+fixture, when there are fewer than 6 fixtures or one of the 15 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

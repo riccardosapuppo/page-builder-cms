@@ -17,7 +17,7 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -123,6 +123,16 @@ export const editorText: fc.Arbitrary<AnyObject> = fc.oneof(
   { weight: 1, arbitrary: fc.constant({ type: "doc", content: [] }) },
 );
 
+// A form's field: a limit only on the two kinds of text, within the
+// line's; names unique in their form (fc.uniqueArray, below).
+const formField = fc.record({
+  name: fc.constantFrom("name", "email", "notes", "field-4", "a"),
+  kind: fc.constantFrom(...FORM_FIELD_KINDS),
+  label: line,
+  required: fc.boolean(),
+  maxLength: fc.integer({ min: 1, max: 300 }),
+}).map(({ maxLength, ...field }): AnyObject => (field.kind === "email" || field.kind === "checkbox" ? field : { ...field, maxLength }));
+
 // Valid props for each widget type.
 export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   heading: fc.record({ level: fc.integer({ min: 1, max: 4 }), text: line, href: fc.option(href, { nil: undefined }) }).map(compact),
@@ -145,6 +155,11 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   iconbox: fc.record({ icon: fc.constantFrom(...ICON_NAMES), title: line, text: paragraph }),
   quote: fc.record({ text: paragraph, attribution: fc.option(line, { nil: undefined }) }).map(compact),
   accordion: fc.array(fc.record({ question: line, answer: paragraph }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
+  form: fc.record({
+    items: fc.uniqueArray(formField, { minLength: 1, maxLength: 4, selector: (field) => field.name }),
+    submitLabel: line,
+    confirmation: paragraph,
+  }),
 };
 
 // The tokens each style key takes.
@@ -363,16 +378,23 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: c.makeSetPage(doc, updates), mustAccept: true };
     }
     case "items": {
-      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion");
+      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "form");
       const picked = at(lists, wish.pick);
       if (!picked) return null;
       const items = (picked.block.props as { items: AnyObject[] }).items;
       const gallery = picked.block.type === "gallery";
-      const newItem = gallery ? { mediaId: at(MEDIA_IDS, wish.item) as string, alt: "Added picture" } : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
-      const max = gallery ? 24 : 30;
+      const form = picked.block.type === "form";
+      // A form's new field may take a name the form has: the page must
+      // refuse it then, by the rule on a form's field names.
+      const fieldName = at(["name", "email", "notes", "field-4", "a", "added"], wish.item) as string;
+      const newItem = gallery ? { mediaId: at(MEDIA_IDS, wish.item) as string, alt: "Added picture" }
+        : form ? { name: fieldName, kind: "checkbox", label: "Added box", required: false }
+          : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
+      const max = gallery ? 24 : form ? 20 : 30;
+      const free = !form || !items.some((item) => item.name === fieldName);
       switch (wish.action) {
         case "insert":
-          return { made: c.makeInsertItems(doc, picked.block.id, wish.index % (items.length + 1), [newItem as unknown as Json]), mustAccept: items.length < max };
+          return { made: c.makeInsertItems(doc, picked.block.id, wish.index % (items.length + 1), [newItem as unknown as Json]), mustAccept: items.length < max && free };
         case "remove":
           return { made: c.makeRemoveItem(doc, picked.block.id, wish.index % items.length), mustAccept: items.length > 1 };
         case "move":
@@ -380,7 +402,8 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
         case "set": {
           const updates: Commands.Updates = gallery
             ? (wish.other % 2 === 0 ? { alt: at(LINES, wish.item) as string, decorative: c.REMOVE } : { decorative: true, alt: c.REMOVE })
-            : { question: at(LINES, wish.item) as string };
+            : form ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { required: wish.item % 2 === 0 })
+              : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
       }

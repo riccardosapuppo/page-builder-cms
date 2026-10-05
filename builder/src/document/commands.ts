@@ -11,7 +11,7 @@
 // may go there, the preset fits the columns) and refuse with a sentence;
 // the reducer checks what the schema says when the command is applied.
 import {
-  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, IMAGE_REF_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
+  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_REF_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
   type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock,
   type StyleTokens, type WidgetBlock,
 } from "../shared/document.ts";
@@ -444,14 +444,14 @@ export function makeReplacePage(doc: PageDocument, next: PageDocument, label: st
 // ---------------------------------------------------------------- items
 
 // The lists of a widget's props whose items have commands of their own: a
-// gallery's images, an accordion's questions.
+// gallery's images, an accordion's questions, a form's fields.
 function itemList(doc: PageDocument, id: string): { block: Block; items: readonly Json[]; one: string; many: string; order: readonly string[] } | null {
   const block = locate(doc, id)?.block;
   if (!block) return null;
   const names = ITEM_NAMES[block.type];
   const items = (block.props as Record<string, unknown>).items;
   if (!names || !Array.isArray(items)) return null;
-  const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS) : IMAGE_REF_KEYS;
+  const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS) : block.type === "form" ? Object.keys(FORM_FIELD_KEYS) : IMAGE_REF_KEYS;
   return { block, items: items as Json[], ...names, order };
 }
 

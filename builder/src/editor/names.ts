@@ -60,6 +60,9 @@ export function excerpt(block: Block): string {
       return block.props.text.replace(/\s+/g, " ");
     case "accordion":
       return block.props.items[0]?.question ?? "";
+    case "form":
+      // What its button says it does: "Send request".
+      return block.props.submitLabel;
     case "spacer":
       return tokenName(block.props.size);
     case "divider":

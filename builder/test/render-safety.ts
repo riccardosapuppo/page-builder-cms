@@ -4,8 +4,12 @@
 // holds.
 //
 // - no <script>, in any namespace, and none of the elements that load or
-//   run something of their own (style, base, object, embed, link, meta,
-//   form);
+//   run something of their own (style, base, object, embed, link, meta);
+// - no form but the form widget's own, the one element right inside a
+//   root of data-block-type "form", with no attribute but class="sw-form"
+//   and method="post": it has no action, so it is sent to the page's own
+//   address and nowhere else; and no formaction or formtarget anywhere,
+//   which would send it elsewhere;
 // - no event handler attribute (on*), and no srcdoc;
 // - no address that runs script or carries its own content: href, src and
 //   the other attributes that hold a URL, read as a browser reads them
@@ -20,7 +24,16 @@ import { parseSections } from "./html-compare.ts";
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
 
-const FORBIDDEN_ELEMENTS = new Set(["script", "style", "base", "object", "embed", "link", "meta", "form"]);
+const FORBIDDEN_ELEMENTS = new Set(["script", "style", "base", "object", "embed", "link", "meta"]);
+
+// The form widget's own form: right inside its block's root, sent to the
+// page's own address.
+function widgetForm(element: Element, parent: Element | null): boolean {
+  const attributes = element.attrs.map((a) => `${a.name}=${a.value}`).sort();
+  return parent !== null
+    && parent.attrs.some((a) => a.name === "data-block-type" && a.value === "form")
+    && attributes.join(" ") === "class=sw-form method=post";
+}
 const URL_ATTRIBUTES = new Set(["href", "src", "xlink:href", "action", "formaction", "poster", "data", "background", "cite", "longdesc", "ping", "srcset", "usemap", "manifest", "codebase", "archive"]);
 const BAD_SCHEMES = ["javascript:", "vbscript:", "data:"];
 
@@ -37,16 +50,18 @@ export function browserUrl(value: string): string {
 
 export function safetyProblems(html: string): string[] {
   const problems: string[] = [];
-  const walk = (nodes: readonly Node[], path: string) => {
+  const walk = (nodes: readonly Node[], path: string, parent: Element | null) => {
     for (const node of nodes) {
       if (!("tagName" in node)) continue;
       const element = node as Element;
       const here = `${path} > ${element.tagName}`;
       if (FORBIDDEN_ELEMENTS.has(element.tagName)) problems.push(`${here}: a <${element.tagName}> element`);
+      if (element.tagName === "form" && !widgetForm(element, parent)) problems.push(`${here}: a <form> that is not the form widget's own`);
       for (const attribute of element.attrs) {
         const name = (attribute.prefix ? `${attribute.prefix}:${attribute.name}` : attribute.name).toLowerCase();
         if (name.startsWith("on")) problems.push(`${here}: an event handler, ${name}`);
         if (name === "srcdoc") problems.push(`${here}: srcdoc`);
+        if (name === "formaction" || name === "formtarget") problems.push(`${here}: ${name}, which sends a form elsewhere`);
         if (URL_ATTRIBUTES.has(name)) {
           const values = name === "srcset" ? attribute.value.split(",").map((part) => part.trim().split(/\s+/)[0] ?? "") : [attribute.value];
           for (const value of values) {
@@ -60,9 +75,9 @@ export function safetyProblems(html: string): string[] {
         const src = element.attrs.find((a) => a.name === "src")?.value ?? "";
         if (!FRAME_ORIGINS.some((origin) => src.startsWith(`${origin}/`))) problems.push(`${here}: an iframe from ${JSON.stringify(src)}`);
       }
-      walk(element.tagName === "template" ? (element as DefaultTreeAdapterMap["template"]).content.childNodes : element.childNodes, here);
+      walk(element.tagName === "template" ? (element as DefaultTreeAdapterMap["template"]).content.childNodes : element.childNodes, here, element);
     }
   };
-  walk(parseSections(html), "(page)");
+  walk(parseSections(html), "(page)", null);
   return problems;
 }

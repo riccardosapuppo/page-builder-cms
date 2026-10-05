@@ -3,7 +3,8 @@
    the approved mock's theme, carried over to the markup the block partials
    write (app/views/blocks/). Same class names where the mock and the
    renderer mean the same thing (.site, .sw, .sec, .cols, .col, .w, .sw-btn,
-   .sw-iconbox, .sw-gallery, .sw-embed, .sw-quote, .sw-accordion, the header
+   .sw-iconbox, .sw-gallery, .sw-embed, .sw-quote, .sw-accordion, .sw-form,
+   .sw-field, .sw-check, the header
    and footer), and the same container queries on the page root: layout
    changes with the width of .site, never with the viewport.
 
@@ -242,6 +243,28 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-accordion details[open] summary::after { background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat; }
 .sw-accordion details p { padding-bottom: 20px; }
 
+/* ---------- Form ---------- */
+/* The mock's form. A field's own colours (paper, ink, a muted border) go
+   with it onto any band; its label takes the band's text colour. The
+   palette has no colour for an error, so a refused field says so in words
+   under its label, in bold, and its border turns to ink and thickens. */
+.sw-form { display: grid; gap: var(--space-m); }
+.sw-field label { display: block; margin-bottom: 6px; font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; font-weight: 600; font-stretch: 110%; }
+.sw-field input, .sw-field textarea { display: block; width: 100%; padding: 12px 14px; border: 1.5px solid var(--sw-muted); border-radius: 4px; background: var(--sw-background); color: var(--sw-text); font: inherit; font-size: 17px; }
+.sw-field textarea { resize: vertical; }
+.sw-check { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; align-items: start; font-size: 16px; line-height: 1.45; }
+.sw-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--sw-primary); }
+.sw-field em, .sw-check em { font-style: normal; font-weight: 400; color: var(--sw-muted); }
+.sw-field-error { margin: 0 0 6px; font-size: 15px; font-weight: 650; }
+.sw-check .sw-field-error { grid-column: 2; margin: 4px 0 0; }
+.sw-field [aria-invalid="true"] { border: 2.5px solid var(--sw-text); }
+/* The field for robots: never drawn, so no person and no browser's
+   autofill meets it. Its aria-hidden and tabindex keep it from screen
+   readers and the keyboard should this sheet fail to load. */
+.sw-trap { display: none; }
+.sw-form .sw-btn { justify-self: start; margin-top: var(--space-s); }
+.sw-btn-primary { background-color: var(--sw-primary); color: var(--sw-background); }
+
 /* ---------- Tablet layout: the page root is narrower than 800 ---------- */
 @container site (width < 800px) {
   .sw {
@@ -270,6 +293,7 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-nav .sw-btn-small { padding: 0 16px; }
   .sw-menu-button { padding: 0 14px 0 10px; }
   .w-button .sw-btn { display: flex; width: 100%; }
+  .sw-form .sw-btn { justify-self: stretch; }
   .sw-figure img { border-radius: 8px; }
   .sw-iconbox { grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-m); }
   .sw-icon { width: 40px; height: 40px; }

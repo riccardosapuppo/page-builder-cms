@@ -24,6 +24,7 @@ test("the groups are labelled groups of buttons, in the layout's order", () => {
     ["Basic", ["Heading", "Text", "Image", "Button", "Divider", "Spacer"]],
     ["Media", ["Gallery", "Video", "Map"]],
     ["Content", ["Icon box", "Quote", "Accordion"]],
+    ["Forms", ["Form"]],
   ]);
   // The search takes the focus when the drawer opens.
   expect(screen.getByRole("searchbox", { name: "Search blocks and sections" }).hasAttribute("data-autofocus")).toBe(true);

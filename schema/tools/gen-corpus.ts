@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { MAX_NESTING } from "./rules.ts";
 
 const CORPUS = join(dirname(fileURLToPath(import.meta.url)), "..", "corpus");
-const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor"]);
+const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor", "uniqueFieldName"]);
 
 // The corpus is built by mutation, so the tree is handled as plain JSON.
 type J = any;
@@ -57,6 +57,9 @@ const iconbox = (id: string, icon: string, title: string, body: string): J => bl
 const quote = (id: string, body: string, attribution?: string): J =>
   block(id, "quote", attribution === undefined ? { text: body } : { text: body, attribution });
 const accordion = (id: string, items: J[]): J => block(id, "accordion", { items });
+const form = (id: string, items: J[], submitLabel: string, confirmation: string): J => block(id, "form", { items, submitLabel, confirmation });
+const field = (name: string, kind: string, label: string, required: boolean, maxLength?: number): J =>
+  (maxLength === undefined ? { name, kind, label, required } : { name, kind, label, required, maxLength });
 
 // --- rich text ------------------------------------------------------------------
 const t = (s: string, marks?: J[]): J => (marks ? { type: "text", text: s, marks } : { type: "text", text: s });
@@ -141,6 +144,12 @@ function landing(): J {
         divider("join-divider"),
         spacer("join-spacer", "l"),
         button("join-button", "Write to us", "mailto:hello@slackwater.example?subject=Trial%20swim"),
+        form("join-form", [
+          field("name", "text", "Name", true, 100),
+          field("email", "email", "Email", true),
+          field("swimming", "textarea", "Anything we should know?", false, 1000),
+          field("distance", "checkbox", "I can swim 200 meters without stopping", true),
+        ], "Send request", `Thank you. We reply within two days${NEWLINE}with the next trial date and what to bring.`),
       ]),
     ], { anchor: "join" }),
   ], "Dawn swims, beginners’ courses and a winter series, timed to slack water.");
@@ -188,6 +197,7 @@ const ACC = P("questions-list");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
+const FORM = P("join-form");
 
 // --- output ---------------------------------------------------------------------
 interface ValidEntry { rule: string }
@@ -369,6 +379,7 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     accordion("uni-a", [{ question: "¿Qué?", answer: "Ça va." }]),
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
+    form("uni-f", [field("nom", "text", "Prénom et nom", true, 80), field("accord", "checkbox", "J’accepte d’être rappelé·e ☎", false)], "Envoyer ✉", `Merci ! À bientôt.${NEWLINE}— Le club`),
   ])]),
 ], "Ünïcödé désçription"));
 valid("text-length-emoji-at-max", "200 emoji in a heading: 200 code points (400 UTF-16 units), maxLength 200", doc("Emoji", [
@@ -376,6 +387,23 @@ valid("text-length-emoji-at-max", "200 emoji in a heading: 200 code points (400 
 ]));
 valid("text-length-combining-at-max", "100 times e + U+0301: 200 code points, 100 visible letters, maxLength 200", doc("Combining", [
   section("cm", [column("cm-1", [heading("cm-h", 2, `e${COMBINING_ACUTE}`.repeat(100))])]),
+]));
+valid("form-fields-every-kind", "every kind of field, required and not; a line of text limited to 1 and to 300 characters, a longer text to 5000; names of one letter and of 40 characters, with digits and hyphens; twenty fields, the most a form holds; and a second form using the same names, since names are unique in a form, not on the page", doc("Forms", [
+  section("fm", [column("fm-1", [
+    form("fm-every", [
+      field("a", "text", "One character", false, 1),
+      field("b", "text", "Three hundred", true, 300),
+      field("c", "email", "Email", false),
+      field("d", "email", "Email, required", true),
+      field("e", "textarea", "Five thousand", false, 5000),
+      field("f", "textarea", "Short", true, 1),
+      field("g", "checkbox", "Optional box", false),
+      field("h", "checkbox", "Required box", true),
+      field(`a${"-9".repeat(19)}b`, "text", "A name of 40 characters", false, 50),
+      ...Array.from({ length: 11 }, (_, k) => field(`field-${k + 10}`, "text", `Field ${k + 10}`, false, 100)),
+    ], "Send", "Sent."),
+    form("fm-again", [field("a", "text", "The same name as the first form's", true, 10)], "Send this one", "This one is sent too."),
+  ])]),
 ]));
 valid("text-inner-nbsp", "a no-break space inside text with visible letters is fine; only all-blank text is refused", doc("Nbsp", [
   section("nb", [column("nb-1", [image("nb-i", { mediaId: "nb", alt: `A${NBSP}photo` }), heading("nb-h", 2, `${NBSP}Leading no-break space`)])]),
@@ -708,6 +736,49 @@ invalid("accordion-no-items", "an accordion has at least one item", `${ACC}/prop
 invalid("accordion-item-missing-answer", "every question has an answer", `${ACC}/props/items/0`, "required", (d) => { delete at(d, ACC).props.items[0].answer; });
 invalid("accordion-item-extra-key", "items are closed: which one is open is not stored", `${ACC}/props/items/0/open`, "additionalProperties", (d) => { at(d, ACC).props.items[0].open = true; });
 invalid("accordion-question-blank", "a question has a visible character", `${ACC}/props/items/1/question`, "pattern", (d) => { at(d, ACC).props.items[1].question = IDEOGRAPHIC_SPACE; });
+
+// =============================== INVALID: form ==================================
+const FIELD = (k: number): string => `${FORM}/props/items/${k}`;
+invalid("form-no-fields", "a form has at least one field", `${FORM}/props/items`, "minItems", (d) => { at(d, FORM).props.items = []; });
+invalid("form-21-fields", "a form has at most twenty fields", `${FORM}/props/items`, "maxItems", (d) => {
+  at(d, FORM).props.items.push(...Array.from({ length: 17 }, (_, k) => field(`extra-${k}`, "text", `Extra ${k}`, false, 10)));
+});
+invalid("form-name-duplicate", "field names are unique in a form (a rule: uniqueItems would compare whole fields): two fields with one name would write over each other's answers", `${FIELD(1)}/name`, "uniqueFieldName", (d) => {
+  at(d, FORM).props.items[1].name = "name";
+});
+invalid("form-name-duplicate-first-changed", "the second field with a name, in order, is the one refused, whichever of the two was changed", `${FIELD(2)}/name`, "uniqueFieldName", (d) => {
+  at(d, FORM).props.items[0].name = "swimming";
+});
+invalid("form-name-uppercase", "a field name is lowercase letters, digits and hyphens, starting with a letter", `${FIELD(0)}/name`, "pattern", (d) => { at(d, FORM).props.items[0].name = "Name"; });
+invalid("form-name-space", "a field name has no spaces", `${FIELD(0)}/name`, "pattern", (d) => { at(d, FORM).props.items[0].name = "full name"; });
+invalid("form-name-bracket", "a field name has no brackets, which would nest the answer in the request", `${FIELD(0)}/name`, "pattern", (d) => { at(d, FORM).props.items[0].name = "name]["; });
+invalid("form-name-trailing-newline", "^...$ must not let a trailing newline through in a field name", `${FIELD(0)}/name`, "pattern", (d) => { at(d, FORM).props.items[0].name = `name${NEWLINE}`; });
+invalid("form-name-too-long", "a field name has at most 40 characters", `${FIELD(0)}/name`, "pattern", (d) => { at(d, FORM).props.items[0].name = "n".repeat(41); });
+invalid("form-name-missing", "every field has a name", FIELD(0), "required", (d) => { delete at(d, FORM).props.items[0].name; });
+invalid("form-kind-unknown", "the kinds are text, email, textarea and checkbox: no hidden fields", `${FIELD(0)}/kind`, "enum", (d) => { at(d, FORM).props.items[0].kind = "hidden"; });
+invalid("form-kind-file", "no file uploads", `${FIELD(0)}/kind`, "enum", (d) => { at(d, FORM).props.items[0].kind = "file"; });
+invalid("form-required-missing", "whether a field must be filled in is always said", FIELD(1), "required", (d) => { delete at(d, FORM).props.items[1].required; });
+invalid("form-required-string", "required is true or false", `${FIELD(1)}/required`, "type", (d) => { at(d, FORM).props.items[1].required = "yes"; });
+invalid("form-label-blank", "a label has a visible character", `${FIELD(0)}/label`, "pattern", (d) => { at(d, FORM).props.items[0].label = `${NBSP}${ZERO_WIDTH_SPACE}`; });
+invalid("form-label-newline", "a label is one line", `${FIELD(0)}/label`, "not", (d) => { at(d, FORM).props.items[0].label = `Name${NEWLINE}and surname`; });
+invalid("form-label-too-long", "a label has at most 200 characters", `${FIELD(3)}/label`, "maxLength", (d) => { at(d, FORM).props.items[3].label = "x".repeat(201); });
+invalid("form-text-without-limit", "a line of text says how long an answer may be", FIELD(0), "required", (d) => { delete at(d, FORM).props.items[0].maxLength; });
+invalid("form-textarea-without-limit", "a longer text says how long an answer may be", FIELD(2), "required", (d) => { delete at(d, FORM).props.items[2].maxLength; });
+invalid("form-text-limit-over", "a line of text takes at most 300 characters", `${FIELD(0)}/maxLength`, "maximum", (d) => { at(d, FORM).props.items[0].maxLength = 301; });
+invalid("form-textarea-limit-over", "a longer text takes at most 5000 characters", `${FIELD(2)}/maxLength`, "maximum", (d) => { at(d, FORM).props.items[2].maxLength = 5001; });
+invalid("form-limit-zero", "a limit is at least one character", `${FIELD(0)}/maxLength`, "minimum", (d) => { at(d, FORM).props.items[0].maxLength = 0; });
+invalid("form-limit-fraction", "a limit is a whole number of characters", `${FIELD(2)}/maxLength`, "type", (d) => { at(d, FORM).props.items[2].maxLength = 100.5; });
+invalid("form-email-with-limit", "an email address takes the standard's length: no limit of its own", FIELD(1), "not", (d) => { at(d, FORM).props.items[1].maxLength = 100; });
+invalid("form-checkbox-with-limit", "a checkbox has no text to limit", FIELD(3), "not", (d) => { at(d, FORM).props.items[3].maxLength = 1; });
+invalid("form-field-extra-key", "fields are closed: no placeholder or default value", `${FIELD(0)}/placeholder`, "additionalProperties", (d) => { at(d, FORM).props.items[0].placeholder = "Your name"; });
+invalid("form-submit-label-blank", "the button's text has a visible character", `${FORM}/props/submitLabel`, "pattern", (d) => { at(d, FORM).props.submitLabel = " "; });
+invalid("form-submit-label-too-long", "the button's text has at most 60 characters", `${FORM}/props/submitLabel`, "maxLength", (d) => { at(d, FORM).props.submitLabel = "x".repeat(61); });
+invalid("form-confirmation-missing", "a form says what happens once it is sent", `${FORM}/props`, "required", (d) => { delete at(d, FORM).props.confirmation; });
+invalid("form-confirmation-bell", "no control characters in the message", `${FORM}/props/confirmation`, "not", (d) => { at(d, FORM).props.confirmation = `Thank you.${BELL}`; });
+invalid("form-confirmation-too-long", "the message has at most 500 characters", `${FORM}/props/confirmation`, "maxLength", (d) => { at(d, FORM).props.confirmation = "x".repeat(501); });
+invalid("form-action-prop", "a form's address is the page's own: none is stored", `${FORM}/props/action`, "additionalProperties", (d) => { at(d, FORM).props.action = "https://elsewhere.example/collect"; });
+invalid("form-style-color", "a form can only be hidden per device: it takes the theme's colours", `${FORM}/style/base/color`, "additionalProperties", (d) => { at(d, FORM).style.base.color = "primary"; });
+invalid("form-with-children", "a form holds no blocks", `${FORM}/children`, "maxItems", (d) => { at(d, FORM).children.push(heading("in-form", 2, "In the form")); });
 
 // =============================== INVALID: the text itself ======================
 // Duplicate keys: JavaScript keeps the last value, Ruby's json 3 rejects the text.

@@ -209,7 +209,7 @@ itself.
   redo and drag and drop; the storage adapter for the CMS's API, held to
   `cms/openapi.yaml` and to a battery of cases run against a CMS of the
   test run's own, and the autosave, one request in flight; the React
-  renderer and the twelve widgets' definitions, held to the server's
+  renderer and the thirteen widgets' definitions, held to the server's
   goldens by the render contract and to the pages the CMS serves for
   random valid documents. Tests start a CMS and an editor server of their
   own, among them a browser saving a draft and uploading an image through

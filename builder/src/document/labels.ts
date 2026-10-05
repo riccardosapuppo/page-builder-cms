@@ -22,6 +22,7 @@ export const TYPE_NAMES: Readonly<Record<BlockType, string>> = {
   iconbox: "Icon box",
   quote: "Quote",
   accordion: "Accordion",
+  form: "Form",
 };
 
 const PLURALS: Readonly<Record<ContainerType, string>> = {
@@ -40,6 +41,7 @@ const PLURALS: Readonly<Record<ContainerType, string>> = {
   iconbox: "icon boxes",
   quote: "quotes",
   accordion: "accordions",
+  form: "forms",
 };
 
 export function plural(type: ContainerType, count: number): string {
@@ -131,11 +133,13 @@ export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<str
   map: { label: "Map label" },
   iconbox: { icon: "Icon", title: "Icon box title", text: "Icon box text" },
   quote: { attribution: "Quote attribution" },
+  form: { submitLabel: "Form button text", confirmation: "Form message" },
 };
 
 // What one item of a list is called: an image of a gallery, a question of
-// an accordion.
+// an accordion, a field of a form.
 export const ITEM_NAMES: Readonly<Partial<Record<BlockType, { one: string; many: string }>>> = {
   gallery: { one: "image", many: "images" },
   accordion: { one: "question", many: "questions" },
+  form: { one: "field", many: "fields" },
 };

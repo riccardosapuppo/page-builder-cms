@@ -277,7 +277,7 @@ no warnings, the same night).
 | anything else shaped like a slug | the 404 page, a document of its own rendered in the site's look, with status 404 |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
-  fourteen in all, walked by `BlocksHelper#render_document`. Every block
+  fifteen in all, walked by `BlocksHelper#render_document`. Every block
   root carries `data-block-id` and `data-block-type`, and `data-style`
   repeats the stored style for the contract with the editor's renderer.
 - **Style is by class.** [BlockStyle](app/models/block_style.rb) turns each

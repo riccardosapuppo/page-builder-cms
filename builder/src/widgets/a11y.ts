@@ -12,12 +12,14 @@ import type { WidgetType } from "../shared/document.ts";
 
 // One thing a case exposes to assistive technology, found by its role
 // inside the block: count of them (1 when not said), with this accessible
-// name and, for a heading, level.
+// name and, for a heading, level; for a form's field, whether the
+// accessibility tree says it is required, which a screen reader announces.
 export interface Exposed {
-  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph";
+  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button";
   name?: string;
   level?: number;
   count?: number;
+  required?: boolean;
 }
 
 export interface A11yCase {

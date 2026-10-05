@@ -14,7 +14,8 @@
 //      fail, so if it does, that is a bug and it throws
 //   4. the tree: well-formed strings ("wellFormed"), finite numbers
 //      ("finite"), exact integers ("safeInteger"), unique block ids
-//      ("uniqueId"), unique section anchors ("uniqueAnchor")
+//      ("uniqueId"), unique section anchors ("uniqueAnchor"), unique field
+//      names in a form ("uniqueFieldName")
 //   5. normalisation: an integral number becomes an integer (2.0 -> 2)
 // Then the schema runs on the normalised document.
 
@@ -30,7 +31,8 @@ export type RuleKeyword =
   | "finite"
   | "safeInteger"
   | "uniqueId"
-  | "uniqueAnchor";
+  | "uniqueAnchor"
+  | "uniqueFieldName";
 
 export interface RuleError {
   pointer: string;
@@ -349,6 +351,7 @@ export function checkTree(document: unknown): RuleError[] {
       if (Array.isArray(value)) {
         value.forEach((child, k) => stack.push({ value: child, pointer: `${pointer}/${k}`, depth: depth + 1 }));
       } else {
+        if (value.type === "form") errors.push(...duplicateFieldNames(value, pointer));
         for (const [key, child] of Object.entries(value)) {
           if (!key.isWellFormed()) {
             errors.push({ pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair." });
@@ -383,6 +386,29 @@ export function checkTree(document: unknown): RuleError[] {
     }
   }
   errors.push(...duplicateAnchors(document));
+  return errors;
+}
+
+// A form's field names, in order: the second field with a name is the one
+// reported. A name is the key the field's answers are kept under, so two
+// fields with one name would write over each other's answers. Read on
+// every object that says it is a form, wherever the walk meets it, so a
+// form checked on its own (the block one change brings in, in the editor)
+// is checked as it is in its page.
+function duplicateFieldNames(form: Record<string, unknown>, pointer: string): RuleError[] {
+  const props = form.props;
+  if (!isObject(props) || !Array.isArray(props.items)) return [];
+  const errors: RuleError[] = [];
+  const seen = new Set<string>();
+  props.items.forEach((field: unknown, k: number) => {
+    const name = isObject(field) ? field.name : undefined;
+    if (typeof name !== "string") return;
+    if (seen.has(name)) {
+      errors.push({ pointer: `${pointer}/props/items/${k}/name`, keyword: "uniqueFieldName", message: `The field name "${name}" is already used by another field of this form.` });
+    } else {
+      seen.add(name);
+    }
+  });
   return errors;
 }
 
