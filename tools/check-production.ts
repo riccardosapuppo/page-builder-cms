@@ -184,11 +184,11 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
 // form is kept and leads with 303 to a confirmation that is never stored;
 // with another site's Origin it is refused with 403, and not counted; and
 // from one address the eleventh form within ten minutes is refused with
-// 429. Every send here comes from this machine's one
-// address, so they are one count, and each names another address in
-// X-Forwarded-For, as a visitor trying to get past the limit would: the
-// count is under the socket's peer, so no header gives a form a count of
-// its own, and the eleventh is refused whatever it names.
+// 429. Every send here comes from this machine's one address, so they
+// are one count, and each names another address in X-Forwarded-For, as a
+// visitor trying to get past the limit would: the count is under the
+// socket's peer, so no header gives a form a count of its own, and the
+// eleventh is refused whatever it names.
 async function formChecks(): Promise<void> {
   const title = "Form in production";
   const created = await api("POST", "/api/pages", { title, slug: "form" });
