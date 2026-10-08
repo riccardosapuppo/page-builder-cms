@@ -418,6 +418,38 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a text with half of a surrogate pair is no text the CMS reads: the whole request is refused as malformed JSON, whichever field holds it",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "surrogates");
+      const item = await upload(env, `${env.unique("surrogate")}.png`);
+      const malformed = { kind: "refused", status: 400, code: "malformed_json" };
+      const before = { versions: await env.adapter.listVersions(page.id), draft: await env.adapter.getDraft(page.id) };
+      for (const text of ["\ud800", "\udfff", `a\ud83d`]) {
+        const shown = JSON.stringify(text);
+        env.expect(await failure(env.adapter.createPage({ title: text, slug: env.unique("lone") }), `a page titled ${shown}`), `a page titled ${shown}`).toMatchObject(malformed);
+        env.expect(await failure(env.adapter.saveVersion(page.id, { name: text }), `a version named ${shown}`), `a version named ${shown}`).toMatchObject(malformed);
+        env.expect(await failure(env.adapter.setMediaAlt(item.id, text), `an alt text ${shown}`), `an alt text ${shown}`).toMatchObject(malformed);
+        env.expect(await failure(env.adapter.uploadMedia({ file: png(`${env.unique("lone")}.png`), width: 3, height: 2, alt: text }), `an upload with the alt text ${shown}`), `an upload with the alt text ${shown}`).toMatchObject(malformed);
+        const titled = { revision: before.draft.revision, document: documentOf(text), saveId: "surrogates-1" };
+        env.expect(await failure(env.adapter.saveDraft(page.id, titled), `a document titled ${shown}`), `a document titled ${shown}`).toMatchObject(malformed);
+        const worded = { revision: before.draft.revision, document: documentOf("Fine", section(heading(text))), saveId: "surrogates-2" };
+        env.expect(await failure(env.adapter.saveDraft(page.id, worded), `a document with the heading ${shown}`), `a document with the heading ${shown}`).toMatchObject(malformed);
+        // A name of a member is text as well.
+        const keyed = documentOf("Fine", section({ ...heading("Keyed"), props: { level: 2, text: "Keyed", [`key${text}`]: 1 } } as unknown as WidgetBlock));
+        env.expect(await failure(env.adapter.saveDraft(page.id, { revision: before.draft.revision, document: keyed, saveId: "surrogates-3" }), `a document with a member named ${shown}`), `a document with a member named ${shown}`).toMatchObject(malformed);
+      }
+      // Nothing was kept, and the page is as it was.
+      env.expect(await env.adapter.listVersions(page.id)).toEqual(before.versions);
+      env.expect(await env.adapter.getDraft(page.id)).toEqual(before.draft);
+      env.expect((await env.adapter.listPages()).filter((p) => p.slug.startsWith("lone-")), "no page was made").toEqual([]);
+      env.expect((await env.adapter.listMedia()).find((m) => m.id === item.id)?.alt).toBe("");
+      // A whole pair is text like any other.
+      const pair = value(await env.adapter.saveVersion(page.id, { name: "Swim \u{1F3CA}" }), "a version named with a whole pair");
+      env.expect(pair.name).toBe("Swim \u{1F3CA}");
+    },
+  },
+  {
     name: "what does not exist is not found",
     needs: [],
     async run(env) {

@@ -223,10 +223,30 @@ function invalid(code: Invalid["code"], errors: FieldError[]): { ok: false; prob
   return { ok: false, problem: { kind: "invalid", code, message: code === "invalid_document" ? WORDS.invalidDocument : WORDS.invalidRequest, errors } };
 }
 
+// A UTF-16 unit that is half of a surrogate pair with no other half: text
+// that is no Unicode, which JSON written as escapes can still carry.
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 // What the request would be on its way to the CMS: JSON, where a member
-// given as undefined is left out and -0 is 0.
+// given as undefined is left out and -0 is 0. And what the CMS does with
+// it: its JSON parser refuses a body with a lone surrogate in any string or
+// any key (json 3 raises "incomplete surrogate pair"), and the API answers
+// 400, malformed_json, for the whole request. Said here as that refusal,
+// before anything else about the request is looked at.
 function wire<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  const sent = JSON.parse(JSON.stringify(value)) as T;
+  const stack: unknown[] = [sent];
+  while (stack.length > 0) {
+    const item = stack.pop();
+    if (typeof item === "string") {
+      if (LONE_SURROGATE.test(item)) throw new StorageError({ kind: "refused", status: 400, code: "malformed_json", message: WORDS.malformedJson });
+    } else if (Array.isArray(item)) {
+      stack.push(...item);
+    } else if (isObject(item)) {
+      for (const [key, member] of Object.entries(item)) stack.push(key, member);
+    }
+  }
+  return sent;
 }
 
 // One IndexedDB request, as a promise. Awaited inside a transaction's
@@ -806,7 +826,9 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       checkSignal(options, what);
       const file = upload.file;
       // First what the CMS refuses before any byte is sent: the name's
-      // length, the size, the type.
+      // length, the size, the type. (A File's name is text the browser has
+      // made whole: a lone surrogate cannot be in it, so the name is not
+      // looked at as the request bodies are, in wire.)
       const blobCheck = new BodyCheck({ filename: file.name, byte_size: file.size }, "/file");
       blobCheck.string("filename", { required: true, maxLength: FILENAME_MAX_LENGTH });
       blobCheck.integer("byte_size", { required: true, minimum: 1, maximum: MAX_UPLOAD_BYTES });

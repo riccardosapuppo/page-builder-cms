@@ -85,6 +85,7 @@ export const WORDS = {
   notASlot: "is not a palette slot",
   typeScale: "is not one of the type-scale choices",
   // The messages of the API's error answers.
+  malformedJson: "The body is not valid JSON.",
   invalidRequest: "The request is not valid.",
   invalidDocument: "The document is not valid.",
   conflict: "The draft has changed since the revision sent.",
