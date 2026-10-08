@@ -262,7 +262,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
         const why = await openPage(first.id);
         if (!cancelled && why) setStatus({ kind: "failed", message: why });
       } catch (error) {
-        if (!cancelled) setStatus({ kind: "failed", message: `The editor could not reach the CMS: ${describe(error)}` });
+        // The storage's own words say where it failed: the CMS out of
+        // reach, or the browser's storage refused.
+        if (!cancelled) setStatus({ kind: "failed", message: `The editor could not start: ${describe(error)}` });
       }
     })();
     return () => {

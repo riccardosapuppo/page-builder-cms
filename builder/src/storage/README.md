@@ -213,7 +213,18 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   revision check removed (five cases), the version kept before a restore
   skipped (the restore case), a schema rule skipped (the invalid
   document case), an image's blob left behind by its delete
-  (`adapter.spec.ts`).
+  (`adapter.spec.ts`). `editor.spec.ts` runs the editor itself on this
+  storage: an edit kept across a reload, the conflict bar between two
+  tabs of one browser, an image resized and shown from its blob, and no
+  control for scheduling or responses. `gives-up.spec.ts` shows each
+  sentence on screen: IndexedDB missing, and refused; the storage full
+  (a quota set small through Chromium's own protocol, so the browser
+  itself refuses the bytes); a tab holding the database on an older
+  version (with `../../test/browser/next-editor.tsx`, the editor as a
+  later build with one more step of the layout), and the older tab that
+  lets go, told on its next save. Planted, each failed its test: the
+  quota not said as such, a refused open not said as such, no sentence
+  when held up, an older tab that does not let go.
 - `autosave.test.ts` runs the autosave on a fake clock
   (`../../test/fake-clock.ts`) against a fake CMS that keeps a draft by the
   CMS's own rules, and looks at what it holds and received.

@@ -179,7 +179,10 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
         await refresh();
         return;
       }
-      fail(key, `The CMS refused it: ${describe(error)}`);
+      // A refusal with no status is this browser's own (a file it cannot
+      // read, its storage full), not the CMS's.
+      const own = isStorageError(error) && error.failure.kind === "refused" && error.failure.status === 0;
+      fail(key, own ? `Not uploaded: ${describe(error)}` : `The CMS refused it: ${describe(error)}`);
       return;
     }
     if (job.cancelled) return;

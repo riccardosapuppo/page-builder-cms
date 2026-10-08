@@ -407,6 +407,16 @@ export const SUITES: Suite[] = [
     },
   },
   {
+    name: "editor-browser",
+    what: "the editor on the browser's own storage, IndexedDB in Chromium with no CMS: the storage battery, two tabs, giving up (Playwright, npm run e2e:browser)",
+    async run(ctx) {
+      if (!hasScript(builderRoot, "e2e:browser")) return failed("", "builder/package.json has no e2e:browser script");
+      const why = first(packages(builderRoot, "builder"), chromium(),
+        freePorts([["the editor on the browser's storage", portNumber("E2E_BROWSER_PORT", 4902)]]));
+      return why ? notRun(why) : playwright(ctx, "e2e:browser", 43);
+    },
+  },
+  {
     name: "editor-a11y",
     what: "accessibility: the keyboard path, focus, axe, the shortcut window (Playwright, npm run check:a11y)",
     async run(ctx) {

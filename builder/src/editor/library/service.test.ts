@@ -158,6 +158,21 @@ describe("uploads", () => {
     expect(r.ids()).toEqual([]);
   });
 
+  test("a refusal of this browser's own, with no status, is not said as the CMS's", async () => {
+    const r = rig();
+    r.service.upload([file("full.png")]);
+    await settle();
+    r.sent[0]!.answer.reject(new StorageError({ kind: "refused", status: 0, code: "quota_exceeded", message: "This browser has no room left for the editor's pages and images." }));
+    await settle();
+    expect(r.entries()[0]).toMatchObject({ phase: "failed", reason: "Not uploaded: This browser has no room left for the editor's pages and images." });
+    r.service.upload([file("refused.png")]);
+    await settle();
+    r.sent[1]!.answer.reject(new StorageError({ kind: "refused", status: 403, code: "forbidden_origin", message: "The API takes writes only from the CMS's own origin." }));
+    await settle();
+    expect(r.entries()[1]).toMatchObject({ phase: "failed", reason: "The CMS refused it: The API takes writes only from the CMS's own origin." });
+    expect(r.ids()).toEqual([]);
+  });
+
   test("with no answer, it may be in the library or not: it says so, and reads the library again", async () => {
     const r = rig();
     r.service.upload([file("lost.png")]);
