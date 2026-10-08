@@ -49,8 +49,12 @@ export interface Session {
   // What the storage has: no control is drawn for what it lacks.
   capabilities: Capabilities;
   // The CMS's own origin, where the preview and the live page open
-  // (../storage/config.ts).
-  cmsOrigin: string;
+  // (../storage/config.ts); null with no CMS, in the browser demo, whose
+  // pages are kept in this browser.
+  cmsOrigin: string | null;
+  // Where a page as published in the browser opens, when the storage
+  // serves no live page (the demo's own drawing of it); null otherwise.
+  publishedView: ((pageId: number) => string) | null;
   // A publish is on its way.
   publishing: boolean;
   styleSave: StyleSave;
@@ -128,6 +132,7 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     autosave: null,
     capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
     cmsOrigin: DEFAULT_CMS_ORIGIN,
+    publishedView: null,
     publishing: false,
     styleSave: { phase: "idle" },
     openPage: async () => null,
@@ -148,6 +153,14 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     restoring: null,
     ...changes,
   };
+}
+
+// How a sentence names where the pages are kept: the CMS's server or, with
+// no CMS (the browser demo), this browser.
+export function keptWords(cmsOrigin: string | null) {
+  return cmsOrigin === null
+    ? { there: "saved in this browser", restored: "Restored in this browser", unsaved: "changes this browser has not saved yet", keeper: "this browser's storage" }
+    : { there: "on the server", restored: "Restored on the server", unsaved: "changes the server has not saved yet", keeper: "the CMS" };
 }
 
 // Lowercase letters, digits and hyphens, from a title: the address a new

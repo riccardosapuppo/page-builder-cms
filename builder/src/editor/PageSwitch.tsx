@@ -8,11 +8,10 @@
 // the focus goes back to the title.
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type RefObject } from "react";
 import type { PageSummary } from "../storage/adapter.ts";
-import { cmsAddress } from "../storage/config.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { NewPageDialog } from "./NewPageDialog.tsx";
-import { changesNotLive, shownAddress } from "./Publish.tsx";
+import { changesNotLive, siteAddress } from "./Publish.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
 import { useSession, type OpenPage } from "./session.tsx";
@@ -152,7 +151,7 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
   }, [button]);
 
   // A page's address as a person reads it, and whether it is live.
-  const address = (page: PageSummary) => (page.home ? shownAddress(cmsAddress("/", session.cmsOrigin)) : `/${page.slug}`);
+  const address = (page: PageSummary) => (page.home ? siteAddress("/", session.cmsOrigin) : `/${page.slug}`);
   const state = (page: PageSummary): { dot: string; words: string } => {
     const isOpen = current?.id === page.id;
     if (!(isOpen ? current.published : page.published)) return { dot: "dot-draft", words: "Not published yet" };

@@ -29,6 +29,6 @@ const root = document.getElementById("editor_root");
 if (!root) throw new Error("next-editor.html has no #editor_root");
 createRoot(root).render(
   <StrictMode>
-    <App env={env} adapter={adapter} />
+    <App env={env} adapter={adapter} cmsOrigin={null} />
   </StrictMode>,
 );

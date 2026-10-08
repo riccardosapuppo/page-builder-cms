@@ -7,7 +7,6 @@ import { makeSetPage, REMOVE } from "../../document/commands.ts";
 import { TYPE_NAMES } from "../../document/labels.ts";
 import type { Block } from "../../shared/document.ts";
 import type { BlockFieldError, FieldError } from "../../storage/adapter.ts";
-import { cmsAddress } from "../../storage/config.ts";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
 import { describedBy, ErrorList, TextField, useFieldClaims } from "../controls.tsx";
@@ -16,7 +15,7 @@ import { deviceOf } from "../device-style.ts";
 import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, fromLine, placeLine } from "../names.ts";
-import { shownAddress } from "../Publish.tsx";
+import { siteAddress } from "../Publish.tsx";
 import { useSession } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
 import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
@@ -127,7 +126,7 @@ function AddressField() {
   const hint = current.home
     ? "This is the home page: visitors find it at the site’s root address, /."
     : live === null
-      ? shownAddress(cmsAddress(`/${current.slug}`, session.cmsOrigin))
+      ? siteAddress(`/${current.slug}`, session.cmsOrigin)
       : live === `/${current.slug}`
         ? `Visitors find the page at ${live}.`
         : `Live at ${live}; the next publish moves it to /${current.slug}, and the old address leads to the new one.`;

@@ -63,6 +63,8 @@ class FakeSite {
   onVersion: (() => void) | null = null;
   refuseStyle = false;
   style = tokenStyle();
+  // false for the browser demo's storage: a publish kept, no page served.
+  livePages = true;
 
   constructor() {
     this.drafts.set(1, { title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
@@ -71,7 +73,7 @@ class FakeSite {
 
   links(id: number) {
     const d = this.drafts.get(id)!;
-    return { ...links(id), live: d.published ? (d.home ? "/" : `/${d.published.slug}`) : null };
+    return { ...links(id), live: d.published && this.livePages ? (d.home ? "/" : `/${d.published.slug}`) : null };
   }
 
   summary(id: number): PageSummary {
@@ -102,7 +104,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: true },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages },
       listPages: async () => [...this.drafts.keys()].map((id) => this.summary(id)),
       getPage: async (id) => this.page(id),
       getDraft: async (id) => this.page(id).draft,
@@ -186,17 +188,20 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
   site.schedule = options.schedule ?? false;
+  site.livePages = !options.demo;
   const written: number[] = [];
   const address: PageAddress = { read: () => wanted, write: (id) => written.push(id) };
   // The tabs the editor opens: where each went, once it was told.
   const tabs: Array<Promise<string>> = [];
   const opener: TabOpener = { open: (href) => (tabs.push(href), true) };
-  render(<App env={env} adapter={site.adapter()} address={address} cmsOrigin="http://127.0.0.1:3900" tabs={opener} />);
+  // The browser demo: no CMS, and the page as published drawn by the demo.
+  const where = options.demo ? { cmsOrigin: null, publishedView: (id: number) => `?published=${id}` } : { cmsOrigin: "http://127.0.0.1:3900" };
+  render(<App env={env} adapter={site.adapter()} address={address} {...where} tabs={opener} />);
   return { env, site, clock, written, tabs };
 }
 
@@ -315,6 +320,27 @@ test("Publish sends the edit still waiting, then publishes at the revision it ma
   site.savedElsewhere(1, page());
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
   expect(site.publishes.at(-1)).toEqual({ id: 1, revision: 4 });
+  expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing went live.");
+});
+
+test("in the browser demo, Publish opens a tab at once, sends it to the page as published once it is kept, and says what the full system does", async () => {
+  const { site, env, tabs } = start(1, { demo: true });
+  await opened();
+  relabel("Winter");
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toEqual([{ id: 1, revision: 4 }]);
+  expect(tabs).toHaveLength(1);
+  const shown = new URL("?published=1", window.location.href).href;
+  await expect(tabs[0]).resolves.toBe(shown);
+  expect(env.ui.getState().notice).toBe("Published in this browser. In the full system, Rails publishes and serves this page, with the cache.");
+  expect(screen.getByRole("link", { name: "View published page" }).getAttribute("href")).toBe(shown);
+  expect(screen.queryByRole("link", { name: "View live page" })).toBeNull();
+
+  // Not published, the tab opened for it is told so, and closes.
+  site.savedElsewhere(1, page());
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(tabs).toHaveLength(2);
+  await expect(tabs[1]).rejects.toThrow("not published");
   expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing went live.");
 });
 

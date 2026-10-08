@@ -14,7 +14,7 @@ import { keepOpenGroups, readOpenGroups } from "./editor/open-groups.ts";
 import { createUiStore } from "./editor/ui-store.ts";
 import { createBrowserAdapter } from "./storage/browser.ts";
 import { systemClock } from "./storage/clock.ts";
-import { storageKind } from "./storage/config.ts";
+import { cmsOrigin, storageKind } from "./storage/config.ts";
 import { createRailsAdapter } from "./storage/rails.ts";
 import { createEditorStore } from "./store/editor-store.ts";
 
@@ -25,12 +25,13 @@ const env = {
   newId: randomIds(),
 };
 keepOpenGroups(env.ui);
-const adapter = storageKind() === "browser" ? createBrowserAdapter({ clock: systemClock }) : createRailsAdapter();
+const browser = storageKind() === "browser";
+const adapter = browser ? createBrowserAdapter({ clock: systemClock }) : createRailsAdapter();
 
 const root = document.getElementById("editor_root");
 if (!root) throw new Error("index.html has no #editor_root");
 createRoot(root).render(
   <StrictMode>
-    <App env={env} adapter={adapter} />
+    <App env={env} adapter={adapter} cmsOrigin={browser ? null : cmsOrigin()} />
   </StrictMode>,
 );

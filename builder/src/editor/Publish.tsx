@@ -3,8 +3,9 @@
 // whose menu has Publish now, Schedule… (its own dialog, ./ScheduleDialog.tsx,
 // which the top bar opens), the scheduled publish's cancel while one waits,
 // and the live page's address. A storage without scheduling
-// (capabilities) gets no Schedule item; with no publishing at all (the
-// browser demo's storage), there is no Publish either.
+// (capabilities) gets no Schedule item, one with no publishing at all no
+// Publish. The browser demo's storage keeps a publish but serves no page:
+// its menu says so, and links the page as published, which the demo draws.
 //
 // Publish waits while the page cannot go live as the editor shows it: a
 // save the server has not confirmed (retrying, refused), the draft changed
@@ -55,6 +56,13 @@ export function shownAddress(href: string): string {
   return `${url.host}${url.pathname === "/" ? "" : url.pathname}`;
 }
 
+// A page's address on the site, as a person reads it: on the CMS's origin
+// ("127.0.0.1:3900/winter-series"), or, with no CMS (the browser demo,
+// which serves no page), the path the site would give it ("/winter-series").
+export function siteAddress(path: string, cmsOrigin: string | null): string {
+  return cmsOrigin === null ? path : shownAddress(cmsAddress(path, cmsOrigin));
+}
+
 export function PreviewButton() {
   const session = useSession();
   const page = session.current;
@@ -67,7 +75,7 @@ export function PreviewButton() {
       href={href}
       target="_blank"
       rel="noopener"
-      title={`Preview (${entryKeysText(keys)}): the draft as the CMS would serve it, in a new tab`}
+      title={`Preview (${entryKeysText(keys)}): the draft as ${session.cmsOrigin === null ? "it would be published" : "the CMS would serve it"}, in a new tab`}
       aria-keyshortcuts={ariaKeyShortcuts(keys)}
       onClick={(event) => {
         // A plain click goes through the session, which sends the edits
@@ -96,6 +104,19 @@ export function scheduleLine(page: OpenPage, notLive: number, zone: string): { l
   return { line: `Choose the day and time visitors see your ${changes(notLive)}.`, nothing: false };
 }
 
+// What Publish now does, under its name: on a storage that serves the
+// page, what visitors see; on one that only keeps it (the browser demo),
+// what is kept, and where it shows.
+function nowLine(page: OpenPage, notLive: number): string {
+  if (!page.published) return `Visitors see this page at ${page.home ? "/" : `/${page.slug}`} right away.`;
+  return notLive > 0 ? `Visitors see your ${changes(notLive)} right away.` : "Visitors already see this draft; publishing keeps it as a new version.";
+}
+
+function keptLine(page: OpenPage, notLive: number): string {
+  if (!page.published) return "Kept as published in this browser, and shown in a new tab.";
+  return notLive > 0 ? `Your ${changes(notLive)} go into the published page, shown in a new tab.` : "The published page is this draft already; publishing keeps it as a new version.";
+}
+
 export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
   const session = useSession();
   const snapshot = useSaveSnapshot();
@@ -115,6 +136,9 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
   const live = page.links.live === null ? null : cmsAddress(page.links.live, session.cmsOrigin);
   const schedule = session.capabilities.schedule && onSchedule ? scheduleLine(page, notLive, zone) : null;
   const pending = session.capabilities.schedule ? page.scheduled ?? null : null;
+  // With no live page (the browser demo), the page as published opens from
+  // the demo itself.
+  const view = live === null && !session.capabilities.livePages && session.publishedView ? cmsAddress(session.publishedView(page.id), session.cmsOrigin) : null;
 
   return (
     <div className={`split${off ? " split-off" : ""}`}>
@@ -164,7 +188,7 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
             <Icon name="upload" />
             <span>
               <strong>Publish now</strong>
-              <small>{page.published ? (notLive > 0 ? `Visitors see your ${changes(notLive)} right away.` : "Visitors already see this draft; publishing keeps it as a new version.") : `Visitors see this page at ${page.home ? "/" : `/${page.slug}`} right away.`}</small>
+              <small>{session.capabilities.livePages ? nowLine(page, notLive) : keptLine(page, notLive)}</small>
             </span>
             <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(keys)} small /></span>
           </button>
@@ -211,7 +235,27 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
               </span>
             </button>
           )}
-          {live && page.published && <hr className="menu-sep" />}
+          {(live || view) && page.published && <hr className="menu-sep" />}
+          {view && page.published && (
+            <a
+              className="menu-item menu-item-rich menu-link"
+              role="menuitem"
+              tabIndex={-1}
+              href={view}
+              target="_blank"
+              rel="noopener"
+              onClick={() => {
+                setOpen(false);
+                more.current?.focus();
+              }}
+            >
+              <Icon name="external" />
+              <span>
+                <strong>View published page</strong>
+                <small>Published {when(page.published.publishedAt)} in this browser. Opens in a new tab.</small>
+              </span>
+            </a>
+          )}
           {live && page.published && (
             <a
               className="menu-item menu-item-rich menu-link"

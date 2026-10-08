@@ -169,6 +169,31 @@ test("a publish waiting for its time is in the menu, by the site's clock, with i
   expect(cancelled).toBe(1);
 });
 
+test("in the browser demo, Preview and Publish say what is kept here, and the menu links the page as published, not a live page", () => {
+  const demo: Partial<Session> = {
+    cmsOrigin: null,
+    publishedView: (id) => `?published=${id}`,
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false },
+  };
+  draw({ ...demo, current: open({ links: { preview: "?preview=7", live: null } }) });
+  const preview = screen.getByRole("link", { name: "Preview" });
+  expect(preview.getAttribute("href")).toBe(new URL("?preview=7", window.location.href).href);
+  expect(preview.getAttribute("title")).toBe("Preview (Alt+Shift+P): the draft as it would be published, in a new tab");
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  const items = screen.getAllByRole("menuitem");
+  expect(items.map((item) => item.querySelector("strong")?.textContent)).toEqual(["Publish now", "View published page"]);
+  expect(items[0]!.textContent).toContain("Your 6 changes go into the published page, shown in a new tab.");
+  expect(items[1]!.getAttribute("href")).toBe(new URL("?published=7", window.location.href).href);
+  expect(items[1]!.textContent).toContain("in this browser. Opens in a new tab.");
+  expect(screen.queryByText(/Visitors/)).toBeNull();
+
+  // Never published: nothing to view yet, and what Publish now does.
+  document.body.innerHTML = "";
+  draw({ ...demo, current: open({ published: null, links: { preview: "?preview=7", live: null } }) });
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([expect.stringContaining("Kept as published in this browser, and shown in a new tab.")]);
+});
+
 test("a storage that cannot schedule shows neither item, even with a schedule on the page", () => {
   drawScheduling({ current: open({ scheduled: pending }), capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true } }, () => {});
   fireEvent.click(screen.getByRole("button", { name: "More publish options" }));

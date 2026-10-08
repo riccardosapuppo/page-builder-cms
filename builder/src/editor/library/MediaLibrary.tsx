@@ -309,7 +309,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
   // ------------------------------------------------------- drawing
 
   const hint = service?.imageVariants === false
-    ? `Images you upload are available on every page. The CMS makes no smaller copies of them, so each is resized here first, to ${MAX_LONG_SIDE} px at most on its long side.`
+    ? `Images you upload are available on every page. ${session?.cmsOrigin === null ? "This browser keeps" : "The CMS makes"} no smaller copies of them, so each is resized here first, to ${MAX_LONG_SIDE} px at most on its long side.`
     : "Images you upload are available on every page.";
   const reasonId = `${id}-reason`;
 

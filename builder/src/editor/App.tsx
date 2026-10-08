@@ -29,7 +29,7 @@
 // state's banner and toast (./SaveStatus.tsx), About, the media library's
 // work on this adapter (./library/context.tsx), and the adapter's form
 // responses when it keeps them (./responses/context.ts).
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
@@ -37,7 +37,7 @@ import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
-import { cmsAddress, cmsOrigin as configuredCmsOrigin } from "../storage/config.ts";
+import { cmsAddress } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
 import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
@@ -55,7 +55,7 @@ import { NewPageDialog } from "./NewPageDialog.tsx";
 import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
-import { NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
@@ -86,6 +86,24 @@ export const locationAddress: PageAddress = {
 // The document the store holds before any page is open.
 export const NO_PAGE: PageDocument = { schemaVersion: 1, title: "", sections: [] };
 
+// What a publish in the browser demo did, and what the full system does
+// with it: the demo keeps it, and serves nothing.
+export const PUBLISHED_IN_BROWSER = "Published in this browser. In the full system, Rails publishes and serves this page, with the cache.";
+
+// A promise settled from outside, once: what a tab opened ahead waits for.
+// Settling it again does nothing.
+function later<T>(): { promise: Promise<T>; resolve(value: T): void; reject(reason: unknown): void } {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  // Its refusal is expected, and handled where it is waited for, if anywhere.
+  promise.catch(() => undefined);
+  return { promise, resolve, reject };
+}
+
 type Status =
   | { kind: "loading" }
   | { kind: "ready" }
@@ -115,13 +133,22 @@ interface AppProps {
   env: EditorEnv;
   adapter: StorageAdapter;
   address?: PageAddress;
-  // The CMS's own origin, where its pages open; from the build by default.
-  cmsOrigin?: string;
+  // The CMS's own origin, where its pages open (../storage/config.ts); null
+  // with no CMS, in the browser demo, which draws the preview itself.
+  cmsOrigin: string | null;
+  // Where a page as published in the browser opens, for a storage that
+  // keeps a publish but serves no live page (capabilities.livePages): the
+  // demo's own drawing of it. Publish opens it, and the Publish menu
+  // links it.
+  publishedView?: ((pageId: number) => string) | null;
+  // A line under the bottom line, across the window: the demo's.
+  foot?: ReactNode;
   tabs?: TabOpener;
 }
 
-export function App({ env, adapter, address = locationAddress, cmsOrigin = configuredCmsOrigin(), tabs = windowTabs }: AppProps) {
+export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, foot, tabs = windowTabs }: AppProps) {
   const { store, ui, clock } = env;
+  const words = useMemo(() => keptWords(cmsOrigin), [cmsOrigin]);
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [pages, setPages] = useState<readonly PageSummary[]>([]);
   const [current, setCurrent] = useState<OpenPage | null>(null);
@@ -155,7 +182,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   const openPage = useCallback(async (id: number): Promise<string | null> => {
     const ticket = ++opening.current;
     const previous = live.current.autosave;
-    const kept = "This page has changes the server has not saved yet: it stays open until they are saved.";
+    const kept = `This page has ${words.unsaved}: it stays open until they are saved.`;
     // Whether the page being left has every edit on the server: text still
     // in a field is handed over first, so it counts.
     const left = (): boolean => {
@@ -237,7 +264,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     setStatus({ kind: "ready" });
     address.write(page.page.id);
     return null;
-  }, [adapter, address, clock, store, ui]);
+  }, [adapter, address, clock, store, ui, words]);
 
   // The site as the editor starts on it: its pages, library, style and
   // theme; then the page the address names, else the home page, else the
@@ -341,11 +368,16 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
 
   // Saves what waits, then puts the draft live at the revision just saved:
   // a save from elsewhere in between is refused by the CMS, not published
-  // unseen.
+  // unseen. A storage that serves no live page (the browser demo) shows
+  // the page as published instead, in a new tab: opened now, while the
+  // click or the key still lets the editor open one, sent there once the
+  // publish is kept, and closed if it is not.
   const publish = useCallback(async () => {
     const page = opened.current;
     const saving = live.current.autosave;
     if (!page || !saving || !adapter.capabilities.publish) return;
+    const shown = !adapter.capabilities.livePages && publishedView ? later<string>() : null;
+    if (shown) tabs.open(shown.promise);
     setPublishing(true);
     try {
       ui.getState().pending.deliver();
@@ -364,7 +396,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       } catch (error) {
         const unknown = isStorageError(error) && error.failure.kind === "unknown";
         ui.getState().say(unknown
-          ? `No answer from the CMS about the publish (${describe(error)}): the page may be live or not. Open the live page to see, or publish again.`
+          ? `No answer from ${words.keeper} about the publish (${describe(error)}): the page may be live or not. Open the live page to see, or publish again.`
           : `Not published: ${describe(error)}`);
         return;
       }
@@ -387,12 +419,20 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       // history, if it shows the versions, lists it.
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
       await refreshPages().catch(() => undefined);
+      if (shown && publishedView) {
+        const view = cmsAddress(publishedView(page.id), cmsOrigin);
+        shown.resolve(view);
+        ui.getState().say(PUBLISHED_IN_BROWSER, { href: view, label: "View published page" });
+        return;
+      }
       const where = result.links.live === null ? null : cmsAddress(result.links.live, cmsOrigin);
       ui.getState().say(where ? `Published: visitors see this page at ${shownAddress(where)}.` : "Published.", where ? { href: where, label: "View live page" } : null);
     } finally {
       setPublishing(false);
+      // Not published: the tab opened for it goes.
+      shown?.reject(new Error("not published"));
     }
-  }, [adapter, cmsOrigin, loadVersions, refreshPages, store, ui]);
+  }, [adapter, cmsOrigin, loadVersions, publishedView, refreshPages, store, tabs, ui, words]);
 
   // What is live and what waits to go live, read again from the CMS, for a
   // page still open: the draft on the canvas and its autosave stay as
@@ -539,13 +579,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     }
     const taken = openDocument(draft.document);
     if (!taken.ok) {
-      ui.getState().say(`The page on the server could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`);
+      ui.getState().say(`The page ${words.there} could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`);
       return;
     }
     const made = makeReplacePage(store.getState().document, taken.document, "Reloaded the page saved in another tab");
     if (!made.ok) {
       ui.setState({ serverErrors: [], hover: null });
-      ui.getState().say("Reloaded: the page on the server is the same as this tab's.");
+      ui.getState().say(`Reloaded: the page ${words.there} is the same as this tab's.`);
       return;
     }
     live.current.adopting = true;
@@ -559,12 +599,12 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       // A step the page refuses (it cannot happen to a page the server
       // holds, but if it does): the server's page all the same.
       putDraft(taken.document);
-      ui.getState().say(`Reloaded: this is the page as it is on the server. ${UNDO_AGAIN}`);
+      ui.getState().say(`Reloaded: this is the page as it is ${words.there}. ${UNDO_AGAIN}`);
       return;
     }
     ui.setState({ serverErrors: [], hover: null });
-    ui.getState().say("Reloaded: this is the page as it is on the server. Undo brings this tab’s page back.");
-  }, [putDraft, store, ui]);
+    ui.getState().say(`Reloaded: this is the page as it is ${words.there}. Undo brings this tab’s page back.`);
+  }, [putDraft, store, ui, words]);
 
   // Keep mine: the page on the server now, read first (another tab may have
   // saved since the conflict was met), is kept as a version, unless the
@@ -607,17 +647,17 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
     if (live.current.autosave !== saving || saving.getSnapshot().phase !== "conflict") return;
     saving.overwrite(server.revision);
     if (ui.getState().historyOpen) loadVersions();
-    say("Keeping this tab’s page: saving it over the one on the server…");
+    say(`Keeping this tab’s page: saving it over the one ${words.there}…`);
     const settled = await saving.flush();
     if (live.current.autosave !== saving) return;
     if (settled.phase === "saved") {
-      say(`Kept this tab’s page: it is saved over the one on the server, which is kept in Versions as “${KEPT_BEFORE_OVERWRITE}”.`);
+      say(`Kept this tab’s page: it is saved over the one ${words.there}, which is kept in Versions as “${KEPT_BEFORE_OVERWRITE}”.`);
     } else if (settled.phase === "conflict") {
       say("Not saved over it yet: the page was saved in another tab again while this one kept it. Choose again: Keep mine keeps that page as a version too.");
     } else {
       say(`This tab’s page is not saved over the other one yet: ${unsavedWhy(settled.phase)}`);
     }
-  }, [adapter, loadVersions, ui]);
+  }, [adapter, loadVersions, ui, words]);
 
   // "Save version": the CMS keeps its draft, so what waits is saved first,
   // and the version holds what the canvas shows.
@@ -637,14 +677,14 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       const unknown = isStorageError(error) && error.failure.kind === "unknown";
       loadVersions();
       return problem("unknown", unknown
-        ? `No answer from the CMS (${describe(error)}): the version may have been kept. The list below shows what it has.`
+        ? `No answer from ${words.keeper} (${describe(error)}): the version may have been kept. The list below shows what it has.`
         : `Not kept: ${describe(error)}`);
     }
     if (!outcome.ok) return outcome.problem.errors.length > 0 ? outcome.problem.errors : problem("invalid", outcome.problem.message);
     if (opened.current?.id === page.id) loadVersions();
     ui.getState().say(named === "" ? "Kept as a version." : `Kept as a version: “${named}”.`);
     return null;
-  }, [adapter, loadVersions, ui]);
+  }, [adapter, loadVersions, ui, words]);
 
   // Copies a version back into the draft. The edits waiting are saved
   // first, so the version the CMS keeps of the draft before the restore
@@ -679,7 +719,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
       } catch (error) {
         const unknown = isStorageError(error) && error.failure.kind === "unknown";
         say(unknown
-          ? `No answer from the CMS about the restore (${describe(error)}): it may have been made. If it was, the editor asks you to choose before it saves this page again.`
+          ? `No answer from ${words.keeper} about the restore (${describe(error)}): it may have been made. If it was, the editor asks you to choose before it saves this page again.`
           : `Not restored: ${describe(error)}`);
         if (live.current.autosave === saving) loadVersions();
         return;
@@ -700,15 +740,15 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
         putDraft(taken.document);
         say(restoredSentence(result, shown, clock.now()));
       } else if (after.phase === "conflict") {
-        say("Restored on the server, but this tab changed the page while the restore was on its way. Reload takes the restored page; Keep mine saves this tab’s page over it.");
+        say(`${words.restored}, but this tab changed the page while the restore was on its way. Reload takes the restored page; Keep mine saves this tab’s page over it.`);
       } else {
-        say("Restored on the server, but this tab changed the page while the restore was on its way, and has not saved that change yet. Saving it will ask you to choose between the two.");
+        say(`${words.restored}, but this tab changed the page while the restore was on its way, and has not saved that change yet. Saving it will ask you to choose between the two.`);
       }
     } finally {
       restoringNow.current = false;
       setRestoring(null);
     }
-  }, [adapter, clock, loadVersions, putDraft, ui]);
+  }, [adapter, clock, loadVersions, putDraft, ui, words]);
 
   // The site style: the canvas takes a change at once; the CMS gets one
   // request at a time, and the latest change goes when the one on its way
@@ -770,10 +810,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
   }, [ui]);
 
   const session = useMemo<Session>(() => ({
-    pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishing, styleSave,
+    pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
     openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, current, autosave, adapter, cmsOrigin, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);
@@ -792,7 +832,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
               {/* In the order the Tab key goes: the top bar, the drawer, the
                   canvas, the sidebar (Tab from the selection reaches its
                   settings), then the bottom line. The grid places each. */}
-              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}`}>
+              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}${foot ? " app-foot" : ""}`}>
                 <TopBar />
                 <ConflictBanner />
                 {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
@@ -801,6 +841,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin = confi
                 {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
                 <Sidebar />
                 <StatusBar />
+                {foot}
               </div>
             </DragLayer>
             <EditorKeys />

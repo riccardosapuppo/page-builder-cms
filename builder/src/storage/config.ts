@@ -58,8 +58,10 @@ function originOf(address: string, name: string): string {
   return url.origin;
 }
 
-// A path the CMS gives (links.preview, links.live: "/preview/12",
-// "/winter-series") as an address on the CMS's origin.
-export function cmsAddress(path: string, origin: string = cmsOrigin()): string {
-  return new URL(path, `${origin}/`).href;
+// A path the storage gives (links.preview, links.live: "/preview/12",
+// "/winter-series") as an address on the CMS's origin. With no CMS (origin
+// null: the browser demo, whose preview is "?preview=12"), an address of
+// the editor's own page, which draws it.
+export function cmsAddress(path: string, origin: string | null): string {
+  return origin === null ? new URL(path, window.location.href).href : new URL(path, `${origin}/`).href;
 }

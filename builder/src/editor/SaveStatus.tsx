@@ -23,7 +23,7 @@ import type { SaveSnapshot } from "../storage/autosave.ts";
 import { placeFocus } from "./act.ts";
 import { useEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { useSession } from "./session.tsx";
+import { keptWords, useSession } from "./session.tsx";
 
 const NEVER: SaveSnapshot | null = null;
 const noSubscription = () => () => {};
@@ -180,8 +180,8 @@ export function ConflictBanner() {
       <Icon name="warning" />
       <p><strong>Changed in another tab.</strong> This page was saved in another tab after you opened it. Saving is paused until you choose.</p>
       <div className="banner-actions">
-        <button className="btn btn-small btn-dark" type="button" disabled={choosing} title="Take the page as it is on the server; Undo brings this tab's page back" onClick={() => void choose(session.reload)}>Reload</button>
-        <button className="btn btn-small btn-secondary" type="button" disabled={choosing} title="Save this tab's page over the one on the server, which is kept in Versions first" onClick={() => void choose(session.keepMine)}>Keep mine</button>
+        <button className="btn btn-small btn-dark" type="button" disabled={choosing} title={`Take the page as it is ${keptWords(session.cmsOrigin).there}; Undo brings this tab's page back`} onClick={() => void choose(session.reload)}>Reload</button>
+        <button className="btn btn-small btn-secondary" type="button" disabled={choosing} title={`Save this tab's page over the one ${keptWords(session.cmsOrigin).there}, which is kept in Versions first`} onClick={() => void choose(session.keepMine)}>Keep mine</button>
       </div>
     </div>
   );
