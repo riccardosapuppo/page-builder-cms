@@ -156,18 +156,45 @@ error, and with it in place it passed, as did `db:drop` and `db:reset` on
 the development database (1 October 2026). A server still running holds
 the file the same way: stop it first.
 
-A first look at the API with curl:
+A first look at the API, with the CMS running (`npm start` from the
+repository's root). The four steps make a page, list the pages, publish
+the page just made, and read the site's style. In a POSIX shell (Git
+Bash on Windows, where `curl` is the real one):
 
-```
-curl -s -X POST http://127.0.0.1:3900/api/pages -H "Content-Type: application/json" -d '{"title":"Winter series","slug":"winter"}'
+```sh
+page=$(curl -s -X POST http://127.0.0.1:3900/api/pages -H "Content-Type: application/json" -d '{"title":"Winter series","slug":"winter"}')
+echo "$page"
+id=$(echo "$page" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
 curl -s http://127.0.0.1:3900/api/pages
-curl -s -X POST http://127.0.0.1:3900/api/pages/1/publish -H "Content-Type: application/json"
+curl -s -X POST http://127.0.0.1:3900/api/pages/$id/publish -H "Content-Type: application/json"
 curl -s http://127.0.0.1:3900/api/site-style
 ```
+
+In Windows PowerShell, where `curl` is another command, the same four
+steps with `Invoke-RestMethod`:
+
+```powershell
+$page = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:3900/api/pages -ContentType application/json -Body '{"title":"Winter series","slug":"winter"}'
+$page
+Invoke-RestMethod http://127.0.0.1:3900/api/pages
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3900/api/pages/$($page.page.id)/publish" -ContentType application/json -Body '{}'
+Invoke-RestMethod http://127.0.0.1:3900/api/site-style
+```
+
+The first answer begins `{"page":{"id":4,...`: the id is the new page's,
+whatever the database held (the seeded one has three pages), and the
+publish is of that page and no other. The address `winter` is taken once
+the first step has run, so a second run is refused with a 422 at `/slug`:
+change the address in the first step to run it again.
 
 Every POST, PUT and PATCH says `Content-Type: application/json`, even
 with no body, as the publish above does; without it the answer is 415
 (see "Writes from other sites" below).
+
+`builder/test/readme-curl.rails.test.ts` runs both blocks as they are
+written, with only the address of the CMS changed to the one the test
+run starts, and checks each answer's status and that the page published
+is the one the first step made.
 
 ## Testing it
 
