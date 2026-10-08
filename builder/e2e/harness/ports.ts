@@ -1,8 +1,10 @@
 // The ports the tests start their servers on. The project's own are 3901
 // for the CMS and 4901 for the editor (3900 and 4900 are `npm start`'s,
-// 3902 the production check's), and 4902 for the editor on the browser's
-// storage, which needs no CMS; E2E_CMS_PORT, E2E_BUILDER_PORT and
-// E2E_BROWSER_PORT move them, so two runs can happen side by side.
+// 3902 the production check's), 4902 for the editor on the browser's
+// storage, which needs no CMS, and 4903 for the browser demo's build,
+// served as GitHub Pages serves it; E2E_CMS_PORT, E2E_BUILDER_PORT,
+// E2E_BROWSER_PORT and E2E_DEMO_PORT move them, so two runs can happen
+// side by side.
 function portFrom(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
@@ -14,3 +16,4 @@ function portFrom(name: string, fallback: number): number {
 export const cmsPort = (): number => portFrom("E2E_CMS_PORT", 3901);
 export const builderPort = (): number => portFrom("E2E_BUILDER_PORT", 4901);
 export const browserEditorPort = (): number => portFrom("E2E_BROWSER_PORT", 4902);
+export const demoPort = (): number => portFrom("E2E_DEMO_PORT", 4903);
