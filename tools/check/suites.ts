@@ -417,6 +417,16 @@ export const SUITES: Suite[] = [
     },
   },
   {
+    name: "editor-demo",
+    what: "the browser demo, built for GitHub Pages and served as Pages serves it: its story in Chromium (Playwright, npm run e2e:demo)",
+    async run(ctx) {
+      if (!hasScript(builderRoot, "e2e:demo")) return failed("", "builder/package.json has no e2e:demo script");
+      const why = first(packages(builderRoot, "builder"), chromium(),
+        freePorts([["the demo, served as GitHub Pages serves it", portNumber("E2E_DEMO_PORT", 4903)]]));
+      return why ? notRun(why) : playwright(ctx, "e2e:demo", 5);
+    },
+  },
+  {
     name: "editor-a11y",
     what: "accessibility: the keyboard path, focus, axe, the shortcut window (Playwright, npm run check:a11y)",
     async run(ctx) {
@@ -428,7 +438,7 @@ export const SUITES: Suite[] = [
   },
   {
     name: "serving",
-    what: "how the editor's shell and the published pages are served (npm run check:serving)",
+    what: "how the editor's shell, the demo's on GitHub Pages and the published pages are served (npm run check:serving)",
     async run(ctx) {
       // builder/'s e2e/serving/check-serving.ts, written with the editor's
       // publishing (the root is looked at too); it ends with "RESULT: <n>
@@ -439,7 +449,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("check:serving"), { cwd: folder });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 40);
+      return readChecks(step.output, step.code, 60);
     },
   },
   {
