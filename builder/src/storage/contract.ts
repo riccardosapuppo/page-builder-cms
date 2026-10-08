@@ -19,6 +19,8 @@
 import {
   errorsByBlock,
   isStorageError,
+  MAX_IMAGE_SIDE,
+  MAX_UPLOAD_BYTES,
   OPTIONAL_OPERATIONS,
   RESPONSES_PER_PART,
   StorageError,
@@ -355,6 +357,67 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a save sent again with the same saveId and document, but from a revision that is not the one it started from, is a conflict",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "replayed");
+      const save = { revision: page.revision, document: documentOf("Sent once", section(heading("Once"))), saveId: "replayed-1" };
+      const first = value(await env.adapter.saveDraft(page.id, save), "the first send");
+      // Only the save that took the draft to where it is, sent from where
+      // it started, is a retry. The same words from a revision far ahead
+      // are not.
+      const ahead = refusal(await env.adapter.saveDraft(page.id, { ...save, revision: first.revision + 4 }), "the same save from a revision ahead");
+      env.expect(ahead).toMatchObject({ kind: "conflict", currentRevision: first.revision, lastSaveId: "replayed-1" });
+      env.expect((await env.adapter.getDraft(page.id)).revision).toBe(first.revision);
+    },
+  },
+  {
+    name: "a document broken twice at one place is refused with one error there: each pointer and keyword once",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "errors-once");
+      // A section with neither its style nor its children: two required
+      // properties missing at one pointer.
+      const bare = { id: id("s"), type: "section", props: {} } as unknown as SectionBlock;
+      const document = documentOf("Broken twice", bare);
+      const problem = refusal(await env.adapter.saveDraft(page.id, { revision: page.revision, document, saveId: "errors-once-1" }), "the broken save");
+      if (problem.kind !== "invalid") throw new Error(`expected invalid, got ${problem.kind}`);
+      const kinds = problem.errors.map((e) => `${e.pointer} ${e.keyword}`);
+      env.expect(kinds.filter((kind) => kind === "/document/sections/0 required"), JSON.stringify(kinds)).toHaveLength(1);
+      env.expect(new Set(kinds).size, JSON.stringify(kinds)).toBe(kinds.length);
+    },
+  },
+  {
+    name: "a document is kept as JSON would carry it: a member left undefined is left out, and minus zero is zero",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "as-json");
+      const map = { id: id("m"), type: "map", props: { latitude: -0, longitude: 0, zoom: 10, label: "Null island" }, children: [], style: { base: {}, tablet: undefined } } as unknown as WidgetBlock;
+      value(await env.adapter.saveDraft(page.id, { revision: page.revision, document: documentOf("As JSON", section(map)), saveId: "as-json-1" }), "the save");
+      const kept = (await env.adapter.getDraft(page.id)).document.sections[0]!.children[0]!.children[0] as WidgetBlock;
+      env.expect(Object.is((kept.props as { latitude: number }).latitude, 0), "minus zero is zero").toBe(true);
+      env.expect(Object.hasOwn(kept.style, "tablet"), "a member left undefined is left out").toBe(false);
+    },
+  },
+  {
+    name: "one page is the home page: marking another takes the mark from the first",
+    needs: [],
+    async run(env) {
+      const first = await newPage(env, "home-first");
+      const second = await newPage(env, "home-second");
+      try {
+        value(await env.adapter.updatePage(first.id, { home: true }), "the first page marked");
+        env.expect((await env.adapter.getPage(first.id)).page.home).toBe(true);
+        value(await env.adapter.updatePage(second.id, { home: true }), "the second page marked");
+        env.expect((await env.adapter.getPage(second.id)).page.home).toBe(true);
+        env.expect((await env.adapter.getPage(first.id)).page.home, "the first page is no longer the home page").toBe(false);
+        env.expect((await env.adapter.listPages()).filter((p) => p.home && (p.id === first.id || p.id === second.id)).map((p) => p.id)).toEqual([second.id]);
+      } finally {
+        value(await env.adapter.updatePage(second.id, { home: false }), "the home mark taken off");
+      }
+    },
+  },
+  {
     name: "what does not exist is not found",
     needs: [],
     async run(env) {
@@ -409,6 +472,24 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  {
+    name: "a restore keeps no copy of the draft when the draft is the newest version already, since nothing would be lost",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "restore-same");
+      const document = documentOf("Already kept", section(heading("Kept")));
+      await saved(env.adapter, page.id, { revision: page.revision, document, saveId: "restore-same-1" });
+      const [newest] = await env.adapter.listVersions(page.id);
+      env.expect(newest).toMatchObject({ number: 1, reason: "auto" });
+      const restored = value(await env.adapter.restoreVersion(page.id, newest!.number), "the restore");
+      env.expect(restored.kept).toBe(null);
+      env.expect(restored.draft.document).toEqual(document);
+      env.expect((await env.adapter.listVersions(page.id)).map((v) => v.reason)).toEqual(["restore", "auto"]);
+      // The restore is the newest version now, and the same document.
+      env.expect(value(await env.adapter.restoreVersion(page.id, newest!.number), "the restore again").kept).toBe(null);
+    },
+  },
+
   // -------------------------------------------------------- publishing
   {
     name: "publishing puts the draft live as a version, under the page's address",
@@ -460,6 +541,34 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       env.expect(second.published.draftRevision).toBe(r3);
       const after = await env.adapter.getPage(page.id);
       env.expect(after.published?.draftRevision).toBe(after.draft.revision);
+    },
+  },
+
+  {
+    name: "a published page keeps its live address when its next address changes, and no other page can take either",
+    needs: ["publish"],
+    async run(env) {
+      const page = await newPage(env, "keeps-live");
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("Kept live"), saveId: "keeps-live-1" });
+      value(await env.adapter.publish(page.id, { revision }), "the publish");
+      const next = env.unique("next-address");
+      const moved = value(await env.adapter.updatePage(page.id, { slug: next }), "the next address");
+      env.expect(moved.page.slug).toBe(next);
+      env.expect(moved.published?.slug, "live under the address it went live under").toBe(page.slug);
+      const listed = (await env.adapter.listPages()).find((p) => p.id === page.id);
+      env.expect([listed?.slug, listed?.published?.slug]).toEqual([next, page.slug]);
+
+      // The address it is live at, and the one it will have, are both taken.
+      const other = await newPage(env, "wants-an-address");
+      for (const [taken, what] of [[page.slug, "the live address"], [next, "the next address"]] as const) {
+        const problem = refusal(await env.adapter.updatePage(other.id, { slug: taken }), `${what} of another page`);
+        env.expect([...new Set(problem.errors.map((e) => e.pointer))], what).toEqual(["/slug"]);
+        const made = refusal(await env.adapter.createPage({ title: "Too late", slug: taken }), `a new page at ${what} of another`);
+        env.expect([...new Set(made.errors.map((e) => e.pointer))], what).toEqual(["/slug"]);
+      }
+
+      // The next publish moves the page to the address it was given.
+      env.expect(value(await env.adapter.publish(page.id, { revision }), "the next publish").published.slug).toBe(next);
     },
   },
 
@@ -626,6 +735,115 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  {
+    name: "a later save that names an image the library does not have is refused at that image, and the draft stays as it was",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "missing-later");
+      const kept = documentOf("Kept as it is", section(heading("Fine")));
+      const revision = await saved(env.adapter, page.id, { revision: page.revision, document: kept, saveId: "missing-later-1" });
+      // The first save of a page also makes its first version, which looks
+      // for the images too; this one, soon after, makes none, and the draft
+      // itself has to look.
+      const image: WidgetBlock = { id: id("i"), type: "image", props: { mediaId: "NoSuchImage0000", alt: "Nothing" }, children: [], style: { base: {} } };
+      const document = documentOf("Missing image", section(image));
+      const problem = refusal(await env.adapter.saveDraft(page.id, { revision, document, saveId: "missing-later-2" }), "the second save");
+      if (problem.kind !== "invalid") throw new Error(`expected invalid, got ${problem.kind}`);
+      env.expect(errorsByBlock(document, problem.errors).map((e) => [e.blockId, e.field, e.keyword])).toEqual([[image.id, "/props/mediaId", "mediaExists"]]);
+      env.expect(await env.adapter.getDraft(page.id)).toMatchObject({ revision, document: kept });
+    },
+  },
+  {
+    name: "an image shown by a kept version only is not deleted: the refusal names the versions, and no page",
+    needs: [],
+    async run(env) {
+      const item = await upload(env, `${env.unique("only-kept")}.png`, "A slipway");
+      const page = await newPage(env, "kept-image");
+      const image: WidgetBlock = { id: id("i"), type: "image", props: { mediaId: item.id, alt: "A slipway at high water" }, children: [], style: { base: {} } };
+      const r1 = await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("With an image", section(image)), saveId: "kept-image-1" });
+      const kept = value(await env.adapter.saveVersion(page.id, { name: "With the slipway" }), "a version showing it");
+      // The draft no longer shows it: only the versions do.
+      await saved(env.adapter, page.id, { revision: r1, document: documentOf("Without it", section(heading("Nothing here"))), saveId: "kept-image-2" });
+      const problem = refusal(await env.adapter.deleteMedia(item.id), "deleting an image only a version shows");
+      env.expect(problem.kind).toBe("in-use");
+      env.expect(problem.usedBy.pages).toEqual([]);
+      env.expect(problem.usedBy.versions).toContainEqual({ pageId: page.id, number: kept.number });
+      env.expect((await env.adapter.listMedia()).map((m) => m.id)).toContain(item.id);
+    },
+  },
+  {
+    name: "an upload's alt text is held to the alt text's rules at /alt: one line, at most 300 characters",
+    needs: [],
+    async run(env) {
+      const name = `${env.unique("alt-rules")}.png`;
+      for (const alt of ["Two\nlines", "x".repeat(301)]) {
+        const problem = refusal(await env.adapter.uploadMedia({ file: png(name), width: 3, height: 2, alt }), `an alt text of ${alt.length} characters`);
+        env.expect(problem.errors.map((e) => e.pointer), `an alt text of ${alt.length} characters`).toEqual(["/alt"]);
+      }
+      env.expect((await env.adapter.listMedia()).filter((m) => m.filename === name)).toEqual([]);
+      const longest = value(await env.adapter.uploadMedia({ file: png(name), width: 3, height: 2, alt: "x".repeat(300) }), "an alt text of 300 characters");
+      env.expect(longest.alt).toBe("x".repeat(300));
+    },
+  },
+  {
+    name: "an image is refused at the file when it is declared as a type the library does not take, whatever its bytes are",
+    needs: [],
+    async run(env) {
+      const name = `${env.unique("declared")}.svg`;
+      const declared = new File([PNG_BYTES], name, { type: "image/svg+xml" });
+      const problem = refusal(await env.adapter.uploadMedia({ file: declared, width: 3, height: 2 }), "a PNG declared as an SVG");
+      env.expect(problem.errors.map((e) => e.pointer)).toEqual(["/file"]);
+      env.expect((await env.adapter.listMedia()).filter((m) => m.filename === name)).toEqual([]);
+    },
+  },
+  {
+    name: "a file larger than the library takes is refused at the file, and one of the largest size it takes is not",
+    needs: [],
+    async run(env) {
+      const bytes = (size: number) => {
+        const all = new Uint8Array(size);
+        all.set(PNG_BYTES.subarray(0, 8));
+        return all;
+      };
+      const name = `${env.unique("too-large")}.png`;
+      const large = new File([bytes(MAX_UPLOAD_BYTES + 1)], name, { type: "image/png" });
+      const problem = refusal(await env.adapter.uploadMedia({ file: large, width: 3, height: 2 }), "a file one byte over the limit");
+      env.expect(problem.errors.map((e) => e.pointer)).toEqual(["/file"]);
+      env.expect((await env.adapter.listMedia()).filter((m) => m.filename === name)).toEqual([]);
+    },
+  },
+  {
+    name: "an image's size in pixels is held to 1 and the largest side the library takes, width first, at its own field",
+    needs: [],
+    async run(env) {
+      for (const [width, height, pointer] of [[MAX_IMAGE_SIDE + 1, 2, "/width"], [3, MAX_IMAGE_SIDE + 1, "/height"], [0, 2, "/width"], [3, 0, "/height"]] as const) {
+        const problem = refusal(await env.adapter.uploadMedia({ file: png(`${env.unique("sides")}.png`), width, height }), `an image of ${width} by ${height} pixels`);
+        env.expect(problem.errors.map((e) => e.pointer), `${width} by ${height}`).toEqual([pointer]);
+      }
+      const widest = value(await env.adapter.uploadMedia({ file: png(`${env.unique("sides")}.png`), width: MAX_IMAGE_SIDE, height: 1 }), "an image as wide as the library takes");
+      env.expect([widest.width, widest.height]).toEqual([MAX_IMAGE_SIDE, 1]);
+    },
+  },
+  {
+    name: "an image is kept as the type its bytes are, not the type it was declared as",
+    needs: [],
+    async run(env) {
+      const declared = new File([PNG_BYTES], `${env.unique("declared-jpeg")}.png`, { type: "image/jpeg" });
+      const item = value(await env.adapter.uploadMedia({ file: declared, width: 3, height: 2 }), "a PNG declared as a JPEG");
+      env.expect(item.contentType).toBe("image/png");
+      env.expect([...(await env.readBytes(item.url))]).toEqual([...PNG_BYTES]);
+    },
+  },
+  {
+    name: "the library lists the newest image first",
+    needs: [],
+    async run(env) {
+      const first = await upload(env, `${env.unique("older")}.png`);
+      const second = await upload(env, `${env.unique("newer")}.png`);
+      env.expect((await env.adapter.listMedia()).filter((m) => m.id === first.id || m.id === second.id).map((m) => m.id)).toEqual([second.id, first.id]);
+    },
+  },
+
   // -------------------------------------------------------- site style
   {
     name: "the site style takes one of its choices, keeps it, and refuses a tone that is not one at its slot",
@@ -643,6 +861,11 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         const changed = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale }), "the new style");
         env.expect(changed).toMatchObject({ palette: { ...before.palette, [slot]: tone }, typeScale: scale });
         env.expect(await env.adapter.getSiteStyle()).toMatchObject({ palette: { [slot]: tone }, typeScale: scale });
+        // The same style again changes nothing, and keeps the time it was
+        // changed at.
+        await new Promise((done) => setTimeout(done, 25));
+        const again = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale }), "the same style again");
+        env.expect(again.updatedAt, "a change that changes nothing keeps its time").toBe(changed.updatedAt);
         const problem = refusal(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: "no-such-tone" }, typeScale: before.typeScale }), "a tone not among the choices");
         env.expect(problem.errors.map((e) => e.pointer)).toEqual([`/palette/${slot}`]);
       } finally {

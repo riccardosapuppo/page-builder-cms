@@ -16,11 +16,15 @@ export async function storagePage(page: Page): Promise<Page> {
 }
 
 async function wireFile(file: File): Promise<WireFile> {
-  return { __file: { name: file.name, type: file.type, bytes: [...new Uint8Array(await file.arrayBuffer())] } };
+  return { __file: { name: file.name, type: file.type, base64: Buffer.from(await file.arrayBuffer()).toString("base64") } };
 }
 
-const wireOptions = (options: CallOptions | UploadOptions | undefined): WireOptions | undefined =>
-  options && "onProgress" in options && options.onProgress ? { __progress: true } : undefined;
+function wireOptions(options: CallOptions | UploadOptions | undefined): WireOptions | undefined {
+  const wired: WireOptions = {};
+  if (options && "onProgress" in options && options.onProgress) wired.__progress = true;
+  if (options?.signal?.aborted) wired.__aborted = true;
+  return wired.__progress || wired.__aborted ? wired : undefined;
+}
 
 let made = 0;
 

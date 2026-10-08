@@ -3,7 +3,11 @@
 // address is let go; two tabs saving from one revision at the same moment;
 // a refusal that undoes what its transaction had written; and a stored
 // document no upgrade can bring to the current schemaVersion, refused in
-// the words of the editor's twin of the CMS's upgrades.
+// the words of the editor's twin of the CMS's upgrades; what depends on the
+// time (an automatic version at most every ten minutes, a publish that is
+// never dated before the last one) on a clock the test moves; a stored draft
+// no check passes, which cannot be published; and a call given up on before
+// it starts, which is not made.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
@@ -111,4 +115,132 @@ test("a stored document no upgrade brings to the current schemaVersion is refuse
   await expect(tab.getVersion(made.id, 60)).rejects.toMatchObject({ failure: { kind: "refused", code: "unsupported_document", message: "The document is of schemaVersion 7, newer than this server's 1." } });
   const restored = await tab.restoreVersion(made.id, 60);
   expect(restored).toMatchObject({ ok: false, problem: { kind: "invalid", errors: [{ pointer: "/document/schemaVersion", keyword: "upgrade" }] } });
+});
+
+// ----------------------------------------------- by the adapter's clock
+
+const MINUTE = 60_000;
+const at = (start: string, offsetMs: number) => new Date(Date.parse(start) + offsetMs).toISOString();
+const setTime = (when: string | null) => first.evaluate((time) => window.storagePage!.setTime(time), when);
+
+async function save(tab: StorageAdapter, pageId: number, revision: number, title: string): Promise<number> {
+  const saved = await tab.saveDraft(pageId, { revision, document: { schemaVersion: 1, title, sections: [] }, saveId: `clock-${unique("s")}` });
+  if (!saved.ok) throw new Error(JSON.stringify(saved.problem));
+  return saved.value.revision;
+}
+
+test("an automatic version is kept at most every ten minutes, counted from the newest version of any kind, on the adapter's clock", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const made = await page(tab);
+  const start = "2026-10-08T10:00:00.000Z";
+  try {
+    // The first save has no version before it: it makes one.
+    await setTime(start);
+    let revision = await save(tab, made.id, made.revision, "One");
+    expect((await tab.listVersions(made.id)).map((v) => [v.number, v.reason, v.createdAt])).toEqual([[1, "auto", start]]);
+    // Not yet ten minutes after it: none.
+    await setTime(at(start, 10 * MINUTE - 1));
+    revision = await save(tab, made.id, revision, "Two");
+    expect((await tab.listVersions(made.id)).map((v) => v.number)).toEqual([1]);
+    // Ten minutes exactly: one.
+    await setTime(at(start, 10 * MINUTE));
+    revision = await save(tab, made.id, revision, "Three");
+    expect((await tab.listVersions(made.id)).map((v) => [v.number, v.reason])).toEqual([[2, "auto"], [1, "auto"]]);
+    // Counted from that one, not from the first: ten minutes after the
+    // second is not ten after the third's save a minute later.
+    await setTime(at(start, 11 * MINUTE));
+    revision = await save(tab, made.id, revision, "Four");
+    expect((await tab.listVersions(made.id)).map((v) => v.number)).toEqual([2, 1]);
+    // A version of another kind counts too: Save version a minute before
+    // the next save, and the next save makes none.
+    await setTime(at(start, 25 * MINUTE));
+    const manual = await tab.saveVersion(made.id, { name: "By hand" });
+    if (!manual.ok) throw new Error(JSON.stringify(manual.problem));
+    await setTime(at(start, 26 * MINUTE));
+    revision = await save(tab, made.id, revision, "Five");
+    expect((await tab.listVersions(made.id)).map((v) => [v.number, v.reason])).toEqual([[manual.value.number, "manual"], [2, "auto"], [1, "auto"]]);
+    await setTime(at(start, 35 * MINUTE));
+    await save(tab, made.id, revision, "Six");
+    expect((await tab.listVersions(made.id)).map((v) => v.reason)).toEqual(["auto", "manual", "auto", "auto"]);
+  } finally {
+    await setTime(null);
+  }
+});
+
+test("a publish never dates the page earlier than the last one, even when the clock has gone back; the next one dates it again", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const made = await page(tab);
+  const start = "2026-10-08T10:00:00.000Z";
+  try {
+    await setTime(start);
+    const revision = await save(tab, made.id, made.revision, "Dated");
+    const publish = async (when: string) => {
+      await setTime(when);
+      const published = await tab.publish(made.id, { revision });
+      if (!published.ok) throw new Error(JSON.stringify(published.problem));
+      return published.value;
+    };
+    expect((await publish(start)).published.publishedAt).toBe(start);
+    // The clock goes back an hour: the version is dated by it, the page's
+    // publishing is not.
+    const earlier = await publish(at(start, -60 * MINUTE));
+    expect(earlier.published.publishedAt).toBe(start);
+    expect(earlier.version.createdAt).toBe(at(start, -60 * MINUTE));
+    expect((await tab.getPage(made.id)).published?.publishedAt).toBe(start);
+    expect((await publish(at(start, 60 * MINUTE))).published.publishedAt).toBe(at(start, 60 * MINUTE));
+  } finally {
+    await setTime(null);
+  }
+});
+
+// ------------------------------------------------- a draft gone bad
+
+// A draft as a broken build might have stored it: a title of no visible
+// character, which no check lets through.
+async function breakDraft(tab: StorageAdapter, pageId: number): Promise<void> {
+  const read = await tab.getPage(pageId);
+  await first.evaluate((record) => window.storagePage!.put("pages", record), {
+    id: pageId,
+    createdAt: read.page.createdAt,
+    updatedAt: read.draft.updatedAt,
+    home: false,
+    slug: read.page.slug,
+    liveSlug: null,
+    draft: { document: { schemaVersion: 1, title: " ", sections: [] }, revision: read.draft.revision, lastSaveId: read.draft.lastSaveId, updatedAt: read.draft.updatedAt },
+    published: null,
+  });
+}
+
+test("a stored draft no check passes cannot be published, nor kept as a version: it is refused at what is wrong, and nothing is written", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const made = await page(tab);
+  const revision = await save(tab, made.id, made.revision, "Fine to begin with");
+  await breakDraft(tab, made.id);
+  const before = await tab.listVersions(made.id);
+
+  const published = await tab.publish(made.id, { revision });
+  expect(published).toMatchObject({ ok: false, problem: { kind: "invalid", code: "invalid_document", errors: [{ pointer: "/document/title" }] } });
+  const kept = await tab.saveVersion(made.id, { name: "Broken" });
+  expect(kept).toMatchObject({ ok: false, problem: { kind: "invalid", code: "invalid_document", errors: [{ pointer: "/document/title" }] } });
+  expect((await tab.getPage(made.id)).published).toBe(null);
+  expect(await tab.listVersions(made.id)).toEqual(before);
+});
+
+// -------------------------------------------------- a call given up on
+
+test("a call abandoned before it starts is not made: nothing is saved, and nothing is uploaded", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const made = await page(tab);
+  const gone = new AbortController();
+  gone.abort();
+  const abandoned = { failure: { kind: "unknown", cause: "timeout", status: null } };
+
+  await expect(tab.saveDraft(made.id, { revision: made.revision, document: { schemaVersion: 1, title: "Not saved", sections: [] }, saveId: "abandoned-1" }, { signal: gone.signal })).rejects.toMatchObject(abandoned);
+  expect((await tab.getDraft(made.id)).revision).toBe(made.revision);
+
+  const name = `${unique("abandoned")}.png`;
+  await expect(tab.uploadMedia({ file: png(name), width: 3, height: 2 }, { signal: gone.signal })).rejects.toMatchObject(abandoned);
+  expect((await tab.listMedia()).filter((m) => m.filename === name)).toEqual([]);
+  // The same calls, not abandoned, go through.
+  expect((await tab.saveDraft(made.id, { revision: made.revision, document: { schemaVersion: 1, title: "Saved", sections: [] }, saveId: "abandoned-2" })).ok).toBe(true);
 });

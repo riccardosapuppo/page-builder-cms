@@ -5,14 +5,20 @@
 // on one database. What crosses to Node is ../../e2e/browser/wire.ts.
 import { isStorageError, type StorageAdapter } from "../../src/storage/adapter.ts";
 import { createBrowserAdapter, DATABASE_NAME } from "../../src/storage/browser.ts";
+import { systemClock, type Clock } from "../../src/storage/clock.ts";
 import type { StoragePage, WireAnswer } from "../../e2e/browser/wire.ts";
 
 const adapters = new Map<string, StorageAdapter>();
 
+// The time every adapter of the page reads: the real one, unless a test has
+// moved it (setTime), to try what depends on how long ago a thing was kept.
+let moved: number | null = null;
+const clock: Clock = { ...systemClock, now: () => moved ?? Date.now() };
+
 function adapterOf(key: string): StorageAdapter {
   let adapter = adapters.get(key);
   if (!adapter) {
-    adapter = createBrowserAdapter();
+    adapter = createBrowserAdapter({ clock });
     adapters.set(key, adapter);
   }
   return adapter;
@@ -23,11 +29,13 @@ function decode(value: unknown, progress: Array<[number, number]>): unknown {
   if (value === null || typeof value !== "object") return value;
   const object = value as Record<string, unknown>;
   if ("__file" in object) {
-    const file = object.__file as { name: string; type: string; bytes: number[] };
-    return new File([Uint8Array.from(file.bytes)], file.name, { type: file.type });
+    const file = object.__file as { name: string; type: string; base64: string };
+    const bytes = atob(file.base64);
+    return new File([Uint8Array.from({ length: bytes.length }, (_, i) => bytes.charCodeAt(i))], file.name, { type: file.type });
   }
-  const decoded = Object.fromEntries(Object.entries(object).filter(([key]) => key !== "__progress").map(([key, item]) => [key, decode(item, progress)]));
+  const decoded = Object.fromEntries(Object.entries(object).filter(([key]) => key !== "__progress" && key !== "__aborted").map(([key, item]) => [key, decode(item, progress)]));
   if (object.__progress === true) decoded.onProgress = (sent: number, total: number) => progress.push([sent, total]);
+  if (object.__aborted === true) decoded.signal = AbortSignal.abort();
   return decoded;
 }
 
@@ -57,6 +65,9 @@ const page: StoragePage = {
   },
   async put(store, value) {
     await raw(store, "readwrite", (objects) => objects.put(value));
+  },
+  setTime(at) {
+    moved = at === null ? null : Date.parse(at);
   },
 };
 
