@@ -37,6 +37,13 @@ for (const { path, heading } of PAGES) {
     const response = await page.goto(`${cms()}${path}`);
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
+    if (path === "/") {
+      // The video and the map are closed cards: the third party is asked
+      // only once a visitor opens one, and the shared fixture fails any
+      // request outside the run's servers.
+      await expect(page.locator("[data-block-type=video] details, [data-block-type=map] details")).toHaveCount(2);
+      await expect(page.locator("[data-block-type=video] details[open], [data-block-type=map] details[open]")).toHaveCount(0);
+    }
     await clean(page, `${path}, 1440 wide`);
 
     await page.setViewportSize({ width: 390, height: 844 });
