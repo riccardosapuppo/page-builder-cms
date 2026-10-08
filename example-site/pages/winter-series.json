@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "title": "Winter series",
+  "description": "Short, cold swims from November to March, and very hot tea after every one.",
+  "sections": [
+    {
+      "id": "intro",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "intro-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "intro-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Winter series"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "intro-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Short, cold swims from the first Sunday of November to the last of March, and very hot tea after every one."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "large"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "details",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "details-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "details-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "The sea is at its clearest in winter, and at its coldest. We keep swims short and stay close to the shore."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "What to bring:",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "bulletList",
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "A bright cap, so we can count heads"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Goggles"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Something warm, and dry, for afterwards"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "We shorten swims when the water is under "
+                        },
+                        {
+                          "type": "text",
+                          "text": "10 degrees",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": ". If the sea is rough, we cancel by 6 am and say so on the "
+                        },
+                        {
+                          "type": "text",
+                          "text": "home page",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "/#questions"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "details-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "details-image",
+              "type": "image",
+              "props": {
+                "mediaId": "m-winter",
+                "alt": "The jetty in winter, with a grey, flat sea beyond it"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceBetween": "xl"
+        }
+      }
+    },
+    {
+      "id": "practical",
+      "type": "section",
+      "props": {
+        "label": "When and where"
+      },
+      "children": [
+        {
+          "id": "practical-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "practical-when",
+              "type": "iconbox",
+              "props": {
+                "icon": "calendar",
+                "title": "Every Sunday",
+                "text": "From the first Sunday of November\nto the last Sunday of March."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "practical-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "practical-time",
+              "type": "iconbox",
+              "props": {
+                "icon": "clock",
+                "title": "At slack water",
+                "text": "The time moves with the tide. Check the table on the noticeboard."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "practical-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "practical-where",
+              "type": "iconbox",
+              "props": {
+                "icon": "pin",
+                "title": "The north slipway",
+                "text": "Where the footpath from the car park meets the beach."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "soft",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s",
+          "spaceBetween": "xl"
+        }
+      }
+    },
+    {
+      "id": "words",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "words-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "words-quote",
+              "type": "quote",
+              "props": {
+                "text": "Ten minutes in the water, an hour of feeling good.",
+                "attribution": "A winter regular"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "words-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "words-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "New to cold water? Start with the "
+                        },
+                        {
+                          "type": "text",
+                          "text": "beginners’ course",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " in the autumn."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "words-divider",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "words-spacer",
+              "type": "spacer",
+              "props": {
+                "size": "s"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "words-button",
+              "type": "button",
+              "props": {
+                "label": "Back to the club",
+                "href": "/"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "primary",
+                  "color": "background"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceBetween": "xl"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Slack Water",
+  "images": [
+    { "id": "hero-dawn", "file": "images/hero-dawn.png", "alt": "The bay at dawn at slack water, with a line of buoys and three swimmers" },
+    { "id": "g-horizon", "file": "images/g-horizon.png", "alt": "A flat horizon at first light" },
+    { "id": "g-caps", "file": "images/g-caps.png", "alt": "Three swim caps at the waterline" },
+    { "id": "g-buoys", "file": "images/g-buoys.png", "alt": "The buoy line across the bay" },
+    { "id": "g-slipway", "file": "images/g-slipway.png", "alt": "The slipway running into the water" },
+    { "id": "g-rockpools", "file": "images/g-rockpools.png", "alt": "Rock pools at low water" },
+    { "id": "g-wake", "file": "images/g-wake.png", "alt": "A swimmer’s wake on still water" },
+    { "id": "m-tea", "file": "images/m-tea.png", "alt": "A flask and two cups of tea on a rock after a swim" },
+    { "id": "m-winter", "file": "images/m-winter.png", "alt": "The jetty in winter" }
+  ],
+  "pages": [
+    { "slug": "home", "file": "pages/home.json", "home": true },
+    { "slug": "winter-series", "file": "pages/winter-series.json", "home": false },
+    { "slug": "notices", "file": "pages/notices.json", "home": false }
+  ]
+}

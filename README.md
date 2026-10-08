@@ -201,6 +201,9 @@ itself.
   install, run and test it, and how the caches and the jobs work.
 - [`contract/`](contract/): the render contract, documents and the HTML the
   server renders for each, which the editor's renderer is held to.
+- [`example-site/`](example-site/): the design's example site, Slack
+  Water, as three page documents and nine pictures drawn from the design's
+  SVGs: the one copy that `ruby bin/rails db:seed` loads.
 - [`builder/`](builder/): the editor's package, React 19, TypeScript and
   Vite, with every dependency pinned, the document's types and its
   validator compiled from the schema, the published page's stylesheets
@@ -265,7 +268,7 @@ itself.
   preflight, the one install routine, the two servers and the stop.
   [`tools/check.ts`](tools/check.ts) is `npm run check`, below.
   `npm run lint:openapi` lints the API
-  description; `tools/seed-images.ts` renders the seed's pictures,
+  description; `tools/seed-images.ts` renders the example site's pictures,
   `tools/gen-contract-500.ts` writes the 500-block fixture,
   `npm run measure:server`, `measure:builder` and `measure:bundle` take the
   measurements of the [Measurements](#measurements) section,

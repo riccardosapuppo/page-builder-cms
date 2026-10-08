@@ -2,7 +2,8 @@
 //
 // Renders the example site's illustrations, drawn as SVG for the design
 // (design/img/), to the PNG files the seed uploads into the media library
-// (cms/db/seed_images/). The library takes no SVG, since an SVG is a
+// (example-site/images/, each named in example-site/site.json, from the
+// SVG of the same name). The library takes no SVG, since an SVG is a
 // document that can carry script, so the seed uploads what a person would:
 // a raster image.
 //
@@ -15,20 +16,21 @@
 import { chromium } from "playwright";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = join(root, "design", "img");
-const target = join(root, "cms", "db", "seed_images");
+const target = join(root, "example-site", "images");
 
-// The illustrations the seed's pages show. The map and the video poster are
-// not among them: the page draws its own cards for those, in CSS.
-const NAMES = [
-  "hero-dawn",
-  "g-horizon", "g-caps", "g-buoys", "g-slipway", "g-rockpools", "g-wake",
-  "m-tea", "m-winter",
-];
+// The illustrations the seed's pages show, as site.json lists them. The
+// map and the video poster are not among them: the page draws its own
+// cards for those, in CSS.
+const site = JSON.parse(readFileSync(join(root, "example-site", "site.json"), "utf8")) as { images: Array<{ file: string }> };
+const NAMES = site.images.map((image) => {
+  if (dirname(image.file) !== "images" || !image.file.endsWith(".png")) throw new Error(`site.json names ${image.file}, not a PNG in images/`);
+  return basename(image.file, ".png");
+});
 
 const check = process.argv.includes("--check");
 const out = check ? mkdtempSync(join(tmpdir(), "seed-images-")) : target;
@@ -60,7 +62,7 @@ try {
       if (!same) differences += 1;
       console.log(`${same ? "same" : "DIFFERS"} ${name}.png (${width}x${height}, ${png.length} bytes)`);
     } else {
-      console.log(`wrote cms/db/seed_images/${name}.png (${width}x${height}, ${png.length} bytes)`);
+      console.log(`wrote example-site/images/${name}.png (${width}x${height}, ${png.length} bytes)`);
     }
   }
 } finally {

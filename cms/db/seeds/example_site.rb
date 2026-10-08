@@ -1,57 +1,103 @@
 # frozen_string_literal: true
 
-require_relative "document_builder"
-
 # The example site of the approved design, Slack Water, an invented swimming
-# club: the home page drawn in design/index.html#page, a content page, and
-# a page that breaks the usual assumptions (four columns, a word too long
-# for its line, emoji, nested lists, a long alt text, a dark section, a
-# block hidden on phones).
+# club, as ../example-site/ holds it for every reader (the editor's browser
+# demo reads the same files): site.json names the images and the pages, in
+# order; pages/*.json are the page documents, each naming an image by its
+# id in site.json; images/*.png are the pictures, which tools/seed-images.ts
+# renders from the design's SVGs.
 #
 # Images go into the media library the way an upload does: a blob on the
 # storage service, then MediaItem.create_from_upload!, which checks the
-# bytes as it checks the editor's uploads. The files are PNGs that
-# tools/seed-images.ts renders from the design's SVGs.
+# bytes as it checks the editor's uploads. A document's image ids become the
+# public ids the library gave those uploads before the page is saved, and
+# Draft.save_document! holds it to the schema as it holds the editor's
+# saves.
 #
 # Running it again changes nothing: an image whose file is already in the
-# library is reused, and a page is saved and published only when its
-# document differs from what is there.
+# library is reused, and a page whose address is taken, live or in a draft,
+# is left as it is, with whatever its owner has changed since. The site's
+# home is set only while it has none.
 module ExampleSite
-  extend DocumentBuilder
+  ROOT = Rails.root.join("..", "example-site").expand_path
 
-  IMAGES = Rails.root.join("db", "seed_images")
-
-  # An invented video id: the provider answers that the video does not
-  # exist, which is the truth about a demo site. The map point is an
-  # arbitrary stretch of coast.
-  VIDEO_ID = "dawn-swim01"
-  MAP_POINT = [ 57.3009, -1.9497, 15 ].freeze
+  # A file of the example site that is not what this seed reads.
+  class Unreadable < StandardError; end
 
   module_function
 
-  def run
-    media = {
-      hero: upload("hero-dawn", "The bay at dawn at slack water, with a line of buoys and three swimmers"),
-      horizon: upload("g-horizon", "A flat horizon at first light"),
-      caps: upload("g-caps", "Three swim caps at the waterline"),
-      buoys: upload("g-buoys", "The buoy line across the bay"),
-      slipway: upload("g-slipway", "The slipway running into the water"),
-      rockpools: upload("g-rockpools", "Rock pools at low water"),
-      wake: upload("g-wake", "A swimmer’s wake on still water"),
-      tea: upload("m-tea", "A flask and two cups of tea on a rock after a swim"),
-      winter: upload("m-winter", "The jetty in winter")
-    }
-    home = put_page("home", home_page(media))
-    home.make_home! unless home.home?
-    put_page("winter-series", winter_page(media))
-    put_page("notices", notices_page(media))
-    report
+  # Returns, page by page, whether this run published it or found its
+  # address taken, and prints the same.
+  def run(root: ROOT)
+    site = read_site(root)
+    # Every document read, and every image it names found in site.json,
+    # before anything is uploaded or saved.
+    listed = site["images"].to_h { |image| [ image["id"], image["id"] ] }
+    documents = site["pages"].map { |entry| with_library_ids(read_json(root, entry["file"]), listed, entry["file"]) }
+    library = site["images"].to_h { |image| [ image["id"], upload(root.join(image["file"]), image["alt"]).public_id ] }
+    done = site["pages"].zip(documents).map do |entry, document|
+      page, published = put_page(entry["slug"], with_library_ids(document, library, entry["file"]))
+      page.make_home! if entry["home"] && Page.home_page.nil?
+      [ entry["slug"], published ? :published : :left_as_it_is ]
+    end
+    report(done.to_h)
+    done.to_h
+  end
+
+  def read_json(root, file)
+    path = root.join(file)
+    raise Unreadable, "example-site/#{file} is missing" unless path.file?
+
+    JSON.parse(path.read(encoding: "UTF-8"))
+  rescue JSON::ParserError => e
+    raise Unreadable, "example-site/#{file} is not JSON: #{e.message}"
+  end
+
+  # site.json, held to the shape this seed and the demo both read: an image
+  # id as the schema's mediaId, a file under the folder, one home page.
+  def read_site(root)
+    site = read_json(root, "site.json")
+    images = site["images"]
+    pages = site["pages"]
+    problem =
+      if site.keys.sort != %w[images name pages] then "has the keys #{site.keys.sort.inspect}, not images, name and pages"
+      elsif !images.is_a?(Array) || images.empty? || !pages.is_a?(Array) || pages.empty? then "lists no images or no pages"
+      elsif (bad = images.find { |i| !i.is_a?(Hash) || i.keys.sort != %w[alt file id] || !i["id"].to_s.match?(/\A[A-Za-z0-9_-]{1,64}\z/) || !inside?(root, i["file"]) })
+        "has an image it cannot read: #{bad.inspect}"
+      elsif (bad = pages.find { |p| !p.is_a?(Hash) || p.keys.sort != %w[file home slug] || ![ true, false ].include?(p["home"]) || !inside?(root, p["file"]) })
+        "has a page it cannot read: #{bad.inspect}"
+      elsif images.map { |i| i["id"] }.uniq.size != images.size then "names an image id twice"
+      elsif pages.map { |p| p["slug"] }.uniq.size != pages.size then "names a slug twice"
+      elsif pages.count { |p| p["home"] } != 1 then "marks #{pages.count { |p| p['home'] }} pages as home, not one"
+      end
+    raise Unreadable, "example-site/site.json #{problem}" if problem
+
+    site
+  end
+
+  def inside?(root, file)
+    file.is_a?(String) && !file.start_with?("/") && !file.split("/").include?("..") && root.join(file).file?
+  end
+
+  # The document with each image id replaced as ids says (an id of
+  # site.json to the public id of that image in the library); an id it does
+  # not hold is refused.
+  def with_library_ids(node, ids, file)
+    case node
+    when Hash
+      node.to_h do |key, value|
+        next [ key, with_library_ids(value, ids, file) ] unless key == "mediaId"
+
+        [ key, ids.fetch(value) { raise Unreadable, "example-site/#{file} names the image #{value.inspect}, which site.json does not list" } ]
+      end
+    when Array then node.map { |value| with_library_ids(value, ids, file) }
+    else node
+    end
   end
 
   # The library item for a seed image: found by its file name and size if
   # an earlier run uploaded it, otherwise uploaded now.
-  def upload(name, alt)
-    path = IMAGES.join("#{name}.png")
+  def upload(path, alt)
     bytes = path.binread
     existing = MediaItem.joins(file_attachment: :blob)
                         .find_by(active_storage_blobs: { filename: path.basename.to_s, byte_size: bytes.bytesize })
@@ -62,216 +108,27 @@ module ExampleSite
     MediaItem.create_from_upload!(signed_blob_id: blob.signed_id, width: width, height: height, alt: alt)
   end
 
-  # The page at slug with this document as its draft and its live version.
+  # The page at slug, made with this document as its draft and published,
+  # and true; or the page already at that address, live or in a draft, as
+  # it is, and false. All or nothing: a page is never left half made.
   def put_page(slug, document)
-    page = Page.find_by(slug: slug) || Draft.find_by(slug: slug)&.page || Page.create_with_draft!(title: document["title"], slug: slug)
-    draft = page.draft
-    if draft.document != document
-      draft = Draft.save_document!(page_id: page.id, revision: draft.revision, document: document, save_id: "seed-#{draft.revision + 1}")
+    taken = Page.find_by(slug: slug) || Draft.find_by(slug: slug)&.page
+    return [ taken, false ] if taken
+
+    Page.transaction do
+      page = Page.create_with_draft!(title: document["title"], slug: slug)
+      Draft.save_document!(page_id: page.id, revision: page.draft.revision, document: document, save_id: "seed-#{slug}")
+      page.publish!
+      [ page.reload, true ]
     end
-    page.publish! if page.published_version&.document != draft.document
-    page.reload
   end
 
-  def report
+  def report(done)
     Page.includes(:draft, :published_version).order(:id).each do |page|
-      puts format("  %-28s %-16s version %d%s", page.draft.document["title"], page.live_path, page.published_version.number, page.home? ? ", home" : "")
+      said = done[page.draft.slug] == :left_as_it_is ? ", already there, left as it is" : ""
+      version = page.published_version ? "version #{page.published_version.number}" : "not published"
+      puts format("  %-28s %-16s %s%s%s", page.draft.document["title"], page.live_path || "/#{page.draft.slug}", version, page.home? ? ", home" : "", said)
     end
     puts "  #{MediaItem.count} images in the media library"
-  end
-
-  def home_page(m)
-    document(
-      title: "Slack Water",
-      description: "Dawn swims, beginners’ courses and a winter series, timed to the one quiet hour the tide gives us.",
-      sections: [
-        section("hero", [
-          column("hero-1", [
-            heading("hero-heading", "Swim at slack water", level: 1, base: { textSize: "display" }),
-            text("hero-text", "Dawn swims, beginners’ courses and a winter series, timed to the one quiet hour the tide gives us.", base: { textSize: "large" }),
-            button("hero-button", "Join a trial swim", "#join")
-          ], base: { verticalAlign: "middle" }, tablet: { spaceInside: "l" }),
-          column("hero-2", [
-            # Square beside the text on desktop, wide above it on tablets, 5:4 on phones.
-            image("hero-image", m[:hero], alt: "The bay at dawn at slack water, with a line of buoys and three swimmers",
-                  base: { aspect: "1:1" }, tablet: { aspect: "16:9" }, phone: { aspect: "5:4" })
-          ])
-          # The design's hero splits 1.45 to 1: 3:2 is the nearest preset.
-        ], anchor: "top", label: "Hero", widths: "3:2",
-           base: { spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }, phone: { spaceAbove: "l", spaceBelow: "xxl" }),
-
-        section("swims", [
-          column("swims-1", [ iconbox("swims-dawn", "sunrise", "Dawn swims", "Twice a week, at first light, when the bay is flat.") ]),
-          column("swims-2", [ iconbox("swims-course", "buoys", "Beginners’ course", "Four sessions from the shallows to the buoy line.") ]),
-          column("swims-3", [ iconbox("swims-winter", "cup", "Winter series", "Short, cold, and followed by very hot tea.") ])
-        ], anchor: "swims", label: "What we do", base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
-
-        section("gallery", [
-          column("gallery-1", [
-            heading("gallery-heading", "From the water"),
-            gallery("gallery-images", [
-              [ m[:horizon], "A flat horizon at first light" ],
-              [ m[:caps], "Three swim caps at the waterline" ],
-              [ m[:buoys], "The buoy line across the bay" ],
-              [ m[:slipway], "The slipway running into the water" ],
-              [ m[:rockpools], "Rock pools at low water" ],
-              [ m[:wake], "A swimmer’s wake on still water" ]
-            ])
-          ])
-        ], anchor: "gallery", label: "Gallery", base: { spaceBelow: "section-s" }),
-
-        section("meet", [
-          column("meet-1", [
-            heading("meet-heading", "See the bay before you join"),
-            video("meet-video", "youtube", VIDEO_ID, "Watch a dawn swim")
-          ], base: { verticalAlign: "bottom" }),
-          column("meet-2", [
-            text("meet-text", "We meet twenty minutes before slack water, whatever the clock says. Bring a bright cap, goggles and something warm for afterwards."),
-            map("meet-map", *MAP_POINT, "Meeting point: the slipway at the north end of the beach")
-          ], base: { verticalAlign: "bottom" })
-        ], anchor: "meet", label: "See the bay", base: { spaceAbove: "section-s" }),
-
-        section("quote", [
-          column("quote-1", [
-            quote("quote-text", "I came for the cold water and stayed for the tea.", attribution: "A member since last winter")
-          ], base: { verticalAlign: "middle" }),
-          column("quote-2", [ image("quote-image", m[:tea], alt: "A flask and two cups of tea on a rock after a swim", base: { aspect: "4:3" }) ])
-        ], label: "Quote", base: { background: "soft" }),
-
-        section("questions", [
-          column("questions-1", [
-            heading("questions-heading", "Before your first swim"),
-            text("questions-text", [ "Ask us anything at the slipway, or ", link("send a request below", "#join"), " and we will answer by email." ])
-          ]),
-          column("questions-2", [
-            accordion("questions-list", [
-              [ "How cold is it?", "Between 8 and 18 degrees depending on the month. We shorten swims in winter." ],
-              [ "Do I need a wetsuit?", "No. Many members swim without one; the course covers both." ],
-              [ "What if the sea is rough?", "We cancel by 6 am and post it on this page." ]
-            ])
-          ])
-        ], anchor: "questions", label: "Questions"),
-
-        section("join", [
-          column("join-1", [
-            heading("join-heading", "Join a trial swim"),
-            text("join-text", "Tell us a little about your swimming. We reply within two days with the next trial date and what to bring.")
-          ]),
-          column("join-2", [
-            form("join-form", [
-              [ "name", "text", "Name", false, 100 ],
-              [ "email", "email", "Email", false ],
-              [ "notes", "textarea", "Anything we should know?", false, 1000 ],
-              [ "distance", "checkbox", "I can swim 200 meters without stopping", true ]
-            ], submit: "Send request", confirmation: "Thank you. We reply within two days with the next trial date and what to bring.")
-          ])
-        ], anchor: "join", label: "Join", base: { spaceBelow: "section-l" })
-      ]
-    )
-  end
-
-  def winter_page(m)
-    document(
-      title: "Winter series",
-      description: "Short, cold swims from November to March, and very hot tea after every one.",
-      sections: [
-        section("intro", [
-          column("intro-1", [
-            heading("intro-heading", "Winter series", level: 1),
-            text("intro-text", "Short, cold swims from the first Sunday of November to the last of March, and very hot tea after every one.", base: { textSize: "large" })
-          ])
-        ], base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
-
-        section("details", [
-          column("details-1", [
-            text("details-text",
-                 "The sea is at its clearest in winter, and at its coldest. We keep swims short and stay close to the shore.",
-                 [ bold("What to bring:") ],
-                 bullets("A bright cap, so we can count heads", "Goggles", "Something warm, and dry, for afterwards"),
-                 [ "We shorten swims when the water is under ", bold("10 degrees"), ". If the sea is rough, we cancel by 6 am and say so on the ", link("home page", "/#questions"), "." ])
-          ]),
-          column("details-2", [ image("details-image", m[:winter], alt: "The jetty in winter, with a grey, flat sea beyond it") ])
-        ], base: { spaceBetween: "xl" }),
-
-        section("practical", [
-          column("practical-1", [ iconbox("practical-when", "calendar", "Every Sunday", "From the first Sunday of November\nto the last Sunday of March.") ]),
-          column("practical-2", [ iconbox("practical-time", "clock", "At slack water", "The time moves with the tide. Check the table on the noticeboard.") ]),
-          column("practical-3", [ iconbox("practical-where", "pin", "The north slipway", "Where the footpath from the car park meets the beach.") ])
-        ], label: "When and where", base: { background: "soft", spaceAbove: "section-s", spaceBelow: "section-s", spaceBetween: "xl" }),
-
-        section("words", [
-          column("words-1", [ quote("words-quote", "Ten minutes in the water, an hour of feeling good.", attribution: "A winter regular") ]),
-          column("words-2", [
-            text("words-text", [ "New to cold water? Start with the ", italic("beginners’ course"), " in the autumn." ]),
-            divider("words-divider"),
-            spacer("words-spacer", "s"),
-            button("words-button", "Back to the club", "/", base: { background: "primary", color: "background" })
-          ], base: { verticalAlign: "middle" })
-        ], base: { spaceBetween: "xl" })
-      ]
-    )
-  end
-
-  def notices_page(m)
-    long_alt = "A tall orange flask and two white cups of tea, steaming, set on a flat dark rock just above the waterline after an early swim, " \
-               "with the sea calm and pale green behind them, the sky pink with first light, and nobody else in sight: the kind of morning the winter series is for."
-    document(
-      title: "Notices",
-      description: "Odd shapes on purpose: four columns, a word too long for its line, emoji, nested lists and a long alt text.",
-      sections: [
-        section("head", [
-          column("head-1", [
-            heading("head-heading", "Notices", level: 1),
-            text("head-text",
-                 [ "Today’s word from the logbook: Seawaterthermometercalibrationlogbookentriesforthewholewinterseason, which no line is wide enough for." ],
-                 [ "Swims this week 🌊🧊☕ and one more 🏊‍♀️.", line_break, "Written the way members write: café, naïve, 日本語, שלום." ])
-          ])
-        ], base: { spaceAbove: "section-s", spaceBelow: "section-s" }),
-
-        section("four", [
-          column("four-1", [ iconbox("four-visitors", "globe", "Visitors welcome", "Swim with us for a week before you join.") ]),
-          column("four-2", [ iconbox("four-lifeguard", "info", "Lifeguard on Sundays", "From 8 to 10 am, on the slipway.") ]),
-          column("four-3", [
-            heading("four-lost", "Lost property", level: 3),
-            text("four-lost-text", "Two caps, one left glove, a flask with a dent.")
-          ]),
-          column("four-4", [ image("four-image", m[:tea], alt: long_alt) ])
-        ], label: "Four columns", base: { spaceBetween: "l" }),
-
-        section("night", [
-          column("night-1", [
-            heading("night-heading", "Night swim, once a year"),
-            text("night-text", "On the shortest night, with lights on the buoys. Members only.")
-          ]),
-          column("night-2", [ button("night-button", "Ask about it", "mailto:night@slackwater.example") ], base: { verticalAlign: "middle" })
-        ], label: "Dark band", base: { background: "primary", spaceAbove: "section-s", spaceBelow: "section-s" }),
-
-        section("lists", [
-          column("lists-1", [
-            heading("lists-heading", "Every swim, in order", level: 3),
-            text("lists-text",
-                 bullets(
-                   item("Before the swim", numbers("Check the tide table", "Tell someone ashore", item("Warm up", bullets("Arms", "Shoulders")))),
-                   item("After the swim", numbers("Get dry", "Get warm", start: 4))
-                 ),
-                 [ "Steps go on from the course notes,", line_break, "which end at step 3." ])
-          ]),
-          column("lists-2", [
-            accordion("lists-questions", [
-              [ "What happens if the weather turns while we are already in the water, a long way from the slipway?",
-                "We swim back along the buoy line.\nThe lifeguard counts heads at the slipway.\nNobody leaves until everyone is out." ],
-              [ "Can I bring a friend?", "Yes, once, for a trial swim." ]
-            ])
-          ])
-        ], label: "Lists"),
-
-        section("desktop-only", [
-          column("desktop-only-1", [
-            heading("desktop-only-heading", "Shown on desktop and tablets, hidden on phones", level: 3,
-                    base: { align: "center" }, tablet: { align: "left" }, phone: { visibility: "hidden" })
-          ])
-        ], label: "Hidden on phones", base: { spaceAbove: "section-s", spaceBelow: "section-s" })
-      ]
-    )
   end
 end

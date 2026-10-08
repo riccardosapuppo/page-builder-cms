@@ -420,7 +420,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.getByRole("button", { name: "Replace image" }).click();
   const library = page.getByRole("dialog", { name: "Media library" });
   const files = library.getByLabel("Images to upload");
-  await files.setInputFiles({ name: "buoy-line.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "cms", "db", "seed_images", "g-buoys.png")) });
+  await files.setInputFiles({ name: "buoy-line.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "example-site", "images", "g-buoys.png")) });
   await library.getByRole("radio", { name: "buoy-line.png, no alt text" }).waitFor();
   let release = () => {};
   const held = new Promise<void>((done) => {
@@ -430,7 +430,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
     if (route.request().method() === "PUT") await held;
     await route.fallback();
   });
-  await files.setInputFiles({ name: "rock-pools.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "cms", "db", "seed_images", "g-rockpools.png")) });
+  await files.setInputFiles({ name: "rock-pools.png", mimeType: "image/png", buffer: readFileSync(join(repoRoot, "example-site", "images", "g-rockpools.png")) });
   await library.getByRole("progressbar", { name: "Uploading rock-pools.png" }).waitFor();
   await library.getByText(/^Uploading, /).waitFor();
   await away();

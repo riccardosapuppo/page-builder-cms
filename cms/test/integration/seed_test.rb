@@ -1,29 +1,98 @@
 require "test_helper"
 require Rails.root.join("db", "seeds", "example_site").to_s
 
-# db/seeds.rb, run the way `ruby bin/rails db:seed` runs it, twice.
+# db/seeds.rb, run the way `ruby bin/rails db:seed` runs it, on the test's
+# empty database and again on its own result; and the example site it reads
+# from ../example-site/, the files the editor's browser demo reads too.
 class SeedTest < ActionDispatch::IntegrationTest
   include StoredFiles
   include VisibleText
 
-  test "the seed publishes the example site, and running it again changes nothing" do
-    capture_io { ExampleSite.run }
+  def seed = capture_io { Rails.application.load_seed }.first
+
+  def site = JSON.parse(ExampleSite::ROOT.join("site.json").read)
+
+  def stored_pages
+    Page.includes(:draft, :published_version).order(:id).to_h { |page| [ page.draft.slug, [ page.draft.revision, page.draft.document, page.published_version.document, page.home? ] ] }
+  end
+
+  test "db:seed publishes the example site on an empty database, and run again on its own result changes nothing" do
+    assert_equal [ 0, 0, 0 ], [ Page.count, MediaItem.count, ActiveStorage::Blob.count ]
     counts = -> { [ Page.count, PageVersion.count, MediaItem.count, ActiveStorage::Blob.count ] }
-    first = counts.call
 
-    capture_io { ExampleSite.run }
+    said = seed
+    first = [ counts.call, stored_pages ]
+    said_again = seed
 
-    assert_equal [ 3, 6, 9, 9 ], first
-    assert_equal first, counts.call
+    assert_equal [ 3, 6, 9, 9 ], first[0]
+    assert_equal first, [ counts.call, stored_pages ]
+    assert_equal %w[home winter-series notices], first[1].keys
+    assert_no_match(/left as it is/, said)
+    assert_equal 3, said_again.scan(/already there, left as it is/).size, said_again
 
-    get "/"
-    assert_response :ok
-    assert_select "main h1", text: "Swim at slack water"
-    assert_equal 6, css_select("main [data-block-type=gallery] img").size
-    { "/winter-series" => "Winter series", "/notices" => "Notices" }.each do |path, heading|
+    { "/" => "Swim at slack water", "/winter-series" => "Winter series", "/notices" => "Notices" }.each do |path, heading|
       get path
       assert_response :ok
       assert_select "main h1", text: heading
+    end
+    get "/"
+    assert_equal 6, css_select("main [data-block-type=gallery] img").size
+  end
+
+  # One place for both engines: what the CMS stores is the file, with each
+  # image id of site.json become the public id the library gave its upload.
+  test "each page is published as its file in example-site, each image named by its upload's public id, with site.json's alt" do
+    seed
+    uploads = MediaItem.includes(file_attachment: :blob).to_h { |item| [ item.file.filename.to_s, item ] }
+    ids = site["images"].to_h { |image| [ image["id"], uploads.fetch(File.basename(image["file"])).public_id ] }
+
+    site["pages"].each do |entry|
+      expected = ExampleSite.with_library_ids(JSON.parse(ExampleSite::ROOT.join(entry["file"]).read), ids, entry["file"])
+      page = Draft.find_by!(slug: entry["slug"]).page
+      assert_equal expected, page.published_version.document, entry["file"]
+      assert_equal expected, page.draft.document, entry["file"]
+      assert_equal entry["home"], page.home?, entry["slug"]
+    end
+    assert_equal site["images"].to_h { |image| [ File.basename(image["file"]), image["alt"] ] }, uploads.transform_values(&:alt)
+  end
+
+  test "a page its owner changed since, and the home page moved to another, are left as they are when the seed runs again" do
+    seed
+    notices = Draft.find_by!(slug: "notices").page
+    Draft.save_document!(page_id: notices.id, revision: notices.draft.revision, document: notices.draft.document.merge("title" => "Notices, edited"), save_id: "owner-1")
+    notices.publish!
+    notices.make_home!
+    before = stored_pages
+
+    seed
+
+    assert_equal before, stored_pages
+    assert_equal "Notices, edited", Draft.find_by!(slug: "notices").page.published_version.document["title"]
+    get "/"
+    assert_select "main h1", text: "Notices"
+    assert_select "title", text: "Notices, edited"
+  end
+
+  # Checked whole before anything is uploaded or saved, so a mistake in
+  # these files leaves the database as it was.
+  test "an example site the seed cannot read is refused with the file and the reason, and nothing is uploaded or saved" do
+    {
+      "a page naming an image site.json does not list" => [ "pages/notices.json", ->(text) { text.sub('"mediaId": "m-tea"', '"mediaId": "no-such-image"') },
+                                                            'example-site/pages/notices.json names the image "no-such-image", which site.json does not list' ],
+      "two home pages" => [ "site.json", ->(text) { text.sub('"home": false', '"home": true') }, "example-site/site.json marks 2 pages as home, not one" ],
+      "a file outside the folder" => [ "site.json", ->(text) { text.sub('"pages/notices.json"', '"../README.md"') }, "example-site/site.json has a page it cannot read" ]
+    }.each do |what, (file, plant, message)|
+      Dir.mktmpdir do |dir|
+        root = Pathname(dir).join("example-site")
+        FileUtils.cp_r(ExampleSite::ROOT, root)
+        planted = plant.call(root.join(file).read)
+        refute_equal root.join(file).read, planted, "#{what}: the plant changed nothing"
+        root.join(file).write(planted)
+
+        error = assert_raises(ExampleSite::Unreadable, what) { capture_io { ExampleSite.run(root: root) } }
+        assert_includes error.message, message, what
+      end
+      assert_equal [ 0, 0, 0 ], [ Page.count, MediaItem.count, ActiveStorage::Blob.count ], what
     end
   end
 

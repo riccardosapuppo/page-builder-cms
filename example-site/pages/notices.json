@@ -1,0 +1,590 @@
+{
+  "schemaVersion": 1,
+  "title": "Notices",
+  "description": "Odd shapes on purpose: four columns, a word too long for its line, emoji, nested lists and a long alt text.",
+  "sections": [
+    {
+      "id": "head",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "head-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "head-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Notices"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "head-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Today’s word from the logbook: Seawaterthermometercalibrationlogbookentriesforthewholewinterseason, which no line is wide enough for."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Swims this week 🌊🧊☕ and one more 🏊‍♀️."
+                        },
+                        {
+                          "type": "hardBreak"
+                        },
+                        {
+                          "type": "text",
+                          "text": "Written the way members write: café, naïve, 日本語, שלום."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "four",
+      "type": "section",
+      "props": {
+        "label": "Four columns"
+      },
+      "children": [
+        {
+          "id": "four-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "four-visitors",
+              "type": "iconbox",
+              "props": {
+                "icon": "globe",
+                "title": "Visitors welcome",
+                "text": "Swim with us for a week before you join."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "four-lifeguard",
+              "type": "iconbox",
+              "props": {
+                "icon": "info",
+                "title": "Lifeguard on Sundays",
+                "text": "From 8 to 10 am, on the slipway."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "four-lost",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Lost property"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "four-lost-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Two caps, one left glove, a flask with a dent."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "four-4",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "four-image",
+              "type": "image",
+              "props": {
+                "mediaId": "m-tea",
+                "alt": "A tall orange flask and two white cups of tea, steaming, set on a flat dark rock just above the waterline after an early swim, with the sea calm and pale green behind them, the sky pink with first light, and nobody else in sight: the kind of morning the winter series is for."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceBetween": "l"
+        }
+      }
+    },
+    {
+      "id": "night",
+      "type": "section",
+      "props": {
+        "label": "Dark band"
+      },
+      "children": [
+        {
+          "id": "night-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "night-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Night swim, once a year"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "night-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "On the shortest night, with lights on the buoys. Members only."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "night-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "night-button",
+              "type": "button",
+              "props": {
+                "label": "Ask about it",
+                "href": "mailto:night@slackwater.example"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "primary",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "lists",
+      "type": "section",
+      "props": {
+        "label": "Lists"
+      },
+      "children": [
+        {
+          "id": "lists-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "lists-heading",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Every swim, in order"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "lists-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "bulletList",
+                      "content": [
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Before the swim"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "orderedList",
+                              "attrs": {
+                                "start": 1,
+                                "type": null
+                              },
+                              "content": [
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "Check the tide table"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "Tell someone ashore"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "Warm up"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "bulletList",
+                                      "content": [
+                                        {
+                                          "type": "listItem",
+                                          "content": [
+                                            {
+                                              "type": "paragraph",
+                                              "content": [
+                                                {
+                                                  "type": "text",
+                                                  "text": "Arms"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "listItem",
+                                          "content": [
+                                            {
+                                              "type": "paragraph",
+                                              "content": [
+                                                {
+                                                  "type": "text",
+                                                  "text": "Shoulders"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "listItem",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "After the swim"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "orderedList",
+                              "attrs": {
+                                "start": 4,
+                                "type": null
+                              },
+                              "content": [
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "Get dry"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "listItem",
+                                  "content": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "type": "text",
+                                          "text": "Get warm"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Steps go on from the course notes,"
+                        },
+                        {
+                          "type": "hardBreak"
+                        },
+                        {
+                          "type": "text",
+                          "text": "which end at step 3."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "lists-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "lists-questions",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "What happens if the weather turns while we are already in the water, a long way from the slipway?",
+                    "answer": "We swim back along the buoy line.\nThe lifeguard counts heads at the slipway.\nNobody leaves until everyone is out."
+                  },
+                  {
+                    "question": "Can I bring a friend?",
+                    "answer": "Yes, once, for a trial swim."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "desktop-only",
+      "type": "section",
+      "props": {
+        "label": "Hidden on phones"
+      },
+      "children": [
+        {
+          "id": "desktop-only-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "desktop-only-heading",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Shown on desktop and tablets, hidden on phones"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "align": "center"
+                },
+                "tablet": {
+                  "align": "left"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    }
+  ]
+}

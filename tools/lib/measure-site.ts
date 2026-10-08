@@ -5,7 +5,7 @@
 // The fixture names nine library images by ids of its own ("hero-dawn",
 // "g-caps"), which no library has, so the API would refuse to save it.
 // The measurement uploads the nine pictures of the example site
-// (cms/db/seed_images) as the editor uploads an image (a direct upload,
+// (example-site/images) as the editor uploads an image (a direct upload,
 // then the library item) and puts the library's ids where the fixture has
 // its own. Nothing else changes: the same 500 blocks, in the same order,
 // with the same text, and the images are real files the server finds, signs
@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const FIXTURE = join(root, "contract", "fixtures", "large-500.json");
-const PICTURES = join(root, "cms", "db", "seed_images");
+const PICTURES = join(root, "example-site", "images");
 
 export interface Block {
   id: string;
@@ -76,7 +76,7 @@ async function api(base: string, method: string, path: string, body?: unknown): 
 
 export { api };
 
-// Uploads one PNG of cms/db/seed_images to the library, as the editor does:
+// Uploads one PNG of example-site/images to the library, as the editor does:
 // the blob, the bytes to the storage service, then the library item.
 // Returns the item's id.
 async function upload(base: string, name: string): Promise<string> {

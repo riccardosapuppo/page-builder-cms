@@ -1,5 +1,6 @@
 # The example site of the approved design: three published pages and the
-# images they show, uploaded into the media library (db/seeds/example_site.rb).
+# images they show, uploaded into the media library, read from
+# ../example-site/ (db/seeds/example_site.rb says how).
 #
 #   ruby bin/rails db:seed
 #
