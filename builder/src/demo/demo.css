@@ -7,6 +7,11 @@
 .app-foot { grid-template-rows: var(--bar) auto minmax(0, 1fr) auto auto; }
 .app-foot > .demo-line { grid-column: 1 / -1; grid-row: 5; margin-top: -4px; padding: 0 13px 7px; }
 
+/* The toast of a save that did not go through stands above the bottom line
+   by 57; with the demo's line under it, the bottom line is that much
+   higher, and a toast of four lines would stand over it. */
+.toast.toast-save { bottom: 76px; }
+
 .demo-line { font: 400 12px/16px var(--font-ui); color: var(--steel); }
 .demo-line a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
 .demo-line a:hover { text-decoration-thickness: 2px; }
