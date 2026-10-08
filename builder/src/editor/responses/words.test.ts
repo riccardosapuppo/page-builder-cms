@@ -3,7 +3,16 @@
 // and a checkbox in the screen's own words), and the version's.
 import { expect, test } from "vitest";
 import type { KeptField } from "../../storage/adapter.ts";
-import { answered, answerWords, countLine, readingDirection, responsesCount, versionWords } from "./words.ts";
+import { answered, answerWords, countLine, readingDirection, responsesCount, rowNames, versionWords } from "./words.ts";
+
+test("rows sent in the same minute get names of their own, numbered from the newest, the others their time alone", () => {
+  expect(rowNames(["Today, 9:01 AM", "Today, 9:00 AM", "Today, 9:00 AM", "Yesterday, 8:00 PM", "Today, 9:00 AM"])).toEqual([
+    "Today, 9:01 AM", "Today, 9:00 AM (1)", "Today, 9:00 AM (2)", "Yesterday, 8:00 PM", "Today, 9:00 AM (3)",
+  ]);
+  // An older row read below keeps the numbers above it as they were.
+  expect(rowNames(["Today, 9:00 AM", "Today, 9:00 AM"])).toEqual(rowNames(["Today, 9:00 AM", "Today, 9:00 AM", "Today, 9:00 AM"]).slice(0, 2));
+  expect(rowNames([])).toEqual([]);
+});
 
 const text: KeptField = { name: "a", kind: "textarea", label: "Message", required: false, maxLength: 5000 };
 const box: KeptField = { name: "b", kind: "checkbox", label: "Keep me posted", required: false };

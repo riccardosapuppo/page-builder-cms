@@ -1,9 +1,10 @@
 // The CMS's form responses as the editor's tests need them: the site's
-// pages, each page's draft, and the responses kept under each page, read
-// and deleted as the storage adapter's three operations answer (newest
-// first by id, a part at a time with next, every form's count whatever the
-// query, not-found for a response that is not the page's). Each call is
-// noted, and a test can make the next call of a kind fail.
+// pages, each page's draft and live version, and the responses kept under
+// each page, read and deleted as the storage adapter's three operations
+// answer (newest first by id, a part at a time with next, every form's
+// count whatever the query, not-found for a response that is not the
+// page's). Each call is noted, and a test can make the next call of a
+// kind fail, or the next about one page.
 import type { Block, FormField, PageDocument } from "../src/shared/document.ts";
 import { StorageError, type FormResponse, type Failure, type KeptField, type PageSummary, type ResponseList, type ResponseQuery, type ResponseSummary } from "../src/storage/adapter.ts";
 import type { ResponsesStorage } from "../src/editor/responses/context.ts";
@@ -38,15 +39,17 @@ export function draftWith(title: string, sections: Array<{ label: string; widget
   } as PageDocument;
 }
 
-type Operation = "listPages" | "getDraft" | "listResponses" | "getResponse" | "deleteResponse";
+type Operation = "listPages" | "getDraft" | "getVersion" | "listResponses" | "getResponse" | "deleteResponse";
 
 export class FakeResponses implements ResponsesStorage {
   readonly pages: PageSummary[] = [];
   readonly drafts = new Map<number, PageDocument>();
+  readonly live = new Map<number, PageDocument>();
   // Every response kept, by id; a later id is a newer response.
   readonly kept: Array<FormResponse & { pageId: number }> = [];
   readonly calls: string[] = [];
-  readonly failing = new Map<Operation, Failure>();
+  // By operation, or by operation and page ("getDraft 3").
+  readonly failing = new Map<string, Failure>();
   perPart = 50;
   private nextId = 1;
 
@@ -74,17 +77,36 @@ export class FakeResponses implements ResponsesStorage {
     return id;
   }
 
-  // The next call of this kind fails so.
-  fail(operation: Operation, failure: Failure): void {
-    this.failing.set(operation, failure);
+  // The next call of this kind fails so; given a page, the next call of
+  // this kind about that page.
+  fail(operation: Operation, failure: Failure, pageId?: number): void {
+    this.failing.set(pageId === undefined ? operation : `${operation} ${pageId}`, failure);
   }
 
-  private check(operation: Operation): void {
-    const failure = this.failing.get(operation);
-    if (!failure) return;
-    this.failing.delete(operation);
-    throw new StorageError(failure);
+  // The live version's document of a page, when it is not its draft: the
+  // version getVersion gives for the page's live number.
+  liveDocument(pageId: number, document: PageDocument): this {
+    this.live.set(pageId, document);
+    return this;
   }
+
+  private check(operation: Operation, pageId?: number): void {
+    for (const key of pageId === undefined ? [operation] : [`${operation} ${pageId}`, operation]) {
+      const failure = this.failing.get(key);
+      if (!failure) continue;
+      this.failing.delete(key);
+      throw new StorageError(failure);
+    }
+  }
+
+  getVersion = async (pageId: number, number: number) => {
+    this.calls.push(`getVersion ${pageId} ${number}`);
+    this.check("getVersion", pageId);
+    const page = this.pages.find((p) => p.id === pageId);
+    const document = this.live.get(pageId) ?? this.drafts.get(pageId);
+    if (!page || !document || page.published?.versionNumber !== number) throw new StorageError({ kind: "not-found", message: "No such version." });
+    return { number, reason: "publish" as const, name: null, restoredFrom: null, createdAt: "2026-10-01T09:00:00.000Z", published: true, document: structuredClone(document) };
+  };
 
   listPages = async (): Promise<PageSummary[]> => {
     this.calls.push("listPages");
@@ -94,7 +116,7 @@ export class FakeResponses implements ResponsesStorage {
 
   getDraft = async (pageId: number) => {
     this.calls.push(`getDraft ${pageId}`);
-    this.check("getDraft");
+    this.check("getDraft", pageId);
     const document = this.drafts.get(pageId);
     if (!document) throw new StorageError({ kind: "not-found", message: "No such page." });
     return { revision: 1, lastSaveId: null, updatedAt: "2026-10-01T09:00:00.000Z", document: structuredClone(document) };
@@ -102,7 +124,7 @@ export class FakeResponses implements ResponsesStorage {
 
   listResponses = async (pageId: number, query: ResponseQuery = {}): Promise<ResponseList> => {
     this.calls.push(`listResponses ${pageId}${query.form ? ` form=${query.form}` : ""}${query.before ? ` before=${query.before}` : ""}`);
-    this.check("listResponses");
+    this.check("listResponses", pageId);
     const mine = this.kept.filter((r) => r.pageId === pageId);
     const rows = mine
       .filter((r) => (query.form === undefined || r.formId === query.form) && (query.before === undefined || r.id < query.before))

@@ -20,11 +20,11 @@ import { serverTime } from "../history-words.ts";
 import { Icon } from "../icons.tsx";
 import { useOptionalSession } from "../session.tsx";
 import { useResponsesStorage } from "./context.ts";
-import { readSiteForms, type SiteForm } from "./read.ts";
+import { readSiteForms, type SiteForm, type UnreadPage } from "./read.ts";
 import "./responses.css";
-import { answered, countLine, readingDirection, responsesCount, versionWords } from "./words.ts";
+import { answered, countLine, readingDirection, responsesCount, rowNames, versionWords } from "./words.ts";
 
-type Forms = { phase: "loading" } | { phase: "failed"; message: string } | { phase: "ready"; forms: SiteForm[] };
+type Forms = { phase: "loading" } | { phase: "failed"; message: string } | { phase: "ready"; forms: SiteForm[]; unread: UnreadPage[] };
 
 // The chosen form's responses as far as they have been read: newest first,
 // `next` continuing the list, and how reading the older ones went.
@@ -84,8 +84,8 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     readSiteForms(storage, (pageId) => (pageId === openPageId ? store.getState().document : null)).then(
       (read) => {
         if (!current) return;
-        setForms({ phase: "ready", forms: read });
-        setChosen((key) => (key !== null && read.some((f) => f.key === key) ? key : (read[0]?.key ?? null)));
+        setForms({ phase: "ready", forms: read.forms, unread: read.unread });
+        setChosen((key) => (key !== null && read.forms.some((f) => f.key === key) ? key : (read.forms[0]?.key ?? null)));
       },
       (error: unknown) => {
         if (current) setForms({ phase: "failed", message: describe(error) });
@@ -290,6 +290,8 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
 
   const rows: Part | null = chosen === null ? null : part?.key === chosen ? part : { key: chosen, phase: "loading", items: [], next: null, message: null, older: "idle" };
   const stop = rows?.items.some((r) => r.id === active) ? active : (rows?.items[0]?.id ?? null);
+  // Each row's name: its time, numbered when another row shows the same.
+  const names = rowNames((rows?.items ?? []).map((r) => serverTime(r.submittedAt, now)));
 
   return (
     <Dialog
@@ -297,7 +299,9 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
       className="dlg-responses"
       bodyClassName="rs-main"
       closeLabel="Close form responses"
-      tools={<p className="dlg-count">{forms.phase === "ready" ? countLine(total, list.length) : ""}</p>}
+      // No count while pages that could not be read may hold responses:
+      // "No responses yet" would not be known.
+      tools={<p className="dlg-count">{forms.phase === "ready" && (total > 0 || forms.unread.length === 0) ? countLine(total, list.length) : ""}</p>}
       onClose={onClose}
       footer={
         <>
@@ -315,10 +319,15 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
             <button className="btn btn-small btn-secondary" type="button" onClick={retry}>Try again</button>
           </div>
         )}
-        {forms.phase === "ready" && list.length === 0 && (
+        {forms.phase === "ready" && list.length === 0 && forms.unread.length === 0 && (
           <div className="rs-state">
             <p className="rs-empty-title">No responses yet</p>
             <p className="hint">When a visitor sends a form from one of your published pages, what they wrote shows here.</p>
+          </div>
+        )}
+        {forms.phase === "ready" && list.length === 0 && forms.unread.length > 0 && (
+          <div className="rs-state">
+            <Unread pages={forms.unread} onRetry={retry} />
           </div>
         )}
         {forms.phase === "ready" && list.length > 0 && (
@@ -338,6 +347,11 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
                   </li>
                 ))}
               </ul>
+              {forms.unread.length > 0 && (
+                <div className="rs-unread">
+                  <Unread pages={forms.unread} onRetry={retry} />
+                </div>
+              )}
             </div>
 
             <div className="rs-list">
@@ -362,6 +376,7 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
                             type="button"
                             data-response-id={r.id}
                             tabIndex={r.id === stop ? 0 : -1}
+                            aria-label={names[index]}
                             aria-current={opened?.id === r.id ? "true" : undefined}
                             aria-controls={`${id}-details`}
                             onClick={() => openResponse(r.id)}
@@ -494,5 +509,19 @@ function DeleteControl({ when, deleting, said, onAsk, onKeep, onDelete }: { when
       )}
       <div aria-live="polite">{said && <p className="error"><Icon name="error" />{said}</p>}</div>
     </div>
+  );
+}
+
+// The pages whose forms could not be read, each by its title with the
+// storage's reason, and one Try again for them all, which reads the site
+// again.
+function Unread({ pages, onRetry }: { pages: readonly UnreadPage[]; onRetry: () => void }) {
+  return (
+    <>
+      {pages.map((page) => (
+        <p key={page.pageId} className="error"><Icon name="error" />The responses of {page.pageTitle} could not be read: {page.message}</p>
+      ))}
+      <button className="btn btn-small btn-secondary" type="button" onClick={onRetry}>Try again</button>
+    </>
   );
 }

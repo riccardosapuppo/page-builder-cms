@@ -15,6 +15,22 @@ export function countLine(responses: number, forms: number): string {
 // A form's count in the list: "1 response", "12 responses".
 export const responsesCount = (count: number): string => counted(count, "response");
 
+// The names of a list's rows from the times they show, newest first: the
+// time alone, or, where rows sent in the same minute show the same, the
+// time numbered from the newest ("Today, 9:00 AM (2)"), so each row's
+// button has a name of its own. Counted from the newest, a row keeps its
+// number when older rows are read below it.
+export function rowNames(times: readonly string[]): string[] {
+  const total = new Map<string, number>();
+  for (const time of times) total.set(time, (total.get(time) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return times.map((time) => {
+    const nth = (seen.get(time) ?? 0) + 1;
+    seen.set(time, nth);
+    return (total.get(time) ?? 0) > 1 ? `${time} (${nth})` : time;
+  });
+}
+
 // A field's answer as the screen shows it. A text is what the visitor
 // wrote, exactly, to be drawn as text; one left empty, or a field with no
 // answer kept, says so in the screen's own words, which `given` tells

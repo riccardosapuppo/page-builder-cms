@@ -6,9 +6,10 @@
 import { createContext, useContext } from "react";
 import type { StorageAdapter } from "../../storage/adapter.ts";
 
-// The site's pages, a page's draft (to name its forms as the editor names
-// blocks), and the three operations on a page's responses.
-export type ResponsesStorage = Pick<StorageAdapter, "listPages" | "getDraft" | "listResponses" | "getResponse" | "deleteResponse">;
+// The site's pages, a page's draft and its live version (to name its forms
+// as the editor names blocks, and a form taken out of the draft where the
+// live page still has it), and the three operations on a page's responses.
+export type ResponsesStorage = Pick<StorageAdapter, "listPages" | "getDraft" | "getVersion" | "listResponses" | "getResponse" | "deleteResponse">;
 
 const ResponsesContext = createContext<ResponsesStorage | null>(null);
 

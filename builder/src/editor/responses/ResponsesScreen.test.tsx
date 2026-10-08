@@ -377,3 +377,45 @@ test("a read that fails says why, and Try again reads again", async () => {
   await act(async () => fireEvent.click(within(dialog).getByRole("button", { name: "Try again" })));
   expect(await within(dialog).findAllByRole("rowheader")).toHaveLength(1);
 });
+
+test("a page whose responses cannot be read is named under the forms the others have, and Try again reads it again", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  fake.send(2, "winter", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  fake.fail("listResponses", { kind: "unknown", cause: "server", status: 500, message: "The CMS failed (500)." }, 2);
+  const dialog = await openScreen(fake);
+  expect(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Form in Join, Home, 1 response"]);
+  expect(within(dialog).getByText("The responses of Winter series could not be read: The CMS failed (500).")).toBeTruthy();
+  await act(async () => fireEvent.click(within(dialog).getByRole("button", { name: "Try again" })));
+  await within(dialog).findByRole("button", { name: "Form in Sign up, Winter series, 1 response" });
+  expect(within(dialog).queryByText(/could not be read/)).toBeNull();
+});
+
+test("every page failing but the list of pages says which, not that there are no responses", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  fake.fail("getDraft", { kind: "unknown", cause: "network", status: null, message: "The CMS did not answer." }, 1);
+  const kit = editorKit({ document: page(), responses: fake });
+  kit.render(<TopBar />);
+  fireEvent.click(screen.getByRole("button", { name: "Page Builder CMS menu" }));
+  await act(async () => fireEvent.click(screen.getByRole("menuitem", { name: "Form responses" })));
+  const dialog = screen.getByRole("dialog", { name: "Form responses" });
+  expect(await within(dialog).findByText("The responses of Home could not be read: The CMS did not answer.")).toBeTruthy();
+  expect(within(dialog).queryByText("No responses yet")).toBeNull();
+});
+
+test("rows sent in the same minute are told apart by name, each keeping the time it shows", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:10.000Z", { "field-1": "Ann" });
+  fake.send(1, "join", "2026-10-01T08:00:40.000Z", { "field-1": "Bo" });
+  fake.send(1, "join", "2026-10-01T09:30:00.000Z", { "field-1": "Cy" });
+  const dialog = await openScreen(fake);
+  const rows = await within(dialog).findAllByRole("rowheader");
+  const buttons = rows.map((row) => within(row).getByRole("button"));
+  const minute = when("2026-10-01T08:00:00.000Z");
+  expect(buttons.map((b) => [b.textContent, b.getAttribute("aria-label")])).toEqual([
+    [when("2026-10-01T09:30:00.000Z"), when("2026-10-01T09:30:00.000Z")],
+    [minute, `${minute} (1)`],
+    [minute, `${minute} (2)`],
+  ]);
+});

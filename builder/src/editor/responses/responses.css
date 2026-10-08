@@ -8,9 +8,11 @@
 .dlg-responses .dlg-head { padding-bottom: 12px; }
 .dlg-responses .dlg-foot { justify-content: flex-start; padding: 14px 16px 16px 20px; }
 .dlg-responses .dlg-foot .hint { margin: 0; max-width: 420px; }
+/* The note is a live region, drawn even while empty: a region hidden
+   (display: none) until its first words leaves the accessibility tree, and
+   a screen reader may then say nothing when they come. Empty, it takes no
+   room, and its own margin keeps Close at the right. */
 .rs-note { margin-left: auto; color: var(--graphite); font-size: 12px; line-height: 16px; text-align: right; }
-.rs-note:empty { display: none; }
-.dlg-responses .dlg-foot .rs-note:empty + .btn { margin-left: auto; }
 
 .dlg-body.rs-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .rs-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 232px minmax(0, 1fr) 316px; }
@@ -22,6 +24,9 @@
 /* The forms. */
 .rs-forms { min-height: 0; overflow: auto; padding: 0 12px 16px 20px; }
 .rs-forms ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+/* The pages whose forms could not be read, under the ones that could. */
+.rs-unread { padding: 12px 10px 0; }
+.rs-unread .btn { margin-top: 8px; }
 .rs-form { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border-radius: var(--r-control); text-align: left; color: var(--graphite); }
 .rs-form:hover { background: var(--key); }
 .rs-form[aria-current="true"] { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }

@@ -92,6 +92,13 @@ test("a form published from the editor and sent from the served page is read in 
   expect(report.passes).toBeGreaterThan(10);
   expect(report.serious).toEqual([]);
 
+  // The note that will say the response was deleted is a live region drawn
+  // while still empty: one hidden until its first words leaves the
+  // accessibility tree, and a screen reader may then not say them.
+  const note = screen.locator(".rs-note");
+  await expect(note).toHaveText("");
+  expect(await note.evaluate((element) => getComputedStyle(element).display)).not.toBe("none");
+
   // Delete asks first; Esc in the question keeps it.
   await details.getByRole("button", { name: "Delete response" }).click();
   const question = details.getByRole("group", { name: /^Delete the response sent Today, / });

@@ -1,10 +1,11 @@
 // The site's forms with responses, read page by page: only the pages ever
 // published are asked, the forms come in the site's order and the draft's,
 // each named as the editor names blocks, and a form the draft no longer
-// has keeps its responses under a name that says so.
+// has keeps its responses under a name that says where it still is. A page
+// that cannot be read is named, and the others still shown.
 import { expect, test } from "vitest";
 import { draftWith, FakeResponses, formBlock } from "../../../test/fake-responses.ts";
-import { formNames, NO_LONGER_ON_PAGE, readSiteForms } from "./read.ts";
+import { formNames, LIVE_ONLY, NO_LONGER_ON_PAGE, readSiteForms } from "./read.ts";
 
 const heading = { id: "h", type: "heading", props: { level: 2, text: "Join us" }, style: { base: {} }, children: [] } as never;
 
@@ -26,7 +27,7 @@ test("the forms with responses, in the site's order and the draft's, each with i
   fake.send(1, "gone-b", "2026-10-01T12:00:00.000Z", { "field-1": "Ed" });
   fake.send(1, "gone-a", "2026-10-01T13:00:00.000Z", { "field-1": "Flo" });
 
-  const forms = await readSiteForms(fake);
+  const { forms, unread } = await readSiteForms(fake);
   expect(forms.map((f) => [f.key, f.pageTitle, f.name, f.onPage, f.count, f.liveVersion])).toEqual([
     ["1:join", "Home", "Form in Join (1)", true, 2, 4],
     ["1:join-2", "Home", "Form in Join (2)", true, 1, 4],
@@ -34,28 +35,61 @@ test("the forms with responses, in the site's order and the draft's, each with i
     ["1:gone-b", "Home", `${NO_LONGER_ON_PAGE} (2)`, false, 1, 4],
     ["3:winter", "Winter series", "Form in Sign up", true, 1, 2],
   ]);
+  expect(unread).toEqual([]);
   // The page never published is not asked; a published page with no
-  // responses is asked for its counts, and its draft is not read.
-  expect(fake.calls.filter((c) => c !== "listPages").sort()).toEqual(["getDraft 1", "getDraft 3", "listResponses 1", "listResponses 3", "listResponses 4"]);
+  // responses is asked for its counts, and its draft is not read; the live
+  // version is read only for the page with forms no longer in its draft.
+  expect(fake.calls.filter((c) => c !== "listPages").sort()).toEqual(["getDraft 1", "getDraft 3", "getVersion 1 4", "listResponses 1", "listResponses 3", "listResponses 4"]);
+});
+
+test("a form taken out of the draft that the live page still has is named where it stands there, apart from one gone for good", async () => {
+  const fake = site();
+  fake.liveDocument(1, draftWith("Home", [{ label: "Sign up", widgets: [formBlock("old-join")] }, { label: "Join", widgets: [formBlock("join")] }]));
+  fake.send(1, "join", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
+  fake.send(1, "old-join", "2026-10-01T11:00:00.000Z", { "field-1": "Di" });
+  fake.send(1, "older", "2026-10-01T12:00:00.000Z", { "field-1": "Ed" });
+  const { forms } = await readSiteForms(fake);
+  expect(forms.map((f) => [f.formId, f.name, f.onPage])).toEqual([
+    ["join", "Form in Join (1)", true],
+    ["old-join", `Form in Sign up, ${LIVE_ONLY}`, false],
+    ["older", NO_LONGER_ON_PAGE, false],
+  ]);
 });
 
 test("the open page is named from the editor's own draft, without asking the CMS for it", async () => {
   const fake = site();
   fake.send(1, "join", "2026-10-01T10:00:00.000Z", { "field-1": "Cy" });
   const edited = draftWith("Home", [{ label: "Come along", widgets: [formBlock("join")] }]);
-  const forms = await readSiteForms(fake, (pageId) => (pageId === 1 ? edited : null));
+  const { forms } = await readSiteForms(fake, (pageId) => (pageId === 1 ? edited : null));
   expect(forms.map((f) => f.name)).toEqual(["Form in Come along"]);
   expect(fake.calls).not.toContain("getDraft 1");
 });
 
 test("a site with no responses has no forms to show", async () => {
-  expect(await readSiteForms(site())).toEqual([]);
+  expect(await readSiteForms(site())).toEqual({ forms: [], unread: [] });
 });
 
-test("a read that fails says so, with the storage's words", async () => {
+test("a page whose responses cannot be read is named with the storage's words, and the other pages' forms are still given", async () => {
   const fake = site();
   fake.send(1, "join", "2026-10-01T10:00:00.000Z", {});
-  fake.fail("listResponses", { kind: "unknown", cause: "network", status: null, message: "The CMS did not answer." });
+  fake.send(3, "winter", "2026-10-01T11:00:00.000Z", {});
+  fake.fail("listResponses", { kind: "unknown", cause: "network", status: null, message: "The CMS did not answer." }, 3);
+  fake.fail("getDraft", { kind: "unknown", cause: "server", status: 500, message: "The CMS failed." }, 1);
+  expect(await readSiteForms(fake)).toEqual({
+    forms: [],
+    unread: [
+      { pageId: 1, pageTitle: "Home", message: "The CMS failed." },
+      { pageId: 3, pageTitle: "Winter series", message: "The CMS did not answer." },
+    ],
+  });
+  // Asked again, the pages that answer give their forms.
+  const again = await readSiteForms(fake);
+  expect([again.forms.map((f) => f.key), again.unread]).toEqual([["1:join", "3:winter"], []]);
+});
+
+test("the list of pages failing fails the whole, with the storage's words", async () => {
+  const fake = site();
+  fake.fail("listPages", { kind: "unknown", cause: "network", status: null, message: "The CMS did not answer." });
   await expect(readSiteForms(fake)).rejects.toThrow("The CMS did not answer.");
 });
 
@@ -64,4 +98,6 @@ test("a form's name counts every form of its section in the draft, whether it ha
   const names = formNames(draft, ["b", "c"]);
   expect([names.get("b")?.name, names.get("c")?.name]).toEqual(["Form in Join (2)", "Form in Footer"]);
   expect(formNames(draft, ["x"]).get("x")).toEqual({ name: NO_LONGER_ON_PAGE, onPage: false, order: 3 });
+  const live = draftWith("Home", [{ label: "Join", widgets: [formBlock("x"), formBlock("y")] }]);
+  expect(formNames(draft, ["x"], live).get("x")).toEqual({ name: `Form in Join (1), ${LIVE_ONLY}`, onPage: false, order: 3 });
 });
