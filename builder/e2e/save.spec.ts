@@ -15,7 +15,7 @@
 // - an edit made on the page being left while the next page loads.
 import type { Request } from "@playwright/test";
 import { block } from "./helpers/canvas.ts";
-import { asksBeforeClosing, headingText, retitle, saveState } from "./helpers/heading.ts";
+import { asksBeforeClosing, headingText, retitle, saveState, sendAgain } from "./helpers/heading.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, type DraftBlock } from "./helpers/site.ts";
 
 test.use({
@@ -158,15 +158,13 @@ test("a save the network loses is retried with the same saveId: the countdown, t
   await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveAttribute("aria-disabled", "true");
 
   // The connection is back; Retry now sends at once. The editor's own
-  // retry sends too, 2 s after the first loss, then 4 s after that, and
-  // one let through before the click would take the button away: the
-  // connection comes back once that first retry is lost, which leaves the
-  // click 4 s.
+  // retry sends too, each time its countdown ends, and under load that
+  // can come between the connection's return and the click and take the
+  // button away, so the click is for a button still there (sendAgain).
   await expect.poll(() => sent.length).toBeGreaterThan(1);
   down = false;
   const tries = sent.length;
-  await toast.getByRole("button", { name: "Retry now" }).click();
-  await saved(page);
+  await sendAgain(page, () => saved(page));
   await expect(toast).toHaveCount(0);
   // Every try was the same save.
   expect(sent.length).toBeGreaterThan(tries);

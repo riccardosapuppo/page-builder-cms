@@ -24,11 +24,12 @@
 //
 // Fails on a console error, a page error, or a request that leaves the two
 // servers. Exits 2 on a missing argument.
-import { chromium, type Browser, type Locator, type Page } from "@playwright/test";
+import { chromium, expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { repoRoot } from "../../build/paths.ts";
 import { moveOnto, pickUp, settledTextEditor } from "../helpers/canvas.ts";
+import { sendAgain } from "../helpers/heading.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../harness/servers.ts";
 
@@ -536,8 +537,8 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // Back as the seed has it, and saved.
   await text.fill("Swim at slack water");
   await text.blur();
-  await page.getByRole("button", { name: "Retry now" }).click();
-  await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
+  // The editor's own retry may send it first and take the button away.
+  await sendAgain(page, () => expect(page.locator(".topbar .save-state")).toHaveText("Saved"));
 
   // #empty: a new page, nothing on it yet; made the first time, opened the
   // second.
