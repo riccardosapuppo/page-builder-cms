@@ -304,6 +304,23 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     assert_equal "#{ORIGIN}/join/sent/join-form", response.location
   end
 
+  # The page's markup names the field "website" and sends it empty; only a
+  # client that does not use the page sends it as a list or a hash, even an
+  # empty one, so that is a robot too.
+  test "the field for robots sent as a list or a hash, even empty, is answered as if kept, and nothing is kept" do
+    publish
+    [ [ "" ], [ "https://spam.example" ], { "url" => "" } ].each do |website|
+      assert_no_difference -> { Submission.count }, website.inspect do
+        send_form("/join", website: website)
+      end
+      assert_response :see_other, website.inspect
+      assert_equal "#{ORIGIN}/join/sent/join-form", response.location, website.inspect
+    end
+    send_form("/join")
+    assert_response :see_other
+    assert_equal 1, Submission.count, "a person's form is still kept"
+  end
+
   test "each answer is held to its field's limit, counting a line break as one character as the browser does" do
     publish(widgets: [ form_block(items: [ FIELDS[0], FIELDS[2].merge("maxLength" => 10) ]) ])
 
@@ -381,6 +398,32 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
     assert_response :see_other
     assert_equal "#{ORIGIN}/join-us/sent/join-form", response.location
     assert_equal [ page.id ], Submission.pluck(:page_id)
+  end
+
+  # A page never published has no live address but its draft may already
+  # hold a form; marked as home, it is the page / would serve. Neither its
+  # form nor its confirmation exists for a visitor yet.
+  test "a form or a confirmation of a page never published is 404, the home page's included, and nothing is kept" do
+    home = create_page(title: "Home", slug: "home")
+    other = create_page(title: "Join", slug: "join")
+    [ home, other ].each do |page|
+      draft = Draft.find_by!(page_id: page.id)
+      Draft.save_document!(page_id: page.id, revision: draft.revision, document: page_document(title: "Join", widgets: [ form_block ]), save_id: "s#{draft.revision}")
+    end
+    home.make_home!
+
+    assert_no_difference -> { Submission.count } do
+      { "/" => "the home page", "/join" => "a page at its draft's address", "/home" => "the home page at its draft's address" }.each do |path, what|
+        send_form(path)
+        assert_response :not_found, "a form posted to #{what}"
+        assert_private "the 404 after a form posted to #{what}"
+      end
+    end
+    [ "/sent/join-form", "/join/sent/join-form", "/home/sent/join-form" ].each do |path|
+      get path
+      assert_response :not_found, path
+      assert_private "the confirmation at #{path}"
+    end
   end
 
   test "a form sent from the draft preview is answered that forms are sent from the published page, and nothing is kept" do

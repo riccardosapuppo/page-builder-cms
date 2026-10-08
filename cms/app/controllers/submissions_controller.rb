@@ -69,7 +69,9 @@ class SubmissionsController < ApplicationController
     form = FormBlock.find(document, form_id)
     return refuse(:conflict, "This form is no longer on the page, so nothing was kept. Go back to the page to see it as it is now.") unless form
 
-    # A robot's: answered as a person's would be, so it learns nothing.
+    # A robot's: answered as a person's would be, so it learns nothing. The
+    # page sends the field empty; anything else, a list or a hash even when
+    # empty, comes from a client that does not use the page.
     trap = params[:website]
     unless trap.nil? || trap == ""
       logger.info "form #{form.id} of page #{page.id}: the field for robots was filled in, nothing kept"
