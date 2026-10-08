@@ -35,9 +35,14 @@ type Shown =
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
-async function read(adapter: StorageAdapter, view: View): Promise<Shown> {
-  const [page, pages, site, style, media] = await Promise.all([
-    adapter.getPage(view.pageId), adapter.listPages(), adapter.getSite(), adapter.getSiteStyle(), adapter.listMedia(),
+// The pages are listed first: in a browser that has none yet, the first
+// listing puts the example site in (withExampleSite), and the page asked
+// for may be one of its pages. A preview opened in a fresh browser would
+// otherwise read an empty store and say there is nothing there.
+export async function readShown(adapter: StorageAdapter, view: View): Promise<Shown> {
+  const pages = await adapter.listPages();
+  const [page, site, style, media] = await Promise.all([
+    adapter.getPage(view.pageId), adapter.getSite(), adapter.getSiteStyle(), adapter.listMedia(),
   ]);
   const library = new Map(media.map((item) => [item.id, item]));
   if (view.kind === "preview") {
@@ -86,7 +91,7 @@ export function PageView({ adapter, view }: { adapter: StorageAdapter; view: Vie
 
   useEffect(() => {
     let current = true;
-    read(adapter, view).then(
+    readShown(adapter, view).then(
       (result) => current && setShown(result),
       (error: unknown) => current && setShown({ kind: "failed", message: `This page could not be shown: ${describe(error)}` }),
     );
