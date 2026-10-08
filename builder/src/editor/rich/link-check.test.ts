@@ -14,7 +14,7 @@ const reason = (raw: string) => {
 };
 
 test("the addresses a link may take are taken, trimmed", () => {
-  for (const href of ["https://swims.example.org/join?when=winter#top", "http://example.org", "/swims", "#join", "?season=winter", "mailto:club@example.org", "tel:+441234567"]) {
+  for (const href of ["https://swims.example.org/join?when=winter#top", "http://example.org", "/swims", "#join", "?season=winter", "mailto:club@example.org", "tel:+44-20-7946-0958"]) {
     expect(checkLink(` ${href} `)).toEqual({ ok: true, href });
     expect(linkAllowed(href)).toBe(true);
   }

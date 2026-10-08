@@ -293,7 +293,7 @@ valid("hrefs-every-form", "every link form the href pattern allows", doc("Links"
     button("l-http-port", "http with a port", "http://localhost:8080/"),
     button("l-host-only", "host only", "https://example.com"),
     button("l-mailto", "mailto", "mailto:sales@example.com?subject=Hi%20there"),
-    button("l-tel", "tel", "tel:+39-06-1234567"),
+    button("l-tel", "tel", "tel:+44-20-7946-0958"),
     button("l-path", "site path", "/pricing/plans?ref=hero"),
     button("l-root", "root", "/"),
     button("l-query", "query", "?page=2"),

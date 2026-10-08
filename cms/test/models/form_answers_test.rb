@@ -44,7 +44,7 @@ class FormAnswersTest < ActiveSupport::TestCase
   end
 
   test "an email address has the shape a browser's own check accepts, around the spaces a browser trims" do
-    [ "ann@example.org", "a.b+c@sub.example.co", "x@localhost", "  ann@example.org\n" ].each { |good| assert_nil errors(EMAIL, good), good }
+    [ "ann@example.org", "a.b+c@sub.example.org", "x@localhost", "  ann@example.org\n" ].each { |good| assert_nil errors(EMAIL, good), good }
     [ "ann", "ann@", "@example.org", "ann@exa mple.org", "ann@@example.org", "ann@-example.org", "ann@example..org", "ann@#{'a' * 64}.org" ].each do |bad|
       assert_equal FormAnswers::EMAIL, errors(EMAIL, bad), bad
     end

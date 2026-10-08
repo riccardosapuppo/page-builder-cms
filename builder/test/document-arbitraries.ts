@@ -46,7 +46,7 @@ type AnyObject = Record<string, unknown>;
 
 const LINES = ["Winter series", "Short, cold swims", "Café on the jetty", "Tide tables 2026", "日本語 🎉 swims", "Slack water"] as const;
 const PARAGRAPHS = [...LINES, "Meet at the slipway.\nBring a cap."] as const;
-const HREFS = ["https://swims.example.org/join", "/pricing", "#join", "mailto:club@example.org", "tel:+441234567", "?season=winter"] as const;
+const HREFS = ["https://swims.example.org/join", "/pricing", "#join", "mailto:club@example.org", "tel:+44-20-7946-0958", "?season=winter"] as const;
 const IMAGE_URLS = ["https://images.example.org/swim.jpg", "/media/pier.png"] as const;
 const MEDIA_IDS = ["m1", "m2", "abc_DEF-9"] as const;
 
