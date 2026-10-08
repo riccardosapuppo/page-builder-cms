@@ -15,6 +15,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, expect, inject, test } from "vitest";
 import { repoRoot } from "../build/paths.ts";
+// The browser demo's seed swaps the ids the same way: an id site.json does
+// not list fails the test, as it fails both seeds.
+import { withLibraryIds } from "../src/storage/example-site.ts";
 import { startAgreement, type Agreement } from "./agreement-harness.ts";
 import { checked } from "./render-arbitraries.ts";
 
@@ -26,18 +29,6 @@ interface Site {
 const folder = join(repoRoot, "example-site");
 const site = JSON.parse(readFileSync(join(folder, "site.json"), "utf8")) as Site;
 
-// The document with each image id of site.json replaced as ids says; an id
-// it does not list fails the test, as it fails the seed.
-function withLibraryIds(node: unknown, ids: ReadonlyMap<string, string>, file: string): unknown {
-  if (Array.isArray(node)) return node.map((value) => withLibraryIds(value, ids, file));
-  if (typeof node !== "object" || node === null) return node;
-  return Object.fromEntries(Object.entries(node).map(([key, value]) => {
-    if (key !== "mediaId") return [key, withLibraryIds(value, ids, file)];
-    const id = ids.get(value as string);
-    if (id === undefined) throw new Error(`example-site/${file} names the image ${JSON.stringify(value)}, which site.json does not list`);
-    return [key, id];
-  }));
-}
 
 const cms = inject("cmsUrl");
 let cmsPage: Agreement;
