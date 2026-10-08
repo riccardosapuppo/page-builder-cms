@@ -25,8 +25,8 @@ import { previewAddress, publishedAddress, type View } from "./views.ts";
 
 export const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 export const NOT_PUBLISHED_LINE = "This page is not published in this browser yet: Publish in the editor shows it here.";
-export const FORM_LINE = "In the full system, Rails takes these answers and the CMS lists them in Form responses; this demo sends nothing.";
-export const FORM_NOT_SENT = "Not sent: this demo sends nothing. In the full system, Rails takes these answers and the CMS lists them in Form responses.";
+export const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
+export const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
 
 type Shown =
   | { kind: "loading" }
@@ -117,7 +117,10 @@ export function PageView({ adapter, view }: { adapter: StorageAdapter; view: Vie
       setSaid(`There is no page at ${href.split(/[?#]/, 1)[0]} in this browser.`);
       return;
     }
-    window.location.assign(new URL(page.published ? publishedAddress(page.id) : previewAddress(page.id), window.location.href).href);
+    // The section the link names comes along ("/#swims"): on the page
+    // shown, the browser only scrolls to it.
+    const fragment = href.includes("#") ? href.slice(href.indexOf("#")) : "";
+    window.location.assign(new URL((page.published ? publishedAddress(page.id) : previewAddress(page.id)) + fragment, window.location.href).href);
   };
 
   return (

@@ -21,6 +21,8 @@
     "test:rails": "vitest run --project rails",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:browser": "playwright test -c e2e/browser/playwright.config.ts",
+    "e2e:demo": "vite build --mode demo && playwright test -c e2e/demo/playwright.config.ts",
+    "serve:demo": "node e2e/demo/serve.ts",
     "check:a11y": "playwright test -c e2e/playwright.config.ts --grep @a11y",
     "check:serving": "node e2e/serving/check-serving.ts",
     "shots:editor": "node e2e/shots/editor-shots.ts"
