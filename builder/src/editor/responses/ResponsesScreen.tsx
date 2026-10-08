@@ -22,7 +22,7 @@ import { useOptionalSession } from "../session.tsx";
 import { useResponsesStorage } from "./context.ts";
 import { readSiteForms, type SiteForm } from "./read.ts";
 import "./responses.css";
-import { answered, countLine, responsesCount, versionWords } from "./words.ts";
+import { answered, countLine, readingDirection, responsesCount, versionWords } from "./words.ts";
 
 type Forms = { phase: "loading" } | { phase: "failed"; message: string } | { phase: "ready"; forms: SiteForm[] };
 
@@ -372,8 +372,19 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
                         </th>
                         <td>{r.versionNumber}</td>
                         <td className="rs-excerpt">
+                          {/* The visitor's text in an isolate of its own, so
+                              that a bidi control in it (U+202E and the like),
+                              kept as written, cannot reorder the cut mark
+                              after it; the line reads in the text's own
+                              direction, so the cut falls at the text's end
+                              and a right-to-left answer shows its start. */}
                           {r.excerpt
-                            ? <><span className="rs-excerpt-label">{r.excerpt.label}:</span> {r.excerpt.text}{r.excerpt.truncated ? "…" : ""}</>
+                            ? (
+                              <span className="rs-excerpt-line">
+                                <span className="rs-excerpt-label">{r.excerpt.label}:</span>{" "}
+                                <span className="rs-excerpt-text" dir={readingDirection(r.excerpt.text)}><bdi>{r.excerpt.text}</bdi>{r.excerpt.truncated ? "…" : ""}</span>
+                              </span>
+                            )
                             : <span className="rs-none">No written answer</span>}
                         </td>
                       </tr>

@@ -3,7 +3,7 @@
 // and a checkbox in the screen's own words), and the version's.
 import { expect, test } from "vitest";
 import type { KeptField } from "../../storage/adapter.ts";
-import { answered, answerWords, countLine, responsesCount, versionWords } from "./words.ts";
+import { answered, answerWords, countLine, readingDirection, responsesCount, versionWords } from "./words.ts";
 
 const text: KeptField = { name: "a", kind: "textarea", label: "Message", required: false, maxLength: 5000 };
 const box: KeptField = { name: "b", kind: "checkbox", label: "Keep me posted", required: false };
@@ -25,6 +25,17 @@ test("a text is shown exactly as written, markup and lines included; an empty or
 
 test("a checkbox says whether it was ticked", () => {
   expect([answerWords(box, true), answerWords(box, false), answerWords(box, undefined)].map((w) => w.text)).toEqual(["Ticked", "Not ticked", "Not ticked"]);
+});
+
+test("a text reads right to left when its first letter is of a script written that way, whatever comes before it", () => {
+  expect([
+    readingDirection("שלום, see you at the slipway"),
+    readingDirection("12 - مرحبا"),
+    readingDirection("Ann שלום"),
+    readingDirection("‮exe.txt"),
+    readingDirection("42 !"),
+    readingDirection(""),
+  ]).toEqual(["rtl", "rtl", "ltr", "ltr", "ltr", "ltr"]);
 });
 
 test("the version names its page, and says when it is the one visitors see now", () => {

@@ -52,7 +52,12 @@
 .rs-open:focus-visible { outline: none; }
 .rs-open:focus-visible::after { outline: 2px solid var(--graphite); outline-offset: -2px; border-radius: 2px; }
 .rs-excerpt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rs-excerpt-label { color: var(--steel); }
+/* The field's label, then the visitor's text cut with an ellipsis at its
+   own end: on the right for a text read left to right, on the left for
+   one read right to left. */
+.rs-excerpt-line { display: flex; gap: 4px; }
+.rs-excerpt-label { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; color: var(--steel); }
+.rs-excerpt-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rs-older { padding-top: 12px; }
 .rs-state-line { padding-top: 12px; }
 

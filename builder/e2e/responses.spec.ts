@@ -164,3 +164,71 @@ test("a page title of one long word keeps each form's count and the opened respo
   expect(measured.countRight, "the count is inside the forms' column").toBeLessThanOrEqual(measured.columnRight);
   expect(measured.metaRight, "the version line is inside the panel").toBeLessThanOrEqual(measured.panelRight);
 });
+
+// Both answers are longer than the excerpt (120 characters), so each row
+// carries the cut mark after the visitor's text, and longer than the cell,
+// so the cell cuts them again with an ellipsis.
+test("a right-to-left answer shows its start in the list, and a bidi override in an answer is kept but cannot move the cut mark after it", async ({ page, request, browser }) => {
+  const title = `Bidi ${Date.now().toString(36)}`;
+  const hebrew = "שלום וברוכים הבאים לשחייה של הבוקר ".repeat(5).trim();
+  const override = `‮Ann Diver swims from the north slipway every morning ${"at slack water ".repeat(6)}`.trim();
+  const made = await makePage(request, title, [
+    section("s", "Join", [column("c", [widget("join-form", "form", { items: FIELDS, submitLabel: "Send request", confirmation: "Thank you." })])]),
+  ]);
+  await open(page, made.id);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.locator(".topbar .tb-status")).toHaveText("Published");
+  const reader = await visitor(browser, { from: "198.51.100.43" });
+  try {
+    await send(reader.tab, `${cms()}/${made.slug}`, { name: hebrew, email: "dana@example.org" });
+    await send(reader.tab, `${cms()}/${made.slug}`, { name: override, email: "ann@example.org" });
+  } finally {
+    await reader.close();
+  }
+
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Form responses" }).click();
+  const screen = page.getByRole("dialog", { name: "Form responses" });
+  await screen.getByRole("list", { name: "Forms" }).getByRole("button", { name: `Form in Join, ${title}, 2 responses` }).click();
+  await expect(screen.getByRole("table", { name: `Form in Join on ${title}` }).getByRole("row")).toHaveCount(3);
+
+  const measured = await page.evaluate(() => {
+    const cells = [...document.querySelectorAll<HTMLElement>(".rs-table tbody .rs-excerpt")];
+    // The screen box of one character of a text node.
+    const charBox = (node: Text, at: number) => {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + 1);
+      return range.getBoundingClientRect();
+    };
+    const textNodes = (cell: HTMLElement) => {
+      const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode as Text);
+      return nodes;
+    };
+    // Newest first: the override, then the right-to-left answer.
+    const [overrideCell, hebrewCell] = cells as [HTMLElement, HTMLElement];
+    const hebrewText = textNodes(hebrewCell).find((node) => node.data.startsWith("שלום"))!;
+    const overrideText = textNodes(overrideCell).find((node) => node.data.startsWith("‮"))!;
+    const cutMark = textNodes(overrideCell).findLast((node) => node.data === "…")!;
+    const cell = hebrewCell.getBoundingClientRect();
+    const first = charBox(hebrewText, 0);
+    return {
+      hebrewStart: [first.left, first.right, cell.left, cell.right],
+      // The visitor's first letter, just after the override, and the cut mark.
+      overrideLetterRight: charBox(overrideText, 1).right,
+      cutMarkLeft: charBox(cutMark, 0).left,
+    };
+  });
+  const [startLeft, startRight, cellLeft, cellRight] = measured.hebrewStart;
+  expect(startLeft, "the right-to-left answer's first letter is inside its cell").toBeGreaterThanOrEqual(cellLeft!);
+  expect(startRight, "the right-to-left answer's first letter is inside its cell").toBeLessThanOrEqual(cellRight!);
+  // The override draws the visitor's own text right to left, its first
+  // letter rightmost; the cut mark, outside its isolate, stays after it.
+  expect(measured.cutMarkLeft, "the cut mark stays after the overridden text").toBeGreaterThanOrEqual(measured.overrideLetterRight);
+
+  // Opened whole, the answer is kept exactly as sent, the override included.
+  await screen.getByRole("rowheader").first().getByRole("button").click();
+  await expect(screen.locator(".rs-answer dd").first()).toHaveText(override, { useInnerText: false });
+});

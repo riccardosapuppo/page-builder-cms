@@ -25,6 +25,18 @@ export function answerWords(field: KeptField, answer: string | boolean | undefin
   return { text: answer, given: true };
 }
 
+// The direction a visitor's text reads in, from its first letter, as the
+// browser's dir="auto" decides it: a letter of a script written right to
+// left makes it "rtl", any other letter, or none, "ltr". The screen needs
+// it as a value because the excerpt's cut mark follows the text inside
+// the same element, and must not be read as part of the text.
+const RIGHT_TO_LEFT = /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}]/u;
+
+export function readingDirection(text: string): "rtl" | "ltr" {
+  const letter = /\p{L}/u.exec(text);
+  return letter && RIGHT_TO_LEFT.test(letter[0]) ? "rtl" : "ltr";
+}
+
 // The version a response was sent from: "Version 3 of Home", and ", the
 // version live now" when visitors still see that one.
 export function versionWords(versionNumber: number, liveVersion: number | null, pageTitle: string): string {
