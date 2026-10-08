@@ -1,5 +1,9 @@
-// Where the editor finds the CMS. Both are read when the editor is built.
+// Where the editor keeps its pages, and finds the CMS. All are read when
+// the editor is built.
 //
+// - VITE_STORAGE, the storage adapter: "rails" (the CMS, by default) or
+//   "browser" (IndexedDB in the browser alone, ./browser.ts). Anything else
+//   is a mistake in the build's settings, said at once.
 // - VITE_API_BASE, the API, defaults to /api: on the editor's own origin,
 //   which the development server passes to the CMS (vite.config.ts). An
 //   absolute address (https://cms.example/api) sends the editor's requests
@@ -15,7 +19,16 @@
 export const DEFAULT_API_BASE = "/api";
 export const DEFAULT_CMS_ORIGIN = "http://127.0.0.1:3900";
 
-type Env = { VITE_API_BASE?: string | undefined; VITE_CMS_ORIGIN?: string | undefined };
+type Env = { VITE_API_BASE?: string | undefined; VITE_CMS_ORIGIN?: string | undefined; VITE_STORAGE?: string | undefined };
+
+export const STORAGE_KINDS = ["rails", "browser"] as const;
+export type StorageKind = (typeof STORAGE_KINDS)[number];
+
+export function storageKind(env: Env = import.meta.env): StorageKind {
+  const configured = env.VITE_STORAGE?.trim() || "rails";
+  if (!(STORAGE_KINDS as readonly string[]).includes(configured)) throw new Error(`VITE_STORAGE must be rails or browser, not "${configured}"`);
+  return configured as StorageKind;
+}
 
 export function apiBase(env: Env = import.meta.env): string {
   const configured = env.VITE_API_BASE?.trim();

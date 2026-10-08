@@ -12,11 +12,14 @@
 // the same helper, and anything left that looks like a require() fails the
 // build instead of reaching the bundle.
 //
-// The module has two validators, sharing their compiled code: the default
+// The module has three validators, sharing their compiled code: the default
 // export checks a whole page document; validateBlock checks one block and
 // everything under it against $defs/block, so the editor can check the one
 // parent a change touches (a section that would get a fifth column) without
-// validating the page. The same plugin serves virtual:block-document-nesting,
+// validating the page; validateLine checks one line of text against
+// $defs/line, the rule the server also holds a version's name and an
+// image's alt text to, for the browser's storage adapter, which keeps
+// both. The same plugin serves virtual:block-document-nesting,
 // the nesting rule read from the schema (build/nesting.ts).
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
@@ -51,13 +54,15 @@ export function readSchema(): object {
 }
 
 // ajv's own standalone output for the schema: `export const validateDocument`
-// for the page, `export const validateBlock` for $defs/block.
+// for the page, `export const validateBlock` for $defs/block, and
+// `export const validateLine` for $defs/line, the single line of plain text
+// the server also holds a version's name and an image's alt text to.
 export function ajvStandalone(schema: object = readSchema()): string {
   const id = (schema as { $id?: unknown }).$id;
   if (typeof id !== "string") throw new Error("the schema has no $id to name its validators by");
   const ajv = new Ajv2020({ ...AJV_OPTIONS, code: { source: true, esm: true } });
   ajv.addSchema(schema);
-  return standaloneCode(ajv, { validateDocument: id, validateBlock: `${id}#/$defs/block` });
+  return standaloneCode(ajv, { validateDocument: id, validateBlock: `${id}#/$defs/block`, validateLine: `${id}#/$defs/line` });
 }
 
 // Compiles the schema with the project's ajv options and returns it as an

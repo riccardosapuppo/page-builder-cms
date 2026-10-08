@@ -40,6 +40,29 @@ export function defaultTone(slot: PaletteSlot): string {
   return TONES[slot].default;
 }
 
+// The site style's choices and the style a new site starts with, read as
+// the server's SiteTokens reads them (cms/app/models/site_tokens.rb): every
+// slot of site-tones in the file's order, its tones with their colours,
+// and the type scales. For the browser's storage adapter, which keeps the
+// site style itself.
+export interface SiteStyleChoices {
+  palette: Record<string, Array<{ color: string; label: string; hex: string }>>;
+  typeScales: Array<{ name: string; label: string }>;
+}
+
+const SLOT_ENTRIES = Object.entries(TONES).filter(([name]) => !name.startsWith("$")) as Array<[string, { label: string; default: string; tones: Array<{ color: string; label: string }> }]>;
+
+export function siteStyleChoices(): SiteStyleChoices {
+  return {
+    palette: Object.fromEntries(SLOT_ENTRIES.map(([name, slot]) => [name, slot.tones.map((tone) => ({ color: tone.color, label: tone.label, hex: COLORS[tone.color]! }))])),
+    typeScales: tokens["site-type-scale"].choices.map((choice) => ({ name: choice.name, label: choice.label })),
+  };
+}
+
+export function defaultSiteStyle(): { palette: Record<string, string>; typeScale: string } {
+  return { palette: Object.fromEntries(SLOT_ENTRIES.map(([name, slot]) => [name, slot.default])), typeScale: tokens["site-type-scale"].default };
+}
+
 // The steps of the site's type, largest first, as Site style names them.
 export const TYPE_STEPS = [
   { key: "display", label: "Display", sans: true },

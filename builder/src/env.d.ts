@@ -8,6 +8,10 @@ interface ImportMetaEnv {
   // live page): http://127.0.0.1:3900 by default; the development server
   // takes it from CMS_URL (src/storage/config.ts).
   readonly VITE_CMS_ORIGIN?: string;
+  // Where the editor keeps its pages: rails (the CMS, by default) or
+  // browser (IndexedDB, the editor in the browser alone)
+  // (src/storage/config.ts).
+  readonly VITE_STORAGE?: string;
 }
 
 interface ImportMeta {

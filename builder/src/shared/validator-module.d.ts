@@ -11,6 +11,9 @@ declare module "virtual:block-document-validator" {
   }
   const validate: CompiledValidator;
   export const validateBlock: CompiledValidator;
+  // The schema's $defs/line: one line of plain text with a visible
+  // character, as a page's title is.
+  export const validateLine: CompiledValidator;
   export default validate;
 }
 

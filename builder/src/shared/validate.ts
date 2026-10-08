@@ -7,14 +7,23 @@
 // schema's validator is ajv's, compiled ahead of time with the options the
 // comparator uses. The server still decides: this lets the editor say what
 // is wrong before a save is refused for it.
-import validateSchema, { validateBlock } from "virtual:block-document-validator";
+import validateSchema, { validateBlock, validateLine } from "virtual:block-document-validator";
 import { checkDocument, checkTree, escapePointer, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
 import type { Block, PageDocument } from "./document.ts";
 
 // The pieces of the application rules the editor's checks of one change
-// use (../document/check.ts, ../document/clipboard.ts), passed on from here
-// like everything else the editor takes from outside builder/.
-export { checkTree, duplicateAnchors, MAX_NESTING, normalise, scanJson } from "../../../schema/tools/rules.ts";
+// use (../document/check.ts, ../document/clipboard.ts), and the pointer
+// escape the browser's storage writes its refusals with, passed on from
+// here like everything else the editor takes from outside builder/.
+export { checkTree, duplicateAnchors, escapePointer, MAX_NESTING, normalise, scanJson } from "../../../schema/tools/rules.ts";
+
+// Whether a text is one line of plain text with a visible character, at
+// most `max` characters as a reader counts them (code points): the
+// schema's $defs/line, which the server holds a version's name and an
+// image's alt text to (Schema.line? in cms/app/models/block_document/schema.rb).
+export function isLine(text: unknown, max: number): boolean {
+  return typeof text === "string" && [...text].length <= max && validateLine(text);
+}
 
 export interface DocumentError {
   // A JSON pointer into the document, as the server's 422 gives it.

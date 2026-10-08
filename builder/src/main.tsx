@@ -1,7 +1,8 @@
 // The editor's entry point: the published page's stylesheets and fonts
 // for the canvas, the editor's own chrome after them, and the shell
-// (./editor/App.tsx) on the Rails storage adapter, the system clock and
-// random block ids; the sidebar's open groups as this browser kept them.
+// (./editor/App.tsx) on the storage adapter the build names (VITE_STORAGE:
+// the CMS's by default, or the browser's), the system clock and random
+// block ids; the sidebar's open groups as this browser kept them.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./shared/editor-font.css";
@@ -11,7 +12,9 @@ import { randomIds } from "./document/ids.ts";
 import { App, NO_PAGE } from "./editor/App.tsx";
 import { keepOpenGroups, readOpenGroups } from "./editor/open-groups.ts";
 import { createUiStore } from "./editor/ui-store.ts";
+import { createBrowserAdapter } from "./storage/browser.ts";
 import { systemClock } from "./storage/clock.ts";
+import { storageKind } from "./storage/config.ts";
 import { createRailsAdapter } from "./storage/rails.ts";
 import { createEditorStore } from "./store/editor-store.ts";
 
@@ -22,7 +25,7 @@ const env = {
   newId: randomIds(),
 };
 keepOpenGroups(env.ui);
-const adapter = createRailsAdapter();
+const adapter = storageKind() === "browser" ? createBrowserAdapter({ clock: systemClock }) : createRailsAdapter();
 
 const root = document.getElementById("editor_root");
 if (!root) throw new Error("index.html has no #editor_root");

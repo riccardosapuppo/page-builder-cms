@@ -10,6 +10,8 @@
 //   says what that costs.
 // - The schema's validator is compiled ahead of time (build/validator.ts),
 //   the icon box's icons are read from schema/icons.svg (build/site-icons.ts),
+//   the theme's header and footer from cms/config/site.yml for the browser's
+//   storage (build/site-theme.ts),
 //   the published page's stylesheets and the fonts are read from where the
 //   repository keeps them (build/paths.ts, build/fonts.ts), and the built
 //   bundle is checked before the build says it is done (build/bundle-check.ts).
@@ -23,6 +25,7 @@ import { cmsPort } from "./e2e/harness/ports.ts";
 import { fontAliases, fontLicences } from "./build/fonts.ts";
 import { builderRoot, cmsFonts, cmsStylesheets, designFonts, schemaDir } from "./build/paths.ts";
 import { siteIcons } from "./build/site-icons.ts";
+import { siteTheme } from "./build/site-theme.ts";
 import { documentValidator, validatorSource } from "./build/validator.ts";
 
 const port = Number(process.env.BUILDER_PORT ?? 4900);
@@ -43,7 +46,7 @@ if (!process.env.VITE_CMS_ORIGIN?.trim() && !absoluteApi && process.env.CMS_URL)
 const toCms = { target: cmsUrl, changeOrigin: false };
 
 export default defineConfig({
-  plugins: [react(), documentValidator(), siteIcons(), fontLicences(), bundleCheck(), shellServing()],
+  plugins: [react(), documentValidator(), siteIcons(), siteTheme(), fontLicences(), bundleCheck(), shellServing()],
   resolve: { alias: fontAliases() },
   // No fallback page: an address that is not a file is a 404, never the
   // editor's index answered for it.

@@ -1,5 +1,15 @@
 import { describe, expect, test } from "vitest";
-import { apiBase, cmsAddress, cmsOrigin } from "./config.ts";
+import { apiBase, cmsAddress, cmsOrigin, storageKind } from "./config.ts";
+
+describe("the storage", () => {
+  test("is the CMS's unless VITE_STORAGE says browser", () => {
+    expect([storageKind({}), storageKind({ VITE_STORAGE: "" }), storageKind({ VITE_STORAGE: " rails " }), storageKind({ VITE_STORAGE: "browser" })]).toEqual(["rails", "rails", "rails", "browser"]);
+  });
+
+  test("named wrong, stops the build rather than pick one", () => {
+    expect(() => storageKind({ VITE_STORAGE: "indexeddb" })).toThrow('VITE_STORAGE must be rails or browser, not "indexeddb"');
+  });
+});
 
 describe("the API base", () => {
   test("is /api unless VITE_API_BASE says otherwise", () => {
