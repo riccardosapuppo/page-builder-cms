@@ -117,6 +117,9 @@ npm run check:serving
 npm run shots:editor -- <folder>
 npm run build
 npm run preview
+npm run build:demo
+npm run serve:demo
+npm run e2e:demo
 ```
 
 From the repository's root, the same through `npm run builder:install`,
@@ -134,10 +137,13 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the renderer's twins against the CMS's Ruby; the canvas's layout against the CMS's pages in headless Chromium. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move with Space and the arrows, add from the page with the "+" key and its picker and move that block up from its clamp, edit a heading's text and level in its Text group, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space in its Spacing group, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-nine states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, the clamp's block menu, the block picker and the section picker, a seam under the pointer, Insert open over a first column's block, a key of Insert picked up by the keyboard and a dropped Video asking for its address, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the Schedule dialog and on the Publish menu with a publish waiting, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish, a publish set for a time going live, a cancel by the keyboard, and Site style. |
-| `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports; prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. |
+| `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; the demo's build served as GitHub Pages serves it (below), its line unregistering a service worker left in its own path and keeping another project's, a 404 for a missing file, no CMS adapter or address in its files and no request outside its path; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports and on `E2E_DEMO_PORT` (4903); prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. On 8 October 2026 it printed `RESULT: 60 checks passed`. |
 | `npm run shots:editor -- <folder>` | Photographs the editor, headless, in every state of the approved layout's shots but Schedule, whose dialog stage 4 built and this does not photograph yet, named and staged as they are (`../design/layout/shots`: editor, add, structure, style, drag, tablet, publish, history, media, site-style, empty, shortcuts; `shots-extra`: text-editing, small-block, insert-at-seam, insert-drawer, page-tab, block-menu, more, new-section, phone, section, pages, conflict, offline, narrow-gutter, seam-hover, outline-col1, insert-col1), and in a right click's menu, a text's link field, a drag from Insert, a dropped Gallery key with its library open (`drop-asks`), the hero's own space on phones, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900 (the layout's `editor-1280`, `insert-drawer-1280` and `outline-col1` are the 1280 ones), on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. On 4 October 2026 it printed `RESULT: 74 shots`, and, once `drop-asks` was added, `RESULT: 76 shots`. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
+| `npm run build:demo` | The browser demo for GitHub Pages in `dist-demo/`, then the bundle check (below). |
+| `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/` (`E2E_DEMO_PORT` moves it), until Ctrl+C. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below). Needs Playwright's Chromium, not Ruby. On 8 October 2026: 5 passed. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -151,6 +157,82 @@ default the origin of an absolute `VITE_API_BASE`, else
 `http://127.0.0.1:3900`; `npm run dev` sets it from `CMS_URL`
 ([../docs/decisions/editor-links-to-the-cms-origin.md](../docs/decisions/editor-links-to-the-cms-origin.md)).
 
+## The browser demo
+
+The editor with no CMS behind it, for a person to try in their browser:
+"Try the editor in your browser". It is the second mode of the project;
+the first, the full system, is the CMS and this editor together.
+
+**Building and serving it.** `npm run build:demo` runs `vite build --mode
+demo`: the storage is the browser's (`VITE_STORAGE=browser`; asked for the
+CMS's, the build stops), the base is `/page-builder-cms/`, the path GitHub
+Pages gives this repository's project site, and the output is
+`dist-demo/`, so `dist/` is never replaced by it. The page loads
+`src/demo/main.tsx` in place of `src/main.tsx` (`build/storage-entry.ts`),
+so the demo's bundle holds no CMS adapter and no CMS address, and the
+editor's holds no browser storage and no demo: `build/bundle-check.ts`
+fails either build otherwise, each by marks only that code carries.
+`npm run serve:demo` then serves the build as Pages serves it
+(`e2e/harness/pages-server.ts`): under its path, a missing file a 404,
+and Pages' own headers. `VITE_STORAGE=browser npm run dev` serves the
+same demo from the source, at `/`.
+
+**What it does.**
+- On a first visit, with nothing kept in the browser, it puts in the
+  example site of `../example-site/`, as the CMS's seed does: the three
+  pages and nine pictures, each page published, the home page open
+  (`src/storage/example-site.ts`). A site with a page or a picture is
+  never added to.
+- It keeps pages, drafts with their revisions, versions, a publish, the
+  media library with each image's bytes, and the site style in the
+  browser's IndexedDB (`src/storage/browser.ts`), held to the CMS
+  adapter's storage battery. Two tabs of one browser share them, and the
+  one that saves second gets the conflict bar.
+- Preview opens the draft as it would be published (`?preview=<id>`), and
+  Publish keeps the page as published and opens it in a new tab
+  (`?published=<id>`): the demo draws each with the canvas's renderer, the
+  theme and the site style, under one line saying what the full system
+  does (`src/demo/PageView.tsx`). A form there says in one line what
+  becomes of its answers instead of sending them; a link to another page
+  of the site opens that page as the demo draws it.
+- At the bottom, under the editor's bottom line and under each page it
+  draws, one line: "Browser demo: drafts stay in this browser. The full
+  CMS runs on Rails 8, with publishing, shared versions and caching.
+  Source on GitHub."
+
+**Its limits.**
+- Nothing is served: no page at an address of its own, no cache, no
+  publish at a set time, no form answers and no Form responses. What is
+  not there has no control: the editor draws none (capabilities).
+- Drafts stay in one browser. Another browser, or another person, sees
+  none of them; clearing the site's data deletes them. A browser that
+  refuses IndexedDB (some private windows), one with no room left, or a
+  tab holding an older version of the storage, says so instead of
+  starting or saving.
+- No smaller copies of an image: each is resized in the browser to
+  2400 px on its long side before it is kept, as for the CMS.
+- On Pages the page is cached for ten minutes by headers a site cannot
+  set, so for that long after a new deploy a browser may load the
+  previous page; the line that unregisters service workers in the demo's
+  own path is what the site itself can do.
+
+**Its story** (`npm run e2e:demo`), each test a first visit in a browser
+of its own, on the build as Pages serves it: the example site's three
+pages, published, with the demo's line at the bottom; an edit kept after
+a reload; two tabs and the conflict bar; an image added to the library;
+Publish opening the page as published with its line, its form and its
+links; Preview showing the draft; axe on each screen; and no request off
+the demo's path.
+
+**Online only from a public repository.** The CI's `demo` job builds and
+tries the demo on every run. Its `pages` job deploys that build to
+GitHub Pages, from `main`, on a push or run by hand, and only while the
+repository is public: the free plan publishes Pages from public
+repositories alone, so a private repository's demo is never online
+(`../tools/ci.test.ts` holds the job to that). Once the repository is
+public, and Pages is set to deploy from GitHub Actions in its settings,
+the demo is at `https://riccardosapuppo.github.io/page-builder-cms/`.
+
 ## Where things are
 
 | Folder | What goes there |
@@ -162,6 +244,7 @@ default the origin of an absolute `VITE_API_BASE`, else
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
+| [`src/demo/`](src/demo/README.md) | The browser demo's entry point, the pages it draws where the CMS would serve them, and its bottom line. |
 | `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers. |
 | `test/` | The Vitest setup; `env.ts`, which reads a run's seed or count from the environment; and what the tests of `src/document` and `src/store` share: a small page, the random pages and sessions, the measurements. For storage: the fake clock. For the renderer: the comparison of two renders (`html-compare.ts`), the safety check, the goldens' freshness, the agreement check's random pages and harness, and the tests that read pages the CMS serves (outside the fence of `src/`); `ruby/twins.rb`, the server's side of the twins. |

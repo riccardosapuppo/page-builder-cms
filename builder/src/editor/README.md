@@ -16,7 +16,14 @@ History pushing the page aside), one sidebar on the right, the bottom line.
 
 `../main.tsx` mounts `App.tsx` on the Rails adapter, the system clock and
 random block ids, with the sidebar's open groups as this browser kept
-them (`open-groups.ts`).
+them (`open-groups.ts`), and the CMS's origin, where its pages open. The
+browser demo (`../demo/main.tsx`) mounts it on the browser's storage with
+no CMS origin (null): addresses then read as the path the site would
+give, the sentences say a page is saved in this browser (`keptWords`,
+`session.tsx`), and, since that storage keeps a publish but serves no
+page (`capabilities.livePages`), Publish opens the page as published,
+which the demo draws (`publishedView`), and the Publish menu links it in
+place of the live page.
 
 ## What is here
 

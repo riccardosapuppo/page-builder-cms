@@ -13,6 +13,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
 | `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. |
 | `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style) as TypeScript, for `browser.ts`. |
+| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, and the home page set; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. |
 | `site-theme-module.d.ts` | The type of `virtual:site-theme`, the theme's header and footer read from `cms/config/site.yml` when the editor is built (`../../build/site-theme.ts`). |
 | `contract.ts` | The battery every adapter must pass, written against the interface alone. |
 | `autosave.ts` | Saving on its own: the module the store hands each new document to, and the interface reads. |
