@@ -5,7 +5,8 @@
 //   other tab's words;
 // - an image goes into the library from this browser, drawn again at
 //   2400 px on its long side first as for the CMS, and shows from its own
-//   blob;
+//   blob; one larger than 10 MB even then is refused in this browser's words,
+//   with no CMS to blame;
 // - what this storage cannot do has no control: no Schedule, no Form
 //   responses.
 import type { Page } from "@playwright/test";
@@ -78,6 +79,25 @@ test("an image goes into the library from this browser, drawn again at 2400 px f
   await page.getByRole("menuitem", { name: "Media library" }).click();
   const again = page.getByRole("dialog", { name: "Media library" }).getByRole("radio", { name: `${name}, no alt text` }).locator("img");
   await expect.poll(() => again.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(2400);
+});
+
+test("a large image is refused in this browser's words: it keeps images up to 10 MB, and no CMS is named", async ({ page }) => {
+  const id = await seedPage(page, "Too large", story("At the harbour"));
+  await open(page, id);
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Media library" }).click();
+  const dialog = page.getByRole("dialog", { name: "Media library" });
+  // 4000 by 3000 of noise, the high bits of a 32-bit generator: it does not
+  // compress, and after the editor draws it again at 2400 pixels it is
+  // still larger than the 10 MB the storage keeps.
+  let seed = 11;
+  const noise = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) >>> 24;
+  const name = `${unique("noise")}.png`;
+  await dialog.getByLabel("Images to upload").setInputFiles({ name, mimeType: "image/png", buffer: png(4000, 3000, () => [noise(), noise(), noise()]) });
+  const said = dialog.getByText(/This browser keeps images up to 10 MB: ready to go up it is [\d.]+ MB\. Save it as JPEG or WebP, or crop it, and upload it again\./);
+  await expect(said).toBeVisible({ timeout: 60_000 });
+  expect(await dialog.innerText()).not.toMatch(/\bCMS\b/);
+  await expect(dialog.getByRole("radio", { name: new RegExp(`^${name}`) })).toHaveCount(0);
 });
 
 test("what the browser's storage cannot do has no control: no Schedule, no Form responses", async ({ page }) => {
