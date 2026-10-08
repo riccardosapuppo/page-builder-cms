@@ -161,15 +161,16 @@ jobs:
   builder-e2e:
     name: Editor against a CMS of its own, in a browser
     runs-on: ubuntu-24.04
-    # These four steps took 17.0 and then 17.4 minutes on 4 October 2026,
-    # on the Windows virtual machine of the README (8 logical processors,
-    # 12 GB): the tests against a CMS of their own 48 s, the 192 browser
-    # tests 716 s, the 38 accessibility tests again 257 s and the serving
-    # checks 23 s in the second run, not counting the install of the gems,
-    # the packages and Chromium. A runner of a private repository has two
-    # processors and starts each CMS and each browser more slowly, so the
-    # limit leaves room for three times that. The first run on GitHub is
-    # where the real figure is read, and this comment then says it.
+    # These five steps took 20.5 minutes on 8 October 2026, on the Windows
+    # virtual machine of the README (8 logical processors, 12 GB): the tests
+    # against a CMS of their own 51.7 s, the 221 browser tests 822.2 s, the
+    # browser storage's 50 tests 29.4 s, the 45 accessibility tests again
+    # 302.5 s and the serving checks 25.9 s, not counting the install of the
+    # gems, the packages and Chromium. A runner of a private repository has
+    # two processors and starts each CMS and each browser more slowly: the
+    # job took 17 minutes 52 seconds on GitHub in the run of commit 1168e7a,
+    # before the browser storage's steps were added, install included, and
+    # the limit leaves room for three times that.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
