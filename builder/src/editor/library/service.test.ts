@@ -29,7 +29,7 @@ function deferred<T>(): Deferred<T> {
 
 const settle = () => new Promise((done) => setTimeout(done, 0));
 
-function rig(library: MediaItem[] = []) {
+function rig(library: MediaItem[] = [], inBrowser = false) {
   const ui = createUiStore();
   ui.getState().setMedia(library);
   const sent: Array<{ upload: Upload; options: UploadOptions | undefined; answer: Deferred<Outcome<MediaItem, Invalid>> }> = [];
@@ -82,7 +82,7 @@ function rig(library: MediaItem[] = []) {
     },
     revoke: (url) => revoked.push(url),
   };
-  const service = createMediaService({ adapter, ui, prepare, urls });
+  const service = createMediaService({ adapter, ui, prepare, urls, inBrowser });
   return {
     ui, service, sent, prepared, refusals, alts, deletes, made, revoked, held,
     listed: () => listed,
@@ -171,6 +171,23 @@ describe("uploads", () => {
     await settle();
     expect(r.entries()[1]).toMatchObject({ phase: "failed", reason: "The CMS refused it: The API takes writes only from the CMS's own origin." });
     expect(r.ids()).toEqual([]);
+  });
+
+  test("in the browser demo, no refusal is the CMS's: a large image, a refusal with a status, and no answer all name this browser's storage", async () => {
+    const r = rig([], true);
+    r.service.upload([file("huge.png"), file("odd.png"), file("lost.png")]);
+    await settle();
+    r.sent[0]!.answer.resolve({ ok: false, problem: { kind: "invalid", code: "invalid_request", message: "The request is not valid.", errors: [{ pointer: "/file", keyword: "maximum", blockPointer: null, message: "must be at most 10485760" }] } });
+    await settle();
+    expect(r.entries()[0]).toMatchObject({ phase: "failed", reason: "This browser keeps images up to 10 MB: ready to go up it is 11 bytes. Save it as JPEG or WebP, or crop it, and upload it again." });
+    r.sent[1]!.answer.reject(new StorageError({ kind: "refused", status: 403, code: "storage_failed", message: "This browser's storage failed (UnknownError)." }));
+    await settle();
+    expect(r.entries()[1]).toMatchObject({ phase: "failed", reason: "Not uploaded: This browser's storage failed (UnknownError)." });
+    r.sent[2]!.answer.reject(new StorageError({ kind: "unknown", cause: "timeout", status: null, message: "The upload was abandoned before it was done." }));
+    await settle();
+    await settle();
+    expect(r.entries()[2]!.reason).toMatch(/^No answer from this browser's storage \(The upload was abandoned before it was done\.\): it may be in the library or not/);
+    for (const entry of r.entries()) expect(entry.reason, entry.name).not.toMatch(/CMS/);
   });
 
   test("with no answer, it may be in the library or not: it says so, and reads the library again", async () => {

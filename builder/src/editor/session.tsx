@@ -159,8 +159,50 @@ export function emptySession(changes: Partial<Session> = {}): Session {
 // no CMS (the browser demo), this browser.
 export function keptWords(cmsOrigin: string | null) {
   return cmsOrigin === null
-    ? { there: "saved in this browser", restored: "Restored in this browser", unsaved: "changes this browser has not saved yet", keeper: "this browser's storage" }
-    : { there: "on the server", restored: "Restored on the server", unsaved: "changes the server has not saved yet", keeper: "the CMS" };
+    ? { there: "saved in this browser", restored: "Restored in this browser", unsaved: "changes this browser has not saved yet", keeper: "this browser's storage", Keeper: "This browser's storage", server: "this browser's storage", Server: "This browser's storage" }
+    : { there: "on the server", restored: "Restored on the server", unsaved: "changes the server has not saved yet", keeper: "the CMS", Keeper: "The CMS", server: "the server", Server: "The server" };
+}
+
+// The same for the session in hand; the CMS's words where a part is drawn
+// without one (a test of its own).
+export function useKeptWords() {
+  const session = useOptionalSession();
+  // (Not the default origin itself: the browser build may not hold it.)
+  return keptWords(session ? session.cmsOrigin : "the CMS");
+}
+
+// How a sentence names a page that was published: put in front of visitors
+// ("live") where the storage serves pages (the CMS), or only kept and shown
+// by the editor ("published") where it serves none (the browser demo, whose
+// pages have no address of their own).
+export function publishWords(livePages: boolean) {
+  return livePages
+    ? {
+        homeLine: "The home page, the first one visitors see",
+        searchTitle: "Shown in the browser tab and in search results.",
+        searchText: "Search engines show it under the title. Up to 160 characters.",
+        newAddress: "Lowercase letters, digits and hyphens. Visitors find the page there once it is published.",
+        latest: "live now",
+        draftSame: "The same as the live page",
+        restoring: "Restoring copies that version into your draft. Nothing goes live until you publish.",
+        notLive: (changes: string) => `${changes} not live`,
+        newAddressNotLive: "new address not live",
+        nothingWent: "Nothing went live.",
+        maybe: "the page may be live or not. Open the live page to see, or publish again.",
+      }
+    : {
+        homeLine: "The home page of the site",
+        searchTitle: "Shown in the browser tab and, in the full system, in search results.",
+        searchText: "In the full system, search engines show it under the title. Up to 160 characters.",
+        newAddress: "Lowercase letters, digits and hyphens. In the full system, visitors find the page there once it is published.",
+        latest: "latest publish",
+        draftSame: "The same as the published page",
+        restoring: "Restoring copies that version into your draft. The published page stays as it is until you publish.",
+        notLive: (changes: string) => `${changes} to publish`,
+        newAddressNotLive: "new address to publish",
+        nothingWent: "Nothing was published.",
+        maybe: "the page may be published or not. Publish again to be sure.",
+      };
 }
 
 // Lowercase letters, digits and hyphens, from a title: the address a new

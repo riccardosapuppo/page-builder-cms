@@ -10,6 +10,9 @@
 //   form says what the full system does instead of sending; a link to the
 //   site's other page opens it as the demo draws it; Preview shows the
 //   draft;
+// - the screens promise nothing only the full system does (a visitor, a
+//   live page, a server), and a large image is refused in the browser's
+//   words;
 // - axe on each screen, with no serious finding;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
@@ -234,4 +237,115 @@ test("Publish opens the page as published, with its line; the form says what the
   await expect(preview.getByRole("heading", { level: 1, name: "A draft not published yet" })).toBeVisible();
   await shoot(preview, "demo-preview");
   await noSeriousFinding(preview, "the draft's preview");
+});
+
+// What the demo's screens say that only the full system does: visitors, a
+// live page, a server, the CMS, Rails, search engines, a cache. A line that
+// says one of them has to say it is the full system's. The product's own
+// name is no claim, and the page being edited is the person's words, not
+// the editor's.
+const PROMISES = /\bvisitors?\b|\blive\b|\bservers?\b|\bCMS\b|\bRails\b|search engines?|\bcache\b/i;
+const EXPLAINED = /full system|full CMS/i;
+// Advice on writing a page, true wherever the page ends up.
+const ADVICE = /^Use one H1 per page\./;
+
+// Each screen's findings are kept and reported together at the end.
+async function promisesNothing(page: Page, where: string, found: string[]): Promise<void> {
+  const seen = await page.evaluate(() => {
+    const lines: string[] = [];
+    const skip = (element: Element | null) => element?.closest(".canvas, script, style, [aria-label='About this demo']") != null;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) if (!skip(node.parentElement)) lines.push(node.textContent ?? "");
+    for (const element of document.querySelectorAll("[title], [aria-label]")) {
+      if (skip(element)) continue;
+      lines.push(element.getAttribute("title") ?? "", element.getAttribute("aria-label") ?? "");
+    }
+    return lines;
+  });
+  const lines = seen.map((line) => line.replaceAll("Page Builder CMS", "").trim()).filter((line) => line !== "" && PROMISES.test(line) && !EXPLAINED.test(line) && !ADVICE.test(line));
+  found.push(...[...new Set(lines)].map((line) => `${where}: ${line}`));
+}
+
+test("the screens promise nothing the browser cannot do: no visitor, live page or server, except where the full system is named", async ({ page, context }) => {
+  const found: string[] = [];
+  await openDemo(page);
+  // The page's own settings, the home page.
+  await page.getByRole("complementary", { name: "Settings" }).getByRole("tab", { name: "Page" }).click();
+  const address = page.getByLabel("Address");
+  await expect(address).toBeVisible();
+  await expect(page.getByText("This is the home page. In the full system, visitors find it at the site’s root address, /.")).toBeVisible();
+  await expect(page.locator(".ed-title")).toContainText("The home page of the site");
+  await promisesNothing(page, "the Page tab of the home page", found);
+
+  // Another page, published, with a next address that differs: published
+  // here, and nothing redirects.
+  await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^Winter series/ }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Winter series" })).toBeVisible();
+  await expect(page.getByText("Published in this browser as /winter-series.")).toBeVisible();
+  await address.fill("winter-swims");
+  await address.press("Enter");
+  await expect(page.getByText("Published in this browser as /winter-series; the next publish uses /winter-swims.")).toBeVisible();
+  await expect(page.locator(".tb-status")).toHaveText("Published, new address to publish");
+  await promisesNothing(page, "the Page tab with a next address", found);
+
+  await page.getByRole("button", { name: "Switch page. Open: Winter series" }).click();
+  await promisesNothing(page, "the list of pages", found);
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^Slack Water/ }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
+  await expect(block(page, "hero-heading")).toBeVisible();
+
+  // The history, with a published version and a change since.
+  await retitleHero(page, "Swim when the tide stands still");
+  await saved(page);
+  const opened = context.waitForEvent("page");
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await (await opened).close();
+  await expect(notice(page)).toContainText(PUBLISHED_LINE);
+  await promisesNothing(page, "the notice after Publish", found);
+  await page.locator(".topbar").getByRole("button", { name: "History", exact: true }).click();
+  const history = page.getByRole("complementary", { name: "History", exact: true });
+  await expect(history).toContainText("The same as the published page");
+  await promisesNothing(page, "the history of a page just published", found);
+  await retitleHero(page, "Swim when the tide has turned");
+  await saved(page);
+  await expect(page.locator(".tb-status")).toHaveText("Published, 1 change to publish");
+  await promisesNothing(page, "the top bar with a change not published", found);
+  await expect(history).toContainText("1 change not published yet");
+  await expect(history).toContainText("latest publish");
+  await expect(history).toContainText("Restoring copies that version into your draft. The published page stays as it is until you publish.");
+  await promisesNothing(page, "the history", found);
+
+  // The menus and the dialogs a person opens.
+  await page.getByRole("button", { name: "More publish options" }).click();
+  await promisesNothing(page, "the Publish menu", found);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: "New page" }).click();
+  await expect(page.getByText("In the full system, visitors find the page there once it is published.")).toBeVisible();
+  await promisesNothing(page, "the New page dialog", found);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Media library" }).click();
+  const library = page.getByRole("dialog", { name: "Media library" });
+  await library.getByRole("radio", { name: /^hero-dawn\.png, / }).click();
+  await library.getByRole("button", { name: "Delete from library" }).click();
+  await expect(library.getByRole("group", { name: "Delete hero-dawn.png" })).toContainText("This browser keeps it while a page or a kept version shows it.");
+  await promisesNothing(page, "the Media library", found);
+  expect(found, "what the screens say that only the full system does").toEqual([]);
+});
+
+test("a large image is refused in this browser's words, not a CMS's", async ({ page }) => {
+  await openDemo(page);
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Media library" }).click();
+  const dialog = page.getByRole("dialog", { name: "Media library" });
+  // 4000 by 3000 of noise, the high bits of a 32-bit generator: it does not
+  // compress, and after the editor draws it again at 2400 pixels it is
+  // still larger than the 10 MB the storage keeps.
+  let seed = 11;
+  const noise = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) >>> 24;
+  await dialog.getByLabel("Images to upload").setInputFiles({ name: "wall-of-noise.png", mimeType: "image/png", buffer: png(4000, 3000, () => [noise(), noise(), noise()]) });
+  await expect(dialog.getByText(/This browser keeps images up to 10 MB: ready to go up it is [\d.]+ MB\. Save it as JPEG or WebP, or crop it, and upload it again\./)).toBeVisible({ timeout: 60_000 });
+  expect(await dialog.innerText()).not.toMatch(/The CMS/);
 });

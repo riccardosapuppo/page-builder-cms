@@ -192,3 +192,22 @@ test("the mark's menu opens the site style in the sidebar, the sidebar shown if 
   expect(kit.ui.getState()).toMatchObject({ sidebarOpen: true, tray: "site-style" });
   expect(screen.queryByRole("menu")).toBeNull();
 });
+
+test("where the storage serves no page (the browser demo), the line counts what is still to publish, not what visitors do not see", () => {
+  const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false } };
+  for (const [current, said, tip] of [
+    [open({ published: null }), "Not published yet", undefined],
+    [open({}), "Published", "Published <when>."],
+    [open({ revision: 4 }), "Published, 1 change to publish", "Published <when>. Your 1 change since then is saved in this browser but not published yet: Publish keeps it."],
+    [open({ revision: 9 }), "Published, 6 changes to publish", "Published <when>. Your 6 changes since then are saved in this browser but not published yet: Publish keeps them."],
+    [open({ slug: "winter" }), "Published, new address to publish", "Published <when>. The page’s new address, /winter, is not published yet: Publish keeps it."],
+  ] as const) {
+    const kit = editorKit({ document: page(), session: { current, ...demo } });
+    const { unmount } = kit.render(<TopBar />);
+    expect(status()).toBe(said);
+    // The time is shown in the browser's own zone: it is left out here.
+    expect(document.querySelector(".tb-status")!.getAttribute("title")?.replace(/^Published [A-Z][a-z]{2} \d+ at \d+:\d+ [AP]M\./, "Published <when>.")).toBe(tip);
+    expect(`${status()}${document.querySelector(".tb-status")!.getAttribute("title")}`).not.toMatch(/live|visitors/i);
+    unmount();
+  }
+});

@@ -341,7 +341,7 @@ test("in the browser demo, Publish opens a tab at once, sends it to the page as 
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
   expect(tabs).toHaveLength(2);
   await expect(tabs[1]).rejects.toThrow("not published");
-  expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing went live.");
+  expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing was published.");
 });
 
 // Schedule… from the Publish menu, the dialog filled in the site's time

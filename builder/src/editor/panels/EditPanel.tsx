@@ -16,7 +16,7 @@ import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, fromLine, placeLine } from "../names.ts";
 import { siteAddress } from "../Publish.tsx";
-import { useSession } from "../session.tsx";
+import { publishWords, useKeptWords, useSession } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
 import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
@@ -34,12 +34,13 @@ export function PagePanel({ after }: { after?: ReactNode }) {
   const run = useRun();
   const session = useSession();
   const current = session.current;
+  const words = publishWords(session.capabilities.livePages);
   const all = useUi((u) => u.serverErrors);
   const errors = useMemo(() => all.filter((e) => e.blockId === null), [all]);
   const line = !current
     ? "This page’s own settings"
     : current.home
-      ? "The home page, the first one visitors see"
+      ? words.homeLine
       : `/${current.slug}, ${current.published ? "published" : "not published yet"}`;
   const specs: GroupSpec[] = [
     {
@@ -56,7 +57,7 @@ export function PagePanel({ after }: { after?: ReactNode }) {
             blockId={null}
             field="/title"
             rules={{ kind: "line", maxLength: 120 }}
-            hint="Shown in the browser tab and in search results."
+            hint={words.searchTitle}
             onCommit={(next) => run(makeSetPage(store.getState().document, { title: next }))}
           />
           <AddressField />
@@ -79,7 +80,7 @@ export function PagePanel({ after }: { after?: ReactNode }) {
           blockId={null}
           field="/description"
           rules={{ kind: "line", maxLength: 160 }}
-          hint="Search engines show it under the title. Up to 160 characters."
+          hint={words.searchText}
           onCommit={(next) => run(makeSetPage(store.getState().document, { description: next.trim() === "" ? REMOVE : next }))}
         />
       ),
@@ -123,13 +124,26 @@ function AddressField() {
     setErrors(problems ? problems.map((p) => explain(p.keyword, p.message, { kind: "slug", maxLength: 64 })) : []);
   };
   const live = current.published ? (current.home ? "/" : `/${current.published.slug}`) : null;
-  const hint = current.home
-    ? "This is the home page: visitors find it at the site’s root address, /."
-    : live === null
-      ? siteAddress(`/${current.slug}`, session.cmsOrigin)
-      : live === `/${current.slug}`
-        ? `Visitors find the page at ${live}.`
-        : `Live at ${live}; the next publish moves it to /${current.slug}, and the old address leads to the new one.`;
+  // Where the storage serves pages, the address is where visitors find the
+  // page. Where it only keeps them (the browser demo) the address is the
+  // one the full system would serve it at: nothing here is served, so
+  // nothing here redirects either.
+  const serves = session.capabilities.livePages;
+  const hint = !serves
+    ? current.home
+      ? "This is the home page. In the full system, visitors find it at the site’s root address, /."
+      : live === null
+        ? `In the full system, the page will be at /${current.slug} once it is published.`
+        : live === `/${current.slug}`
+          ? `Published in this browser as ${live}.`
+          : `Published in this browser as ${live}; the next publish uses /${current.slug}.`
+    : current.home
+      ? "This is the home page: visitors find it at the site’s root address, /."
+      : live === null
+        ? siteAddress(`/${current.slug}`, session.cmsOrigin)
+        : live === `/${current.slug}`
+          ? `Visitors find the page at ${live}.`
+          : `Live at ${live}; the next publish moves it to /${current.slug}, and the old address leads to the new one.`;
   return (
     <div className={`field${errors.length > 0 ? " field-error" : ""}`}>
       <label className="label" htmlFor={id}>Address</label>
@@ -177,6 +191,7 @@ export function BlockPanel({ id }: { id: string }) {
   const { ui } = useEnv();
   const { provider, claimed } = useFieldClaims();
   const listId = useId();
+  const kept = useKeptWords();
   if (!block) return null;
 
   const name = block.type === "section" ? "Section" : blockName(doc, block.id);
@@ -201,7 +216,7 @@ export function BlockPanel({ id }: { id: string }) {
       <div className="sb-body">
         {unclaimed.length > 0 && (
           <div className="field sb-refused">
-            <p className="note"><Icon name="warning" /><span>The server refused the last save of this {block.type === "section" || block.type === "column" ? block.type : "widget"}:</span></p>
+            <p className="note"><Icon name="warning" /><span>{kept.Server} refused the last save of this {block.type === "section" || block.type === "column" ? block.type : "widget"}:</span></p>
             <ErrorList id={`${listId}-unclaimed`} errors={unclaimed.map((e) => e.message)} />
           </div>
         )}

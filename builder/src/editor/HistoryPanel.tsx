@@ -25,7 +25,7 @@ import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { changesNotLive } from "./Publish.tsx";
 import { useSaveSnapshot } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
-import { useSession } from "./session.tsx";
+import { publishWords, useSession } from "./session.tsx";
 import { siteWhen } from "./site-time.ts";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import "./history.css";
@@ -137,6 +137,7 @@ export function HistoryPanel() {
   const saveKeys = entry("saveVersion");
   const { versions, restoring } = session;
   const notLive = page ? changesNotLive(page, snapshot) : 0;
+  const published = publishWords(session.capabilities.livePages);
 
   return (
     <div className="drawer-body drawer-body-tight hist-body">
@@ -191,7 +192,7 @@ export function HistoryPanel() {
         {page && (
           <li className="ver ver-draft">
             <span className="ver-kind">Current draft</span>
-            <span className="ver-name">{draftLine(page.published !== null, notLive)}</span>
+            <span className="ver-name">{draftLine(page.published !== null, notLive, published.draftSame)}</span>
             {snapshot?.savedAt && <span className="ver-when">{serverTime(snapshot.savedAt, now)}</span>}
           </li>
         )}
@@ -213,12 +214,12 @@ export function HistoryPanel() {
           </li>
         )}
         {versions.items.map((version) => {
-          const words = versionWords(version, versions.items, now);
+          const words = versionWords(version, versions.items, now, undefined, published.latest);
           const busy = restoring !== null;
           return (
             <li key={version.number} className={`ver${words.live ? " ver-live" : ""}`}>
               <div>
-                <span className="ver-kind">{words.live && <i className="dot-live" aria-hidden="true" />}{words.kind}{words.live && <span className="visually-hidden">, live now</span>}</span>
+                <span className="ver-kind">{words.live && <i className="dot-live" aria-hidden="true" />}{words.kind}{words.live && <span className="visually-hidden">, {published.latest}</span>}</span>
                 {words.name !== null && <span className="ver-name">{words.name}</span>}
                 <span className="ver-when">{words.when}</span>
               </div>
@@ -245,7 +246,7 @@ export function HistoryPanel() {
           <button className="btn btn-small btn-secondary" type="button" onClick={loadVersions}>Try again</button>
         </div>
       )}
-      <p className="hint hint-pad">Restoring copies that version into your draft. Nothing goes live until you publish.</p>
+      <p className="hint hint-pad">{published.restoring}</p>
     </div>
   );
 }

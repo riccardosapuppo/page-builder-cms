@@ -250,7 +250,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
     if (!mounted.current) return;
     if (settled && settled.phase !== "saved") {
       setDeleting(null);
-      setDeleteSaid({ id: imageId, text: "Not deleted: this page has changes the CMS has not saved yet, and one may show this image. Try again once the top bar says Saved." });
+      setDeleteSaid({ id: imageId, text: `Not deleted: this page has changes ${session?.cmsOrigin === null ? "this browser has" : "the CMS has"} not saved yet, and one may show this image. Try again once the top bar says Saved.` });
       return;
     }
     const outcome = await service.remove(imageId);
@@ -619,6 +619,7 @@ function DeleteControl({ filename, deleting, said, onAsk, onKeep, onDelete }: { 
   const keep = useRef<HTMLButtonElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
   const asked = useRef(false);
+  const keeper = useOptionalSession()?.cmsOrigin === null ? "This browser" : "The CMS";
   useEffect(() => {
     if (deleting === "asking") keep.current?.focus();
     else if (asked.current) ask.current?.focus();
@@ -632,7 +633,7 @@ function DeleteControl({ filename, deleting, said, onAsk, onKeep, onDelete }: { 
           event.stopPropagation();
           onKeep();
         }}>
-          <p>Delete it from the library for good? The CMS keeps it while a page or a kept version shows it.</p>
+          <p>Delete it from the library for good? {keeper} keeps it while a page or a kept version shows it.</p>
           <div className="md-confirm-buttons">
             <button ref={keep} className="btn btn-small btn-secondary" type="button" onClick={onKeep}>Keep it</button>
             <button className="btn btn-small btn-danger" type="button" onClick={onDelete}>Delete</button>

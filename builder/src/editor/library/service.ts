@@ -87,8 +87,12 @@ interface Job {
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
-export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore; prepare?: Prepare; urls?: ObjectUrls }): MediaService {
+// `inBrowser`: the pages and images are kept in this browser, with no CMS
+// (the demo): what is refused or unanswered is then this browser's storage,
+// and is not said to be the CMS.
+export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore; prepare?: Prepare; urls?: ObjectUrls; inBrowser?: boolean }): MediaService {
   const { adapter, ui } = options;
+  const inBrowser = options.inBrowser ?? false;
   const prepare = options.prepare ?? prepareImage;
   const urls = options.urls ?? browserUrls;
   const uploads = createStore<{ entries: readonly UploadEntry[] }>()(() => ({ entries: [] }));
@@ -175,19 +179,19 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
       if (job.cancelled) return;
       if (isStorageError(error) && error.failure.kind === "unknown") {
         // It may have reached the library: the list read again shows.
-        fail(key, `No answer from the CMS (${error.failure.message}): it may be in the library or not. The list was read again; look for it before uploading it again.`);
+        fail(key, `No answer from ${inBrowser ? "this browser's storage" : "the CMS"} (${error.failure.message}): it may be in the library or not. The list was read again; look for it before uploading it again.`);
         await refresh();
         return;
       }
       // A refusal with no status is this browser's own (a file it cannot
-      // read, its storage full), not the CMS's.
-      const own = isStorageError(error) && error.failure.kind === "refused" && error.failure.status === 0;
+      // read, its storage full), not the CMS's; with no CMS, all are.
+      const own = inBrowser || (isStorageError(error) && error.failure.kind === "refused" && error.failure.status === 0);
       fail(key, own ? `Not uploaded: ${describe(error)}` : `The CMS refused it: ${describe(error)}`);
       return;
     }
     if (job.cancelled) return;
     if (!outcome.ok) {
-      fail(key, uploadRefusal(outcome.problem, file));
+      fail(key, uploadRefusal(outcome.problem, file, inBrowser));
       return;
     }
     forget(key);

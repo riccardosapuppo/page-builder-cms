@@ -101,6 +101,24 @@ test("text waiting in a field goes first; a step it ends is gone, which is said,
 
 const version = (number: number, reason: Version["reason"], createdAt: string, extra: Partial<Version> = {}): Version => ({ number, reason, name: null, restoredFrom: null, createdAt, published: false, ...extra });
 
+test("where the storage serves no page (the browser demo), the version shown as published is the latest publish, and nothing promises a live page", () => {
+  const session: Partial<Session> = {
+    cmsOrigin: null,
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false },
+    current: { ...open, revision: 1, published: { slug: "winter-series", versionNumber: 2, draftRevision: 1, publishedAt: "2026-09-28T07:02:00.000Z" } },
+    versions: { phase: "ready", message: null, items: [version(3, "auto", "2026-10-02T07:58:00Z"), version(2, "publish", "2026-09-28T07:02:00Z", { published: true })] },
+  };
+  const kit = editorKit({ document: page(), session });
+  kit.render(<HistoryPanel />);
+  const list = screen.getByRole("list", { name: "Versions" });
+  const rows = within(list).getAllByRole("listitem");
+  expect(rows[0]!.textContent).toMatch(/^Current draftThe same as the published page/);
+  expect(rows[2]!.querySelector(".ver-kind")?.textContent).toBe("Published, latest publish");
+  expect(within(rows[2]!).getByRole("button").getAttribute("aria-label")).toMatch(/^Restore: Published, Sep 28, \d+:02 [AP]M, latest publish$/);
+  expect(document.querySelector(".hist-body")?.textContent).toContain("Restoring copies that version into your draft. The published page stays as it is until you publish.");
+  expect(document.querySelector(".hist-body")?.textContent).not.toMatch(/live|goes live/i);
+});
+
 test("the versions are named by why, when and their name, never by an author, the live one marked; Restore asks the session, one restore at a time", () => {
   const restored: number[] = [];
   const session: Partial<Session> = {

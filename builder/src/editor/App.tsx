@@ -55,7 +55,7 @@ import { NewPageDialog } from "./NewPageDialog.tsx";
 import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
-import { keptWords, NO_VERSIONS, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
@@ -149,6 +149,7 @@ interface AppProps {
 export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, foot, tabs = windowTabs }: AppProps) {
   const { store, ui, clock } = env;
   const words = useMemo(() => keptWords(cmsOrigin), [cmsOrigin]);
+  const publishedWords = useMemo(() => publishWords(adapter.capabilities.livePages), [adapter]);
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [pages, setPages] = useState<readonly PageSummary[]>([]);
   const [current, setCurrent] = useState<OpenPage | null>(null);
@@ -360,11 +361,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const ready = (async () => {
       ui.getState().pending.deliver();
       const settled = saving ? await saving.flush() : null;
-      if (settled && settled.phase !== "saved") ui.getState().say(`The preview shows the last saved draft: ${unsavedWhy(settled.phase)}`);
+      if (settled && settled.phase !== "saved") ui.getState().say(`The preview shows the last saved draft: ${unsavedWhy(settled.phase, words.server)}`);
       return href;
     })();
     if (!tabs.open(ready)) ui.getState().say(`The browser did not open a new tab for the preview. It is at ${href}.`);
-  }, [cmsOrigin, tabs, ui]);
+  }, [cmsOrigin, tabs, ui, words.server]);
 
   // Saves what waits, then puts the draft live at the revision just saved:
   // a save from elsewhere in between is refused by the CMS, not published
@@ -383,7 +384,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       ui.getState().pending.deliver();
       const settled = await saving.flush();
       if (settled.phase !== "saved") {
-        ui.getState().say(`Not published: ${unsavedWhy(settled.phase)}`);
+        ui.getState().say(`Not published: ${unsavedWhy(settled.phase, words.server)}`);
         return;
       }
       if (store.getState().document.sections.length === 0) {
@@ -396,13 +397,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       } catch (error) {
         const unknown = isStorageError(error) && error.failure.kind === "unknown";
         ui.getState().say(unknown
-          ? `No answer from ${words.keeper} about the publish (${describe(error)}): the page may be live or not. Open the live page to see, or publish again.`
+          ? `No answer from ${words.keeper} about the publish (${describe(error)}): ${publishedWords.maybe}`
           : `Not published: ${describe(error)}`);
         return;
       }
       if (!outcome.ok) {
         ui.getState().say(outcome.problem.kind === "conflict"
-          ? "Not published: the page was saved somewhere else after this tab's last save. Nothing went live."
+          ? `Not published: the page was saved somewhere else after this tab's last save. ${publishedWords.nothingWent}`
           : `Not published: ${outcome.problem.errors[0]?.message ?? outcome.problem.message}`);
         return;
       }
@@ -432,7 +433,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       // Not published: the tab opened for it goes.
       shown?.reject(new Error("not published"));
     }
-  }, [adapter, cmsOrigin, loadVersions, publishedView, refreshPages, store, tabs, ui, words]);
+  }, [adapter, cmsOrigin, loadVersions, publishedView, refreshPages, store, tabs, ui, words, publishedWords.maybe, publishedWords.nothingWent]);
 
   // What is live and what waits to go live, read again from the CMS, for a
   // page still open: the draft on the canvas and its autosave stay as
@@ -455,7 +456,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     try {
       ui.getState().pending.deliver();
       const settled = await saving.flush();
-      if (settled.phase !== "saved") return problem("unsaved", `Not scheduled: ${unsavedWhy(settled.phase)}`);
+      if (settled.phase !== "saved") return problem("unsaved", `Not scheduled: ${unsavedWhy(settled.phase, words.server)}`);
       if (store.getState().document.sections.length === 0) return problem("empty", "Not scheduled: an empty page has nothing to publish. Add a section first.");
       let outcome;
       try {
@@ -482,7 +483,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     } finally {
       setScheduling(false);
     }
-  }, [adapter, loadVersions, refreshLive, refreshPages, store, ui]);
+  }, [adapter, loadVersions, refreshLive, refreshPages, store, ui, words.server]);
 
   // Cancels the open page's pending schedule. Too late (its job ran, or
   // another tab replaced or cancelled it), the CMS says what became of it,
@@ -655,7 +656,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     } else if (settled.phase === "conflict") {
       say("Not saved over it yet: the page was saved in another tab again while this one kept it. Choose again: Keep mine keeps that page as a version too.");
     } else {
-      say(`This tab’s page is not saved over the other one yet: ${unsavedWhy(settled.phase)}`);
+      say(`This tab’s page is not saved over the other one yet: ${unsavedWhy(settled.phase, words.server)}`);
     }
   }, [adapter, loadVersions, ui, words]);
 
@@ -668,7 +669,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const problem = (keyword: string, message: string): FieldError[] => [{ pointer: "", keyword, blockPointer: null, message }];
     ui.getState().pending.deliver();
     const settled = await saving.flush();
-    if (settled.phase !== "saved") return problem("unsaved", `Not kept: ${unsavedWhy(settled.phase)}`);
+    if (settled.phase !== "saved") return problem("unsaved", `Not kept: ${unsavedWhy(settled.phase, words.server)}`);
     const named = name.trim();
     let outcome;
     try {
@@ -709,7 +710,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       ui.getState().pending.deliver();
       const settled = await saving.flush();
       if (settled.phase !== "saved") {
-        say(`Not restored: ${unsavedWhy(settled.phase)}`);
+        say(`Not restored: ${unsavedWhy(settled.phase, words.server)}`);
         return;
       }
       if (live.current.autosave !== saving) return;
@@ -826,7 +827,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   return (
     <EditorProvider env={env}>
       <SessionProvider value={session}>
-        <MediaProvider adapter={adapter}>
+        <MediaProvider adapter={adapter} inBrowser={cmsOrigin === null}>
           <ResponsesProvider value={responses}>
             <DragLayer>
               {/* In the order the Tab key goes: the top bar, the drawer, the
@@ -913,16 +914,16 @@ export function tooLateToCancel(state: ScheduleState): string {
 }
 
 // Why what waits for a save did not go ahead, as the end of a sentence.
-function unsavedWhy(phase: SavePhase): string {
+function unsavedWhy(phase: SavePhase, server: string): string {
   switch (phase) {
     case "conflict":
       return "the page was changed in another tab. Choose Reload or Keep mine first.";
     case "retrying":
       return "the changes are not saved yet, and the editor is trying again.";
     case "invalid":
-      return "the server refused a value. Fix the field it marks first.";
+      return `${server} refused a value. Fix the field it marks first.`;
     case "refused":
-      return "the server refused the save.";
+      return `${server} refused the save.`;
     default:
       return "the changes are not saved yet.";
   }

@@ -7,7 +7,7 @@ import type { FieldError } from "../storage/adapter.ts";
 import { describedBy, ErrorList } from "./controls.tsx";
 import { Dialog } from "./dialog.tsx";
 import { explain } from "./errors.ts";
-import { slugFrom, useSession } from "./session.tsx";
+import { publishWords, slugFrom, useSession } from "./session.tsx";
 
 export function NewPageDialog({ onClose }: { onClose: () => void }) {
   const session = useSession();
@@ -88,7 +88,7 @@ export function NewPageDialog({ onClose }: { onClose: () => void }) {
               }}
             />
           </div>
-          <p className="hint" id={`${id}-slug-hint`}>Lowercase letters, digits and hyphens. Visitors find the page there once it is published.</p>
+          <p className="hint" id={`${id}-slug-hint`}>{publishWords(session.capabilities.livePages).newAddress}</p>
           <ErrorList id={`${id}-slug-error`} errors={slugErrors} />
         </div>
         <ErrorList id={`${id}-other`} errors={elsewhere} />

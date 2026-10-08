@@ -200,3 +200,11 @@ test("the row the drawer gives the focus to when it opens is the tree's one Tab 
   expect(marked.map((row) => row.getAttribute("aria-label"))).toEqual(["Quote: Cold, then glad."]);
   expect(marked[0]!.tabIndex).toBe(0);
 });
+
+test("a refused block is refused by the server, or, with no CMS, by this browser's storage", () => {
+  const kit = editorKit({ document: page(), session: { cmsOrigin: null } });
+  kit.render(<Navigator />);
+  act(() => kit.refuse("hero", "/props/label", "maxLength", "is too long"));
+  expect(screen.getByRole("treeitem", { name: "Hero, refused by this browser's storage" })).toBeTruthy();
+  expect(document.querySelector("[title]:has(.i-xs)")?.getAttribute("title") ?? [...document.querySelectorAll("[title]")].map((e) => e.getAttribute("title")).find((t) => t?.includes("refused this block"))).toBe("This browser's storage refused this block in the last save");
+});

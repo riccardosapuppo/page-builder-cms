@@ -14,7 +14,7 @@ import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, siteAddress } from "./Publish.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
-import { useSession, type OpenPage } from "./session.tsx";
+import { publishWords, useSession, type OpenPage } from "./session.tsx";
 import { shortWhen, siteWhen, wallClockAt } from "./site-time.ts";
 
 interface PageSwitchProps {
@@ -83,6 +83,10 @@ function useSessionTitle(): string {
 // (it tries again by itself every few minutes).
 export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
   const snapshot = useSaveSnapshot();
+  // Where the storage serves pages the changes are "not live"; where it
+  // only keeps them (the browser demo) they are "to publish".
+  const serves = useSession().capabilities.livePages;
+  const published = publishWords(serves);
   const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
   const pending = page.scheduled ?? null;
   const late = useScheduleLate(pending?.at);
@@ -103,10 +107,10 @@ export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
   const since = `Published ${when(page.published.publishedAt)}.`;
   if (notLive > 0) {
     const what = changes(notLive);
-    return <span className="tb-status" id={id} title={`${since} Your ${what} since then are saved but not live yet: Publish sends them.${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, {what} not live{waiting}</span>;
+    return <span className="tb-status" id={id} title={`${since} Your ${what} since then ${notLive === 1 ? "is" : "are"} saved${serves ? ` but not live yet: Publish sends ${notLive === 1 ? "it" : "them"}.` : ` in this browser but not published yet: Publish keeps ${notLive === 1 ? "it" : "them"}.`}${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, {published.notLive(what)}{waiting}</span>;
   }
   if (moved) {
-    return <span className="tb-status" id={id} title={`${since} The page’s new address, /${page.slug}, is not live yet: Publish sends it.${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, new address not live{waiting}</span>;
+    return <span className="tb-status" id={id} title={`${since} The page’s new address, /${page.slug}, ${serves ? "is not live yet: Publish sends it." : "is not published yet: Publish keeps it."}${waitingTitle}`}><span className="dot-part" aria-hidden="true" />Published, {published.newAddressNotLive}{waiting}</span>;
   }
   return <span className="tb-status" id={id} title={`${since}${waitingTitle}`}><span className="dot-live" aria-hidden="true" />Published{waiting}</span>;
 }
@@ -156,7 +160,7 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
     const isOpen = current?.id === page.id;
     if (!(isOpen ? current.published : page.published)) return { dot: "dot-draft", words: "Not published yet" };
     const notLive = isOpen ? changesNotLive(current, snapshot) : Math.max(0, page.revision - (page.published?.draftRevision ?? page.revision));
-    return notLive > 0 ? { dot: "dot-part", words: `${changes(notLive)} not live` } : { dot: "dot-live", words: "Published" };
+    return notLive > 0 ? { dot: "dot-part", words: publishWords(session.capabilities.livePages).notLive(changes(notLive)) } : { dot: "dot-live", words: "Published" };
   };
 
   const rows = () => [...(box.current?.querySelectorAll<HTMLElement>(".page-row") ?? [])];

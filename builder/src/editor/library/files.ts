@@ -137,25 +137,30 @@ export function renamed(name: string, type: ImageType): string {
 
 // The sentence for an upload the CMS refused (a 422 at the file, or at
 // another field), said as the CMS's: a refusal says who refused and why. `sent`
-// is the size of what was sent, after the editor made it ready.
-export function uploadRefusal(problem: Invalid, sent: { size: number; type: string }): string {
+// is the size of what was sent, after the editor made it ready. With no
+// CMS (`inBrowser`, the browser demo) it is this browser's storage that
+// refuses, and the sentence says why without blaming a CMS that is not there.
+export function uploadRefusal(problem: Invalid, sent: { size: number; type: string }, inBrowser = false): string {
   const error = problem.errors.find((e) => e.pointer === "/file") ?? problem.errors[0];
-  if (!error) return `The CMS refused it: ${problem.message}`;
+  const say = (reason: string) => (inBrowser ? `${reason.slice(0, 1).toUpperCase()}${reason.slice(1)}` : `The CMS refused it: ${reason}`);
+  if (!error) return say(problem.message);
   if (error.pointer === "/file") {
     switch (error.keyword) {
       case "maximum":
       case "tooLarge":
-        return `The CMS refused it: ready to go up it is ${bytesText(sent.size)}, and the CMS takes images up to ${bytesText(MAX_UPLOAD_BYTES)}. Save it as JPEG or WebP, or crop it, and upload it again.`;
+        return say(inBrowser
+          ? `this browser keeps images up to ${bytesText(MAX_UPLOAD_BYTES)}: ready to go up it is ${bytesText(sent.size)}. Save it as JPEG or WebP, or crop it, and upload it again.`
+          : `ready to go up it is ${bytesText(sent.size)}, and the CMS takes images up to ${bytesText(MAX_UPLOAD_BYTES)}. Save it as JPEG or WebP, or crop it, and upload it again.`);
       case "enum":
       case "contentType":
-        return "The CMS refused it: it takes JPEG, PNG, WebP and GIF images only.";
+        return say(inBrowser ? "this browser keeps JPEG, PNG, WebP and GIF images only." : "it takes JPEG, PNG, WebP and GIF images only.");
       case "contentMismatch": {
         const name = isImageType(sent.type) ? `${TYPE_NAMES[sent.type]} image` : "image";
-        return `The CMS refused it: its bytes are not the ${name} it says it is. The file may be damaged, or renamed from another kind.`;
+        return say(`its bytes are not the ${name} it says it is. The file may be damaged, or renamed from another kind.`);
       }
       default:
-        return `The CMS refused it: the file ${error.message}.`;
+        return say(`the file ${error.message}.`);
     }
   }
-  return `The CMS refused it: ${error.pointer.slice(1)} ${error.message}.`;
+  return say(`${error.pointer.slice(1)} ${error.message}.`);
 }

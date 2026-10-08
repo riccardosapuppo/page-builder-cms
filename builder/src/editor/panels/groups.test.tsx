@@ -194,3 +194,12 @@ test("a group's head is a button named by the group, which says whether it is op
   // The head keeps the focus.
   expect(document.activeElement).toBe(size);
 });
+
+test("a refusal listed above the groups names who refused: the server, or, with no CMS, this browser's storage", () => {
+  const kit = editorKit({ document: page(), selection: "h1", session: { cmsOrigin: null } });
+  kit.render(<BlockPanel id="h1" />);
+  act(() => kit.refuse("h1", "/style/base/align", "enum", "is not an alignment"));
+  fireEvent.click(head("Alignment"));
+  expect(screen.getByText(/This browser's storage refused the last save of this widget/)).toBeTruthy();
+  expect(screen.queryByText(/The server refused/)).toBeNull();
+});

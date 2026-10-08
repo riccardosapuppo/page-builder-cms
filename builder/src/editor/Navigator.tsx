@@ -35,6 +35,7 @@ import { draggedName } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
+import { useKeptWords } from "./session.tsx";
 
 interface Row {
   block: Block;
@@ -321,6 +322,7 @@ interface TreeItemProps {
 }
 
 function TreeItem(props: TreeItemProps) {
+  const kept = useKeptWords();
   const env = useEnv();
   const { doc, dragging, block, level, parent, expanded, selection, tabStop, errorsOn, items, onChoose, onToggle, onKeyDown } = props;
   if (dragging?.id === block.id) {
@@ -345,7 +347,7 @@ function TreeItem(props: TreeItemProps) {
       aria-level={level}
       aria-expanded={hasChildren ? isOpen : undefined}
       aria-selected={selection === block.id}
-      aria-label={`${detail && block.type !== "section" ? `${name}: ${detail}` : name}${errorsOn.has(block.id) ? ", refused by the server" : ""}`}
+      aria-label={`${detail && block.type !== "section" ? `${name}: ${detail}` : name}${errorsOn.has(block.id) ? `, refused by ${kept.server}` : ""}`}
       aria-describedby={overrides.length > 0 ? flagsId : undefined}
       tabIndex={tabStop === block.id ? 0 : -1}
       // The row the drawer gives the focus to when it opens.
@@ -383,7 +385,7 @@ function TreeItem(props: TreeItemProps) {
           : block.type === "column"
             ? <em className="t-count">{widgetsWords(children.length)}</em>
             : detail && <em>{detail}</em>}
-        {errorsOn.has(block.id) && <span className="t-count" title="The server refused this block in the last save"><Icon name="error" className="i i-xs" /></span>}
+        {errorsOn.has(block.id) && <span className="t-count" title={`${kept.Server} refused this block in the last save`}><Icon name="error" className="i i-xs" /></span>}
         {overrides.length > 0 && (
           <span className="t-flags" id={flagsId} title={flagWords(overrides)}>
             {overrides.map((device) => <Icon key={device} name={device} className="i i-xs" />)}

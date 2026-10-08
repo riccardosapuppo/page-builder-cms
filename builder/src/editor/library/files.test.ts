@@ -96,6 +96,20 @@ test("sizes are said in bytes, KB and MB", () => {
 
 const invalid = (keyword: string, message: string, pointer = "/file"): Invalid => ({ kind: "invalid", code: "invalid_request", message: "The request is not valid.", errors: [{ pointer, keyword, blockPointer: null, message }] });
 
+test("with no CMS (the browser demo), the refusals are this browser's storage's, said without blaming a CMS", () => {
+  const sent = { size: 17 * 1024 * 1024, type: "image/png" };
+  expect(uploadRefusal(invalid("maximum", "must be at most 10485760"), sent, true)).toBe(
+    "This browser keeps images up to 10 MB: ready to go up it is 17 MB. Save it as JPEG or WebP, or crop it, and upload it again.",
+  );
+  expect(uploadRefusal(invalid("enum", "must be one of image/jpeg, image/png, image/webp, image/gif"), sent, true)).toBe("This browser keeps JPEG, PNG, WebP and GIF images only.");
+  expect(uploadRefusal(invalid("contentMismatch", "is not the image/png image it claims to be"), sent, true)).toBe(
+    "Its bytes are not the PNG image it says it is. The file may be damaged, or renamed from another kind.",
+  );
+  expect(uploadRefusal(invalid("notUploaded", "was never uploaded"), sent, true)).toBe("The file was never uploaded.");
+  expect(uploadRefusal(invalid("maximum", "must be at most 10000", "/width"), sent, true)).toBe("Width must be at most 10000.");
+  expect(uploadRefusal({ kind: "invalid", code: "invalid_request", message: "The request is not valid.", errors: [] }, sent, true)).toBe("The request is not valid.");
+});
+
 test("the CMS's refusals are said as the CMS's, with what the editor knows of the file", () => {
   const sent = { size: 17 * 1024 * 1024, type: "image/png" };
   expect(uploadRefusal(invalid("maximum", "must be at most 10485760"), sent)).toBe(

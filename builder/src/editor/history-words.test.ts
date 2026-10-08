@@ -86,3 +86,12 @@ test("a version's name is one line of at most 80 characters, counted as characte
   // 80 characters that are two UTF-16 units each still fit.
   expect(nameProblem("🌊".repeat(80))).toBeNull();
 });
+
+test("the version that is published is told in the words the storage gives it: live where visitors see it, the latest publish where nothing is served", () => {
+  const published = version(5, "publish", "2026-09-28T07:02:00Z", { published: true });
+  expect(versionWords(published, [published], NOW, "UTC").sentence).toBe("Published, Sep 28, 7:02 AM, live now");
+  expect(versionWords(published, [published], NOW, "UTC", "latest publish").sentence).toBe("Published, Sep 28, 7:02 AM, latest publish");
+  expect(versionWords({ ...published, published: false }, [published], NOW, "UTC", "latest publish").sentence).toBe("Published, Sep 28, 7:02 AM");
+  expect(draftLine(true, 0, "The same as the published page")).toBe("The same as the published page");
+  expect(draftLine(true, 2, "The same as the published page")).toBe("2 changes not published yet");
+});

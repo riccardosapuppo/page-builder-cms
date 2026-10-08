@@ -4,7 +4,7 @@
 // shows on the Address field; the server's 422 on the title on its field,
 // its group opened for it.
 // @vitest-environment jsdom
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { describedText, editorKit, groupNames } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
@@ -81,4 +81,46 @@ test("the server's 422 on the title opens its group, closed before, and shows on
   const title = screen.getByLabelText("Title");
   expect(title.getAttribute("aria-invalid")).toBe("true");
   expect(describedText(title)).toContain("Up to 120 characters.");
+});
+
+const published = (slug: string) => ({ slug, versionNumber: 2, draftRevision: 3, publishedAt: "2026-10-02T08:00:00.000Z" });
+// A storage that keeps a publish and serves nothing, with no CMS: the
+// browser demo's.
+const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false } };
+
+test("where the storage serves pages, the Address says where visitors find the page, and where the old address leads", () => {
+  for (const [open, hint] of [
+    [{ ...current, home: true, published: published("home") }, "This is the home page: visitors find it at the site’s root address, /."],
+    [{ ...current, published: published("winter-series") }, "Visitors find the page at /winter-series."],
+    [{ ...current, published: published("old-name") }, "Live at /old-name; the next publish moves it to /winter-series, and the old address leads to the new one."],
+  ] as const) {
+    const kit = editorKit({ document: page(), session: { current: open } });
+    kit.render(<PagePanel />);
+    expect(describedText(screen.getByLabelText("Address")), hint).toBe(hint);
+    cleanup();
+  }
+  const kit = editorKit({ document: page(), session: { current: { ...current, home: true } } });
+  kit.render(<PagePanel />);
+  expect(document.querySelector(".ed-title")?.textContent).toBe("Winter seriesThe home page, the first one visitors see");
+  expect(describedText(screen.getByLabelText("Description"))).toBe("Search engines show it under the title. Up to 160 characters.");
+});
+
+test("where the storage serves no page (the browser demo), the Page panel promises no address, no redirect and no search result", () => {
+  for (const [open, hint] of [
+    [{ ...current, home: true, published: published("home") }, "This is the home page. In the full system, visitors find it at the site’s root address, /."],
+    [current, "In the full system, the page will be at /winter-series once it is published."],
+    [{ ...current, published: published("winter-series") }, "Published in this browser as /winter-series."],
+    [{ ...current, published: published("old-name") }, "Published in this browser as /old-name; the next publish uses /winter-series."],
+  ] as const) {
+    const kit = editorKit({ document: page(), session: { current: open, ...demo } });
+    kit.render(<PagePanel />);
+    expect(describedText(screen.getByLabelText("Address")), hint).toBe(hint);
+    expect(describedText(screen.getByLabelText("Address"))).not.toMatch(/visitors find the page|Live at|leads to the new one/);
+    cleanup();
+  }
+  const kit = editorKit({ document: page(), session: { current: { ...current, home: true }, ...demo } });
+  kit.render(<PagePanel />);
+  expect(document.querySelector(".ed-title")?.textContent).toBe("Winter seriesThe home page of the site");
+  expect(describedText(screen.getByLabelText("Title"))).toBe("Shown in the browser tab and, in the full system, in search results.");
+  expect(describedText(screen.getByLabelText("Description"))).toBe("In the full system, search engines show it under the title. Up to 160 characters.");
 });

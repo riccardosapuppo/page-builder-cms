@@ -70,8 +70,11 @@ export interface VersionWords {
 }
 
 // What a version is, in words. `all` is the page's list, newest first, in
-// which a restore finds the version it copied back.
-export function versionWords(version: Version, all: readonly Version[], now: number, timeZone?: string): VersionWords {
+// which a restore finds the version it copied back. `latest` says of the
+// version that is published how it is told: "live now" where visitors see
+// it, otherwise how the storage that serves nothing words it
+// (session.tsx, publishWords).
+export function versionWords(version: Version, all: readonly Version[], now: number, timeZone?: string, latest = "live now"): VersionWords {
   const when = serverTime(version.createdAt, now, timeZone);
   const live = version.published;
   let kind: string;
@@ -102,14 +105,14 @@ export function versionWords(version: Version, all: readonly Version[], now: num
       kind = "Kept for a scheduled publish";
       break;
   }
-  const sentence = `${kind}${name === null ? "" : `, ${name}`}, ${when}${live ? ", live now" : ""}`;
+  const sentence = `${kind}${name === null ? "" : `, ${name}`}, ${when}${live ? `, ${latest}` : ""}`;
   return { kind, name, when, live, sentence };
 }
 
 // The line under "Current draft": how far the draft is from what is live.
-export function draftLine(published: boolean, changesNotLive: number): string {
+export function draftLine(published: boolean, changesNotLive: number, same = "The same as the live page"): string {
   if (!published) return "Not published yet";
-  if (changesNotLive === 0) return "The same as the live page";
+  if (changesNotLive === 0) return same;
   return `${changesNotLive} ${changesNotLive === 1 ? "change" : "changes"} not published yet`;
 }
 

@@ -12,9 +12,9 @@ import { createMediaService, type MediaAdapter, type MediaService, type UploadEn
 
 const MediaContext = createContext<MediaService | null>(null);
 
-export function MediaProvider({ adapter, prepare, children }: { adapter: MediaAdapter; prepare?: Prepare; children: ReactNode }) {
+export function MediaProvider({ adapter, prepare, inBrowser = false, children }: { adapter: MediaAdapter; prepare?: Prepare; inBrowser?: boolean; children: ReactNode }) {
   const { store, ui } = useEnv();
-  const service = useMemo(() => createMediaService({ adapter, ui, ...(prepare ? { prepare } : {}) }), [adapter, prepare, ui]);
+  const service = useMemo(() => createMediaService({ adapter, ui, inBrowser, ...(prepare ? { prepare } : {}) }), [adapter, inBrowser, prepare, ui]);
   // Every page the store takes (opened, reloaded, restored, the draft of
   // another tab), and every change: an image the library does not have
   // sends it to be read again, so an image placed in another tab is drawn

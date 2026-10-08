@@ -248,6 +248,19 @@ describe("looking after the library", () => {
     expect(lib.asked.deletes).toEqual(["tea", "jetty"]);
   });
 
+  test("the delete question says who keeps an image a page or a version shows: the CMS, or with no CMS this browser", () => {
+    for (const [session, keeper] of [[{}, "The CMS"], [{ cmsOrigin: null }, "This browser"]] as const) {
+      const lib = library([item("tea", "Tea")]);
+      const kit = editorKit({ document: widgetPage(), media: lib.make, session });
+      const { unmount } = kit.render(<MediaLibrary purpose={{ kind: "manage" }} onClose={() => {}} />);
+      const dialog = screen.getByRole("dialog", { name: "Media library" });
+      fireEvent.click(within(dialog).getByRole("radio", { name: "tea.png" }));
+      fireEvent.click(within(dialog).getByRole("button", { name: "Delete from library" }));
+      expect(within(dialog).getByRole("group", { name: "Delete tea.png" }).querySelector("p")?.textContent).toBe(`Delete it from the library for good? ${keeper} keeps it while a page or a kept version shows it.`);
+      unmount();
+    }
+  });
+
   test("Esc in the delete question takes the question back, not the library: the focus back on Delete from library, nothing deleted", () => {
     const lib = library([item("tea", "Tea")]);
     const kit = editorKit({ document: widgetPage(), media: lib.make });
