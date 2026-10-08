@@ -608,7 +608,17 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
     // its middle (6 past the inside of its 1.5 line), above it at its right
     // end (3 above the inside of its line), or elsewhere; whether the name
     // is whole inside the canvas, scrollbar aside, and drawn at its size;
-    // and how far the canvas then scrolls sideways.
+    // and how far the canvas then scrolls sideways. And the rule itself,
+    // read from the geometry: the name stands beside the block when, put
+    // there, it ends inside the canvas, and above it when it would not. How
+    // far from the canvas's edge it would end is `room`, in pixels, what the
+    // side is decided by; the sides a test names are for the blocks whose
+    // `room` is several pixels from nought, and the others are held to the
+    // rule, so that the width the browser gives the same letters (smoothed
+    // text is placed at fractions of a pixel, unsmoothed at whole ones) does
+    // not decide the test.
+    // The room each name had the last time `sides` read it.
+    const rooms: Record<string, number> = {};
     const sides = async (targets: readonly string[]) => {
       const found: Record<string, string> = {};
       for (const target of targets) {
@@ -620,22 +630,34 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
           const canvas = root.closest(".canvas")!;
           const bench = canvas.getBoundingClientRect();
           const left = bench.left + canvas.clientLeft;
-          const outline = root.querySelector(":scope > .ov-hover")!.getBoundingClientRect();
-          const label = root.querySelector(":scope > .ov-hover > .ov-label")!;
+          const mark = root.querySelector(":scope > .ov-hover") as HTMLElement;
+          const outline = mark.getBoundingClientRect();
+          const label = mark.querySelector(":scope > .ov-label")!;
           const name = label.getBoundingClientRect();
           const scale = Number(root.closest(".frame")!.getAttribute("data-scale") ?? "1");
           const near = (a: number, b: number) => Math.abs(a - b) < 1;
           const side = near(name.left, outline.right + 4.5 * scale) && near(name.top + name.height / 2, outline.top + outline.height / 2) ? "beside"
             : near(name.right, outline.right) && near(name.bottom, outline.top - 1.5 * scale) ? "above" : "elsewhere";
+          // Where the name would end beside the block, whichever side it
+          // has taken: put there for a moment, then back where it was.
+          const was = mark.dataset.labelSide;
+          delete mark.dataset.labelSide;
+          const beside = label.getBoundingClientRect().right;
+          if (was !== undefined) mark.dataset.labelSide = was;
           return {
             side,
             inside: name.left >= left - 0.01 && name.right <= left + canvas.clientWidth + 0.01,
             sideways: canvas.scrollWidth - canvas.clientWidth,
             size: Number((name.height / parseFloat(getComputedStyle(label).height)).toFixed(3)),
+            fits: beside <= left + canvas.clientWidth,
+            room: Number((left + canvas.clientWidth - beside).toFixed(2)),
           };
         });
-        expect({ target, ...seen }).toEqual({ target, side: expect.stringMatching(/^(beside|above)$/), inside: true, sideways: 0, size: 1 });
+        const { room, fits, ...held } = seen;
+        expect({ target, ...held }).toEqual({ target, side: expect.stringMatching(/^(beside|above)$/), inside: true, sideways: 0, size: 1 });
+        expect(held.side, `${target}: the name would end ${Math.abs(room)} px ${room >= 0 ? "inside" : "past"} the canvas's edge beside the block`).toBe(fits ? "beside" : "above");
         found[target] = seen.side;
+        rooms[target] = room;
       }
       return found;
     };
@@ -649,13 +671,17 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
     expect(await sides(all)).toEqual({ ...each("beside"), acc: "above" });
     // The tablet page, drawn smaller: the columns stacked, each block as
-    // wide as the page, which fills the canvas but for its 19 of margin. No
-    // name has room beside a block there, not even one as short as "Text";
-    // the button's, whichever side it takes, is whole and the canvas does
-    // not scroll.
+    // wide as the page, which fills the canvas but for its 19 of margin and
+    // the page's own padding (43.5 in all). The names of a heading and of an
+    // accordion are tens of pixels past that and stand above; "Text", the
+    // shortest, is within a pixel of it, and which side it takes depends on
+    // the width the browser gives its four letters, so it is held to the
+    // rule alone (sides, above). The button's, whichever side it takes, is
+    // whole and the canvas does not scroll.
     await choose("Tablet");
     await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
-    expect(await sides(all)).toMatchObject({ h1: "above", h2: "above", t: "above", acc: "above", ib: "above" });
+    expect(await sides(all)).toMatchObject({ h1: "above", h2: "above", acc: "above", ib: "above" });
+    for (const target of ["h1", "h2", "acc", "ib"]) expect(rooms[target]!, `${target} is not within a few pixels of the edge`).toBeLessThan(-3);
     // The phone page, whole, with the canvas's room beside it.
     await choose("Phone");
     await expect(frame).not.toHaveAttribute("data-scale");
@@ -773,15 +799,17 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
     await expect(frame).not.toHaveAttribute("data-scale");
     expect(await seen("acc")).toEqual({ side: "above", inside: true, sideways: 0 });
 
-    // A short name, beside the text on the tablet page whole; back in the
-    // smaller window, where the page drawn smaller leaves it less room
-    // than its name, above it: the side is taken again for the page as it
-    // is then drawn.
+    // A short name, beside the text on the tablet page whole (9 px to
+    // spare); back in a smaller window, where the page drawn smaller leaves
+    // it less room than its name (5 px short at 840 wide; at 1024 it is
+    // within a pixel either way, and the width the browser gives four
+    // letters would decide), above it: the side is taken again for the page
+    // as it is then drawn.
     await page.mouse.move(1122, 758);
     await block(page, "t").hover();
     expect(await seen("t")).toEqual({ side: "beside", inside: true, sideways: 0 });
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await expect(frame).toHaveAttribute("data-scale", /^0\.8/);
+    await page.setViewportSize({ width: 840, height: 768 });
+    await expect(frame).toHaveAttribute("data-scale", /^0\.6/);
     expect(await seen("t")).toEqual({ side: "above", inside: true, sideways: 0 });
   });
 

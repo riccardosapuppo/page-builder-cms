@@ -689,16 +689,31 @@ here, for want of its advisory database (CI runs it). Its counts:
 | the CMS in production, over HTTP and in a browser | 50 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 
-**The three that failed** are at 1024 by 768 and are about text: a text
-block's name drawn beside the block where the test expects it above
-(`e2e/editor.spec.ts`, two tests), and a video's window 432 pixels high
-where at least 436 is expected (`e2e/drop-window.spec.ts`). They passed on
-5 October, in stage 5's last full run on this machine, and in CI on Linux on
-that commit. On 8 October the same three failed when run alone on a copy of
-that very commit (its files from git, the installed packages shared), so the
-work of stage 6 did not change them; what differs is the machine or the day,
-and the cause is not found. They are listed here, not hidden or skipped; CI
-on Linux is where they are read next.
+**The three that failed** on 8 October, at 1024 by 768, were about text, and
+the cause is found: how this machine's Windows session draws it. Two tests
+of `e2e/editor.spec.ts` expected a text block's name, "Text", drawn above
+its block, and one of `e2e/drop-window.spec.ts` expected a video window to
+grow by 40 pixels (it grew by 36.27). Both asked a question that the width
+of a few letters decides. With the session drawing text smoothed (ClearType),
+Chromium places the letters at fractions of a pixel: "Text" then ends 0.27
+pixel inside the canvas's edge and stands beside its block, where the room
+for it is 43.5 pixels (19 of the canvas's margin and 24.5 of the page's
+padding at that scale) and the name with its gap takes 43.2; and the room
+over the video window is 36.27 pixels, not 40. The editor screenshot of
+5 October, when they passed, has unsmoothed text (two colours in each
+region of text, against 390 today), which Chromium places at whole pixels,
+and no launch flag of Chromium pins the width. They passed on that commit in
+CI on Linux, and nothing in stage 6 changed them. The system setting was not
+toggled to confirm it.
+
+They no longer depend on it. The tablet step asks for a side only of the
+names that are several pixels from the edge (a heading's is 22 past it, an
+accordion's 33), holds "Text" to the rule itself (a name stands beside its
+block when, put there, it ends inside the canvas, and above it when it would
+not), and the resize test brings "Text" above its block at 840 wide, where it
+is 5 pixels short, not at 1024; the video window is grown by less than the
+room it measures over the line. Nothing they check was loosened: each of the
+three still fails when the behaviour it covers is broken.
 
 The steps of the CI file's browser job took, on this machine, 51.7, 822.2,
 29.4, 302.5 and 25.9 seconds: the tests against a CMS of their own, the

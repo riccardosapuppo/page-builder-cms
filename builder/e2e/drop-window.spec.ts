@@ -21,6 +21,7 @@
 // - while the window is open, the page growing above the line: the window
 //   moves with the line.
 import type { Locator, Page } from "@playwright/test";
+import { MARGIN } from "../src/editor/place-dialog.ts";
 import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
 import { column, drawer, expect, heading, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
@@ -472,18 +473,26 @@ test.describe("while the window is open", () => {
 
       // As two more lines of a message would (the window is grown from the
       // test, by less than the room over the line has left, so it stays
-      // whole).
-      await shown.locator(".dlg-body").evaluate((body) => {
+      // whole). The room is read from where the window stands: it can grow
+      // upwards until its top is a MARGIN from the view's, and how much of
+      // the 24 between its foot and the line the error line took is the
+      // browser's to say (smoothed text is a little taller than unsmoothed),
+      // so a fixed 40 would be more than the room on one machine and less on
+      // another.
+      const room = said.shown.y - MARGIN;
+      const growth = Math.min(40, Math.floor(room) - 4);
+      expect(growth, `the room left over the line, ${room} px, is enough to grow into`).toBeGreaterThanOrEqual(20);
+      await shown.locator(".dlg-body").evaluate((body, height) => {
         const more = document.createElement("p");
-        more.style.height = "40px";
+        more.style.height = `${height}px`;
         body.append(more);
-      });
+      }, growth);
       await expect.poll(async () => {
         const now = await boxes(page, shown, line(page, "c4"));
         return overlap(now.shown, now.line) ? `the window ${JSON.stringify(now.shown)} over the line ${JSON.stringify(now.line)}` : "off the line";
       }).toBe("off the line");
       const grown = await boxes(page, shown, line(page, "c4"));
-      expect(grown.shown.height, "it grew").toBeGreaterThanOrEqual(said.shown.height + 40);
+      expect(grown.shown.height, "it grew").toBeGreaterThanOrEqual(said.shown.height + growth);
       expectLeavesTheLine(grown, view);
       expect(grown.side).toBe("above");
       await page.keyboard.press("Escape");

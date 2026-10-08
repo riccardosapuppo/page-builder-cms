@@ -52,8 +52,8 @@ export interface StandOptions {
   minHeight?: number;
 }
 
-const GAP = 24;
-const MARGIN = 8;
+export const GAP = 24;
+export const MARGIN = 8;
 const MIN_HEIGHT = 420;
 
 // A window of `size` beside `line` in a view of `view`, in the view's own
