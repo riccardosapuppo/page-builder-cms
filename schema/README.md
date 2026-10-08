@@ -296,16 +296,16 @@ RESULT: PASS (3 files, 0 disagreements, 0 exceptions)
 
 Each of these was run, and each exited 1. The flags exist only for this;
 they change nothing on disk, and the shortened corpus is a temporary copy.
-They were run on the corpus as it stood earlier that day, 194 files,
-before the column widths, image crops and section spacing added 13.
+The first six were run on 8 October 2026 on the corpus as it stands, 249
+files; each of the others says its own date and size.
 
 | Run | What it plants | What the comparator reported |
 | --- | --- | --- |
-| `node compare.ts --regexp ruby` | json_schemer's default resolver, where `^` and `$` match at line breaks | `verdicts differ` on `block-id-leading-newline`, `block-id-trailing-newline` and `video-youtube-id-trailing-newline` (json_schemer valid). The four links with a newline stayed refused by both, through the unanchored control-character check |
+| `node compare.ts --regexp ruby` | json_schemer's default resolver, where `^` and `$` match at line breaks | `verdicts differ` on `block-id-leading-newline`, `block-id-trailing-newline`, `form-name-trailing-newline` and `video-youtube-id-trailing-newline` (json_schemer valid): 8 failures. The four links with a newline stayed refused by both, through the unanchored control-character check |
 | `node compare.ts --drop-ruby invalid/image-url-data.json` | a result that goes missing | `json_schemer: no result for invalid/image-url-data.json` |
-| `node compare.ts --min-files 195` | fewer files than required (194 is the corpus, and `--min-files 194` passes) | `only 194 files in the corpus (at least 195 required)` |
-| `node compare.ts --corpus <copy without image-url-data.json>` | a corpus file that disappears | `the manifest lists invalid/image-url-data.json, which is not in the corpus` and `193 files in the corpus, fewer than the 194 the manifest lists` |
-| `node compare.ts --rules off` | no application rules on either side | 42 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids and 65 levels of nesting accepted by both; the 20-digit integer read as two different numbers |
+| `node compare.ts --min-files 250` | fewer files than required (249 is the corpus, and `--min-files 249` passes) | `only 249 files in the corpus (at least 250 required)` |
+| `node compare.ts --corpus <copy without image-url-data.json>` | a corpus file that disappears | `the manifest lists invalid/image-url-data.json, which is not in the corpus` and `248 files in the corpus, fewer than the 249 the manifest lists` |
+| `node compare.ts --rules off` | no application rules on either side | 50 failures, among them five exceptions on the Ruby side (`FloatDomainError: Infinity` on `1e400`, `ArgumentError: invalid byte sequence in UTF-8` on the three invalid-UTF-8 files, `JSON::GeneratorError` on `-1e400`); duplicate keys, lone surrogates and the byte-order mark judged differently; duplicate block ids, section anchors and form field names, and 65 levels of nesting, accepted by both; the 20-digit integer read as two different numbers |
 | `node compare.ts --ruby-normalize off` | `2.0` left a Float in Ruby | `the normalised documents differ on valid/integral-floats.json` and on `invalid/heading-level-5-written-5.0.json` |
 | `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
