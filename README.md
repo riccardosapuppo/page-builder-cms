@@ -1,324 +1,286 @@
 A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages; a React and TypeScript editor builds them.
 
-**Work in progress.** The project is being built in stages, and this README
-describes only what is in the repository today. It will grow with the code.
+![A real publication on Rails: the page Rails serves, the editor with a heading selected, new words typed and saved, Publish pressed, and the served page with the change](docs/images/publish.gif)
 
-A personal project of the author's, not work for a client.
+[Try the editor in your browser](https://riccardosapuppo.github.io/page-builder-cms/) ·
+[The API, described](cms/openapi.yaml) ·
+[The page document's schema](schema/block-document.schema.json) ·
+[Decisions, with their cost](docs/decisions/) ·
+[The approved design](design/) ·
+[The Rails application](cms/README.md) ·
+[The editor](builder/README.md)
+
+The editor builds a page from sections, columns and thirteen kinds of
+widget (heading, text, image, gallery, video, map, button, icon box, quote,
+accordion, divider, spacer and form), with rich text written where it
+stands on the canvas, undo and redo, a tablet's and a phone's own values, a
+media library and a form. Rails keeps each page as one JSON document that a
+single schema describes, with one draft and its versions; publishes it now
+or at a set time; draws it on the server and caches it; and keeps what
+visitors send from its form. The same editor also runs with no server at
+all, keeping its pages in the browser: that is the demo, [below](#the-two-modes).
+
+## Why Rails
+
+I wrote this for a job posting I am applying to: a CMS builder role, on
+Rails and React. Rails is the stack the posting asks for, and building the
+thing the role builds is how I learn a stack, where listing it would only
+claim it. The editor is the part that would stand without the posting. It
+speaks to the server through an API that [`cms/openapi.yaml`](cms/openapi.yaml)
+describes, not through Rails' code, and it can speak to the browser's own
+storage instead.
+
+Rails is the CMS here, not a store behind the editor. Everything a browser
+cannot do alone is Rails' to do:
+
+- it refuses a page that the schema or its rules refuse, and answers 422
+  with the JSON pointer of each fault;
+- it keeps one draft per page at a revision, answers 409 to a stale save,
+  and keeps versions;
+- it publishes, now or at a time set, by a job in Solid Queue;
+- it draws the published page in ERB, with no script on it, and caches it:
+  the whole page and each block, with an ETag and a 304;
+- it keeps the media library in Active Storage;
+- it takes what visitors send from a form, and the editor reads and deletes
+  the answers.
+
+All of it on Rails 8's own parts: SQLite, Solid Cache, Solid Queue. No Redis,
+no Docker.
+
+A personal project of the author's, not work for a client. The example site,
+Slack Water, an invented swimming club, its text and its pictures, is made
+for it.
 
 ## Before you start
 
-There are two ways to use this repository, and they cost different
+There are three ways to use this repository, and they cost different
 amounts.
 
 **To run it**, with `npm start`, the machine needs:
-- **Ruby 3.3 or later**, with Bundler, which ships with it. On Windows
-  that is RubyInstaller with its DevKit, the MSYS2 toolchain that
-  compiles the native parts of some gems: on the machine this was written
-  on (Windows 10, Ruby 3.4.11 installed for all users) RubyInstaller's
-  folder takes 1174 MB, 1030 MB of them MSYS2.
+- **Ruby 3.3 or later**, with Bundler, which ships with it. On Windows that
+  is RubyInstaller with its DevKit, the MSYS2 toolchain that compiles the
+  native parts of some gems: on the machine this was written on (Windows
+  10, Ruby 3.4.11 installed for all users) RubyInstaller's folder takes
+  1174 MB, 1030 of them MSYS2.
 - **Node 24.** An older Node gets one sentence saying so, and nothing is
   installed or started: the repository's tools are TypeScript that Node
   runs as it is, which it does from version 24.
 - **Ports 3900 and 4900** free on 127.0.0.1.
+- Nothing else. No database server, no Redis, no Docker, no account, no key:
+  the CMS keeps SQLite files in the repository.
 
 `npm start` installs the rest inside the repository:
 - the CMS's gems into `cms/vendor/bundle`: 127 MB, RuboCop, Brakeman and
   the test gems included, which Bundler installs unless told not to;
-- the editor's packages into `builder/node_modules`: 166 MB.
+- the editor's packages into `builder/node_modules`: 169 MB.
 
-With everything installed and the database prepared, `npm start` was
-ready, both servers answering, in 14.1, 14.2 and 14.4 seconds: three
-runs of `npm start -- --smoke` on 3 October 2026, on a Windows 10
+With everything installed and the database prepared, `npm start` was ready,
+both servers answering, 16.7, 16.8 and 16.8 seconds after the command was
+run: three runs of `npm start -- --smoke` on 8 October 2026, on a Windows 10
 virtual machine with 8 logical processors and 12 GB of memory, its
-processors 0 to 8% busy before and after each run.
+processors 0 to 5% busy before each run and 2% after.
 
-A first install and first start, measured the same day on the same
-machine, its processors 0 to 2% busy before and 1 to 5% after: a fresh
-copy of the repository, with download caches of its own, empty
-(`npm_config_cache`, `BUNDLE_USER_CACHE` and `GEM_SPEC_CACHE` pointed at
-empty folders), and `npm start -- --smoke`, with Ruby 3.4.11 and Node
-24.19.0 already there.
-- **Downloaded:** 84.3 MB. The 99 gems' archives, 20.5 MB (Bundler keeps
+A first install and first start, measured on 8 October 2026 on the same
+machine, its processors 2% busy before: a fresh clone of the repository,
+with download caches of its own, empty (`npm_config_cache`,
+`BUNDLE_USER_CACHE` and `GEM_SPEC_CACHE` pointed at empty folders), and
+`npm start`, with Ruby 3.4.11 and Node 24.19.0 already there.
+- **Downloaded:** 84.6 MB. The 99 gems' archives, 20.5 MB (Bundler keeps
   them in `cms/vendor/bundle/ruby/3.4.0/cache`); Bundler's index of the
-  gems, 25.5 MB; the editor's 160 packages, 38.3 MB in npm's cache. The
-  network adapters counted 88.6 MB received over the whole run.
-- **Ready**, both servers answering, after 147.2 seconds: 115 for `bundle
-  install`, which compiles the native extensions of 15 gems, 8 for `npm
-  ci`, 14 for the database and its example site, 6 for the two servers
-  to answer.
+  gems, 25.8 MB; the editor's 160 packages, 38.3 MB in npm's cache. The
+  network adapters counted 92 MB received over the whole run.
+- **Ready**, both servers answering, 181 seconds after the command, looked
+  at every 3 seconds. On 3 October the same measurement, counted step by
+  step, gave 147.2 seconds: 115 for `bundle install`, which compiles the
+  native extensions of 15 gems, 8 for `npm ci`, 14 for the database and its
+  example site, 6 for the two servers to answer; neither the CMS's
+  `Gemfile.lock` nor the editor's `package-lock.json` has changed since.
+- The home page was then served at http://127.0.0.1:3906/ with the example
+  site in it, and the editor at 4906 listed its three pages through its
+  proxy.
 
-Megabytes here are bytes (`du -sb`) divided by 1,048,576; the installed
-sizes above, by `du -sm`, are the disk space taken. CI's smoke runs
-(below) install everything from nothing on Linux and Windows too.
+Megabytes here are bytes divided by 1,048,576; the installed sizes above,
+by `du -sm`, are the disk space taken. CI's smoke runs install everything
+from nothing on Linux and Windows too.
+
+**To try the demo only**, in a browser with no server, the machine needs
+Node 24 and the editor's packages (`npm ci --prefix builder`, 169 MB), and
+no Ruby: `npm run build:demo --prefix builder` builds it, and `npm run
+serve:demo --prefix builder` serves it as GitHub Pages serves it, at
+http://127.0.0.1:4903/page-builder-cms/ (`E2E_DEMO_PORT` moves the port).
+[The two modes](#the-two-modes) say what the demo is.
 
 **To develop** (the tests, `npm run check`), add:
 - the root's tools, `npm ci` at the root: 56 MB (TypeScript, Redocly,
-  Playwright's library, and semver and yaml for the tools' own tests);
+  Playwright's library, the GIF encoder, and semver and yaml for the tools'
+  own tests);
 - the schema's tools, `npm ci --prefix schema/tools`: 29 MB;
 - Playwright's Chromium, for the browser tests and the production check:
-  `npx playwright install chromium`, from `builder/`, puts build 1234 in
-  the user's Playwright cache (`AppData/Local/ms-playwright` on Windows,
+  `npx playwright install chromium`, from `builder/`, puts build 1234 in the
+  user's Playwright cache (`AppData/Local/ms-playwright` on Windows,
   `~/.cache/ms-playwright` on Linux): 703 MB here, 428 MB of them the full
   Chromium and 272 MB the headless shell;
-- ports 3901 and 4901 for the test runs, and 3902 for the production
-  check.
+- ports 3901 and 4901 for the test runs, 4902 for the editor on the
+  browser's storage, 4903 for the demo, 3902 for the production check, 3905
+  and 4905 for the pictures: each has a variable that moves it.
 
-Sizes by `du -sm`, on 2 October 2026.
+Sizes by `du -sm`, on 8 October 2026.
 
-**What it does not touch** is measured, not promised. `npm start --
---smoke` lists, before it installs anything and after it has stopped,
-the folders where a launcher would land on the PATH (the user's
-WindowsApps on Windows, Ruby's own `bin`, RubyGems' user `bin`, npm's
-global folder) and the system's registered services, and fails if any of
-them changed. On 2 October 2026, on this machine, with everything already
-installed, it found WindowsApps with 27 entries before and after, the
-same ones; Ruby's own `bin` with 32, the same; RubyGems' `bin` and npm's
-global folder absent before and after; and the 717 services and drivers
-registered in Windows' registry, the same before and after. CI's smoke
-runs make the same comparison around a first install.
+**What it does not touch** is measured, not promised. `npm start -- --smoke`
+lists, before it installs anything and after it has stopped, the folders
+where a launcher would land on the PATH (the user's WindowsApps on Windows,
+Ruby's own `bin`, RubyGems' user `bin`, npm's global folder) and the
+system's registered services, and fails if any of them changed. On 8 October
+2026, on this machine, with everything already installed, it found
+WindowsApps with 27 entries before and after, the same ones; Ruby's own
+`bin` with 32, the same; RubyGems' `bin` absent; npm's global folder with 13
+entries, the same; and the 737 services and drivers registered in Windows'
+registry, the same before and after. The gems and the editor's packages go
+inside the repository, the gems' launchers into
+`cms/vendor/bundle/ruby/<version>/bin`: [the install
+routine](tools/README.md#the-install-routine) says how that is made so even
+on a RubyInstaller that would write them to WindowsApps. The first install
+in a fresh clone, above, left WindowsApps as it was too (27 entries, the
+same listing before and after). A first install
+fills two download caches outside the repository, as any install does:
+Bundler's (`~/.bundle/cache`, 25.5 MB on this machine after these gems were
+installed once) and npm's (the folder `npm config get cache` names). `npm
+start` installs nothing globally and registers no service.
 
-The gems' launchers (`rails`, `rake`, `puma` and twenty more, each with
-its `.bat` on Windows) go into `cms/vendor/bundle/ruby/<version>/bin`.
-RubyInstaller, installed for all users, points Bundler at the user's
-`AppData/Local/Microsoft/WindowsApps`, a folder on the PATH, unless told
-otherwise. So npm start's install routine writes the gems' folder, then
-the launchers' folder inside `cms/vendor/bundle`, both into
-`cms/.bundle/config` and into the environment of every Ruby process it
-starts (with `BUNDLE_APP_CONFIG` pointed at `cms/.bundle`, so no settings
-file elsewhere is read or rewritten), then asks Bundler where it will
-install the gems and write the launchers, and stops unless both answers
-lie inside `cms/vendor/bundle`. With a different folder in each place,
-Bundler 2.6.9 takes `.bundle/config`
-([tools/start/install.test.ts](tools/start/install.test.ts) plants the
-two and asks it; it also plants an older local setting and a
-`BUNDLE_APP_CONFIG` that send the gems elsewhere, and answers from
-outside that make the routine stop).
-
-A first install fills two download caches outside the repository, as any
-install does: Bundler's (`~/.bundle/cache`, 25.5 MB on this machine after
-these gems were installed once) and npm's (the folder `npm config get
-cache` names). npm start installs nothing globally and registers no
-service.
-
-**Putting the machine back.** Stop npm start with Ctrl+C: it stops the
-CMS and the editor and shows both ports closed. Then delete the
-repository's folder: the gems, the packages, the databases, the uploaded
-images and the logs are all inside it. For the caches too, `npm cache
-clean --force` empties npm's (for every project), and deleting
-`~/.bundle/cache/compact_index` empties Bundler's index. After
-developing, `npx playwright uninstall`, from `builder/`, removes the
-browsers this Playwright installed.
-
-If you have run `bundle install` before on a RubyInstaller installed for
-all users, without pointing Bundler elsewhere, its launchers may be in
-`AppData/Local/Microsoft/WindowsApps`: each is a file without an
-extension whose third line is `# This file was generated by RubyGems.`,
-with a `.bat` of the same name beside it that runs `@ruby.exe "%~dpn0" %*`.
-In PowerShell, this lists them and nothing else:
-
-```
-Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps" -File | Where-Object { (Get-Content $_.FullName -TotalCount 3 -ErrorAction SilentlyContinue) -contains '# This file was generated by RubyGems.' }
-```
-
-Delete those, and the `.bat` of each. On 2 October 2026 the same filter
-listed 23 of the 46 files in `cms/vendor/bundle/ruby/3.4.0/bin`, the ones
-without an extension, and 0 of the 17 in this machine's WindowsApps.
+**Putting the machine back.** Stop `npm start` with Ctrl+C: it stops the CMS
+and the editor and shows both ports closed. Then delete the repository's
+folder: the gems, the packages, the databases, the uploaded images and the
+logs are all inside it. For the caches too, `npm cache clean --force` empties
+npm's (for every project), and deleting `~/.bundle/cache/compact_index`
+empties Bundler's index. After developing, `npx playwright uninstall`, from
+`builder/`, removes the browsers this Playwright installed. If you have run
+`bundle install` before on a RubyInstaller installed for all users, its
+launchers may be in WindowsApps: [cms/README.md](cms/README.md#installing-the-gems)
+says how to find and delete them.
 
 ## Running it
 
 ```
-git clone <the repository's address> page-builder-cms
+git clone https://github.com/riccardosapuppo/page-builder-cms.git page-builder-cms
 cd page-builder-cms
 npm start
 ```
 
-`npm start` first checks the machine and says, one sentence per problem,
-everything that is missing: Ruby, Bundler, the Node version, a port held
-by another program, named with its process. Only then does it install
-the gems and the editor's packages, when they are not there yet, prepare
-the development databases (`db:prepare`: the pages, the cache and the
-queue, and the example site loaded into a new one), start the CMS on
-http://127.0.0.1:3900, with Solid Queue inside it so that a publish set
-for a time happens while it runs, and the editor on
-http://127.0.0.1:4900, with every line they print marked `[cms]` or
-`[editor]`, wait until each answers for itself, and open the editor in
-the browser. Ctrl+C stops both, and so does either one stopping by
-itself.
+`npm start` checks the machine and says, one sentence per problem,
+everything that is missing; then installs what is not there yet, prepares
+the databases with the example site in them, starts the CMS and the editor,
+waits until each answers, and opens the editor in the browser. Ctrl+C stops
+both.
 
-- The ports are the project's own, so they do not collide with the 3000
-  and 5173 most projects start on; `CMS_PORT` and `BUILDER_PORT` move
-  them. Both servers listen on 127.0.0.1 only: the API has no
-  authentication.
-- The browser stays closed with `npm start -- --no-open`, with
-  `NO_OPEN=1`, in CI, and when the output is not a terminal.
-- `npm run setup` installs and prepares the database, and starts nothing.
-- `npm start -- --smoke` starts, checks that both answer, stops, and says
-  what changed outside the repository. `npm run check:start-interrupt`
-  stops a running start once with a real Ctrl+C and once by killing the
-  editor's server, and checks that nothing is left running either time.
-  On 3 October 2026, on Windows, they printed `smoke: 7 checks passed`
-  and `RESULT: 11 checks passed`. The smoke run reads, among its seven
-  looks, the editor's entry module as Vite compiles it: a module with a
-  syntax error answers 500 there. `npm run check:setup-tree` runs the
-  setup on a development database of its own, one migration behind, so
-  that it migrates and dumps the schema, and checks that the schema it
-  wrote and git status are what they were: Ruby on Windows wrote the
-  dump with CRLF line endings, and `cms/db/schema.rb` came back modified
-  with nothing else changed (`cms/lib/tasks/schema_dump.rake` turns the
-  dump back to LF). On 4 October 2026, on Windows, it printed `pass 1`
-  after 29 s; without the rake file, it failed on 149 lines ending in
-  CRLF and `AM db/schema.rb`.
+- **The CMS is on http://127.0.0.1:3900 and the editor on
+  http://127.0.0.1:4900.** The ports are the project's own, so they do not
+  collide with the 3000 and 5173 most projects start on, and a port held by
+  another program is named before anything starts. `CMS_PORT` and
+  `BUILDER_PORT` move them.
+- **Both listen on 127.0.0.1 only**, and the CMS refuses to be asked to
+  listen anywhere else: the API has no authentication
+  ([the decision](docs/decisions/no-authentication-one-address.md)).
+- The published pages are on the CMS's port: `/` is the example site's home
+  page, `/winter-series` and `/notices` the other two.
+- The browser stays closed with `npm start -- --no-open`, with `NO_OPEN=1`,
+  in CI, and when the output is not a terminal.
+- `npm run setup` installs and prepares, and starts nothing.
+  `npm start -- --smoke` starts, checks that both answer, stops, and says what
+  changed outside the repository.
 
-## What is here now
+[tools/README.md](tools/README.md) has what `npm start` does step by step,
+and its checks.
 
-- [`design/`](design/): the approved design mock, in static HTML, of the
-  editor and of a published page, with the design tokens, the mark, the
-  fonts and their licences, and screenshots of every state: the identity.
-  [`design/layout/`](design/layout/) is the editor's layout, approved on
-  3 October 2026, drawn the same way with its own notes and screenshots.
-  Its own README says how to open them.
-- [`schema/tokens.json`](schema/tokens.json): the design tokens (colours and
-  their contrast pairs, spacing, type, radii, breakpoints), taken from the
-  mock, with the palette slots of the site style and their curated tones.
-  It is the copy the code reads.
-- [`schema/`](schema/): the one schema of the page document, the corpus
-  both validators are held to, the tools that compare them, and the icon
-  box's icons (`icons.svg`).
-- [`cms/`](cms/): the Rails 8.1 application. It stores pages, their draft
-  and versions, publishes them, keeps the media library and the site
-  style, answers the editor through a JSON API described in
-  [`cms/openapi.yaml`](cms/openapi.yaml), and serves the published pages,
-  rendered on the server in the design's theme, with a draft preview and a
-  404 page. Since stage 4 a published page is cached in the browser (an
-  ETag, and a 304 while nothing changed) and in Solid Cache (the whole page
-  and each block, so a change redraws only the blocks it touched), a
-  publish can be set for a time, and Solid Queue runs the jobs inside the
-  server: the scheduled publish, and every night the pruning of old
-  automatic versions and the purge of unused images. Since stage 5 it
-  takes the forms visitors send from a published page, cached or not,
-  and the editor lists, reads and deletes their answers through the same
-  API, in Form responses from its menu. `ruby bin/rails db:seed` loads the design's example site. Its README has the commands to
-  install, run and test it, and how the caches and the jobs work.
-- [`contract/`](contract/): the render contract, documents and the HTML the
-  server renders for each, which the editor's renderer is held to.
-- [`example-site/`](example-site/): the design's example site, Slack
-  Water, as three page documents and nine pictures drawn from the design's
-  SVGs: the one copy that `ruby bin/rails db:seed` loads.
-- [`builder/`](builder/): the editor's package, React 19, TypeScript and
-  Vite, with every dependency pinned, the document's types and its
-  validator compiled from the schema, the published page's stylesheets
-  and fonts taken from `cms/`, and Oxlint keeping every call to the server
-  inside `src/storage/`. Written and tested so far, beneath the interface:
-  every change to a page as a command with its inverse, held to it on
-  random pages and editing sessions; the store that runs them, with undo,
-  redo and drag and drop; the storage adapter for the CMS's API, held to
-  `cms/openapi.yaml` and to a battery of cases run against a CMS of the
-  test run's own, and the autosave, one request in flight; the React
-  renderer and the thirteen widgets' definitions, held to the server's
-  goldens by the render contract and to the pages the CMS serves for
-  random valid documents. Tests start a CMS and an editor server of their
-  own, among them a browser saving a draft and uploading an image through
-  the editor's proxy. On those, the interface, in the approved design's
-  identity: the blocks to add, the canvas, the property panels and the
-  page's tree; drag and drop by mouse and by keyboard, on the canvas and
-  from the blocks to add; one keyboard map with its "?" window; the focus
-  placed after every command; the block's menu; the save states, with the
-  conflict's Reload and Keep mine; Preview and Publish, opening the CMS's
-  own pages; Site style; the mark as icon, a manifest and About; the
-  accessibility checks (`check:a11y`) and how its shell is served
-  (`check:serving`).
-  Since stage 3: a text block written where it stands on the canvas, with
-  TipTap loaded only then, its typing one step of the page's history;
-  undo and redo in the top bar and a history panel of the session's steps
-  and the page's versions, with Save version and Restore; either choice
-  of the two-tab conflict undoable from that history; a tablet's and a
-  phone's own style values, set in the sidebar's groups with that device
-  previewed and taken back by Remove; every key the interface names in
-  one keyboard map; and the media library, uploading straight to the CMS
-  each image drawn again in the browser, with its alt text required
-  before it is placed.
-  Since stage 3 bis, the same editor is laid out as the approved layout:
-  a top bar with Insert, Outline and History, each a drawer (Insert floating
-  over the canvas's left, the Outline and History pushing the page aside); one sidebar with a Page tab and a Block tab, their
-  settings in groups named after what they hold, each saying its value
-  when closed; the selected block's tools in a clamp in the page's
-  margin; round "+" buttons on the page, each opening a picker of only
-  what fits there; and a bottom line with the selection's path, Block
-  edges, the devices in one click and the page's width.
-  Since stage 4: Schedule… in the Publish menu, a small dialog that takes
-  a day and a time in the site's time zone, and the publish waiting shown
-  in the top bar, and in the Publish menu and History with its cancel;
-  every key of Insert and of the pickers dragged by mouse or keyboard,
-  Gallery and Video included, which ask in their window first and then
-  land where the key was dropped; and a flat light grey where a block
-  cannot go.
-  Since stage 5: the form, from Insert's Forms group, its fields, button
-  and message set in the sidebar; and Form responses in the mark's menu,
-  which lists the answers kept for each form, newest first, opens one
-  whole and deletes it after asking.
-  Its README has the commands; from here,
-  `npm run builder:install`, then `builder:typecheck`, `builder:lint`,
-  `builder:test`, `builder:build`, `builder:test:rails` and `builder:e2e`.
-- [`docs/decisions/`](docs/decisions/): decisions with their cost, each
-  with the command that shows it holds.
-- `package.json` and [`tools/`](tools/): the repository's own Node tools,
-  TypeScript run by Node 24 and checked by `npm run typecheck`.
-  `tools/start.cjs` and [`tools/start/`](tools/start/) are `npm start`
-  (above): a guard in plain JavaScript that any Node can read, then the
-  preflight, the one install routine, the two servers and the stop.
-  [`tools/check.ts`](tools/check.ts) is `npm run check`, below.
-  `npm run lint:openapi` lints the API
-  description; `tools/seed-images.ts` renders the example site's pictures,
-  `tools/gen-contract-500.ts` writes the 500-block fixture,
-  `npm run measure:server`, `measure:builder` and `measure:bundle` take the
-  measurements of the [Measurements](#measurements) section,
-  `tools/site-shots.ts` photographs a running site,
-  `tools/type-scales.ts` measures its headings under each type-scale
-  choice, and
-  `tools/check-production.ts` (`npm run check:production`) checks a
-  production boot on 127.0.0.1:3902 (`PRODUCTION_CHECK_PORT` moves it),
-  a visitor's form sent to it, kept, refused from another site and held
-  to the limit, and in a browser the published page's layout, colours,
-  reflow and focus rings. `npm run test:tools` runs the tools' own tests: how they
-  read, from netstat, ss or lsof, who listens on a port, npm start's
-  parts, the check's readers, the CI file, and that no tracked file cites
-  a document the repository does not hold, or a rule by its number
-  (`tools/references.test.ts`).
-  `tools/probes/` holds the probe of a risky assumption, run before the
-  code that relies on it. Playwright 1.62.1 drives Chromium headless for
-  the ones that need a browser.
-- [`.github/workflows/ci.yml`](.github/workflows/ci.yml): the same checks
-  on Linux, and on Windows where the code takes another path there, each
-  job with a time limit: the Rails tests on Ruby 3.3 and 3.4, the
-  schema's two validators and its lint, the contract fixture and the API
-  description, RuboCop, Brakeman and bundler-audit, the production check,
-  the editor's checks on Node 22.13.0 (the lowest it declares) and 24,
-  the render contract's two halves, the editor against a CMS of its own
-  in a browser with its accessibility tests and how its page is served
-  (`check:serving`), the tools' tests on Linux
-  and Windows, npm start's refusal of Node 22.13.0 and 18 before any
-  install, and npm start in smoke mode on Linux and Windows, from
-  nothing, with its real Ctrl+C and `check:setup-tree`. It first ran on
-  2 October 2026, on the checks of stage 1, and every job passed on
-  Linux, among them the Rails tests in forked workers, whose OpenAPI
-  counts the main process added up, and the production check, which
-  found who listened and stopped the server's process group. On
-  4 October 2026 it ran on stages 2 to 3 bis: 12 of its 15 jobs passed,
-  npm start's smoke run on Linux and Windows and the editor's checks on
-  Node 22.13.0 and 24 among them. Three failed
-  on two faults only Linux has: the tools' tests (in the tools job and
-  before the production check) read a process's name from the kernel,
-  which for Node 24 is its main thread's, and a browser test compared two
-  screenshots byte for byte, which Linux's font smoothing told apart.
-  Both are fixed in stage 4. On 5 October 2026 it ran on stage 4: two of
-  its jobs failed, on one fault only Linux has, and the Rails tests on
-  Ruby 3.3 and 3.4, with the cache database in forked workers, passed.
-  There Solid Queue forks its supervisor and its workers inside Puma, they
-  share Puma's listening socket, and the checks that ask who holds the
-  port (the browser job's harness, npm start's smoke run on Linux) met a
-  child of the server and took it for a stranger. They now accept any
-  process of the group the server leads, on its one address; that has not
-  run there yet. Nothing has run on macOS.
+## What it looks like
+
+Each picture is made by a script from the running system, never drawn or
+cut by hand: `npm run shots` starts a CMS and an editor of its own, seeds the
+example site, and makes them again; [docs/images/README.md](docs/images/README.md)
+says how, and what holds them to what the script makes.
+
+![The editor](docs/images/editor.png)
+
+The editor with the home page open, its heading selected: the Outline on the
+left, the page in the middle, the heading's settings on the right.
+
+![The home page as Rails serves it](docs/images/published-desktop.png)
+
+The same page as Rails serves it to a 1440 by 900 window.
+
+![The same page on a phone](docs/images/published-phone.png)
+
+The same page on a 390 by 844 phone, at twice the pixels: what the CMS serves
+with no script and the stylesheets it holds.
+
+![The editor's History](docs/images/history.png)
+
+The History: this session's changes, a version kept under a name, the
+version that is live, and the draft one change ahead of it.
+
+![Form responses](docs/images/form-responses.png)
+
+Form responses: what four visitors sent from the served home page, the
+newest opened whole.
+
+![The browser demo](docs/images/demo.png)
+
+The browser demo after Publish: the editor with no server, its notice about
+what the full system does, and its line at the bottom.
+
+## Decisions
+
+Each note says what was decided, what it costs, and the command that shows
+it holds; [docs/decisions/](docs/decisions/) has them all.
+
+- **The page document has one schema, and two validators are held to it.**
+  The editor and the server read one file and agree on every document of a
+  corpus of 249 files. Cost: every rule a schema cannot say is written
+  twice, and only the corpus keeps the copies in step.
+  [The note](docs/decisions/one-schema-two-validators.md).
+- **A page is sections of one to four columns holding widgets, and nothing
+  else.** Cost: some layouts cannot be made, and every page is three levels
+  deep. [The note](docs/decisions/strict-hierarchy.md).
+- **A page is drawn twice, by the server and by the editor, and both are
+  held to the same output.** Cost: every widget is written twice, and a
+  golden that changes is a page that changes.
+  [The note](docs/decisions/pages-drawn-twice-one-contract.md).
+- **A page has one draft, saved at a revision, and a version is made on
+  purpose.** Cost: two tabs do not merge, one is chosen.
+  [The note](docs/decisions/one-draft-saved-at-a-revision.md).
+- **Every edit is a command with an exact inverse.** Cost: no free-form
+  change; each new edit is written with its inverse and tried on random
+  sessions. [The note](docs/decisions/every-edit-is-a-command.md).
+- **Published pages are cached by key, and nothing is deleted to refresh
+  them.** Cost: every visit is a request, if only a 304, and a change to
+  the release redraws every page once.
+  [The note](docs/decisions/published-pages-cached-by-key.md).
+- **The editor reaches storage through one interface, and one battery holds
+  every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
+  it runs 28 of the 35 cases.
+  [The note](docs/decisions/storage-behind-an-adapter.md).
+- **The browser demo is a build of its own, and draws what the CMS would
+  serve.** Cost: two entry points to keep in step, and no demo online while
+  the repository is private.
+  [The note](docs/decisions/demo-without-the-cms.md).
+- **The editor reaches the CMS's API through its development server's
+  proxy.** Cost: the proxy exists only in development; a built editor needs
+  one origin behind a reverse proxy, or CORS on the API.
+  [The note](docs/decisions/editor-api-through-the-dev-proxy.md).
+- **The editor opens the preview and the live page on the CMS's own origin.**
+  Cost: a build is tied to one CMS address.
+  [The note](docs/decisions/editor-links-to-the-cms-origin.md).
+- **Pages, cache and jobs live in SQLite files, with no Redis, no Docker and
+  no service.** Cost: one host, and no compression or TLS of its own.
+  [The note](docs/decisions/sqlite-and-the-solid-trio.md).
+- **The API has no authentication, so the servers listen on 127.0.0.1 and
+  refuse to listen anywhere else.** Cost: a tool for one person on one
+  machine. [The note](docs/decisions/no-authentication-one-address.md).
+- **A visitor's form is counted under the socket's own address.** Cost: behind
+  a proxy the whole site shares one count of ten forms in ten minutes.
+  [The note](docs/decisions/form-count-by-socket-peer.md).
+
+What those decisions add up to for the person who extends the project is
+[what adding a widget takes](#adding-a-widget): one commit, listed below.
 
 ## Adding a widget
 
@@ -364,148 +326,75 @@ the widgets README names exists. A shallow clone fails it, so CI's tools
 job checks out the whole history. A wrong count, a changed hash and a
 renamed file each made it fail when planted.
 
-## Checking it
-
-`npm run check` runs every check of the repository, one after another,
-and reads each one's counts from what its reporter wrote: Vitest's and
-Playwright's JSON, minitest's summary, the TAP of Node's test runner, the
-summary lines of the other tools. A suite fails when anything in it
-failed, when its count is zero, or when it is under the floor written
-for it in [tools/check/suites.ts](tools/check/suites.ts). A suite that
-cannot run here (no Ruby, no Chromium, a port taken, bundler-audit
-without its advisory database) is listed at the end as not run, and the
-run exits 2, never 0. The run also fails if `cms/public/assets` is left
-over from a production build, which development would serve in place of
-the stylesheets being edited. `npm run check -- --list` names the
-suites; `--only` and `--skip` take those names.
-
-On 5 October 2026, on the virtual machine of "Before you start", with
-`CMS_PORT`, `BUILDER_PORT`, `PRODUCTION_CHECK_PORT`, `E2E_CMS_PORT` and
-`E2E_BUILDER_PORT` set to 3901, 4901, 3901, 3901 and 4901 so that every
-server it started was on the test ports, one run of the whole check
-(`npm run check`), from 06:32:29 to 06:58:36 UTC, took 26.1 minutes and
-ended `RESULT: 25 passed, 1 could not run here`: bundler-audit, for want
-of its database. Its counts, with stage 5's forms: 68 tools tests, 394
-files linted, 815 unit tests and the render contract's 25, 249 corpus
-files with no disagreement, 351 Rails runs with 322 API answers held to
-the description, 54 tests against a CMS of their own, 215 browser tests
-and 42 accessibility tests (the last 42 are among the 215, and run again
-on their own), 40 serving checks, 50 of the production boot, 7 of npm
-start's smoke run and 11 of its stops. The floors in `suites.ts` were
-those counts, and RuboCop's 147 files; Brakeman's, 70, is under the 79
-checks it ran. The fix round that followed added tests and raised the
-floors to the counts of its own run on the same machine, 10:35 to
-11:07 UTC that day: 75 tools tests (a 76th, which needs process groups,
-is skipped on Windows and runs in CI), 820 unit tests, 355 Rails runs
-(still 322 API answers) and 216 browser tests, the rest as above. A floor
-left below the count of a run lets a deleted test pass unnoticed: a tools
-test skipped on purpose failed the check with 74, fewer than the 75. In
-the fix round's runs of the browser tests and the accessibility tests,
-between none and four tests failed each time, a different few each run
-(the keyboard drag from the picker, a save toast's Retry now button that
-detached as it was clicked, an image not yet decoded) and each passed
-when run again; the tree before the round, run the same way beside them,
-failed one test in each of the two suites. All 216 browser tests passed
-together in one run, and all 42 accessibility tests in another. The
-steps of the CI file's browser job (`builder-e2e`:
-the tests against a CMS of their own, the browser tests, the
-accessibility tests again, the serving checks) took 49.8, 779.2, 281.4
-and 22.7 seconds, 18.9 minutes in all; 17.9 in the last run of stage 4,
-with 206 browser tests, 17.9 in its second fix round's run, with 200,
-17.4 in its first fix round's, with 192, and 17.0 in its earlier run,
-whose browser tests were 178.
-
-The Vitest projects are made to hold on a busy machine without hiding a
-failure. Each runs alone, with at most half the processors as workers (up
-to four; `CHECK_MAX_WORKERS` sets it) and 30 seconds per test instead of
-Vitest's 5: a test that hangs still fails. When the only trouble in a run
-is workers that could not start within Vitest's fixed 60 seconds, the
-project runs again with one worker; a test that failed is never run
-again, and workers that cannot start even one at a time make the suite
-"not run", not passed. On 2 October 2026, on the editor's unit project
-(56 files, 428 tests):
-- with the first two workers planted to take 70 seconds to start, Vitest
-  alone exited 1 on two "Failed to start forks worker" errors, and its
-  summary counted 54 files and 402 tests, the two files simply missing;
-  `npm run check` saw the errors, ran the project again with one worker,
-  and passed on all 56 files and 428 tests;
-- with the same plant and `DOC_PROPERTY_RUNS=0`, which fails eight tests,
-  it reported the eight failures and did not run the project again;
-- held to one processor beside two busy loops, Vitest's own settings
-  failed a canvas test that took 14.7 seconds against its 5, and the
-  check's passed all 428 tests (each run about 600 seconds).
-
 ## Measurements
 
 Every number in this section was produced by the command given with it,
-run from the repository's root on 4 October 2026, on one machine: a
-Windows 10 virtual machine with 8 logical processors (an Intel Core
-i7-10700 at 2.9 GHz) and 12 GB of memory, with Node 24.19.0, Ruby 3.4.11
-(YJIT off), Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless
-Chromium 151, the build Playwright 1.62.1 is held to.
+run from the repository's root on 8 October 2026, on one machine: a Windows
+10 virtual machine with 8 logical processors (an Intel Core i7-10700 at
+2.90 GHz) and 12 GB of memory, with Node 24.19.0, Ruby 3.4.11 (YJIT off),
+Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
+151.0.7922.34, the build Playwright 1.62.1 is held to.
 
 The server's and the editor's measurements work on one page,
-`contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns
-and 414 widgets of the twelve kinds, which the server renders to 211 KB of
-HTML. Its nine library images are the example site's pictures, uploaded to
-the run's own library as the editor uploads an image, with the library's
-ids in place of the fixture's own; the rest is the fixture as it is. (Ten
-of its images name another site, which this machine cannot fetch.) Each
-command that needs servers starts them, on ports of its own (3902 for the
-production CMS; 3901 and 4901 for the e2e CMS and the editor;
-`MEASURE_SERVER_PORT`, `MEASURE_CMS_PORT` and `MEASURE_EDITOR_PORT` move
-them), with databases and an Active Storage root of its own, and deletes
-them when it ends.
+`contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns and
+414 widgets of twelve of the thirteen kinds (it has no form), which the
+server renders to 211 KB of HTML. Its nine library images are the example
+site's pictures, uploaded to the run's own library as the editor uploads an
+image, with the library's ids in place of the fixture's own; the rest is the
+fixture as it is. (Ten of its images name another site, which this machine
+cannot fetch.) Each command that needs servers starts them, on ports of its
+own (3902 for the production CMS, 3901 and 4901 for the e2e CMS and the
+editor; `MEASURE_SERVER_PORT`, `MEASURE_CMS_PORT` and `MEASURE_EDITOR_PORT`
+move them, and these runs used 3906 and 4906), with databases and an Active
+Storage root of its own, and deletes them when it ends.
 
 How a number is taken:
-- **On a quiet machine.** A command waits until two readings in a row,
-  three seconds each, have all the processors under 15% busy, and gives up
-  (exit 2) if the machine does not settle in fifteen minutes, rather than
-  measure. Each run is taken after a quiet reading and read again after it;
-  a run the machine was busy after is thrown away and taken again, and
-  the text beside each table says how many were. The ranges of load below are those
+- **On a quiet machine.** A command waits until two readings in a row, three
+  seconds each, have all the processors under 15% busy, and gives up (exit
+  2) if the machine does not settle in fifteen minutes, rather than measure.
+  Each run is taken after a quiet reading and read again after it; a run the
+  machine was busy after is thrown away and taken again, and the text beside
+  each table says how many were. The ranges of load below are those
   readings, before and after the runs kept. A virtual machine cannot see
   what its host is doing: the load is the guest's own, and it is read
-  between the runs, not during them. `MEASURE_ALLOW_BUSY=1` measures
-  anyway, and the output then says it was taken under load and is not to be
-  quoted.
+  between the runs, not during them. `MEASURE_ALLOW_BUSY=1` measures anyway,
+  and the output then says it was taken under load and is not to be quoted.
 - **Several times.** A number is the median of many runs with the smallest
   and the largest beside it, not one run. A 95th percentile is given only
   where there are hundreds of values to take it from.
-- **Against a baseline.** The server's health check, which draws nothing,
-  and the same drag on a page of four blocks say what the stack and the
-  harness cost by themselves.
+- **Against a baseline.** The server's health check, which draws nothing, and
+  the same drag on a page of four blocks say what the stack and the harness
+  cost by themselves.
 - **Able to fail.** Each command also checks that it measured what it says:
   that every answer had the 500 blocks, that a cold visit wrote 501 rows,
-  that the drag was engaged and saved nothing, that the editor's text
-  chunk was not loaded to open the page. `npm run test:tools` runs the
-  tests of the tools themselves, among them one that reads this section
-  and fails if a command in it does not exist. The measurements are not
-  part of `npm run check`, which does not wait for a quiet machine: those
-  tests are.
+  that the drag was engaged and saved nothing, that the editor's text chunk
+  was not loaded to open the page. `npm run test:tools` runs the tests of
+  the tools themselves, among them one that reads this section and fails if
+  a command in it does not exist. The measurements are not part of `npm run
+  check`, which does not wait for a quiet machine: those tests are.
 
 ### A published page, on the server
 
-`npm run measure:server`, on 4 October 2026 from 19:59 to 20:03 UTC, the
-machine 3% then 2% busy before it, no run thrown away. The CMS in
-production mode, Solid Cache on its own SQLite database, one visit at a
-time over one connection:
+`npm run measure:server`, on 8 October 2026 from 16:33 to 16:37 UTC, the
+machine 4% then 1% busy before it, no run thrown away (its output ended
+`RESULT: 29 checks passed`). The CMS in production mode, Solid Cache on its
+own SQLite database, one visit at a time over one connection:
 
 | One visit | The application (X-Runtime), ms | The client, to the last byte, ms | Runs | Load before and after the runs |
 | --- | --- | --- | --- | --- |
-| The health check, `/up`: no database, no view | 0.94 (0.58 to 1.56) | 15.1 (13.6 to 16.9) | 100 | 1 to 2% |
-| Drawn with no cache (the draft preview) | 108 (98.9 to 155) | 121 (104 to 172) | 30 | 2 to 2% |
-| Cold: Solid Cache emptied, on the server that is running | 385 (328 to 449) | 399 (343 to 464) | 15 | 0 to 4% |
-| The first visit after a start: a new server, Solid Cache empty | 553 (515 to 572) | 571 (532 to 591) | 8 | 0 to 4% |
-| Warm: the whole page read from Solid Cache | 4.04 (3.27 to 6.02) | 13.9 (8.55 to 22.5) | 100 | 1 to 2% |
-| A 304: the ETag sent back | 2.18 (1.74 to 3.86) | 15.3 (13.1 to 18.4) | 100 | 1 to 2% |
-| One heading changed and published | 22.6 (18.4 to 35.2) | 34.4 (24.5 to 45.4) | 15 | 0 to 6% |
-| The site style changed | 18.2 (14.7 to 23.9) | 31.4 (27.8 to 37.7) | 15 | 0 to 13% |
+| The health check, `/up`: no database, no view | 1.10 (0.66 to 3.45) | 16.3 (13.8 to 31.3) | 100 | 2 to 3% |
+| Drawn with no cache (the draft preview) | 106 (91.9 to 174) | 122 (101 to 192) | 30 | 3 to 6% |
+| Cold: Solid Cache emptied, on the server that is running | 387 (317 to 495) | 413 (339 to 522) | 15 | 1 to 9% |
+| The first visit after a start: a new server, Solid Cache empty | 611 (501 to 710) | 632 (530 to 728) | 8 | 1 to 6% |
+| Warm: the whole page read from Solid Cache | 3.99 (3.18 to 5.78) | 16.8 (8.54 to 30.1) | 100 | 2 to 3% |
+| A 304: the ETag sent back | 2.87 (2.41 to 6.10) | 16.2 (10.8 to 31.6) | 100 | 2 to 6% |
+| One heading changed and published | 21.8 (17.0 to 33.3) | 38.7 (23.0 to 46.6) | 15 | 1 to 13% |
+| The site style changed | 17.8 (14.4 to 26.8) | 32.0 (26.4 to 45.8) | 15 | 0 to 14% |
 
 Median, and the smallest to the largest run in brackets. What each visit
 read from Solid Cache and wrote to it, counted as the store receives the
-calls (`tools/lib/count-reuse.rb`, in production, on the same databases,
-one visit each):
+calls (`tools/lib/count-reuse.rb`, in production, on the same databases, one
+visit each):
 
 | Visit | Reads | Fragments asked for | Found | Writes | Fragments written |
 | --- | --- | --- | --- | --- | --- |
@@ -516,138 +405,145 @@ one visit each):
 | The site style changed | 2 | 26 | 25 | 1 | 1 |
 
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
-  the preview does, and also makes the 501 keys, asks for them in 88
-  reads that find nothing, and writes them in 88 writes: 385 ms against
-  108. That row empties Solid Cache from outside, on a server that has
-  already answered hundreds of requests: it is what a visit costs after
-  the cache is emptied, not what the first visit after a deploy costs.
+  the preview does, and also makes the 501 keys, asks for them in 88 reads
+  that find nothing, and writes them in 88 writes: 387 ms against 106. That
+  row empties Solid Cache from outside, on a server that has already
+  answered hundreds of requests: it is what a visit costs after the cache is
+  emptied, not what the first visit after a deploy costs.
 - **The first visit after a start is dearer still.** A deploy is a new
   process, whose templates are not yet compiled and whose code has not yet
-  run, and whose cache finds nothing: 553 ms (515 to 572), 168 more than
-  the cold visit on a running server. Each of its 8 runs stops the server,
-  empties Solid Cache, starts the server again, waits for `/up` and a
-  second more, and visits once, so every run is on a server of its own
-  (`MEASURE_RUNS_START` sets the number). The visits after it cost what
-  the rows above and below say.
-- **A warm visit is one read.** 4.04 ms in the application, 2.18 for a 304
-  that reads nothing: a difference of 1.9 ms, and 211 KB more on the wire.
-  Neither costs the client more than the health check does (15.1 ms),
-  which does no work at all, so on this stack the client cannot tell them
-  from nothing: that 15 ms belongs to the stack (Puma, the loopback of
-  Windows, Node's client; which of them is not looked into here), not to
-  the page. The application's own column is the one to read for the small
-  ones.
-- **One block changed: 497 of 500 are not drawn again.** Of the 37
-  fragments asked for, 33 were found; the 4 written are the heading, its
-  column, its section and the page. 22.6 ms against 385 cold and 108 with
-  no cache. A new site style writes only the page's own fragment and finds
-  the other 25 in the cache: 18.2 ms.
-- **No compression.** The CMS sends the HTML as it renders it, 211 KB; a
-  proxy in front would compress it, and none was in the way here.
+  run, and whose cache finds nothing: 611 ms (501 to 710), 224 more than the
+  cold visit on a running server. Each of its 8 runs stops the server,
+  empties Solid Cache, starts the server again, waits for `/up` and a second
+  more, and visits once, so every run is on a server of its own
+  (`MEASURE_RUNS_START` sets the number). The visits after it cost what the
+  rows above and below say.
+- **A warm visit is one read.** 3.99 ms in the application, 2.87 for a 304
+  that reads nothing: a difference of 1.1 ms, and 211 KB more on the wire.
+  The client cannot tell either from the health check (16.3 ms), which does
+  no work at all: 16.8 and 16.2 ms. On this stack that 16 ms belongs to the
+  stack (Puma, the loopback of Windows, Node's client; which of them is not
+  looked into here), not to the page. The application's own column is the
+  one to read for the small ones.
+- **One block changed: 497 of 500 are not drawn again.** Of the 37 fragments
+  asked for, 33 were found; the 4 written are the heading, its column, its
+  section and the page. 21.8 ms against 387 cold and 106 with no cache. A new
+  site style writes only the page's own fragment and finds the other 25 in
+  the cache: 17.8 ms.
+- **No compression.** The CMS sends the HTML as it renders it, 211 KB; a proxy
+  in front would compress it, and none was in the way here.
 
 ### The editor, in the browser
 
-`npm run measure:builder`, on 4 October 2026 from 16:09 to 16:31 UTC, the
-machine 2% then 5% busy before it, no run thrown away. Headless Chromium
-at 1440 by 900, against the e2e CMS, in two forms of the editor: the
-production build served by `vite preview`, and the development server
-`npm start` runs. Nine runs of each, every run in a browser context of its
-own with nothing cached.
+`npm run measure:builder`, on 8 October 2026 from 16:37 to 17:04 UTC, the
+machine 4% then 5% busy before it (its output ended `RESULT: 19 checks
+passed`). Headless Chromium 151.0.7922.34 at 1440 by 900, against the e2e
+CMS, in two forms of the editor: the production build served by `vite
+preview`, and the development server `npm start` runs. Nine runs of each,
+every run in a browser context of its own with nothing cached. No run of
+the production build was thrown away; five of the development server's were,
+because the machine was 17 to 25% busy after them, and were taken again.
 
 Opening the page of 500 blocks, in ms from the start of the navigation:
 
 | Form | The page's data arrived | The 500 blocks are in the canvas | The frame after them is made | Of that, after the data | Long tasks of the main thread | Load |
 | --- | --- | --- | --- | --- | --- | --- |
-| Production build | 248 (218 to 6,861) | 1,036 (982 to 7,622) | 1,161 (1,115 to 7,755) | 908 (894 to 949) | 3 (3 to 3), 924 (891 to 955) ms | 1 to 9% |
-| Development server | 607 (593 to 627) | 2,094 (2,027 to 2,149) | 2,300 (2,208 to 2,332) | 1,693 (1,615 to 1,706) | 5 (5 to 6), 1,807 (1,726 to 1,840) ms | 1 to 12% |
+| Production build | 252 (235 to 6,854) | 1,041 (966 to 7,693) | 1,190 (1,105 to 7,855) | 934 (865 to 1,001) | 3 (3 to 5), 935 (841 to 1,078) ms | 1 to 11% |
+| Development server | 645 (600 to 714) | 2,231 (2,098 to 2,315) | 2,424 (2,311 to 2,511) | 1,764 (1,645 to 1,833) | 5 (5 to 5), 1,875 (1,730 to 1,964) ms | 2 to 15% |
 
-One of the nine openings of the production build took 7.6 s, its data
-arriving after 6.9 s, and the median of the nine is 1,036 ms. The load
-readings of the nine runs were 1 to 9% and the cause of that one is not
-known. `MEASURE_DRAG=0 MEASURE_FORMS=build MEASURE_RUNS_BUILDER=40 npm run
-measure:builder`, run the same day (16:34 to 16:37 UTC), opened the page
-40 more times: the blocks were in the canvas after 1,044 ms (999 to
-1,087), the data after 245 (224 to 269), the frame after them 1,176 (1,122
-to 1,233), the load 0 to 8%, and none stalled.
+One of the nine openings of the production build, the first, took 7.7 s, its
+data arriving after 6.9 s, and the median of the nine is 1,041 ms. Its cause
+is not known; the same thing happened to one opening on 4 October.
+`MEASURE_DRAG=0 MEASURE_FORMS=build MEASURE_RUNS_BUILDER=40 npm run
+measure:builder`, run the same day (17:04 to 17:08 UTC), opened the page 40
+more times: the blocks were in the canvas after 1,049 ms (954 to 1,204), the
+data after 246 (228 to 279), the frame after them 1,192 (1,099 to 1,339), the
+load 0 to 12% (seven runs were thrown away and taken again, the machine
+being 15 to 80% busy after them), and none stalled.
 
 Where the main thread's time went, from the creation of the page to the
 frame after its blocks, by the browser's own counters (median, ms): the
-production build was busy 1,118, of which 558 in JavaScript, 415 in
-layout (79 layouts) and 31 in style recalculation; the development server
-2,062, of which 1,361 in JavaScript and 402 in layout. The page has 3,001
-DOM nodes and the JavaScript heap is 57.5 MB.
+production build was busy 1,142, of which 592 in JavaScript, 375 in layout
+(79 layouts) and 34 in style recalculation; the development server 2,099, of
+which 1,489 in JavaScript and 361 in layout. The page has 3,001 DOM nodes and
+the JavaScript heap is 57.5 MB.
 
 Dragging a block across the page: the block is held by its grip while the
-page is scrolled to 14 positions spread evenly over its 65,562 px, and the
+page is scrolled to 14 positions spread evenly over its 65,268 px, and the
 pointer goes down the canvas and up again at each, 482 moves in all. The
 frame interval is the time between two animation frames; the pointer's
-latency is from the move to the end of the second frame after it (the
-editor answers a move in a task after the frame it arrived in, and the
-second frame is the one that draws the answer, so a page that does nothing
-about a move reads about 30 ms). The 4-block page is the baseline.
+latency is from the move to the end of the second frame after it (the editor
+answers a move in a task after the frame it arrived in, and the second frame
+is the one that draws the answer, so a page that does nothing about a move
+reads about 30 ms). The 4-block page is the baseline.
 
 | Form | Page | Frame interval, median / 95th / worst, ms | Frames over 33 ms | Pointer latency, median / 95th / worst, ms | Long tasks (over 50 ms) | Runs | Load |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Production build | 500 blocks | 16.7 / 50.0 / 233 | 208 of 2,369 | 60.9 / 176 / 348 | 72, 4,776 ms | 9 | 1 to 9% |
-| Production build | 4 blocks | 16.7 / 16.7 / 16.8 | 0 of 525 | 30.2 / 34.1 / 54.4 | 0 | 9 | 1 to 6% |
-| Development server | 500 blocks | 16.7 / 66.6 / 550 | 310 of 2,369 | 75.1 / 199 / 697 | 184, 12,301 ms | 9 | 1 to 12% |
-| Development server | 4 blocks | 16.7 / 16.7 / 33.4 | 0 of 572 | 28.9 / 44.8 / 81.8 | 0 | 9 | 0 to 5% |
+| Production build | 500 blocks | 16.7 / 50.1 / 250 | 244 of 2,376 | 62.4 / 189 / 373 | 89, 6,114 ms | 9 | 1 to 11% |
+| Production build | 4 blocks | 16.7 / 16.7 / 16.8 | 0 of 526 | 30.1 / 34.5 / 61.0 | 0 | 9 | 1 to 11% |
+| Development server | 500 blocks | 16.7 / 66.7 / 617 | 335 of 2,390 | 81.8 / 212 / 761 | 198, 13,949 ms | 9 | 2 to 15% |
+| Development server | 4 blocks | 16.7 / 16.8 / 50.0 | 2 of 579 | 29.2 / 45.4 / 90.8 | 1, 50 ms | 9 | 2 to 13% |
 
 Medians over the runs of each run's own median, 95th percentile and worst;
-the 95th percentiles of all the runs' frames pooled are 50.0 ms and 66.6 ms
-(21,301 and 21,340 frames) and of their pointer moves 177 and 196 ms
-(4,338 moves each). In each run the live region named 79 to 84 different
-places the block would go to, and nothing was saved: the page sent no
-write to the CMS.
+the 95th percentiles of all the runs' frames pooled are 50.1 ms and 66.7 ms
+(21,359 and 21,475 frames) and of their pointer moves 190 and 212 ms (4,338
+moves each). In each run the live region named 82 to 88 different places the
+block would go to, and nothing was saved: the page sent no write to the CMS.
 
-In the production build the 482 moves took 50.5 s on the 500-block page,
-9.5 moves a second, and 8.75 s on the 4-block page, 55 a second. The main
-thread was busy 46.1 s of the 50.5 (91%), 26.3 s of that in JavaScript, 1.5
-in style recalculation and 0.3 in layout; on the 4-block page, 1.4 s. That
-is 96 ms of main thread for a pointer move, against 2.9.
+In the production build the 482 moves took 52.3 s on the 500-block page, 9.2
+moves a second, and 8.8 s on the 4-block page, 55 a second. The main thread
+was busy 47.7 s of the 52.3 (91%), 27.6 s of that in JavaScript, 1.7 in style
+recalculation and 0.3 in layout; on the 4-block page, 1.5 s. That is 99 ms of
+main thread for a pointer move, against 3.2.
 
-**These numbers are bad and are left as they are.** The 500-block page
-takes about 1.2 s to open, 0.9 s of it after its data has arrived, and a
-drag across it takes the pointer's moves at about ten a second, with a
-latency of 61 ms at the median and 176 at the 95th percentile where the
-baseline gives 30 and 34. The development server is worse on both.
-`MEASURE_PROFILE=only npm run measure:builder` (16:37 UTC) profiles one
-run on an unminified build and says where the JavaScript's time went. A
-profiler slows the page, so only the shares are to be read:
-- **Opening:** 24.5% of the sampled time is in the canvas's `measure`,
-  which reads the page's width in a layout effect, and 17.9% in the next
-  layout effect, which queries the new elements. They are the first code
-  to need the new DOM laid out, so the browser's own style and layout of
-  its 3,001 elements is paid there, as the counters above say (415 ms of
-  layout). React's render of the 500 blocks is 12.6%, and inserting the
-  elements about 9%.
-- **Dragging:** 41.4% of the sampled time is in `overDrawer`
-  (`builder/src/editor/drag/dnd.ts`), which each of the 500 blocks, as a
-  drop target, runs at every pointer move to ask whether the pointer is
-  over a drawer, and which looks the drawers up with
-  `document.querySelectorAll(".drawer")` every time. 31.2% is the drag
+**These numbers are bad and are left as they are.** The 500-block page takes
+about 1.2 s to open, 0.9 s of it after its data has arrived, and a drag
+across it takes the pointer's moves at about nine a second, with a latency of
+62 ms at the median and 189 at the 95th percentile where the baseline gives
+30 and 34. The development server is worse on both. `MEASURE_PROFILE=only npm
+run measure:builder` (17:08 to 17:10 UTC) profiles one run on an unminified
+build and says where the JavaScript's time went. A profiler slows the page,
+so only the shares are to be read:
+- **Opening:** 20.9% of the sampled time is in the canvas's `measure`, which
+  reads the page's width in a layout effect, and 23.4% in an anonymous
+  function right after it in the same module, which the profile does not name
+  and I take to be the canvas's next layout effect, the one that queries the
+  new elements. They are the first code to need the new DOM laid out, so the
+  browser's own style and layout of its 3,001 elements is paid there, as the
+  counters above say (375 ms of layout). React's render of the 500 blocks is
+  15.2%, and inserting the elements 7.8%.
+- **Dragging:** 43.5% of the sampled time is in `overDrawer`
+  (`builder/src/editor/drag/dnd.ts`), which each of the 500 blocks, as a drop
+  target, runs at every pointer move to ask whether the pointer is over a
+  drawer, and which looks the drawers up with
+  `document.querySelectorAll(".drawer")` every time. 35.5% is the drag
   library's position observer measuring the targets again (`updateShape`),
-  and 12 to 13% React rendering what changed. Looking the drawers up once
-  per move, not once per block, would take the first of these away. This
-  stage measures and does not change the editor, so it is left, and listed
-  as open.
+  and 14% React rendering what changed; the shares of a function and of what
+  it called overlap. Looking the drawers up once per move, not once per block,
+  would take the first of these away. These measurements describe the editor
+  and did not change it, so it is left as it is.
 
 ### The bundle
 
-`npm run measure:bundle`, on 4 October 2026 at 15:54 UTC. It builds the
-editor twice, as `npm run builder:build` does, into folders of its own: the
-two builds are the same files, byte for byte. Gzip is level 9. The sizes do
-not depend on the load of the machine.
+`npm run measure:bundle`, on 8 October 2026 at 16:32 UTC (its output ended
+`RESULT: 9 checks passed`). It builds the editor twice, as `npm run
+builder:build` does, into folders of its own: the two builds are the same
+files, byte for byte. This is the editor that talks to the CMS; the demo's
+build is another one ([The two modes](#the-two-modes)). Gzip is level 9. The
+sizes do not depend on the load of the machine.
 
 | File | What | Raw | Gzipped |
 | --- | --- | --- | --- |
-| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the editor | 842,681 B (822.9 KiB) | 226,273 B (221.0 KiB) |
-| `index-*.css` | The stylesheet, loaded at once | 99,444 B (97.1 KiB) | 18,110 B (17.7 KiB) |
-| `index.html` | The page | 1,423 B | 756 B |
-| | Loaded at once, in all | 943,548 B (921.4 KiB) | 245,139 B (239.4 KiB) |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the editor | 889,647 B (868.8 KiB) | 236,091 B (230.6 KiB) |
+| `index-*.css` | The stylesheet, loaded at once | 104,940 B (102.5 KiB) | 19,054 B (18.6 KiB) |
+| `index.html` | The page | 1,423 B | 757 B |
+| | Loaded at once, in all | 996,010 B (972.7 KiB) | 255,902 B (249.9 KiB) |
 | `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
 | `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
 | 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
+
+On 4 October, before the form widget and Form responses, the main chunk was
+842,681 B (226,273 gzipped).
 
 What is lazy is read from the files: `index.html` names only the entry, the
 entry reaches the text editor and the upload code with `import()` and never
@@ -658,39 +554,179 @@ text editor's chunk in any run above.
 ### What these numbers do not say
 
 - Chromium here paints in software and has no screen: the compositor of a
-  real display is not in them, and the frame intervals are those of a
-  60 Hz timer. Only Chromium was measured, only on Windows, and only one
-  visit at a time: the CMS was not measured under concurrent visits.
+  real display is not in them, and the frame intervals are those of a 60 Hz
+  timer. Only Chromium was measured, only on Windows, and only one visit at
+  a time: the CMS was not measured under concurrent visits.
 - The load is read between runs, on the guest. A stall that shows as no
-  load, like the opening that took 7.6 s, is not explained by it.
-- The client's times for small answers are the 15 ms floor of this stack.
-  The application's column shows them, and it is the application's own
-  time, from where Rails starts its clock to its response, not Puma's.
+  load is not explained by it.
+- The client's times for small answers are the 16 ms floor of this stack.
+  The application's column shows them, and it is the application's own time,
+  from where Rails starts its clock to its response, not Puma's.
 
-## The plan, stage by stage
+## The two modes
 
-0. **Design.** A static mock of the editor and of a published page, approved
-   before any code was written. Done: it is `design/`.
-1. **Domain and API.** The Rails side: the page document and its shared
-   schema, one draft and its versions, publishing and previews, server-side
-   rendering of every widget, the media library, and the API description.
-   Done.
-2. **The editor.** A React and TypeScript app with a widget panel, a canvas
-   and a navigator: drag and drop, properties, automatic saving. Done.
-3. **Editing in depth.** Rich text, undo and redo, versions and restore,
-   tablet and phone overrides, full keyboard use, image uploads. Done.
-   - **3 bis, the layout.** The same editor, every capability kept,
-     rearranged as the layout approved on 3 October 2026
-     (`design/layout/`). Done.
-4. **Publishing and performance.** HTTP and fragment caching, scheduled
-   publishing and background jobs, with measurements. Done.
-5. **Forms**, submitted to Rails from published pages. In progress: the
-   form widget ([Adding a widget](#adding-a-widget)), the server that
-   takes and keeps what visitors send, and Form responses in the editor
-   are in the repository; the stage's reviews are next.
-6. **A browser-only demo** of the editor, then the full documentation.
+The editor is one program with two storages behind it, and the project is
+shown in both.
+
+**The full system** is what the rest of this README describes: Rails and the
+editor, started together by `npm start`. Rails keeps the pages in SQLite,
+versions them, publishes them now or at a set time, serves them at their own
+addresses from a cache, takes the answers visitors send from a form, and
+runs its jobs in Solid Queue. The editor is its client, through the API in
+[`cms/openapi.yaml`](cms/openapi.yaml).
+
+**The browser demo** is the same editor with the browser's storage in
+place of Rails: [Try the editor in your browser](https://riccardosapuppo.github.io/page-builder-cms/).
+On a first visit it puts in the example site, three pages and nine pictures,
+as the CMS's seed does from the same files, and everything after is kept in
+that browser's IndexedDB, held to the same battery of cases as the CMS's
+adapter. Two tabs of one browser share the pages, and the one that saves
+second gets the conflict bar. Preview opens the draft as it would be
+published, and Publish opens the page as published, each drawn by the demo,
+with a line saying what the full system does in its place. A form there is
+not sent: one line says what Rails does with its answers. At the bottom, one
+line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
+8, with publishing, shared versions and caching. Source on GitHub."
+
+**The demo's limits**, which are those of having no server:
+- **Nothing is served.** No page at an address of its own, no cache, no
+  scheduled publishing, no job, no form answers and no Form responses. What
+  is not there has no control: the editor draws none.
+- **Drafts stay in one browser.** Another browser, or another person, sees
+  none of them; clearing the site's data deletes them. A browser that
+  refuses IndexedDB (some private windows), one with no room left, or a tab
+  holding an older version of the storage says so, on screen, instead of
+  starting or saving.
+- **Images are resized in the browser** to 2400 pixels on the long side, and
+  no smaller copies are kept, as for the CMS.
+- **Publish is a version and a state**, not a publication: the page it opens
+  is the demo's drawing of the document, not HTML a server wrote.
+- **It is online only from a public repository.** The CI's `demo` job builds
+  and tries it on every run; its `pages` job deploys it to GitHub Pages from
+  `main`, and only while the repository is public, since the free plan
+  publishes Pages from public repositories alone. A private repository has
+  no demo online: the link above answers once it is public and Pages is set
+  to deploy from GitHub Actions. From a clone, `npm run build:demo --prefix
+  builder` then `npm run serve:demo --prefix builder` serve the same build
+  as Pages serves it, and `npm run e2e:demo --prefix builder` tells its
+  story in Chromium. On GitHub Pages the page is cached ten minutes by
+  headers a site cannot set, so for that long after a new deploy a browser
+  may load the previous page.
+
+[builder/README.md](builder/README.md#the-browser-demo) has how it is built,
+served and held to what it promises, and the
+[note](docs/decisions/demo-without-the-cms.md) why it is a build of its own.
+
+## What it does not do
+
+Each of these is a choice, and the reason is given with it.
+
+- **No sign-in, users, roles or permissions.** They would double the
+  project and open every question of who may see and change what. So the API
+  has no authentication, and the servers listen on 127.0.0.1 only
+  ([the decision](docs/decisions/no-authentication-one-address.md)).
+- **No themes to swap and no free CSS.** A page's look is values from the
+  design's tokens (a palette and a type scale, set once in Site style), never
+  a stylesheet a person writes.
+- **No plugins, no translation of the interface, no live co-editing.** The
+  interface is in one language, en-US. Two tabs get a conflict to settle, not
+  a merge ([the decision](docs/decisions/one-draft-saved-at-a-revision.md)).
+- **No second back end.** The editor has one API. The demo's storage is the
+  same editor's other adapter, held to the same battery, not another server.
+- **No uploaded SVG.** An image is a JPEG, a PNG, a GIF or a WebP, recognised
+  by its bytes, not by its name.
+- **No smaller copies of an image.** The CMS has no image library (no
+  libvips): the editor resizes each image in the browser, to 2400 pixels on
+  the long side, before it goes up.
+- **No mixed containers**: no widget straight in a section, no column in a
+  column ([the decision](docs/decisions/strict-hierarchy.md)).
+- **No Redis, no Docker, no mail.** SQLite files, Rails' own cache and queue,
+  and answers that are kept and read in the editor, never sent by email.
+- **No TLS and no compression of its own.** Production forces SSL and assumes
+  a proxy in front that ends it, and that would compress the page.
+- **Not measured**: concurrent visits, any browser but Chromium, any system
+  but Windows; and nothing has run on macOS.
+
+## Checking it
+
+`npm run check` runs every check of the repository, one after another, and
+reads each one's counts from what the tool's own reporter wrote, never from
+an exit code alone: Vitest's and Playwright's JSON, minitest's summary, the
+TAP of Node's test runner, the summary lines of the other tools. A suite
+fails when anything in it failed, when its count is zero, or when it is under
+the floor written for it. A suite that cannot run here is listed at the end
+as not run, and the run exits 2, never 0. `npm run check -- --list` names the
+suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.md#npm-run-check)
+says how a floor works and how the Vitest suites hold on a busy machine.
+
+On 8 October 2026, on the virtual machine of [Measurements](#measurements),
+with `CMS_PORT`, `BUILDER_PORT`, `PRODUCTION_CHECK_PORT`, `E2E_CMS_PORT`,
+`E2E_BUILDER_PORT`, `E2E_BROWSER_PORT` and `E2E_DEMO_PORT` set to 3906 or
+4906 so that every server it started was on the ports of that run, one run of
+the whole check, from 16:02 to 16:31 UTC, took 28.5 minutes. It ended
+`RESULT: 2 of 28 failed (rubocop, editor-e2e)`, with bundler-audit not run
+here, for want of its advisory database (CI runs it). Its counts:
+
+| Suite | What it counted |
+| --- | --- |
+| the repository's tools, type-checked | 0 type errors |
+| the tools' own tests | 101 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 428 files, 0 warnings |
+| the editor's unit tests, and the render contract's editor half | 859 passed in 114 files; 25 passed |
+| the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
+| the schema's two validators | 249 corpus files and the example site's 3 pages, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
+| the 500-block fixture and the example site's pictures | both are what their generators write |
+| the API description | valid, 0 warnings |
+| the Rails tests | 363 runs, 2138 assertions, 0 failures, 0 errors, 0 skips; 330 API answers held to `cms/openapi.yaml` |
+| RuboCop, Brakeman | 146 files, no offenses (run again alone after its floor was lowered by the one file the seed no longer needs: it failed in the whole run for having one file fewer than the 147 its floor named); 79 checks, 0 warnings |
+| the editor against a CMS of its own | 58 tests: the storage battery, the random-page agreement check, canvas parity |
+| the editor in Chromium against a CMS of its own | 218 passed, **3 failed**, of 221 (below) |
+| the editor on the browser's own storage | 43 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the browser demo, as Pages serves it | 5 passed |
+| accessibility: the keyboard path, focus, axe | 45 passed |
+| how the shell, the demo and the pages are served | 60 checks |
+| the CMS in production, over HTTP and in a browser | 50 checks |
+| `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
+
+**The three that failed** are at 1024 by 768 and are about text: a text
+block's name drawn beside the block where the test expects it above
+(`e2e/editor.spec.ts`, two tests), and a video's window 432 pixels high
+where at least 436 is expected (`e2e/drop-window.spec.ts`). They passed on
+5 October, at stage 5's last full run on this machine, and in CI on Linux on
+that commit. On 8 October the same three failed when run alone on a copy of
+that very commit, so nothing since changed them; what changed is the
+machine's, and the cause is not found. They are listed here, not hidden or
+skipped; CI on Linux is where they are read next.
+
+The steps of the CI file's browser job took, on this machine, 51.7, 822.2,
+29.4, 302.5 and 25.9 seconds: the tests against a CMS of their own, the
+browser tests, the browser storage's tests, the accessibility tests again
+and the serving checks, 20.5 minutes in all.
+
+## What is in the repository
+
+| Folder | What it holds |
+| --- | --- |
+| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library and the site style; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
+| [`builder/`](builder/README.md) | The editor: React 19, TypeScript and Vite, every dependency pinned. The document and its commands, the store with undo and redo, the two storage adapters, the renderer, the widgets, the interface, and the browser demo's shell. Its README has the commands, the stages' account and what each check holds. |
+| [`schema/`](schema/README.md) | The page document's one schema, the design tokens the code reads, the corpus both validators are held to and the tools that compare them, and the icon box's icons. |
+| [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to. |
+| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: three page documents and nine pictures drawn from the design's SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
+| [`design/`](design/) | The approved design, in static HTML: the editor and a published page, the tokens, the mark, the fonts with their licences, and screenshots of every state. [`design/layout/`](design/layout/) is the editor's layout, approved on 3 October 2026, drawn the same way. |
+| [`docs/`](docs/decisions/) | [The decisions](docs/decisions/), each with its cost and the command that shows it holds, and [the pictures](docs/images/README.md) this README shows. |
+| [`tools/`](tools/README.md) | The repository's own Node tools: `npm start`, `npm run check`, the measurements, the pictures, and their tests. |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The checks on Linux, and on Windows where the code takes another path there, each job with a time limit. |
+
+It was built in stages, from 1 October 2026: the design, approved before any
+code was written; the Rails side, with the schema and the API; the editor;
+editing in depth (rich text, undo and redo, versions, a tablet's and a
+phone's own values, the keyboard, the media library) and then the approved
+layout; publishing and performance (caching, scheduled publishing, jobs, the
+measurements above); forms; and last the browser demo, the pictures and
+this README.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The fonts in `design/fonts/` are under the SIL
-Open Font License, with each licence file next to its font.
+MIT, see [LICENSE](LICENSE). Developed by Riccardo Sapuppo. The fonts in
+`design/fonts/` are under the SIL Open Font License, with each licence file
+next to its font.
