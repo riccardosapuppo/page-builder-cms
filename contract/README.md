@@ -162,6 +162,11 @@ The random-page agreement check
 valid pages, saved through the API and compared with the
 preview the CMS serves; there the line breaks of the page's layout and
 view around the sections are left out too.
+[`builder/test/example-site.rails.test.tsx`](../builder/test/example-site.rails.test.tsx)
+holds the example site's three pages ([`example-site/`](../example-site/),
+which the seed loads) to the same comparison, in the preview and
+published; with React's bold drawn as `<b>`, the two pages that have bold
+text fail.
 
 ## Timing the server's render
 

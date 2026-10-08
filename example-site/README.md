@@ -47,3 +47,8 @@ invented, and the map's point is an arbitrary stretch of coast.
   validators, the editor's and the server's, call every page valid and
   normalise it the same way, through the corpus's own comparison
   ([schema/README.md](../schema/README.md)). CI runs it in the schema job.
+- [builder/test/example-site.rails.test.tsx](../builder/test/example-site.rails.test.tsx)
+  (`npm run test:rails` in `builder/`): each page saved through the CMS's
+  API, its preview and its published page compared with React's render of
+  the same document, as the render contract compares them
+  ([contract/README.md](../contract/README.md)).
