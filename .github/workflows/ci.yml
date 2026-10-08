@@ -5,13 +5,17 @@
 # add tests to these jobs, not jobs: stage 4's caching and scheduled
 # publishing run in the Rails tests and in the editor's browser tests, where
 # the CMS runs Solid Queue in a forked process. Each job has a time limit: a
-# job that hangs is a failure, not a wait.
+# job that hangs is a failure, not a wait. Stage 6 adds two: the browser
+# demo, built for GitHub Pages and tried in Chromium on every run, and its
+# deploy to Pages, which runs only from main and only while the repository
+# is public. workflow_dispatch runs it all by hand.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -197,7 +201,8 @@ jobs:
       - run: npm run check:a11y
         working-directory: builder
       # How the editor's page and the published pages are served: on the
-      # development server and on vite preview of a build, and by the CMS.
+      # development server and on vite preview of a build, the demo's as
+      # GitHub Pages serves it (on 4903), and by the CMS.
       - run: npm run check:serving
         working-directory: builder
 
@@ -313,3 +318,54 @@ jobs:
       # Here, where npm start has installed the gems the test needs; the
       # tools job, which has none, skips it.
       - run: npm run check:setup-tree
+
+  demo:
+    name: Browser demo, built for GitHub Pages and tried in Chromium
+    runs-on: ubuntu-24.04
+    # No CMS to start: on 8 October 2026, on the Windows virtual machine of
+    # the README, the build took 3.5 s and the five tests 23.4 s.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+        working-directory: builder
+      - run: npx playwright install --with-deps chromium
+        working-directory: builder
+      # Builds dist-demo/ under /page-builder-cms/, serves it as Pages
+      # serves it, on 4903, and tells the demo's story in Chromium.
+      - run: npm run e2e:demo
+        working-directory: builder
+      # The build just tried is the one deployed: kept for the pages job,
+      # under the same condition as that job.
+      - if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.event.repository.private == false && github.event.repository.visibility == 'public'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: builder/dist-demo
+
+  pages:
+    name: Deploy the browser demo to GitHub Pages
+    needs: demo
+    # Only from main, pushed or run by hand, and only while the repository
+    # is public: the free plan publishes Pages from public repositories
+    # alone, and a private repository's demo is not published. Both fields
+    # are asked, and each must say so: in these expressions a missing field
+    # equals false, and must not let the deploy through.
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.event.repository.private == false && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Only this job may write to Pages, and ask for the token it needs.
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
