@@ -90,14 +90,22 @@ storage service, then `MediaItem.create_from_upload!` and its checks), from
 PNGs that `node tools/seed-images.ts` renders from the design's SVGs; a
 page names each by its id in `site.json`, and the seed puts the library's
 id for that upload in its place before it saves the page. Every file is
-read and checked before anything is uploaded or saved. Run on a fresh
-development database on 1 October 2026, it printed:
+read and checked before anything is uploaded or saved. On 8 October 2026,
+`ruby bin/rails db:prepare` on a fresh development database (the three
+`*_DATABASE_URL` and `CMS_STORAGE_ROOT` pointing at a folder of its own)
+created it and ran the seed, which printed the first five lines below;
+`ruby bin/rails db:seed` right after printed the next five:
 
 ```
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home
   Winter series                /winter-series   version 2
   Notices                      /notices         version 2
+  9 images in the media library
+Seeding the example site, Slack Water:
+  Slack Water                  /                version 2, home, already there, left as it is
+  Winter series                /winter-series   version 2, already there, left as it is
+  Notices                      /notices         version 2, already there, left as it is
   9 images in the media library
 ```
 

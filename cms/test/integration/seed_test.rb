@@ -56,6 +56,26 @@ class SeedTest < ActionDispatch::IntegrationTest
     assert_equal site["images"].to_h { |image| [ File.basename(image["file"]), image["alt"] ] }, uploads.transform_values(&:alt)
   end
 
+  test "/notices serves what breaks the usual assumptions: four columns, a word longer than a line, emoji, nested lists, a long alt, right-to-left text" do
+    seed
+
+    get "/notices"
+    assert_response :ok
+    html = Nokogiri::HTML5(response.body)
+    text = visible_text(response.body)
+    assert_equal "4", html.at_css("[data-block-id=four]")["data-columns"]
+    assert_includes text, "Seawaterthermometercalibrationlogbookentriesforthewholewinterseason"
+    assert_includes text, "🏊‍♀️"
+    assert_equal %w[Arms Shoulders], html.css("[data-block-id=lists-text] ul > li > ol > li > ul > li").map { |li| li.text.strip }, "a bulleted list in a numbered list in a bulleted list"
+    assert_operator html.at_css("[data-block-id=four-image] img")["alt"].length, :>, 250
+    paragraphs = html.css("[data-block-id=welcome-hebrew] p").map(&:text)
+    assert_equal 2, paragraphs.size
+    assert_match(/\Aברוכים הבאים לשחיית הבוקר\./, paragraphs[0])
+    assert_match(/\Aأهلاً بكم في سباحة الفجر\./, paragraphs[1])
+    assert_includes html.at_css("[data-block-id=welcome-questions]").text, "هل أحتاج إلى بدلة غوص؟"
+    assert_equal "המזח הצפוני", html.at_css("[data-block-id=welcome-text] strong").text
+  end
+
   test "a page its owner changed since, and the home page moved to another, are left as they are when the seed runs again" do
     seed
     notices = Draft.find_by!(slug: "notices").page

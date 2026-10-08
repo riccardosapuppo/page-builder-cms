@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "title": "Notices",
-  "description": "Odd shapes on purpose: four columns, a word too long for its line, emoji, nested lists and a long alt text.",
+  "description": "Odd shapes on purpose: four columns, a word too long for its line, emoji, right-to-left text, nested lists and a long alt text.",
   "sections": [
     {
       "id": "head",
@@ -539,6 +539,140 @@
       ],
       "style": {
         "base": {}
+      }
+    },
+    {
+      "id": "welcome",
+      "type": "section",
+      "props": {
+        "label": "Right to left"
+      },
+      "children": [
+        {
+          "id": "welcome-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "welcome-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Welcome, in two more languages"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "welcome-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Visitors write to us in their own languages, and we answer in ours. Meeting point: "
+                        },
+                        {
+                          "type": "text",
+                          "text": "המזח הצפוני",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " (the north slipway), at 06:40 on Sunday."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "welcome-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "welcome-hebrew",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "ברוכים הבאים לשחיית הבוקר. נפגשים ליד המזח הצפוני עשרים דקות לפני המים השקטים, ומביאים כובע בצבע בולט."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "أهلاً بكم في سباحة الفجر. نلتقي عند المنحدر الشمالي قبل عشرين دقيقة من سكون المد، ونشرب الشاي بعد السباحة."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "welcome-questions",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "هل أحتاج إلى بدلة غوص؟",
+                    "answer": "لا. يسبح كثير من الأعضاء من دونها."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s",
+          "spaceBetween": "xl"
+        }
       }
     },
     {
