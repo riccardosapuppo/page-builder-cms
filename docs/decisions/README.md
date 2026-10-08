@@ -13,3 +13,7 @@ it holds.
   (4 October 2026): an ETag and Solid Cache keys made of the version, the
   site style, the release and each block's subtree; every visit
   revalidates, so a publish shows at the next request.
+- [The browser demo is a build of its own, and draws what the CMS would serve](demo-without-the-cms.md)
+  (8 October 2026): the storage chosen by the entry point when the editor
+  is built; the preview and the page as published drawn by the demo; a
+  form not sent; deployed only while the repository is public.
