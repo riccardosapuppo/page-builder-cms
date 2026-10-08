@@ -3,7 +3,7 @@
 // checkImages reads the folder back and says what is wrong with it, so a
 // picture that is missing, truncated, of another size, too large, left over
 // from a name that is gone, or named in the README without being made, is
-// found before a reader meets it (tools/shot-images.test.ts runs it on the
+// found before a reader meets it (tools/lib/shot-images.test.ts runs it on the
 // committed folder).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
