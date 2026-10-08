@@ -371,7 +371,7 @@ export const SUITES: Suite[] = [
       const why = ruby();
       if (why) return notRun(why);
       const step = await ctx.step("ruby", ["bin/brakeman", "--no-pager"], { cwd: cmsRoot });
-      return readBrakeman(step.output, step.code, 70);
+      return readBrakeman(step.output, step.code, 79);
     },
   },
   {
