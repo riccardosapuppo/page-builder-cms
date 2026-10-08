@@ -41,9 +41,12 @@ test("the commands of a section are those that run npm or node, in code spans an
     "```",
     "node tools/measure.cjs bundle",
     "ruby bin/rails server",
+    "npm start -- --smoke",
+    "npm starter",
     "```",
+    "And `npm start` alone is one too.",
   ].join("\n");
-  assert.deepEqual(commandsIn(text), ["npm run measure:server", "MEASURE_RUNS_COLD=3 npm run measure:builder", "node tools/measure.cjs bundle"]);
+  assert.deepEqual(commandsIn(text), ["npm run measure:server", "MEASURE_RUNS_COLD=3 npm run measure:builder", "node tools/measure.cjs bundle", "npm start -- --smoke", "npm start"]);
   assert.deepEqual(commandsIn("nothing to run here, `a span`"), []);
 });
 
@@ -57,6 +60,10 @@ test("a command that exists is accepted, and each way one can be missing is name
     assert.match(problems(["node tools/measure.cjs"], root)[0] ?? "", /tools\/measure-\(no name\)\.ts does not exist/);
     assert.match(problems(["node tools/missing.ts"], root)[0] ?? "", /tools\/missing\.ts does not exist/);
     assert.match(problems(["npm run absent"], root)[0] ?? "", /package\.json has no script "absent"/);
+    // `npm start` is the script named start, and is missing as one is.
+    assert.equal(problems(["npm start -- --smoke"], root)[0], 'npm start -- --smoke: package.json has no script "start"');
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { start: "node tools/measure.cjs server", "measure:server": "node tools/measure.cjs server", "measure:other": "node tools/other.ts", build: "vite build" } }));
+    assert.deepEqual(problems(["npm start", "npm start -- --smoke", "NO_OPEN=1 npm start"], root), []);
     // A script that runs something else is not followed past its name.
     assert.deepEqual(problems(["npm run build"], root), []);
     assert.match(problems(["node"], root)[0] ?? "", /does not exist|not a command/);

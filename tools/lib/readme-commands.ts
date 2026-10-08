@@ -25,7 +25,8 @@ export function section(markdown: string, heading: string): string | null {
 const SETTINGS = /^(?:[A-Z][A-Z0-9_]*=\S+\s+)+/;
 
 // Every command in a text: an inline `code span`, or a line of a fenced
-// block, that runs npm or node (after any NAME=value settings). A span that
+// block, that runs npm (`npm run <script>`, or `npm start`, which is the
+// script of that name) or node (after any NAME=value settings). A span that
 // only names a file or a variable is not a command.
 export function commandsIn(text: string): string[] {
   const candidates: string[] = [];
@@ -38,7 +39,7 @@ export function commandsIn(text: string): string[] {
     if (fenced) candidates.push(line.trim());
     else for (const span of line.matchAll(/`([^`]+)`/g)) candidates.push(span[1]!.trim());
   }
-  return candidates.filter((c) => /^(?:[A-Z][A-Z0-9_]*=\S+\s+)*(?:npm run|node) \S/.test(c));
+  return candidates.filter((c) => /^(?:[A-Z][A-Z0-9_]*=\S+\s+)*(?:npm run \S|npm start(?:\s|$)|node \S)/.test(c));
 }
 
 const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December";
@@ -82,7 +83,8 @@ export function problems(commands: readonly string[], root: string): string[] {
 
   // Why a command, run in `folder`, does not exist; null when it does.
   const follow = (command: string, folder: string, depth: number): string | null => {
-    const bare = command.replace(SETTINGS, "");
+    // `npm start` is `npm run start`.
+    const bare = command.replace(SETTINGS, "").replace(/^npm start(?=\s|$)/, "npm run start");
     const npm = /^npm run (\S+)(?:.*? --prefix (\S+))?/.exec(bare);
     if (npm) {
       const inFolder = npm[2] ? join(folder, npm[2]) : folder;
