@@ -7,10 +7,13 @@
 // and the home page is set.
 //
 // Only into an empty site, with no page and no image: a site someone has
-// worked on is never added to. Two tabs opened at once on a first visit
-// would each find the site empty, so the seed holds one of the browser's
-// locks (Web Locks, shared by the tabs of one origin) while it looks and
-// puts.
+// worked on is never added to. The one exception is the seed's own work,
+// cut short (the tab closed, the storage full): it marks the site while it
+// puts things in (SeedMarks), and the next visit finds the mark and
+// finishes, reusing what was already put in rather than adding it twice.
+// Two tabs opened at once on a first visit would each find the site empty,
+// so the seed holds one of the browser's locks (Web Locks, shared by the
+// tabs of one origin) while it looks and puts.
 //
 // It lives with the storage because it reads the pictures' bytes from the
 // demo's own files: only src/storage/ sends requests.
@@ -34,6 +37,45 @@ export interface ExampleSource {
 
 export const SEED_LOCK = "page-builder-cms:example-site";
 
+// How far the seed got: "seeding" while it puts things in, "seeded" once
+// the site is whole. Without the mark, a first visit cut short would leave
+// a picture or a page, and the empty-site rule would never fill the rest.
+// Kept in localStorage, which clearing a site's data empties with its
+// IndexedDB; where localStorage cannot be used, the empty-site rule alone
+// decides, as before.
+export interface SeedMarks {
+  read(): string | null;
+  write(state: "seeding" | "seeded"): void;
+}
+
+export const SEED_MARK = "page-builder-cms:example-site";
+
+export function browserMarks(): SeedMarks {
+  const storage = (): Storage | null => {
+    try {
+      return typeof localStorage === "undefined" ? null : localStorage;
+    } catch {
+      return null;
+    }
+  };
+  return {
+    read() {
+      try {
+        return storage()?.getItem(SEED_MARK) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    write(state) {
+      try {
+        storage()?.setItem(SEED_MARK, state);
+      } catch {
+        // The empty-site rule still keeps a worked-on site safe.
+      }
+    },
+  };
+}
+
 // The ids of site.json in a document's mediaId keys, swapped for the
 // library's: the twin of the seed's with_library_ids.
 export function withLibraryIds(node: unknown, ids: ReadonlyMap<string, string>, file: string): unknown {
@@ -50,11 +92,17 @@ export function withLibraryIds(node: unknown, ids: ReadonlyMap<string, string>, 
 const refusal = (what: string, problem: Invalid): Error =>
   new Error(`The example site's ${what} was refused: ${problem.errors[0]?.message ?? problem.message}`);
 
-// Puts the example site in when the site is empty; says which it did.
-export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSource): Promise<"seeded" | "not empty"> {
+// Puts the example site in when the site is empty, or finishes a seed
+// that was cut short; says which it did.
+export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSource, marks: SeedMarks = browserMarks()): Promise<"seeded" | "not empty"> {
   const putIn = async (): Promise<"seeded" | "not empty"> => {
+    const mark = marks.read();
+    if (mark === "seeded") return "not empty";
     const [pages, media] = await Promise.all([adapter.listPages(), adapter.listMedia()]);
-    if (pages.length > 0 || media.length > 0) return "not empty";
+    // A seed cut short finds what it had put in, a picture by its file
+    // name and alt and a page by its address, and goes on from there.
+    const resuming = mark === "seeding";
+    if (!resuming && (pages.length > 0 || media.length > 0)) return "not empty";
     // Every file read, and every image a page names found in site.json,
     // before anything is kept: a file missing from the build stops the seed
     // with nothing half done.
@@ -65,9 +113,15 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
     }
     const pictures = await Promise.all(source.site.images.map(async (image) => ({ image, read: await source.image(image.file) })));
 
+    marks.write("seeding");
     const ids = new Map<string, string>();
     for (const { image, read } of pictures) {
       const name = image.file.slice(image.file.lastIndexOf("/") + 1);
+      const kept = resuming ? media.find((item) => item.filename === name && item.alt === image.alt) : undefined;
+      if (kept) {
+        ids.set(image.id, kept.id);
+        continue;
+      }
       const file = new File([read.bytes], name, { type: read.bytes.type || "image/png" });
       const added = await adapter.uploadMedia({ file, width: read.width, height: read.height, alt: image.alt });
       if (!added.ok) throw refusal(`picture ${image.file}`, added.problem);
@@ -75,18 +129,31 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
     }
     for (const entry of source.site.pages) {
       const document = withLibraryIds(source.pages[entry.file], ids, entry.file) as PageDocument;
-      const made = await adapter.createPage({ title: document.title, slug: entry.slug });
-      if (!made.ok) throw refusal(`page ${entry.file}`, made.problem);
-      const id = made.value.page.id;
-      const saved = await adapter.saveDraft(id, { revision: made.value.draft.revision, saveId: `example-${entry.slug}`, document });
-      if (!saved.ok) throw new Error(`The example site's page ${entry.file} was not saved: ${saved.problem.message}`);
-      const published = await adapter.publish(id, { revision: saved.value.revision });
-      if (!published.ok) throw new Error(`The example site's page ${entry.file} was not published: ${published.problem.message}`);
-      if (entry.home) {
+      const kept = resuming ? pages.find((page) => page.slug === entry.slug) : undefined;
+      let id: number;
+      let revision: number;
+      if (kept) {
+        id = kept.id;
+        revision = kept.revision;
+      } else {
+        const made = await adapter.createPage({ title: document.title, slug: entry.slug });
+        if (!made.ok) throw refusal(`page ${entry.file}`, made.problem);
+        id = made.value.page.id;
+        revision = made.value.draft.revision;
+      }
+      // A page the seed published before it was cut short is as it left it.
+      if (!kept?.published) {
+        const saved = await adapter.saveDraft(id, { revision, saveId: `example-${entry.slug}`, document });
+        if (!saved.ok) throw new Error(`The example site's page ${entry.file} was not saved: ${saved.problem.message}`);
+        const published = await adapter.publish(id, { revision: saved.value.revision });
+        if (!published.ok) throw new Error(`The example site's page ${entry.file} was not published: ${published.problem.message}`);
+      }
+      if (entry.home && !kept?.home) {
         const home = await adapter.updatePage(id, { home: true });
         if (!home.ok) throw refusal(`home page ${entry.file}`, home.problem);
       }
     }
+    marks.write("seeded");
     return "seeded";
   };
   const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
@@ -95,9 +162,8 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
 
 // The adapter, whose first listing of the pages waits for the seed: the
 // editor lists them first, so it opens on the example site. A seed that
-// failed is tried again by the next listing (the editor's Try again),
-// which finds the site as the failure left it, and adds to it only if it
-// is still empty.
+// failed is tried again by the next listing (the editor's Try again), or
+// by the next visit, and goes on from where it stopped (seedExampleSite).
 export function withExampleSite(adapter: StorageAdapter, seed: () => Promise<unknown>): StorageAdapter {
   let seeding: Promise<unknown> | null = null;
   return {
