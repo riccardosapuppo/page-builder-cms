@@ -9,8 +9,10 @@ export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.ts",
   // The editor on the browser's storage has a run and a server of its own
-  // (browser/playwright.config.ts, npm run e2e:browser), with no CMS.
-  testIgnore: "browser/**",
+  // (browser/playwright.config.ts, npm run e2e:browser), with no CMS, and
+  // so has the browser demo's build (demo/playwright.config.ts, npm run
+  // e2e:demo).
+  testIgnore: ["browser/**", "demo/**"],
   globalSetup: "./harness/playwright-setup.ts",
   outputDir: "./test-results",
   workers: 1,
