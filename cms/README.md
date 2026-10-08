@@ -440,7 +440,14 @@ proxy, which replaces Rails' default list), and its proxy must overwrite
 `X-Forwarded-For` with the peer it saw and drop `Client-Ip`; as the CMS
 listens on `127.0.0.1` only, the proxy is then the only process on the
 way in that can name an address. A visitor is counted by the whole IPv6
-address, so one with a whole prefix has many.
+address, so one with a whole prefix has many. Rails' check that
+`Client-Ip` agrees with `X-Forwarded-For` is off
+(`config.action_dispatch.ip_spoofing_check`): it raised wherever
+`request.remote_ip` is read, Rails' own log line on every request
+included, so one header added by any client gave a bare 500 at every
+address. Nothing decides on `remote_ip` here. A request test and a
+browser test send the two headers disagreeing to a page, its form and the
+confirmation; with the check on, both get 500.
 
 **The body's limit** is computed, not picked: every field of the largest
 form the schema allows (20) at the longest limit (5000 characters), each

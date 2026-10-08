@@ -90,5 +90,14 @@ module Cms
     # SubmissionsController calls this with the request; config/
     # environments/e2e.rb gives the harness's tests an address each.
     config.x.submission_limit_by = ->(request) { request.remote_addr }
+
+    # Rails' check that Client-Ip and X-Forwarded-For agree raises wherever
+    # request.remote_ip is read, and Rails' own log line reads it on every
+    # request, outside the site's error pages: one header added by any
+    # client gave the server's bare 500 at every address. Nothing here
+    # decides on remote_ip (the limit above reads the socket's peer), so
+    # the check guards nothing. Off, remote_ip takes X-Forwarded-For's
+    # address before Client-Ip's, in the log and in e2e.rb's limit.
+    config.action_dispatch.ip_spoofing_check = false
   end
 end

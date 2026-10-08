@@ -254,6 +254,29 @@ class SubmissionsTest < ActionDispatch::IntegrationTest
   # The harness's own way to give each test an address (config/environments/
   # e2e.rb sets it): the limit asks config.x.submission_limit_by at every
   # send, so this takes effect without a restart of anything.
+  # Rails reads Client-IP and X-Forwarded-For whenever something asks for
+  # request.remote_ip, and raises IpSpoofAttackError when the two disagree,
+  # outside the site's own error pages: the visitor got the server's bare
+  # 500. The limit asked for it once; Rails' own log line still does.
+  test "a Client-IP that disagrees with X-Forwarded-For is answered as any request is, on every kind of address" do
+    page = publish
+    spoof = { "HTTP_CLIENT_IP" => "203.0.113.7", "HTTP_X_FORWARDED_FOR" => "198.51.100.9" }
+
+    get "/join", env: spoof
+    assert_response :ok
+    send_form("/join", env: spoof)
+    assert_response :see_other
+    assert_equal 1, Submission.count
+    get response.location, env: spoof
+    assert_response :ok
+    get "/preview/#{page.id}", env: spoof
+    assert_response :ok
+    get "/nowhere", env: spoof
+    assert_response :not_found
+    get "/api/pages", headers: ApiRequests::JSON_HEADERS, env: spoof
+    assert_response :ok
+  end
+
   test "the address the limit counts under is the one config.x.submission_limit_by names" do
     publish
     config = Rails.configuration.x

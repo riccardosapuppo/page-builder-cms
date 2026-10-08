@@ -222,3 +222,22 @@ test("a form on another site that posts to the page is refused with 403, and not
     await context.close();
   }
 });
+
+// The CMS here counts forms under the address X-Forwarded-For names, so
+// Rails reads the headers that name one on every form; it also reads them
+// for its log line on every request. Two that disagree once made Rails
+// raise outside the site's own pages, and the visitor got a bare 500.
+test("a request whose Client-IP disagrees with its X-Forwarded-For is answered as any other: the page, the form, its confirmation", async ({ request }) => {
+  const form = await publishedForm(request, "Two addresses");
+  const headers = { "Client-IP": "203.0.113.7", "X-Forwarded-For": "198.51.100.26" };
+
+  expect((await request.get(form.address, { headers })).status()).toBe(200);
+  const sent = await request.post(form.address, {
+    form: { form: "join-form", "answers[name]": "Ann Diver", "answers[email]": "ann@example.org", "answers[notes]": "", "answers[distance]": "yes", website: "" },
+    headers: { ...headers, Origin: cms() },
+    maxRedirects: 0,
+  });
+  expect(sent.status()).toBe(303);
+  expect((await request.get(sent.headers()["location"]!, { headers })).status()).toBe(200);
+  expect(await keptAnswers(form.id)).toHaveLength(1);
+});
