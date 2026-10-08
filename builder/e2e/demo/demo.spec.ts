@@ -11,8 +11,8 @@
 //   site's other page opens it as the demo draws it; Preview shows the
 //   draft;
 // - the screens promise nothing only the full system does (a visitor, a
-//   live page, a server), and a large image is refused in the browser's
-//   words;
+//   live page, a server), and the notice that says how Publish went can be
+//   closed from the keyboard without losing the place;
 // - axe on each screen, with no serious finding;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
@@ -349,3 +349,26 @@ test("a large image is refused in this browser's words, not a CMS's", async ({ p
   await expect(dialog.getByText(/This browser keeps images up to 10 MB: ready to go up it is [\d.]+ MB\. Save it as JPEG or WebP, or crop it, and upload it again\./)).toBeVisible({ timeout: 60_000 });
   expect(await dialog.innerText()).not.toMatch(/The CMS/);
 });
+
+test("the notice that says how Publish went can be closed from the keyboard, and the focus stays where it was", async ({ page, context }) => {
+  await openDemo(page);
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  for (const key of ["Enter", "Space"]) {
+    await publish.focus();
+    const opened = context.waitForEvent("page");
+    await page.keyboard.press("Enter");
+    await (await opened).close();
+    await expect(notice(page)).toContainText(PUBLISHED_LINE);
+    const dismiss = notice(page).getByRole("button", { name: "Dismiss" });
+    await dismiss.focus();
+    await page.keyboard.press(key);
+    await expect(notice(page)).toHaveCount(0);
+    // Not on the document: the control it came from, and the next Tab goes
+    // on from there, not from the top of the page.
+    await expect(publish).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "More publish options" })).toBeFocused();
+  }
+});
+

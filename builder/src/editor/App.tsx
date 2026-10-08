@@ -54,6 +54,7 @@ import { EditorKeys } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
+import { afterRender } from "./act.ts";
 import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
 import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
@@ -955,17 +956,42 @@ function Bench({ status, onRetry }: { status: Status; onRetry: () => void }) {
 }
 
 // One sentence about what just happened, or why nothing did.
-function Notice() {
+//
+// Dismiss takes the notice away, and the focus with it if it was there: it
+// goes back where it was, to the control the person came to Dismiss from,
+// or else to Publish (the notice most often says how a publish went), or
+// else to the page, never to the document, where the next Tab would start
+// again from the top. A click or a key elsewhere that already took the
+// focus is left alone.
+export function Notice() {
   const notice = useUi((u) => u.notice);
   const link = useUi((u) => u.noticeLink);
   const say = useUi((u) => u.say);
+  const before = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const note = (event: FocusEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && !target.closest(".notice")) before.current = target;
+    };
+    document.addEventListener("focusin", note);
+    return () => document.removeEventListener("focusin", note);
+  }, []);
+  const dismiss = () => {
+    const back = before.current;
+    say(null);
+    afterRender(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const target = back?.isConnected ? back : document.querySelector<HTMLElement>(".split-main") ?? document.querySelector<HTMLElement>(".canvas");
+      target?.focus();
+    });
+  };
   return (
     <div role="status" aria-live="polite" className="chrome">
       {notice && (
         <div className="notice">
           <span>{notice}</span>
           {link && <a className="notice-link" href={link.href} target="_blank" rel="noopener">{link.label}<Icon name="external" className="i i-xs" /></a>}
-          <button className="ibtn ibtn-small" type="button" aria-label="Dismiss" onClick={() => say(null)}><Icon name="close" className="i i-xs" /></button>
+          <button className="ibtn ibtn-small" type="button" aria-label="Dismiss" onClick={dismiss}><Icon name="close" className="i i-xs" /></button>
         </div>
       )}
     </div>
