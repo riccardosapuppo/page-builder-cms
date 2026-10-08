@@ -155,8 +155,10 @@ deleting, an image in use naming who uses it, an image that does not
 exist), the site style, the responses to a page's forms (kept with the
 version and the fields they were sent with across a change of the form,
 newest first, counted by form, a part at a time to the end, deleted for
-good, found only under their own page), refusing what the capabilities
-declare absent, and the autosave on top of the adapter (a run of edits one request at a
+good, found only under their own page), every optional operation called
+on a page that does not exist (refused as unsupported when the
+capabilities declare it absent, not found when they declare it present),
+and the autosave on top of the adapter (a run of edits one request at a
 time, a lost answer, a conflict resolved both ways). Stage 6 runs it
 unchanged on the browser's adapter, with two pages of one browser as the
 two tabs.

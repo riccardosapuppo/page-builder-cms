@@ -761,17 +761,22 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
 
   // ------------------------------------------------------ capabilities
   {
-    name: "what the capabilities declare absent is refused as unsupported",
+    name: "what the capabilities declare absent is refused as unsupported, and what they declare present is not",
     needs: [],
     async run(env) {
+      // Every optional operation is called, on a page that does not exist,
+      // so the case does as much on an adapter that has them all as on one
+      // that has none: one the adapter has answers that there is no such
+      // page; one it lacks is refused before anything is looked up.
+      const nowhere = 987_654_321;
       const calls: Record<OptionalOperation, () => Promise<unknown>> = {
-        publish: () => env.adapter.publish(1),
-        schedule: () => env.adapter.schedulePublish(1, { revision: 0, at: "2026-10-03T08:00:00.000Z" }),
-        responses: () => env.adapter.listResponses(1),
+        publish: () => env.adapter.publish(nowhere),
+        schedule: () => env.adapter.schedulePublish(nowhere, { revision: 0, at: inMs(HOUR) }),
+        responses: () => env.adapter.listResponses(nowhere),
       };
-      const absent = OPTIONAL_OPERATIONS.filter((op) => !env.adapter.capabilities[op]);
-      for (const operation of absent) {
-        env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "unsupported", operation });
+      for (const operation of OPTIONAL_OPERATIONS) {
+        const expected = env.adapter.capabilities[operation] ? { kind: "not-found" } : { kind: "unsupported", operation };
+        env.expect(await failure(calls[operation](), operation), operation).toMatchObject(expected);
       }
       env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants"].sort());
     },
