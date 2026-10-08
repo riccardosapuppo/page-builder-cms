@@ -60,8 +60,8 @@ amounts.
 - **Ruby 3.3 or later**, with Bundler, which ships with it. On Windows that
   is RubyInstaller with its DevKit, the MSYS2 toolchain that compiles the
   native parts of some gems: on the machine this was written on (Windows
-  10, Ruby 3.4.11 installed for all users) RubyInstaller's folder takes
-  1174 MB, 1030 of them MSYS2.
+  10, Ruby 3.4.11 installed for all users) RubyInstaller's folder took
+  1174 MB on 2 October 2026, 1030 of them MSYS2.
 - **Node 24.** An older Node gets one sentence saying so, and nothing is
   installed or started: the repository's tools are TypeScript that Node
   runs as it is, which it does from version 24.
