@@ -143,9 +143,10 @@ on a RubyInstaller that would write them to WindowsApps. The first install
 in a fresh clone, above, left WindowsApps as it was too (27 entries, the
 same listing before and after). A first install
 fills two download caches outside the repository, as any install does:
-Bundler's (`~/.bundle/cache`, 25.5 MB on this machine after these gems were
-installed once) and npm's (the folder `npm config get cache` names). `npm
-start` installs nothing globally and registers no service.
+Bundler's (`~/.bundle/cache`, 688 files and 25.6 MB on this machine on 8
+October 2026, after these gems were installed once) and npm's (the folder
+`npm config get cache` names, 1,499 files and 216.5 MB here, for every
+project). `npm start` installs nothing globally and registers no service.
 
 **Putting the machine back.** Stop `npm start` with Ctrl+C: it stops the CMS
 and the editor and shows both ports closed. Then delete the repository's
@@ -670,7 +671,7 @@ here, for want of its advisory database (CI runs it). Its counts:
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
-| the tools' own tests | 101 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the tools' own tests | 110 passed, 1 skipped (it needs process groups, and runs in CI); the whole run printed 101, before the guard on this README added nine |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 428 files, 0 warnings |
 | the editor's unit tests, and the render contract's editor half | 859 passed in 114 files; 25 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
@@ -692,11 +693,12 @@ here, for want of its advisory database (CI runs it). Its counts:
 block's name drawn beside the block where the test expects it above
 (`e2e/editor.spec.ts`, two tests), and a video's window 432 pixels high
 where at least 436 is expected (`e2e/drop-window.spec.ts`). They passed on
-5 October, at stage 5's last full run on this machine, and in CI on Linux on
+5 October, in stage 5's last full run on this machine, and in CI on Linux on
 that commit. On 8 October the same three failed when run alone on a copy of
-that very commit, so nothing since changed them; what changed is the
-machine's, and the cause is not found. They are listed here, not hidden or
-skipped; CI on Linux is where they are read next.
+that very commit (its files from git, the installed packages shared), so the
+work of stage 6 did not change them; what differs is the machine or the day,
+and the cause is not found. They are listed here, not hidden or skipped; CI
+on Linux is where they are read next.
 
 The steps of the CI file's browser job took, on this machine, 51.7, 822.2,
 29.4, 302.5 and 25.9 seconds: the tests against a CMS of their own, the
