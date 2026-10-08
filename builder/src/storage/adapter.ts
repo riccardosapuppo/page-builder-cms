@@ -310,7 +310,9 @@ export interface FormResponseCount {
 // A part of a page's responses, newest first, at most RESPONSES_PER_PART.
 // next continues the list (ResponseQuery.before), null at its end. forms
 // counts the responses of each form of the page that has any, whatever the
-// query, so the editor offers only forms with responses.
+// query, so the editor offers only forms with responses; in the order of
+// their ids, character code by character code (a form's id is ASCII, so
+// that is JavaScript's own string order and the database's).
 export interface ResponseList {
   responses: ResponseSummary[];
   next: number | null;

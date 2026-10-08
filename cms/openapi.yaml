@@ -639,7 +639,7 @@ paths:
                     description: The `before` that continues the list; null when nothing older is left.
                     type: [integer, 'null']
                   forms:
-                    description: Every form of the page with responses, by its id, each with how many it has.
+                    description: Every form of the page with responses, by its id, each with how many it has; in the order of the ids, character code by character code (the ids are ASCII).
                     type: array
                     items:
                       type: object

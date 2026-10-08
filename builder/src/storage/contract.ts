@@ -696,6 +696,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         [join.id, first.version.number, { label: "Your name", text: "Ann <Diver>", truncated: false }],
       ]);
       env.expect(list.next).toBe(null);
+      // In the order of the form ids, which the interface promises.
       const counts = [{ formId: call.id, count: 1 }, { formId: join.id, count: 2 }].sort((a, b) => (a.formId < b.formId ? -1 : 1));
       env.expect(list.forms).toEqual(counts);
 
