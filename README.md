@@ -87,7 +87,7 @@ with download caches of its own, empty (`npm_config_cache`,
 `npm start`, with Ruby 3.4.11 and Node 24.19.0 already there.
 - **Downloaded:** 84.6 MB. The 99 gems' archives, 20.5 MB (Bundler keeps
   them in `cms/vendor/bundle/ruby/3.4.0/cache`); Bundler's index of the
-  gems, 25.8 MB; the editor's 160 packages, 38.3 MB in npm's cache. The
+  gems, 25.8 MB; the editor's 163 packages (npm's own count: "added 163 packages"), 38.3 MB in npm's cache. The
   network adapters counted 92 MB received over the whole run.
 - **Ready**, both servers answering, 181 seconds after the command, looked
   at every 3 seconds. On 3 October the same measurement, counted step by
