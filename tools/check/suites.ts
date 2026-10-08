@@ -216,7 +216,7 @@ export const SUITES: Suite[] = [
       const why = first(packages(repoRoot, "the repository root"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(node, ["--test", "--test-reporter=tap", "tools/**/*.test.ts"], { cwd: repoRoot });
-      return readNodeTap(step.output, step.code, 75);
+      return readNodeTap(step.output, step.code, 101);
     },
   },
   {
