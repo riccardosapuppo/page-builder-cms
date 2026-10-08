@@ -25,6 +25,8 @@ import { useEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { keptWords, useSession } from "./session.tsx";
 
+type Words = ReturnType<typeof keptWords>;
+
 const NEVER: SaveSnapshot | null = null;
 const noSubscription = () => () => {};
 
@@ -77,12 +79,12 @@ interface Said {
   title?: string;
 }
 
-function describe(snapshot: SaveSnapshot, now: number): Said {
+function describe(snapshot: SaveSnapshot, now: number, words: Words): Said {
   switch (snapshot.phase) {
     case "waiting":
     case "saving":
       // The same save sent again after an unknown outcome is still a retry.
-      if (snapshot.outcomeUnknown) return { className: "save-state save-warn", icon: "warning", text: "Not saved, retrying", heard: true, title: failureLine(snapshot.failure) };
+      if (snapshot.outcomeUnknown) return { className: "save-state save-warn", icon: "warning", text: "Not saved, retrying", heard: true, title: failureLine(snapshot.failure, words) };
       return { className: "save-state", icon: "spinner", text: "Saving…", heard: false, title: `Saving your ${changes(Math.max(1, snapshot.unsavedEdits))}. Keep editing.` };
     case "saved": {
       const all = snapshot.savedEdits > 0 ? `All ${changes(snapshot.savedEdits)}` : "All changes";
@@ -90,13 +92,13 @@ function describe(snapshot: SaveSnapshot, now: number): Said {
     }
     case "retrying": {
       const seconds = snapshot.retryAt === null ? null : Math.max(1, Math.ceil((snapshot.retryAt - now) / 1000));
-      return { className: "save-state save-warn", icon: "warning", text: "Not saved, retrying", heard: true, ...(seconds === null ? {} : { more: ` in ${seconds} s` }), title: failureLine(snapshot.failure) };
+      return { className: "save-state save-warn", icon: "warning", text: "Not saved, retrying", heard: true, ...(seconds === null ? {} : { more: ` in ${seconds} s` }), title: failureLine(snapshot.failure, words) };
     }
     case "conflict":
       // The banner is the alert; the top bar only shows it.
       return { className: "save-state save-warn", icon: "warning", text: "Changed in another tab", heard: false };
     case "invalid":
-      return { className: "save-state save-err", icon: "error", text: "Not saved: a value was refused", heard: true, title: "The server refused a value: it is marked in the Outline and in the sidebar." };
+      return { className: "save-state save-err", icon: "error", text: "Not saved: a value was refused", heard: true, title: `${words.Server} refused a value: it is marked in the Outline and in the sidebar.` };
     case "refused":
       return { className: "save-state save-err", icon: "error", text: "Not saved", heard: true, ...(snapshot.failure ? { title: snapshot.failure.message } : {}) };
   }
@@ -105,9 +107,10 @@ function describe(snapshot: SaveSnapshot, now: number): Said {
 // The top bar's save state.
 export function SaveState() {
   const snapshot = useSaveSnapshot();
+  const session = useSession();
   const now = useTicking(snapshot?.phase === "retrying" && snapshot.retryAt !== null, 1_000);
   if (!snapshot) return null;
-  const said = describe(snapshot, now);
+  const said = describe(snapshot, now, keptWords(session.cmsOrigin));
   return (
     <span className={said.className} role="status" title={said.title}>
       <Icon name={said.icon} className={said.icon === "spinner" ? "i spin" : "i"} />
@@ -121,33 +124,47 @@ export function SaveState() {
 
 // Why a save's outcome is unknown, as its first words, and when it will be
 // saved, from what the adapter says happened.
-function failureWords(failure: Failure | null): { lead: string; until: string } {
-  if (failure?.kind !== "unknown") return { lead: "Not saved yet.", until: "the CMS answers" };
+function failureWords(failure: Failure | null, words: Words): { lead: string; until: string } {
+  if (failure?.kind !== "unknown") return { lead: "Not saved yet.", until: `${words.keeper} answers` };
   switch (failure.cause) {
     case "network":
       return { lead: "Connection lost.", until: "the connection is back" };
     case "timeout":
-      return { lead: "The CMS did not answer in time.", until: "it answers" };
+      return { lead: `${words.Keeper} did not answer in time.`, until: "it answers" };
     case "server":
-      return { lead: `The CMS failed to save${failure.status === null ? "" : ` (error ${failure.status})`}.`, until: "it can" };
+      return { lead: `${words.Keeper} failed to save${failure.status === null ? "" : ` (error ${failure.status})`}.`, until: "it can" };
     case "unreadable":
-      return { lead: "The CMS's answer could not be read.", until: "it answers" };
+      return { lead: `${words.Keeper}'s answer could not be read.`, until: "it answers" };
   }
 }
 
-function failureLine(failure: Failure | null): string {
-  const { lead, until } = failureWords(failure);
+function failureLine(failure: Failure | null, words: Words): string {
+  const { lead, until } = failureWords(failure, words);
   return `${lead} The editor sends the same save again until ${until}.`;
 }
 
-// While a save's outcome is unknown: why, what is kept, and Retry now.
+// While a save's outcome is unknown: why, what is kept, and Retry now. And
+// when the storage refused the save (the document's fields are marked
+// where they are; this is any other refusal: a newer build of the editor
+// that upgraded the browser's storage in another tab, the storage deleted,
+// full or failing, a refusal of the CMS): why, in words on the page. The
+// top bar's tooltip says it too, but a tooltip is for the pointer alone.
 export function SaveToast() {
   const session = useSession();
   const snapshot = useSaveSnapshot();
-  if (!snapshot?.outcomeUnknown || !session.autosave) return null;
-  const { lead, until } = failureWords(snapshot.failure);
-  const kept = snapshot.unsavedEdits === 1 ? "Your change is" : snapshot.unsavedEdits > 1 ? `Your ${changes(snapshot.unsavedEdits)} are` : "Your changes are";
+  if (!session.autosave) return null;
   const autosave = session.autosave;
+  if (snapshot?.phase === "refused" && snapshot.failure) {
+    return (
+      <div className="toast toast-save chrome" role="alert">
+        <p><strong>Not saved.</strong> {snapshot.failure.message}</p>
+        <button className="btn btn-small btn-secondary" type="button" onClick={() => autosave.retryNow()}>Try again</button>
+      </div>
+    );
+  }
+  if (!snapshot?.outcomeUnknown) return null;
+  const { lead, until } = failureWords(snapshot.failure, keptWords(session.cmsOrigin));
+  const kept = snapshot.unsavedEdits === 1 ? "Your change is" : snapshot.unsavedEdits > 1 ? `Your ${changes(snapshot.unsavedEdits)} are` : "Your changes are";
   return (
     <div className="toast toast-save chrome" role="group" aria-label="Not saved">
       <p><strong>{lead}</strong> {kept} kept in this tab and saved when {until}.</p>

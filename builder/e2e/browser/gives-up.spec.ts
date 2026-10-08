@@ -9,7 +9,16 @@
 //   on to it: the next build cannot upgrade it, says which tab to close,
 //   and starts once it is closed;
 // - an older tab of the editor, open while the next build upgrades the
-//   database, lets go of it at once and says, on its next save, to reload.
+//   database, lets go of it at once and says, on its next save, to reload;
+// - the database deleted from another tab: this tab lets go of it, and its
+//   next save says so;
+// - a database made by a newer build than this one: it cannot be opened, and
+//   the editor says to reload;
+// - the browser refusing the open for want of room.
+// What a save is refused for is said in words on the page (an alert), not
+// only in the top bar's tooltip, which a keyboard, a touch screen and most
+// screen readers never reach.
+import type { Page } from "@playwright/test";
 import { remoteAdapter, storagePage } from "./remote.ts";
 import { expect, seedPage, test } from "./fixtures.ts";
 import { png } from "../helpers/images.ts";
@@ -23,6 +32,8 @@ const SAID = {
   quota: "This browser has no room left for the editor's pages and images: delete images from the library, or let this site keep more in the browser's settings.",
   blocked: "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then reload this one.",
   upgraded: "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.",
+  deleted: "This browser's storage for the editor was deleted in another tab: reload this tab.",
+  newer: "This browser's storage was made by a newer version of the editor: reload this tab to get it.",
 };
 
 const story = [section("s", "Story", [column("c", [heading("h", "First words")])])];
@@ -100,5 +111,56 @@ test("an older tab of the editor lets go of the database when the next build ope
 
   await retitle(page, "Written in the older tab");
   await expect(saveState(page)).toHaveText("Not saved");
-  await expect(saveState(page)).toHaveAttribute("title", SAID.upgraded);
+  await expectSaid(page, SAID.upgraded);
+});
+
+// The refusal of a save, in words on the page: an alert that says what
+// happened and offers Try again. (The top bar keeps the reason as its
+// tooltip as well; this is for those who do not hover.)
+async function expectSaid(page: Page, why: string): Promise<void> {
+  const alert = page.getByRole("alert");
+  await expect(alert).toHaveText(`Not saved. ${why}Try again`);
+  await expect(alert.getByText(why)).toBeVisible();
+  await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible();
+}
+
+test("the database deleted from another tab: this tab lets go of it, and its next save says so, in words", async ({ page, context }) => {
+  const id = await seedPage(page, "Deleted under it", story);
+  await open(page, id);
+
+  const other = await storagePage(await context.newPage());
+  await other.evaluate(() => new Promise<void>((done, failed) => {
+    const deleting = indexedDB.deleteDatabase("page-builder-cms");
+    deleting.onsuccess = () => done();
+    deleting.onerror = () => failed(deleting.error);
+    deleting.onblocked = () => failed(new Error("the delete waits for a tab that holds the database"));
+  }));
+
+  await retitle(page, "Written after the deletion");
+  await expect(saveState(page)).toHaveText("Not saved");
+  await expectSaid(page, SAID.deleted);
+  // Not the sentence of an upgrade.
+  await expect(page.getByRole("alert")).not.toContainText("upgraded");
+});
+
+test("a database made by a newer build than this one cannot be opened, and the editor says to reload", async ({ page, context }) => {
+  // The next build opens the database and upgrades it a step further.
+  const next = await context.newPage();
+  await next.goto("/e2e/browser/next-editor.html");
+  await expect(next.getByText("No pages yet", { exact: false }).first()).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.getByRole("alert").getByText(cannotStart(SAID.newer))).toBeVisible();
+});
+
+test("the browser refusing the open for want of room is said as such, not as a missing storage", async ({ page }) => {
+  await page.addInitScript(() => {
+    IDBFactory.prototype.open = function () {
+      const asked: { onerror: (() => void) | null; error: DOMException } = { onerror: null, error: new DOMException("The quota has been exceeded.", "QuotaExceededError") };
+      setTimeout(() => asked.onerror?.(), 0);
+      return asked as unknown as IDBOpenDBRequest;
+    };
+  });
+  await page.goto("/");
+  await expect(page.getByRole("alert").getByText(cannotStart(SAID.quota))).toBeVisible();
 });

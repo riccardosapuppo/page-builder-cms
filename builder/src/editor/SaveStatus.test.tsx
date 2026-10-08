@@ -37,6 +37,9 @@ function heldCms() {
     conflict() {
       waiting.shift()!.resolve({ ok: false, problem: { kind: "conflict", message: "moved", currentRevision: 9, lastSaveId: "other" } });
     },
+    refuse(code: string, message: string) {
+      waiting.shift()!.reject(new StorageError({ kind: "refused", status: 0, code, message }));
+    },
     fail(cause: "network" | "timeout" | "server") {
       waiting.shift()!.reject(new StorageError({ kind: "unknown", cause, status: cause === "server" ? 502 : null, message: `${cause} failed` }));
     },
@@ -120,6 +123,41 @@ test("the toast's first words say what happened", async () => {
     expect(screen.getByRole("group", { name: "Not saved" }).querySelector("strong")?.textContent).toBe(lead);
     document.body.innerHTML = "";
   }
+});
+
+const UPGRADED = "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.";
+
+test("a save the storage refuses says why in words on the page, as an alert with Try again; the top bar keeps the reason as its tooltip too", async () => {
+  const { kit, cms, edit } = setUp();
+  await edit("Refused");
+  await act(() => kit.clock.advance(1_000));
+  expect(screen.queryByRole("alert")).toBeNull();
+  await act(async () => cms.refuse("storage_upgraded", UPGRADED));
+  expect(shown()).toBe("Not saved");
+  // Words a person reads, not a title attribute only.
+  const alert = screen.getByRole("alert");
+  expect(alert.querySelector("strong")?.textContent).toBe("Not saved.");
+  expect(alert.querySelector("p")?.textContent).toBe(`Not saved. ${UPGRADED}`);
+  expect(status().getAttribute("title")).toBe(UPGRADED);
+  // Try again sends the same save again; refused again, the words stay.
+  await act(async () => fireEvent.click(within(alert).getByRole("button", { name: "Try again" })));
+  expect(cms.sent).toHaveLength(2);
+  await act(async () => cms.refuse("storage_upgraded", UPGRADED));
+  expect(screen.getByRole("alert").querySelector("p")?.textContent).toBe(`Not saved. ${UPGRADED}`);
+  // Once a save goes through, the words go.
+  await act(async () => fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" })));
+  await act(async () => cms.answer(4));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(shown()).toBe("Saved");
+});
+
+test("in the browser demo the toast and the tooltips name this browser's storage, not a CMS or a server", async () => {
+  const { kit, cms, edit } = setUp({ cmsOrigin: null });
+  await edit("No answer");
+  await act(() => kit.clock.advance(1_000));
+  await act(async () => cms.fail("timeout"));
+  expect(screen.getByRole("group", { name: "Not saved" }).querySelector("strong")?.textContent).toBe("This browser's storage did not answer in time.");
+  expect(status().getAttribute("title")).toBe("This browser's storage did not answer in time. The editor sends the same save again until it answers.");
 });
 
 test("a conflict raises the banner as an alert, and its two buttons are the session's reload and keep mine", async () => {
