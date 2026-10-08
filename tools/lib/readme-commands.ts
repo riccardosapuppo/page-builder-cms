@@ -27,18 +27,28 @@ const SETTINGS = /^(?:[A-Z][A-Z0-9_]*=\S+\s+)+/;
 // Every command in a text: an inline `code span`, or a line of a fenced
 // block, that runs npm (`npm run <script>`, or `npm start`, which is the
 // script of that name) or node (after any NAME=value settings). A span that
-// only names a file or a variable is not a command.
+// only names a file or a variable is not a command. A span may wrap onto
+// the next line of its paragraph, as a README's text does, and is read as
+// one line.
 export function commandsIn(text: string): string[] {
   const candidates: string[] = [];
   let fenced = false;
+  let paragraph: string[] = [];
+  const endParagraph = () => {
+    for (const span of paragraph.join(" ").matchAll(/`([^`]+)`/g)) candidates.push(span[1]!.trim().replace(/\s+/g, " "));
+    paragraph = [];
+  };
   for (const line of text.split(/\r?\n/)) {
     if (line.startsWith("```")) {
+      endParagraph();
       fenced = !fenced;
       continue;
     }
     if (fenced) candidates.push(line.trim());
-    else for (const span of line.matchAll(/`([^`]+)`/g)) candidates.push(span[1]!.trim());
+    else if (line.trim() === "") endParagraph();
+    else paragraph.push(line.trim());
   }
+  endParagraph();
   return candidates.filter((c) => /^(?:[A-Z][A-Z0-9_]*=\S+\s+)*(?:npm run \S|npm start(?:\s|$)|node \S)/.test(c));
 }
 

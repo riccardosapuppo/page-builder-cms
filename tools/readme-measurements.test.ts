@@ -45,8 +45,13 @@ test("the commands of a section are those that run npm or node, in code spans an
     "npm starter",
     "```",
     "And `npm start` alone is one too.",
+    "",
+    "A wrapped one, `MEASURE_RUNS_COLD=2 npm run",
+    "measure:bundle`, counts as it reads, and a span never runs on into the next paragraph: `npm",
+    "",
+    "run measure:server` is no command.",
   ].join("\n");
-  assert.deepEqual(commandsIn(text), ["npm run measure:server", "MEASURE_RUNS_COLD=3 npm run measure:builder", "node tools/measure.cjs bundle", "npm start -- --smoke", "npm start"]);
+  assert.deepEqual(commandsIn(text), ["npm run measure:server", "MEASURE_RUNS_COLD=3 npm run measure:builder", "node tools/measure.cjs bundle", "npm start -- --smoke", "npm start", "MEASURE_RUNS_COLD=2 npm run measure:bundle"]);
   assert.deepEqual(commandsIn("nothing to run here, `a span`"), []);
 });
 
