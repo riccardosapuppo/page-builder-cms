@@ -1,5 +1,7 @@
 # What the build and the tests write; node_modules/ is ignored at the root.
 dist/
+# The browser demo's build (npm run build:demo).
+dist-demo/
 e2e/test-results/
 e2e/report/
 # The mutated copies of src/ that src/document/mutants.test.ts makes and

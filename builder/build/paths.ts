@@ -23,3 +23,6 @@ export const cmsFonts = join(repoRoot, "cms", "app", "assets", "fonts");
 // Instrument Sans, the editor's own font, with its licence: the approved
 // design is the only place in the repository that has it.
 export const designFonts = join(repoRoot, "design", "fonts");
+// The example site, the pages and pictures the CMS's seed puts in, which
+// the browser demo puts in the browser's storage on a first visit.
+export const exampleSite = join(repoRoot, "example-site");

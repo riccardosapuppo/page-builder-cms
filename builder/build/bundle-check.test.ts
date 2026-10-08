@@ -3,7 +3,7 @@
 // which what it inspects is missing. `npm run build` runs it on the real
 // bundle.
 import { describe, expect, test } from "vitest";
-import { checkBundle, EXPECTED_FONTS, forbiddenCalls, VALIDATOR_MARKER } from "./bundle-check.ts";
+import { checkBundle, EXPECTED_FONTS, forbiddenCalls, MARKS, VALIDATOR_MARKER } from "./bundle-check.ts";
 
 const fonts = EXPECTED_FONTS.map((font) => ({ fileName: `assets/${font}-Ab12_c.woff2`, text: "" }));
 const licences = ["LICENSE-Archivo.txt", "LICENSE-SourceSerif4.txt", "LICENSE-InstrumentSans.txt"].map((name) => ({ fileName: `assets/${name}`, text: "OFL" }));
@@ -49,6 +49,31 @@ describe("the bundle check", () => {
     expect(checkBundle([validator, ...fonts, ...licences.slice(0, 2)]).problems)
       .toEqual(["assets/instrument-sans-variable-Ab12_c.woff2 has no LICENSE-InstrumentSans.txt beside it"]);
     expect(checkBundle([]).problems).toContain("no JavaScript file in the bundle");
+  });
+
+  test("holds each build to its own storage: its mark there, the other's and the CMS's address not", () => {
+    const rails = { fileName: "assets/rails-3.js", text: `const r={startUpload:{path:"${MARKS.rails}"}},o="http://${MARKS.cmsAddress}";export{r,o};` };
+    const browser = { fileName: "assets/browser-4.js", text: `const b=\`${MARKS.browser}/\${1}\`,l="${MARKS.demo} The full CMS runs on Rails 8.";export{b,l};` };
+    const good = [validator, ...fonts, ...licences];
+    expect(checkBundle([...good, rails], "rails").problems).toEqual([]);
+    expect(checkBundle([...good, browser], "browser").problems).toEqual([]);
+    expect(checkBundle([...good, browser], "browser").summary).toContain(`storage browser, with ${MARKS.browser} and ${MARKS.demo}`);
+    // Both adapters in one bundle, as a choice made at run time leaves them.
+    expect(checkBundle([...good, rails, browser], "rails").problems).toEqual([
+      `the rails build holds "${MARKS.browser}", which only the other storage's build may, in assets/browser-4.js`,
+      `the rails build holds "${MARKS.demo}", which only the other storage's build may, in assets/browser-4.js`,
+    ]);
+    expect(checkBundle([...good, rails, browser], "browser").problems).toEqual([
+      `the browser build holds "${MARKS.rails}", which only the other storage's build may, in assets/rails-3.js`,
+      `the browser build holds "${MARKS.cmsAddress}", which only the other storage's build may, in assets/rails-3.js`,
+    ]);
+    // The CMS's address alone, without its adapter, is still refused in the demo.
+    expect(checkBundle([...good, browser, { fileName: "assets/config-5.js", text: `const d="http://${MARKS.cmsAddress}";export{d};` }], "browser").problems)
+      .toEqual([`the browser build holds "${MARKS.cmsAddress}", which only the other storage's build may, in assets/config-5.js`]);
+    // A build without its own storage's code looked at nothing.
+    expect(checkBundle(good, "rails").problems).toEqual([`the rails build has no "${MARKS.rails}": its own storage's code is not in the bundle`]);
+    expect(checkBundle([...good, { fileName: "assets/b.js", text: `const b="${MARKS.browser}";export{b};` }], "browser").problems)
+      .toEqual([`the browser build has no "${MARKS.demo}": its own storage's code is not in the bundle`]);
   });
 
   test("fails on a planted call in an otherwise good bundle", () => {

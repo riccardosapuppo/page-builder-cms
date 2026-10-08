@@ -12,7 +12,12 @@
 // It also fails when what it inspects is not there: the schema's validator
 // missing from the JavaScript, or one of the four fonts missing, would make
 // the other checks pass by looking at nothing.
+// Given the storage the build chose, it holds the bundle to that one: the
+// CMS's build carries no browser storage and no demo, and the demo's
+// carries no CMS adapter and not the CMS's address, each found by a mark
+// only that code holds; and the chosen storage's own mark must be there.
 import { parseSync, Visitor, type Plugin, type Rolldown } from "vite";
+import type { StorageKind } from "../src/storage/config.ts";
 
 export interface BundleFile {
   fileName: string;
@@ -38,6 +43,21 @@ const LICENCE_OF: Record<(typeof EXPECTED_FONTS)[number], string> = {
   "source-serif-4-variable": "LICENSE-SourceSerif4.txt",
   "source-serif-4-variable-italic": "LICENSE-SourceSerif4.txt",
   "instrument-sans-variable": "LICENSE-InstrumentSans.txt",
+};
+
+// Marks of each storage's code: the CMS adapter's upload route
+// (src/storage/rails.ts), the browser adapter's record names
+// (src/storage/browser.ts) and the demo's bottom line (src/demo/). The
+// CMS's address is where `npm start` runs it, the editor's default.
+export const MARKS = {
+  rails: "/media/direct_uploads",
+  browser: "indexeddb:pages",
+  demo: "Browser demo: drafts stay in this browser.",
+  cmsAddress: "127.0.0.1:3900",
+} as const;
+const STORAGE_RULES: Record<StorageKind, { must: Array<keyof typeof MARKS>; mustNot: Array<keyof typeof MARKS> }> = {
+  rails: { must: ["rails"], mustNot: ["browser", "demo"] },
+  browser: { must: ["browser", "demo"], mustNot: ["rails", "cmsAddress"] },
 };
 
 const GLOBAL_OBJECTS = new Set(["window", "globalThis", "self"]);
@@ -89,7 +109,7 @@ export function forbiddenCalls(fileName: string, code: string): { counts: Counts
   return { counts, found };
 }
 
-export function checkBundle(files: BundleFile[]): BundleReport {
+export function checkBundle(files: BundleFile[], storage?: StorageKind): BundleReport {
   const problems: string[] = [];
   const scripts = files.filter((f) => f.fileName.endsWith(".js"));
   const bytes = scripts.reduce((sum, f) => sum + Buffer.byteLength(f.text), 0);
@@ -116,9 +136,21 @@ export function checkBundle(files: BundleFile[]): BundleReport {
     else problems.push(`${file} has no ${LICENCE_OF[font]} beside it`);
   }
 
+  let storageWords = "";
+  if (storage) {
+    const holding = (mark: keyof typeof MARKS) => scripts.filter((f) => f.text.includes(MARKS[mark])).map((f) => f.fileName);
+    const rules = STORAGE_RULES[storage];
+    for (const mark of rules.must) if (holding(mark).length === 0) problems.push(`the ${storage} build has no ${JSON.stringify(MARKS[mark])}: its own storage's code is not in the bundle`);
+    for (const mark of rules.mustNot) {
+      const found = holding(mark);
+      if (found.length > 0) problems.push(`the ${storage} build holds ${JSON.stringify(MARKS[mark])}, which only the other storage's build may, in ${found.join(", ")}`);
+    }
+    storageWords = `; storage ${storage}, with ${rules.must.map((m) => MARKS[m]).join(" and ")}, without ${rules.mustNot.map((m) => MARKS[m]).join(" or ")}`;
+  }
+
   const summary = `bundle check: ${scripts.length} JavaScript file(s), ${(bytes / 1024).toFixed(1)} KiB, parsed; `
     + Object.entries(total).map(([label, count]) => `${label} ${count}`).join(", ")
-    + `; validator in ${validatorIn.join(", ") || "none"}; fonts with their licence: ${licensed}/${EXPECTED_FONTS.length}`;
+    + `; validator in ${validatorIn.join(", ") || "none"}; fonts with their licence: ${licensed}/${EXPECTED_FONTS.length}${storageWords}`;
   return { problems, summary };
 }
 
@@ -129,14 +161,14 @@ export function filesOf(bundle: Rolldown.OutputBundle): BundleFile[] {
   }));
 }
 
-export function bundleCheck(): Plugin {
+export function bundleCheck(storage: StorageKind): Plugin {
   return {
     name: "page-builder-cms:bundle-check",
     apply: "build",
     // After every other plugin has added its files, the CSS and the
     // licences included.
     writeBundle(_options, bundle) {
-      const report = checkBundle(filesOf(bundle));
+      const report = checkBundle(filesOf(bundle), storage);
       this.info(report.summary);
       if (report.problems.length > 0) this.error(`the bundle failed its check:\n  ${report.problems.join("\n  ")}`);
     },
