@@ -188,6 +188,10 @@ jobs:
         working-directory: builder
       - run: npm run e2e
         working-directory: builder
+      # The storage battery and the editor on the browser's own storage
+      # (IndexedDB), with no CMS: an editor server of its own on 4902.
+      - run: npm run e2e:browser
+        working-directory: builder
       # The keyboard path, focus after every command, axe on the editor,
       # the published page and every widget, and the shortcut window.
       - run: npm run check:a11y

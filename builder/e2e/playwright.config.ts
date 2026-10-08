@@ -8,6 +8,9 @@ import { builderPort } from "./harness/ports.ts";
 export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.ts",
+  // The editor on the browser's storage has a run and a server of its own
+  // (browser/playwright.config.ts, npm run e2e:browser), with no CMS.
+  testIgnore: "browser/**",
   globalSetup: "./harness/playwright-setup.ts",
   outputDir: "./test-results",
   workers: 1,

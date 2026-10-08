@@ -166,17 +166,23 @@ export async function startCms(port: number): Promise<Server> {
 
 // The editor's development server on 127.0.0.1:<port>, its proxy pointed
 // at the CMS given; or, given a folder `vite build` wrote, `vite preview`
-// serving that build the same way.
-export async function startBuilder(port: number, cmsUrl: string, options: { preview?: string } = {}): Promise<Server> {
+// serving that build the same way. With storage "browser" the editor keeps
+// its pages in the browser (VITE_STORAGE): no CMS is given, and the server
+// is ready when it serves the editor's page.
+export async function startBuilder(port: number, cmsUrl: string | null, options: { preview?: string; storage?: "rails" | "browser" } = {}): Promise<Server> {
   assertFree(port, "the editor");
+  const browser = options.storage === "browser";
+  if (!browser && cmsUrl === null) throw new Error("the editor on the CMS's storage needs the CMS's address");
   const folder = mkdtempSync(join(tmpdir(), "pbc-e2e-builder-"));
   const log = join(folder, "vite.log");
   const fd = openSync(log, "w");
   const vite = join(builderRoot, "node_modules", "vite", "bin", "vite.js");
   const args = options.preview ? ["preview", "--outDir", options.preview] : ["--clearScreen", "false"];
+  const env: NodeJS.ProcessEnv = { ...process.env, BUILDER_PORT: String(port), VITE_STORAGE: browser ? "browser" : "rails" };
+  if (cmsUrl !== null) env.CMS_URL = cmsUrl;
   const child = startTree(process.execPath, [vite, ...args], {
     cwd: builderRoot,
-    env: { ...process.env, BUILDER_PORT: String(port), CMS_URL: cmsUrl },
+    env,
     stdio: ["ignore", fd, fd],
   });
   closeSync(fd);
@@ -187,7 +193,7 @@ export async function startBuilder(port: number, cmsUrl: string, options: { prev
       const html = await index.text();
       return index.status === 200
         && html.includes('<meta name="application-name" content="Page Builder CMS">')
-        && (await emptyPageList(url));
+        && (browser || (await emptyPageList(url)));
     });
     assertOwnListener(port, child, "the editor's server");
   } catch (error) {
