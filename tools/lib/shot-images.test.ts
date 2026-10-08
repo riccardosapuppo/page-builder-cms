@@ -9,12 +9,12 @@
 // it is shown to find.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 import { encodeGif } from "./gif.ts";
-import { checkImages, readPng, type ImageSpec } from "./shot-images.ts";
+import { checkImages, IMAGES, IMAGES_DIR, readPng, type ImageSpec } from "./shot-images.ts";
 
 function chunk(type: string, data: Uint8Array): Uint8Array {
   const out = new Uint8Array(12 + data.length);
@@ -149,4 +149,51 @@ test("a README that names a picture the script does not make is named, and one t
 
 test("a folder that is not there is named", () => {
   assert.deepEqual(checkImages(join(tmpdir(), "pbc-images-test-nothing-here"), null, SPECS), [`${join(tmpdir(), "pbc-images-test-nothing-here")} does not exist`]);
+});
+
+// The committed folder, which the README's pictures are.
+const repo = resolve(import.meta.dirname, "..", "..");
+
+test("the list names each picture once, with the extension of its kind", () => {
+  assert.equal(new Set(IMAGES.map((spec) => spec.file)).size, IMAGES.length);
+  for (const spec of IMAGES) assert.ok(spec.file.endsWith(`.${spec.kind}`), `${spec.file} is listed as a ${spec.kind}`);
+});
+
+test("docs/images holds the pictures the script makes, as it checks them, and the README shows no other", () => {
+  const readme = readFileSync(join(repo, "README.md"), "utf8");
+  assert.deepEqual(checkImages(join(repo, IMAGES_DIR), readme), []);
+});
+
+test("docs/images/README.md says how the pictures are made and names each of them", () => {
+  const text = readFileSync(join(repo, IMAGES_DIR, "README.md"), "utf8");
+  assert.match(text, /npm run shots/);
+  for (const spec of IMAGES) assert.ok(text.includes(spec.file), `docs/images/README.md does not name ${spec.file}`);
+});
+
+test("npm run shots runs the script, whose pictures are the ones listed", () => {
+  const scripts = (JSON.parse(readFileSync(join(repo, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
+  assert.equal(scripts.shots, "node tools/shots.ts");
+  // The script makes each picture by the name the list gives it, never by
+  // a name of its own: no picture's file name is written in it.
+  const source = readFileSync(join(repo, "tools", "shots.ts"), "utf8");
+  const written = [...source.matchAll(/["'`]([A-Za-z0-9-]+\.(?:png|gif))["'`]/g)].map((match) => match[1]!);
+  assert.ok(written.length > 0, "the script names no picture: the check looked at nothing");
+  for (const name of written) assert.ok(IMAGES.some((spec) => spec.file === name), `tools/shots.ts makes ${name}, which the list does not name`);
+  for (const spec of IMAGES) assert.ok(written.includes(spec.file), `tools/shots.ts never makes ${spec.file}`);
+});
+
+test("the committed folder fails the check when a picture is cut, taken away or added", () => {
+  const folder = mkdtempSync(join(tmpdir(), "pbc-images-test-"));
+  try {
+    for (const name of readdirSync(join(repo, IMAGES_DIR))) copyFileSync(join(repo, IMAGES_DIR, name), join(folder, name));
+    assert.deepEqual(checkImages(folder, null), [], "the copy is right before it is spoiled");
+    truncateSync(join(folder, "history.png"), 5000);
+    assert.match(checkImages(folder, null).join("\n"), /history\.png/);
+    rmSync(join(folder, "demo.png"));
+    assert.match(checkImages(folder, null).join("\n"), /demo\.png is missing/);
+    writeFileSync(join(folder, "extra.png"), "x");
+    assert.match(checkImages(folder, null).join("\n"), /extra\.png is in .* and is not a picture the script makes/);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });

@@ -1,0 +1,57 @@
+# Pictures
+
+The pictures the project's README shows. A script makes each one from the
+running system; none is drawn or edited by hand, and a change to the editor
+or to the published page is followed by `npm run shots`, which makes them
+again.
+
+| Picture | Shows |
+| --- | --- |
+| `editor.png` | The editor, 1440 by 900, with the home page open, its heading selected, the Outline on the left and the heading's settings on the right. |
+| `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
+| `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |
+| `history.png` | The editor's History: this session's changes, a version kept under a name, the version that is live. |
+| `form-responses.png` | Form responses: the answers four visitors sent from the served home page, the newest opened whole. |
+| `demo.png` | The browser demo after Publish, with its notice and its bottom line. |
+| `publish.gif` | A real publication: the served page, the editor with the heading selected, new words typed and saved, Publish pressed, and the served page with the change. |
+
+## Making them
+
+```
+npm run shots
+```
+
+takes about a minute and needs what `npm start` needs (Ruby, the CMS's gems,
+Chromium from Playwright). It starts a CMS of its own in the e2e environment
+on 127.0.0.1:3905 (`SHOTS_CMS_PORT`), with databases and an Active Storage
+root of its own, runs the example site's seed, and starts the editor's
+development server on 127.0.0.1:4905 (`SHOTS_EDITOR_PORT`). The demo is
+built into a folder of the run's and served as GitHub Pages serves it, on the
+editor's port, once the editor's server has stopped. Chromium runs headless,
+in en-US and UTC, with the fonts loaded, motion reduced and animations off.
+
+At the end every server is stopped, its port shown closed, and the run's
+folders deleted and shown gone. A run that was killed leaves a folder named
+for the two ports, which the next run deletes first. `--only <name>,<name>`
+makes some of the pictures, and `--out <folder>` writes them elsewhere.
+
+The pictures are written to a folder of the run's and copied here only when
+every one is made and passes its check, so a run that fails leaves the pictures
+that were here. A picture here that no name lists is removed.
+
+## What holds them to what the script makes
+
+The pictures' names, sizes in pixels, byte limits and what each shows are
+listed once, in `tools/lib/shot-images.ts`, which also reads a folder back:
+each PNG through its chunks, checksums and image data, the GIF through a
+reader of its own (`tools/lib/gif.ts`) that decodes every frame, a picture
+with too little in it or too much for the README, a file no name lists, and
+a README that shows a picture the script does not make. `npm run test:tools`
+runs that check on this folder, and on small folders spoiled one way at a
+time to show that each fault is found.
+
+The GIF is frames of the page taken at 0.75 of a 1280 by 800 window, so the
+file is 960 by 600, read out of their PNGs by Chromium and encoded by
+`gifenc` (MIT, pure JavaScript, a development dependency). A frame that
+changes little from the one before is written as what changed. The limit is
+2 MB; it takes about 120 KB.
