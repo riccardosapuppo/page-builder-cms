@@ -662,28 +662,28 @@ says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 8 October 2026, on the virtual machine of [Measurements](#measurements),
 with `CMS_PORT`, `BUILDER_PORT`, `PRODUCTION_CHECK_PORT`, `E2E_CMS_PORT`,
-`E2E_BUILDER_PORT`, `E2E_BROWSER_PORT` and `E2E_DEMO_PORT` set to 3906 or
-4906 so that every server it started was on the ports of that run, one run of
-the whole check, from 16:02 to 16:31 UTC, took 28.5 minutes. It ended
-`RESULT: 2 of 28 failed (rubocop, editor-e2e)`, with bundler-audit not run
-here, for want of its advisory database (CI runs it). Its counts:
+`E2E_BUILDER_PORT`, `E2E_BROWSER_PORT` and `E2E_DEMO_PORT` set to 3901 or
+4901 so that every server it started was on the ports of that run, one run of
+the whole check, from 22:45 to 23:13 UTC, took 28.3 minutes. It ended
+`RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
+for want of its advisory database (CI runs it). Its counts:
 
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 110 passed, 1 skipped (it needs process groups, and runs in CI); the whole run printed 101, before the guard on this README added nine |
-| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 428 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 859 passed in 114 files; 25 passed |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 431 files, 0 warnings |
+| the editor's unit tests, and the render contract's editor half | 879 passed in 116 files; 25 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 249 corpus files and the example site's 3 pages, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture and the example site's pictures | both are what their generators write |
 | the API description | valid, 0 warnings |
 | the Rails tests | 363 runs, 2138 assertions, 0 failures, 0 errors, 0 skips; 330 API answers held to `cms/openapi.yaml` |
-| RuboCop, Brakeman | 146 files, no offenses (run again alone after its floor was lowered by the one file the seed no longer needs: it failed in the whole run for having one file fewer than the 147 its floor named); 79 checks, 0 warnings |
-| the editor against a CMS of its own | 58 tests: the storage battery, the random-page agreement check, canvas parity |
-| the editor in Chromium against a CMS of its own | 218 passed, **3 failed**, of 221 (below) |
-| the editor on the browser's own storage | 43 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
-| the browser demo, as Pages serves it | 5 passed |
+| RuboCop, Brakeman | 146 files, no offenses; 79 checks, 0 warnings |
+| the editor against a CMS of its own | 78 tests: the storage battery, the random-page agreement check, canvas parity, and the API examples of `cms/README.md` run as written (77 where Windows PowerShell is not) |
+| the editor in Chromium against a CMS of its own | 221 passed, among them the three that failed on this machine before (below) |
+| the editor on the browser's own storage | 66 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the browser demo, as Pages serves it | 8 passed |
 | accessibility: the keyboard path, focus, axe | 45 passed |
 | how the shell, the demo and the pages are served | 60 checks |
 | the CMS in production, over HTTP and in a browser | 50 checks |

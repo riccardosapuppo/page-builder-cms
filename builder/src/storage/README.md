@@ -11,7 +11,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `config.ts` | Which storage the build uses (`VITE_STORAGE`: `rails` by default, or `browser`), and where the API is: `VITE_API_BASE`, `/api` by default. |
 | `adapter.ts` | The storage adapter's interface, whole from stage 2, and the types of what it answers. |
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
-| `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. |
+| `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. It refuses what the CMS refuses, including a body with half a surrogate pair in any text (the CMS's JSON parser does: 400, `malformed_json`). |
 | `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style) as TypeScript, for `browser.ts`. |
 | `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, and the home page set; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. |
 | `site-theme-module.d.ts` | The type of `virtual:site-theme`, the theme's header and footer read from `cms/config/site.yml` when the editor is built (`../../build/site-theme.ts`). |
@@ -174,7 +174,7 @@ at a time or to take a visitor's form: refused as `unsupported`), no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 35 cases, each named once, and
+  It first checks the battery holds its 50 cases, each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). A visitor's form is
   sent by the runner as a browser sends it from the live page (form
@@ -210,11 +210,23 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   tab; two tabs saving from one revision at the same moment, one saved
   and one in conflict, five times over; a refusal undoing what its
   transaction wrote; a document of an unknown `schemaVersion` refused in
-  the upgrade's words. Planted one at a time, each failed it: the
-  revision check removed (five cases), the version kept before a restore
-  skipped (the restore case), a schema rule skipped (the invalid
-  document case), an image's blob left behind by its delete
-  (`adapter.spec.ts`). `editor.spec.ts` runs the editor itself on this
+  the upgrade's words; and what depends on time, on a clock the test
+  moves (an automatic version at most every ten minutes, counted from the
+  newest of any kind; a publish never dated before the last one), a
+  stored draft no check passes, which cannot be published, and a call
+  abandoned before it starts, which is not made. Planted one at a time,
+  each failed it: the revision check removed (five cases), the version
+  kept before a restore skipped (the restore case), a schema rule
+  skipped (the invalid document case), an image's blob left behind by
+  its delete (`adapter.spec.ts`). A review removed 46 of the adapter's
+  guards one at a time and ran this whole suite on each: 23 went
+  unnoticed, and the cases that now catch them are in the battery where
+  Rails keeps the same rule (a later save naming a missing image, a replay
+  from another revision, one home page, a live address kept, an image a
+  version alone shows, an upload's alt text, declared type, size, pixels
+  and true type, a half surrogate pair in any text) and in `adapter.spec.ts`
+  where only the browser can show it; the same run, with two more guards
+  for the surrogate pairs, left none standing (48 of 48 caught). `editor.spec.ts` runs the editor itself on this
   storage: an edit kept across a reload, the conflict bar between two
   tabs of one browser, an image resized and shown from its blob, and no
   control for scheduling or responses. `gives-up.spec.ts` shows each
@@ -223,9 +235,13 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   itself refuses the bytes); a tab holding the database on an older
   version (with `../../test/browser/next-editor.tsx`, the editor as a
   later build with one more step of the layout), and the older tab that
-  lets go, told on its next save. Planted, each failed its test: the
-  quota not said as such, a refused open not said as such, no sentence
-  when held up, an older tab that does not let go.
+  lets go, told on its next save; the storage deleted from another tab; a
+  database made by a newer build; the open refused for want of room. A
+  refused save says why in words on the page (an alert with Try again),
+  not only in the top bar's tooltip, and the tests read those words.
+  Planted, each failed its test: the quota not said as such, a refused
+  open not said as such, no sentence when held up, an older tab that does
+  not let go, a deletion said as an upgrade.
 - `autosave.test.ts` runs the autosave on a fake clock
   (`../../test/fake-clock.ts`) against a fake CMS that keeps a draft by the
   CMS's own rules, and looks at what it holds and received.

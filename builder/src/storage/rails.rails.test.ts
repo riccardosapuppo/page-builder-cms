@@ -69,7 +69,7 @@ describe("the Rails adapter keeps the storage contract", () => {
   test("the battery holds its cases, and the Rails adapter skips none of them", () => {
     // An emptied or shortened battery would leave this file green with
     // fewer tests; a capability declared absent by mistake, with skips.
-    expect(STORAGE_CONTRACT.length).toBeGreaterThanOrEqual(35);
+    expect(STORAGE_CONTRACT.length).toBeGreaterThanOrEqual(50);
     expect(new Set(STORAGE_CONTRACT.map((c) => c.name)).size).toBe(STORAGE_CONTRACT.length);
     const skipped = STORAGE_CONTRACT.filter((c) => c.needs.some((operation) => !adapter().capabilities[operation]));
     expect(skipped.map((c) => c.name)).toEqual([]);

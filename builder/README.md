@@ -145,7 +145,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 | `npm run build:demo` | The browser demo for GitHub Pages in `dist-demo/`, then the bundle check (below). |
 | `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/` (`E2E_DEMO_PORT` moves it), until Ctrl+C. |
-| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below). Needs Playwright's Chromium, not Ruby. On 8 October 2026: 5 passed. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below). Needs Playwright's Chromium, not Ruby. On 8 October 2026: 8 passed. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -223,8 +223,12 @@ of its own, on the build as Pages serves it: the example site's three
 pages, published, with the demo's line at the bottom; an edit kept after
 a reload; two tabs and the conflict bar; an image added to the library;
 Publish opening the page as published with its line, its form and its
-links; Preview showing the draft; axe on each screen; and no request off
-the demo's path.
+links; Preview showing the draft; the screens a person opens (the Page panel,
+the history, the menus and dialogs), none of which speaks of a visitor, a
+live page, a server or a CMS without naming the full system; a large image
+refused in the browser's words; the notice that says how Publish went,
+closed from the keyboard with the focus kept; axe on each screen; and no
+request off the demo's path.
 
 **Online only from a public repository.** The CI's `demo` job builds and
 tries the demo on every run. Its `pages` job deploys that build to
