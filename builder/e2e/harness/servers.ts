@@ -113,11 +113,13 @@ function cmsEnv(run: string): NodeJS.ProcessEnv {
   return env;
 }
 
-// Puts the example site of cms/db/seeds.rb into a running CMS of the
-// run's own, as `ruby bin/rails db:seed` does for a person: its pages and
-// the images of its media library. For the editor's screenshots, which
-// show the design's example page; the tests make the pages they need.
-export function seedCms(cms: Server): string {
+// Puts the example site (example-site/, which cms/db/seeds.rb reads) into
+// a running CMS of the run's own, as `ruby bin/rails db:seed` does for a
+// person: its pages and the images of its media library. For the editor's
+// screenshots, which show the design's example page, and for the test of
+// the example site as served (example-site.spec.ts), which has only the
+// run's folder; the other tests make the pages they need.
+export function seedCms(cms: Pick<Server, "folder">): string {
   const run = basename(cms.folder);
   const seed = spawnSync("ruby", ["bin/rails", "db:seed"], { cwd: cmsRoot, env: cmsEnv(run), encoding: "utf8" });
   if (seed.status !== 0) throw new Error(`the CMS could not be seeded (exit ${seed.status}):\n${seed.stdout ?? ""}${seed.stderr ?? ""}${seed.error?.message ?? ""}`);

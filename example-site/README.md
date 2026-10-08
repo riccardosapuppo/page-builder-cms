@@ -52,3 +52,13 @@ invented, and the map's point is an arbitrary stretch of coast.
   API, its preview and its published page compared with React's render of
   the same document, as the render contract compares them
   ([contract/README.md](../contract/README.md)).
+- [builder/e2e/example-site.spec.ts](../builder/e2e/example-site.spec.ts)
+  (`npm run e2e` and `npm run check:a11y` in `builder/`): `db:seed` run
+  against the browser tests' own CMS, then each page in Chromium, with its
+  heading, no serious or critical axe finding at 1440 and 390 pixels wide,
+  and no sideways scroll at 320. Planted, a text in the `soft` colour on
+  the notices page fails axe's colour contrast, and the site's
+  `overflow-wrap` taken away makes the notices page 579 pixels wide at 320.
+  axe lists one finding of moderate impact on every page, `heading-order`:
+  the design gives an icon box's title an `h3`, and on these pages a band
+  of icon boxes comes before any `h2`.
