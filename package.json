@@ -19,6 +19,7 @@
     "probe:lazy-iframe": "node tools/probes/lazy-iframe-in-details.ts",
     "seed:images": "node tools/seed-images.ts",
     "contract:large": "node tools/gen-contract-500.ts",
+    "shots": "node tools/shots.ts",
     "shots:site": "node tools/site-shots.ts",
     "check:type-scales": "node tools/type-scales.ts",
     "check:production": "node tools/check-production.ts",

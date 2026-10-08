@@ -18,10 +18,12 @@ export interface Built {
 // `readable` leaves the code unminified, with the names of its functions
 // as written: a profile of a run can then say which functions the time went
 // to. It is the same code otherwise, and it is never what is weighed.
-export function buildEditor(folder: string, options: { readable?: boolean } = {}): Built {
+// `demo` builds the browser demo (`vite build --mode demo`, for GitHub
+// Pages' path) instead of the editor on the CMS's storage.
+export function buildEditor(folder: string, options: { readable?: boolean; demo?: boolean } = {}): Built {
   const vite = join(builderRoot, "node_modules", "vite", "bin", "vite.js");
   const started = performance.now();
-  const flags = options.readable ? ["--minify", "false"] : [];
+  const flags = [...(options.readable ? ["--minify", "false"] : []), ...(options.demo ? ["--mode", "demo"] : [])];
   const ran = spawnSync(process.execPath, [vite, "build", "--outDir", folder, "--emptyOutDir", "--logLevel", "info", ...flags], {
     cwd: builderRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
   });

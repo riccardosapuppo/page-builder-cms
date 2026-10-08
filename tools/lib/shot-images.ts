@@ -34,7 +34,7 @@ export const IMAGES: readonly ImageSpec[] = [
   { file: "history.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the editor's History: this session, a version kept under a name, and the published one" },
   { file: "form-responses.png", kind: "png", width: 1440, height: 900, minBytes: 40_000, maxBytes: 400_000, shows: "Form responses, with a visitor's answer opened" },
   { file: "demo.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the browser demo after Publish, with its bottom line" },
-  { file: "publish.gif", kind: "gif", width: 960, height: 600, minBytes: 100_000, maxBytes: 2_000_000, minFrames: 6, shows: "a heading changed in the editor and published on Rails, then the served page with the change" },
+  { file: "publish.gif", kind: "gif", width: 960, height: 600, minBytes: 60_000, maxBytes: 2_000_000, minFrames: 8, shows: "a heading changed in the editor and published on Rails, then the served page with the change" },
 ];
 
 // A file that may sit in the folder beside the pictures.
