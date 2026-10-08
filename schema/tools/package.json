@@ -10,6 +10,7 @@
   },
   "scripts": {
     "compare": "node compare.ts",
+    "compare:examples": "node compare-examples.ts",
     "corpus": "node gen-corpus.ts",
     "corpus:check": "node gen-corpus.ts --check",
     "lint": "node lint.ts",

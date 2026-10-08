@@ -61,6 +61,9 @@ jobs:
       - name: The two validators agree on the corpus
         run: npm run compare
         working-directory: schema/tools
+      - name: The two validators agree on the example site's pages
+        run: npm run compare:examples
+        working-directory: schema/tools
       - name: The corpus is what its generator writes
         run: npm run corpus:check
         working-directory: schema/tools

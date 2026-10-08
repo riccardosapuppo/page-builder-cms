@@ -43,3 +43,7 @@ invented, and the map's point is an arbitrary stretch of coast.
   library's ids; a page changed since left as it is; and a file the seed
   cannot read (an image `site.json` does not list, two home pages, a path
   out of the folder) refused before anything is uploaded or saved.
+- `npm run compare:examples` in [schema/tools/](../schema/tools/): both
+  validators, the editor's and the server's, call every page valid and
+  normalise it the same way, through the corpus's own comparison
+  ([schema/README.md](../schema/README.md)). CI runs it in the schema job.

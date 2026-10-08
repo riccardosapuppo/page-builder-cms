@@ -277,6 +277,21 @@ normalised documents with the same numbers and values: 219/219
 RESULT: PASS (249 files, 0 disagreements, 0 exceptions)
 ```
 
+**The example site's pages**, which live once in
+[`../example-site/`](../example-site/) for the CMS's seed and the
+browser demo, go through the same comparison:
+[`compare-examples.ts`](tools/compare-examples.ts) copies them, for the
+run only, into a temporary corpus of `valid/` files with a manifest that
+names each page by its address, and runs `compare.ts` on it, with the
+pages' number as the floor. `npm run compare:examples`, on 8 October 2026:
+
+```
+corpus:  <a temporary folder>: 3 files (3 valid, 0 invalid, 0 upgrade); the manifest lists 3
+verdicts compared: 3; disagreements: 0; against the folder: 0; exceptions: 0
+normalised documents with the same numbers and values: 3/3
+RESULT: PASS (3 files, 0 disagreements, 0 exceptions)
+```
+
 ### It can fail
 
 Each of these was run, and each exited 1. The flags exist only for this;
@@ -295,6 +310,7 @@ before the column widths, image crops and section spacing added 13.
 | `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_field_names` (5 October 2026, on 249 files, the file restored afterwards) | the Ruby twin without the rule on a form's field names | six failures, three on each of the two files of repeated names: `verdicts differ on invalid/form-name-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
+| `node compare-examples.ts --plant-invalid` (8 October 2026, on the example site's 3 pages) | the home page's first heading at level 7, in the temporary copy only | `ajv calls valid/home.json invalid, against its folder` and `json_schemer calls valid/home.json invalid, against its folder` |
 
 ## The lint of the schema
 

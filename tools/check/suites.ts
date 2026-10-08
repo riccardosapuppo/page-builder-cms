@@ -272,12 +272,16 @@ export const SUITES: Suite[] = [
   },
   {
     name: "schema-compare",
-    what: "the schema's two validators agree on the corpus",
+    what: "the schema's two validators agree on the corpus and on the example site's pages",
     async run(ctx) {
       const why = first(packages(schemaTools, "schema/tools"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("compare"), { cwd: schemaTools });
-      return readCompare(step.output, step.code, 249);
+      const corpus = readCompare(step.output, step.code, 249);
+      if (corpus.status !== "passed") return corpus;
+      const examples = await ctx.step(...npmRun("compare:examples"), { cwd: schemaTools });
+      const pages = readCompare(examples.output, examples.code, 3);
+      return pages.status === "passed" ? { ...pages, counts: `${corpus.counts}; the example site's pages: ${pages.counts}` } : pages;
     },
   },
   {
