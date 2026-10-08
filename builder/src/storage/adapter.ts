@@ -447,20 +447,27 @@ export interface NotPending {
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
 
 export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses"] as const;
-// What an adapter may lack: publishing and serving pages (the browser demo
-// only previews), scheduled publishing (stage 4), form answers (stage 5).
+// What an adapter may lack: publishing (keeping what goes live as a
+// version, with the page's published state; whether it is then served is
+// livePages, below), scheduled publishing, form answers.
 export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 
 // Says which optional operations this adapter has. The editor shows no
 // control for one it lacks, and the adapter refuses it, as unsupported,
 // without asking anyone.
 //
-// And one thing the storage does or does not do on its own: imageVariants,
-// whether it makes smaller copies of an uploaded image for the pages to
-// serve. Without them the file is served as it was uploaded, so the editor
-// resizes each image before it goes up, and its media library says so: a
-// visitor's phone gets that file and no smaller one.
-export type Capabilities = Readonly<Record<OptionalOperation, boolean>> & { readonly imageVariants: boolean };
+// And two things the storage does or does not do on its own:
+// - imageVariants, whether it makes smaller copies of an uploaded image for
+//   the pages to serve. Without them the file is served as it was
+//   uploaded, so the editor resizes each image before it goes up, and its
+//   media library says so: a visitor's phone gets that file and no smaller
+//   one.
+// - livePages, whether a publish puts the page in front of visitors,
+//   served at links.live with the cache. The CMS does. The browser's
+//   storage keeps what was published as a version and the page's
+//   published state, for the preview, but serves nothing: there links.live
+//   stays null, and the editor shows the published page itself.
+export type Capabilities = Readonly<Record<OptionalOperation, boolean>> & { readonly imageVariants: boolean; readonly livePages: boolean };
 
 export type Failure =
   // No answer that says what happened: the network failed, the time ran

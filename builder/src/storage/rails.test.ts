@@ -115,7 +115,7 @@ describe("the Rails adapter's requests", () => {
   });
 
   test("declares every optional operation, since the CMS has them all, and no smaller copies of images", () => {
-    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false });
+    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false, livePages: true });
   });
 });
 

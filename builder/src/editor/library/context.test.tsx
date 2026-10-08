@@ -20,7 +20,7 @@ const closing = () => {
 test("the tab asks before it closes while an upload is on its way", async () => {
   const answers: Array<(outcome: Outcome<MediaItem, Invalid>) => void> = [];
   const adapter: MediaAdapter = {
-    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
     listMedia: async () => [],
     uploadMedia: () => new Promise<Outcome<MediaItem, Invalid>>((resolve) => answers.push(resolve)),
     setMediaAlt: async () => ({ ok: false, problem: { kind: "invalid", code: "invalid_request", message: "", errors: [] } }),

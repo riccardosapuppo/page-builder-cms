@@ -109,6 +109,8 @@ export const RAILS_CAPABILITIES: Capabilities = {
   // and the battery's upload case reads the same bytes back from an
   // image's address.
   imageVariants: false,
+  // The CMS serves what is published, at the page's address, with its cache.
+  livePages: true,
 };
 
 export interface RailsAdapterConfig {

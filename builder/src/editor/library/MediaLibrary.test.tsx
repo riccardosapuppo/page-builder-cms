@@ -33,7 +33,7 @@ function library(items: MediaItem[]) {
     return createMediaService({
       ui,
       adapter: {
-        capabilities: { publish: true, schedule: false, responses: false, imageVariants: false },
+        capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
         listMedia: async () => [...ui.getState().media.values()],
         uploadMedia: (upload) => new Promise((resolve) => uploads.push({ name: upload.file.name, resolve })),
         setMediaAlt: async (id, alt) => {

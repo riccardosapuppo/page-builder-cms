@@ -19,7 +19,7 @@ const open = (changes: Partial<OpenPage> = {}): OpenPage => ({ id: 7, slug: "win
 
 function draw(session: Partial<Session> = {}) {
   const closed: number[] = [];
-  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, imageVariants: false }, ...session } });
+  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true }, ...session } });
   kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: LONDON });
   kit.render(<ScheduleDialog onClose={() => closed.push(1)} />);
   return { kit, closed };

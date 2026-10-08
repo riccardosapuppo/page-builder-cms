@@ -420,7 +420,9 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       const result = value(await env.adapter.publish(page.id, { revision }), "the publish");
       env.expect(result.published).toMatchObject({ slug: page.slug, versionNumber: result.version.number });
       env.expect(result.version).toMatchObject({ reason: "publish", published: true });
-      env.expect(result.links.live).toBe(`/${page.slug}`);
+      // Served at its address where the storage serves pages; where it
+      // only keeps them, there is no live address to give.
+      env.expect(result.links.live).toBe(env.adapter.capabilities.livePages ? `/${page.slug}` : null);
       env.expect((await env.adapter.getVersion(page.id, result.version.number)).document).toEqual(document);
       const listed = (await env.adapter.listPages()).find((p) => p.id === page.id);
       env.expect(listed?.published).toEqual(result.published);
@@ -779,7 +781,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         const expected = env.adapter.capabilities[operation] ? { kind: "not-found" } : { kind: "unsupported", operation };
         env.expect(await failure(calls[operation](), operation), operation).toMatchObject(expected);
       }
-      env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants"].sort());
+      env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants", "livePages"].sort());
     },
   },
 

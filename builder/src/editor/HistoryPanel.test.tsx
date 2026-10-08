@@ -226,7 +226,7 @@ test("a publish set for a time waits under the draft, by the site's clock, and C
     document: page(),
     session: {
       current: { ...open, scheduled },
-      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true },
       versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-02T08:00:00Z")], message: null },
       cancelSchedule: async () => {
         cancelled += 1;
@@ -249,7 +249,7 @@ test("a publish whose time has passed without going live is listed as one that s
     document: page(),
     session: {
       current: { ...open, scheduled },
-      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true },
       versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-01T08:00:00Z")], message: null },
     },
   });
