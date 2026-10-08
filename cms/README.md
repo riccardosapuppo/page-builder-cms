@@ -760,6 +760,10 @@ read as its last value or as a list. Rails 8.1 stopped escaping `<`, `>`
 and `&` in JSON answers; these answers, the only ones carrying what
 strangers wrote, ask for it, so the body holds no markup even if
 something reads it as HTML, and the strings are the same once parsed.
+Every answer here, errors included, is `Cache-Control: no-store`: what
+visitors sent is personal data, and Rails' default for the rest of the
+API (`max-age=0, private, must-revalidate`) still lets the browser keep
+a copy.
 [test/integration/api/responses_test.rb](test/integration/api/responses_test.rb)
 plants each fault and sees it fail: the escaping left out, the origin
 check skipped for the delete, the query read without its checks, a

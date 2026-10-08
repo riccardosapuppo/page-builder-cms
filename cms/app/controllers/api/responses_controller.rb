@@ -15,6 +15,12 @@ module Api
     # list comes a part at a time rather than whole.
     PER_PAGE = 50
 
+    # Visitors' answers are personal data: no cache along the way, nor the
+    # browser's own, keeps a copy (Rails' default for an API answer,
+    # max-age=0 with must-revalidate, still lets a cache store it). Set
+    # before the action runs, so a refusal or a 404 says the same.
+    before_action :no_store
+
     # The list's query, by parameter: the form of a form block's id (the
     # schema's blockId), and a response's id.
     QUERY = { "form" => /\A[A-Za-z0-9_-]{1,64}\z/, "before" => /\A[1-9][0-9]{0,17}\z/ }.freeze

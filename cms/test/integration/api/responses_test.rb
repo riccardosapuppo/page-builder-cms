@@ -166,6 +166,30 @@ class Api::ResponsesTest < ActionDispatch::IntegrationTest
     assert PageVersion.exists?(kept.page_version_id)
   end
 
+  # A visitor's answers are personal data: no cache keeps any answer of
+  # this API, nor the browser's back-and-forward copy. The pages API, which
+  # holds only the owner's own content, keeps Rails' default.
+  test "no answer of the responses API may be stored by a cache: the list, one response, a delete, a 404 and a 400" do
+    publish form_block
+    kept = visitor_sends({ "name" => "Ann Diver" }, at: Time.utc(2026, 10, 5, 9, 0))
+
+    {
+      "the list" => [ :get, "/api/pages/#{@page.id}/responses", 200 ],
+      "the list of a form" => [ :get, "/api/pages/#{@page.id}/responses?form=join-form", 200 ],
+      "one response" => [ :get, "/api/pages/#{@page.id}/responses/#{kept.id}", 200 ],
+      "a query it does not take" => [ :get, "/api/pages/#{@page.id}/responses?page=2", 400 ],
+      "a response not there" => [ :get, "/api/pages/#{@page.id}/responses/99999999", 404 ],
+      "the delete" => [ :delete, "/api/pages/#{@page.id}/responses/#{kept.id}", 204 ]
+    }.each do |what, (method, path, status)|
+      api method, path
+      assert_equal status, response.status, what
+      assert_equal "no-store", response.headers["Cache-Control"], what
+    end
+
+    api :get, "/api/pages/#{@page.id}"
+    assert_equal "max-age=0, private, must-revalidate", response.headers["Cache-Control"]
+  end
+
   test "a response is found only under its own page, and by an id in the form of one" do
     publish form_block
     kept = visitor_sends({ "name" => "Ann Diver" }, at: Time.utc(2026, 10, 5, 9, 0))
