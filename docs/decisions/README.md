@@ -29,8 +29,12 @@ it holds.
 **Serving pages**
 - [Published pages are cached by key, and nothing is deleted to refresh them](published-pages-cached-by-key.md)
   (4 October 2026): an ETag and Solid Cache keys made of the version, the
-  site style, the release and each block's subtree; every visit
-  revalidates, so a publish shows at the next request.
+  site style, the header and footer, the release and each block's subtree;
+  every visit revalidates, so a publish shows at the next request.
+- [A menu too long for the bar folds into Menu where the widths of its letters say](header-folds-by-measured-letters.md)
+  (9 October 2026): lengths for what a phone shows, a header that wraps
+  rather than breaks, and a fold the server adds up from letter widths
+  measured once; a file to measure again when the header's styles change.
 - [A visitor's form is counted under the socket's own address](form-count-by-socket-peer.md)
   (5 October 2026): the rate limit cannot be steered by a header, and behind
   a proxy the whole site shares one count.

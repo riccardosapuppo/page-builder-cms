@@ -255,6 +255,11 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   them.** Cost: every visit is a request, if only a 304, and a change to
   the release redraws every page once.
   [The note](docs/decisions/published-pages-cached-by-key.md).
+- **A menu too long for the bar folds into Menu where the widths of its
+  letters say.** A page runs no script, so the server adds up letter
+  widths measured once in the site's typeface. Cost: a file to measure
+  again when the header's styles change, and a fold that may come a step
+  early. [The note](docs/decisions/header-folds-by-measured-letters.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
   it runs 43 of the 50 cases.
@@ -722,7 +727,7 @@ and the serving checks, 20.5 minutes in all.
 
 | Folder | What it holds |
 | --- | --- |
-| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library and the site style; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
+| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library, the site style and the header and footer; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
 | [`builder/`](builder/README.md) | The editor: React 19, TypeScript and Vite, every dependency pinned. The document and its commands, the store with undo and redo, the two storage adapters, the renderer, the widgets, the interface, and the browser demo's shell. Its README has the commands, the stages' account and what each check holds. |
 | [`schema/`](schema/README.md) | The page document's one schema, the design tokens the code reads, the corpus both validators are held to and the tools that compare them, and the icon box's icons. |
 | [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to. |
