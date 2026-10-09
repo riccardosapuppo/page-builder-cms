@@ -661,8 +661,8 @@ suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.m
 says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 9 October 2026, on the virtual machine of [Measurements](#measurements),
-with every port at its default, one run of the whole check, from 10:10 to
-10:41 UTC, took about 31 minutes. It ended
+with every port at its default, one run of the whole check, from 11:29 to
+12:04 UTC, took about 35 minutes. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
@@ -671,7 +671,7 @@ for want of its advisory database (CI runs it). Its counts:
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 110 passed, 1 skipped (it needs process groups, and runs in CI) |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 431 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 885 passed in 116 files; 25 passed |
+| the editor's unit tests, and the render contract's editor half | 888 passed in 116 files; 25 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 249 corpus files and the example site's 3 pages, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture and the example site's pictures | both are what their generators write |
