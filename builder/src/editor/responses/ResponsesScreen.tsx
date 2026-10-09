@@ -217,6 +217,9 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     const here = shown.chosen === from;
     const open = shown.openedId === response.id;
     if (open) {
+      // A read of it still on its way, opened again while the delete was,
+      // would bring the deleted response back: it is dropped.
+      wanted.current.opened += 1;
       setDeleting(null);
       setOpened(null);
     }

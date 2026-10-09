@@ -465,3 +465,39 @@ test("Try again drops a response still on its way, and reads the chosen form's r
   expect(await within(dialog).findAllByRole("rowheader")).toHaveLength(1);
   expect(within(dialog).queryByText("Reading the responses…")).toBeNull();
 });
+
+// The next read of one response takes what is kept when it is asked, and
+// comes back only when the test lets it.
+function holdReading(fake: FakeResponses): () => Promise<void> {
+  const real = fake.getResponse;
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  fake.getResponse = async (pageId, responseId) => {
+    const read = real(pageId, responseId);
+    await held;
+    return read;
+  };
+  return async () => act(async () => release());
+}
+
+test("a response opened again while its delete is on its way does not come back once the delete has landed", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  const bo = fake.send(1, "join", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  const dialog = await openScreen(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${bo}"]`)!));
+  fireEvent.click(await within(dialog).findByRole("button", { name: "Delete response" }));
+  const delayed = holdDelete(fake);
+  await act(async () => fireEvent.click(forget(dialog)));
+
+  // Its row is still there: it is opened again, read before the delete
+  // lands, and the read comes back after.
+  const come = holdReading(fake);
+  await act(async () => fireEvent.click(dialog.querySelector(`[data-response-id="${bo}"]`)!));
+  await delayed.land();
+  await come();
+  expect(within(dialog).queryByText(`Sent ${when("2026-10-01T09:00:00.000Z")}`)).toBeNull();
+  expect(within(dialog).queryByRole("button", { name: "Delete response" })).toBeNull();
+  expect(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button")[0]!.getAttribute("aria-label")).toBe("Form in Join, Home, 1 response");
+  expect(fake.kept.map((r) => r.id)).toEqual([1]);
+});
