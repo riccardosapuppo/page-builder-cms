@@ -282,9 +282,16 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
   // Set when another tab took the database away (a newer version, or
   // deleted it): this tab's next call says so, and none goes through.
   let gone: StorageError | null = null;
+  // Set while this tab's open waits for another tab that holds the
+  // database on an older version: each call is refused at once, in the
+  // same words, until that tab lets go. Another open made meanwhile would
+  // only wait in line behind the first, with no word of why, and go
+  // through by itself once that tab is closed.
+  let heldUp: StorageError | null = null;
 
   function database(): Promise<IDBDatabase> {
     if (gone) return Promise.reject(gone);
+    if (heldUp) return Promise.reject(heldUp);
     opening ??= open().catch((error: unknown) => {
       opening = null;
       throw error;
@@ -308,17 +315,23 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       }
       let said = false;
       asked.onupgradeneeded = (event) => {
+        // No other tab holds the database any more: a call made from now on
+        // opens it once this upgrade is done.
+        heldUp = null;
         const upgrading = asked.transaction!;
         for (let version = event.oldVersion; version < layout.length; version += 1) layout[version]!(asked.result, upgrading);
       };
       // Another tab holds the database open on an older version and does
-      // not let go of it. The open waits for it; the person is told now.
+      // not let go of it. The open waits for it; the person is told now,
+      // and so is each call until that tab lets go.
       asked.onblocked = () => {
         if (said) return;
         said = true;
-        reject(refused("storage_blocked", GIVING_UP.blocked));
+        heldUp = refused("storage_blocked", GIVING_UP.blocked);
+        reject(heldUp);
       };
       asked.onsuccess = () => {
+        heldUp = null;
         const opened = asked.result;
         if (said) {
           // Blocked earlier and said so: this tab's next call opens anew.
@@ -342,6 +355,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
         resolve(opened);
       };
       asked.onerror = () => {
+        heldUp = null;
         if (said) return;
         said = true;
         const error = asked.error;

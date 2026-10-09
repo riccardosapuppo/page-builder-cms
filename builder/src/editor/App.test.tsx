@@ -276,7 +276,9 @@ test("an editor held up by an older tab says to close it and try again, and Try 
   const alert = await screen.findByRole("alert");
   expect(alert.querySelector("p")?.textContent).toBe(`The editor could not start: ${HELD_UP}`);
   expect(within(alert).queryByRole("button", { name: "Reload this tab" })).toBeNull();
-  // Try again while the other tab still holds on: refused again, same words.
+  // Try again while the other tab still holds on: refused again, same words,
+  // as the browser's storage refuses each call until that tab lets go
+  // (../storage/browser.ts; e2e/browser/gives-up.spec.ts holds it to that).
   fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
   await waitFor(() => expect(screen.getByRole("alert").querySelector("p")?.textContent).toBe(`The editor could not start: ${HELD_UP}`));
   // That tab closed: Try again starts the editor.

@@ -141,7 +141,8 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   sentence the editor shows (`GIVING_UP`): IndexedDB missing or refused,
   as in some private windows (`storage_unavailable`); the browser's
   storage full (`quota_exceeded`); an upgrade of the database held up by
-  another tab still open on an older version (`storage_blocked`); this
+  another tab still open on an older version (`storage_blocked`, and
+  every call refused so at once until that tab lets go); this
   tab's database taken over by a newer version in another tab, which it
   lets go of at once (`storage_upgraded`), or deleted there
   (`storage_deleted`); a database made by a newer version

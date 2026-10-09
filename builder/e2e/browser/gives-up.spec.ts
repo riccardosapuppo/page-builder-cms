@@ -7,7 +7,8 @@
 //   added, and the library says the browser has no room;
 // - another tab still open on an older version of the database, holding
 //   on to it: the next build cannot upgrade it, says which tab to close,
-//   and starts once it is closed;
+//   says so again on each Try again until then, and starts on the first
+//   once it is closed;
 // - an older tab of the editor, open while the next build upgrades the
 //   database, lets go of it at once and says, on its next save, to reload;
 // - the database deleted from another tab: this tab lets go of it, its
@@ -78,7 +79,7 @@ test("with the browser's storage full, an image is not added, and the library sa
   await expect(dialog.getByRole("radio", { name: /^noise\.png/ })).toHaveCount(0);
 });
 
-test("a tab holding the database open on an older version holds up the next build's upgrade: it says which tab to close, and starts once it is closed", async ({ page, context }) => {
+test("a tab holding the database open on an older version holds up the next build's upgrade: it says which tab to close, says so again on Try again, and starts on Try again once it is closed", async ({ page, context }) => {
   // The database as this build makes it, then held open, from another
   // tab, by a connection that does not let go when asked.
   const older = await storagePage(await context.newPage());
@@ -99,7 +100,26 @@ test("a tab holding the database open on an older version holds up the next buil
   // it offers.
   await expect(alert.getByRole("button", { name: "Reload this tab" })).toHaveCount(0);
 
+  // Try again while that tab still holds on: refused again, in the same
+  // words, not a wait on "Opening the page…" with no word of why.
+  await alert.getByRole("button", { name: "Try again" }).click();
+  await expect(alert.getByText(cannotStart(SAID.blocked))).toBeVisible();
+
+  // That tab lets go, and this tab's open, which waited, goes through: an
+  // open made after it is answered after it. The editor does not start by
+  // itself meanwhile: the words and Try again stay.
   await older.evaluate(() => (window as unknown as { held: IDBDatabase }).held.close());
+  await page.evaluate(() => new Promise<void>((done, failed) => {
+    const after = indexedDB.open("page-builder-cms");
+    after.onsuccess = () => {
+      after.result.close();
+      done();
+    };
+    after.onerror = () => failed(after.error);
+  }));
+  await expect(alert.getByText(cannotStart(SAID.blocked))).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Opening the page…" })).toHaveCount(0);
+
   await alert.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("No pages yet", { exact: false }).first()).toBeVisible();
