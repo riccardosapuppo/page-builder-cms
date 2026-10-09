@@ -21,7 +21,9 @@
 # tab's new link). It is refused with the header and footer as they are
 # now (Conflict), unless it asks for exactly what is stored: then nothing
 # is lost, and it is answered as saved. That also makes a write sent again
-# after its answer was lost a success, not a conflict.
+# after its answer was lost a success, not a conflict. A write of what is
+# stored writes nothing, from any revision: the revision and the time of
+# the last change stay, as the site style's time does.
 class Site < ApplicationRecord
   ID = 1
   MEMBERS = %w[name menu action footer].freeze
@@ -83,10 +85,11 @@ class Site < ApplicationRecord
   end
 
   # Writes values (the four members) over the header and footer read at
-  # revision, and raises the revision by one. The check of the revision and
-  # the write are one statement, as a draft's save is: of two writes from
-  # the same revision, only one changes a row. Returns the site as stored.
-  # Raises Invalid or Conflict.
+  # revision, and raises the revision by one; values that are what is
+  # stored write nothing. The check of the revision and the write are one
+  # statement, as a draft's save is: of two writes from the same revision,
+  # only one changes a row. Returns the site as stored. Raises Invalid or
+  # Conflict.
   def self.replace!(revision:, values:, at: Time.current)
     result = check(values)
     raise Invalid, result.errors unless result.ok?
@@ -94,6 +97,9 @@ class Site < ApplicationRecord
     value = result.document
     columns = { name: value["name"], menu: value["menu"], action: value["action"], footer: value["footer"] }
     transaction do
+      stored = current
+      next stored if stored.values == value
+
       changed =
         if revision.zero?
           first_row(columns, at)
@@ -101,6 +107,8 @@ class Site < ApplicationRecord
           where(id: ID, revision: revision).update_all(**columns, revision: revision + 1, updated_at: at)
         end
       site = current
+      # No row changed: another write came first, unless it wrote exactly
+      # this.
       raise Conflict, site if changed.zero? && site.values != value
 
       site

@@ -964,7 +964,9 @@ paths:
       description: |
         The header and footer whole, every member named (`action: null`
         for no button), from the `revision` they were read at; the revision
-        goes up by one. Each member is `$defs/site` of the page document's
+        goes up by one. A request for what is already stored writes
+        nothing, and the revision and `updatedAt` stay as they were. Each
+        member is `$defs/site` of the page document's
         schema, the definition the editor validates with too: one line of
         text with a visible character and at most 28 characters for the
         name, up to 8 links, 24 characters for a link's label and 18 for

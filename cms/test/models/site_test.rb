@@ -73,6 +73,18 @@ class SiteTest < ActiveSupport::TestCase
     assert_equal [ 1, AT ], [ again.revision, again.updated_at ]
   end
 
+  test "a write of what is stored writes nothing, from any revision: the revision and the time of the last change stay" do
+    assert_equal 0, Site.replace!(revision: 0, values: Site.defaults, at: AT).revision
+    assert_equal 0, stored_rows, "the defaults sent back make no row"
+
+    Site.replace!(revision: 0, values: changed(name: "Tide club"), at: AT)
+    [ 1, 0, 9 ].each do |revision|
+      again = Site.replace!(revision: revision, values: changed(name: "Tide club"), at: AT + 60)
+
+      assert_equal [ 1, AT ], [ again.revision, again.updated_at ], "from revision #{revision}"
+    end
+  end
+
   test "of two first changes, the second finds the row the first made: a conflict unless it asks for the same" do
     Site.replace!(revision: 0, values: changed(name: "First tab"), at: AT)
 
