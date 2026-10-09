@@ -2,7 +2,9 @@
 // CMS would serve it: the draft as it would be published (Preview), or the
 // page as it was published in this browser (Publish). The same renderer as
 // the canvas and the same markup as the CMS's page (../render/), with the
-// theme's header and footer and the site style, the images from the
+// header and footer and the site style as this browser keeps them, read
+// when the page is opened, so a change of them shows on every page
+// published here with nothing published again; the images from the
 // browser's library.
 //
 // The demo serves nothing, so the page says so in one line above it, and

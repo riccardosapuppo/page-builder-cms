@@ -263,7 +263,7 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   early. [The note](docs/decisions/header-folds-by-measured-letters.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
-  it runs 43 of the 50 cases.
+  it runs 48 of the 55 cases.
   [The note](docs/decisions/storage-behind-an-adapter.md).
 - **The browser demo is a build of its own, and draws what the CMS would
   serve.** Cost: two entry points to keep in step, and no demo online while
@@ -590,7 +590,9 @@ that browser's IndexedDB, held to the same battery of cases as the CMS's
 adapter. Two tabs of one browser share the pages, and the one that saves
 second gets the conflict bar. Preview opens the draft as it would be
 published, and Publish opens the page as published, each drawn by the demo,
-with a line saying what the full system does in its place. A form there is
+with a line saying what the full system does in its place. The header and
+footer are changed there as on the CMS, and every page published in that
+browser shows the change at once, with nothing to publish again. A form there is
 not sent: one line says what Rails does with its answers. At the bottom, one
 line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
 8, with publishing, shared versions and caching. Source on GitHub."
