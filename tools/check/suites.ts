@@ -421,7 +421,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:browser")) return failed("", "builder/package.json has no e2e:browser script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the editor on the browser's storage", portNumber("E2E_BROWSER_PORT", 4902)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:browser", 69);
+      return why ? notRun(why) : playwright(ctx, "e2e:browser", 76);
     },
   },
   {
@@ -431,7 +431,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:demo")) return failed("", "builder/package.json has no e2e:demo script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the demo, served as GitHub Pages serves it", portNumber("E2E_DEMO_PORT", 4903)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:demo", 8);
+      return why ? notRun(why) : playwright(ctx, "e2e:demo", 9);
     },
   },
   {
