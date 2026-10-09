@@ -6,13 +6,13 @@
 // banner, an alert, with Reload and Keep mine.
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { StorageError, type Conflict, type DraftSave, type DraftSaved, type Invalid, type Outcome } from "../storage/adapter.ts";
 import { createAutosave } from "../storage/autosave.ts";
-import { ConflictBanner, SaveState, SaveToast } from "./SaveStatus.tsx";
+import { ConflictBanner, RELOAD_ONLY, SaveState, SaveToast, thisTab } from "./SaveStatus.tsx";
 import { emptySession, SessionProvider } from "./session.tsx";
 import { EditorProvider } from "./context.tsx";
 
@@ -125,30 +125,61 @@ test("the toast's first words say what happened", async () => {
   }
 });
 
-const UPGRADED = "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.";
+const FULL = "This browser has no room left for the editor's pages and images: delete images from the library, or let this site keep more in the browser's settings.";
 
 test("a save the storage refuses says why in words on the page, as an alert with Try again; the top bar keeps the reason as its tooltip too", async () => {
   const { kit, cms, edit } = setUp();
   await edit("Refused");
   await act(() => kit.clock.advance(1_000));
   expect(screen.queryByRole("alert")).toBeNull();
-  await act(async () => cms.refuse("storage_upgraded", UPGRADED));
+  await act(async () => cms.refuse("quota_exceeded", FULL));
   expect(shown()).toBe("Not saved");
   // Words a person reads, not a title attribute only.
   const alert = screen.getByRole("alert");
   expect(alert.querySelector("strong")?.textContent).toBe("Not saved.");
-  expect(alert.querySelector("p")?.textContent).toBe(`Not saved. ${UPGRADED}`);
-  expect(status().getAttribute("title")).toBe(UPGRADED);
+  expect(alert.querySelector("p")?.textContent).toBe(`Not saved. ${FULL}`);
+  expect(status().getAttribute("title")).toBe(FULL);
   // Try again sends the same save again; refused again, the words stay.
   await act(async () => fireEvent.click(within(alert).getByRole("button", { name: "Try again" })));
   expect(cms.sent).toHaveLength(2);
-  await act(async () => cms.refuse("storage_upgraded", UPGRADED));
-  expect(screen.getByRole("alert").querySelector("p")?.textContent).toBe(`Not saved. ${UPGRADED}`);
-  // Once a save goes through, the words go.
+  await act(async () => cms.refuse("quota_exceeded", FULL));
+  expect(screen.getByRole("alert").querySelector("p")?.textContent).toBe(`Not saved. ${FULL}`);
+  // Once a save goes through (room was made), the words go.
   await act(async () => fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" })));
   await act(async () => cms.answer(4));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(shown()).toBe("Saved");
+});
+
+const RELOAD = {
+  storage_upgraded: "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.",
+  storage_deleted: "This browser's storage for the editor was deleted in another tab: reload this tab.",
+  storage_newer: "This browser's storage was made by a newer version of the editor: reload this tab to get it.",
+};
+
+test("a refusal only a reload gets past (the storage upgraded, deleted, or newer) offers Reload this tab, which reloads it, and no Try again, which could only be refused again", async () => {
+  const reloads = vi.spyOn(thisTab, "reload").mockImplementation(() => {});
+  try {
+    for (const [code, words] of Object.entries(RELOAD)) {
+      const { kit, cms, edit } = setUp();
+      await edit(code);
+      await act(() => kit.clock.advance(1_000));
+      await act(async () => cms.refuse(code, words));
+      const alert = screen.getByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(`Not saved. ${words}`);
+      expect(within(alert).queryByRole("button", { name: "Try again" })).toBeNull();
+      const before = reloads.mock.calls.length;
+      await act(async () => fireEvent.click(within(alert).getByRole("button", { name: "Reload this tab" })));
+      expect(reloads.mock.calls.length, code).toBe(before + 1);
+      // Nothing sent again behind the reload.
+      expect(cms.sent, code).toHaveLength(1);
+      document.body.innerHTML = "";
+    }
+  } finally {
+    reloads.mockRestore();
+  }
+  // The set is these three: a storage held up by an older tab keeps Try again.
+  expect([...RELOAD_ONLY].sort()).toEqual(Object.keys(RELOAD).sort());
 });
 
 test("in the browser demo the toast and the tooltips name this browser's storage, not a CMS or a server", async () => {

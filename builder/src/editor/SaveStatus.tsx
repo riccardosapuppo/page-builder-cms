@@ -143,22 +143,40 @@ function failureLine(failure: Failure | null, words: Words): string {
   return `${lead} The editor sends the same save again until ${until}.`;
 }
 
+// The refusals of the browser's storage that only a reload of this tab
+// gets past, as their words say: the storage upgraded by a newer build in
+// another tab, deleted in another tab, or made by a newer build. This tab
+// has let go of it, or cannot open it, so the same save sent again is
+// refused again. (Held up by an older tab, a save does go through once that
+// tab is closed: Try again stays.)
+export const RELOAD_ONLY: ReadonlySet<string> = new Set(["storage_upgraded", "storage_deleted", "storage_newer"]);
+
+// Reloading this tab; a seam for the unit tests, where jsdom does not
+// navigate. Edits this tab still holds make the browser ask first (the
+// editor's beforeunload, ./App.tsx).
+export const thisTab = { reload: (): void => window.location.reload() };
+
 // While a save's outcome is unknown: why, what is kept, and Retry now. And
 // when the storage refused the save (the document's fields are marked
 // where they are; this is any other refusal: a newer build of the editor
 // that upgraded the browser's storage in another tab, the storage deleted,
-// full or failing, a refusal of the CMS): why, in words on the page. The
-// top bar's tooltip says it too, but a tooltip is for the pointer alone.
+// full or failing, a refusal of the CMS): why, in words on the page, and
+// Try again, or Reload this tab when only that can help. The top bar's
+// tooltip says it too, but a tooltip is for the pointer alone.
 export function SaveToast() {
   const session = useSession();
   const snapshot = useSaveSnapshot();
   if (!session.autosave) return null;
   const autosave = session.autosave;
   if (snapshot?.phase === "refused" && snapshot.failure) {
+    const failure = snapshot.failure;
+    const reloadOnly = failure.kind === "refused" && RELOAD_ONLY.has(failure.code);
     return (
       <div className="toast toast-save chrome" role="alert">
-        <p><strong>Not saved.</strong> {snapshot.failure.message}</p>
-        <button className="btn btn-small btn-secondary" type="button" onClick={() => autosave.retryNow()}>Try again</button>
+        <p><strong>Not saved.</strong> {failure.message}</p>
+        {reloadOnly
+          ? <button className="btn btn-small btn-secondary" type="button" onClick={() => thisTab.reload()}>Reload this tab</button>
+          : <button className="btn btn-small btn-secondary" type="button" onClick={() => autosave.retryNow()}>Try again</button>}
       </div>
     );
   }

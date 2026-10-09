@@ -237,8 +237,10 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   later build with one more step of the layout), and the older tab that
   lets go, told on its next save; the storage deleted from another tab; a
   database made by a newer build; the open refused for want of room. A
-  refused save says why in words on the page (an alert with Try again),
-  not only in the top bar's tooltip, and the tests read those words.
+  refused save says why in words on the page (an alert with Try again, or
+  with Reload this tab when the storage was upgraded, deleted or made by a
+  newer build, which a save sent again cannot get past), not only in the
+  top bar's tooltip, and the tests read those words and reload the tab.
   Planted, each failed its test: the quota not said as such, a refused
   open not said as such, no sentence when held up, an older tab that does
   not let go, a deletion said as an upgrade.

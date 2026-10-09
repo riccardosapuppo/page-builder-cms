@@ -10,8 +10,8 @@
 //   and starts once it is closed;
 // - an older tab of the editor, open while the next build upgrades the
 //   database, lets go of it at once and says, on its next save, to reload;
-// - the database deleted from another tab: this tab lets go of it, and its
-//   next save says so;
+// - the database deleted from another tab: this tab lets go of it, its
+//   next save says so, and Reload this tab reloads it;
 // - a database made by a newer build than this one: it cannot be opened, and
 //   the editor says to reload;
 // - the browser refusing the open for want of room.
@@ -115,13 +115,16 @@ test("an older tab of the editor lets go of the database when the next build ope
 });
 
 // The refusal of a save, in words on the page: an alert that says what
-// happened and offers Try again. (The top bar keeps the reason as its
+// happened and offers what can help. Here only a reload can: this tab has
+// let go of the storage, so it offers Reload this tab, not a Try again
+// that would be refused again. (The top bar keeps the reason as its
 // tooltip as well; this is for those who do not hover.)
 async function expectSaid(page: Page, why: string): Promise<void> {
   const alert = page.getByRole("alert");
-  await expect(alert).toHaveText(`Not saved. ${why}Try again`);
+  await expect(alert).toHaveText(`Not saved. ${why}Reload this tab`);
   await expect(alert.getByText(why)).toBeVisible();
-  await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(alert.getByRole("button", { name: "Reload this tab" })).toBeVisible();
+  await expect(alert.getByRole("button", { name: "Try again" })).toHaveCount(0);
 }
 
 test("the database deleted from another tab: this tab lets go of it, and its next save says so, in words", async ({ page, context }) => {
@@ -141,6 +144,19 @@ test("the database deleted from another tab: this tab lets go of it, and its nex
   await expectSaid(page, SAID.deleted);
   // Not the sentence of an upgrade.
   await expect(page.getByRole("alert")).not.toContainText("upgraded");
+
+  // Reload this tab reloads it; the edit this tab still holds makes the
+  // browser ask first, and the reload goes ahead once that is accepted.
+  const asked: string[] = [];
+  page.once("dialog", (dialog) => {
+    asked.push(dialog.type());
+    void dialog.accept();
+  });
+  const reloaded = page.waitForEvent("load");
+  await page.getByRole("alert").getByRole("button", { name: "Reload this tab" }).click();
+  await reloaded;
+  expect(asked).toEqual(["beforeunload"]);
+  await expect(page.getByRole("alert").filter({ hasText: "Not saved." })).toHaveCount(0);
 });
 
 test("a database made by a newer build than this one cannot be opened, and the editor says to reload", async ({ page, context }) => {
