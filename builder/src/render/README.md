@@ -12,8 +12,9 @@ widgets import its helpers. Nothing here talks to a server.
 | File | What it is | The server's twin |
 | --- | --- | --- |
 | `blocks.tsx` | `PageSections`, the walk of the tree (page > section > column > widget, anything else left out), the section and the column, each block a memoised `BlockView` | `render_document`, `render_blocks`, `_section`, `_column` |
-| `page.tsx` | `PageRoot`, the page root (`.site` > `.sw` > the sections, with the theme's header and footer when given), its width and the site style's data attributes | the layout's `.site`, `site_style_data` |
-| `theme.tsx` | `SiteHeader` and `SiteFooter`, the theme's parts around every page | the layout's `<header>` and `<footer>`, `site_link` |
+| `page.tsx` | `PageRoot`, the page root (`.site` > `.sw` > the sections, with the site's header and footer when given), its width and the site style's data attributes | the layout's `.site`, `site_style_data` |
+| `theme.tsx` | `SiteHeader` and `SiteFooter`, the site's header and footer around every page: no Menu with no link, and `data-fold` on a header whose links fold below a wider width | the layout's `<header>` and `<footer>`, `site_link` |
+| `header-fit.ts` | The width a header's bar needs, from the letter widths of `schema/header-metrics.json`, added as Ruby adds floats (the compensated sum), and the `data-fold` step it names | `HeaderFit` |
 | `block-root.tsx` | `BlockRoot`, every block's root element: classes, `data-block-id`, `data-block-type`, `data-style`, the type's data; and the defensive reading of props | `block_root`, `block_props`, `prop_text` |
 | `style.ts` | A style as classes (`pad-l`, `tablet-pad-l`, `hide-phone`) and as `data-style` | `BlockStyle` |
 | `policy.ts` | The URL policy: links, images, players, maps, anchors | `RenderPolicy` |
@@ -52,12 +53,14 @@ widgets import its helpers. Nothing here talks to a server.
   (`../shared/site.css`) set their container queries on `.site`. The
   canvas passes `landmark={false}`, so the sections sit in a plain block
   instead of a second `<main>` in the editor's page.
-- The site's header and footer (`theme.tsx`) are the server's
-  (`cms/config/site.yml`), which `GET /api/site` gives: given them,
-  `PageRoot` draws the header above the sections and the footer below, as
-  the layout does; the canvas draws them locked (`inert`, and
-  `data-theme-part` on each). `../../test/theme.rails.test.tsx` holds
-  their markup to the CMS's own.
+- The site's header and footer (`theme.tsx`) are the values the storage
+  keeps for them (`GET /api/site`: what the editor set, or the defaults
+  of `cms/config/site.yml`): given them, `PageRoot` draws the header
+  above the sections and the footer below, as the layout does; the
+  canvas draws them locked (`inert`, and `data-theme-part` on each), from
+  the values of the Header and footer panel while they are typed.
+  `../../test/theme.rails.test.tsx` holds their markup to the CMS's own,
+  and `header-fit.rails.test.ts` the fold to the CMS's `HeaderFit`.
 
 ## What it promises
 
@@ -93,6 +96,8 @@ widgets import its helpers. Nothing here talks to a server.
 | The canvas, `canvas.test.tsx` | `npm test` | React DOM builds the tree the contract compared; the decoration reaches the root only; a change redraws its path and no more. |
 | The random-page agreement check, `../../test/render-agreement.rails.test.tsx` and its plants | `npm run test:rails` | Random valid pages saved through the API and compared with the preview the CMS serves, then a published page. `AGREEMENT_RUNS` (60) and `AGREEMENT_SEED` (20261002) set the run. |
 | The twins, `twins.rails.test.ts` | `npm run test:rails` | `policy.ts` and `rich-text.tsx` against the CMS's own `RenderPolicy` and `RichTextHelper`, in Ruby, on values the schema refuses too. |
+| The fold, `header-fit.rails.test.ts` | `npm run test:rails` | `header-fit.ts` against the CMS's own `HeaderFit`, in Ruby, on 4000 generated headers: the width to the bit and the same `data-fold`; the same sums added in turn, as a loop of `+` adds them, are shown to differ (577 of them on 9 October 2026). |
+| The header and footer, `../../test/theme.rails.test.tsx` | `npm run test:rails` | `theme.tsx` against the CMS's 404 page: the same header and footer, element for element, drawn from what the CMS stored while it served the page (`../../test/style-served.ts`, since the storage battery changes them for a moment). |
 | Layout, `../../test/canvas-parity.rails.test.tsx` | `npm run test:rails` | In headless Chromium, the page roots at 1280, 900, 768 and 390 (the two previews) against the CMS's preview at those window widths: every element's box and computed style. Each preview must carry the site style the CMS stored while it was served, served again if another test file changed the style meanwhile (`../../test/style-served.ts`), and the roots are drawn in it. |
 
 The comparison and its normalization are in

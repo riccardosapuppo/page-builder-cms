@@ -182,7 +182,7 @@ at a time or to take a visitor's form: refused as `unsupported`), no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 50 cases, each named once, and
+  It first checks the battery holds its 54 cases (at least 50), each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). A visitor's form is
   sent by the runner as a browser sends it from the live page (form
@@ -212,7 +212,9 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   CMS): the cases run in Node on adapters that live in pages of the
   browser (`remote.ts`), the second tab is a second page of the same
   browser context, and the first test names the cases it skips, the four
-  of scheduling and the three of responses. `adapter.spec.ts` checks what
+  of scheduling, the three of responses and the three that change the
+  header and footer, which it does not keep yet (it reads their
+  defaults, and passes the case of those). `adapter.spec.ts` checks what
   the interface cannot show: a deleted image's bytes gone from the
   database and its address revoked, here and after a delete in another
   tab; two tabs saving from one revision at the same moment, one saved
@@ -266,11 +268,13 @@ at a time or to take a visitor's form: refused as `unsupported`), no
 `contract.ts` exports `STORAGE_CONTRACT`, a list of cases, each with the
 optional operations it needs and a `run(env)`. The runner hands it the
 adapter, a way to open a second tab on the same storage, its `expect`,
-fresh names, a way to read an image's bytes back, and a way to send a
-visitor's form from a live page (`sendForm`); it runs each case as
-a test of its own, and skips (visibly) a case its adapter's capabilities
-lack. Every case makes its own pages; the site style is put back as it was
-found. The cases: pages and drafts, the conflict between two tabs, the
+fresh names, a way to read an image's bytes back, a way to send a
+visitor's form from a live page (`sendForm`), and the header and footer
+a new store has (`siteDefaults`, read from `cms/config/site.yml`); it
+runs each case as a test of its own, in its order, on a store of its own,
+and skips (visibly) a case its adapter's capabilities lack. Every case
+makes its own pages; the site style and the header and footer are put
+back as they were found. The cases: pages and drafts, the conflict between two tabs, the
 same save sent twice being a success counted once, the same `saveId` with
 another document being a conflict, the schema's and the application
 rules' refusals by block and field, a page's address and home mark,
@@ -282,7 +286,14 @@ real clock, a few seconds ahead: the page watched until it goes live with
 the revision scheduled, not the draft edited since), the
 media library (upload and bytes read back, refusals at `/file`, alt text,
 deleting, an image in use naming who uses it, an image that does not
-exist), the site style, the responses to a page's forms (kept with the
+exist), the site style, the header and footer (`config/site.yml`'s at
+revision 0 until first changed; a change kept whole at the next revision,
+the same change again writing nothing; values the schema refuses refused
+at the pointer of each, with nothing stored; a change from a revision
+another tab moved past a conflict holding what is there now, which sent
+from the old revision is answered as saved; with the CMS planted to
+write a change of nothing again, the second of these failed), the
+responses to a page's forms (kept with the
 version and the fields they were sent with across a change of the form,
 newest first, counted by form, a part at a time to the end, deleted for
 good, found only under their own page), every optional operation called

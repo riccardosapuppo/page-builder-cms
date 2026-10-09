@@ -14,7 +14,8 @@ The editor builds a page from sections, columns and thirteen kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
 accordion, divider, spacer and form), with rich text written where it
 stands on the canvas, undo and redo, a tablet's and a phone's own values, a
-media library and a form. Rails keeps each page as one JSON document that a
+media library and a form; and it sets the site's header and footer, which
+every page shows. Rails keeps each page as one JSON document that a
 single schema describes, with one draft and its versions; publishes it now
 or at a set time; draws it on the server and caches it; and keeps what
 visitors send from its form. The same editor also runs with no server at
