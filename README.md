@@ -541,7 +541,7 @@ so only the shares are to be read:
 
 ### The bundle
 
-`npm run measure:bundle`, on 9 October 2026 at 20:57 UTC (its output ended
+`npm run measure:bundle`, on 9 October 2026 at 21:41 UTC (its output ended
 `RESULT: 9 checks passed`). It builds the editor twice, as `npm run
 builder:build` does, into folders of its own: the two builds are the same
 files, byte for byte. This is the editor that talks to the CMS; the demo's
@@ -550,11 +550,11 @@ sizes do not depend on the load of the machine.
 
 | File | What | Raw | Gzipped |
 | --- | --- | --- | --- |
-| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 929,995 B (908.2 KiB) | 247,714 B (241.9 KiB) |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 929,971 B (908.2 KiB) | 247,707 B (241.9 KiB) |
 | `index-*.css` | The stylesheet, loaded at once | 107,217 B (104.7 KiB) | 19,434 B (19.0 KiB) |
-| `index.html` | The page | 1,423 B | 756 B |
-| | Loaded at once, in all | 1,038,635 B (1014.3 KiB) | 267,904 B (261.6 KiB) |
-| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
+| `index.html` | The page | 1,423 B | 753 B |
+| | Loaded at once, in all | 1,038,611 B (1014.3 KiB) | 267,894 B (261.6 KiB) |
+| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,514 B (110.9 KiB) |
 | `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
 | 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
 
@@ -680,8 +680,8 @@ suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.m
 says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 9 October 2026, on the virtual machine of [Measurements](#measurements),
-with every server of the run on 3911 (the CMS's), 4911 (the editor's) and
-4912 (the demo's) in turn, one run of the whole check, ending at 20:27 UTC,
+with every server of the run on 3901 (the CMS's), 4901 (the editor's) and
+4912 (the demo's) in turn, one run of the whole check, ending at 21:37 UTC,
 spent 31 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
@@ -733,10 +733,11 @@ is 5 pixels short, not at 1024; the video window is grown by less than the
 room it measures over the line. Nothing they check was loosened: each of the
 three still fails when the behaviour it covers is broken.
 
-The steps of the CI file's browser job took, on this machine, 51.7, 822.2,
-29.4, 302.5 and 25.9 seconds: the tests against a CMS of their own, the
-browser tests, the browser storage's tests, the accessibility tests again
-and the serving checks, 20.5 minutes in all.
+The steps of the CI file's browser job took, on this machine in that run,
+55.2, 842.1, 56.9, 318.9 and 28.1 seconds: the tests against a CMS of
+their own, the browser tests, the browser storage's tests, the
+accessibility tests again and the serving checks, 21.7 minutes in all
+(20.5 on 8 October, before the header and footer's tests).
 
 ## What is in the repository
 
