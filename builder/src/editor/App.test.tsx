@@ -5,20 +5,22 @@
 // Publishing saves what waits first and publishes at that revision; the
 // preview opens on the CMS once the edits are sent; a conflict is settled
 // by Reload or Keep mine; the site style shows at once and goes to the CMS,
-// and comes back when the CMS refuses it.
+// and comes back when the CMS refuses it. An editor that cannot start says
+// why, with the one button that can help.
 // @vitest-environment jsdom
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { page } from "../../test/document-page.ts";
 import { describedText, openGroups } from "../../test/editor-kit.tsx";
 import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
-import type { DraftSave, FieldError, Page, PageSummary, Published, Schedule, ScheduleRequest, SiteStyle, SiteStyleChange, StorageAdapter } from "../storage/adapter.ts";
+import { StorageError, type DraftSave, type FieldError, type Page, type PageSummary, type Published, type Schedule, type ScheduleRequest, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
+import { thisTab } from "./SaveStatus.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
@@ -65,6 +67,9 @@ class FakeSite {
   style = tokenStyle();
   // false for the browser demo's storage: a publish kept, no page served.
   livePages = true;
+  // The storage's refusal of every read of the pages, while set: an editor
+  // that cannot start.
+  refuseStart: StorageError | null = null;
 
   constructor() {
     this.drafts.set(1, { title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
@@ -105,7 +110,10 @@ class FakeSite {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
       capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages },
-      listPages: async () => [...this.drafts.keys()].map((id) => this.summary(id)),
+      listPages: async () => {
+        if (this.refuseStart) throw this.refuseStart;
+        return [...this.drafts.keys()].map((id) => this.summary(id));
+      },
       getPage: async (id) => this.page(id),
       getDraft: async (id) => this.page(id).draft,
       listMedia: async () => [],
@@ -188,12 +196,13 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
   site.schedule = options.schedule ?? false;
   site.livePages = !options.demo;
+  site.refuseStart = options.refuseStart ?? null;
   const written: number[] = [];
   const address: PageAddress = { read: () => wanted, write: (id) => written.push(id) };
   // The tabs the editor opens: where each went, once it was told.
@@ -230,6 +239,51 @@ test("without an address the home page opens", async () => {
   await screen.findByRole("button", { name: "Switch page. Open: Home" });
   expect(written).toEqual([2]);
   expect(screen.getByRole("heading", { name: "Start this page with a section" })).toBeTruthy();
+});
+
+// The browser storage's refusals at start, in its words (../storage/
+// browser.ts, GIVING_UP): three that only a reload of this tab gets past,
+// and an upgrade held up by an older tab, which Try again gets past once
+// that tab is closed.
+const RELOAD_AT_START = {
+  storage_newer: "This browser's storage was made by a newer version of the editor: reload this tab to get it.",
+  storage_upgraded: "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.",
+  storage_deleted: "This browser's storage for the editor was deleted in another tab: reload this tab.",
+};
+const HELD_UP = "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then try again.";
+const refusal = (code: string, message: string) => new StorageError({ kind: "refused", status: 0, code, message });
+
+test("an editor that could not start says why, with Reload this tab when only a reload gets past it, and no Try again that would be refused again", async () => {
+  const reloads = vi.spyOn(thisTab, "reload").mockImplementation(() => {});
+  try {
+    for (const [code, words] of Object.entries(RELOAD_AT_START)) {
+      start(1, { refuseStart: refusal(code, words) });
+      const alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent, code).toBe(`The editor could not start: ${words}`);
+      expect(within(alert).queryByRole("button", { name: "Try again" }), code).toBeNull();
+      const before = reloads.mock.calls.length;
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload this tab" }));
+      expect(reloads.mock.calls.length, code).toBe(before + 1);
+      cleanup();
+    }
+  } finally {
+    reloads.mockRestore();
+  }
+});
+
+test("an editor held up by an older tab says to close it and try again, and Try again starts it once that tab is closed", async () => {
+  const { site } = start(1, { refuseStart: refusal("storage_blocked", HELD_UP) });
+  const alert = await screen.findByRole("alert");
+  expect(alert.querySelector("p")?.textContent).toBe(`The editor could not start: ${HELD_UP}`);
+  expect(within(alert).queryByRole("button", { name: "Reload this tab" })).toBeNull();
+  // Try again while the other tab still holds on: refused again, same words.
+  fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+  await waitFor(() => expect(screen.getByRole("alert").querySelector("p")?.textContent).toBe(`The editor could not start: ${HELD_UP}`));
+  // That tab closed: Try again starts the editor.
+  site.refuseStart = null;
+  fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" }));
+  await opened();
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 test("a save refused with a 422 puts the error on the block's field, and the next edit clears it", async () => {

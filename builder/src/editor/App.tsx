@@ -55,7 +55,7 @@ import { NewPageDialog } from "./NewPageDialog.tsx";
 import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
-import { ConflictBanner, SaveToast } from "./SaveStatus.tsx";
+import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
 import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
@@ -109,7 +109,9 @@ type Status =
   | { kind: "loading" }
   | { kind: "ready" }
   | { kind: "no-pages" }
-  | { kind: "failed"; message: string };
+  // reload: only a reload of this tab gets past it (the storage upgraded,
+  // deleted or made by a newer build: ./SaveStatus.tsx, RELOAD_ONLY).
+  | { kind: "failed"; message: string; reload?: boolean };
 
 // Opens a new tab on an address, from a click or a key, while the browser
 // still counts it as the person's: the tab is opened at once, blank, and
@@ -293,7 +295,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       } catch (error) {
         // The storage's own words say where it failed: the CMS out of
         // reach, or the browser's storage refused.
-        if (!cancelled) setStatus({ kind: "failed", message: `The editor could not start: ${describe(error)}` });
+        if (!cancelled) setStatus({ kind: "failed", message: `The editor could not start: ${describe(error)}`, reload: isStorageError(error) && onlyAReloadHelps(error.failure) });
       }
     })();
     return () => {
@@ -930,7 +932,9 @@ function unsavedWhy(phase: SavePhase, server: string): string {
   }
 }
 
-// The canvas's place while there is no page to show on it.
+// The canvas's place while there is no page to show on it. An editor that
+// could not start says why, with Try again, or with Reload this tab when
+// only that gets past it, as on a refused save (./SaveStatus.tsx).
 function Bench({ status, onRetry }: { status: Status; onRetry: () => void }) {
   const [creating, setCreating] = useState(false);
   return (
@@ -940,7 +944,9 @@ function Bench({ status, onRetry }: { status: Status; onRetry: () => void }) {
         <div className="bench-note" role="alert">
           <h2>Nothing to edit yet</h2>
           <p>{status.message}</p>
-          <button className="btn btn-dark" type="button" onClick={onRetry}><Icon name="refresh" />Try again</button>
+          {status.reload
+            ? <button className="btn btn-dark" type="button" onClick={() => thisTab.reload()}><Icon name="refresh" />Reload this tab</button>
+            : <button className="btn btn-dark" type="button" onClick={onRetry}><Icon name="refresh" />Try again</button>}
         </div>
       )}
       {status.kind === "no-pages" && (

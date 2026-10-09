@@ -240,7 +240,10 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   refused save says why in words on the page (an alert with Try again, or
   with Reload this tab when the storage was upgraded, deleted or made by a
   newer build, which a save sent again cannot get past), not only in the
-  top bar's tooltip, and the tests read those words and reload the tab.
+  top bar's tooltip, and the tests read those words and reload the tab. An
+  editor that could not start offers the same button its words name: Try
+  again when held up by an older tab, once that tab is closed; Reload this
+  tab for a database made by a newer build.
   Planted, each failed its test: the quota not said as such, a refused
   open not said as such, no sentence when held up, an older tab that does
   not let go, a deletion said as an upgrade.

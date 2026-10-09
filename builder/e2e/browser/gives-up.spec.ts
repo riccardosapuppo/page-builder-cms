@@ -13,7 +13,7 @@
 // - the database deleted from another tab: this tab lets go of it, its
 //   next save says so, and Reload this tab reloads it;
 // - a database made by a newer build than this one: it cannot be opened, and
-//   the editor says to reload;
+//   the editor says to reload, and offers Reload this tab;
 // - the browser refusing the open for want of room.
 // What a save is refused for is said in words on the page (an alert), not
 // only in the top bar's tooltip, which a keyboard, a touch screen and most
@@ -162,13 +162,23 @@ test("the database deleted from another tab: this tab lets go of it, and its nex
   await expect(page.getByRole("alert").filter({ hasText: "Not saved." })).toHaveCount(0);
 });
 
-test("a database made by a newer build than this one cannot be opened, and the editor says to reload", async ({ page, context }) => {
+test("a database made by a newer build than this one cannot be opened, and the editor says to reload and offers Reload this tab", async ({ page, context }) => {
   // The next build opens the database and upgrades it a step further.
   const next = await context.newPage();
   await next.goto("/e2e/browser/next-editor.html");
   await expect(next.getByText("No pages yet", { exact: false }).first()).toBeVisible();
 
   await page.goto("/");
+  const alert = page.getByRole("alert");
+  await expect(alert.getByText(cannotStart(SAID.newer))).toBeVisible();
+  // Only a reload gets past it, as the words say: Reload this tab, and no
+  // Try again, which would only open the same storage and be refused again.
+  await expect(alert.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  const reloaded = page.waitForEvent("load");
+  await alert.getByRole("button", { name: "Reload this tab" }).click();
+  await reloaded;
+  // Served here, the reload brings this build again, so the same words; on
+  // the site it brings the newer build.
   await expect(page.getByRole("alert").getByText(cannotStart(SAID.newer))).toBeVisible();
 });
 

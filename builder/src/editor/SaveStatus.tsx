@@ -148,8 +148,14 @@ function failureLine(failure: Failure | null, words: Words): string {
 // another tab, deleted in another tab, or made by a newer build. This tab
 // has let go of it, or cannot open it, so the same save sent again is
 // refused again. (Held up by an older tab, a save does go through once that
-// tab is closed: Try again stays.)
+// tab is closed, as its words say: Try again stays.)
 export const RELOAD_ONLY: ReadonlySet<string> = new Set(["storage_upgraded", "storage_deleted", "storage_newer"]);
+
+// Whether only a reload of this tab gets past a failure: a save refused so
+// (the toast below), or an editor that could not start (./App.tsx).
+export function onlyAReloadHelps(failure: Failure | null | undefined): boolean {
+  return failure?.kind === "refused" && RELOAD_ONLY.has(failure.code);
+}
 
 // Reloading this tab; a seam for the unit tests, where jsdom does not
 // navigate. Edits this tab still holds make the browser ask first (the
@@ -170,7 +176,7 @@ export function SaveToast() {
   const autosave = session.autosave;
   if (snapshot?.phase === "refused" && snapshot.failure) {
     const failure = snapshot.failure;
-    const reloadOnly = failure.kind === "refused" && RELOAD_ONLY.has(failure.code);
+    const reloadOnly = onlyAReloadHelps(failure);
     return (
       <div className="toast toast-save chrome" role="alert">
         <p><strong>Not saved.</strong> {failure.message}</p>
