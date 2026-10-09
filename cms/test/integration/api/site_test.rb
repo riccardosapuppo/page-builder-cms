@@ -103,6 +103,26 @@ class Api::SiteTest < ActionDispatch::IntegrationTest
     assert_nil Site.find_by(id: Site::ID)
   end
 
+  # A client written in JavaScript cannot hold a number above 2**53 - 1, and
+  # the database cannot hold one above 2**63 - 1: the second was answered
+  # 500 (out of range for the column) when the write looked for its row.
+  # The largest revision allowed is one no row has, so it is a conflict.
+  test "a revision above 2**53 - 1 is refused at /revision before any row is looked for" do
+    [ 9_007_199_254_740_992, 2**63, 10**30 ].each do |revision|
+      api :put, "/api/site", change(revision: revision, name: "Tide club")
+
+      assert_response :unprocessable_content, revision.to_s
+      assert_equal [ [ "/revision", "maximum" ] ], error_pointers, revision.to_s
+    end
+    assert_nil Site.find_by(id: Site::ID)
+
+    api :put, "/api/site", change(revision: 9_007_199_254_740_991, name: "Tide club")
+
+    assert_response :conflict
+    assert_equal [ "Slack Water", 0 ], [ json.dig("site", "name"), json["currentRevision"] ]
+    assert_nil Site.find_by(id: Site::ID)
+  end
+
   test "the limits the editor says: 8 links, 28 characters for the name, 24 for a link, 18 for the button" do
     links = Array.new(8) { |k| { "label" => "L" * 24, "href" => "/#part-#{k}" } }
     api :put, "/api/site", change(name: "N" * 28, menu: links, action: { "label" => "B" * 18, "href" => "/join" })
