@@ -1083,7 +1083,10 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
     // As the CMS's PUT /api/site and Site.replace! take a change: every
     // fault of the request in one refusal, the revision's with those of
     // the values (the application rules, then $defs/site), which are
-    // looked at once all four are there. Then, in one transaction, the
+    // looked at once all four are there, each fault once by its pointer and
+    // keyword, as the CMS lists them (ajv finds a wrong type, or a missing
+    // member, twice: at the definition and at the keyword beside it).
+    // Then, in one transaction, the
     // revision checked and the record written, so of two changes from one
     // revision, in two tabs at once, the second is the conflict.
     async setSite(change: SiteChange, options) {
@@ -1096,7 +1099,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       const errors = [...check.errors];
       if (present.every(Boolean)) {
         const values = validateSite({ name: body.name, menu: body.menu, action: body.action, footer: body.footer });
-        if (!values.valid) errors.push(...values.errors.map((e) => fieldError(e.pointer, e.keyword, e.message)));
+        if (!values.valid) errors.push(...unique(values.errors).map((e) => fieldError(e.pointer, e.keyword, e.message)));
       }
       if (errors.length > 0) return invalid("invalid_request", errors);
       const revision = body.revision as number;

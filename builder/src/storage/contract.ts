@@ -36,6 +36,7 @@ import {
   type Outcome,
   type PageSummary,
   type Site,
+  type SiteChange,
   type SiteValues,
   type StorageAdapter,
 } from "./adapter.ts";
@@ -991,20 +992,28 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
-    name: "a header and footer the schema refuses are refused at the pointer of each value at fault, and nothing is stored",
+    name: "a header and footer the schema refuses are refused at the pointer of each value at fault, each fault once, and nothing is stored",
     needs: ["headerFooter"],
     async run(env) {
       const before = await env.adapter.getSite();
+      // Not what the types allow, which is what a client's mistake is: a
+      // number for a link's words and for the footer's text, and a link
+      // with no words. The schema finds a wrong type, or a missing member,
+      // in two places (the definition and the keyword beside it), and each
+      // adapter says it once, as the list is compared whole below.
+      const wrongLinks = [{ label: 5, href: "/tides" }, { href: "/tides" }] as unknown as SiteValues["menu"];
       const problem = refusal(await env.adapter.setSite({
         revision: before.revision,
         name: "N".repeat(29),
-        menu: [...before.menu.slice(0, 1), { label: "Run", href: "javascript:alert(1)" }],
+        menu: [...before.menu.slice(0, 1), { label: "Run", href: "javascript:alert(1)" }, ...wrongLinks],
         action: { label: "Join the swimming club", href: "/join" },
-        footer: { lead: "Two\nlines", text: before.footer.text },
-      }), "a name too long, a link that runs script, a button's label too long and a lead of two lines");
+        footer: { lead: "Two\nlines", text: 5 as unknown as string },
+      }), "a name too long, a link that runs script, a number for a link's words, a link with no words, a button's label too long, a lead of two lines and a number for the footer's text");
       if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
       env.expect(problem.code).toBe("invalid_request");
-      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort()).toEqual(["/action/label maxLength", "/footer/lead not", "/menu/1/href pattern", "/name maxLength"]);
+      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort()).toEqual([
+        "/action/label maxLength", "/footer/lead not", "/footer/text type", "/menu/1/href pattern", "/menu/2/label type", "/menu/3 required", "/name maxLength",
+      ]);
       env.expect(problem.errors.every((e) => e.blockPointer === null)).toBe(true);
       env.expect(await env.adapter.getSite()).toEqual(before);
     },
