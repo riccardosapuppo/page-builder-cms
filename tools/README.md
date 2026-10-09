@@ -9,7 +9,7 @@ photograph it.
 | --- | --- | --- |
 | `npm start`, `npm run setup` | Starts the CMS and the editor together, or only prepares them. | `start.cjs`, [`start/`](start/) |
 | `npm run check` | Runs every check of the repository, one after another. | `check.ts`, [`check/`](check/) |
-| `npm run check:production` | The CMS booted in production on 127.0.0.1, over HTTP and in a browser. | `check-production.ts`, `lib/visitor-checks.ts` |
+| `npm run check:production` | The CMS booted in production on 127.0.0.1, over HTTP and in a browser, the header the editor sets included. | `check-production.ts`, `lib/visitor-checks.ts`, `lib/header-checks.ts` |
 | `npm run header-metrics` | Measures the header's letters in the site's typeface, from which the CMS and the editor work out where a long menu folds (`schema/header-metrics.json`); `-- --check` compares. | `header-metrics.ts` |
 | `npm run measure:server`, `measure:builder`, `measure:bundle` | The measurements of the README's [Measurements](../README.md#measurements). | `measure.cjs`, `measure-*.ts`, `lib/measure*.ts` |
 | `npm run shots` | Makes the pictures of the README, from a CMS and an editor started for the run ([docs/images/README.md](../docs/images/README.md)). | `shots.ts`, `lib/gif.ts`, `lib/shot-images.ts` |

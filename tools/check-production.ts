@@ -28,7 +28,14 @@
 // - the jobs, with `ruby bin/jobs` in a process of its own beside the
 //   server, as the CMS's README says a production run does: a page
 //   scheduled for 15 seconds ahead is not live before, and is live after
-//   (scheduledChecks).
+//   (scheduledChecks);
+// - the header and footer the editor sets (PUT /api/site): a change shows
+//   at the next request under a new ETag, Solid Cache gaining the one page
+//   drawn around blocks all read back (headerCacheChecks); and in
+//   Chromium, for headers from the design's to every length at its limit,
+//   nothing leaves the page at any width, and the links show where the
+//   header's data-fold says, on one row with the brand
+//   (tools/lib/header-checks.ts).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
@@ -49,6 +56,7 @@ import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
+import { headerChecks, type SiteValues } from "./lib/header-checks.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -176,6 +184,33 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
   check(next.status === 200 && html.includes(`${title}, edited`) && next.headers.get("etag") !== etag, "after a publish, the old ETag gets 200 and the new page at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
   const after = cacheEntries();
   check(after.fragments - before.fragments === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before.fragments} fragments, then ${after.fragments} (${before.rows} rows in all, then ${after.rows})`);
+}
+
+// The header and footer, set as the editor sets them: from the revision
+// read just before.
+async function setSite(site: SiteValues): Promise<void> {
+  const now = await api("GET", "/api/site", undefined);
+  await api("PUT", "/api/site", { revision: now.revision, ...site });
+}
+
+// A change of the header and footer reaches the published home page with
+// no publish: the old ETag gets a 200 and the page under the new header at
+// the next request, and production's Solid Cache gains one entry, the
+// page drawn around blocks all read back.
+async function headerCacheChecks(): Promise<void> {
+  const before = await get("/");
+  await before.text();
+  const etag = before.headers.get("etag") ?? "";
+  const entries = cacheEntries();
+  const site = await api("GET", "/api/site", undefined);
+  await setSite({ name: "Tide club", menu: site.menu, action: site.action, footer: site.footer });
+  const next = await get("/", { headers: { "if-none-match": etag } });
+  const html = await next.text();
+  check(next.status === 200 && html.includes("<span>Tide club</span>") && next.headers.get("etag") !== etag,
+    "after a change of the header and footer, the old ETag gets 200 and the page under the new header at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
+  const after = cacheEntries();
+  check(after.fragments - entries.fragments === 1, "a new header and footer: Solid Cache gains the page alone, every block read back",
+    `${entries.fragments} fragments, then ${after.fragments} (${entries.rows} rows in all, then ${after.rows})`);
 }
 
 // A visitor's form, in production: forgery protection on, as production
@@ -399,6 +434,11 @@ try {
 
     // And the jobs, with a process of their own, as the README says.
     await scheduledChecks();
+
+    // The header and footer the editor sets, last: they change every page.
+    await headerCacheChecks();
+    const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8")) as { fold: { steps: number[] } };
+    await headerChecks(BASE, metrics.fold.steps, check, setSite);
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);
