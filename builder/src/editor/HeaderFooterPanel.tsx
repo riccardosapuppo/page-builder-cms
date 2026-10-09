@@ -188,7 +188,7 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
         <p className="visually-hidden" role="status">{said}</p>
 
         <h3 className="group-title">Header</h3>
-        {field("/name", "Site name", values.name, (text) => setName(values, text), { autoFocus: true, hint: `Beside the site’s mark, which stays the design’s. Up to ${SITE_LIMITS.name} characters.` })}
+        {field("/name", "Site name", values.name, (text) => setName(values, text), { autoFocus: true, hint: `Beside the site’s mark, which stays the design’s. Up to ${SITE_LIMITS.name} characters; on a phone, a long name puts Menu on a row of its own.` })}
 
         <h3 className="group-title hf-title" id={`${headId}-menu`}>Menu</h3>
         <p className="hint hf-hint">Up to {SITE_LIMITS.links} links, each up to {SITE_LIMITS.label} characters. Where they do not fit the bar, they fold into Menu.</p>

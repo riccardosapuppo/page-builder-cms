@@ -58,7 +58,7 @@ test("every value is labelled, each limit said, and one line says what a change 
   expect(screen.getByText(REACHES_EVERY_PAGE)).toBeTruthy();
   expect((screen.getByLabelText("Site name") as HTMLInputElement).value).toBe("Slack Water");
   expect(screen.getByLabelText("Site name").getAttribute("aria-describedby")).toBeTruthy();
-  expect(screen.getByText(/Up to 28 characters\./)).toBeTruthy();
+  expect(screen.getByText("Beside the site’s mark, which stays the design’s. Up to 28 characters; on a phone, a long name puts Menu on a row of its own.")).toBeTruthy();
   expect(screen.getByText("Up to 8 links, each up to 24 characters. Where they do not fit the bar, they fold into Menu.")).toBeTruthy();
   expect(links().map((group) => [(within(group).getByLabelText("Text") as HTMLInputElement).value, (within(group).getByLabelText("Link") as HTMLInputElement).value])).toEqual([
     ["Swims", "/#swims"], ["Gallery", "/#gallery"], ["Meet us", "/#meet"],
