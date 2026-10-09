@@ -256,6 +256,14 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   them.** Cost: every visit is a request, if only a 304, and a change to
   the release redraws every page once.
   [The note](docs/decisions/published-pages-cached-by-key.md).
+- **The header and footer are kept as the site style is: one row for the
+  site, live on every page with nothing to publish.** They are changed in
+  the editor's Header and footer, beside Site style or from a click on
+  either on the canvas, and every published page shows a change at its
+  next visit, its ETag and cached HTML keyed on them; `cms/config/site.yml`
+  keeps only their defaults and the time zone. Cost: no preview, no
+  version and no undo once saved.
+  [The note](docs/decisions/header-and-footer-kept-as-the-site-style.md).
 - **A menu too long for the bar folds into Menu where the widths of its
   letters say.** A page runs no script, so the server adds up letter
   widths measured once in the site's typeface. Cost: a file to measure

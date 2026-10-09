@@ -25,6 +25,10 @@ it holds.
 - [The editor reaches storage through one interface, and one battery holds every adapter to it](storage-behind-an-adapter.md)
   (2 October 2026): the CMS's adapter and the browser's run the same cases,
   and what an adapter lacks is not drawn.
+- [The header and footer are kept as the site style is: one row for the site, live on every page with nothing to publish](header-and-footer-kept-as-the-site-style.md)
+  (9 October 2026): changed in the editor and live at every page's next
+  visit, with a revision and a Save the style has not; no preview, no
+  version and no undo once saved, and `config/site.yml` only the defaults.
 
 **Serving pages**
 - [Published pages are cached by key, and nothing is deleted to refresh them](published-pages-cached-by-key.md)
