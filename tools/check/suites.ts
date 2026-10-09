@@ -321,7 +321,7 @@ export const SUITES: Suite[] = [
   },
   {
     name: "fixtures",
-    what: "the 500-block contract fixture and the seed's images are what their generators write",
+    what: "the 500-block contract fixture, the seed's images and the header's measured letters are what their generators write",
     async run(ctx) {
       const why = first(packages(repoRoot, "the repository root"), chromium());
       if (why) return notRun(why);
@@ -330,7 +330,10 @@ export const SUITES: Suite[] = [
       if (a.status !== "passed") return a;
       const images = await ctx.step(node, ["tools/seed-images.ts", "--check"], { cwd: repoRoot });
       const b = readLine(images.output, images.code, /RESULT: (\d+) images, all as committed/, (m) => `${m[1]} images`);
-      return b.status === "passed" ? { ...b, counts: `${a.counts}; ${b.counts}` } : b;
+      if (b.status !== "passed") return b;
+      const metrics = await ctx.step(node, ["tools/header-metrics.ts", "--check"], { cwd: repoRoot });
+      const c = readLine(metrics.output, metrics.code, /header-metrics\.json is what the fonts and styles give: (\d+) characters/, (m) => `${m[1]} header letters`);
+      return c.status === "passed" ? { ...c, counts: `${a.counts}; ${b.counts}; ${c.counts}` } : c;
     },
   },
   {

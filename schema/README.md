@@ -13,6 +13,11 @@ The page document's one schema, and the design tokens it names.
   language (a 40-unit grid, round strokes, one shape in the accent). The
   server draws them inline on the published page, and the editor reuses
   the file.
+- [`header-metrics.json`](header-metrics.json): the width of each letter
+  of the header's name, links and button in the site's typeface, and the
+  spacing around them, written by `npm run header-metrics` from the CMS's
+  stylesheets and fonts; the server and the editor add them up to fold a
+  menu too long for the bar (see the site's header and footer, below).
 
 ## The document
 
@@ -149,6 +154,14 @@ CMS keeps once for the whole site and draws around every page (`PUT
   the button's label, 18, beside Menu; a link's label, 24, in Menu's
   sheet. Wider letters break inside their place rather than leave the
   page. The footer's lead (80) and text (160) run on as a paragraph.
+- Whether the links fit the bar of a wider page is not a length: it
+  depends on all of them together and on the width of each letter. The
+  CMS adds up [`header-metrics.json`](header-metrics.json), the widths of
+  the header's letters measured in the site's typeface by
+  `npm run header-metrics` (`tools/header-metrics.ts`), and folds a menu
+  too long for the bar into Menu below the width it needs
+  ([cms/app/models/header_fit.rb](../cms/app/models/header_fit.rb)), so
+  the menu never wraps the bar.
 
 ## What the schema cannot say, and where it is said
 

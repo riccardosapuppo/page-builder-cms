@@ -65,6 +65,17 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a menu too long for the design's bar names on the header the width below which it folds; the design's own names none" do
+    publish(title: "Winter series", slug: "winter")
+    get "/winter"
+    assert_select ".sw-header[data-fold]", false
+
+    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => Site.defaults["menu"] + [ { "label" => "Contact", "href" => "/#contact" } ]))
+    get "/winter"
+
+    assert_select ".sw-header[data-fold='880'] .sw-nav-links a", 5
+  end
+
   test "with no links there is no Menu to open, and with no button none is drawn" do
     publish(title: "Winter series", slug: "winter")
     Site.replace!(revision: 0, values: Site.defaults.merge("menu" => [], "action" => nil))
