@@ -30,7 +30,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const SAID = {
   unavailable: "This browser keeps nothing for the editor here: its storage (IndexedDB) is missing or refused, as in some private windows. Open the editor in a normal window.",
   quota: "This browser has no room left for the editor's pages and images: delete images from the library, or let this site keep more in the browser's settings.",
-  blocked: "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then reload this one.",
+  blocked: "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then try again.",
   upgraded: "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.",
   deleted: "This browser's storage for the editor was deleted in another tab: reload this tab.",
   newer: "This browser's storage was made by a newer version of the editor: reload this tab to get it.",
@@ -94,6 +94,9 @@ test("a tab holding the database open on an older version holds up the next buil
   await page.goto("/e2e/browser/next-editor.html");
   const alert = page.getByRole("alert");
   await expect(alert.getByText(cannotStart(SAID.blocked))).toBeVisible();
+  // Its words say try again once that tab is closed, and Try again is what
+  // it offers.
+  await expect(alert.getByRole("button", { name: "Reload this tab" })).toHaveCount(0);
 
   await older.evaluate(() => (window as unknown as { held: IDBDatabase }).held.close());
   await alert.getByRole("button", { name: "Try again" }).click();

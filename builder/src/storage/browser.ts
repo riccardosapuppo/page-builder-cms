@@ -198,7 +198,7 @@ export interface BrowserAdapterConfig {
 export const GIVING_UP = {
   unavailable: "This browser keeps nothing for the editor here: its storage (IndexedDB) is missing or refused, as in some private windows. Open the editor in a normal window.",
   quota: "This browser has no room left for the editor's pages and images: delete images from the library, or let this site keep more in the browser's settings.",
-  blocked: "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then reload this one.",
+  blocked: "Another tab has the editor open on an older version of its storage and holds on to it: close that tab, then try again.",
   upgraded: "A newer version of the editor, open in another tab, has upgraded this browser's storage: reload this tab to go on.",
   deleted: "This browser's storage for the editor was deleted in another tab: reload this tab.",
   newer: "This browser's storage was made by a newer version of the editor: reload this tab to get it.",
