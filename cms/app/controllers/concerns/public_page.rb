@@ -51,7 +51,7 @@ module PublicPage
 
   included do
     layout "public"
-    helper_method :site_style
+    helper_method :site_style, :site
 
     # Every fragment of these pages belongs to the release that drew it: a
     # deploy that changes how a page is drawn finds none of the old ones.
@@ -76,6 +76,12 @@ module PublicPage
   # key and the layout's data attributes all see the same one.
   def site_style
     @site_style ||= SiteStyle.current
+  end
+
+  # The site's header and footer (Site), read once per request in the same
+  # way.
+  def site
+    @site ||= Site.current
   end
 
   # A published page, cached at three levels.

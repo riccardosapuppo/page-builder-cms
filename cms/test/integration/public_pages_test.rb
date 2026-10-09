@@ -47,6 +47,49 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_select ".sw-footer", text: /Tide times are a guide/
   end
 
+  test "the header and footer the editor set are drawn around every page: a published one, the 404 page, a preview" do
+    page = publish(title: "Winter series", slug: "winter")
+    menu = [ { "label" => "Tides", "href" => "/tides" }, { "label" => "Join us", "href" => "/winter#join" } ]
+    Site.replace!(revision: 0, values: Site.defaults.merge("name" => "Tide club", "menu" => menu, "action" => { "label" => "Book", "href" => "mailto:swim@example.org" },
+                                                          "footer" => { "lead" => "Tide club.", "text" => "Swims at slack water." }))
+
+    [ "/winter", "/no-such-page", "/preview/#{page.id}" ].each do |path|
+      get path
+
+      assert_select ".sw-header .sw-brand span", { text: "Tide club" }, path
+      assert_equal menu.map(&:values), css_select(".sw-header .sw-nav-links a").map { |a| [ a.text, a["href"] ] }, path
+      assert_equal menu.map(&:values), css_select(".sw-header .sw-menu-sheet a").map { |a| [ a.text, a["href"] ] }, path
+      assert_select ".sw-header a.sw-btn-small[href='mailto:swim@example.org']", { text: "Book" }, path
+      assert_select ".sw-footer p", { text: "Tide club. Swims at slack water." }, path
+      assert_select ".sw-footer strong", { text: "Tide club." }, path
+    end
+  end
+
+  test "with no links there is no Menu to open, and with no button none is drawn" do
+    publish(title: "Winter series", slug: "winter")
+    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => [], "action" => nil))
+
+    get "/winter"
+
+    assert_select ".sw-header .sw-brand span", text: "Slack Water"
+    assert_select ".sw-header .sw-nav-links a", false
+    assert_select ".sw-header .sw-menu", false
+    assert_select ".sw-header .sw-btn-small", false
+  end
+
+  test "a link that reached the row another way, with an address a page's link could not have, is left out as a page leaves it out" do
+    publish(title: "Winter series", slug: "winter")
+    Site.insert!({ id: Site::ID, revision: 1, name: "Slack Water", menu: [ { "label" => "Ours", "href" => "/ours" }, { "label" => "Script", "href" => "javascript:alert(1)" } ],
+                   action: { "label" => "Bad", "href" => "data:text/html,hi" }, footer: Site.defaults["footer"], created_at: Time.current, updated_at: Time.current })
+    assert_not Site.current.valid?, "the row breaks the rules a write is held to"
+
+    get "/winter"
+
+    assert_equal [ [ "Ours", "/ours" ] ], css_select(".sw-header .sw-nav-links a").map { |a| [ a.text, a["href"] ] }
+    assert_select ".sw-header .sw-btn-small", false
+    assert_no_match(/javascript:|data:text/, response.body)
+  end
+
   test "an address the page had before its last publish answers 301 to where it is now" do
     page = publish(title: "Winter series", slug: "winter")
     page.draft.update!(slug: "winter-swims")

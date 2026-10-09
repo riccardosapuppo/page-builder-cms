@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # The theme around every page: the site style on the page root, and the
-# links of the header (config/site.yml).
+# links of the header (Site).
 module SiteHelper
   # data-<slot>="<tone>" for every palette slot, and data-type-scale, on
   # .site: tokens.css gives each curated tone a rule on that attribute, so
@@ -21,11 +21,13 @@ module SiteHelper
     Array(links).filter_map { |link| site_link(link) }
   end
 
-  # A link of the header, if RenderPolicy accepts its address.
+  # A link of the header, if RenderPolicy accepts its address, as a link in
+  # a page is drawn: Site refuses such an address when it is written, and
+  # this leaves out one that reached the row another way.
   def site_link(link, **attributes)
     return nil unless link.is_a?(Hash)
 
-    href = RenderPolicy.link_href(link[:href])
-    href && content_tag(:a, link[:label].to_s, href: href, **attributes)
+    href = RenderPolicy.link_href(link["href"])
+    href && content_tag(:a, link["label"].to_s, href: href, **attributes)
   end
 end
