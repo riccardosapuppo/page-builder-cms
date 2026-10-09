@@ -386,6 +386,19 @@ here."). The places that can take the block keep their graphite marks,
 9.6 to 13.1 to 1 against the grey (`builder/e2e/drag.spec.ts` measures
 them from the pixels).
 
+**The owner's choice of 9 October 2026, over "Comes later".** Trying the
+editor, the owner asked how the header is changed, and then for a panel
+for the site's header and footer. The editor now changes the site's name,
+the menu's links, the header's button and the footer's two lines in
+Header and footer, an entry of the Page tab that this mock does not draw:
+it is drawn as Site style is, a level below Page with its way back, and a
+click on the header or the footer on the canvas opens it too. This choice
+overrides the sentence above that nothing in the editor changes the menu.
+The menu stays the site's, not a page's setting, so the page's "Show in
+the site menu" switch, drawn as "Comes later" and priced as new work, is
+not drawn: the menu is changed there, link by link. The mock's shots stay
+as approved (`builder/e2e/header-footer.spec.ts` drives the panel).
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every
