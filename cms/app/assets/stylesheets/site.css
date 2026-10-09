@@ -130,21 +130,43 @@ a.sw-btn:not([href]) { cursor: default; }
 
 /* ---------- Header and footer: part of the theme, on every page ---------- */
 .sw-header { position: relative; z-index: 2; }
-.sw-header-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 80px; }
+/* One row, the design's 80 px: the brand, then the links and the button
+   on the right. The row wraps when they do not fit side by side: the brand
+   above, the rest below it on the right. The design's own brand, Join and
+   Menu need 359 px, so a window 320 wide (the width WCAG's reflow
+   criterion tests, a 1280 window zoomed to 400%) wraps them; a longer name
+   or button label, which the editor can set, wraps them on wider phones
+   too. A single row is as tall as the design's: the padding plus a 40 px
+   line.
+   The design lets the row run into its right padding before it wraps (at
+   360 Menu ends 1 px from the edge). So the row has no right padding of
+   its own: ::after stands for it, an item that takes no room when the row
+   decides where to wrap and grows back to the padding's width wherever
+   there is room. The brand's margin is the gap between the two. */
+.sw-header-row { display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px; min-height: 80px; padding-block: 20px; padding-right: 0; }
+.sw-header-row::after { content: ""; flex: 1 0 0; max-width: var(--pad-x); }
 .sw-brand, .sw-nav, .sw-menu-button, .sw-accordion summary, .sw-quote figcaption {
   font-family: "Archivo", "Helvetica Neue", sans-serif;
 }
-.sw-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
+/* A name longer than the row it has to itself breaks between its words,
+   or anywhere in a word too long for the row, rather than leaving the
+   window. */
+.sw-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; margin-right: 24px; font-size: 19px; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-decoration: none; }
+.sw-brand > span { overflow-wrap: anywhere; }
 .sw-brand-mark { width: 30px; height: 30px; flex: none; }
 .sw-brand-mark circle { fill: var(--sw-primary); }
 .sw-brand-mark .sun { fill: var(--sw-accent); }
 .sw-brand-mark .line { stroke: var(--sw-background); stroke-width: 2; }
 .sw-brand-mark-inv circle { fill: var(--sw-background); }
 .sw-brand-mark-inv .line { stroke: var(--sw-text); }
-.sw-nav { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 500; font-stretch: 110%; }
-.sw-nav-links { display: flex; align-items: center; gap: 28px; margin-right: 16px; }
+.sw-nav { display: flex; align-items: center; gap: 12px; margin-left: auto; font-size: 15px; font-weight: 500; font-stretch: 110%; }
+/* Links that do not fit the bar wrap inside it rather than push the page
+   sideways. */
+.sw-nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 28px; margin-right: 16px; }
 .sw-nav-links a { text-decoration: none; }
 .sw-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+/* A button's label too long for the row breaks inside the button. */
+.sw-nav .sw-btn-small { overflow-wrap: anywhere; }
 /* Below the desktop layout the links fold into a Menu, which opens as a sheet: a details element, so it needs no script. */
 .sw-menu { display: none; }
 .sw-menu-button {
@@ -157,11 +179,11 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-menu-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .sw-menu-sheet {
   position: absolute; right: var(--pad-x); top: calc(100% - 8px); z-index: 2;
-  display: grid; min-width: 220px; padding: 8px;
+  display: grid; min-width: 220px; max-width: calc(100% - 2 * var(--pad-x)); padding: 8px;
   border-radius: 12px; background: var(--sw-background);
   box-shadow: 0 0 0 1.5px var(--sw-text), 0 16px 32px -12px rgb(20 48 42 / .35);
 }
-.sw-menu-sheet a { display: block; padding: 12px 14px; border-radius: 8px; font-size: 17px; font-weight: 600; text-decoration: none; }
+.sw-menu-sheet a { display: block; padding: 12px 14px; border-radius: 8px; font-size: 17px; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
 .sw-menu-sheet a:hover { background: var(--sw-soft); }
 .sw-footer { background: var(--sw-text); color: var(--sw-background); }
 .sw-footer-row { display: flex; align-items: center; gap: 14px; padding-block: var(--space-xxl); font-size: 16px; }
@@ -303,8 +325,8 @@ a.sw-btn:not([href]) { cursor: default; }
     --pad-x: var(--space-l);
     --sec-y: var(--space-xxl);
   }
-  .sw-header-row { height: 64px; gap: 12px; }
-  .sw-brand { font-size: 17px; gap: 8px; }
+  .sw-header-row { min-height: 64px; padding-block: 12px; }
+  .sw-brand { margin-right: 12px; font-size: 17px; gap: 8px; }
   .sw-brand .sw-brand-mark { width: 26px; height: 26px; }
   .sw-nav { gap: 8px; }
   .sw-nav .sw-btn-small { padding: 0 16px; }
@@ -321,15 +343,4 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-embed-bar small { font-size: 14px; }
   .sw-play-dot { width: 52px; height: 52px; }
   .sw-footer-row { align-items: flex-start; font-size: 15px; }
-}
-
-/* ---------- The narrowest phones: narrower than 360 ----------
-   The brand, Join and Menu need 359 px side by side. A window 320 wide,
-   the width WCAG's reflow criterion tests (a 1280 window zoomed to 400%),
-   has less, and the page scrolled sideways with Menu cut off. Here the
-   header row wraps: the brand above, Join and Menu below it on the right.
-   The design draws no width this narrow. */
-@container site (width < 360px) {
-  .sw-header-row { flex-wrap: wrap; height: auto; padding-block: 12px; row-gap: 8px; }
-  .sw-nav { margin-left: auto; }
 }
