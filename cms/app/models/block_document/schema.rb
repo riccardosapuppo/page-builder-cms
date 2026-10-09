@@ -25,6 +25,10 @@ module BlockDocument
     # could not hold.
     LINE = SCHEMER.ref("#/$defs/line")
 
+    # The site's header and footer (Site), which are not part of a page:
+    # validated on their own against $defs/site, as the editor does.
+    SITE = SCHEMER.ref("#/$defs/site")
+
     module_function
 
     def line?(text, max:)
@@ -35,9 +39,18 @@ module BlockDocument
     # error walks the whole document, which is only worth it when there is
     # something to report.
     def errors(document)
-      return [] if SCHEMER.valid?(document)
+      errors_of(SCHEMER, document)
+    end
 
-      SCHEMER.validate(document).map { |e| Error.at(e["data_pointer"], keyword_of(e), e["error"]) }
+    # The same for the header and footer: pointers into the values given.
+    def site_errors(values)
+      errors_of(SITE, values)
+    end
+
+    def errors_of(schemer, value)
+      return [] if schemer.valid?(value)
+
+      schemer.validate(value).map { |e| Error.at(e["data_pointer"], keyword_of(e), e["error"]) }
              .uniq { |e| [ e.pointer, e.keyword ] }
     end
 
