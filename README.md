@@ -661,10 +661,8 @@ suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.m
 says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 9 October 2026, on the virtual machine of [Measurements](#measurements),
-with `CMS_PORT`, `BUILDER_PORT`, `PRODUCTION_CHECK_PORT`, `E2E_CMS_PORT`,
-`E2E_BUILDER_PORT`, `E2E_BROWSER_PORT` and `E2E_DEMO_PORT` set to 3901 or
-4901 so that every server it started was on the ports of that run, one run of
-the whole check, from 08:12 to 08:41 UTC, took 29.1 minutes. It ended
+with every port at its default, one run of the whole check, from 10:10 to
+10:41 UTC, took about 31 minutes. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
@@ -682,7 +680,7 @@ for want of its advisory database (CI runs it). Its counts:
 | RuboCop, Brakeman | 146 files, no offenses; 79 checks, 0 warnings |
 | the editor against a CMS of its own | 78 tests: the storage battery, the random-page agreement check, canvas parity, and the API examples of `cms/README.md` run as written (77 where Windows PowerShell is not) |
 | the editor in Chromium against a CMS of its own | 221 passed, among them the three that failed on this machine before (below) |
-| the editor on the browser's own storage | 68 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the editor on the browser's own storage | 69 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 8 passed |
 | accessibility: the keyboard path, focus, axe | 45 passed |
 | how the shell, the demo and the pages are served | 60 checks |
