@@ -5,8 +5,10 @@
 // Publishing saves what waits first and publishes at that revision; the
 // preview opens on the CMS once the edits are sent; a conflict is settled
 // by Reload or Keep mine; the site style shows at once and goes to the CMS,
-// and comes back when the CMS refuses it. An editor that cannot start says
-// why, with the one button that can help.
+// and comes back when the CMS refuses it; the header and footer show as
+// typed and go to the storage on Save, a conflict settled the same two
+// ways. An editor that cannot start says why, with the one button that
+// can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
@@ -17,15 +19,15 @@ import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
-import { StorageError, type DraftSave, type FieldError, type Page, type PageSummary, type Published, type Schedule, type ScheduleRequest, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
+import { StorageError, type DraftSave, type FieldError, type Page, type PageSummary, type Published, type Schedule, type ScheduleRequest, type Site, type SiteChange, type SiteStyle, type SiteStyleChange, type SiteValues, type StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { thisTab } from "./SaveStatus.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
-// The theme around every page, as the CMS answers it.
-const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London", revision: 0, updatedAt: null };
+// The header and footer around every page, as the CMS answers them.
+const SITE: Site = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London", revision: 0, updatedAt: null };
 const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, schedules: `/api/pages/${id}/schedules`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
@@ -70,6 +72,16 @@ class FakeSite {
   // The storage's refusal of every read of the pages, while set: an editor
   // that cannot start.
   refuseStart: StorageError | null = null;
+  // The header and footer, kept as the CMS keeps them when a test turns it
+  // on: the changes asked, each at the revision it names.
+  headerFooter = false;
+  site: Site = SITE;
+  readonly siteChanges: SiteChange[] = [];
+
+  // Another tab saves the header and footer.
+  siteSavedElsewhere(values: Partial<SiteValues>): void {
+    this.site = { ...this.site, ...values, revision: this.site.revision + 1, updatedAt: T };
+  }
 
   constructor() {
     this.drafts.set(1, { title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
@@ -109,7 +121,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, headerFooter: false, imageVariants: false, livePages: this.livePages },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, headerFooter: this.headerFooter, imageVariants: false, livePages: this.livePages },
       listPages: async () => {
         if (this.refuseStart) throw this.refuseStart;
         return [...this.drafts.keys()].map((id) => this.summary(id));
@@ -118,7 +130,16 @@ class FakeSite {
       getDraft: async (id) => this.page(id).draft,
       listMedia: async () => [],
       getSiteStyle: async () => this.style,
-      getSite: async () => SITE,
+      getSite: async () => this.site,
+      setSite: async (change) => {
+        this.siteChanges.push(change);
+        const { revision, ...values } = change;
+        const now: SiteValues = { name: this.site.name, menu: this.site.menu, action: this.site.action, footer: this.site.footer };
+        if (JSON.stringify(values) === JSON.stringify(now)) return { ok: true, value: this.site };
+        if (revision !== this.site.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: this.site.revision, site: now } };
+        this.site = { ...this.site, ...values, revision: revision + 1, updatedAt: T };
+        return { ok: true, value: this.site };
+      },
       setSiteStyle: async (change) => {
         this.styles.push(change);
         if (this.refuseStyle) return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/palette/primary", keyword: "inclusion", blockPointer: null, message: "must be one of the slot's tones" }] } };
@@ -196,11 +217,12 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; headerFooter?: boolean } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
   site.schedule = options.schedule ?? false;
+  site.headerFooter = options.headerFooter ?? false;
   site.livePages = !options.demo;
   site.refuseStart = options.refuseStart ?? null;
   const written: number[] = [];
@@ -603,4 +625,70 @@ test("a site style change shows on the canvas at once and goes to the CMS; refus
   await waitFor(() => expect(root().getAttribute("data-primary")).toBe("site-harbour"));
   expect(screen.getByRole("alert").textContent).toBe("Not saved, the site keeps its style as it was: must be one of the slot's tones");
   expect(env.ui.getState().siteStyle?.palette.primary).toBe("site-harbour");
+});
+
+test("the header and footer show on the canvas as typed and reach the storage on Save, whole; values the editor's check refuses are not sent; another tab's save first is a conflict that Keep mine saves over", async () => {
+  const { site, env } = start(1, { headerFooter: true });
+  await opened();
+  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
+  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
+  const panel = screen.getByRole("complementary", { name: "Header and footer" });
+  const name = () => within(panel).getByLabelText("Site name");
+  const save = () => within(panel).getByRole("button", { name: "Save" });
+  fireEvent.change(name(), { target: { value: "Northshore Swimmers" } });
+  expect(brand()).toBe("Northshore Swimmers");
+  expect(site.siteChanges).toEqual([]);
+  await act(async () => fireEvent.click(save()));
+  expect(site.siteChanges).toEqual([{ revision: 0, name: "Northshore Swimmers", menu: SITE.menu, action: SITE.action, footer: SITE.footer }]);
+  await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
+  expect(env.ui.getState().siteDraft).toBeNull();
+  expect(env.ui.getState().site).toMatchObject({ name: "Northshore Swimmers", revision: 1 });
+  expect(brand()).toBe("Northshore Swimmers");
+
+  // A name past its limit: the editor's own check refuses it, nothing is
+  // sent, and the focus goes to it.
+  fireEvent.change(name(), { target: { value: "N".repeat(29) } });
+  await act(async () => fireEvent.click(save()));
+  expect(site.siteChanges).toHaveLength(1);
+  expect(screen.getByRole("alert").textContent).toBe("Not saved: every page keeps the header and footer it had. Put right what is marked below.");
+  await waitFor(() => expect(document.activeElement).toBe(name()));
+
+  // Another tab saves first: the save is a conflict, which leaves this
+  // tab's values on the canvas; Keep mine saves them from the revision it
+  // named.
+  fireEvent.change(name(), { target: { value: "Harbour Swimmers" } });
+  site.siteSavedElsewhere({ name: "Saved elsewhere" });
+  await act(async () => fireEvent.click(save()));
+  const conflict = within(panel).getByRole("alert");
+  expect(conflict.textContent).toContain("Changed in another tab.");
+  await waitFor(() => expect(document.activeElement).toBe(within(conflict).getByRole("button", { name: "Reload" })));
+  expect(brand()).toBe("Harbour Swimmers");
+  await act(async () => fireEvent.click(within(conflict).getByRole("button", { name: "Keep mine" })));
+  expect(site.siteChanges.at(-1)).toMatchObject({ revision: 2, name: "Harbour Swimmers" });
+  expect(env.ui.getState().site).toMatchObject({ name: "Harbour Swimmers", revision: 3 });
+  await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
+
+  // Reload takes the other tab's, leaving this tab's change.
+  fireEvent.change(name(), { target: { value: "Not to be kept" } });
+  site.siteSavedElsewhere({ name: "Theirs" });
+  await act(async () => fireEvent.click(save()));
+  await act(async () => fireEvent.click(within(within(panel).getByRole("alert")).getByRole("button", { name: "Reload" })));
+  expect(env.ui.getState().siteDraft).toBeNull();
+  expect(brand()).toBe("Theirs");
+  expect((name() as HTMLInputElement).value).toBe("Theirs");
+});
+
+test("closing the tab asks first while the header and footer have a change not saved", async () => {
+  const { env } = start(1, { headerFooter: true });
+  await opened();
+  const asks = () => {
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  expect(asks()).toBe(false);
+  act(() => env.ui.getState().setSiteDraft({ name: "Changed", menu: SITE.menu, action: SITE.action, footer: SITE.footer }));
+  expect(asks()).toBe(true);
+  act(() => env.ui.getState().setSiteDraft(null));
+  expect(asks()).toBe(false);
 });

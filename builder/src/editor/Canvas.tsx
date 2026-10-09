@@ -781,7 +781,9 @@ export function Canvas() {
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
   const siteStyle = useUi((u) => u.siteStyle);
-  const site = useUi((u) => u.site);
+  // The header and footer as their panel has them while they are changed,
+  // as they are typed; else as the storage keeps them.
+  const site = useUi((u) => u.siteDraft ?? u.site);
   // The bottom line's Block edges: every block's edges drawn (editor.css).
   const edges = useUi((u) => u.blockEdges);
   const frame = useRef<HTMLDivElement>(null);

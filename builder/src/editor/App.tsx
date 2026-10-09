@@ -17,7 +17,8 @@
 // way, saved first, and the page is read again when its time comes, since
 // the CMS's job puts it live. It settles a conflict the person's way
 // (reload, keep mine), and sends the site style's changes, one request at
-// a time, the latest change last.
+// a time, the latest change last, and the header and footer when the
+// person saves them, checked first as the storage will check them.
 //
 // The page's versions: the list the history panel shows (./HistoryPanel.tsx),
 // "Save version" and restore, each after the edits waiting are saved. A
@@ -35,7 +36,8 @@ import { makeReplacePage } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
+import { validateSite } from "../shared/validate.ts";
+import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type SiteValues, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
 import { cmsAddress } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
@@ -44,6 +46,7 @@ import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { DragLayer } from "./drag/DragLayer.tsx";
 import { DrawerShell } from "./Drawer.tsx";
+import { SITE_NOT_SAVED, sectionTargets, siteValues } from "./header-footer.ts";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
@@ -56,7 +59,7 @@ import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
 import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
-import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type SectionTarget, type Session, type SiteSave, type SiteSaveResult, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
@@ -161,6 +164,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const [publishing, setPublishing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [styleSave, setStyleSave] = useState<StyleSave>({ phase: "idle" });
+  const [siteSave, setSiteSave] = useState<SiteSave>({ phase: "idle" });
   const [versions, setVersions] = useState<VersionList>(NO_VERSIONS);
   const [restoring, setRestoring] = useState<number | null>(null);
   const live = useRef<{ autosave: Autosave | null; unsubscribe: () => void; adopting: boolean }>({ autosave: null, unsubscribe: () => {}, adopting: false });
@@ -799,15 +803,84 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     })();
   }, [adapter, ui]);
 
+  // The header and footer: the panel's values go whole, one save at a
+  // time, from the revision read (or the one a conflict named), once the
+  // editor's own check of $defs/site lets them; a refusal leaves them in
+  // the panel, each problem at its value. Kept, they are what the canvas
+  // and every published page draw; a change typed while the save was on
+  // its way stays waiting.
+  const siteSaving = useRef(false);
+  const saveSite = useCallback(async (values: SiteValues, from?: number): Promise<SiteSaveResult> => {
+    const stored = ui.getState().site;
+    if (!stored || siteSaving.current) return "busy";
+    const check = validateSite(values);
+    if (!check.valid) {
+      ui.getState().setSiteErrors(check.errors.map((e) => ({ pointer: e.pointer, keyword: e.keyword, blockPointer: null, message: e.message })));
+      setSiteSave({ phase: "failed", message: SITE_NOT_SAVED, marked: true });
+      return "invalid";
+    }
+    siteSaving.current = true;
+    setSiteSave({ phase: "saving" });
+    try {
+      const outcome = await adapter.setSite({ revision: from ?? stored.revision, ...values });
+      if (outcome.ok) {
+        ui.getState().setSite(outcome.value);
+        const waiting = ui.getState().siteDraft;
+        if (waiting !== null && sameJson(waiting, values)) ui.getState().setSiteDraft(null);
+        ui.getState().setSiteErrors([]);
+        setSiteSave({ phase: "saved" });
+        return "saved";
+      }
+      if (outcome.problem.kind === "conflict") {
+        setSiteSave({ phase: "conflict", revision: outcome.problem.currentRevision, theirs: outcome.problem.site });
+        return "conflict";
+      }
+      ui.getState().setSiteErrors(outcome.problem.errors);
+      const marked = outcome.problem.errors.length > 0;
+      setSiteSave({ phase: "failed", message: marked ? SITE_NOT_SAVED : `Not saved: every page keeps the header and footer it had. ${outcome.problem.message}`, marked });
+      return "invalid";
+    } catch (error) {
+      setSiteSave({ phase: "failed", message: `Not saved: every page keeps the header and footer it had. ${describe(error)}`, marked: false });
+      return "failed";
+    } finally {
+      siteSaving.current = false;
+    }
+  }, [adapter, ui]);
+
+  const reloadSite = useCallback(async () => {
+    try {
+      ui.getState().setSite(await adapter.getSite());
+      ui.getState().setSiteDraft(null);
+      ui.getState().setSiteErrors([]);
+      setSiteSave({ phase: "idle" });
+    } catch (error) {
+      setSiteSave({ phase: "failed", message: `The header and footer could not be read again: ${describe(error)}`, marked: false });
+    }
+  }, [adapter, ui]);
+
+  // The anchors of a page's sections, from its draft, for the links of
+  // the header.
+  const pageSections = useCallback(async (pageId: number): Promise<readonly SectionTarget[] | null> => {
+    try {
+      const opened = openDocument((await adapter.getDraft(pageId)).document);
+      return opened.ok ? sectionTargets(opened.document) : null;
+    } catch {
+      return null;
+    }
+  }, [adapter]);
+
   // Closing the tab while edits are only here asks first: the page's
   // edits, text typed in a field and not handed over yet (handed over
-  // now, so the autosave counts it), and a site style on its way to the
-  // CMS or waiting behind the one that is.
+  // now, so the autosave counts it), a site style on its way to the
+  // CMS or waiting behind the one that is, and a header and footer changed
+  // in their panel and not saved, or on their way.
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       ui.getState().pending.deliver();
       const style = styleQueue.current;
-      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
+      const { site, siteDraft } = ui.getState();
+      const siteWaiting = siteSaving.current || (siteDraft !== null && site !== null && !sameJson(siteDraft, siteValues(site)));
+      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null || siteWaiting;
       if (unsaved) event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
@@ -817,8 +890,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const session = useMemo<Session>(() => ({
     pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
     openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
+    siteSave, saveSite, reloadSite, pageSections,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, siteSave, saveSite, reloadSite, pageSections, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);

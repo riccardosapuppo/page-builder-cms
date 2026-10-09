@@ -1,7 +1,8 @@
 // The sidebar: its Page and Block tabs follow the selection, and either can
 // be chosen by hand, the arrows moving between them; the Page tab holds the
-// page's own settings and the way to the site style, which opens a level
-// below and closes back to it; the sidebar hides and comes back, the focus
+// page's own settings and the ways to the header and footer (where the
+// storage keeps a change of them) and to the site style, which open a level
+// below and close back to it; the sidebar hides and comes back, the focus
 // going to the top bar's key and back in.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -117,6 +118,35 @@ test("Site style opens a level below Page, and closes back to it, the focus on t
   expect(tab("Page").getAttribute("aria-selected")).toBe("true");
   expect(kit.store.getState().selection).toBe("q1");
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
+});
+
+test("Header and footer opens a level below Page beside Site style, on the site's name, and closes back to it, the focus on the way in", async () => {
+  const capabilities = { publish: true, schedule: false, responses: false, headerFooter: true, imageVariants: false, livePages: true };
+  const kit = editorKit({ document: page(), session: { current, capabilities } });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "Lead.", text: "Text." }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+  kit.render(<Sidebar />);
+  const link = screen.getByRole("button", { name: "Header and footer" });
+  expect(document.getElementById(link.getAttribute("aria-describedby")!)?.textContent).toBe("Name, menu, button and footer of every page");
+  // Beside Site style, at the foot of the Page tab.
+  expect([...screen.getByRole("tabpanel").querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Header and footer", "Site style"]);
+  fireEvent.click(link);
+  expect(kit.ui.getState().tray).toBe("header-footer");
+  const panel = screen.getByRole("complementary", { name: "Header and footer" });
+  await waitFor(() => expect(document.activeElement).toBe(within(panel).getByLabelText("Site name")));
+  // A change left waiting is said on the way in, once back on the Page tab.
+  fireEvent.change(within(panel).getByLabelText("Site name"), { target: { value: "Northshore" } });
+  fireEvent.click(within(panel).getByRole("button", { name: "Back to Page" }));
+  expect(kit.ui.getState().tray).toBe("edit");
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Header and footer" })));
+  expect(document.getElementById(screen.getByRole("button", { name: "Header and footer" }).getAttribute("aria-describedby")!)?.textContent).toBe("Changes not saved yet");
+});
+
+test("a storage that keeps no change of the header and footer has no way to them", () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  kit.render(<Sidebar />);
+  expect(kit.ui.getState().tray).toBe("edit");
+  expect(screen.queryByRole("button", { name: "Header and footer" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Site style" })).toBeTruthy();
 });
 
 test("over the site style too, the sidebar's close button hides the sidebar, which comes back on the site style", async () => {

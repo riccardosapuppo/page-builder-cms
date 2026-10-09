@@ -8,14 +8,21 @@
 // block is dragged its settings wait: the Block tab says what moves and
 // where from, its groups closed and out of reach, and the Page tab is
 // inert, since the page changes under the drag. Site
-// style opens a level below Page, in the sidebar's place, and closes back
-// to it. The top bar's sidebar key, or the sidebar's own close button,
-// hides it, and the canvas takes its room.
+// style, and the header and footer where the storage keeps a change of
+// them (capabilities.headerFooter), open a level below Page, in the
+// sidebar's place, and close back to it; a click on the header or the
+// footer on the canvas opens the second too. The top bar's sidebar key,
+// or the sidebar's own close button, hides it, and the canvas takes its
+// room.
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { sameJson } from "../document/json.ts";
 import { afterRender } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
+import { siteValues } from "./header-footer.ts";
+import { focusSiteField, HeaderFooterPanel } from "./HeaderFooterPanel.tsx";
 import { Icon } from "./icons.tsx";
 import { BlockPanel, MovingPanel, PagePanel } from "./panels/EditPanel.tsx";
+import { useOptionalSession } from "./session.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
 import type { SideTab, UiStore } from "./ui-store.ts";
 
@@ -28,6 +35,20 @@ const TAB_NAMES: Readonly<Record<Tab, string>> = { page: "Page", block: "Block" 
 export function openSiteStyle(ui: UiStore): void {
   ui.setState({ sidebarOpen: true, tray: "site-style" });
   afterRender(() => document.querySelector<HTMLElement>(".site-style [data-autofocus]")?.focus());
+}
+
+// Opens the header and footer in the sidebar the same way, the focus on
+// the value `field` points at ("/menu/2/label"), else on the site's name.
+export function openHeaderFooter(ui: UiStore, field = "/name"): void {
+  ui.setState({ sidebarOpen: true, tray: "header-footer" });
+  focusSiteField(field);
+}
+
+// A level below Page, back to it: the Page tab, whatever is selected, the
+// focus on the way back in (the entry that opened the level).
+function backToPage(ui: UiStore, selection: string | null, entry: string): void {
+  ui.setState({ tray: "edit", sideTab: { tab: "page", selection } });
+  afterRender(() => document.querySelector<HTMLElement>(`.sidebar [${entry}]`)?.focus());
 }
 
 // Hides or shows the sidebar. Hidden from inside, the focus goes to the top
@@ -49,15 +70,14 @@ export function Sidebar() {
   if (tray === "site-style") {
     return (
       <aside className="sidebar chrome" aria-label="Site style">
-        <SiteStylePanel
-          onClose={() => {
-            // A level up: the Page tab, whatever is selected, the focus on
-            // the way back in.
-            ui.setState({ tray: "edit", sideTab: { tab: "page", selection: store.getState().selection } });
-            afterRender(() => document.querySelector<HTMLElement>(".sidebar [data-site-style]")?.focus());
-          }}
-          onHide={() => toggleSidebar(ui)}
-        />
+        <SiteStylePanel onClose={() => backToPage(ui, store.getState().selection, "data-site-style")} onHide={() => toggleSidebar(ui)} />
+      </aside>
+    );
+  }
+  if (tray === "header-footer") {
+    return (
+      <aside className="sidebar chrome" aria-label="Header and footer">
+        <HeaderFooterPanel onClose={() => backToPage(ui, store.getState().selection, "data-header-footer")} onHide={() => toggleSidebar(ui)} />
       </aside>
     );
   }
@@ -129,14 +149,27 @@ function Settings() {
 function PageTab() {
   const { ui } = useEnv();
   const id = useId();
+  // The header and footer only where the storage keeps a change of them;
+  // a change not saved yet is said under their name.
+  const headerFooter = useOptionalSession()?.capabilities.headerFooter ?? false;
+  const waiting = useUi((u) => u.siteDraft !== null && u.site !== null && !sameJson(u.siteDraft, siteValues(u.site)));
   return (
     <PagePanel
       after={(
-        <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
-          <Icon name="style" />
-          <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
-          <Icon name="chevron-right" className="i i-xs" />
-        </button>
+        <>
+          {headerFooter && (
+            <button className="sb-link" type="button" data-header-footer="" aria-label="Header and footer" aria-describedby={`${id}-frame`} onClick={() => openHeaderFooter(ui)}>
+              <Icon name="globe" />
+              <span><strong>Header and footer</strong><small id={`${id}-frame`}>{waiting ? "Changes not saved yet" : "Name, menu, button and footer of every page"}</small></span>
+              <Icon name="chevron-right" className="i i-xs" />
+            </button>
+          )}
+          <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
+            <Icon name="style" />
+            <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
+            <Icon name="chevron-right" className="i i-xs" />
+          </button>
+        </>
       )}
     />
   );

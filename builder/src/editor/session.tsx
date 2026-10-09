@@ -2,12 +2,13 @@
 // pages, the one open, its autosave, and the operations on pages that are
 // not commands on the document (open another, make a new one, change its
 // address, preview it, publish it now or at a set time, settle a conflict,
-// keep a version of it and restore one), and the site style's one way to
-// the server. Given to the interface through a context, so a panel or a
-// test can be drawn with a session of its own making.
+// keep a version of it and restore one), and the one way to the server of
+// the site style and of the header and footer. Given to the interface
+// through a context, so a panel or a test can be drawn with a session of
+// its own making.
 import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
-import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, Schedule, SiteStyleChange, Version } from "../storage/adapter.ts";
+import type { Capabilities, FieldError, NewPage, PageLinks, PageSummary, Published, Schedule, SiteStyleChange, SiteValues, Version } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
 
 export interface OpenPage {
@@ -31,6 +32,28 @@ export interface OpenPage {
 // with the reason. Kept apart from the page's own save state: the two are
 // different things saved by different requests.
 export type StyleSave = { phase: "idle" | "saving" | "saved" } | { phase: "failed"; message: string };
+
+// Where the header and footer's last save is: on its way, kept, refused
+// with the reason (the values at fault are the interface store's
+// siteErrors), or stopped by a change another tab saved first, held here
+// with the revision it is at until the person chooses: take it (reload),
+// or save this tab's over it.
+export type SiteSave =
+  | { phase: "idle" | "saving" | "saved" }
+  // marked: refused for values the panel marks, each at its place.
+  | { phase: "failed"; message: string; marked: boolean }
+  | { phase: "conflict"; revision: number; theirs: SiteValues };
+
+// What a save of the header and footer came to, for the panel to put the
+// focus where the person has to look next.
+export type SiteSaveResult = "saved" | "invalid" | "conflict" | "failed" | "busy";
+
+// A section a link can lead to: its anchor, and the label the editor
+// names it by, if it has one.
+export interface SectionTarget {
+  anchor: string;
+  label: string | null;
+}
 
 // The open page's kept versions, newest first, as the CMS last listed them:
 // kept on screen while they are read again, with why the last read failed,
@@ -90,6 +113,20 @@ export interface Session {
   keepMine(): Promise<void> | void;
   // The site style: the canvas follows at once, the server after.
   saveSiteStyle(change: SiteStyleChange): void;
+  // The header and footer: the canvas follows the panel's values as they
+  // are typed (the interface store's siteDraft), and they reach the
+  // storage, and every published page, when the person saves them.
+  siteSave: SiteSave;
+  // Checks the values as the storage will, then sends them whole from the
+  // revision read (or `from`, the revision a conflict named, to save them
+  // over another tab's); says what it came to.
+  saveSite(values: SiteValues, from?: number): Promise<SiteSaveResult>;
+  // Takes the header and footer as the storage has them now, leaving this
+  // tab's change.
+  reloadSite(): Promise<void>;
+  // The sections of a page a link can lead to, from its draft; null when
+  // the page cannot be read.
+  pageSections(pageId: number): Promise<readonly SectionTarget[] | null>;
   // The open page's versions (./HistoryPanel.tsx), read again by
   // loadVersions().
   versions: VersionList;
@@ -150,6 +187,10 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     reload: async () => {},
     keepMine: () => {},
     saveSiteStyle: () => {},
+    siteSave: { phase: "idle" },
+    saveSite: async () => "saved",
+    reloadSite: async () => {},
+    pageSections: async () => [],
     versions: NO_VERSIONS,
     loadVersions: () => {},
     saveVersion: async () => null,
