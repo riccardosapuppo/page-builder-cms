@@ -63,11 +63,12 @@ npm run e2e:browser
 ```
 
 The first starts a CMS of its own and runs the battery on the CMS's
-adapter: on 8 October 2026 the file of the battery ran 37 tests, the 35
+adapter: on 9 October 2026 the file of the battery ran 52 tests, the 50
 cases each named once and none skipped, with two checks of the battery
 itself. The second runs it on the browser's adapter in Chromium, with real
-IndexedDB: 43 tests passed and 7 were skipped, the cases that need a server,
-named in the first test. With the revision check
+IndexedDB: 44 tests passed (the 43 cases it can run and its check of the
+battery) and 7 were skipped, the cases that need a server, named in the
+first test. With the revision check
 removed from the browser's adapter, five tests failed; with a refused
 open or a full quota not mapped to its sentence, the test of each failed
 (`builder/src/storage/README.md` lists the faults planted).
