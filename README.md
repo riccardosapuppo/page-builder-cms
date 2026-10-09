@@ -257,7 +257,7 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   [The note](docs/decisions/published-pages-cached-by-key.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
-  it runs 28 of the 35 cases.
+  it runs 43 of the 50 cases.
   [The note](docs/decisions/storage-behind-an-adapter.md).
 - **The browser demo is a build of its own, and draws what the CMS would
   serve.** Cost: two entry points to keep in step, and no demo online while

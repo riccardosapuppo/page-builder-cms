@@ -45,7 +45,7 @@ editor would meet them as bugs.
 - **A rule in two languages again.** The browser's checks are a copy of
   Ruby's. A test reads the Ruby files and fails when they drift, but the
   copy is still work every time the CMS refuses something new.
-- **The browser's adapter is weaker, honestly.** It runs 28 of the 35
+- **The browser's adapter is weaker, honestly.** It runs 43 of the 50
   cases: scheduling and form responses need a server and are not there.
   What it keeps lives in one browser; clearing the site's data deletes it.
 - **Every call is asynchronous and can fail in the same four ways**, even
