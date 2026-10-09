@@ -842,6 +842,12 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       const problem = refusal(await env.adapter.uploadMedia({ file: large, width: 3, height: 2 }), "a file one byte over the limit");
       env.expect(problem.errors.map((e) => e.pointer)).toEqual(["/file"]);
       env.expect((await env.adapter.listMedia()).filter((m) => m.filename === name)).toEqual([]);
+      // The limit itself is taken: a library that stopped one byte short
+      // would pass the refusal above.
+      const largest = value(await env.adapter.uploadMedia({ file: new File([bytes(MAX_UPLOAD_BYTES)], `${env.unique("largest")}.png`, { type: "image/png" }), width: 3, height: 2 }), "a file of the largest size the library takes");
+      env.expect(largest.byteSize).toBe(MAX_UPLOAD_BYTES);
+      // Ten megabytes the other cases do not need, in the storage they share.
+      env.expect(value(await env.adapter.deleteMedia(largest.id), "deleting the largest file")).toBe(null);
     },
   },
   {
