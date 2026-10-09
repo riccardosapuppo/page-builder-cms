@@ -189,6 +189,10 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-menu-sheet a:hover { background: var(--sw-soft); }
 .sw-footer { background: var(--sw-text); color: var(--sw-background); }
 .sw-footer-row { display: flex; align-items: center; gap: 14px; padding-block: var(--space-xxl); font-size: 16px; }
+/* The words are a flex item, whose least width is that of its longest word:
+   an address or a compound word in the footer would hold the row wider than
+   the window. It breaks inside the word when it must, as the brand's does. */
+.sw-footer-row p { min-width: 0; overflow-wrap: anywhere; }
 .sw-footer strong { font-weight: 600; }
 
 /* ---------- Icon box ---------- */

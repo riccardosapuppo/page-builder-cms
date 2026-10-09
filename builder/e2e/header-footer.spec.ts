@@ -8,10 +8,13 @@
 // and footer at its next visit, the CMS drawing again only the page around
 // the blocks, which it reads back from Solid Cache (counted in its
 // database, helpers/cms-store.ts). On a phone 375 wide the new header
-// still fits. Then the panel by the keyboard alone, with axe; a save
-// another tab made first; and a refusal from the storage, said at its
-// value. The tests of a run share one CMS, so each puts the header and
-// footer back as it found them.
+// still fits. A footer of words that cannot break (an e-mail address, a
+// web address, a long compound word), which the panel takes, stays inside
+// a window of 375 and of 320, and inside the editor's phone view. Then the
+// panel by the keyboard alone, with axe; a save another tab made first;
+// and a refusal from the storage, said at its value. The tests of a run
+// share one CMS, so each puts the header and footer back as it found
+// them.
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { fragments } from "./helpers/cms-store.ts";
@@ -64,6 +67,22 @@ async function headerFit(page: Page, header: string) {
       apart,
       rows: brand.bottom <= menu.top ? 2 : 1,
       height: Math.round(element.querySelector(".sw-header-row")!.getBoundingClientRect().height),
+    };
+  });
+}
+
+// How a footer fits where it is drawn: how far the window and the page root
+// (a published page's window, the canvas's frame) scroll sideways, and
+// whether the footer's words stay inside the root.
+async function footerFit(page: Page, footer: string) {
+  return page.locator(footer).evaluate((element) => {
+    const site = element.closest(".site")!;
+    const root = site.getBoundingClientRect();
+    const words = element.querySelector("p")!.getBoundingClientRect();
+    return {
+      window: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      site: site.scrollWidth - site.clientWidth,
+      inside: words.left >= root.left - 0.5 && words.right <= root.right + 0.5,
     };
   });
 }
@@ -174,6 +193,46 @@ test("the name changed, a link added to a page's section, the button taken away,
     expect(drawn).toMatchObject({ inside: true, apart: true });
   } finally {
     await reader.close();
+    await putBack(request, found);
+  }
+});
+
+// The panel takes any words up to the footer's limits, so a footer can hold
+// one that has no place to break. The footer is a flex row, whose item is as
+// wide as its longest word unless it may break inside it: without that, the
+// address held the page wider than the window by up to 166 px at 320.
+test("a footer of words that cannot break stays inside the window: published at 375 and 320, and in the editor's phone view", async ({ page, request, browser }) => {
+  const found = await siteNow(request);
+  const { id, slug } = await tidePage(request);
+  expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+  const footers = [
+    { lead: "Write to", text: "membership@slackwaterswimmingclub.example" },
+    { lead: "Tide tables:", text: "https://www.tidetablesforthenorthbay.example/slackwater?days=7" },
+    { lead: "Schwimmvereinsmitgliedschaftsbedingungen.", text: "Gezeitentabellenhinweis." },
+  ];
+  try {
+    for (const footer of footers) {
+      const { revision } = await siteNow(request);
+      const put = await request.put(`${cms()}/api/site`, { data: { revision, name: found.name, menu: found.menu, action: found.action, footer } });
+      expect(put.status(), await put.text()).toBe(200);
+      for (const width of [375, 320]) {
+        const phone = await browser.newContext({ viewport: { width, height: 812 }, locale: "en-US", timezoneId: "UTC" });
+        try {
+          const tab = await phone.newPage();
+          await tab.goto(`${cms()}/${slug}`);
+          await tab.evaluate(() => document.fonts.ready);
+          await expect(tab.locator("footer.sw-footer p")).toHaveText(`${footer.lead} ${footer.text}`);
+          expect(await footerFit(tab, "footer.sw-footer"), `"${footer.text}" published, ${width} wide`).toEqual({ window: 0, site: 0, inside: true });
+        } finally {
+          await phone.close();
+        }
+      }
+      await open(page, id);
+      await device(page, "Phone").click();
+      await expect(page.locator('.canvas [data-theme-part="footer"] p')).toHaveText(`${footer.lead} ${footer.text}`);
+      expect(await footerFit(page, '.canvas [data-theme-part="footer"]'), `"${footer.text}" in the editor's phone view`).toEqual({ window: 0, site: 0, inside: true });
+    }
+  } finally {
     await putBack(request, found);
   }
 });
