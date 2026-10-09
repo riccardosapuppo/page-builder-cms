@@ -10,10 +10,12 @@
 // - nothing is restored while the save cannot be confirmed;
 // - a restore or a version whose answer never comes says it may have been
 //   made, and nothing on the page moves;
-// - "Save version" sends the edit waiting first, so the version holds it.
+// - "Save version" sends the edit waiting first, so the version holds it;
+// - a read of the versions that only a reload gets past offers Reload this
+//   tab, any other failed read Try again.
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { counter, page } from "../../test/document-page.ts";
 import { openGroups } from "../../test/editor-kit.tsx";
 import { FakeClock } from "../../test/fake-clock.ts";
@@ -22,6 +24,7 @@ import type { PageDocument } from "../shared/document.ts";
 import { StorageError, type DraftSave, type Page, type SiteStyle, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE } from "./App.tsx";
+import { thisTab } from "./SaveStatus.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
@@ -228,4 +231,47 @@ test("Save version sends the edit waiting first, so the version holds what the c
   await waitFor(() => expect(within(screen.getByRole("list", { name: "Versions" })).getAllByRole("listitem")[1]!.textContent).toContain("Before the winter series"));
   // The undo history is the page's own, and stays.
   expect(env.store.getState().past).toHaveLength(1);
+});
+
+// A read of the versions refused in words that only a reload of this tab
+// gets past (the browser's storage deleted in another tab: every read is
+// refused the same way from then on) offers Reload this tab, not a Try
+// again that would be refused again; a read that may go through next time
+// (no answer) keeps Try again.
+test("a read of the versions only a reload gets past offers Reload this tab; one that failed for want of an answer offers Try again", async () => {
+  const site = new VersionSite();
+  const adapter = site.adapter();
+  const listVersions = adapter.listVersions.bind(adapter);
+  let failure: StorageError | null = null;
+  adapter.listVersions = async (id) => {
+    if (failure) throw failure;
+    return listVersions(id);
+  };
+  const { env } = await start(site, adapter);
+  const reopen = async () => {
+    act(() => env.ui.getState().setHistoryOpen(false));
+    act(() => env.ui.getState().setHistoryOpen(true));
+    return within(await screen.findByRole("complementary", { name: "History" }));
+  };
+  const reloads = vi.spyOn(thisTab, "reload").mockImplementation(() => {});
+  try {
+    const deleted = "This browser's storage for the editor was deleted in another tab: reload this tab.";
+    failure = new StorageError({ kind: "refused", status: 0, code: "storage_deleted", message: deleted });
+    let history = await reopen();
+    await history.findByText(`The versions could not be read: ${deleted}`);
+    expect(history.queryByRole("button", { name: "Try again" })).toBeNull();
+    fireEvent.click(history.getByRole("button", { name: "Reload this tab" }));
+    expect(reloads).toHaveBeenCalledTimes(1);
+
+    failure = new StorageError({ kind: "unknown", cause: "network", status: null, message: "No answer from the CMS (Failed to fetch)." });
+    history = await reopen();
+    await history.findByText("The versions could not be read: No answer from the CMS (Failed to fetch).");
+    expect(history.queryByRole("button", { name: "Reload this tab" })).toBeNull();
+    failure = null;
+    fireEvent.click(history.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(history.getAllByRole("button", { name: /^Restore: / })).toHaveLength(site.versions.length));
+    expect(history.queryByText(/could not be read/)).toBeNull();
+  } finally {
+    reloads.mockRestore();
+  }
 });

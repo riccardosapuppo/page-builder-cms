@@ -337,7 +337,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   }, [adapter, current, refreshPages]);
 
   // The open page's versions, read again; the list on screen stays until
-  // the answer replaces it, and a read that fails says why beside it.
+  // the answer replaces it, and a read that fails says why beside it, and
+  // whether only a reload of this tab gets past it.
   const loadVersions = useCallback(() => {
     const page = opened.current;
     if (!page) return;
@@ -348,7 +349,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         if (versionReads.current === ticket) setVersions({ phase: "ready", items, message: null });
       },
       (error: unknown) => {
-        if (versionReads.current === ticket) setVersions((list) => ({ ...list, phase: "failed", message: `The versions could not be read: ${describe(error)}` }));
+        if (versionReads.current === ticket) setVersions((list) => ({ ...list, phase: "failed", message: `The versions could not be read: ${describe(error)}`, reload: isStorageError(error) && onlyAReloadHelps(error.failure) }));
       },
     );
   }, [adapter]);

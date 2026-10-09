@@ -11,18 +11,19 @@
 // - an older tab of the editor, open while the next build upgrades the
 //   database, lets go of it at once and says, on its next save, to reload;
 // - the database deleted from another tab: this tab lets go of it, its
-//   next save says so, and Reload this tab reloads it;
+//   next save says so, and Reload this tab reloads it; the history's
+//   versions, read then, say so too, with Reload this tab;
 // - a database made by a newer build than this one: it cannot be opened, and
 //   the editor says to reload, and offers Reload this tab;
 // - the browser refusing the open for want of room.
 // What a save is refused for is said in words on the page (an alert), not
 // only in the top bar's tooltip, which a keyboard, a touch screen and most
 // screen readers never reach.
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { remoteAdapter, storagePage } from "./remote.ts";
 import { expect, seedPage, test } from "./fixtures.ts";
 import { png } from "../helpers/images.ts";
-import { column, heading, open, section } from "../helpers/site.ts";
+import { column, drawer, heading, open, section } from "../helpers/site.ts";
 import { retitle, saveState } from "../helpers/heading.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -130,10 +131,9 @@ async function expectSaid(page: Page, why: string): Promise<void> {
   await expect(alert.getByRole("button", { name: "Try again" })).toHaveCount(0);
 }
 
-test("the database deleted from another tab: this tab lets go of it, and its next save says so, in words", async ({ page, context }) => {
-  const id = await seedPage(page, "Deleted under it", story);
-  await open(page, id);
-
+// The database deleted from another tab of this browser, which this tab
+// lets go of when asked.
+async function deleteFromAnotherTab(context: BrowserContext): Promise<void> {
   const other = await storagePage(await context.newPage());
   await other.evaluate(() => new Promise<void>((done, failed) => {
     const deleting = indexedDB.deleteDatabase("page-builder-cms");
@@ -141,6 +141,12 @@ test("the database deleted from another tab: this tab lets go of it, and its nex
     deleting.onerror = () => failed(deleting.error);
     deleting.onblocked = () => failed(new Error("the delete waits for a tab that holds the database"));
   }));
+}
+
+test("the database deleted from another tab: this tab lets go of it, and its next save says so, in words", async ({ page, context }) => {
+  const id = await seedPage(page, "Deleted under it", story);
+  await open(page, id);
+  await deleteFromAnotherTab(context);
 
   await retitle(page, "Written after the deletion");
   await expect(saveState(page)).toHaveText("Not saved");
@@ -160,6 +166,23 @@ test("the database deleted from another tab: this tab lets go of it, and its nex
   await reloaded;
   expect(asked).toEqual(["beforeunload"]);
   await expect(page.getByRole("alert").filter({ hasText: "Not saved." })).toHaveCount(0);
+});
+
+test("the database deleted from another tab: the history's versions say so, and offer Reload this tab, not a Try again refused again", async ({ page, context }) => {
+  const id = await seedPage(page, "Versions gone", story);
+  await open(page, id);
+  await deleteFromAnotherTab(context);
+
+  const failed = (await drawer(page, "History")).locator(".hist-failed");
+  await expect(failed.getByText(`The versions could not be read: ${SAID.deleted}`)).toBeVisible();
+  await expect(failed.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  const reloaded = page.waitForEvent("load");
+  await failed.getByRole("button", { name: "Reload this tab" }).click();
+  await reloaded;
+  // Reloaded, this tab opens the storage anew, made again as on a first
+  // visit, and the editor starts on it.
+  await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a database made by a newer build than this one cannot be opened, and the editor says to reload and offers Reload this tab", async ({ page, context }) => {

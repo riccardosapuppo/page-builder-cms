@@ -33,11 +33,15 @@ export interface OpenPage {
 export type StyleSave = { phase: "idle" | "saving" | "saved" } | { phase: "failed"; message: string };
 
 // The open page's kept versions, newest first, as the CMS last listed them:
-// kept on screen while they are read again, with why the last read failed.
+// kept on screen while they are read again, with why the last read failed,
+// and whether only a reload of this tab gets past that (the browser's
+// storage deleted or upgraded in another tab: ./SaveStatus.tsx,
+// RELOAD_ONLY), where reading again would be refused again.
 export interface VersionList {
   phase: "idle" | "loading" | "ready" | "failed";
   items: readonly Version[];
   message: string | null;
+  reload?: boolean;
 }
 
 export const NO_VERSIONS: VersionList = { phase: "idle", items: [], message: null };

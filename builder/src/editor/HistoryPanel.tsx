@@ -23,7 +23,7 @@ import { draftLine, nameProblem, NAME_MAX, serverTime, stepTime, versionWords } 
 import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { changesNotLive } from "./Publish.tsx";
-import { useSaveSnapshot } from "./SaveStatus.tsx";
+import { thisTab, useSaveSnapshot } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
 import { publishWords, useSession } from "./session.tsx";
 import { siteWhen } from "./site-time.ts";
@@ -243,7 +243,9 @@ export function HistoryPanel() {
       {versions.phase === "failed" && (
         <div className="hist-failed hint-pad">
           <p className="error"><Icon name="error" />{versions.message}</p>
-          <button className="btn btn-small btn-secondary" type="button" onClick={loadVersions}>Try again</button>
+          {versions.reload
+            ? <button className="btn btn-small btn-secondary" type="button" onClick={() => thisTab.reload()}>Reload this tab</button>
+            : <button className="btn btn-small btn-secondary" type="button" onClick={loadVersions}>Try again</button>}
         </div>
       )}
       <p className="hint hint-pad">{published.restoring}</p>
