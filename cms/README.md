@@ -1084,6 +1084,18 @@ of 2.17:1 and 1:1 on the dark bands, paper text on paper, and a link at
 the missing asset, which came back 404 with the year-long immutable
 header.
 
+Since 9 October 2026 it also changes the header and footer through
+`PUT /api/site`: the old ETag then gets the page under the new header,
+a 200, and Solid Cache gains the page's own entry alone, every block
+read back (54 fragments, then 55). It then sets six headers in turn (the
+design's; a fifth link; every length at its limit, in words of average
+width and in the widest letter; three links in another script; no links
+and no button) and draws the home page in Chromium at 23 widths from 320
+to 1440 px: nothing leaves the page, the links show exactly where
+`data-fold` says, and there they stand on one row with the brand. On
+9 October 2026, on Windows on 3901, it printed
+`RESULT: 58 checks passed`.
+
 `npm run test:tools`, from the repository root, tests how the check reads
 who listens from netstat, ss and lsof, on any system, with a sample of
 each system's output that holds lines to skip next to the ones to find.
