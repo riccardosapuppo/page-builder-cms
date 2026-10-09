@@ -1034,6 +1034,30 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       }
     },
   },
+  {
+    name: "a header and footer with half of a surrogate pair in any text are no text the CMS reads: the whole change is refused as malformed JSON, and nothing is stored",
+    needs: ["headerFooter"],
+    async run(env) {
+      const before = await env.adapter.getSite();
+      const malformed = { kind: "refused", status: 400, code: "malformed_json" };
+      const link = { label: "Tides", href: "/tides" };
+      for (const text of ["\ud800", "\udfff", `a\ud83d`]) {
+        const shown = JSON.stringify(text);
+        const changes: Array<[string, SiteValues]> = [
+          ["the name", { ...valuesOf(before), name: text }],
+          ["a link's words", { ...valuesOf(before), menu: [{ ...link, label: text }] }],
+          ["the button's address", { ...valuesOf(before), action: { label: "Join", href: `/join#${text}` } }],
+          ["the footer's words", { ...valuesOf(before), footer: { ...before.footer, text } }],
+          // A name of a member is text as well.
+          ["the name of a link's member", { ...valuesOf(before), menu: [{ ...link, [`key${text}`]: "x" } as typeof link] }],
+        ];
+        for (const [where, change] of changes) {
+          env.expect(await failure(env.adapter.setSite({ revision: before.revision, ...change }), `${where} ${shown}`), `${where} ${shown}`).toMatchObject(malformed);
+        }
+      }
+      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(before);
+    },
+  },
 
   // ---------------------------------------------------- form responses
   {
