@@ -9,7 +9,8 @@
 //   on to it: the next build cannot upgrade it, says which tab to close,
 //   says so again on each Try again until then, and starts on the first
 //   once it is closed; a second tab of the next build, whose open the
-//   browser only puts in line behind the first one's, says the same;
+//   browser only puts in line behind the first one's, says the same, and
+//   so does a third opened after the first held-up tab was closed;
 // - an older tab of the editor, open while the next build upgrades the
 //   database, lets go of it at once and says, on its next save, to reload;
 // - the database deleted from another tab: this tab lets go of it, its
@@ -164,6 +165,33 @@ test("a second tab of the next build, opened while the first is held up, waits i
   await page.getByRole("alert").getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("No pages yet", { exact: false }).first()).toBeVisible();
+});
+
+test("the first held-up tab closed while the older tab holds on: a tab opened after it is still told why, not left on Opening the page…", async ({ page, context }) => {
+  const older = await holdFromOlderTab(context);
+  await page.goto("/e2e/browser/next-editor.html");
+  await expect(page.getByRole("alert").getByText(cannotStart(SAID.blocked))).toBeVisible();
+  const second = await context.newPage();
+  await second.goto("/e2e/browser/next-editor.html");
+  await expect(second.getByRole("alert").getByText(cannotStart(SAID.blocked))).toBeVisible();
+
+  // The first held-up tab goes, and the browser tells the second's open
+  // nothing more. The second holds the lock it was told through, so a tab
+  // opened now is told too.
+  await page.close();
+  const third = await context.newPage();
+  await third.goto("/e2e/browser/next-editor.html");
+  await expect(third.getByRole("alert").getByText(cannotStart(SAID.blocked))).toBeVisible();
+  await expect(third.getByRole("status").filter({ hasText: "Opening the page…" })).toHaveCount(0);
+
+  // The older tab lets go: each tab starts on Try again.
+  await letGo(older);
+  await openedAfter(third);
+  for (const tab of [second, third]) {
+    await tab.getByRole("alert").getByRole("button", { name: "Try again" }).click();
+    await expect(tab.getByRole("alert")).toHaveCount(0);
+    await expect(tab.getByText("No pages yet", { exact: false }).first()).toBeVisible();
+  }
 });
 
 test("an older tab of the editor lets go of the database when the next build opens it, and its next save says to reload", async ({ page, context }) => {

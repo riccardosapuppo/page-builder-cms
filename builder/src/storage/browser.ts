@@ -274,8 +274,11 @@ function randomId(): string {
 // browser tells it nothing. So an open held up holds a lock named after
 // the database (the Web Locks API) until it is through, and an open still
 // waiting looks for that lock, at once and then every half second: found,
-// it is held up by the same tab, and says so. A browser without the API
-// (all current ones have it) only waits.
+// it is held up by the same tab, says so, and holds the lock too. Closing
+// the first held-up tab then still leaves the lock held, and a tab opened
+// after it is told as well (the browser tells the second nothing more when
+// the first goes). A browser without the API (all current ones have it)
+// only waits.
 const LOOK_AGAIN_MS = 500;
 
 interface PlaceInLine {
@@ -296,31 +299,36 @@ function placeInLine(name: string, heldUpAhead: () => void): PlaceInLine {
     if (timer !== null) clearTimeout(timer);
     timer = null;
   };
+  const hold = () => {
+    stopLooking();
+    if (through || holding || !locks) return;
+    holding = true;
+    locks
+      .request(lockName, { mode: "shared" }, () => new Promise<void>((letGo) => {
+        release = letGo;
+        if (through) letGo();
+      }))
+      .catch(() => undefined);
+  };
   const look = () => {
     timer = null;
     if (through || holding || !locks) return;
     locks.query().then(
       (state) => {
         if (through || holding) return;
-        if (state.held?.some((lock) => lock.name === lockName)) heldUpAhead();
-        else timer = setTimeout(look, LOOK_AGAIN_MS);
+        if (state.held?.some((lock) => lock.name === lockName)) {
+          heldUpAhead();
+          hold();
+        } else {
+          timer = setTimeout(look, LOOK_AGAIN_MS);
+        }
       },
       () => undefined,
     );
   };
   look();
   return {
-    hold() {
-      stopLooking();
-      if (through || holding || !locks) return;
-      holding = true;
-      locks
-        .request(lockName, { mode: "shared" }, () => new Promise<void>((letGo) => {
-          release = letGo;
-          if (through) letGo();
-        }))
-        .catch(() => undefined);
-    },
+    hold,
     done() {
       through = true;
       stopLooking();
