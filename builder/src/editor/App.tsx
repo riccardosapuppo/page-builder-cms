@@ -50,7 +50,7 @@ import { Icon } from "./icons.tsx";
 import { MediaProvider } from "./library/context.tsx";
 import { ResponsesProvider, responsesOf } from "./responses/context.ts";
 import { Navigator } from "./Navigator.tsx";
-import { EditorKeys } from "./keys.ts";
+import { EditorKeys, MODIFIERS } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
@@ -958,31 +958,66 @@ function Bench({ status, onRetry }: { status: Status; onRetry: () => void }) {
 // One sentence about what just happened, or why nothing did.
 //
 // Dismiss takes the notice away, and the focus with it if it was there: it
-// goes back where it was, to the control the person came to Dismiss from,
-// or else to Publish (the notice most often says how a publish went), or
-// else to the page, never to the document, where the next Tab would start
-// again from the top. A click or a key elsewhere that already took the
-// focus is left alone.
+// goes back to the control the person came to Dismiss from, else to Publish
+// (the notice most often says how a publish went), else to the page, never
+// to the document, where the next Tab would start again from the top.
+//
+// Came from by a click, a shortcut or the editor, that is the last control
+// the focus was on. Came from by a walk with Tab, it is where the walk set
+// out from, the last control the person chose (clicked, pressed a key in,
+// or was put on) rather than only passed through: the notice comes last in
+// the page, so the walk's last step before it is whatever control ends the
+// page (in the demo, the bottom line's link), and from there the next Tab
+// would have nowhere to go but out of the page. A click or a key elsewhere
+// that already took the focus is left alone.
 export function Notice() {
   const notice = useUi((u) => u.notice);
   const link = useUi((u) => u.noticeLink);
   const say = useUi((u) => u.say);
-  const before = useRef<HTMLElement | null>(null);
+  const last = useRef<HTMLElement | null>(null);
+  const chosen = useRef<HTMLElement | null>(null);
+  const walkedIn = useRef(false);
   useEffect(() => {
-    const note = (event: FocusEvent) => {
-      const target = event.target;
-      if (target instanceof HTMLElement && !target.closest(".notice")) before.current = target;
+    let walking = false;
+    const inNotice = (target: EventTarget | null) => target instanceof Element && target.closest(".notice") !== null;
+    const control = (target: EventTarget | null): target is HTMLElement => target instanceof HTMLElement && target !== document.body && !inNotice(target);
+    const key = (event: KeyboardEvent) => {
+      // Shift, held for Shift+Tab, is neither a step nor a choice.
+      if (MODIFIERS.has(event.key)) return;
+      walking = event.key === "Tab";
+      if (!walking && control(event.target)) chosen.current = event.target;
     };
-    document.addEventListener("focusin", note);
-    return () => document.removeEventListener("focusin", note);
+    const pointer = () => {
+      walking = false;
+    };
+    const focus = (event: FocusEvent) => {
+      if (control(event.target)) {
+        last.current = event.target;
+        if (!walking) chosen.current = event.target;
+      } else if (inNotice(event.target) && !inNotice(event.relatedTarget)) {
+        walkedIn.current = walking;
+      }
+      walking = false;
+    };
+    // Captured, so a key a dialog keeps to itself is still seen.
+    document.addEventListener("keydown", key, true);
+    document.addEventListener("pointerdown", pointer, true);
+    document.addEventListener("focusin", focus, true);
+    return () => {
+      document.removeEventListener("keydown", key, true);
+      document.removeEventListener("pointerdown", pointer, true);
+      document.removeEventListener("focusin", focus, true);
+    };
   }, []);
   const dismiss = () => {
-    const back = before.current;
+    const back = walkedIn.current ? chosen.current : last.current;
     say(null);
     afterRender(() => {
       if (document.activeElement && document.activeElement !== document.body) return;
-      const target = back?.isConnected ? back : document.querySelector<HTMLElement>(".split-main") ?? document.querySelector<HTMLElement>(".canvas");
-      target?.focus();
+      for (const target of [back?.isConnected ? back : null, document.querySelector<HTMLElement>(".split-main"), document.querySelector<HTMLElement>(".canvas")]) {
+        target?.focus();
+        if (target && document.activeElement === target) return;
+      }
     });
   };
   return (

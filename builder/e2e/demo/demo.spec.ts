@@ -353,18 +353,36 @@ test("a large image is refused in this browser's words, not a CMS's", async ({ p
 test("the notice that says how Publish went can be closed from the keyboard, and the focus stays where it was", async ({ page, context }) => {
   await openDemo(page);
   const publish = page.getByRole("button", { name: "Publish", exact: true });
-  for (const key of ["Enter", "Space"]) {
+  const ways = [["focus", "Enter"], ["focus", "Space"], ["Tab", "Enter"], ["Tab", "Space"]] as const;
+  for (const [reach, key] of ways) {
     await publish.focus();
     const opened = context.waitForEvent("page");
     await page.keyboard.press("Enter");
     await (await opened).close();
     await expect(notice(page)).toContainText(PUBLISHED_LINE);
     const dismiss = notice(page).getByRole("button", { name: "Dismiss" });
-    await dismiss.focus();
+    if (reach === "focus") await dismiss.focus();
+    else {
+      // As a keyboard reaches it: Tab after Tab from Publish, through the
+      // whole editor and the demo's bottom line, which the notice follows.
+      await expect(publish).toBeFocused();
+      const source = page.locator(".demo-line").getByRole("link", { name: "Source on GitHub" });
+      const on = (control: typeof dismiss) => control.evaluate((element) => element === document.activeElement);
+      let steps = 0;
+      let passedSource = false;
+      while (!(await on(dismiss))) {
+        steps += 1;
+        expect(steps, "Tab presses from Publish to Dismiss").toBeLessThanOrEqual(80);
+        await page.keyboard.press("Tab");
+        passedSource ||= await on(source);
+      }
+      expect(passedSource, "the walk passes the demo's bottom line on its way").toBe(true);
+    }
     await page.keyboard.press(key);
     await expect(notice(page)).toHaveCount(0);
-    // Not on the document: the control it came from, and the next Tab goes
-    // on from there, not from the top of the page.
+    // Not on the document, nor on the bottom line's link, the last step of
+    // the walk: the control it came from, and the next Tab goes on from
+    // there, not from the top of the page or out of it.
     await expect(publish).toBeFocused();
     expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
     await page.keyboard.press("Tab");

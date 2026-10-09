@@ -68,7 +68,7 @@ function writes(event: KeyboardEvent): boolean {
   return [...event.key].length === 1 || ["Backspace", "Delete", "Enter", "Tab"].includes(event.key);
 }
 
-const MODIFIERS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock"]);
+export const MODIFIERS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock"]);
 
 // A text asked to open whose editor is not there yet, its code on its way
 // (./rich/tools.ts): the keys meant for it are kept for it, and none
