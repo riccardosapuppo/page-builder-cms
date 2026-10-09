@@ -7,16 +7,26 @@
 // on Rails.
 //
 // A case needing what the browser's storage does not have (a publish at a
-// time, a visitor's form: no server) is skipped, visibly, with its reason;
-// the first test names which, so a capability declared absent by mistake
-// fails it rather than skipping more cases quietly.
+// time, a visitor's form: no server; a change of the header and footer,
+// which it does not keep yet) is skipped, visibly, with its reason; the
+// first test names which, so a capability declared absent by mistake fails
+// it rather than skipping more cases quietly.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import type { Capabilities } from "../../src/storage/adapter.ts";
+import { readSiteTheme } from "../../build/site-theme.ts";
+import type { Capabilities, SiteValues } from "../../src/storage/adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv, type Expect } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";
 
+// The header and footer the storage starts with: config/site.yml's, which
+// the editor's build reads for it.
+const theme = readSiteTheme();
+const siteDefaults = { name: theme.name, menu: theme.menu, action: theme.action, footer: theme.footer } as SiteValues;
+
 // What the browser's storage cannot do, and so the cases it skips.
 const SKIPPED: Readonly<Record<string, string>> = {
+  "a change of the header and footer is kept whole at the next revision, with its time, the time zone left as it was; the same change again writes nothing": "headerFooter",
+  "a header and footer the schema refuses are refused at the pointer of each value at fault, and nothing is stored": "headerFooter",
+  "a change from a revision another tab has moved past is a conflict holding what is there now; that sent from the old revision is answered as saved, and the change goes through from the new one": "headerFooter",
   "a publish set for a time waits on the page, listed, with the draft it was set from kept as a scheduled version": "schedule",
   "a second schedule replaces the first; a cancel settles one, and cancelling one no longer pending says what became of it": "schedule",
   "a time already past or more than a year away, and a revision already live, are refused at their field; a revision moved past is a conflict": "schedule",
@@ -52,6 +62,7 @@ function env(): ContractEnv {
     unique: (prefix) => `${prefix}-${run}-${++names}`,
     readBytes: async (url) => Uint8Array.from(await first.evaluate((address) => window.storagePage!.bytes(address), url)),
     sendForm: () => Promise.reject(new Error("the browser's storage keeps no form answers: no case that needs them runs here")),
+    siteDefaults,
   };
 }
 

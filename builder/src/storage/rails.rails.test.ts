@@ -2,7 +2,9 @@
 //
 // The storage battery (contract.ts) on the Rails adapter, against a CMS
 // this run started for itself (e2e/harness/vitest-rails.ts): its own
-// databases and Active Storage root, deleted at the end of the run.
+// databases and Active Storage root, deleted at the end of the run, so the
+// header and footer are the defaults until the battery changes them (no
+// other file of the run changes them).
 //
 // jsdom supplies what @rails/activestorage's DirectUpload uses in a browser
 // (XMLHttpRequest, FileReader, File), with the document on the CMS's
@@ -18,10 +20,16 @@
 // 127.0.0.1 as from a proxy: the battery sends more forms than one
 // address may in ten minutes.
 import { describe, expect, inject, test } from "vitest";
+import { readSiteTheme } from "../../build/site-theme.ts";
+import type { SiteValues } from "./adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv } from "./contract.ts";
 import { createRailsAdapter } from "./rails.ts";
 
 const cms = inject("cmsUrl");
+// The header and footer the CMS starts with: config/site.yml's, read from
+// the file as the CMS reads it.
+const theme = readSiteTheme();
+const siteDefaults = { name: theme.name, menu: theme.menu, action: theme.action, footer: theme.footer } as SiteValues;
 
 const adapter = () => createRailsAdapter({ apiBase: `${cms}/api` });
 let names = 0;
@@ -58,6 +66,7 @@ function env(): ContractEnv {
       return new Uint8Array(await response.arrayBuffer());
     },
     sendForm,
+    siteDefaults,
   };
 }
 

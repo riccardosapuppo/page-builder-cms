@@ -13,9 +13,14 @@
 // to happen, watching the page until it does.
 //
 // Every case makes the pages it uses, under names no other case takes, so
-// the cases share one store and run in any order. The media library and
-// the site style are one per store: a case reads the library for the
-// items it made, and puts the site style back as it found it.
+// the cases share one store and run in any order, but one. The media
+// library, the site style and the header and footer are one per store: a
+// case reads the library for the items it made, and puts the site style
+// and the header and footer back as it found them. The one is the case
+// that reads the header and footer as a new store has them, before any
+// case changes them: each runner starts the battery on a store of its own
+// and runs the cases in their order here, where that case comes before
+// the others of the header and footer.
 import {
   errorsByBlock,
   isStorageError,
@@ -30,6 +35,8 @@ import {
   type OptionalOperation,
   type Outcome,
   type PageSummary,
+  type Site,
+  type SiteValues,
   type StorageAdapter,
 } from "./adapter.ts";
 import { createAutosave, type Autosave, type SavePhase, type SaveSnapshot } from "./autosave.ts";
@@ -66,6 +73,10 @@ export interface ContractEnv {
   // runner does it; only the cases that need responses ask for it, and a
   // send the storage does not keep fails the case.
   sendForm(live: string, formId: string, answers: Readonly<Record<string, string>>): Promise<void>;
+  // The header and footer a store has before anyone changes them: the
+  // defaults of cms/config/site.yml, read by the runner from the file the
+  // storage reads them from.
+  siteDefaults: SiteValues;
 }
 
 export interface ContractCase {
@@ -140,6 +151,16 @@ async function newPage(env: ContractEnv, prefix: string): Promise<{ id: number; 
 
 async function saved(adapter: StorageAdapter, pageId: number, save: DraftSave, what = "the save"): Promise<number> {
   return value(await adapter.saveDraft(pageId, save), what).revision;
+}
+
+// The header and footer's four values, as a change sends them.
+const valuesOf = (site: Site): SiteValues => ({ name: site.name, menu: site.menu, action: site.action, footer: site.footer });
+
+// Puts the header and footer back to what a case found, from whatever
+// revision they are at now.
+async function putSiteBack(env: ContractEnv, found: SiteValues): Promise<void> {
+  const now = await env.adapter.getSite();
+  value(await env.adapter.setSite({ revision: now.revision, ...found }), "putting the header and footer back");
 }
 
 // A 3 by 2 PNG: green, a yellow middle column.
@@ -925,6 +946,92 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       env.expect(typeof site.footer.lead).toBe("string");
       env.expect(typeof site.footer.text).toBe("string");
       env.expect(await env.adapter.getSite()).toEqual(site);
+    },
+  },
+
+  // -------------------------------------------- the header and footer
+  // Before every other case of the header and footer: see the top of this
+  // file.
+  {
+    name: "until they are first changed, the header and footer are config/site.yml's, at revision 0 with no time of change",
+    needs: [],
+    async run(env) {
+      const site = await env.adapter.getSite();
+      env.expect({ revision: site.revision, updatedAt: site.updatedAt }, "a store no change of the header and footer has reached").toEqual({ revision: 0, updatedAt: null });
+      env.expect(valuesOf(site)).toEqual(env.siteDefaults);
+      env.expect(site.timeZone.length).toBeGreaterThan(0);
+    },
+  },
+  {
+    name: "a change of the header and footer is kept whole at the next revision, with its time, the time zone left as it was; the same change again writes nothing",
+    needs: ["headerFooter"],
+    async run(env) {
+      const before = await env.adapter.getSite();
+      const change: SiteValues = {
+        name: "Tide Table Swimmers",
+        menu: [{ label: "Tides", href: "/tides#today" }, ...before.menu.slice(0, 1)],
+        action: null,
+        footer: { lead: "Swim with a friend.", text: "The tide tables change every day." },
+      };
+      try {
+        const saved = value(await env.adapter.setSite({ revision: before.revision, ...change }), "the change");
+        env.expect(valuesOf(saved)).toEqual(change);
+        env.expect(saved.revision).toBe(before.revision + 1);
+        env.expect(saved.updatedAt).not.toBe(null);
+        env.expect(saved.timeZone, "the time zone is the storage's own setting").toBe(before.timeZone);
+        env.expect(await env.adapter.getSite()).toEqual(saved);
+        // The same values again, from the revision they made: nothing is
+        // written, so the revision and the time of the change stay.
+        await new Promise((done) => setTimeout(done, 25));
+        const again = value(await env.adapter.setSite({ revision: saved.revision, ...change }), "the same change again");
+        env.expect({ revision: again.revision, updatedAt: again.updatedAt }).toEqual({ revision: saved.revision, updatedAt: saved.updatedAt });
+      } finally {
+        await putSiteBack(env, valuesOf(before));
+      }
+    },
+  },
+  {
+    name: "a header and footer the schema refuses are refused at the pointer of each value at fault, and nothing is stored",
+    needs: ["headerFooter"],
+    async run(env) {
+      const before = await env.adapter.getSite();
+      const problem = refusal(await env.adapter.setSite({
+        revision: before.revision,
+        name: "N".repeat(29),
+        menu: [...before.menu.slice(0, 1), { label: "Run", href: "javascript:alert(1)" }],
+        action: { label: "Join the swimming club", href: "/join" },
+        footer: { lead: "Two\nlines", text: before.footer.text },
+      }), "a name too long, a link that runs script, a button's label too long and a lead of two lines");
+      if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+      env.expect(problem.code).toBe("invalid_request");
+      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort()).toEqual(["/action/label maxLength", "/footer/lead not", "/menu/1/href pattern", "/name maxLength"]);
+      env.expect(problem.errors.every((e) => e.blockPointer === null)).toBe(true);
+      env.expect(await env.adapter.getSite()).toEqual(before);
+    },
+  },
+  {
+    name: "a change from a revision another tab has moved past is a conflict holding what is there now; that sent from the old revision is answered as saved, and the change goes through from the new one",
+    needs: ["headerFooter"],
+    async run(env) {
+      const other = env.openTab();
+      const before = await env.adapter.getSite();
+      const theirs: SiteValues = { ...valuesOf(before), name: "Harbour Swimmers" };
+      const mine: SiteValues = { ...valuesOf(before), footer: { lead: "Mine.", text: "This tab's footer." } };
+      try {
+        const first = value(await other.setSite({ revision: before.revision, ...theirs }), "the other tab's change");
+        const conflict = refusal(await env.adapter.setSite({ revision: before.revision, ...mine }), "this tab's change from the revision it read");
+        if (conflict.kind !== "conflict") throw new Error(`refused as ${conflict.kind}, not as a conflict`);
+        env.expect({ currentRevision: conflict.currentRevision, site: conflict.site }).toEqual({ currentRevision: first.revision, site: theirs });
+        env.expect(valuesOf(await env.adapter.getSite()), "the other tab's change is kept").toEqual(theirs);
+        // What is there now, from the old revision, would put back nothing:
+        // answered as saved, at the revision it is at, nothing written.
+        const same = value(await env.adapter.setSite({ revision: before.revision, ...theirs }), "what is there now, from the old revision");
+        env.expect({ revision: same.revision, updatedAt: same.updatedAt }).toEqual({ revision: first.revision, updatedAt: first.updatedAt });
+        const kept = value(await env.adapter.setSite({ revision: conflict.currentRevision, ...mine }), "this tab's change from the revision the conflict named");
+        env.expect({ revision: kept.revision, ...valuesOf(kept) }).toEqual({ revision: first.revision + 1, ...mine });
+      } finally {
+        await putSiteBack(env, valuesOf(before));
+      }
     },
   },
 
