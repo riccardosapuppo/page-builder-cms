@@ -1,43 +1,67 @@
 // The theme's parts around every page, read from cms/config/site.yml when
-// the editor is built and served as `virtual:site-theme`: the site's name,
-// the header's menu and button, the footer's line and the site's time
-// zone. The CMS reads the same file (config/application.rb, config_for)
-// and answers it at GET /api/site; the browser's storage adapter, which has
-// no CMS to ask, answers it from this module instead, so the canvas draws
-// the same header and footer in both modes. The links are left as the file
-// has them: the adapter puts them through the page's link policy, as the
-// CMS's controller does.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+// the editor is built (./site-file.ts) and served as `virtual:site-theme`:
+// the site's name, the header's menu and button, the footer's two lines
+// and the site's time zone. The CMS reads the same file: the header and
+// footer as the defaults that apply until the editor first changes them,
+// the time zone as its own setting. The browser's storage adapter, which
+// has no CMS to ask, starts from this module instead, so the canvas draws
+// the same header and footer in both modes.
+//
+// The CMS checks the defaults as it starts (config/initializers/site.rb)
+// against the rules a change from the editor is held to, and a file that
+// breaks them stops it, naming each value: a default the editor could not
+// save back would be drawn on every page and refused when sent back
+// unchanged. The build makes the same check, with the editor's engine
+// (the application rules of schema/tools/rules.ts, then $defs/site of the
+// page schema by ajv, with the options the editor's validator is compiled
+// with), and stops the same way.
 import type { Plugin } from "vite";
-import { parse } from "yaml";
-import { repoRoot } from "./paths.ts";
+import Ajv2020Module from "ajv/dist/2020.js";
+import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
+import { checkTree, escapePointer } from "../../schema/tools/rules.ts";
+import { readSiteTheme, siteDefaults, siteFile } from "./site-file.ts";
+import { readSchema } from "./validator.ts";
+
+// ajv is CommonJS: the constructor is module.exports.default.
+const Ajv2020 = Ajv2020Module.default;
 
 export const SITE_THEME_MODULE = "virtual:site-theme";
 const RESOLVED = `\0${SITE_THEME_MODULE}`;
-export const siteFile = join(repoRoot, "cms", "config", "site.yml");
 
-export interface RawSiteTheme {
-  name: unknown;
-  menu: unknown;
-  action: unknown;
-  footer: unknown;
-  timeZone: unknown;
+// Each rule the defaults break, as the CMS names it when it refuses to
+// start ("/menu/0/href (pattern): ..."): the application rules first and,
+// when they pass, $defs/site, the order Site.check follows. None when the
+// defaults are values the editor could save back.
+export function siteDefaultsProblems(values: unknown, schema: object = readSchema()): string[] {
+  const rules = checkTree(values);
+  const errors = rules.length > 0 ? rules : schemaErrors(values, schema);
+  return errors.map((e) => `${e.pointer || "the whole"} (${e.keyword}): ${e.message}`);
 }
 
-// The file's `shared` section, the one every Rails environment reads (the
-// file has no other). A file without it stops the build, as it stops the
-// CMS from starting.
-export function readSiteTheme(text: string = readFileSync(siteFile, "utf8")): RawSiteTheme {
-  const file = parse(text) as { shared?: Record<string, unknown> } | null;
-  const shared = file?.shared;
-  if (!shared || typeof shared !== "object") throw new Error(`${siteFile} has no shared section`);
-  if (typeof shared.time_zone !== "string") throw new Error(`${siteFile} names no time_zone`);
-  return { name: shared.name, menu: shared.menu, action: shared.action, footer: shared.footer, timeZone: shared.time_zone };
+function schemaErrors(values: unknown, schema: object): Array<{ pointer: string; keyword: string; message: string }> {
+  const id = (schema as { $id?: unknown }).$id;
+  if (typeof id !== "string") throw new Error("the schema has no $id to name $defs/site by");
+  const ajv = new Ajv2020({ ...AJV_OPTIONS });
+  ajv.addSchema(schema);
+  const validate = ajv.getSchema(`${id}#/$defs/site`);
+  if (!validate) throw new Error("the schema has no $defs/site");
+  if (validate(values)) return [];
+  // As the editor reads ajv's errors (src/shared/validate.ts): no "if" at
+  // a branch that failed, and an unknown member pointed at by its name.
+  return (validate.errors ?? []).filter((e) => e.keyword !== "if").map((e) => {
+    const key = e.keyword === "additionalProperties" ? (e.params as { additionalProperty?: unknown }).additionalProperty : undefined;
+    return { pointer: typeof key === "string" ? `${e.instancePath}/${escapePointer(key)}` : e.instancePath, keyword: e.keyword, message: e.message ?? e.keyword };
+  });
 }
 
+// The module: the defaults, once they pass the CMS's check, and the time
+// zone. Defaults that break it stop the build, each value named.
 export function siteThemeSource(text?: string): string {
-  return `// Generated by builder/build/site-theme.ts from cms/config/site.yml.\nexport const SITE_THEME = ${JSON.stringify(readSiteTheme(text))};\n`;
+  const theme = readSiteTheme(text);
+  const values = siteDefaults(theme);
+  const problems = siteDefaultsProblems(values);
+  if (problems.length > 0) throw new Error(`${siteFile}: the header and footer break the rules a change from the editor is held to: ${problems.join("; ")}`);
+  return `// Generated by builder/build/site-theme.ts from cms/config/site.yml.\nexport const SITE_THEME = ${JSON.stringify({ ...values, timeZone: theme.timeZone })};\n`;
 }
 
 // `import { SITE_THEME } from "virtual:site-theme"`, read again from the

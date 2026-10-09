@@ -12,7 +12,7 @@
 // first test names which, so a capability declared absent by mistake fails
 // it rather than skipping more cases quietly.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { readSiteTheme } from "../../build/site-theme.ts";
+import { readSiteTheme } from "../../build/site-file.ts";
 import type { Capabilities, SiteValues } from "../../src/storage/adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv, type Expect } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";

@@ -5,7 +5,7 @@
 // through Ruby.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { readSiteTheme } from "../../build/site-theme.ts";
+import { readSiteTheme } from "../../build/site-file.ts";
 import { headerFold, rubySum, runWidth, widthNeeded, type HeaderWords } from "./header-fit.ts";
 import metrics from "../../../schema/header-metrics.json";
 

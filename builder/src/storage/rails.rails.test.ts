@@ -20,7 +20,7 @@
 // 127.0.0.1 as from a proxy: the battery sends more forms than one
 // address may in ten minutes.
 import { describe, expect, inject, test } from "vitest";
-import { readSiteTheme } from "../../build/site-theme.ts";
+import { readSiteTheme } from "../../build/site-file.ts";
 import type { SiteValues } from "./adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv } from "./contract.ts";
 import { createRailsAdapter } from "./rails.ts";
