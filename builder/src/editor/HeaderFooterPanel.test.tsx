@@ -201,6 +201,10 @@ test("a conflict with another tab's save offers Reload and Keep mine, which save
   fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Northshore Swimmers" } });
   const alert = screen.getByRole("alert");
   expect(alert.textContent).toContain("Changed in another tab.");
+  // The warning icon the page's own conflict has (SaveStatus), before the
+  // words and hidden from a screen reader, which hears the words.
+  expect(alert.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+  expect(alert.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
   await act(async () => {
     fireEvent.click(within(alert).getByRole("button", { name: "Keep mine" }));
   });

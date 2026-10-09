@@ -319,6 +319,33 @@ test.describe("another tab first", () => {
       const conflict = panel.getByRole("alert");
       await expect(conflict).toContainText("Changed in another tab.");
       await expect(conflict.getByRole("button", { name: "Reload" })).toBeFocused();
+      // It looks as the page's own conflict does (design/layout/shots-extra/
+      // conflict.png): the amber tint, an edge in the warning colour and the
+      // warning icon in it, not the grey of a note. Colours are read from the
+      // tokens, as the browser resolves them.
+      const look = await conflict.evaluate((box) => {
+        const colour = (token: string) => {
+          const probe = document.createElement("i");
+          probe.style.color = `var(${token})`;
+          document.body.append(probe);
+          const value = getComputedStyle(probe).color;
+          probe.remove();
+          return value;
+        };
+        const icon = box.querySelector("svg");
+        return {
+          background: getComputedStyle(box).backgroundColor,
+          edge: getComputedStyle(box).boxShadow,
+          icon: icon ? getComputedStyle(icon).color : null,
+          tint: colour("--warn-tint"),
+          warn: colour("--warn"),
+        };
+      });
+      expect(look.background).toBe(look.tint);
+      expect(look.edge).toContain(look.warn);
+      expect(look.icon).toBe(look.warn);
+      const report = await axe(page, { include: ".sidebar" });
+      expect(report.serious, "axe on the conflict: graphite words and buttons on the amber tint").toEqual([]);
       expect((await siteNow(request)).footer.lead, "nothing saved until the person chooses").toBe("Theirs.");
       await conflict.getByRole("button", { name: "Keep mine" }).click();
       await expect(panel.getByRole("status").filter({ hasText: "Saved for every page" })).toBeVisible();

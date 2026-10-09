@@ -959,9 +959,17 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .ibtn[aria-disabled="true"]:hover { background: none; }
 .hf-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .hf-actions { flex: none; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; box-shadow: inset 0 1px 0 var(--alloy); }
-.hf-conflict { margin-top: 8px; padding: 10px; border-radius: var(--r-control); background: var(--key); }
+/* The conflict the panel has when another tab saved the header and footer
+   first: the page's own (design/layout/shots-extra/conflict.png) at the
+   panel's size, with its warning icon, amber tint and edge, where it was a
+   grey note. The words and the two buttons are the same. */
+.hf-conflict { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 10px; border-radius: var(--r-control); background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); }
+.hf-conflict > .i { width: 16px; height: 16px; color: var(--warn); }
+.hf-conflict > div { min-width: 0; }
 .hf-conflict p { font-size: 12px; line-height: 16px; color: var(--graphite); }
+.hf-conflict strong { font-weight: 700; }
 .hf-conflict .banner-actions { margin-top: 8px; }
+.hf-conflict .btn-secondary { border-color: var(--graphite); box-shadow: inset 0 -1px 0 var(--graphite); }
 
 /* About (design/shots-extra/about.png). */
 .dlg-about { width: 440px; padding: 28px; align-items: flex-start; gap: 10px; }

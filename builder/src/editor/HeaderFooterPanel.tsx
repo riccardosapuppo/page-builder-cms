@@ -271,10 +271,13 @@ function Head({ id, dirty, onClose, onHide, onTake, onKeep }: { id: string; dirt
   if (siteSave.phase === "conflict") {
     state = (
       <div className="hf-conflict" role="alert">
-        <p><strong>Changed in another tab.</strong> The header and footer were saved in another tab after you opened them. Nothing is saved until you choose.</p>
-        <div className="banner-actions">
-          <button className="btn btn-small btn-dark" type="button" title="Take the header and footer as saved in the other tab, leaving the changes made here" onClick={onTake}>Reload</button>
-          <button className="btn btn-small btn-secondary" type="button" title="Save the header and footer as they are here, over the other tab's" onClick={onKeep}>Keep mine</button>
+        <Icon name="warning" />
+        <div>
+          <p><strong>Changed in another tab.</strong> The header and footer were saved in another tab after you opened them. Nothing is saved until you choose.</p>
+          <div className="banner-actions">
+            <button className="btn btn-small btn-dark" type="button" title="Take the header and footer as saved in the other tab, leaving the changes made here" onClick={onTake}>Reload</button>
+            <button className="btn btn-small btn-secondary" type="button" title="Save the header and footer as they are here, over the other tab's" onClick={onKeep}>Keep mine</button>
+          </div>
         </div>
       </div>
     );
