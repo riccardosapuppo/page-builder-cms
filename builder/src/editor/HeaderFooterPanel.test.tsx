@@ -12,7 +12,7 @@ import { expect, test } from "vitest";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { FieldError, Site, SiteValues } from "../storage/adapter.ts";
-import { HeaderFooterPanel, REACHES_EVERY_PAGE } from "./HeaderFooterPanel.tsx";
+import { HeaderFooterPanel, REACHES_EVERY_PAGE, REACHES_EVERY_PAGE_IN_BROWSER } from "./HeaderFooterPanel.tsx";
 import type { Session, SiteSave } from "./session.tsx";
 
 const site: Site = {
@@ -51,6 +51,12 @@ function draw(session: Partial<Session> = {}) {
 
 const links = () => within(screen.getByRole("list", { name: "Menu" })).getAllByRole("group");
 const linkGroup = (n: number) => screen.getByRole("group", { name: `Link ${n}` });
+
+test("where the storage serves no page, the line says the pages a change reaches are those published in this browser", () => {
+  draw({ cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, headerFooter: true, imageVariants: false, livePages: false } });
+  expect(screen.getByText(REACHES_EVERY_PAGE_IN_BROWSER)).toBeTruthy();
+  expect(screen.queryByText(REACHES_EVERY_PAGE)).toBe(null);
+});
 
 test("every value is labelled, each limit said, and one line says what a change does", () => {
   draw();

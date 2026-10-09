@@ -33,8 +33,12 @@ import {
 import { Icon } from "./icons.tsx";
 import { useSession, type SectionTarget } from "./session.tsx";
 
-// The line under the title: what a change does, in one sentence.
+// The line under the title: what a change does, in one sentence. Where
+// the storage serves no page (capabilities.livePages: the browser demo),
+// the published pages it reaches are those kept in this browser, which
+// the demo draws, and the sentence says so.
 export const REACHES_EVERY_PAGE = "Saved changes show on every published page at once, with nothing to publish.";
+export const REACHES_EVERY_PAGE_IN_BROWSER = "Saved changes show on every page published in this browser at once, with nothing to publish.";
 
 const LINK_HINT = "Choose a page or a section of one, or paste a full address (https://…), mailto: or tel:.";
 
@@ -259,7 +263,7 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
 // A level below the Page tab, as Site style's head: the way back to it,
 // the title, what a change does, and where the last save is.
 function Head({ id, dirty, onClose, onHide, onTake, onKeep }: { id: string; dirty: boolean; onClose: () => void; onHide?: (() => void) | undefined; onTake: () => void; onKeep: () => void }) {
-  const { siteSave } = useSession();
+  const { siteSave, capabilities } = useSession();
   // A refusal for values the panel marked is said until the person has
   // changed each of them.
   const marked = useUi((u) => u.siteErrors.length > 0);
@@ -284,7 +288,7 @@ function Head({ id, dirty, onClose, onHide, onTake, onKeep }: { id: string; dirt
       <div>
         <button className="sb-back" type="button" aria-label="Back to Page" onClick={onClose}><Icon name="arrow-left" className="i i-xs" />Page</button>
         <h2 id={id}>Header and footer</h2>
-        <p>{REACHES_EVERY_PAGE}</p>
+        <p>{capabilities.livePages ? REACHES_EVERY_PAGE : REACHES_EVERY_PAGE_IN_BROWSER}</p>
         {state}
       </div>
       {onHide && <button className="ibtn" type="button" aria-label="Hide the sidebar" title="Hide the sidebar" onClick={onHide}><Icon name="close" /></button>}
