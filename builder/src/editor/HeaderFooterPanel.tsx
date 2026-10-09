@@ -38,7 +38,7 @@ import { useSession, type SectionTarget } from "./session.tsx";
 // the published pages it reaches are those kept in this browser, which
 // the demo draws, and the sentence says so.
 export const REACHES_EVERY_PAGE = "Saved changes show on every published page at once, with nothing to publish.";
-export const REACHES_EVERY_PAGE_IN_BROWSER = "Saved changes show on every page published in this browser at once, with nothing to publish.";
+export const REACHES_EVERY_PAGE_IN_BROWSER = "Saved changes show at once on every page published in this browser, with nothing to publish.";
 
 const LINK_HINT = "Choose a page or a section of one, or paste a full address (https://…), mailto: or tel:.";
 

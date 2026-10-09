@@ -35,7 +35,7 @@ const PUBLISHED_LINE = "Published in this browser. In the full system, Rails pub
 const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
-const REACH_LINE = "Saved changes show on every page published in this browser at once, with nothing to publish.";
+const REACH_LINE = "Saved changes show at once on every page published in this browser, with nothing to publish.";
 
 // Every page of the context held to no error, in it or in its console, and
 // to no request off the demo's own path.
