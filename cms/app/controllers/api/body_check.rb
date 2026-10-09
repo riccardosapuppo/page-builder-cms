@@ -111,6 +111,12 @@ module Api
       fail_at("/#{name}", "type", "must be a JSON object") unless body[name].is_a?(Hash)
     end
 
+    # Problems another check found (a schema), at pointers into this body:
+    # answered with the rest, so a client sees every fault in one answer.
+    def concat(errors)
+      @errors.concat(errors)
+    end
+
     def ok?
       @errors.empty?
     end

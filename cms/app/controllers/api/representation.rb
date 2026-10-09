@@ -154,6 +154,22 @@ module Api
       }
     end
 
+    # The header and footer as stored (or the defaults, at revision 0), the
+    # revision a change must name, and the site's time zone: the IANA name,
+    # which a browser's Intl reads, so the editor works out from it the
+    # offset of any date, summer time included.
+    def site_json(site)
+      {
+        "name" => site.name,
+        "menu" => site.menu,
+        "action" => site.action,
+        "footer" => site.footer,
+        "timeZone" => Time.zone.tzinfo.name,
+        "revision" => site.revision,
+        "updatedAt" => iso(site.updated_at)
+      }
+    end
+
     def site_style_json(style)
       colors = SiteTokens.read.fetch("color")
       {

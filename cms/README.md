@@ -1,8 +1,9 @@
 # cms/
 
 The Rails 8.1 application of the project: it stores the pages, their draft
-and versions, publishes them, keeps the media library and the site style,
-answers the editor through a JSON API under `/api`, and serves the pages a
+and versions, publishes them, keeps the media library, the site style and
+the header and footer, answers the editor through a JSON API under `/api`,
+and serves the pages a
 visitor sees, rendered on the server in the approved design's theme
 (`../design/`) and cached in the browser and in Solid Cache (see "How the
 pages are cached"). Its jobs (a publish set for a time, the pruning of
@@ -389,11 +390,14 @@ no warnings, the same morning).
 - **Icon box icons** are drawn inline from `../schema/icons.svg`, rebuilt
   element by element with tag helpers; loading refuses anything but plain
   shapes.
-- **The header and footer** are the theme's, as the design draws them. Their
-  name, menu and footer line are in [config/site.yml](config/site.yml)
-  until the editor can change them; `GET /api/site` gives them to the
-  editor, read only, which draws them locked around the page on its
-  canvas.
+- **The header and footer** are drawn as the design draws them, from the
+  values the editor sets (`PUT /api/site`): the site's name, up to 8
+  links, the button (or none) and the footer's two lines, kept in one row
+  for the whole site (`Site`). Until the editor first changes them, the
+  defaults of [config/site.yml](config/site.yml) apply, checked as the
+  CMS starts against the rules a change is held to. A change reaches
+  every published page at its next visit, with nothing to publish (see
+  how the pages are cached, below).
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -678,7 +682,7 @@ the schema file) each failed it.
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
 | `GET /api/site-style`, `PUT /api/site-style` | the palette and type scale, with their curated values; replace them |
-| `GET /api/site` | the theme's header and footer (name, menu, action button, footer line) and the site's time zone, read only |
+| `GET /api/site`, `PUT /api/site` | the header and footer (name, menu, button, footer's two lines) with their `revision`, and the site's time zone; replace them with `{revision, name, menu, action, footer}`, 409 with them as they are now from an older revision |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the
@@ -807,6 +811,19 @@ the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
 
 With Gentle's rules renamed away in `tokens.css`, it failed on every
 step and width, Gentle drawing Balanced's sizes.
+
+**Header and footer.** `PUT /api/site` takes the four members whole
+(`action: null` for no button) and the `revision` they were read at;
+each member is `$defs/site` of
+[the page schema](../schema/block-document.schema.json), checked after the
+application rules as a document is, so a link follows a page's rules and
+every fault comes back in one 422 at its pointer. The check of the
+revision and the write are one statement, as a draft's save is. A write
+from an older revision is a 409 holding the header and footer as they are
+now, since writing every member would put back what was changed since;
+unless it asks for exactly what is stored, which loses nothing and is
+answered 200, so a write sent again after its answer was lost is answered
+as saved. The time zone is not a member: only `config/site.yml` sets it.
 
 **Responses.** What visitors sent with a page's forms (see "Forms a
 visitor sends") is read and deleted under the page, and only there: a

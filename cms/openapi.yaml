@@ -6,15 +6,16 @@ info:
   description: |
     Pages, their draft and versions, publishing now or at a set time, the
     responses visitors send with the forms of published pages, the media
-    library, the site style of Page Builder CMS and, to read, the theme's
-    parts around every page. The editor talks to the CMS only through this
+    library, and the site style and the header and footer of Page Builder
+    CMS. The editor talks to the CMS only through this
     API, so another server that answers the same way can stand in for it.
     (Visitors send their forms to the published page's own address, not to
     this API.)
 
     The page document is not described here: it is the one schema both the
     editor and the server validate with, `schema/block-document.schema.json`,
-    and every document below refers to that file.
+    and every document below refers to that file. So does a change of the
+    header and footer, whose members are that file's `$defs/site`.
 
     **Errors** all have one shape, `{"error": <code>, "message": <sentence>}`.
     A 422 adds `errors`, one entry per problem, each with a JSON `pointer`
@@ -59,7 +60,7 @@ tags:
   - name: site-style
     description: The palette and type scale of the whole site.
   - name: site
-    description: The theme's parts around every page, read only.
+    description: The header and footer around every page, and the site's time zone.
 
 paths:
   /api/pages:
@@ -936,25 +937,88 @@ paths:
   /api/site:
     get:
       operationId: getSite
-      summary: Read the theme's parts around every page
+      summary: Read the header and footer
       description: |
-        The site's name, the header's menu and action button, and the
-        footer's line, as every published page draws them around its
-        sections. They are the theme's (the CMS's config/site.yml), the
-        same on every page, and no request changes them. A link whose
-        address the server's link rules refuse is left out, as the
-        published page leaves it out. With them, the site's time zone,
-        in which the editor sets scheduled publishes.
+        The site's name, the header's menu and button, and the footer's two
+        lines, as every published page draws them around its sections, with
+        the revision a change must name. Until someone changes them they
+        are the CMS's defaults (its config/site.yml), at revision 0, with
+        no `updatedAt`. With them, the site's time zone, in which the
+        editor sets scheduled publishes; it is the CMS's setting, and no
+        request changes it.
       tags: [site]
       responses:
         '200':
-          description: The theme's parts.
+          description: The header and footer, and the time zone.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Site'
         '400':
           $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: setSite
+      summary: Change the header and footer
+      description: |
+        The header and footer whole, every member named (`action: null`
+        for no button), from the `revision` they were read at; the revision
+        goes up by one. Each member is `$defs/site` of the page document's
+        schema, the definition the editor validates with too: one line of
+        text with a visible character and at most 28 characters for the
+        name, up to 8 links, 24 characters for a link's label and 18 for
+        the button's, 80 and 160 for the footer's lead and text, and every
+        address under the rules a link in a page follows. Every fault comes
+        back in one 422, each at its pointer, with the revision's.
+
+        A change reaches every published page at its next visit: there is
+        nothing to publish. A `revision` older than the header and footer's
+        is a 409 holding them as they are now, since writing every member
+        would put back what was changed since; unless the request asks for
+        exactly what is stored, which loses nothing and is answered 200, so
+        a request sent again after its answer was lost is answered as
+        saved. The time zone is not a member.
+      tags: [site]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revision, name, menu, action, footer]
+              properties:
+                revision:
+                  description: The revision the header and footer were read at; 0 while they are the defaults.
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+                name:
+                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/name'
+                menu:
+                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/menu'
+                action:
+                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/action'
+                footer:
+                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/footer'
+      responses:
+        '200':
+          description: Changed, or a request sent again for what is already stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/SiteConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1027,6 +1091,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ConflictError'
+    SiteConflict:
+      description: The header and footer have moved past the revision sent, and the request would change them.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SiteConflictError'
     InvalidRequest:
       description: The body is not what the request takes, or names a member twice.
       content:
@@ -1400,7 +1470,7 @@ components:
     Site:
       type: object
       additionalProperties: false
-      required: [name, menu, action, footer, timeZone]
+      required: [name, menu, action, footer, timeZone, revision, updatedAt]
       properties:
         name:
           description: The site's name, beside its mark in the header.
@@ -1428,6 +1498,13 @@ components:
         timeZone:
           description: The site's time zone, an IANA name such as Europe/London. The editor shows and takes the time of a scheduled publish in it; the API's times stay in UTC.
           type: string
+        revision:
+          description: The revision a change must name; 0 while the header and footer are the defaults.
+          type: integer
+          minimum: 0
+        updatedAt:
+          description: Null until the header and footer are first changed.
+          type: [string, 'null']
     SiteLink:
       type: object
       additionalProperties: false
@@ -1436,7 +1513,7 @@ components:
         label:
           type: string
         href:
-          description: The address as the published page writes it.
+          description: The address, which the published page writes as it is.
           type: string
 
     FormId:
@@ -1612,6 +1689,20 @@ components:
         lastSaveId:
           description: The saveId of the save that brought the draft to currentRevision; null after a restore.
           type: [string, 'null']
+    SiteConflictError:
+      type: object
+      additionalProperties: false
+      required: [error, message, currentRevision, site]
+      properties:
+        error:
+          const: conflict
+        message:
+          type: string
+        currentRevision:
+          type: integer
+        site:
+          description: The header and footer as they are now, at currentRevision, in the shape a change sends them.
+          $ref: '../schema/block-document.schema.json#/$defs/site'
     InvalidRequestError:
       type: object
       additionalProperties: false

@@ -53,9 +53,13 @@ class Api::OtherSitesTest < ActionDispatch::IntegrationTest
 
       put "/api/site-style", params: { "palette" => SiteStyle.current.palette, "typeScale" => "strong" }.to_json, headers: ApiRequests::JSON_HEADERS.merge(browser)
       assert_response :forbidden, browser.inspect
+
+      put "/api/site", params: { "revision" => 0, **Site.defaults, "name" => "Planted by another site" }.to_json, headers: ApiRequests::JSON_HEADERS.merge(browser)
+      assert_response :forbidden, browser.inspect
     end
     assert_equal 1, @page.versions.count
     assert_nil SiteStyle.find_by(id: SiteStyle::ID)
+    assert_nil Site.find_by(id: Site::ID)
   end
 
   test "a delete from another origin leaves the media item" do
