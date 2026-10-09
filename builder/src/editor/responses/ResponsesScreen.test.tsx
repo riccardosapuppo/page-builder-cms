@@ -419,3 +419,49 @@ test("rows sent in the same minute are told apart by name, each keeping the time
     [minute, `${minute} (2)`],
   ]);
 });
+
+// The next read of one response is held until the test lets it come.
+function holdOpening(fake: FakeResponses): () => Promise<void> {
+  const real = fake.getResponse;
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  fake.getResponse = async (pageId, responseId) => {
+    await held;
+    return real(pageId, responseId);
+  };
+  return async () => act(async () => release());
+}
+
+test("a response still on its way when another form is chosen is dropped: it never shows under that form, and its Delete never comes", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  fake.send(2, "winter", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  const come = holdOpening(fake);
+  const dialog = await openScreen(fake);
+  const [annRow] = await within(dialog).findAllByRole("rowheader");
+  await act(async () => fireEvent.click(within(annRow!).getByRole("button")));
+  await act(async () => fireEvent.click(within(within(dialog).getByRole("list", { name: "Forms" })).getAllByRole("button")[1]!));
+  await within(dialog).findByRole("table", { name: /^Form in Sign up/ });
+  expect((await within(dialog).findAllByRole("rowheader"))).toHaveLength(1);
+  await come();
+  expect(within(dialog).queryByText(`Sent ${when("2026-10-01T08:00:00.000Z")}`)).toBeNull();
+  expect(within(dialog).queryByRole("button", { name: "Delete" })).toBeNull();
+  expect(fake.calls.filter((call) => call.startsWith("deleteResponse"))).toEqual([]);
+});
+
+test("Try again drops a response still on its way, and reads the chosen form's responses again", async () => {
+  const fake = site();
+  fake.send(1, "join", "2026-10-01T08:00:00.000Z", { "field-1": "Ann" });
+  fake.send(2, "winter", "2026-10-01T09:00:00.000Z", { "field-1": "Bo" });
+  fake.fail("listResponses", { kind: "unknown", cause: "server", status: 500, message: "The CMS failed (500)." }, 2);
+  const come = holdOpening(fake);
+  const dialog = await openScreen(fake);
+  const [annRow] = await within(dialog).findAllByRole("rowheader");
+  await act(async () => fireEvent.click(within(annRow!).getByRole("button")));
+  await act(async () => fireEvent.click(within(dialog).getByRole("button", { name: "Try again" })));
+  await within(dialog).findByRole("button", { name: "Form in Sign up, Winter series, 1 response" });
+  await come();
+  expect(within(dialog).queryByText(`Sent ${when("2026-10-01T08:00:00.000Z")}`)).toBeNull();
+  expect(await within(dialog).findAllByRole("rowheader")).toHaveLength(1);
+  expect(within(dialog).queryByText("Reading the responses…")).toBeNull();
+});

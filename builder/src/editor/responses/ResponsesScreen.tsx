@@ -251,6 +251,7 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     setForms((before) => (before.phase === "ready" ? { ...before, forms: before.forms.filter((f) => f.key !== from) } : before));
     if (!here) return;
     const nextForm = left[index] ?? left[index - 1] ?? null;
+    wanted.current.opened += 1;
     setChosen(nextForm?.key ?? null);
     setOpened(null);
     setActive(null);
@@ -270,9 +271,12 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     body.current?.querySelector<HTMLElement>(`[data-response-id="${target.id}"]`)?.focus();
   };
 
-  // Another form chosen: what was opened was the other form's.
+  // Another form chosen: what was opened was the other form's, and a
+  // response still on its way is dropped, or it would come in under this
+  // form, and its Delete would ask this form's page.
   const choose = (key: string) => {
     if (key === chosen) return;
+    wanted.current.opened += 1;
     setChosen(key);
     setOpened(null);
     setActive(null);
@@ -280,8 +284,10 @@ export function ResponsesScreen({ onClose }: { onClose: () => void }) {
     setSaid(null);
   };
 
-  // Try again: every read made again, from the site's pages on.
+  // Try again: every read made again, from the site's pages on; a
+  // response still on its way is dropped.
   const retry = () => {
+    wanted.current.opened += 1;
     setForms({ phase: "loading" });
     setPart(null);
     setOpened(null);
