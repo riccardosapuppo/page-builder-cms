@@ -272,8 +272,8 @@ test("sections anchored with the editor's own ids leave its names and ids alone"
   expect(ids.filter((entry) => !entry.onPage && /^[a-z][a-z0-9-]{0,63}$/.test(entry.id)).map((entry) => entry.id)).toEqual([]);
 });
 
-test("the theme's header and footer are drawn around the page, locked, and the Outline names them", async ({ page, request }) => {
-  const site = (await (await request.get(`${cms()}/api/site`)).json()) as { name: string; footer: { lead: string } };
+test("the site's header and footer are drawn around the page, locked, the Outline names them, and a click on either opens their panel on the value clicked", async ({ page, request }) => {
+  const site = (await (await request.get(`${cms()}/api/site`)).json()) as { name: string; menu: Array<{ label: string }>; footer: { lead: string } };
   const { id } = await makePage(request, "Framed", [section("s", "Story", [column("c", [heading("h", "Inside the theme")])])]);
   await open(page, id);
   const header = page.locator('.canvas [data-theme-part="header"]');
@@ -299,11 +299,27 @@ test("the theme's header and footer are drawn around the page, locked, and the O
   const rows = await tray.locator(".t-theme, .tree").evaluateAll((elements) => elements.map((e) => e.className));
   expect(rows).toEqual(["t-row t-theme", "tree", "t-row t-theme"]);
 
-  // A click on the header selects nothing and says why.
+  // A click on the header opens the Header and footer panel, on the
+  // site's name, and leaves the selection as it was.
   await block(page, "h").click();
   await page.mouse.click(top.x + top.width / 2, top.y + top.height / 2);
-  await expect(page.locator(".notice")).toContainText("The site's header is the theme's, the same on every page: it is not edited here.");
+  const panel = page.getByRole("complementary", { name: "Header and footer" });
+  await expect(panel.getByLabel("Site name")).toBeFocused();
   await expect(block(page, "h")).toHaveAttribute("data-editor-selected", "true");
+  await expect(page.locator(".notice")).toHaveCount(0);
+  // On a link of the menu, its words; on the button, its words; on the
+  // footer's bold words, those.
+  const at = async (selector: string) => {
+    const box = (await page.locator(selector).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  await at('.canvas [data-theme-part="header"] .sw-nav-links a >> nth=1');
+  await expect(panel.getByRole("group", { name: "Link 2" }).getByLabel("Text")).toBeFocused();
+  await expect(panel.getByRole("group", { name: "Link 2" }).getByLabel("Text")).toHaveValue(site.menu[1]!.label);
+  await at('.canvas [data-theme-part="header"] .sw-btn');
+  await expect(panel.getByRole("group", { name: "Button" }).getByLabel("Text")).toBeFocused();
+  await at('.canvas [data-theme-part="footer"] strong');
+  await expect(panel.getByLabel("Bold words")).toBeFocused();
 });
 
 // The page as wide as the approved layout promises, measured as a Windows

@@ -44,6 +44,7 @@ import { blockName, blockWithPlace, plural, tokenName } from "../document/labels
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
 import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { linkHref } from "../render/policy.ts";
 import { SiteFooter, SiteHeader } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { EditorState } from "../store/editor-store.ts";
@@ -74,6 +75,7 @@ import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { placeSeamTip } from "./seam-tip.ts";
 import { useOptionalSession } from "./session.tsx";
+import { openHeaderFooter } from "./Sidebar.tsx";
 import { pushes, type Preview } from "./ui-store.ts";
 
 // How a block stands to the selection, for the marks it draws.
@@ -784,6 +786,7 @@ export function Canvas() {
   // The header and footer as their panel has them while they are changed,
   // as they are typed; else as the storage keeps them.
   const site = useUi((u) => u.siteDraft ?? u.site);
+  const headerFooter = useOptionalSession()?.capabilities.headerFooter ?? false;
   // The bottom line's Block edges: every block's edges drawn (editor.css).
   const edges = useUi((u) => u.blockEdges);
   const frame = useRef<HTMLDivElement>(null);
@@ -979,11 +982,14 @@ export function Canvas() {
               if (element?.closest(`${EDITOR_CONTROLS}, .invite, .ov-link, .rte`)) return;
               // A link or a disclosure of the page does nothing on the canvas.
               event.preventDefault();
-              // The theme's header and footer are inert, so a click on them
-              // reaches the page around them: it says why nothing happens.
+              // The site's header and footer are inert, so a click on them
+              // reaches the page around them: it opens their panel, on the
+              // value clicked; where the storage keeps no change of them,
+              // it says why nothing happens.
               const part = themePartAt(event.currentTarget, event.clientX, event.clientY);
               if (part) {
-                ui.getState().say(`The site's ${part} is the theme's, the same on every page: it is not edited here.`);
+                if (headerFooter) openHeaderFooter(ui, site ? themeFieldAt(part, site, event.clientX, event.clientY) : undefined);
+                else ui.getState().say(`The site's ${part.part} is the same on every page, and this storage cannot change it.`);
                 return;
               }
               pick(event.target);
@@ -1070,13 +1076,38 @@ function ThemeAround({ siteStyle, children }: { siteStyle: SiteStyleChoice | nul
   return <div className="site" {...siteStyleAttributes(siteStyle)}><div className="sw">{children}</div></div>;
 }
 
-// Which of the theme's parts a point of the canvas falls on, if any.
-function themePartAt(frame: Element, x: number, y: number): "header" | "footer" | null {
+interface ThemePart {
+  part: "header" | "footer";
+  element: HTMLElement;
+}
+
+const holds = (element: Element, x: number, y: number) => {
+  const box = element.getBoundingClientRect();
+  return box.width > 0 && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+};
+
+// Which of the site's parts a point of the canvas falls on, if any.
+function themePartAt(frame: Element, x: number, y: number): ThemePart | null {
   for (const element of frame.querySelectorAll<HTMLElement>("[data-theme-part]")) {
-    const box = element.getBoundingClientRect();
-    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) return element.dataset.themePart === "footer" ? "footer" : "header";
+    if (holds(element, x, y)) return { part: element.dataset.themePart === "footer" ? "footer" : "header", element };
   }
   return null;
+}
+
+// The value of the header and footer a point of their part shows, as the
+// Header and footer panel's pointer: the button, a link of the menu (by
+// its place among those drawn, which are the menu's links the link rules
+// take), the first link under Menu, else the site's name; in the footer,
+// the bold words or the words after them.
+function themeFieldAt({ part, element }: ThemePart, site: { menu: ReadonlyArray<{ href: string }> }, x: number, y: number): string {
+  const hit = (selector: string) => [...element.querySelectorAll(selector)].findIndex((e) => holds(e, x, y));
+  if (part === "footer") return hit("strong") >= 0 ? "/footer/lead" : "/footer/text";
+  if (hit(".sw-btn") >= 0) return "/action/label";
+  const link = hit(".sw-nav-links a");
+  const drawn = site.menu.flatMap((l, index) => (linkHref(l.href) === null ? [] : [index]));
+  if (link >= 0 && drawn[link] !== undefined) return `/menu/${drawn[link]}/label`;
+  if (hit(".sw-menu") >= 0 && drawn[0] !== undefined) return `/menu/${drawn[0]}/label`;
+  return "/name";
 }
 
 // The page's margin on each side of the canvas (editor.css, .frame-fit):

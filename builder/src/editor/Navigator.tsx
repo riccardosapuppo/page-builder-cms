@@ -35,7 +35,7 @@ import { draggedName } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
-import { useKeptWords } from "./session.tsx";
+import { useKeptWords, useOptionalSession } from "./session.tsx";
 
 interface Row {
   block: Block;
@@ -421,11 +421,14 @@ function TreeItem(props: TreeItemProps) {
   );
 }
 
-// The theme's header or footer: a row like the tree's, outside it, locked.
+// The site's header or footer: a row like the tree's, outside it, locked:
+// they are changed in the Header and footer panel, where the storage keeps
+// a change of them, not on the page.
 function ThemeRow({ part }: { part: "header" | "footer" }) {
   const name = part === "header" ? "Site header" : "Site footer";
+  const changeable = useOptionalSession()?.capabilities.headerFooter ?? false;
   return (
-    <p className="t-row t-theme" title={`${name}: the same on every page. It comes from the site's theme and is not edited here.`}>
+    <p className="t-row t-theme" title={`${name}: the same on every page.${changeable ? " Change it under Page, in Header and footer." : ""}`}>
       <Icon name="lock" /><span>{name}</span>{" "}<em aria-hidden="true">Every page</em><span className="visually-hidden">, locked: the same on every page</span>
     </p>
   );
