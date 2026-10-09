@@ -166,6 +166,12 @@ test("a refusal is said at each value at fault and in the head, and goes once th
   // Each value marked has changed: the head says where the change is.
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByText("Not saved yet")).toBeTruthy();
+
+  // A refusal at a value no field holds is said above the values, in the
+  // storage's words, and the head's line stays.
+  act(() => kit.ui.getState().setSiteErrors([{ pointer: "/action", keyword: "type", blockPointer: null, message: "The button must be a link or none." }]));
+  expect(document.querySelector(".tray-body .error")?.textContent).toBe("The button must be a link or none.");
+  expect(screen.getByRole("alert").textContent).toBe(failed.message);
 });
 
 test("a value past its limit is said as it is typed; an empty one once the person leaves it", () => {

@@ -92,9 +92,11 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
     const shown = visited.has(pointer) ? live.filter((e) => e.pointer === pointer) : live.filter((e) => e.pointer === pointer && (e.keyword === "maxLength" || e.keyword === "maxItems"));
     return sentencesAt([...refused.filter((e) => e.pointer === pointer), ...shown], pointer, value);
   };
-  const leave = (pointer: string) => {
-    if (!visited.has(pointer)) setVisited(new Set(visited).add(pointer));
-  };
+  const leave = (pointer: string) => setVisited((now) => (now.has(pointer) ? now : new Set(now).add(pointer)));
+  // A refusal at a value no field holds (the button as a whole, the
+  // request itself): said above the values, in the storage's words.
+  const placed = new Set(["/name", "/menu", "/action/label", "/action/href", "/footer/lead", "/footer/text", ...values.menu.flatMap((_, k) => [`/menu/${k}/label`, `/menu/${k}/href`])]);
+  const unplaced = [...new Set(refused.filter((e) => !placed.has(e.pointer)).map((e) => e.message))];
   const field = (pointer: string, label: string, value: string, set: (text: string) => SiteValues, options: { hint?: ReactNode; shared?: string; link?: boolean; long?: boolean; autoFocus?: boolean } = {}) => (
     <SiteField
       key={pointer}
@@ -187,6 +189,7 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
       <div className="tray-body">
         <datalist id={choicesId}>{choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</datalist>
         <p className="visually-hidden" role="status">{said}</p>
+        <ErrorList id={`${headId}-unplaced`} errors={unplaced} />
 
         {field("/name", "Site name", values.name, (text) => setName(values, text), { autoFocus: true, hint: `Beside the site’s mark, which stays the design’s. Up to ${SITE_LIMITS.name} characters; on a phone, a long name puts Menu on a row of its own.` })}
 
