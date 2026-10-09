@@ -6,9 +6,11 @@ import { join } from "node:path";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { describe, expect, test } from "vitest";
 import { CHILD_TYPES } from "virtual:block-document-nesting";
-import compiled, { validateBlock } from "virtual:block-document-validator";
+import compiled, { validateBlock, validateSite } from "virtual:block-document-validator";
 import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
+import { listCorpus, readManifest } from "../../schema/tools/corpus.ts";
 import { parseDocument } from "../../schema/tools/rules.ts";
+import { validateSite as checkSite } from "../src/shared/validate.ts";
 import { schemaDir } from "./paths.ts";
 import { ajvStandalone, readSchema, replaceRequires, validatorSource } from "./validator.ts";
 
@@ -128,5 +130,67 @@ describe("the compiled validator", () => {
     expect(refused).toBeGreaterThanOrEqual(120);
     expect(insideABlock).toBeGreaterThanOrEqual(120);
     expect(nestingOnly).toBeGreaterThanOrEqual(1);
+  });
+
+  // The header and footer the editor sends (src/shared/validate.ts,
+  // validateSite) are checked by $defs/site, compiled here, after the rules
+  // on the tree, as the server checks them (Site.check). The site's corpus
+  // (schema/corpus/site) holds the server's json_schemer and ajv at run
+  // time to one verdict and to the manifest's pointer and rule for each
+  // refusal (npm run compare:site); this holds the compiled validator to
+  // ajv at run time, and the editor's whole check to the manifest. Two
+  // files break a rule of the text itself (a member named twice, a
+  // trailing comma), which no value in memory can hold: the editor never
+  // sends text it did not write.
+  test("validateSite answers every file of the site's corpus as ajv at run time does, and the editor's check names the manifest's pointer and rule", () => {
+    const schema = readSchema() as { $id: string };
+    const ajv = new Ajv2020({ ...AJV_OPTIONS });
+    ajv.addSchema(schema);
+    const runtime = ajv.getSchema(`${schema.$id}#/$defs/site`);
+    if (!runtime) throw new Error("ajv has no $defs/site");
+    const corpus = join(schemaDir, "corpus", "site");
+    const manifest = readManifest(corpus);
+    let compared = 0;
+    let refused = 0;
+    let textOnly = 0;
+    for (const file of listCorpus(corpus)) {
+      const entry = manifest[file];
+      if (!entry) throw new Error(`${file} is not in the manifest`);
+      const text = readFileSync(join(corpus, file), "utf8");
+      const parsed = parseDocument(new Uint8Array(readFileSync(join(corpus, file))));
+      let value: unknown = parsed.document;
+      if (parsed.errors.length > 0) {
+        expect(entry.layer, file).toBe("rules");
+        let read: unknown;
+        try {
+          read = JSON.parse(text);
+        } catch {
+          textOnly += 1;
+          continue;
+        }
+        // JSON.parse keeps the last of a member named twice: nothing left
+        // in memory says it was there.
+        if (entry.keyword === "duplicateKey") {
+          textOnly += 1;
+          continue;
+        }
+        value = read;
+      } else {
+        expect(validateSite(value), file).toBe(runtime(value));
+        expect(shape(validateSite.errors), file).toEqual(shape(runtime.errors));
+      }
+      compared += 1;
+      const ours = checkSite(value);
+      expect(ours.valid, file).toBe(file.startsWith("valid/"));
+      if (!ours.valid) {
+        refused += 1;
+        expect(ours.errors.map((e) => `${e.pointer} ${e.keyword}`), file).toContain(`${entry.pointer} ${entry.keyword}`);
+      }
+    }
+    // On 9 October 2026: 50 files, 6 valid; a corpus that shrank must not
+    // pass by looking at less.
+    expect(compared).toBeGreaterThanOrEqual(48);
+    expect(refused).toBeGreaterThanOrEqual(42);
+    expect(textOnly).toBe(2);
   });
 });
