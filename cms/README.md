@@ -425,11 +425,12 @@ differs:
   are the theme's own drawings in CSS, coloured from the site style, for
   any video and any map rather than this one;
 - "Meeting point:" is not bold: a map's label is plain text;
-- narrower than 360 px, a width the design does not draw, the header
-  wraps, the brand above and Join and Menu below. The design's header
-  needs 359 px in a row, so at 320, the width WCAG's reflow criterion
-  tests (a 1280 window at 400%), every page scrolled sideways by 39 px
-  with Menu cut off, in the design's own mock as well.
+- narrower than the 359 px the design's header needs in a row, a width
+  the design does not draw, the header wraps, the brand above and Join
+  and Menu below; a longer name or button set in the editor wraps it on
+  wider phones too. Without the wrap, at 320, the width WCAG's reflow
+  criterion tests (a 1280 window at 400%), every page scrolled sideways
+  by 39 px with Menu cut off, in the design's own mock as well.
 
 ## Forms a visitor sends
 
