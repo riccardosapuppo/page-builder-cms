@@ -43,8 +43,11 @@ import {
   type ScheduleRequest,
   type ScheduleResult,
   type Site,
+  type SiteChange,
+  type SiteConflict,
   type SiteStyle,
   type SiteStyleChange,
+  type SiteValues,
   type StorageAdapter,
   type Upload,
   type UploadOptions,
@@ -94,6 +97,7 @@ export const RAILS_ROUTES = {
   getSiteStyle: { method: "GET", path: "/site-style", body: "none" },
   setSiteStyle: { method: "PUT", path: "/site-style", body: "required" },
   getSite: { method: "GET", path: "/site", body: "none" },
+  setSite: { method: "PUT", path: "/site", body: "required" },
 } as const satisfies Record<string, Route>;
 
 export type OperationId = keyof typeof RAILS_ROUTES;
@@ -111,6 +115,9 @@ export const RAILS_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // The CMS serves what is published, at the page's address, with its cache.
   livePages: true,
+  // The CMS keeps the header and footer the editor sets (PUT /api/site),
+  // and every page it serves draws them at its next visit.
+  headerFooter: true,
 };
 
 export interface RailsAdapterConfig {
@@ -143,7 +150,7 @@ interface Answer {
   body: unknown;
 }
 
-type Accepts = "conflict" | "invalid" | "in-use" | "not-pending";
+type Accepts = "conflict" | "site-conflict" | "invalid" | "in-use" | "not-pending";
 
 export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdapter {
   const base = (config.apiBase ?? apiBase()).replace(/\/+$/, "");
@@ -253,6 +260,11 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
       const message = typeof body.message === "string" ? body.message : "";
       if (answer.status === 409 && body.error === "conflict" && accepts.includes("conflict")) {
         const conflict: Conflict = { kind: "conflict", message, currentRevision: body.currentRevision as number, lastSaveId: body.lastSaveId as string | null };
+        return { ok: false, problem: conflict as P };
+      }
+      // The header and footer's conflict holds what is there now.
+      if (answer.status === 409 && body.error === "conflict" && accepts.includes("site-conflict")) {
+        const conflict: SiteConflict = { kind: "conflict", message, currentRevision: body.currentRevision as number, site: body.site as SiteValues };
         return { ok: false, problem: conflict as P };
       }
       if (answer.status === 409 && body.error === "media_in_use" && accepts.includes("in-use")) {
@@ -365,6 +377,10 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
     },
     async getSite(options) {
       return value<Site>(await call("getSite", {}, undefined, options), 200, "getSite");
+    },
+    async setSite(change: SiteChange, options) {
+      const body = { revision: change.revision, name: change.name, menu: change.menu, action: change.action, footer: change.footer };
+      return settle<Site, SiteConflict | Invalid>(await call("setSite", {}, body, options), 200, ["site-conflict", "invalid"], "setSite");
     },
 
     async listResponses(pageId, query: ResponseQuery = {}, options) {

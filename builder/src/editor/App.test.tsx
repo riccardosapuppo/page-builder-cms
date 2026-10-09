@@ -25,7 +25,7 @@ import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
 // The theme around every page, as the CMS answers it.
-const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London" };
+const SITE = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London", revision: 0, updatedAt: null };
 const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, schedules: `/api/pages/${id}/schedules`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
@@ -109,7 +109,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, headerFooter: false, imageVariants: false, livePages: this.livePages },
       listPages: async () => {
         if (this.refuseStart) throw this.refuseStart;
         return [...this.drafts.keys()].map((id) => this.summary(id));

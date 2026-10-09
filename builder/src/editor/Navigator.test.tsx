@@ -142,7 +142,7 @@ test("Headings lists the page's headings in order and by level; one chosen is se
 
 test("a column's row says how many widgets it holds, as a section's says its columns; the theme's rows say they are on every page", () => {
   const kit = editorKit({ document: page() });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
   kit.render(<Navigator />);
   act(() => kit.store.getState().select("c1"));
   expect(within(item("Hero")).getByText("2 columns")).toBeTruthy();

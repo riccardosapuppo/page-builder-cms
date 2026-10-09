@@ -46,6 +46,7 @@ function fakeFetch(reply: (sent: Sent) => Reply = () => ({ status: 200, body: {}
 }
 
 const document: PageDocument = { schemaVersion: 1, title: "A page", sections: [] };
+const SITE_CHANGE = { revision: 2, name: "Tide club", menu: [{ label: "Tides", href: "/tides" }], action: null, footer: { lead: "Tide club.", text: "Swims at slack water." } };
 
 async function failureOf(promise: Promise<unknown>): Promise<Failure> {
   try {
@@ -87,6 +88,7 @@ describe("the Rails adapter's requests", () => {
     ["getSiteStyle", (a) => a.getSiteStyle(), "GET", "/api/site-style", null],
     ["setSiteStyle", (a) => a.setSiteStyle({ palette: { primary: "sea" }, typeScale: "balanced" }), "PUT", "/api/site-style", { palette: { primary: "sea" }, typeScale: "balanced" }],
     ["getSite", (a) => a.getSite(), "GET", "/api/site", null],
+    ["setSite", (a) => a.setSite(SITE_CHANGE), "PUT", "/api/site", SITE_CHANGE],
   ];
 
   test.each(calls)("%s sends its own method, address and body", async (_name, run, method, path, body) => {
@@ -115,7 +117,7 @@ describe("the Rails adapter's requests", () => {
   });
 
   test("declares every optional operation, since the CMS has them all, and no smaller copies of images", () => {
-    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false, livePages: true });
+    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, headerFooter: true, imageVariants: false, livePages: true });
   });
 });
 
@@ -134,6 +136,24 @@ describe("the Rails adapter's answers", () => {
     expect(await adapter.saveDraft(1, save)).toEqual({
       ok: false,
       problem: { kind: "invalid", code: "invalid_document", message: "no", errors: [{ pointer: "/document/title", keyword: "minLength", blockPointer: null, message: "short" }] },
+    });
+  });
+
+  test("a change of the header and footer, a conflict holding what is there now, and a value refused are each an Outcome", async () => {
+    const stored = { name: "Tide club", menu: [{ label: "Tides", href: "/tides" }], action: null, footer: { lead: "Tide club.", text: "Swims." } };
+    const site = { ...stored, timeZone: "Europe/London", revision: 3, updatedAt: "2026-10-09T08:00:00.000Z" };
+    const answers: Reply[] = [
+      { status: 200, body: site },
+      { status: 409, body: { error: "conflict", message: "moved", currentRevision: 4, site: stored } },
+      { status: 422, body: { error: "invalid_request", message: "no", errors: [{ pointer: "/menu/0/href", keyword: "pattern", blockPointer: null, message: "not a link" }] } },
+    ];
+    const { fetch } = fakeFetch(() => answers.shift()!);
+    const adapter = createRailsAdapter({ fetch });
+    expect(await adapter.setSite(SITE_CHANGE)).toEqual({ ok: true, value: site });
+    expect(await adapter.setSite(SITE_CHANGE)).toEqual({ ok: false, problem: { kind: "conflict", message: "moved", currentRevision: 4, site: stored } });
+    expect(await adapter.setSite(SITE_CHANGE)).toEqual({
+      ok: false,
+      problem: { kind: "invalid", code: "invalid_request", message: "no", errors: [{ pointer: "/menu/0/href", keyword: "pattern", blockPointer: null, message: "not a link" }] },
     });
   });
 

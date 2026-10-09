@@ -66,6 +66,7 @@ export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAd
     getSiteStyle: (options) => call("getSiteStyle", [], options),
     setSiteStyle: (style, options) => call("setSiteStyle", [style], options),
     getSite: (options) => call("getSite", [], options),
+    setSite: (change, options) => call("setSite", [change], options),
     listResponses: (pageId, query, options) => call("listResponses", [pageId, query], options),
     getResponse: (pageId, responseId, options) => call("getResponse", [pageId, responseId], options),
     deleteResponse: (pageId, responseId, options) => call("deleteResponse", [pageId, responseId], options),

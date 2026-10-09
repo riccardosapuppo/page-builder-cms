@@ -42,7 +42,7 @@ function rig(library: MediaItem[] = [], inBrowser = false) {
   let altAnswer: (id: string, alt: string) => Promise<Outcome<MediaItem, Invalid>> = async (id, alt) => ({ ok: true, value: { ...item(id), alt } });
   let deleteAnswer: (id: string) => Promise<Outcome<null, InUse>> = async () => ({ ok: true, value: null });
   const adapter: MediaAdapter = {
-    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
+    capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: true },
     listMedia: async () => {
       listed += 1;
       return listAnswer ?? [...ui.getState().media.values()];

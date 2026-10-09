@@ -238,9 +238,10 @@ export interface SiteLink {
   href: string;
 }
 
-// The theme's parts around every page: the same on every page, read only.
-// The published page draws them around its sections, and the canvas draws
-// them there too, locked.
+// The header and footer around every page: the same on every page. The
+// published page draws them around its sections, and the canvas draws them
+// there too. The storage keeps one for the whole site; until it is first
+// changed (capability headerFooter) it is the defaults, at revision 0.
 export interface Site {
   // The site's name, beside its mark in the header.
   name: string;
@@ -249,8 +250,23 @@ export interface Site {
   action: SiteLink | null;
   footer: { lead: string; text: string };
   // The site's time zone, an IANA name ("Europe/London"): a scheduled
-  // publish is set and shown in it, the same for every visitor.
+  // publish is set and shown in it, the same for every visitor. The
+  // storage's setting: no change sets it.
   timeZone: string;
+  // The revision a change names; 0 while the header and footer are the
+  // defaults.
+  revision: number;
+  // null until the header and footer are first changed.
+  updatedAt: Time | null;
+}
+
+// The header and footer as a change sends them, and as $defs/site of the
+// page schema describes them (the same rules as a page's lines and links).
+export interface SiteValues {
+  name: string;
+  menu: SiteLink[];
+  action: SiteLink | null;
+  footer: { lead: string; text: string };
 }
 
 // ---------------------------------------------------- form answers
@@ -384,6 +400,11 @@ export interface SiteStyleChange {
   typeScale: string;
 }
 
+// The header and footer whole, from the revision they were read at.
+export interface SiteChange extends SiteValues {
+  revision: number;
+}
+
 export interface CallOptions {
   // Abandons the call. A write abandoned this way may still have reached
   // the server: the call fails with an unknown outcome.
@@ -430,6 +451,16 @@ export interface Conflict {
   lastSaveId: string | null;
 }
 
+// A change of the header and footer from a revision older than theirs,
+// which would have put back what was changed since: site is what is there
+// now, at currentRevision.
+export interface SiteConflict {
+  kind: "conflict";
+  message: string;
+  currentRevision: number;
+  site: SiteValues;
+}
+
 export interface InUse {
   kind: "in-use";
   message: string;
@@ -446,10 +477,11 @@ export interface NotPending {
 
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
 
-export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses"] as const;
+export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses", "headerFooter"] as const;
 // What an adapter may lack: publishing (keeping what goes live as a
 // version, with the page's published state; whether it is then served is
-// livePages, below), scheduled publishing, form answers.
+// livePages, below), scheduled publishing, form answers, changing the
+// header and footer (every adapter reads them).
 export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 
 // Says which optional operations this adapter has. The editor shows no
@@ -506,6 +538,7 @@ const OPERATION_VERBS: Record<OptionalOperation, string> = {
   publish: "publish pages",
   schedule: "schedule a publish",
   responses: "keep form answers",
+  headerFooter: "change the header and footer",
 };
 
 // ---------------------------------------------------------- the adapter
@@ -558,8 +591,14 @@ export interface StorageAdapter {
 
   getSiteStyle(options?: CallOptions): Promise<SiteStyle>;
   setSiteStyle(style: SiteStyleChange, options?: CallOptions): Promise<Outcome<SiteStyle, Invalid>>;
-  // The theme's header and footer, as every page draws them.
+  // The header and footer, as every page draws them, and the time zone.
   getSite(options?: CallOptions): Promise<Site>;
+  // Capability headerFooter: the header and footer whole, from
+  // change.revision. Invalid at the pointer of each value $defs/site
+  // refuses; a conflict, holding what is there now, from an older revision
+  // unless the change asks for exactly what is stored, which writes
+  // nothing and is answered as saved.
+  setSite(change: SiteChange, options?: CallOptions): Promise<Outcome<Site, SiteConflict | Invalid>>;
 
   // Capability responses: what visitors sent with the page's forms, a part
   // at a time, newest first.

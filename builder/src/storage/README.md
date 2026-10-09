@@ -25,12 +25,16 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 create, read, set the next address or the home mark), the draft (read,
 save at a revision), publish, schedule, versions (list, read, "Save
 version", restore), the media library (list, upload, alt text, delete),
-the site style, the theme's header and footer (read only: `getSite`, which
-the canvas draws around the page), the responses visitors send with a
+the site style, the header and footer (`getSite`, which the canvas draws
+around the page, with the revision a change names; `setSite`, the four
+members whole from that revision, refused at each value's pointer, or a
+conflict holding what is there now), the responses visitors send with a
 page's forms, and `capabilities`, which says which of the optional
-operations (publish, schedule, responses) this adapter has. The editor
-shows no control for one it lacks; the adapter refuses it as
-`unsupported` without asking anyone. The Rails adapter has all three:
+operations (publish, schedule, responses, headerFooter) this adapter has.
+The editor shows no control for one it lacks; the adapter refuses it as
+`unsupported` without asking anyone (the browser's storage does not change
+the header and footer yet). The Rails adapter has all four: the header
+and footer, through `PUT /api/site`;
 scheduling (schedule a revision of the draft for a time, cancel, list;
 the times in UTC, the site's zone in `getSite`'s `timeZone`), and
 responses: a page's list, newest first and `RESPONSES_PER_PART` (50) at
@@ -282,8 +286,10 @@ exist), the site style, the responses to a page's forms (kept with the
 version and the fields they were sent with across a change of the form,
 newest first, counted by form, a part at a time to the end, deleted for
 good, found only under their own page), every optional operation called
-on a page that does not exist (refused as unsupported when the
-capabilities declare it absent, not found when they declare it present),
+so that it changes nothing, on a page that does not exist or, for the
+header and footer, from a revision no change can name (refused as
+unsupported when the capabilities declare it absent; not found, or
+refused at `/revision`, when they declare it present),
 and the autosave on top of the adapter (a run of edits one request at a
 time, a lost answer, a conflict resolved both ways). It runs unchanged
 on the browser's adapter too, in Chromium, with two pages of one browser

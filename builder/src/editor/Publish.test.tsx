@@ -39,7 +39,7 @@ test("Preview is a link to the draft's preview on the CMS, and a plain click goe
 });
 
 test("without publishing in the storage there is no Publish, and Schedule is never drawn", () => {
-  draw({ current: open(), capabilities: { publish: false, schedule: false, responses: false, imageVariants: false, livePages: true } });
+  draw({ current: open(), capabilities: { publish: false, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: true } });
   expect(screen.queryByRole("button", { name: /Publish/ })).toBeNull();
   expect(screen.queryByRole("button", { name: "More publish options" })).toBeNull();
 
@@ -121,12 +121,12 @@ test("the changes not live are saves, counted from the CMS's draft revision", ()
   expect(shownAddress("https://cms.example/winter-series")).toBe("cms.example/winter-series");
 });
 
-const SCHEDULING = { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true };
+const SCHEDULING = { publish: true, schedule: true, responses: false, headerFooter: false, imageVariants: false, livePages: true };
 const pending: Schedule = { id: 3, at: "2026-10-05T06:15:00.000Z", revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null };
 
 function drawScheduling(session: Partial<Session>, onSchedule: () => void) {
   const kit = editorKit({ document: page(), session: { cmsOrigin: "http://127.0.0.1:3901", capabilities: SCHEDULING, ...session } });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London" });
+  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
   kit.render(<PublishButton onSchedule={onSchedule} />);
   return kit;
 }
@@ -173,7 +173,7 @@ test("in the browser demo, Preview and Publish say what is kept here, and the me
   const demo: Partial<Session> = {
     cmsOrigin: null,
     publishedView: (id) => `?published=${id}`,
-    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false },
+    capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: false },
   };
   draw({ ...demo, current: open({ links: { preview: "?preview=7", live: null } }) });
   const preview = screen.getByRole("link", { name: "Preview" });
@@ -195,7 +195,7 @@ test("in the browser demo, Preview and Publish say what is kept here, and the me
 });
 
 test("a storage that cannot schedule shows neither item, even with a schedule on the page", () => {
-  drawScheduling({ current: open({ scheduled: pending }), capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true } }, () => {});
+  drawScheduling({ current: open({ scheduled: pending }), capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: true } }, () => {});
   fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
   expect(screen.getAllByRole("menuitem").map((item) => item.querySelector("strong")?.textContent)).toEqual(["Publish now", "View live page"]);
 });

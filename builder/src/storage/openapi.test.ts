@@ -19,7 +19,7 @@ import {
   type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
   type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
   type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
-  type Site, type SiteLink, type SiteStyle, type SiteStyleChange,
+  type Site, type SiteConflict, type SiteLink, type SiteStyle, type SiteStyleChange,
   type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import { FORM_FIELD_KINDS } from "../shared/document.ts";
@@ -71,13 +71,15 @@ const SITE_STYLE = { palette: obj, typeScale: str, updatedAt: orNull(str), choic
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
-const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj, timeZone: str } as const satisfies Shape<Site>;
+const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj, timeZone: str, revision: num, updatedAt: orNull(str) } as const satisfies Shape<Site>;
 const SITE_LINK = { label: str, href: str } as const satisfies Shape<SiteLink>;
 const SITE_FOOTER = { lead: str, text: str } as const satisfies Shape<Site["footer"]>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
 // The refusals, less the member each side names its kind with: the API's
 // `error` code, the interface's `kind`.
 const CONFLICT = { message: str, currentRevision: num, lastSaveId: orNull(str) } as const satisfies Shape<Omit<Conflict, "kind">>;
+// What is there now: the page schema's $defs/site, an object here.
+const SITE_CONFLICT = { message: str, currentRevision: num, site: obj } as const satisfies Shape<Omit<SiteConflict, "kind">>;
 const INVALID = { message: str, errors: arr } as const satisfies Shape<Omit<Invalid, "kind" | "code">>;
 const IN_USE = { message: str, usedBy: obj } as const satisfies Shape<Omit<InUse, "kind">>;
 const NOT_PENDING = { message: str, schedule: obj } as const satisfies Shape<Omit<NotPending, "kind">>;
@@ -209,6 +211,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["Site's footer", SITE_FOOTER, "#/components/schemas/Site/properties/footer"],
     ["FieldError", FIELD_ERROR, "#/components/schemas/ErrorDetail"],
     ["Conflict", CONFLICT, "#/components/schemas/ConflictError", ["error"]],
+    ["SiteConflict", SITE_CONFLICT, "#/components/schemas/SiteConflictError", ["error"]],
     ["Invalid, as a request's", INVALID, "#/components/schemas/InvalidRequestError", ["error"]],
     ["Invalid, as a document's", INVALID, "#/components/schemas/InvalidDocumentError", ["error"]],
     ["Invalid, as a key named twice", INVALID, "#/components/schemas/DuplicateKeyError", ["error", "pointer"]],
@@ -265,7 +268,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(47);
+    expect(pairs).toHaveLength(48);
   });
 });
 

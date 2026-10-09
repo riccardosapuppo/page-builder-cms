@@ -103,6 +103,9 @@ export const BROWSER_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // Nothing is served: there is no live address to give.
   livePages: false,
+  // Not yet kept here: the header and footer are the defaults of
+  // cms/config/site.yml, read when the editor is built.
+  headerFooter: false,
 };
 
 export const DATABASE_NAME = "page-builder-cms";
@@ -1059,6 +1062,9 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       checkSignal(options, "Reading the site");
       return theme();
     },
+    async setSite() {
+      throw unsupported("headerFooter", "browser");
+    },
 
     async listResponses() {
       throw unsupported("responses", "browser");
@@ -1096,9 +1102,10 @@ function styleOf(stored: StyleRecord | null): SiteStyle {
   };
 }
 
-// The theme as the CMS answers it at GET /api/site, from the same file: a
-// link whose address the page's link policy refuses is left out, as the
-// published layout leaves it out; a missing text is empty.
+// The header and footer as the CMS answers them at GET /api/site before
+// anyone changes them, from the same file, at revision 0: a link whose
+// address the page's link policy refuses is left out, as the published
+// layout leaves it out; a missing text is empty.
 function theme(): Site {
   const text = (value: unknown): string => (value === null || value === undefined ? "" : String(value));
   const link = (value: unknown): SiteLink | null => {
@@ -1113,5 +1120,7 @@ function theme(): Site {
     action: link(SITE_THEME.action),
     footer: { lead: text(footer.lead), text: text(footer.text) },
     timeZone: text(SITE_THEME.timeZone),
+    revision: 0,
+    updatedAt: null,
   };
 }

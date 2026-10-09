@@ -26,6 +26,7 @@ import {
   StorageError,
   type DraftSave,
   type Failure,
+  type FieldError,
   type OptionalOperation,
   type Outcome,
   type PageSummary,
@@ -1028,20 +1029,32 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     name: "what the capabilities declare absent is refused as unsupported, and what they declare present is not",
     needs: [],
     async run(env) {
-      // Every optional operation is called, on a page that does not exist,
-      // so the case does as much on an adapter that has them all as on one
-      // that has none: one the adapter has answers that there is no such
-      // page; one it lacks is refused before anything is looked up.
+      // Every optional operation is called so that it changes nothing: on a
+      // page that does not exist, or, for the header and footer, from a
+      // revision no change can name. So the case does as much on an
+      // adapter that has them all as on one that has none: one the adapter
+      // has answers that there is no such page, or refuses the change; one
+      // it lacks is refused before anything is looked up.
       const nowhere = 987_654_321;
+      const site = await env.adapter.getSite();
       const calls: Record<OptionalOperation, () => Promise<unknown>> = {
         publish: () => env.adapter.publish(nowhere),
         schedule: () => env.adapter.schedulePublish(nowhere, { revision: 0, at: inMs(HOUR) }),
         responses: () => env.adapter.listResponses(nowhere),
+        headerFooter: () => env.adapter.setSite({ revision: -1, name: site.name, menu: site.menu, action: site.action, footer: site.footer }),
       };
       for (const operation of OPTIONAL_OPERATIONS) {
-        const expected = env.adapter.capabilities[operation] ? { kind: "not-found" } : { kind: "unsupported", operation };
-        env.expect(await failure(calls[operation](), operation), operation).toMatchObject(expected);
+        if (!env.adapter.capabilities[operation]) {
+          env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "unsupported", operation });
+        } else if (operation === "headerFooter") {
+          const outcome = (await calls.headerFooter()) as Outcome<unknown, { kind: string; errors?: FieldError[] }>;
+          env.expect(outcome.ok ? "saved" : outcome.problem.kind, operation).toBe("invalid");
+          env.expect(outcome.ok ? [] : outcome.problem.errors?.map((e) => e.pointer), operation).toEqual(["/revision"]);
+        } else {
+          env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "not-found" });
+        }
       }
+      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(site);
       env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants", "livePages"].sort());
     },
   },
