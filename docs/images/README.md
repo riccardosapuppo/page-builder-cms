@@ -39,6 +39,14 @@ The pictures are written to a folder of the run's and copied here only when
 every one is made and passes its check, so a run that fails leaves the pictures
 that were here. A picture here that no name lists is removed.
 
+Made again from the same code, five pictures come out byte for byte the same.
+`history.png` and `form-responses.png` show the times the run's CMS kept, so
+they differ in those times, in UTC; `publish.gif` names the CMS's address in
+the notice that says the page was published, so it differs when
+`SHOTS_CMS_PORT` moves the port. To see whether a change to the editor needs
+the pictures made again, make them with `--out` into another folder and
+compare.
+
 ## What holds them to what the script makes
 
 The pictures' names, sizes in pixels, byte limits and what each shows are
