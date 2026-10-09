@@ -92,16 +92,17 @@ module PublicPage
   # page that has not changed costs a 304 with no body, decided before the
   # version's document is even read; a publish shows at the next request.
   #
-  # In Solid Cache: the page's whole HTML, one entry per version and site
-  # style; inside it, one entry per block (BlocksHelper#render_blocks), so
-  # a new version redraws only the blocks that changed and those around
-  # them. With caching off (perform_caching), every request renders.
+  # In Solid Cache: the page's whole HTML, one entry per version, site
+  # style and header and footer; inside it, one entry per block
+  # (BlocksHelper#render_blocks), so a new version redraws only the blocks
+  # that changed and those around them, and a new style or header redraws
+  # none. With caching off (perform_caching), every request renders.
   def render_published(page)
     expires_in 0, public: true, must_revalidate: true
-    response.weak_etag = PageCache.etag(page, site_style)
+    response.weak_etag = PageCache.etag(page, site_style, site)
     return head(:not_modified) if request.fresh?(response)
 
-    key = PageCache.page_fragment(page, site_style)
+    key = PageCache.page_fragment(page, site_style, site)
     if (html = read_fragment(key))
       render html: html.html_safe
     else

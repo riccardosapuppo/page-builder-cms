@@ -162,11 +162,27 @@ class PageCacheModelTest < ActiveSupport::TestCase
     page = Page.new(published_version_id: 7, published_at: now)
     other = Page.new(published_version_id: 7, published_at: Time.utc(2026, 10, 4, 18, 0, 45, 451_235))
     style = SiteStyle.new(palette: SiteTokens.default_palette, type_scale: "balanced")
+    site = Site.current
 
     assert_equal [ 7, "20261004T180045.451234" ], PageCache.published_key(page)
-    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style) ], PageCache.page_fragment(page, style)
-    assert_not_equal PageCache.page_fragment(page, style), PageCache.page_fragment(other, style)
-    assert_not_equal PageCache.etag(page, style), PageCache.etag(other, style)
+    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style), PageCache.site_key(site) ], PageCache.page_fragment(page, style, site)
+    assert_not_equal PageCache.page_fragment(page, style, site), PageCache.page_fragment(other, style, site)
+    assert_not_equal PageCache.etag(page, style, site), PageCache.etag(other, style, site)
+  end
+
+  test "the header's and footer's key follows their words and links, not the order a request wrote them in, nor the revision" do
+    site = ->(revision = 1, **changes) { Site.new(id: Site::ID, revision: revision, **Site.defaults.merge(changes.transform_keys(&:to_s)).symbolize_keys) }
+    key = PageCache.site_key(site.call)
+    reordered = Site.defaults["menu"].map { |link| link.to_a.reverse.to_h }
+
+    assert_equal key, PageCache.site_key(Site.current), "the defaults, with no row"
+    assert_equal key, PageCache.site_key(site.call(5))
+    assert_equal key, PageCache.site_key(site.call(menu: reordered))
+    assert_equal key, PageCache.site_key(site.call(footer: Site.defaults["footer"].to_a.reverse.to_h))
+    assert_not_equal key, PageCache.site_key(site.call(name: "Tide club"))
+    assert_not_equal key, PageCache.site_key(site.call(menu: Site.defaults["menu"].reverse))
+    assert_not_equal key, PageCache.site_key(site.call(action: nil))
+    assert_not_equal key, PageCache.site_key(site.call(footer: { "lead" => "Slack Water swimming club.", "text" => "Tide times are a guide." }))
   end
 
   test "what the release's digest takes from the app's secret is a digest of a key derived from it, never the secret" do

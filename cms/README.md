@@ -553,18 +553,19 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   back in time. Every visit asks again; a page that has not changed is a
   304 with no body, answered before the version's document is read, and a
   publish shows at the very next request. The ETag is a digest of the
-  published version, the site style and the release; `fresh_when` is not
-  used, because its digest of the action's template sees neither the
-  layout nor the partials a helper renders. The version is named by its
-  id and by the moment the page was put live, to the microsecond, both
-  on the page's row: ids start again whenever a database is made anew
-  (`db:drop` then `db:prepare`, a backup restored), so a browser that
-  held page 1, version 3 of the old database must not be told its copy is
-  good for the new database's page 1, version 3.
-- **The whole page in Solid Cache,** one entry per version and site
-  style, under the same name of the version: a visit after the first is
-  one read, and a cache database that outlives the pages database it was
-  filled for holds nothing the new one can find.
+  published version, the site style, the header and footer and the
+  release; `fresh_when` is not used, because its digest of the action's
+  template sees neither the layout nor the partials a helper renders.
+  The version is named by its id and by the moment the page was put
+  live, to the microsecond, both on the page's row: ids start again
+  whenever a database is made anew (`db:drop` then `db:prepare`, a backup
+  restored), so a browser that held page 1, version 3 of the old database
+  must not be told its copy is good for the new database's page 1,
+  version 3.
+- **The whole page in Solid Cache,** one entry per version, site style
+  and header and footer, under the same name of the version: a visit
+  after the first is one read, and a cache database that outlives the
+  pages database it was filled for holds nothing the new one can find.
 - **Each block in Solid Cache,** keyed on a digest of its subtree (its
   own JSON and its children's digests) and the fingerprint of
   `tokens.css`, rendered with Rails' collection caching through
@@ -600,6 +601,7 @@ restart, since a running server draws with what it read then.
 | --- | --- | --- | --- |
 | a publish, a restored version published, a scheduled publish | new ETag | new entry | only the changed blocks and the column and section around each |
 | the site style | new ETag | new entry | all read back |
+| the header and footer, on every page | new ETag | new entry | all read back |
 | the release | new ETag | new entry | all drawn again |
 
 On the test page of 2 sections, 4 columns and 12 widgets
@@ -607,7 +609,8 @@ On the test page of 2 sections, 4 columns and 12 widgets
 the first visit writes 19 entries in 8 reads; the next is one read that
 finds the page; one widget changed and published reads 8 keys in 4 reads,
 finds 4 and writes 4 (the widget, its column, its section, the page); a
-new site style reads the page and the 2 sections and writes 1. The bytes
+new site style, or a new header and footer, reads the page and the 2
+sections and writes 1. The bytes
 are those the partials draw with no cache at all, on the 500-block
 fixture too.
 

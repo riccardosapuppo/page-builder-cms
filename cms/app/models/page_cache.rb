@@ -6,7 +6,7 @@
 # the entries under the old keys are never asked for again (Solid Cache
 # drops them as they age or as the cache fills).
 #
-# A published page's bytes come from four things:
+# A published page's bytes come from five things:
 # - the published version, immutable once written: a publish, a restore
 #   that is then published, or a scheduled publish all make a new one.
 #   It is named by its id and by the moment it was put live: ids start
@@ -15,18 +15,23 @@
 #   must never be taken for the new database's;
 # - the site style, which colours every page (the layout's data
 #   attributes);
+# - the site's header and footer (Site), drawn by the layout around every
+#   page, which the editor changes with no publish;
 # - the release the server runs: its code, templates, stylesheets, the
-#   theme's site.yml, the schema's tokens and icons, its gems, and its
-#   secret, which signs the addresses of library images;
+#   header's and footer's defaults in site.yml, the schema's tokens and
+#   icons, its gems, and its secret, which signs the addresses of library
+#   images;
 # - for one block, nothing but its own subtree, rendered through the
 #   partials of that release.
 #
 # So the browser's validator (the ETag) and the page's outer fragment are
-# keyed on the version, the site style and the release; each block's
-# fragment on a digest of its subtree and the revision of the token CSS,
-# under the release (PublicPage's fragment_cache_key). The ETag's digest
-# is made here rather than by fresh_when, whose digest of the action's
-# template does not see the layout or the partials a helper renders.
+# keyed on the version, the site style, the header and footer and the
+# release; each block's fragment on a digest of its subtree and the
+# revision of the token CSS, under the release (PublicPage's
+# fragment_cache_key): the layout is not inside any block, so a new header
+# finds every block where it was. The ETag's digest is made here rather
+# than by fresh_when, whose digest of the action's template does not see
+# the layout or the partials a helper renders.
 module PageCache
   # The files of a release that can change what a page looks like, from
   # the app's root. Broad on purpose: a change that cannot alter a page
@@ -54,17 +59,17 @@ module PageCache
   module_function
 
   # The validators of a published page's ETag: what is served, in what
-  # colours, by which release. A visitor's copy stays good until one of
-  # them changes.
-  def etag(page, site_style)
-    [ "page", *published_key(page), site_style_key(site_style), revision ]
+  # colours, under which header and footer, by which release. A visitor's
+  # copy stays good until one of them changes.
+  def etag(page, site_style, site)
+    [ "page", *published_key(page), site_style_key(site_style), site_key(site), revision ]
   end
 
   # The key of a published page's outer fragment, its whole HTML. The
   # release is not repeated here: every fragment key of the public pages
   # starts with it (PublicPage).
-  def page_fragment(page, site_style)
-    [ "page", *published_key(page), site_style_key(site_style) ]
+  def page_fragment(page, site_style, site)
+    [ "page", *published_key(page), site_style_key(site_style), site_key(site) ]
   end
 
   # The published version's id, and when the page was put live, to the
@@ -81,6 +86,22 @@ module PageCache
   def site_style_key(site_style)
     palette = site_style.palette.is_a?(Hash) ? site_style.palette.sort : site_style.palette
     ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale ]))
+  end
+
+  # The header and footer as a short key: their four members, with every
+  # object's members in name order, so that the same words and links give
+  # the same key whatever order a request wrote them in. The revision is
+  # left out: a write of what was already there changes no page.
+  def site_key(site)
+    ActiveSupport::Digest.hexdigest(JSON.generate(in_name_order(site.values)))
+  end
+
+  def in_name_order(value)
+    case value
+    when Hash then value.sort.map { |name, member| [ name, in_name_order(member) ] }
+    when Array then value.map { |item| in_name_order(item) }
+    else value
+    end
   end
 
   # The digest of the release this process runs. It is made as the process

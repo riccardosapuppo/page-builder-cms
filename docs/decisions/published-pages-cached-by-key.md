@@ -17,17 +17,19 @@ Every copy is named by what makes the page's bytes
 ([cms/app/models/page_cache.rb](../../cms/app/models/page_cache.rb)):
 
 - **The browser** gets `Cache-Control: max-age=0, public, must-revalidate`
-  and an ETag made of the published version, the site style and the
-  release, with no `Last-Modified`. Every visit asks again; an unchanged
-  page is a 304 with no body, decided from the page row and the site style
-  before the version's document is read. The version is named by its id
+  and an ETag made of the published version, the site style, the header
+  and footer (added on 9 October 2026, when the editor began to change
+  them) and the release, with no `Last-Modified`. Every visit asks again;
+  an unchanged page is a 304 with no body, decided from the page row, the
+  site style and the header and footer before the version's document is
+  read. The version is named by its id
   and by the moment the page was put live, to the microsecond (both are on
   the page's row): ids start again in a database made anew, and a restored
   backup or a kept cache database would otherwise give the old database's
   page to the new one's.
 - **Solid Cache** keeps the page's whole HTML under the version (named the
-  same way) and the
-  site style, and each block's HTML under a digest of its subtree and the
+  same way), the site style and the header and footer, and each block's
+  HTML under a digest of its subtree and the
   fingerprint of `tokens.css`, read one level at a time with Rails'
   collection caching. Every key starts with the release.
 - **The release** is a digest of the CMS's `app/`, `config/` and `lib/`,
@@ -37,20 +39,21 @@ Every copy is named by what makes the page's bytes
   names the files the process runs. Where code reloads, the files that
   reload (`app/`, `lib/`, the routes, the locales, and the schema's files,
   whose readers reload with the code and which the reloader watches) are
-  read again when one changes; the rest (`config/site.yml`, the gems) is
-  what the process read as it started, and changes the release only with
-  a restart.
+  read again when one changes; the rest (`config/site.yml`, the header's
+  and footer's defaults, and the gems) is what the process read as it
+  started, and changes the release only with a restart.
 
 A publish of any kind (now, from a restored version, at a scheduled
 time) makes a new version, so a new ETag and a new page entry, and only
-the blocks that changed are drawn again; a new site style redraws the
-page around blocks all read back; a deploy finds nothing of the release
-before. Nothing calls a cache to clear it, so no publishing path can
-forget to.
+the blocks that changed are drawn again; a new site style, or a new header
+and footer, redraws every page around blocks all read back, with nothing
+published; a deploy finds nothing of the release before. Nothing calls a
+cache to clear it, so no publishing path can forget to.
 
 The other ways, and why not:
 - **Deleting on change**: every path that changes a page (publish,
-  scheduled publish, site style, a deploy, whatever comes later) would
+  scheduled publish, site style, the header and footer, a deploy, whatever
+  comes later) would
   have to remember to delete, and a missed one serves an old page with no
   error anywhere. A browser's copy cannot be deleted at all.
 - **A max-age window** (say a minute): cheaper visits, but a publish
@@ -90,7 +93,8 @@ The other ways, and why not:
 From `cms/`, `ruby bin/rails test test/integration/page_cache_test.rb
 test/models/page_cache_test.rb` (after `ruby bin/rails db:test:prepare`):
 the headers, the 304, a new page for the old ETag after a publish, a
-restore published, a new style and a new release; the reads and writes of
+restore published, a new style, a new header and footer (on every page,
+at the next visit) and a new release; the reads and writes of
 Solid Cache on a page of 2 sections, 4 columns and 12 widgets (one widget
 changed: 4 written, 4 found); the same bytes as the partials draw with no
 cache on the 500-block fixture; no cookie in any answer.

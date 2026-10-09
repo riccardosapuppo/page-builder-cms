@@ -2,9 +2,9 @@ require "test_helper"
 
 # A published page as a browser and the server's cache keep it: what the
 # visitor gets back for the validator they hold, after each thing that
-# changes the page (a publish, a restore then published, the site style, a
-# new release), and which fragments of the page Solid Cache reads and
-# writes on the way.
+# changes the page (a publish, a restore then published, the site style,
+# the header and footer, a new release), and which fragments of the page
+# Solid Cache reads and writes on the way.
 class PageCacheTest < ActionDispatch::IntegrationTest
   include PageCacheStore
   include ReleaseFolder
@@ -120,6 +120,30 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_select ".site[data-primary=site-harbour]"
     assert_not_equal held, response.headers["ETag"]
+  end
+
+  # The editor's change applies at once: there is no publish to make a new
+  # version. The pages are asked for with the cache on, so a stale outer
+  # fragment would answer with the old header even under a new ETag.
+  test "a change of the header and footer is a new page for every browser, on every page, at the next visit" do
+    published(slug: "tides")
+    published(slug: "swims", document: grid_document(title: "Swims"))
+    held = %w[/tides /swims].index_with do |path|
+      with_page_cache { get path }
+      assert_select ".sw-brand span", text: "Slack Water"
+      response.headers["ETag"]
+    end
+
+    Site.replace!(revision: 0, values: Site.defaults.merge("name" => "Tide club", "footer" => { "lead" => "Tide club.", "text" => "Swims at slack water." }))
+    held.each do |path, etag|
+      with_page_cache { get path, headers: { "If-None-Match" => etag } }
+
+      assert_response :ok, path
+      assert_select ".sw-brand span", { text: "Tide club" }, path
+      assert_select ".sw-footer strong", { text: "Tide club." }, path
+      assert_not_equal etag, response.headers["ETag"], path
+      assert_cacheable path
+    end
   end
 
   test "a new release is a new page for every browser" do
@@ -273,6 +297,24 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_select ".site[data-primary=site-harbour][data-type-scale=strong]"
     assert_equal [ [ :read, 1, 0 ], [ :read_multi, 2, 2 ], [ :write, 1, 0 ] ], shape(calls)
     assert_equal drawn_directly(grid_document), main_of(response.body)
+  end
+
+  test "a change of the header and footer draws the page around blocks that are all read from the cache" do
+    published
+    with_page_cache { get "/tides" }
+
+    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => [ { "label" => "Tides", "href" => "/tides" } ], "action" => nil))
+    calls = with_page_cache { get "/tides" }
+
+    assert_equal [ [ "Tides", "/tides" ] ], css_select(".sw-nav-links a").map { |a| [ a.text, a["href"] ] }
+    assert_select ".sw-btn-small", false
+    assert_equal [ [ :read, 1, 0 ], [ :read_multi, 2, 2 ], [ :write, 1, 0 ] ], shape(calls)
+    assert_equal drawn_directly(grid_document), main_of(response.body)
+    page = response.body
+
+    calls = with_page_cache { get "/tides" }
+    assert_equal [ [ :read, 1, 1 ] ], shape(calls), "and the page under its new header is read whole next time"
+    assert_equal page, response.body
   end
 
   test "a new release finds none of the fragments of the one before" do
