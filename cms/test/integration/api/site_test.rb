@@ -68,6 +68,41 @@ class Api::SiteTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "/action", "required" ], [ "/footer", "required" ] ], error_pointers.sort
   end
 
+  # Without the revision a write has nothing to be compared with: it was
+  # answered 500 when it changed anything (nil has no zero?), and "saved"
+  # when it asked for what is stored, which a client that forgot the
+  # revision would take for a success.
+  test "a change with no revision is refused at /revision, whether it changes the values or asks for the stored ones" do
+    api :put, "/api/site", change(name: "Tide club").except("revision")
+    assert_response :unprocessable_content
+    assert_equal [ [ "/revision", "required" ] ], error_pointers
+    assert_nil Site.find_by(id: Site::ID)
+
+    api :put, "/api/site", change.except("revision")
+    assert_response :unprocessable_content
+    assert_equal [ [ "/revision", "required" ] ], error_pointers
+    assert_nil Site.find_by(id: Site::ID)
+
+    api :put, "/api/site", change(name: "Tide club")
+    assert_response :ok
+    stored = Site.find(Site::ID).attributes
+
+    api :put, "/api/site", change(name: "Tide club").except("revision")
+    assert_response :unprocessable_content
+    assert_equal [ [ "/revision", "required" ] ], error_pointers
+    assert_equal stored, Site.find(Site::ID).attributes
+  end
+
+  test "a revision that is not a whole number is refused at /revision" do
+    [ "0", 0.5, nil, true, [ 0 ] ].each do |revision|
+      api :put, "/api/site", change(revision: revision)
+
+      assert_response :unprocessable_content, revision.inspect
+      assert_equal [ [ "/revision", "type" ] ], error_pointers, revision.inspect
+    end
+    assert_nil Site.find_by(id: Site::ID)
+  end
+
   test "the limits the editor says: 8 links, 28 characters for the name, 24 for a link, 18 for the button" do
     links = Array.new(8) { |k| { "label" => "L" * 24, "href" => "/#part-#{k}" } }
     api :put, "/api/site", change(name: "N" * 28, menu: links, action: { "label" => "B" * 18, "href" => "/join" })
