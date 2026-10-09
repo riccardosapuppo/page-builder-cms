@@ -196,7 +196,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 55 cases (at least 50), each named once, and
+  It first checks the battery holds its 56 cases (at least 50), each named once, and
   that the Rails adapter skips none of them (with `publish` planted as
   absent in its capabilities, that check failed). A visitor's form is
   sent by the runner as a browser sends it from the live page (form
@@ -257,7 +257,11 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   (three tests), the step that reads the change as the CMS's JSON parser
   would left out (the surrogate case), the values' check skipped (the
   refusal case), the real clock for the adapter's (the date), the
-  capability declared absent (the first test and the capabilities case). A review removed 46 of the adapter's
+  capability declared absent (the first test and the capabilities case),
+  the revision not required, its maximum taken away, or the four members
+  not required (each failed the case that leaves them out, as did the
+  revision not required in the CMS's controller, on the CMS's adapter), and
+  ajv's list of faults left with its repeats (the refusal case). A review removed 46 of the adapter's
   guards one at a time and ran this whole suite on each: 23 went
   unnoticed, and the cases that now catch them are in the battery where
   Rails keeps the same rule (a later save naming a missing image, a replay
@@ -318,7 +322,9 @@ deleting, an image in use naming who uses it, an image that does not
 exist), the site style, the header and footer (`config/site.yml`'s at
 revision 0 until first changed; a change kept whole at the next revision,
 the same change again writing nothing; values the schema refuses refused
-at the pointer of each, with nothing stored; a change from a revision
+at the pointer of each, each once, with nothing stored; a change that
+leaves out a member or the revision, or whose revision is no whole number
+up to 2**53 - 1, refused at that value alone; a change from a revision
 another tab moved past a conflict holding what is there now, which sent
 from the old revision is answered as saved; with the CMS planted to
 write a change of nothing again, the second of these failed; half a

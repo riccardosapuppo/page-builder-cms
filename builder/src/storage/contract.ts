@@ -1019,6 +1019,39 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a change that leaves out a member or the revision, or whose revision is no whole number up to 2**53 - 1, is refused at that value and nothing else, and nothing is stored",
+    needs: ["headerFooter"],
+    async run(env) {
+      const before = await env.adapter.getSite();
+      const whole: Record<string, unknown> = { revision: before.revision, ...valuesOf(before) };
+      // What the types forbid and a client can send: a change put together by hand.
+      const faults = async (what: string, change: Record<string, unknown>): Promise<string[]> => {
+        const problem = refusal(await env.adapter.setSite(change as unknown as SiteChange), what);
+        if (problem.kind !== "invalid") throw new Error(`${what} was refused as ${problem.kind}, not as invalid`);
+        env.expect(problem.code, what).toBe("invalid_request");
+        return problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort();
+      };
+      const without = (member: string): Record<string, unknown> => Object.fromEntries(Object.entries(whole).filter(([key]) => key !== member));
+      // Each of the four values must be there, the button's too (no button
+      // is null), and then the values are not looked at.
+      for (const member of ["name", "menu", "action", "footer"]) {
+        env.expect(await faults(`a change with no ${member}`, without(member)), `no ${member}`).toEqual([`/${member} required`]);
+      }
+      env.expect(await faults("a change with no revision", without("revision")), "no revision").toEqual(["/revision required"]);
+      env.expect(await faults("a revision above the largest whole number a browser holds", { ...whole, revision: 2 ** 53 }), "revision 2**53").toEqual(["/revision maximum"]);
+      env.expect(await faults("a revision of 2**63", { ...whole, revision: 2 ** 63 }), "revision 2**63").toEqual(["/revision maximum"]);
+      env.expect(await faults("a revision in quotes", { ...whole, revision: "1" }), "revision \"1\"").toEqual(["/revision type"]);
+      env.expect(await faults("a revision with a fraction", { ...whole, revision: 0.5 }), "revision 0.5").toEqual(["/revision type"]);
+      env.expect(await faults("a revision of null", { ...whole, revision: null }), "revision null").toEqual(["/revision type"]);
+      // The largest revision allowed is one no change has reached: a change
+      // from it is a conflict, not an invalid request.
+      const changed: SiteValues = { ...valuesOf(before), action: before.action === null ? { label: "Join", href: "/join" } : null };
+      const largest = refusal(await env.adapter.setSite({ ...changed, revision: Number.MAX_SAFE_INTEGER }), "a change from the largest revision allowed");
+      env.expect(largest.kind, "a change from the largest revision allowed").toBe("conflict");
+      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(before);
+    },
+  },
+  {
     name: "a change from a revision another tab has moved past is a conflict holding what is there now; that sent from the old revision is answered as saved, and the change goes through from the new one",
     needs: ["headerFooter"],
     async run(env) {

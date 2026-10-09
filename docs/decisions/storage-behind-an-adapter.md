@@ -65,13 +65,19 @@ npm run e2e:browser
 ```
 
 The first starts a CMS of its own and runs the battery on the CMS's
-adapter: on 9 October 2026, with the header and footer's cases, the file
-of the battery ran 57 tests, the 55 cases each named once and none
+adapter: on 10 October 2026, with the header and footer's cases, the file
+of the battery ran 58 tests, the 56 cases each named once and none
 skipped, with two checks of the battery itself. The second runs it on the
-browser's adapter in Chromium, with real IndexedDB: 49 tests passed (the
-48 cases it can run and its check of the battery) and 7 were skipped, the
+browser's adapter in Chromium, with real IndexedDB: 50 tests passed (the
+49 cases it can run and its check of the battery) and 7 were skipped, the
 cases that need a server, named in the first test. With the revision check
 removed from the browser's adapter, five tests failed, and two with it
 removed from its change of the header and footer; with a refused open or
 a full quota not mapped to its sentence, the test of each failed
-(`builder/src/storage/README.md` lists the faults planted).
+(`builder/src/storage/README.md` lists the faults planted). With the
+change of the header and footer's revision not required, its maximum
+taken away, or its four members not required, in the browser's adapter,
+the case that sends it a change without them failed; with the revision not
+required in the CMS's controller, so did that case on the CMS's
+adapter; and with the browser's list of faults left as ajv gives it, which
+repeats some, the case of the faults of each value failed.
