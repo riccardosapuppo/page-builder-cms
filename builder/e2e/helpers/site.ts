@@ -108,15 +108,24 @@ export function shape(sections: readonly DraftBlock[]): unknown {
 // The editor on a page, once its top bar names it. Loaded, the editor takes
 // well under a second to name it (under 0.7 s with every CPU of the test
 // machine busy); when it has not within the wait, the run's log says what
-// the page showed and which of its requests had no answer yet, and since
-// when: the run's own error context does not outlast the next run.
+// the page showed, which of its requests had no answer yet, and since
+// when, which failed and in what words of the browser's, and whether the
+// browser took itself to be online: the run's own error context does not
+// outlast the next run, and a file may let a failed request's console
+// line through (two-tabs.spec.ts lets ERR_INTERNET_DISCONNECTED through).
 export async function open(page: Page, id: number): Promise<void> {
   const unanswered = new Map<Request, number>();
+  const failed: string[] = [];
+  const started = Date.now();
   const asked = (request: Request) => unanswered.set(request, Date.now());
   const answered = (request: Request) => unanswered.delete(request);
+  const lost = (request: Request) => {
+    unanswered.delete(request);
+    failed.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "no reason given"}, ${Date.now() - started} ms after the start`);
+  };
   page.on("request", asked);
   page.on("requestfinished", answered);
-  page.on("requestfailed", answered);
+  page.on("requestfailed", lost);
   try {
     await page.goto(`/?page=${id}`);
     const loaded = Date.now();
@@ -124,15 +133,19 @@ export async function open(page: Page, id: number): Promise<void> {
       await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
     } catch (error) {
       const shown = await page.locator("main").first().innerText({ timeout: 1_000 }).catch((why: unknown) => `(not read: ${String(why)})`);
+      const online = await Promise.race([
+        page.evaluate(() => String(navigator.onLine)),
+        new Promise<string>((done) => setTimeout(() => done("not read within 1 s"), 1_000)),
+      ]).catch((why: unknown) => `not read: ${String(why)}`);
       const now = Date.now();
       const waiting = [...unanswered].map(([request, since]) => `${request.method()} ${request.url()} for ${now - since} ms`);
-      console.log(`open(${id}): the editor did not name the page within ${now - loaded} ms of the load. The page showed: ${JSON.stringify(shown.slice(0, 400))}. Requests with no answer yet: ${waiting.join("; ") || "none"}.`);
+      console.log(`open(${id}): the editor did not name the page within ${now - loaded} ms of the load. The page showed: ${JSON.stringify(shown.slice(0, 400))}. Requests with no answer yet: ${waiting.join("; ") || "none"}. Requests that failed: ${failed.join("; ") || "none"}. navigator.onLine: ${online}.`);
       throw error;
     }
   } finally {
     page.off("request", asked);
     page.off("requestfinished", answered);
-    page.off("requestfailed", answered);
+    page.off("requestfailed", lost);
   }
   await expect(page.locator(".canvas .frame")).toBeVisible();
 }
