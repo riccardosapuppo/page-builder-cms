@@ -9,7 +9,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
-import { editorKit } from "../../test/editor-kit.tsx";
+import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { FieldError, Site, SiteValues } from "../storage/adapter.ts";
 import { HeaderFooterPanel, REACHES_EVERY_PAGE } from "./HeaderFooterPanel.tsx";
@@ -63,6 +63,11 @@ test("every value is labelled, each limit said, and one line says what a change 
   expect(links().map((group) => [(within(group).getByLabelText("Text") as HTMLInputElement).value, (within(group).getByLabelText("Link") as HTMLInputElement).value])).toEqual([
     ["Swims", "/#swims"], ["Gallery", "/#gallery"], ["Meet us", "/#meet"],
   ]);
+  // What an address may be is shown once, and said with every link's.
+  const linkHint = "Choose a page or a section of one, or paste a full address (https://…), mailto: or tel:.";
+  // Under the menu, and under the button's own address.
+  expect(screen.getAllByText(linkHint)).toHaveLength(2);
+  for (const group of links()) expect(describedText(within(group).getByLabelText("Link"))).toBe(linkHint);
   const button = screen.getByRole("group", { name: "Button" });
   expect((within(button).getByLabelText("Text") as HTMLInputElement).value).toBe("Join");
   expect(within(button).getByText("Up to 18 characters.")).toBeTruthy();

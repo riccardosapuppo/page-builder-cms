@@ -95,13 +95,14 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
   const leave = (pointer: string) => {
     if (!visited.has(pointer)) setVisited(new Set(visited).add(pointer));
   };
-  const field = (pointer: string, label: string, value: string, set: (text: string) => SiteValues, options: { hint?: ReactNode; link?: boolean; long?: boolean; autoFocus?: boolean } = {}) => (
+  const field = (pointer: string, label: string, value: string, set: (text: string) => SiteValues, options: { hint?: ReactNode; shared?: string; link?: boolean; long?: boolean; autoFocus?: boolean } = {}) => (
     <SiteField
       key={pointer}
       pointer={pointer}
       label={label}
       value={value}
       hint={options.hint}
+      shared={options.shared}
       link={options.link ? choicesId : undefined}
       long={options.long}
       autoFocus={options.autoFocus}
@@ -187,11 +188,12 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
         <datalist id={choicesId}>{choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</datalist>
         <p className="visually-hidden" role="status">{said}</p>
 
-        <h3 className="group-title">Header</h3>
         {field("/name", "Site name", values.name, (text) => setName(values, text), { autoFocus: true, hint: `Beside the site’s mark, which stays the design’s. Up to ${SITE_LIMITS.name} characters; on a phone, a long name puts Menu on a row of its own.` })}
 
         <h3 className="group-title hf-title" id={`${headId}-menu`}>Menu</h3>
         <p className="hint hf-hint">Up to {SITE_LIMITS.links} links, each up to {SITE_LIMITS.label} characters. Where they do not fit the bar, they fold into Menu.</p>
+        {/* Said once, and to a screen reader with each link's address. */}
+        <p className="hint" id={`${headId}-links`}>{LINK_HINT}</p>
         {values.menu.length === 0
           ? <p className="hint hf-none">No links: the header has no menu.</p>
           : (
@@ -206,7 +208,7 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
                       <button className="ibtn ibtn-small" type="button" data-remove="" aria-label={`Remove ${name(link, index)}`} title="Remove" onClick={() => remove(index)}><Icon name="trash" /></button>
                     </div>
                     {field(`/menu/${index}/label`, "Text", link.label, (text) => setLink(values, index, "label", text))}
-                    {field(`/menu/${index}/href`, "Link", link.href, (text) => setLink(values, index, "href", text), { link: true, hint: LINK_HINT })}
+                    {field(`/menu/${index}/href`, "Link", link.href, (text) => setLink(values, index, "href", text), { link: true, shared: `${headId}-links` })}
                   </fieldset>
                 </li>
               ))}
@@ -291,11 +293,13 @@ function Head({ id, dirty, onClose, onHide, onTake, onKeep }: { id: string; dirt
 // line for the footer's longer text; the link field's own look, with the
 // site's pages and sections offered, for an address), its hint and its
 // problems, tied to it for a screen reader.
-function SiteField({ pointer, label, value, hint, link, long, autoFocus, errors, onChange, onLeave }: {
+function SiteField({ pointer, label, value, hint, shared, link, long, autoFocus, errors, onChange, onLeave }: {
   pointer: string;
   label: string;
   value: string;
   hint?: ReactNode;
+  // The id of a hint several values share, said with this one.
+  shared?: string | undefined;
   // The id of the list of addresses to offer.
   link?: string | undefined;
   long?: boolean | undefined;
@@ -311,7 +315,7 @@ function SiteField({ pointer, label, value, hint, link, long, autoFocus, errors,
     "data-field": pointer,
     "data-autofocus": autoFocus ? "" : undefined,
     "aria-invalid": errors.length > 0 ? true : undefined,
-    "aria-describedby": describedBy(id, hint, errors),
+    "aria-describedby": [shared, describedBy(id, hint, errors)].filter(Boolean).join(" ") || undefined,
     onBlur: onLeave,
   };
   let control: ReactNode;
