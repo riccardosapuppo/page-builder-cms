@@ -3,7 +3,7 @@
 // servers; pages made through the CMS's API as the editor would make
 // them, each under an address of its own (the tests of a run share one
 // CMS); and the CMS's draft read back.
-import { test as base, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { test as base, expect, type APIRequestContext, type Locator, type Page, type Request } from "@playwright/test";
 
 // A picture for the images these pages take "from another site": answered
 // inside the browser, so nothing leaves the machine (a 1 by 1 PNG).
@@ -105,9 +105,35 @@ export function shape(sections: readonly DraftBlock[]): unknown {
   return sections.map((s) => [s.id, s.children.map((c) => [c.id, c.children.map((w) => w.id)])]);
 }
 
+// The editor on a page, once its top bar names it. Loaded, the editor takes
+// well under a second to name it (under 0.7 s with every CPU of the test
+// machine busy); when it has not within the wait, the run's log says what
+// the page showed and which of its requests had no answer yet, and since
+// when: the run's own error context does not outlast the next run.
 export async function open(page: Page, id: number): Promise<void> {
-  await page.goto(`/?page=${id}`);
-  await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
+  const unanswered = new Map<Request, number>();
+  const asked = (request: Request) => unanswered.set(request, Date.now());
+  const answered = (request: Request) => unanswered.delete(request);
+  page.on("request", asked);
+  page.on("requestfinished", answered);
+  page.on("requestfailed", answered);
+  try {
+    await page.goto(`/?page=${id}`);
+    const loaded = Date.now();
+    try {
+      await expect(page.getByRole("button", { name: /^Switch page\. Open:/ })).toBeVisible();
+    } catch (error) {
+      const shown = await page.locator("main").first().innerText({ timeout: 1_000 }).catch((why: unknown) => `(not read: ${String(why)})`);
+      const now = Date.now();
+      const waiting = [...unanswered].map(([request, since]) => `${request.method()} ${request.url()} for ${now - since} ms`);
+      console.log(`open(${id}): the editor did not name the page within ${now - loaded} ms of the load. The page showed: ${JSON.stringify(shown.slice(0, 400))}. Requests with no answer yet: ${waiting.join("; ") || "none"}.`);
+      throw error;
+    }
+  } finally {
+    page.off("request", asked);
+    page.off("requestfinished", answered);
+    page.off("requestfailed", answered);
+  }
   await expect(page.locator(".canvas .frame")).toBeVisible();
 }
 
