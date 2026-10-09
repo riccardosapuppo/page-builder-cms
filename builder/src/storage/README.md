@@ -142,7 +142,10 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   as in some private windows (`storage_unavailable`); the browser's
   storage full (`quota_exceeded`); an upgrade of the database held up by
   another tab still open on an older version (`storage_blocked`, and
-  every call refused so at once until that tab lets go); this
+  every call refused so at once until that tab lets go; said too by a
+  third tab whose open waits in line behind one so held up, which the
+  browser tells nothing: the held-up open holds a Web Lock that the
+  waiting one looks for); this
   tab's database taken over by a newer version in another tab, which it
   lets go of at once (`storage_upgraded`), or deleted there
   (`storage_deleted`); a database made by a newer version
@@ -235,9 +238,10 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   (a quota set small through Chromium's own protocol, so the browser
   itself refuses the bytes); a tab holding the database on an older
   version (with `../../test/browser/next-editor.tsx`, the editor as a
-  later build with one more step of the layout), and the older tab that
-  lets go, told on its next save; the storage deleted from another tab; a
-  database made by a newer build; the open refused for want of room. A
+  later build with one more step of the layout), a second tab of that
+  build waiting behind the first, and the older tab that lets go, told on
+  its next save; the storage deleted from another tab; a database made by
+  a newer build; the open refused for want of room. A
   refused save says why in words on the page (an alert with Try again, or
   with Reload this tab when the storage was upgraded, deleted or made by a
   newer build, which a save sent again cannot get past), not only in the
@@ -246,7 +250,8 @@ at a time or to take a visitor's form: refused as `unsupported`), no
   again when held up by an older tab, once that tab is closed; Reload this
   tab for a database made by a newer build.
   Planted, each failed its test: the quota not said as such, a refused
-  open not said as such, no sentence when held up, an older tab that does
+  open not said as such, no sentence when held up, none for a tab waiting
+  behind one held up (the adapter before the lock), an older tab that does
   not let go, a deletion said as an upgrade.
 - `autosave.test.ts` runs the autosave on a fake clock
   (`../../test/fake-clock.ts`) against a fake CMS that keeps a draft by the

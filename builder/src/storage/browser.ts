@@ -268,6 +268,67 @@ function randomId(): string {
   return id.length === 16 ? id : id + randomId().slice(id.length);
 }
 
+// The browser's opens of one database wait in one line. An open that
+// another tab holds up (an older version it does not let go of) is told
+// so; an open made after it, in a third tab, only waits behind it, and the
+// browser tells it nothing. So an open held up holds a lock named after
+// the database (the Web Locks API) until it is through, and an open still
+// waiting looks for that lock, at once and then every half second: found,
+// it is held up by the same tab, and says so. A browser without the API
+// (all current ones have it) only waits.
+const LOOK_AGAIN_MS = 500;
+
+interface PlaceInLine {
+  // This open is held up: the lock is held until it is through.
+  hold(): void;
+  // This open is through, either way.
+  done(): void;
+}
+
+function placeInLine(name: string, heldUpAhead: () => void): PlaceInLine {
+  const locks = (globalThis as { navigator?: { locks?: LockManager } }).navigator?.locks;
+  const lockName = `${name}: an open held up`;
+  let through = false;
+  let holding = false;
+  let release: (() => void) | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const stopLooking = () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  };
+  const look = () => {
+    timer = null;
+    if (through || holding || !locks) return;
+    locks.query().then(
+      (state) => {
+        if (through || holding) return;
+        if (state.held?.some((lock) => lock.name === lockName)) heldUpAhead();
+        else timer = setTimeout(look, LOOK_AGAIN_MS);
+      },
+      () => undefined,
+    );
+  };
+  look();
+  return {
+    hold() {
+      stopLooking();
+      if (through || holding || !locks) return;
+      holding = true;
+      locks
+        .request(lockName, { mode: "shared" }, () => new Promise<void>((letGo) => {
+          release = letGo;
+          if (through) letGo();
+        }))
+        .catch(() => undefined);
+    },
+    done() {
+      through = true;
+      stopLooking();
+      release?.();
+    },
+  };
+}
+
 export function createBrowserAdapter(config: BrowserAdapterConfig = {}): StorageAdapter {
   const name = config.databaseName ?? DATABASE_NAME;
   const clock = config.clock ?? systemClock;
@@ -283,10 +344,11 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
   // deleted it): this tab's next call says so, and none goes through.
   let gone: StorageError | null = null;
   // Set while this tab's open waits for another tab that holds the
-  // database on an older version: each call is refused at once, in the
-  // same words, until that tab lets go. Another open made meanwhile would
-  // only wait in line behind the first, with no word of why, and go
-  // through by itself once that tab is closed.
+  // database on an older version, held up itself or waiting behind another
+  // tab's open so held up: each call is refused at once, in the same
+  // words, until that tab lets go. Another open made meanwhile would only
+  // wait in line behind the first, with no word of why, and go through by
+  // itself once that tab is closed.
   let heldUp: StorageError | null = null;
 
   function database(): Promise<IDBDatabase> {
@@ -314,24 +376,34 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
         return;
       }
       let said = false;
-      asked.onupgradeneeded = (event) => {
-        // No other tab holds the database any more: a call made from now on
-        // opens it once this upgrade is done.
-        heldUp = null;
-        const upgrading = asked.transaction!;
-        for (let version = event.oldVersion; version < layout.length; version += 1) layout[version]!(asked.result, upgrading);
-      };
       // Another tab holds the database open on an older version and does
       // not let go of it. The open waits for it; the person is told now,
       // and so is each call until that tab lets go.
-      asked.onblocked = () => {
+      const holdUp = () => {
         if (said) return;
         said = true;
         heldUp = refused("storage_blocked", GIVING_UP.blocked);
         reject(heldUp);
       };
+      // An open of a third tab, waiting behind one so held up, is held up
+      // by the same tab: told nothing by the browser, it says so all the
+      // same (placeInLine).
+      const inLine = placeInLine(name, holdUp);
+      asked.onupgradeneeded = (event) => {
+        // No other tab holds the database any more: a call made from now on
+        // opens it once this upgrade is done.
+        heldUp = null;
+        inLine.done();
+        const upgrading = asked.transaction!;
+        for (let version = event.oldVersion; version < layout.length; version += 1) layout[version]!(asked.result, upgrading);
+      };
+      asked.onblocked = () => {
+        inLine.hold();
+        holdUp();
+      };
       asked.onsuccess = () => {
         heldUp = null;
+        inLine.done();
         const opened = asked.result;
         if (said) {
           // Blocked earlier and said so: this tab's next call opens anew.
@@ -356,6 +428,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       };
       asked.onerror = () => {
         heldUp = null;
+        inLine.done();
         if (said) return;
         said = true;
         const error = asked.error;
