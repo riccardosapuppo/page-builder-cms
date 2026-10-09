@@ -218,16 +218,15 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 8 October 2026 (Windows 10, Ruby 3.4.11), made by `npm run
-check` with exactly these two commands, after stage 6's tests of the seed,
-the forms and the responses (the run of 5 October, before them, had 355
-runs and 2023 assertions):
+The run of 9 October 2026 (Windows 10, Ruby 3.4.11), with exactly these
+two commands, after the tests of the header and footer the editor sets
+(the run of 8 October, before them, had 363 runs and 2138 assertions):
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 103.128716s, 3.5199 runs/s, 20.7314 assertions/s.
-363 runs, 2138 assertions, 0 failures, 0 errors, 0 skips
-openapi: 330 API response(s) checked against cms/openapi.yaml
+Finished in 103.553114s, 3.8241 runs/s, 22.2784 assertions/s.
+396 runs, 2307 assertions, 0 failures, 0 errors, 0 skips
+openapi: 349 API response(s) checked against cms/openapi.yaml
 ```
 
 The run includes six tests that start Rails in processes of their own,
