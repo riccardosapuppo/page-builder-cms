@@ -1,0 +1,15 @@
+{
+  "name": "Slack Water",
+  "menu": {
+    "label": "Swims",
+    "href": "/#swims"
+  },
+  "action": {
+    "label": "Join",
+    "href": "/#join"
+  },
+  "footer": {
+    "lead": "Slack Water swimming club.",
+    "text": "Tide times are a guide, not a promise."
+  }
+}

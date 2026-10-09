@@ -1,0 +1,21 @@
+{
+  "name": "Øresund Bådelaug",
+  "menu": [
+    {
+      "label": "日本語の案内",
+      "href": "/"
+    },
+    {
+      "label": "مرحبا",
+      "href": "/"
+    }
+  ],
+  "action": {
+    "label": "Été ✓",
+    "href": "/"
+  },
+  "footer": {
+    "lead": "Ça nage à l’étale.",
+    "text": "Ünïcödé, emoji 🌊 and all."
+  }
+}

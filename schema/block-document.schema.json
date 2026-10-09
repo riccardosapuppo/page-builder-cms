@@ -894,6 +894,43 @@
           }
         }
       }
+    },
+
+    "site": {
+      "description": "The site's header and footer, the same around every page: the site's name beside its mark, the menu, the header's button (null for none) and the footer's two lines. Not part of a page: the CMS keeps one for the whole site (PUT /api/site) and checks it against this definition, as the editor does, so its words and links follow the rules of a page's. The header's lengths are what a 375 px phone shows in its place on one line, in words of average width: the name on a row of its own, the button's label beside Menu, a link in Menu's sheet; wider letters break inside their place rather than leave the page. The footer's two lines run on as a paragraph.",
+      "$comment": "Not reachable from the page document's root: validated on its own, as #/$defs/site (the server's BlockDocument::Schema, the editor's build/validator.ts, schema/tools with --def site).",
+      "type": "object",
+      "required": ["name", "menu", "action", "footer"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 28 },
+        "menu": {
+          "description": "The header's links, in order. On a page narrower than the bar they need, they fold into Menu.",
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/siteLink", "type": "object", "properties": { "label": { "type": "string", "maxLength": 24 } } }
+        },
+        "action": { "$ref": "#/$defs/siteLink", "type": ["object", "null"], "properties": { "label": { "type": "string", "maxLength": 18 } } },
+        "footer": {
+          "type": "object",
+          "required": ["lead", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "lead": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+            "text": { "$ref": "#/$defs/line", "type": "string", "maxLength": 160 }
+          }
+        }
+      }
+    },
+    "siteLink": {
+      "$comment": "A menu link, or the button, which may also be null; each use gives its label a length, so a label has one maxLength and one message.",
+      "type": ["object", "null"],
+      "required": ["label", "href"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/line" },
+        "href": { "$ref": "#/$defs/href" }
+      }
     }
   }
 }

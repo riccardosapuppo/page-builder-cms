@@ -1,0 +1,29 @@
+{
+  "name": "Slack Water",
+  "menu": [
+    {
+      "label": "Swims",
+      "href": "/#swims"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#gallery"
+    },
+    {
+      "label": "Meet us",
+      "href": "/#meet"
+    },
+    {
+      "label": "Questions",
+      "href": "/#questions"
+    }
+  ],
+  "action": {
+    "label": "Join",
+    "href": "/#join"
+  },
+  "footer": {
+    "lead": "Slack Water swimming club.",
+    "text": "Tide times are a guide, not a promise."
+  }
+}

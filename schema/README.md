@@ -123,6 +123,33 @@ pixels. Display is 45, 76 and 102 px in a wide window, 28, 40 and 48 on a
 phone. The server reads the same two lists to accept or refuse a site
 style, so there is one list of slots and tones, not one per program.
 
+### The site's header and footer
+
+`$defs/site` is not part of a page. It describes the header and footer the
+CMS keeps once for the whole site and draws around every page (`PUT
+/api/site`), and both sides validate it on its own, as `#/$defs/site`:
+
+```json
+{
+  "name": "Slack Water",
+  "menu": [{ "label": "Swims", "href": "/#swims" }],
+  "action": { "label": "Join", "href": "/#join" },
+  "footer": { "lead": "Slack Water swimming club.", "text": "Tide times are a guide, not a promise." }
+}
+```
+
+- Every text is a `line` and every address an `href`, the definitions a
+  page's titles, labels and links use, so the header and footer follow a
+  page's rules: one line with a visible character, no control character,
+  no `javascript:` or `data:` address.
+- `action` is the header's button, or `null` for none; the four members
+  are always there. The menu holds 0 to 8 links.
+- The lengths are what a 375 px phone shows in its place on one line, in
+  words of average width: the name, 28 characters, on a row of its own;
+  the button's label, 18, beside Menu; a link's label, 24, in Menu's
+  sheet. Wider letters break inside their place rather than leave the
+  page. The footer's lead (80) and text (160) run on as a paragraph.
+
 ## What the schema cannot say, and where it is said
 
 A JSON Schema checks one value at a time against a shape. Some rules are
@@ -194,6 +221,13 @@ So every pattern here:
   file, also the JSON pointer and the keyword where **both** engines must
   report it, and whether the application rules or the schema refuse it. A
   trap refused for the wrong reason fails the comparison.
+- `site/`: the same, `valid/`, `invalid/` and a manifest of its own, for
+  the site's header and footer (`$defs/site`): the example site's, one
+  with no menu and no button, every length at its limit (in code points
+  too), every form of link, other scripts; and 44 traps, each the example
+  site's with one change, among them the time zone sent as a member, a
+  ninth link, a `javascript:` or `//host` address, a label one character
+  too long, a newline in a name, and a name given twice.
 
 [`tools/gen-corpus.ts`](tools/gen-corpus.ts) writes all of it, and
 `npm run corpus:check` fails if a file on disk differs from what it would
@@ -227,6 +261,7 @@ bundle, so it uses json_schemer 2.5.0 and the json 3.0.2 parser that
 cd schema/tools
 npm ci
 npm run compare
+npm run compare:site
 npm run typecheck
 ```
 
@@ -292,6 +327,22 @@ normalised documents with the same numbers and values: 3/3
 RESULT: PASS (3 files, 0 disagreements, 0 exceptions)
 ```
 
+**The site's header and footer** go through it too, against `$defs/site`
+instead of the root: `compare.ts --def site` hands both runners the
+definition (`validate.ts` compiles it with the whole schema around it,
+`validate.rb` takes `ref("#/$defs/site")`), and fails if either runner
+says it validated against anything else. `npm run compare:site`, on
+9 October 2026:
+
+```
+schema:  ../block-document.schema.json#/$defs/site
+corpus:  ../corpus/site: 50 files (6 valid, 44 invalid, 0 upgrade); the manifest lists 50
+verdicts compared: 50; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 44/44, json_schemer 44/44
+identical {pointer, keyword} sets: 44/44 invalid files (refused by the rules: 3/3; by the schema: 41/41)
+RESULT: PASS (50 files, 0 disagreements, 0 exceptions)
+```
+
 ### It can fail
 
 Each of these was run, and each exited 1. The flags exist only for this;
@@ -311,6 +362,8 @@ files; each of the others says its own date and size.
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_field_names` (5 October 2026, on 249 files, the file restored afterwards) | the Ruby twin without the rule on a form's field names | six failures, three on each of the two files of repeated names: `verdicts differ on invalid/form-name-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare-examples.ts --plant-invalid` (8 October 2026, on the example site's 3 pages) | the home page's first heading at level 7, in the temporary copy only | `ajv calls valid/home.json invalid, against its folder` and `json_schemer calls valid/home.json invalid, against its folder` |
+| `node compare.ts --corpus ../corpus/site --def site --min-files 50 --rules off` (9 October 2026, on the site's 50 files) | the site's header and footer without the application rules | six failures, three on each of the two files only the rules refuse: `verdicts differ on invalid/dup-key-name.json: ajv valid, json_schemer invalid`, `ajv calls ... valid, against its folder`, `only one side's rules accepted ...`, and the same for `invalid/name-lone-surrogate.json` |
+| `node compare.ts --corpus ../corpus/site --def site --min-files 50 --schema <the schema without the button's 18 characters>` (9 October 2026) | a limit dropped from the definition | `ajv calls invalid/action-label-too-long.json valid, against its folder`, and the same from json_schemer |
 
 ## The lint of the schema
 

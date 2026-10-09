@@ -1,0 +1,17 @@
+{
+  "name": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊",
+  "menu": [
+    {
+      "label": "éééééééééééé",
+      "href": "/"
+    }
+  ],
+  "action": {
+    "label": "🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊🏊",
+    "href": "/"
+  },
+  "footer": {
+    "lead": "Slack Water swimming club.",
+    "text": "Tide times are a guide, not a promise."
+  }
+}

@@ -1,4 +1,5 @@
-// Writes schema/corpus: valid/ and invalid/ documents and manifest.json.
+// Writes schema/corpus: valid/ and invalid/ documents and manifest.json;
+// and corpus/site/, the same for the site's header and footer ($defs/site).
 //
 // Every invalid file is the base page (valid/landing.json) with ONE change,
 // and the manifest records the rule it breaks and where both validators
@@ -822,6 +823,127 @@ parseError("json-leading-zero", "numbers have no leading zero (a rule)", TEXT_BY
   encodingError("utf8-overlong", "an overlong encoding of / (C0 AF) is not UTF-8 (a rule)", concat(TEXT_BYTES("Swim "), bytes(0xc0, 0xaf), TEXT_BYTES(" at slack water")));
 }
 
+// =============================== THE SITE ======================================
+// corpus/site: the site's header and footer, $defs/site, which the CMS keeps
+// apart from any page (PUT /api/site) and checks with the same two engines.
+// The same layout as the documents' corpus, with a manifest of its own:
+// every invalid file is the base (valid/slack-water.json) with ONE change.
+// npm run compare:site holds both validators to it.
+const siteFiles = new Map<string, Uint8Array>();
+const siteManifest: Record<string, ValidEntry | InvalidEntry> = {};
+const SITE_BASE: J = {
+  name: "Slack Water",
+  menu: [
+    { label: "Swims", href: "/#swims" },
+    { label: "Gallery", href: "/#gallery" },
+    { label: "Meet us", href: "/#meet" },
+    { label: "Questions", href: "/#questions" },
+  ],
+  action: { label: "Join", href: "/#join" },
+  footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide, not a promise." },
+};
+function siteAdd(name: string, content: Uint8Array, entry: ValidEntry | InvalidEntry): void {
+  if (siteFiles.has(name)) throw new Error(`duplicate site corpus file ${name}`);
+  siteFiles.set(name, content);
+  siteManifest[name] = entry;
+}
+const siteValid = (name: string, rule: string, value: J): void => siteAdd(`valid/${name}.json`, encoder.encode(serialise(value)), { rule });
+function siteInvalid(name: string, rule: string, pointer: string, keyword: string, mutate: (s: J) => void): void {
+  const s = structuredClone(SITE_BASE);
+  mutate(s);
+  siteAdd(`invalid/${name}.json`, encoder.encode(serialise(s)), invalidEntry(rule, pointer, keyword));
+}
+// One change that JSON.stringify cannot write, as invalidRaw does for pages.
+function siteInvalidRaw(name: string, rule: string, pointer: string, keyword: string, mutate: (s: J) => void, raw: string): void {
+  const s = structuredClone(SITE_BASE);
+  mutate(s);
+  const parts = serialise(s).split(serialise(s).includes('"__RAW__": 0') ? '"__RAW__": 0' : '"__RAW__"');
+  if (parts.length !== 2) throw new Error(`${name}: placeholder found ${parts.length - 1} times`);
+  siteAdd(`invalid/${name}.json`, encoder.encode(`${parts[0]}${raw}${parts[1]}`), invalidEntry(rule, pointer, keyword));
+}
+const times = (s: string, n: number): string => s.repeat(n);
+const link8 = (label: string): J[] => Array.from({ length: 8 }, (_, k) => ({ label, href: `/#part-${k + 1}` }));
+
+// --- valid ---
+siteValid("slack-water", "the example site's header and footer, as config/site.yml gives them; each invalid file changes one thing in it", SITE_BASE);
+siteValid("bare", "no menu and no button: the menu may be empty, and null says there is no button", { name: "Tide club", menu: [], action: null, footer: { lead: "Tide club.", text: "Swims at slack water." } });
+siteValid("every-limit", "every length at its limit: 28 for the name, 8 links of 24, 18 for the button, 80 and 160 for the footer", {
+  name: times("N", 28), menu: link8(times("L", 24)), action: { label: times("B", 18), href: "/join" },
+  footer: { lead: times("l", 80), text: times("t", 160) },
+});
+siteValid("every-limit-in-code-points", "lengths count code points, as maxLength does in both engines: 28 emoji, and letters written as letter plus combining accent", {
+  name: times(cp(0x1f30a), 28), menu: [{ label: times(`e${COMBINING_ACUTE}`, 12), href: "/" }], action: { label: times(cp(0x1f3ca), 18), href: "/" },
+  footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide, not a promise." },
+});
+siteValid("every-link-form", "every form a link may take, as on a page: https, http, mailto, tel, a path, a section of a page, a query, a fragment", {
+  ...SITE_BASE,
+  menu: [
+    { label: "Elsewhere", href: "https://example.org/tides?when=today#now" },
+    { label: "Plain", href: "http://example.org" },
+    { label: "Write", href: "mailto:swim@example.org" },
+    { label: "Call", href: "tel:+44-1234-567890" },
+    { label: "Winter", href: "/winter-series" },
+    { label: "Join", href: "/#join" },
+    { label: "Search", href: "?q=tides" },
+    { label: "Top", href: "#top" },
+  ],
+});
+siteValid("non-ascii", "names and words in other scripts and with accents, right to left included", {
+  name: "Øresund Bådelaug", menu: [{ label: "日本語の案内", href: "/" }, { label: "مرحبا", href: "/" }], action: { label: "Été ✓", href: "/" },
+  footer: { lead: "Ça nage à l’étale.", text: "Ünïcödé, emoji 🌊 and all." },
+});
+
+// --- the whole and its members ---
+siteInvalid("unknown-member-time-zone", "the time zone is the CMS's setting, not the editor's: a member the header and footer do not have", "/timeZone", "additionalProperties", (s) => { s.timeZone = "Europe/London"; });
+siteInvalid("name-missing", "every member is there, the button too (null for none)", "", "required", (s) => { delete s.name; });
+siteInvalid("action-missing", "no button is null, not an absent member", "", "required", (s) => { delete s.action; });
+siteInvalid("name-number", "the name is text", "/name", "type", (s) => { s.name = 7; });
+siteInvalid("name-empty", "the name has a visible character", "/name", "pattern", (s) => { s.name = ""; });
+siteInvalid("name-nbsp-only", "no-break spaces are not a visible character", "/name", "pattern", (s) => { s.name = times(NBSP, 3); });
+siteInvalid("name-too-long", "the name has at most 28 characters", "/name", "maxLength", (s) => { s.name = times("N", 29); });
+siteInvalid("name-newline", "the name is one line", "/name", "not", (s) => { s.name = `Slack${NEWLINE}Water`; });
+siteInvalid("name-bell", "no control character in a name", "/name", "not", (s) => { s.name = `Slack Water${BELL}`; });
+siteInvalid("name-line-separator", "a line separator breaks the line too", "/name", "not", (s) => { s.name = `Slack${LINE_SEPARATOR}Water`; });
+// --- the menu ---
+siteInvalid("menu-not-a-list", "the menu is a list", "/menu", "type", (s) => { s.menu = { label: "Swims", href: "/#swims" }; });
+siteInvalid("menu-nine-links", "at most 8 links", "/menu", "maxItems", (s) => { s.menu = [...link8("Swims"), { label: "More", href: "/" }]; });
+siteInvalid("menu-link-null", "a link of the menu is a link, never null (only the button may be)", "/menu/0", "type", (s) => { s.menu[0] = null; });
+siteInvalid("menu-link-extra-member", "a link has a label and an address, nothing else", "/menu/0/target", "additionalProperties", (s) => { s.menu[0].target = "_blank"; });
+siteInvalid("menu-link-no-address", "a link has an address", "/menu/0", "required", (s) => { delete s.menu[0].href; });
+siteInvalid("menu-label-blank", "a link's label has a visible character", "/menu/1/label", "pattern", (s) => { s.menu[1].label = times(IDEOGRAPHIC_SPACE, 2); });
+siteInvalid("menu-label-zero-width", "zero-width spaces are not a visible character", "/menu/1/label", "pattern", (s) => { s.menu[1].label = times(ZERO_WIDTH_SPACE, 2); });
+siteInvalid("menu-label-too-long", "a link's label has at most 24 characters", "/menu/1/label", "maxLength", (s) => { s.menu[1].label = times("L", 25); });
+siteInvalid("menu-label-tab", "a label is one line", "/menu/1/label", "not", (s) => { s.menu[1].label = `Meet${TAB}us`; });
+siteInvalid("menu-href-javascript", "no javascript: address, as on a page", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "javascript:alert(1)"; });
+siteInvalid("menu-href-javascript-mixed-case", "nor in another case", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "JavaScript:alert(1)"; });
+siteInvalid("menu-href-data", "no data: address", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "data:text/html,<p>hi</p>"; });
+siteInvalid("menu-href-protocol-relative", "no //host: a path starts with one slash", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "//elsewhere.example/"; });
+siteInvalid("menu-href-user-info", "no user info before the host", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "https://user@elsewhere.example/"; });
+siteInvalid("menu-href-space", "no raw space: the editor percent-encodes it", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "/meet us"; });
+siteInvalid("menu-href-empty", "an address is not empty", "/menu/2/href", "pattern", (s) => { s.menu[2].href = ""; });
+siteInvalid("menu-href-trailing-newline", "a newline after a good address", "/menu/2/href", "not", (s) => { s.menu[2].href = `/#meet${NEWLINE}`; });
+siteInvalid("menu-href-newline-then-https", "a line that hides a second address", "/menu/2/href", "not", (s) => { s.menu[2].href = `javascript:alert(1)${NEWLINE}https://ok.example`; });
+siteInvalid("menu-href-too-long", "an address has at most 2048 characters", "/menu/2/href", "maxLength", (s) => { s.menu[2].href = `/${times("a", 2048)}`; });
+// --- the button ---
+siteInvalid("action-string", "the button is a link or null", "/action", "type", (s) => { s.action = "Join"; });
+siteInvalid("action-no-label", "the button has a label", "/action", "required", (s) => { delete s.action.label; });
+siteInvalid("action-extra-member", "the button has a label and an address, nothing else", "/action/style", "additionalProperties", (s) => { s.action.style = "accent"; });
+siteInvalid("action-label-too-long", "the button's label has at most 18 characters, fewer than a link's", "/action/label", "maxLength", (s) => { s.action.label = times("B", 19); });
+siteInvalid("action-href-javascript", "the button's address follows a page's rules too", "/action/href", "pattern", (s) => { s.action.href = "javascript:alert(1)"; });
+// --- the footer ---
+siteInvalid("footer-not-an-object", "the footer is two lines, by name", "/footer", "type", (s) => { s.footer = "Slack Water swimming club."; });
+siteInvalid("footer-no-text", "the footer has both lines", "/footer", "required", (s) => { delete s.footer.text; });
+siteInvalid("footer-extra-member", "the footer has a lead and a text, nothing else", "/footer/note", "additionalProperties", (s) => { s.footer.note = "More."; });
+siteInvalid("footer-lead-too-long", "the lead has at most 80 characters", "/footer/lead", "maxLength", (s) => { s.footer.lead = times("l", 81); });
+siteInvalid("footer-text-too-long", "the text has at most 160 characters", "/footer/text", "maxLength", (s) => { s.footer.text = times("t", 161); });
+siteInvalid("footer-text-blank", "the text has a visible character", "/footer/text", "pattern", (s) => { s.footer.text = " "; });
+siteInvalid("footer-lead-newline", "the lead is one line", "/footer/lead", "not", (s) => { s.footer.lead = `Slack Water${NEWLINE}swimming club.`; });
+// --- what only the rules see, as for a page ---
+siteInvalidRaw("name-lone-surrogate", "a lone high surrogate: Ruby's parser refuses it, JavaScript's reads it (a rule)", "/name", "wellFormed", (s) => { s.name = "__RAW__"; }, `"Slack ${uEscape("d83c")} Water"`);
+siteInvalidRaw("dup-key-name", "a name given twice: each parser would see a different header (a rule)", "/name", "duplicateKey", (s) => { s.__RAW__ = 0; }, '"name": "Another name"');
+siteAdd("invalid/json-trailing-comma.json", encoder.encode(replaceOnce(serialise(SITE_BASE), `"/#join"${NEWLINE}`, `"/#join",${NEWLINE}`, "site json-trailing-comma")),
+  invalidEntry("trailing commas are not JSON (a rule)", "", "parse"));
+
 // --- helpers used above ----------------------------------------------------------
 function jsonDepth(value: J): number {
   if (value === null || typeof value !== "object") return 0;
@@ -847,37 +969,48 @@ function firstTooDeep(value: J): string {
 }
 
 // =============================== write or check =================================
-const manifestText = JSON.stringify(Object.fromEntries([...Object.entries(manifest)].sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n";
+// The pages' corpus in corpus/, the site's in corpus/site/, each with its
+// manifest; the pages' folders are valid/ and invalid/ only, so neither
+// corpus sees the other's files.
 const check = process.argv.includes("--check");
-const problems: string[] = [];
-for (const sub of ["valid", "invalid"]) {
-  const dir = join(CORPUS, sub);
-  if (!existsSync(dir)) {
-    if (check) problems.push(`missing folder ${sub}/`);
-    else mkdirSync(dir, { recursive: true });
-    continue;
-  }
-  for (const f of readdirSync(dir)) {
-    if (!files.has(`${sub}/${f}`)) {
-      if (check) problems.push(`${sub}/${f} is on disk but not generated`);
-      else rmSync(join(dir, f));
+const same = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length && a.every((x, k) => x === b[k]);
+function writeOrCheck(dir: string, corpusFiles: Map<string, Uint8Array>, corpusManifest: Record<string, ValidEntry | InvalidEntry>): string[] {
+  const shown = dir === CORPUS ? "" : "site/";
+  const problems: string[] = [];
+  const manifestText = JSON.stringify(Object.fromEntries([...Object.entries(corpusManifest)].sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n";
+  for (const sub of ["valid", "invalid"]) {
+    const folder = join(dir, sub);
+    if (!existsSync(folder)) {
+      if (check) problems.push(`missing folder ${shown}${sub}/`);
+      else mkdirSync(folder, { recursive: true });
+      continue;
+    }
+    for (const f of readdirSync(folder)) {
+      if (!corpusFiles.has(`${sub}/${f}`)) {
+        if (check) problems.push(`${shown}${sub}/${f} is on disk but not generated`);
+        else rmSync(join(folder, f));
+      }
     }
   }
-}
-const same = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length && a.every((x, k) => x === b[k]);
-for (const [name, content] of [...files, ["manifest.json", encoder.encode(manifestText)] as const]) {
-  const path = join(CORPUS, name);
-  if (check) {
-    if (!existsSync(path)) problems.push(`${name} is missing`);
-    else if (!same(new Uint8Array(readFileSync(path)), content)) problems.push(`${name} differs from what the generator writes`);
-  } else {
-    writeFileSync(path, content);
+  for (const [name, content] of [...corpusFiles, ["manifest.json", encoder.encode(manifestText)] as const]) {
+    const path = join(dir, name);
+    if (check) {
+      if (!existsSync(path)) problems.push(`${shown}${name} is missing`);
+      else if (!same(new Uint8Array(readFileSync(path)), content)) problems.push(`${shown}${name} differs from what the generator writes`);
+    } else {
+      writeFileSync(path, content);
+    }
   }
+  return problems;
 }
-const nValid = [...files.keys()].filter((f) => f.startsWith("valid/")).length;
+const problems = [...writeOrCheck(CORPUS, files, manifest), ...writeOrCheck(join(CORPUS, "site"), siteFiles, siteManifest)];
+const counted = (corpusFiles: Map<string, Uint8Array>): string => {
+  const nValid = [...corpusFiles.keys()].filter((f) => f.startsWith("valid/")).length;
+  return `${corpusFiles.size} files (${nValid} valid, ${corpusFiles.size - nValid} invalid)`;
+};
 if (check) {
   for (const problem of problems) console.log(`  ${problem}`);
-  console.log(problems.length === 0 ? `corpus is up to date: ${files.size} files (${nValid} valid, ${files.size - nValid} invalid)` : `corpus is NOT up to date: ${problems.length} difference(s)`);
+  console.log(problems.length === 0 ? `corpus is up to date: ${counted(files)}; the site's: ${counted(siteFiles)}` : `corpus is NOT up to date: ${problems.length} difference(s)`);
   process.exit(problems.length === 0 ? 0 : 1);
 }
-console.log(`wrote ${files.size} files (${nValid} valid, ${files.size - nValid} invalid) and manifest.json`);
+console.log(`wrote ${counted(files)} and manifest.json; the site's: ${counted(siteFiles)} and site/manifest.json`);

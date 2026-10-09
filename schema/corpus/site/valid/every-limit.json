@@ -1,0 +1,45 @@
+{
+  "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+  "menu": [
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-1"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-2"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-3"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-4"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-5"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-6"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-7"
+    },
+    {
+      "label": "LLLLLLLLLLLLLLLLLLLLLLLL",
+      "href": "/#part-8"
+    }
+  ],
+  "action": {
+    "label": "BBBBBBBBBBBBBBBBBB",
+    "href": "/join"
+  },
+  "footer": {
+    "lead": "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+    "text": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+  }
+}

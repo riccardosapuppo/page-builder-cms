@@ -44,7 +44,7 @@
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
     "cms/lib/site_theme/token_css.rb": "50fa35ffb7cb5fde2d24faa84ad793eea7ad56c8e37119bb9f73a8d846a39674",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
-    "schema/block-document.schema.json": "140d01063cd205a67c0e0d179b6ab3058f3d5591296768d8a7fddfda5979a00e",
+    "schema/block-document.schema.json": "107886c937d1e32596df8881e6d4493809ed9545b3505bf684a6724a76afdba3",
     "schema/icons.svg": "86273c3534a9d322caa64654f5dbc2034b237e8edb5f786491261a0468796562"
   }
 }

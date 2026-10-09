@@ -8,12 +8,13 @@
 #
 #   ruby validate.rb [--schema PATH] [--corpus DIR] [--rules on|off]
 #                    [--regexp ecma|ruby] [--skip-file NAME]
-#                    [--normalize on|off]
+#                    [--normalize on|off] [--def NAME]
 #
 # --rules off, --regexp ruby, --skip-file and --normalize off exist to show
 # that the comparator fails when the rules are missing, when the regexp
 # resolver is the wrong one, when a result goes missing, and when 2.0 stays
-# a Float.
+# a Float. --def validates against $defs/NAME instead of the root, as the
+# server does for the site's header and footer ($defs/site).
 
 # Always the app's bundle, whatever the shell has set: the point is to run
 # the gems and the json parser that cms/Gemfile.lock pins.
@@ -35,12 +36,14 @@ use_rules = arg("--rules", "on") == "on"
 regexp = arg("--regexp", "ecma")
 skip_file = arg("--skip-file", nil)
 normalize = arg("--normalize", "on") == "on"
+definition = arg("--def", "")
 
 schemer = JSONSchemer.schema(
   JSON.parse(File.read(schema_path, encoding: "UTF-8")),
   regexp_resolver: regexp,
   format: false
 )
+schemer = schemer.ref("#/$defs/#{definition}") unless definition.empty?
 
 # json_schemer's classic output names an error by its keyword, except the
 # type keyword, which gives the expected type instead.
@@ -62,7 +65,8 @@ puts JSON.generate({
   "bundle" => Bundler.default_gemfile.to_s == CMS_GEMFILE ? "cms/Gemfile" : Bundler.default_gemfile.to_s,
   "regexp" => regexp,
   "rules" => use_rules,
-  "normalize" => normalize
+  "normalize" => normalize,
+  "def" => definition
 })
 
 files = %w[valid invalid upgrade].flat_map do |folder|
