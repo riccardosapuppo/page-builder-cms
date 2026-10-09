@@ -121,7 +121,11 @@ test("a publish already waiting is offered again and said to be replaced; Change
   expect(change.getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(change);
   expect(change.getAttribute("aria-expanded")).toBe("true");
-  expect(document.getElementById(change.getAttribute("aria-controls")!)!.textContent).toContain("The site’s time zone is Europe/London.");
+  // The zone alone is the CMS's file's: the site's name, which the file
+  // once set beside it, is changed in the editor's Header and footer.
+  expect(document.getElementById(change.getAttribute("aria-controls")!)!.textContent).toBe(
+    "The site’s time zone is Europe/London. It is set in the CMS’s config/site.yml (time_zone): the editor cannot change it.",
+  );
 });
 
 test("a page never published is offered to go live; Cancel and Esc close the dialog sending nothing", () => {

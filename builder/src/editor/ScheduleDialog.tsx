@@ -193,7 +193,7 @@ export function ScheduleDialog({ onClose }: { onClose: () => void }) {
         </p>
         {explaining && (
           <p className="hint sch-zone" id={`${id}-zone`}>
-            The site’s time zone is {zone}. It is set with the site’s name, in the CMS’s config/site.yml (time_zone): the editor cannot change it.
+            The site’s time zone is {zone}. It is set in the CMS’s config/site.yml (time_zone): the editor cannot change it.
           </p>
         )}
         {plan.kind === "ok" && plan.twice && (
