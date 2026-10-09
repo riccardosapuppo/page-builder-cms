@@ -7,10 +7,11 @@
 // on Rails.
 //
 // A case needing what the browser's storage does not have (a publish at a
-// time, a visitor's form: no server; a change of the header and footer,
-// which it does not keep yet) is skipped, visibly, with its reason; the
-// first test names which, so a capability declared absent by mistake fails
-// it rather than skipping more cases quietly.
+// time, a visitor's form: no server) is skipped, visibly, with its reason;
+// the first test names which, so a capability declared absent by mistake
+// fails it rather than skipping more cases quietly. The header and
+// footer's cases run, the first of them on the database as this run's new
+// browser context has it, before any case changes them.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { readSiteTheme } from "../../build/site-file.ts";
 import type { Capabilities, SiteValues } from "../../src/storage/adapter.ts";
@@ -24,9 +25,6 @@ const siteDefaults = { name: theme.name, menu: theme.menu, action: theme.action,
 
 // What the browser's storage cannot do, and so the cases it skips.
 const SKIPPED: Readonly<Record<string, string>> = {
-  "a change of the header and footer is kept whole at the next revision, with its time, the time zone left as it was; the same change again writes nothing": "headerFooter",
-  "a header and footer the schema refuses are refused at the pointer of each value at fault, and nothing is stored": "headerFooter",
-  "a change from a revision another tab has moved past is a conflict holding what is there now; that sent from the old revision is answered as saved, and the change goes through from the new one": "headerFooter",
   "a publish set for a time waits on the page, listed, with the draft it was set from kept as a scheduled version": "schedule",
   "a second schedule replaces the first; a cancel settles one, and cancelling one no longer pending says what became of it": "schedule",
   "a time already past or more than a year away, and a revision already live, are refused at their field; a revision moved past is a conflict": "schedule",
@@ -71,7 +69,7 @@ test("the battery holds its cases, and the browser's adapter skips only those of
   expect(new Set(STORAGE_CONTRACT.map((c) => c.name)).size).toBe(STORAGE_CONTRACT.length);
   const skipped = STORAGE_CONTRACT.filter((c) => c.needs.some((operation) => !capabilities[operation])).map((c) => c.name);
   expect(skipped.sort()).toEqual(Object.keys(SKIPPED).sort());
-  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: false });
+  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, headerFooter: true, imageVariants: false, livePages: false });
 });
 
 for (const contract of STORAGE_CONTRACT) {

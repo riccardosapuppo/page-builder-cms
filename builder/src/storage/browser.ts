@@ -6,19 +6,20 @@
 // What it keeps: pages with their draft and its revision, the versions
 // (Save version, the automatic ones, the copy kept before a restore), a
 // publish as a version and the page's published state, the media library
-// with each image's bytes as a blob, and the site style. What it cannot do
-// it says it cannot (capabilities): there is no server to serve a page, to
-// publish it at a time, or to take a visitor's form, so links.live stays
-// null, and scheduling and responses are refused as unsupported. It makes
-// no smaller copies of an image either, so the editor resizes each image
+// with each image's bytes as a blob, the site style, and the header and
+// footer at a revision of their own. What it cannot do it says it cannot
+// (capabilities): there is no server to serve a page, to publish it at a
+// time, or to take a visitor's form, so links.live stays null, and
+// scheduling and responses are refused as unsupported. It makes no
+// smaller copies of an image either, so the editor resizes each image
 // before it goes up, as it does for the CMS.
 //
-// It refuses what the CMS refuses, in the same shapes: the document by
-// the editor's twin of the schema and the application rules
-// (../shared/validate.ts), the rest by the twins of the CMS's own checks
-// (./browser-rules.ts). Stored documents are brought up to the current
-// schemaVersion when read and restored by the twin of the CMS's upgrades
-// (../document/upgrade.ts).
+// It refuses what the CMS refuses, in the same shapes: the document and
+// the header and footer by the editor's twin of the schema and the
+// application rules (../shared/validate.ts), the rest by the twins of the
+// CMS's own checks (./browser-rules.ts). Stored documents are brought up to
+// the current schemaVersion when read and restored by the twin of the
+// CMS's upgrades (../document/upgrade.ts).
 //
 // Two tabs of one browser share the database. A save's revision check and
 // its write are one readwrite transaction, and IndexedDB runs transactions
@@ -55,9 +56,12 @@ import {
   type PublishRequest,
   type RestoreResult,
   type Site,
+  type SiteChange,
+  type SiteConflict,
   type SiteLink,
   type SiteStyle,
   type SiteStyleChange,
+  type SiteValues,
   type StorageAdapter,
   type Time,
   type Upload,
@@ -76,6 +80,7 @@ import {
   MEDIA_ID,
   mediaRefs,
   SAVE_ID,
+  SITE_MEMBERS,
   sizeErrors,
   siteStyleErrors,
   slugErrors,
@@ -88,10 +93,9 @@ import { systemClock, type Clock } from "./clock.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
-import { linkHref } from "../render/policy.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
-import { isLine, validateDocument } from "../shared/validate.ts";
+import { isLine, normalise, validateDocument, validateSite } from "../shared/validate.ts";
 
 export const BROWSER_CAPABILITIES: Capabilities = {
   // A publish is kept as a version, with the page's published state, for
@@ -103,9 +107,11 @@ export const BROWSER_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // Nothing is served: there is no live address to give.
   livePages: false,
-  // Not yet kept here: the header and footer are the defaults of
-  // cms/config/site.yml, read when the editor is built.
-  headerFooter: false,
+  // Kept here, one record for the site at a revision of its own, and until
+  // the first change cms/config/site.yml's defaults, read when the editor
+  // is built. Every page the editor draws shows them: the canvas, and the
+  // pages the demo draws as previewed and as published.
+  headerFooter: true,
 };
 
 export const DATABASE_NAME = "page-builder-cms";
@@ -181,6 +187,17 @@ interface StyleRecord {
   key: "style";
   palette: Record<string, string>;
   typeScale: string;
+  updatedAt: Time;
+}
+
+// The header and footer once first changed, beside the style in the site
+// store, as the CMS keeps them in a row of their own (Site): none until
+// then, and the defaults apply.
+const HEADER_FOOTER = "headerFooter";
+
+interface HeaderFooterRecord extends SiteValues {
+  key: typeof HEADER_FOOTER;
+  revision: number;
   updatedAt: Time;
 }
 
@@ -1060,10 +1077,43 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
 
     async getSite(options) {
       checkSignal(options, "Reading the site");
-      return theme();
+      return siteOf(await read(["site"], async (tx) => ((await request(tx.objectStore("site").get(HEADER_FOOTER))) as HeaderFooterRecord | undefined) ?? null));
     },
-    async setSite() {
-      throw unsupported("headerFooter", "browser");
+
+    // As the CMS's PUT /api/site and Site.replace! take a change: every
+    // fault of the request in one refusal, the revision's with those of
+    // the values (the application rules, then $defs/site), which are
+    // looked at once all four are there. Then, in one transaction, the
+    // revision checked and the record written, so of two changes from one
+    // revision, in two tabs at once, the second is the conflict.
+    async setSite(change: SiteChange, options) {
+      checkSignal(options, "Changing the header and footer");
+      const body = wire({ revision: change.revision, name: change.name, menu: change.menu, action: change.action, footer: change.footer }) as Record<string, unknown>;
+      const check = new BodyCheck(body);
+      // BlockDocument::Rules::MAX_SAFE_INTEGER, the same number.
+      check.integer("revision", { required: true, minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
+      const present = SITE_MEMBERS.map((member) => check.required(member));
+      const errors = [...check.errors];
+      if (present.every(Boolean)) {
+        const values = validateSite({ name: body.name, menu: body.menu, action: body.action, footer: body.footer });
+        if (!values.valid) errors.push(...values.errors.map((e) => fieldError(e.pointer, e.keyword, e.message)));
+      }
+      if (errors.length > 0) return invalid("invalid_request", errors);
+      const revision = body.revision as number;
+      const values = normalise({ name: body.name, menu: body.menu, action: body.action, footer: body.footer }) as SiteValues;
+      return write(["site"], async (tx): Promise<Outcome<Site, SiteConflict | Invalid>> => {
+        const store = tx.objectStore("site");
+        const current = siteOf(((await request(store.get(HEADER_FOOTER))) as HeaderFooterRecord | undefined) ?? null);
+        // What is stored already, from any revision: nothing is written, so
+        // the revision and the time of the last change stay; and a change
+        // sent again after its answer was lost is a success.
+        if (sameJson(valuesOf(current), values)) return { ok: true, value: current };
+        // From another revision, it would put back what was changed since.
+        if (current.revision !== revision) return { ok: false, problem: { kind: "conflict", message: WORDS.siteConflict, currentRevision: current.revision, site: valuesOf(current) } };
+        const record: HeaderFooterRecord = { key: HEADER_FOOTER, ...values, revision: revision + 1, updatedAt: now() };
+        await request(store.put(record));
+        return { ok: true, value: siteOf(record) };
+      });
     },
 
     async listResponses() {
@@ -1102,25 +1152,18 @@ function styleOf(stored: StyleRecord | null): SiteStyle {
   };
 }
 
-// The header and footer as the CMS answers them at GET /api/site before
-// anyone changes them, from the same file, at revision 0: a link whose
-// address the page's link policy refuses is left out, as the published
-// layout leaves it out; a missing text is empty.
-function theme(): Site {
-  const text = (value: unknown): string => (value === null || value === undefined ? "" : String(value));
-  const link = (value: unknown): SiteLink | null => {
-    if (!isObject(value)) return null;
-    const href = linkHref(value.href);
-    return href === null ? null : { label: text(value.label), href };
-  };
-  const footer = isObject(SITE_THEME.footer) ? SITE_THEME.footer : {};
-  return {
-    name: text(SITE_THEME.name),
-    menu: Array.isArray(SITE_THEME.menu) ? SITE_THEME.menu.flatMap((item) => link(item) ?? []) : [],
-    action: link(SITE_THEME.action),
-    footer: { lead: text(footer.lead), text: text(footer.text) },
-    timeZone: text(SITE_THEME.timeZone),
-    revision: 0,
-    updatedAt: null,
-  };
+// The header and footer as the CMS answers them at GET /api/site: the
+// record, or, until the first change, the defaults of the file the CMS
+// reads, at revision 0 with no time of change, as the build serves them
+// once they pass the CMS's own check of them (../../build/site-theme.ts).
+// The time zone is the file's whatever the record holds: no change sets
+// it.
+function siteOf(stored: HeaderFooterRecord | null): Site {
+  const values: SiteValues = stored
+    ? { name: stored.name, menu: stored.menu, action: stored.action, footer: stored.footer }
+    : structuredClone({ name: SITE_THEME.name, menu: SITE_THEME.menu as SiteLink[], action: SITE_THEME.action, footer: SITE_THEME.footer });
+  return { ...values, timeZone: SITE_THEME.timeZone, revision: stored?.revision ?? 0, updatedAt: stored?.updatedAt ?? null };
 }
+
+// The four values a change sends, as $defs/site has them.
+const valuesOf = (site: Site): SiteValues => ({ name: site.name, menu: site.menu, action: site.action, footer: site.footer });

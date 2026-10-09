@@ -3,12 +3,14 @@
 // controllers (cms/app/controllers/api/body_check.rb), the page address's
 // rules (cms/app/models/slug.rb and app/validators/slug_validator.rb), the
 // versions' names, the media library's (cms/app/models/media_item.rb and
-// the direct upload's checks), and the site style's
-// (cms/app/models/site_style.rb). The browser's adapter refuses what the
-// CMS refuses, at the same pointers, with the same keywords and the same
-// words, so the editor shows the same message in either mode. The page
-// document itself is checked by the editor's own twin of the schema and
-// the application rules (../shared/validate.ts).
+// the direct upload's checks), the site style's
+// (cms/app/models/site_style.rb), and the members of a change of the
+// header and footer (cms/app/models/site.rb). The browser's adapter
+// refuses what the CMS refuses, at the same pointers, with the same
+// keywords and the same words, so the editor shows the same message in
+// either mode. The page document itself, and the header and footer's
+// values, are checked by the editor's own twin of the schema and the
+// application rules (../shared/validate.ts).
 //
 // browser-rules.test.ts holds the lists, the limits and the words to the
 // Ruby they follow.
@@ -33,6 +35,10 @@ export const VERSION_NAME_MAX_LENGTH = 80;
 export const ALT_MAX_LENGTH = 300;
 export const FILENAME_MAX_LENGTH = 255;
 export const AUTO_VERSION_EVERY_MS = 10 * 60_000;
+
+// Site::MEMBERS: what a change of the header and footer sends, beside the
+// revision it was read at, each one required.
+export const SITE_MEMBERS = ["name", "menu", "action", "footer"] as const;
 
 // MediaItem::SIGNATURES, in their order: the kind of image the first
 // bytes are.
@@ -89,6 +95,7 @@ export const WORDS = {
   invalidRequest: "The request is not valid.",
   invalidDocument: "The document is not valid.",
   conflict: "The draft has changed since the revision sent.",
+  siteConflict: "The header and footer have changed since the revision sent.",
   notFound: "There is nothing at this address.",
   inUse: "Pages still use this image.",
   mediaMissing: (id: string) => `The media library has no item ${id}.`,

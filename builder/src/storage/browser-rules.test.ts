@@ -16,6 +16,7 @@ import {
   mediaRefs,
   RESERVED_SLUGS,
   SAVE_ID,
+  SITE_MEMBERS,
   siteStyleErrors,
   sizeErrors,
   SLUG_FORMAT,
@@ -52,6 +53,11 @@ describe("held to the CMS's Ruby", () => {
     expect([...RESERVED_SLUGS].sort()).toEqual([...words, ...files].sort());
   });
 
+  test("the members a change of the header and footer sends, each required", () => {
+    expect(/^%w\[([^\]]*)\]\.freeze$/.exec(constant(ruby("app/models/site.rb"), "MEMBERS"))![1]!.trim().split(/\s+/)).toEqual([...SITE_MEMBERS]);
+    expect(ruby("app/controllers/api/sites_controller.rb")).toContain("members = Site::MEMBERS.map { |member| check.required(member) }");
+  });
+
   test("the ids, the limits and the automatic versions' spacing", () => {
     expect(rubyRegexp(constant(ruby("app/models/draft.rb"), "SAVE_ID"))).toBe(SAVE_ID.source);
     const media = ruby("app/models/media_item.rb");
@@ -71,7 +77,7 @@ describe("held to the CMS's Ruby", () => {
     const sources = [
       "app/controllers/api/body_check.rb", "app/validators/slug_validator.rb", "app/models/draft.rb", "app/models/page_version.rb",
       "app/models/media_item.rb", "app/controllers/api/direct_uploads_controller.rb", "app/models/site_style.rb", "app/controllers/api/base_controller.rb",
-      "app/controllers/api/media_controller.rb", "app/models/media_usage.rb",
+      "app/controllers/api/media_controller.rb", "app/models/media_usage.rb", "app/controllers/api/sites_controller.rb",
     ].map(ruby).join("\n")
       .replaceAll("#{NAME_MAX_LENGTH}", String(VERSION_NAME_MAX_LENGTH))
       .replaceAll("#{ALT_MAX_LENGTH}", String(ALT_MAX_LENGTH))
@@ -83,7 +89,7 @@ describe("held to the CMS's Ruby", () => {
       WORDS.required, WORDS.integer, WORDS.string, WORDS.boolean, WORDS.object, WORDS.nul, WORDS.form,
       WORDS.slugFormat, WORDS.reserved, WORDS.nextAddressTaken, WORDS.liveAddressTaken, WORDS.versionName, WORDS.alt,
       WORDS.contentTypes, WORDS.contentMismatch("image/png"), WORDS.paletteObject, WORDS.slotMissing, WORDS.toneOf(["ink", "sea"]),
-      WORDS.notASlot, WORDS.typeScale, WORDS.invalidRequest, WORDS.invalidDocument, WORDS.conflict, WORDS.notFound, WORDS.inUse,
+      WORDS.notASlot, WORDS.typeScale, WORDS.invalidRequest, WORDS.invalidDocument, WORDS.conflict, WORDS.siteConflict, WORDS.notFound, WORDS.inUse,
       WORDS.mediaMissing("Shore01"),
     ];
     expect(written.filter((words) => !sources.includes(words))).toEqual([]);

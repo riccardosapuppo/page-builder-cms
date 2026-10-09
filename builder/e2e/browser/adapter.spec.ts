@@ -6,10 +6,11 @@
 // the words of the editor's twin of the CMS's upgrades; what depends on the
 // time (an automatic version at most every ten minutes, a publish that is
 // never dated before the last one) on a clock the test moves; a stored draft
-// no check passes, which cannot be published; and a call given up on before
-// it starts, which is not made.
+// no check passes, which cannot be published; a call given up on before
+// it starts, which is not made; and the header and footer changed in two
+// tabs at the same moment, and dated by the clock the test moves.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
+import type { Capabilities, Site, SiteValues, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";
 
@@ -243,4 +244,44 @@ test("a call abandoned before it starts is not made: nothing is saved, and nothi
   expect((await tab.listMedia()).filter((m) => m.filename === name)).toEqual([]);
   // The same calls, not abandoned, go through.
   expect((await tab.saveDraft(made.id, { revision: made.revision, document: { schemaVersion: 1, title: "Saved", sections: [] }, saveId: "abandoned-2" })).ok).toBe(true);
+});
+
+// ------------------------------------------------ the header and footer
+
+const valuesOf = ({ name, menu, action, footer }: Site): SiteValues => ({ name, menu, action, footer });
+
+test("two tabs changing the header and footer from one revision at the same moment: one change is kept, the other is the conflict holding it, from the very first change", async () => {
+  const mine = remoteAdapter(first, capabilities);
+  const theirs = remoteAdapter(second, capabilities);
+  // The first round is the first change of all, which makes the record:
+  // none is there yet in this run's browser context.
+  expect((await mine.getSite()).revision, "no change before this test").toBe(0);
+  for (let round = 0; round < 5; round += 1) {
+    const now = await mine.getSite();
+    const [a, b] = await Promise.all([
+      mine.setSite({ ...valuesOf(now), revision: now.revision, name: `Mine ${round}` }),
+      theirs.setSite({ ...valuesOf(now), revision: now.revision, name: `Theirs ${round}` }),
+    ]);
+    const kept = [a, b].flatMap((outcome) => (outcome.ok ? [outcome.value] : []));
+    expect(kept, `round ${round}`).toHaveLength(1);
+    expect([a, b].find((outcome) => !outcome.ok), `round ${round}`).toMatchObject({ ok: false, problem: { kind: "conflict", currentRevision: now.revision + 1, site: valuesOf(kept[0]!) } });
+    expect(await theirs.getSite(), `round ${round}`).toEqual(kept[0]);
+  }
+});
+
+test("a change of the header and footer is dated by the adapter's clock, and the same change again keeps that date once the clock has moved on", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const start = "2026-10-09T08:00:00.000Z";
+  const now = await tab.getSite();
+  const change = (footer: SiteValues["footer"], revision: number) => tab.setSite({ ...valuesOf(now), footer, revision });
+  try {
+    await setTime(start);
+    const dated = await change({ lead: "Dated.", text: "By the adapter's clock." }, now.revision);
+    expect(dated).toMatchObject({ ok: true, value: { revision: now.revision + 1, updatedAt: start } });
+    await setTime(at(start, 90 * MINUTE));
+    expect(await change({ lead: "Dated.", text: "By the adapter's clock." }, now.revision + 1)).toMatchObject({ ok: true, value: { revision: now.revision + 1, updatedAt: start } });
+    expect(await change({ lead: "Dated again.", text: "An hour and a half later." }, now.revision + 1)).toMatchObject({ ok: true, value: { revision: now.revision + 2, updatedAt: at(start, 90 * MINUTE) } });
+  } finally {
+    await setTime(null);
+  }
 });
