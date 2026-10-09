@@ -84,6 +84,11 @@ jobs:
         working-directory: schema/tools
       - name: Install the repository's tools
         run: npm ci
+      # The header's letter widths (schema/header-metrics.json) are not
+      # compared here: they were measured in Chromium on Windows and the
+      # comparison is exact, which nothing shows Chromium on Linux repeats.
+      # npm run check compares them where they were measured; here the
+      # production job draws headers that fold by them, at 23 widths.
       - name: The 500-block contract fixture is what its generator writes
         run: node tools/gen-contract-500.ts --check
       - name: Lint the API description
@@ -164,14 +169,16 @@ jobs:
   builder-e2e:
     name: Editor against a CMS of its own, in a browser
     runs-on: ubuntu-24.04
-    # These five steps took 20.5 minutes on 8 October 2026, on the Windows
-    # virtual machine of the README (8 logical processors, 12 GB): the tests
-    # against a CMS of their own 51.7 s, the 221 browser tests 822.2 s, the
-    # browser storage's 50 tests 29.4 s, the 45 accessibility tests again
-    # 302.5 s and the serving checks 25.9 s, not counting the install of the
-    # gems, the packages and Chromium. A runner of a private repository has
-    # two processors and starts each CMS and each browser more slowly: the
-    # job took 17 minutes 52 seconds on GitHub in the run of commit 1168e7a,
+    # These five steps took 21.7 minutes on 9 October 2026, on the Windows
+    # virtual machine of the README (8 logical processors, 12 GB), in one
+    # run of npm run check: the 84 tests against a CMS of their own 55.2 s,
+    # the 225 browser tests 842.1 s, the browser storage's 83 tests (76
+    # run, 7 skipped) 56.9 s, the 46 accessibility tests again 318.9 s and
+    # the serving checks 28.1 s, not counting the install of the gems, the
+    # packages and Chromium (20.5 minutes on 8 October, before the header
+    # and footer's tests). A runner of a private repository has two
+    # processors and starts each CMS and each browser more slowly: the job
+    # took 17 minutes 52 seconds on GitHub in the run of commit 1168e7a,
     # before the browser storage's steps were added, install included, and
     # the limit leaves room for three times that.
     timeout-minutes: 60
@@ -326,8 +333,8 @@ jobs:
   demo:
     name: Browser demo, built for GitHub Pages and tried in Chromium
     runs-on: ubuntu-24.04
-    # No CMS to start: on 8 October 2026, on the Windows virtual machine of
-    # the README, the build took 3.5 s and the five tests 23.4 s.
+    # No CMS to start: on 9 October 2026, on the Windows virtual machine of
+    # the README, the build took 1.9 s and the nine tests 43.7 s.
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
