@@ -344,7 +344,8 @@ renamed file each made it fail when planted.
 ## Measurements
 
 Every number in this section was produced by the command given with it,
-run from the repository's root on 8 October 2026, on one machine: a Windows
+run from the repository's root on 8 October 2026 (the bundle's on
+9 October, after the header and footer's panel), on one machine: a Windows
 10 virtual machine with 8 logical processors (an Intel Core i7-10700 at
 2.90 GHz) and 12 GB of memory, with Node 24.19.0, Ruby 3.4.11 (YJIT off),
 Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
@@ -540,7 +541,7 @@ so only the shares are to be read:
 
 ### The bundle
 
-`npm run measure:bundle`, on 8 October 2026 at 16:32 UTC (its output ended
+`npm run measure:bundle`, on 9 October 2026 at 20:57 UTC (its output ended
 `RESULT: 9 checks passed`). It builds the editor twice, as `npm run
 builder:build` does, into folders of its own: the two builds are the same
 files, byte for byte. This is the editor that talks to the CMS; the demo's
@@ -549,16 +550,18 @@ sizes do not depend on the load of the machine.
 
 | File | What | Raw | Gzipped |
 | --- | --- | --- | --- |
-| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the editor | 889,647 B (868.8 KiB) | 236,091 B (230.6 KiB) |
-| `index-*.css` | The stylesheet, loaded at once | 104,940 B (102.5 KiB) | 19,054 B (18.6 KiB) |
-| `index.html` | The page | 1,423 B | 757 B |
-| | Loaded at once, in all | 996,010 B (972.7 KiB) | 255,902 B (249.9 KiB) |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 929,995 B (908.2 KiB) | 247,714 B (241.9 KiB) |
+| `index-*.css` | The stylesheet, loaded at once | 107,217 B (104.7 KiB) | 19,434 B (19.0 KiB) |
+| `index.html` | The page | 1,423 B | 756 B |
+| | Loaded at once, in all | 1,038,635 B (1014.3 KiB) | 267,904 B (261.6 KiB) |
 | `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
 | `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
 | 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
 
 On 4 October, before the form widget and Form responses, the main chunk was
-842,681 B (226,273 gzipped).
+842,681 B (226,273 gzipped); on 8 October, before the header and footer's
+panel and the letter widths the canvas folds its menu by, 889,647 B
+(236,091 gzipped).
 
 What is lazy is read from the files: `index.html` names only the entry, the
 entry reaches the text editor and the upload code with `import()` and never
