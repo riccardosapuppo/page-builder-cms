@@ -18,9 +18,11 @@
 # The sum leaves out kerning, which in this face pulls most pairs together,
 # and adds the file's slack for the few it sets apart; a character the
 # face lacks counts as 1.5 times the font size, wider than any it has. So
-# the sum errs wide: a menu may fold one step early, never late. The
-# editor's canvas adds up the same file the same way, so it draws the same
-# header at the same widths.
+# the sum errs wide: in the face's own letters a menu may fold a step
+# early, never late (site.css lets the links wrap inside the bar, should a
+# fallback font draw a letter wider still). The editor's canvas must add
+# up the same file the same way to draw the same header at the same
+# widths.
 module HeaderFit
   PATH = Rails.application.config.x.schema_dir.join("header-metrics.json")
 

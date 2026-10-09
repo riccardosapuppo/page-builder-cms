@@ -37,6 +37,13 @@ fails. `schema/tools/compare.ts` runs both engines over it and fails on a
 disagreement, on an exception (never taken for a verdict), on a missing or
 repeated result, and on a file the manifest does not list.
 
+Since 9 October 2026 the same file also describes the site's header and
+footer, `$defs/site`, which the CMS keeps apart from any page and the
+editor changes: its texts and links are the page's `line` and `href`, so
+they follow a page's rules. Both engines validate it on its own
+(`compare.ts --def site`), after the same application rules, against a
+corpus of its own, [schema/corpus/site/](../../schema/corpus/site/).
+
 ## What it costs
 
 - **Every rule outside the schema is written twice**, and nothing but the
@@ -63,6 +70,8 @@ npm run compare
 ```
 
 prints `RESULT: PASS (249 files, 0 disagreements, 0 exceptions)` (8 October
+2026), and `npm run compare:site`, for the header and footer,
+`RESULT: PASS (50 files, 0 disagreements, 0 exceptions)` (9 October
 2026). `npm run corpus:check` fails if
 a file on disk differs from what the generator writes, and `npm run
 lint:plants` shows the schema's lint failing on each of its planted
