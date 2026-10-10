@@ -291,6 +291,24 @@ had made one pool, and none was connected).
   that upload delete their files before their transaction rolls back, and
   the run fails if any file is left there at the end (shown with a planted
   file: exit 1, and 0 without it).
+- **A production build left in `public/assets`** is never what the tests
+  read ([test/config/build_left_behind_test.rb](test/config/build_left_behind_test.rb)).
+  `tools/check-production.ts` and `tools/measure-server.ts` precompile
+  into that folder and empty it at their end, which a run killed before
+  then never reaches. The public file server, which answers before
+  Propshaft's own server, would hand the tests the build's files, and
+  Propshaft would take every digest from its manifest. A build made on
+  Windows is not even the same text: Propshaft 1.3.2 writes the
+  stylesheets it compiles in text mode, so every line ends in CRLF under
+  the source's own digest. On 10 October 2026, with a build precompiled
+  there, the test of the type scale's rule, which reads the rule across
+  two lines, failed, and it passed once the build was removed. So
+  `config/environments/test.rb` turns the public file server off and gives
+  Propshaft a build folder of its own under `tmp/`, which nothing fills.
+  The test plants a build and fails on each setting taken out; with a
+  build precompiled the same day, the suite passed (405 runs), and with
+  both settings taken out it failed on the type scale's test and on this
+  one.
 - **The published pages** are asked for as a browser asks
   ([test/integration/public_pages_test.rb](test/integration/public_pages_test.rb)):
   the live version and not the draft, 301 from a moved address, the 404
