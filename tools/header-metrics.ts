@@ -44,10 +44,19 @@
 // drawn run, or a menu that does not fit could be told it does. It writes
 // nothing if it is.
 //
-// --check measures again and compares with the file, writing nothing:
-// exit 1 on a difference. Run it after a change to the header's styles or
-// to the fonts, and write the file again with the plain command.
+// --check measures again and compares with the file, writing nothing. Run
+// it after a change to the header's styles or to the fonts, and write the
+// file again with the plain command. It exits 1 on a difference, or on a
+// word drawn wider than its sum. The widths of the letters outside the
+// face are those the fonts of the measuring machine drew, so the file
+// keeps a fingerprint of the fonts that drew each script (`fonts`): where
+// this machine draws a script with other fonts (another machine, or these
+// fonts after an update), that script's widths and words cannot be
+// compared here, and it says so and exits 2, having compared all the rest.
+// On the fonts the file was measured with they are compared as the face's
+// own letters are, so a file the tool no longer writes there fails.
 import { chromium } from "playwright";
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -265,6 +274,29 @@ try {
   const lacking = (which: "brand" | "link" | "button") => measured[which].missing.join("");
   if (lacking("brand") !== lacking("link") || lacking("brand") !== lacking("button")) throw new Error("the header's three places do not have the same letters");
 
+  // Which fonts drew each script, as a fingerprint the file keeps: each of
+  // its letters drawn alone in a link, in the four stacks, by code of its
+  // own, apart from how the widths above are counted. --check reads it to
+  // tell a machine whose fonts are not those the file was measured with
+  // (its widths cannot be compared there) from a file this tool no longer
+  // writes on the same fonts (stale, or changed by hand).
+  const prints = await tab.evaluate((samples) => {
+    const element = document.getElementById("link")!;
+    const face = getComputedStyle(element).fontFamily.split(",")[0]!.trim();
+    const range = document.createRange();
+    const widths = samples.map((sample) => sample.map((point) => ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`].map((family) => {
+      element.textContent = String.fromCodePoint(point);
+      element.style.fontFamily = family;
+      element.style.whiteSpace = "pre";
+      range.selectNodeContents(element);
+      return range.getBoundingClientRect().width;
+    })));
+    element.textContent = "";
+    element.style.fontFamily = "";
+    element.style.whiteSpace = "";
+    return widths;
+  }, SCRIPTS.map(sampleOf));
+  const fonts = Object.fromEntries(SCRIPTS.map((script, k) => [script.name, createHash("sha256").update(JSON.stringify(prints[k]!.map((widths) => widths.map(round)))).digest("hex").slice(0, 16)]));
 
   // The sum against words drawn whole, in each place.
   const SAMPLES = [
@@ -322,20 +354,28 @@ try {
   const SLACK = 0.01;
   let tightest = Infinity;
   let widest = 0;
-  const short: string[] = [];
+  // The words short of their sum, each with the scripts of its letters
+  // that the face lacks (none for a word of the face's own letters).
+  const scriptOf = (ch: string) => {
+    const point = ch.codePointAt(0)!;
+    return SCRIPTS.find((s) => s.ranges.some(([from, to]) => point >= from && point <= to))?.name ?? "otherwise";
+  };
+  const short: Array<{ line: string; scripts: string[] }> = [];
   for (const sample of drawn) {
+    const scripts = [...new Set([...sample.text].filter((ch) => tables.link[ch] === undefined).map(scriptOf))];
     for (const which of ["brand", "link", "button"] as const) {
       const plain = sum(which, sample.text);
       widest = Math.max(widest, sample[which] / plain - 1);
       const spare = plain * (1 + SLACK) - sample[which];
       tightest = Math.min(tightest, spare);
-      if (spare < 0) short.push(`${which} "${sample.text}": the sum with its slack is ${(-spare).toFixed(3)} px narrower than the drawn run`);
+      if (spare < 0) short.push({ line: `${which} "${sample.text}": the sum with its slack is ${(-spare).toFixed(3)} px narrower than the drawn run`, scripts });
     }
   }
-  if (short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.join("\n  ")}`);
+  const checking = process.argv.includes("--check");
+  if (!checking && short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.map((s) => s.line).join("\n  ")}`);
 
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` is a fingerprint of the fallback fonts that drew each script, by which --check tells a machine that draws a script with other fonts, whose widths it cannot compare, from a file it no longer writes. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
     fold: { breakpoint, steps, widest: measured.page.widest },
     slack: SLACK,
     page: { padX: measured.page.padX },
@@ -343,27 +383,59 @@ try {
     link: { size: measured.link.size, gap: measured.link.gap, after: measured.link.after, otherwise: measured.link.size * 1.5, advances: tables.link, scripts: scriptTables.link },
     nav: { gap: measured.nav.gap },
     button: { size: measured.button.size, fixed: measured.button.fixed, otherwise: measured.button.size * 1.5, advances: tables.button, scripts: scriptTables.button },
+    fonts,
   };
   // A range of code points on one line: [from, to].
   const text = JSON.stringify(metrics, null, 2).replace(/\[\s+(\d+),\s+(\d+)\s+\]/g, "[$1, $2]") + "\n";
   const counts = `${Object.keys(tables.brand).length} characters of the face in each of 3 places (${measured.brand.missing.length} of the ranges it lacks count otherwise, but the letters of ${SCRIPTS.map((s) => s.name).join(", ")} count what the fallback fonts draw them at); folds at ${breakpoint} px and at ${steps.join(", ")}; ${drawn.length} words drawn whole in each place are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
 
-  if (process.argv.includes("--check")) {
+  if (checking) {
     const committed = readFileSync(target, "utf8");
-    if (committed === text) {
-      console.log(`header-metrics.json is what the fonts and styles give: ${counts}`);
-    } else {
-      const was = JSON.parse(committed) as typeof metrics;
-      const differences: string[] = [];
+    const was = JSON.parse(committed) as { fonts?: Record<string, string> };
+    // The scripts this machine draws with other fonts than the file was
+    // measured with, by their fingerprints: their widths are those fonts',
+    // and cannot be compared here. Every other difference can: the face's,
+    // the styles', the tool's own, and the widths of a script drawn here
+    // with the fonts the file was measured with.
+    const others = was.fonts ? SCRIPTS.map((s) => s.name).filter((name) => was.fonts![name] !== fonts[name]) : [];
+    const differences: string[] = [];
+    const elsewhere: string[] = [];
+    if (committed !== text) {
+      const scriptPath = /^\/(?:brand|link|button)\/scripts\/(\d+)\/(?:advance|letters\/.+)$/;
       const compare = (path: string, a: unknown, b: unknown) => {
         if (typeof a === "object" && a !== null && typeof b === "object" && b !== null) {
           for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) compare(`${path}/${key}`, (a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]);
-        } else if (a !== b) differences.push(`${path}: the file has ${JSON.stringify(a)}, the fonts and styles give ${JSON.stringify(b)}`);
+        } else if (a !== b) {
+          // A fingerprint that differs is what `others` reads, not a difference.
+          if (path.startsWith("/fonts/")) return;
+          const line = `${path}: the file has ${JSON.stringify(a)}, the fonts and styles give ${JSON.stringify(b)}`;
+          const k = scriptPath.exec(path)?.[1];
+          const elsewhereDrawn = k !== undefined && typeof a === "number" && typeof b === "number" && others.includes(SCRIPTS[Number(k)]!.name);
+          (elsewhereDrawn ? elsewhere : differences).push(line);
+        }
       };
       compare("", was, metrics);
-      console.log(`header-metrics.json is NOT what the fonts and styles give (${differences.length} difference(s)); run node tools/header-metrics.ts`);
-      for (const line of differences.slice(0, 20)) console.log(`  ${line}`);
+      if (differences.length === 0 && elsewhere.length === 0 && others.length === 0) differences.push("the file's text is not what the tool writes, though its values are");
+    }
+    // A word short of its sum on the fonts the file was measured with is a
+    // fault of the sum; on other fonts, it is what those fonts draw.
+    const shortHere = short.filter((s) => !s.scripts.some((name) => others.includes(name)));
+    const shortElsewhere = short.filter((s) => s.scripts.some((name) => others.includes(name)));
+    if (differences.length > 0 || shortHere.length > 0) {
+      if (differences.length > 0) {
+        console.log(`header-metrics.json is NOT what the fonts and styles give (${differences.length} difference(s)${elsewhere.length > 0 ? `, besides ${elsewhere.length} in letters this machine draws with other fonts` : ""}); run node tools/header-metrics.ts`);
+        for (const line of differences.slice(0, 20)) console.log(`  ${line}`);
+      }
+      if (shortHere.length > 0) console.log(`the sum of advances is narrower than what Chromium draws:\n  ${shortHere.map((s) => s.line).join("\n  ")}`);
       process.exitCode = 1;
+    } else if (others.length > 0) {
+      const compared = SCRIPTS.map((s) => s.name).filter((name) => !others.includes(name));
+      console.log(`header-metrics.json could not be compared here for the letters of ${others.join(", ")}: this machine draws them with other fonts than the file was measured with (${elsewhere.length} of their widths differ); the face's own ${Object.keys(tables.brand).length} characters, the spacing, the folds${compared.length > 0 ? ` and the letters of ${compared.join(", ")}` : ""} are what it holds`);
+      for (const line of elsewhere.slice(0, 10)) console.log(`  ${line}`);
+      if (shortElsewhere.length > 0) console.log(`  and on these fonts the sum is narrower than ${shortElsewhere.length} word(s) of those letters drawn whole: ${shortElsewhere.slice(0, 5).map((s) => s.line).join("; ")}`);
+      process.exitCode = 2;
+    } else {
+      console.log(`header-metrics.json is what the fonts and styles give: ${counts}`);
     }
   } else {
     writeFileSync(target, text);

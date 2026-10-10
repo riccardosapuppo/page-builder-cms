@@ -332,6 +332,13 @@ export const SUITES: Suite[] = [
       const b = readLine(images.output, images.code, /RESULT: (\d+) images, all as committed/, (m) => `${m[1]} images`);
       if (b.status !== "passed") return b;
       const metrics = await ctx.step(node, ["tools/header-metrics.ts", "--check"], { cwd: repoRoot });
+      // Exit 2: this machine draws a script the face lacks with other fonts
+      // than the file was measured with, whose widths only the machine that
+      // measured can compare; all the rest compared and agreed.
+      if (metrics.code === 2) {
+        const said = /^header-metrics\.json (could not be compared here .*)$/m.exec(metrics.output)?.[1] ?? "could not be compared here";
+        return notRun(`${a.counts} and ${b.counts} are as committed, but header-metrics.json ${said}`);
+      }
       const c = readLine(metrics.output, metrics.code, /header-metrics\.json is what the fonts and styles give: (\d+) characters/, (m) => `${m[1]} header letters`);
       return c.status === "passed" ? { ...c, counts: `${a.counts}; ${b.counts}; ${c.counts}` } : c;
     },

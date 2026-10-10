@@ -52,10 +52,13 @@ itself and fold the links when they do not fit.
 
 - **A file of letter widths, measured in one browser on one machine,** to
   write again after any change to the header's styles or fonts, or to the
-  fonts of the machine that measures (`--check` in the check's fixtures
-  says when it is stale; CI does not run it, since another machine's
-  fallback fonts draw other widths). Other browsers draw the face at the
-  same advances, but nothing here measures them; and the letters the face
+  fonts of the machine that measures. `--check`, in the check's fixtures,
+  says when it is stale. The file keeps a fingerprint of the fonts that
+  drew each script the face lacks: where a machine draws one with other
+  fonts (another machine, or these fonts after an update), `--check`
+  compares all the rest and says it could not run here, rather than
+  failing. CI does not run it. Other browsers draw the face at the same
+  advances, but nothing here measures them; and the letters the face
   lacks are drawn by a visitor's own fonts, of which the file holds what
   the measuring machine's drew, the widest of four.
 - **The sum errs wide, and in the face's own letters never narrow.** It
@@ -95,7 +98,9 @@ again and compares (a wrong width planted in the file fails it), and
 checks its sum against words drawn whole, in Greek, Cyrillic, Hebrew,
 Arabic and CJK too (with those scripts' widths cut to a third it fails on
 the Greek words; with Arabic letters measured alone again, on eight
-Arabic words such as مهم and مهرجان). `node tools/check-production.ts`
+Arabic words such as مهم and مهرجان). With the serif family drawing Greek
+and Cyrillic in another font, it says it could not compare those two and
+exits 2, having compared the rest. `node tools/check-production.ts`
 sets nine headers
 through the API on a production CMS and draws its home page in Chromium at
 23 widths from 320 to 1440 px: nothing leaves the page, the links show
