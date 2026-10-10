@@ -15,8 +15,24 @@ Rails.application.configure do
   # loading is working properly before deploying your code.
   config.eager_load = ENV["CI"].present?
 
-  # Configure public file server for tests with cache-control for performance.
-  config.public_file_server.headers = { "cache-control" => "public, max-age=3600" }
+  # The stylesheets and fonts the tests ask for are app/assets' own, as
+  # Propshaft's server compiles them, never a production build left in
+  # public/assets. tools/check-production.ts and tools/measure-server.ts
+  # make one there with assets:precompile and remove it at their end, which
+  # a run killed before it never reaches. Two things would read that build:
+  # the public file server, which comes before Propshaft's server in the
+  # middleware, answers with any file under public/, and Propshaft takes
+  # every asset's digest from public/assets/.manifest.json whenever that
+  # file exists. On Windows the build is not even the same text: Propshaft
+  # 1.3.2 writes the stylesheets it compiles in text mode, so each line
+  # ends in CRLF under the source's own digest, and a test that read a rule
+  # across two lines failed with a build there and passed without one. So
+  # the public file server is off (no test asks it for a file), and the
+  # folder Propshaft would build into and read a manifest from is one no
+  # command of this repository fills. test/config/build_left_behind_test.rb
+  # plants a build in public/assets and shows both.
+  config.public_file_server.enabled = false
+  config.assets.output_path = Rails.root.join("tmp", "test-assets")
 
   # Show full error reports.
   config.consider_all_requests_local = true
