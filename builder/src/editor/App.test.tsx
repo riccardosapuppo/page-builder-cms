@@ -7,8 +7,9 @@
 // by Reload or Keep mine; the site style shows at once and goes to the CMS,
 // and comes back when the CMS refuses it; the header and footer show as
 // typed and go to the storage on Save, a conflict settled the same two
-// ways. An editor that cannot start says why, with the one button that
-// can help.
+// ways, and what is typed while a save is on its way stays as typed once
+// it lands. An editor that cannot start says why, with the one button
+// that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
@@ -77,6 +78,9 @@ class FakeSite {
   headerFooter = false;
   site: Site = SITE;
   readonly siteChanges: SiteChange[] = [];
+  // The next change waits for this before the CMS takes it, when a test
+  // sets it: a save still on its way.
+  siteHeld: Promise<void> | null = null;
 
   // Another tab saves the header and footer.
   siteSavedElsewhere(values: Partial<SiteValues>): void {
@@ -133,6 +137,9 @@ class FakeSite {
       getSite: async () => this.site,
       setSite: async (change) => {
         this.siteChanges.push(change);
+        const held = this.siteHeld;
+        this.siteHeld = null;
+        if (held) await held;
         const { revision, ...values } = change;
         const now: SiteValues = { name: this.site.name, menu: this.site.menu, action: this.site.action, footer: this.site.footer };
         if (JSON.stringify(values) === JSON.stringify(now)) return { ok: true, value: this.site };
@@ -676,6 +683,56 @@ test("the header and footer show on the canvas as typed and reach the storage on
   expect(env.ui.getState().siteDraft).toBeNull();
   expect(brand()).toBe("Theirs");
   expect((name() as HTMLInputElement).value).toBe("Theirs");
+});
+
+// The next change of the header and footer is held until the test lets it
+// land.
+function holdSiteSave(site: FakeSite): () => Promise<void> {
+  let release: () => void = () => {};
+  site.siteHeld = new Promise<void>((resolve) => (release = resolve));
+  return async () => act(async () => release());
+}
+
+test("the header and footer typed back to what they were while the save is on its way stay as typed once it lands, not saved yet; a change that ends where the save does leaves nothing waiting", async () => {
+  const { site, env } = start(1, { headerFooter: true });
+  await opened();
+  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
+  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
+  const panel = screen.getByRole("complementary", { name: "Header and footer" });
+  const name = () => within(panel).getByLabelText("Site name") as HTMLInputElement;
+  const save = () => within(panel).getByRole("button", { name: "Save" });
+  const state = () => panel.querySelector(".style-save")?.textContent;
+
+  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
+  const land = holdSiteSave(site);
+  await act(async () => fireEvent.click(save()));
+  expect(state()).toBe("Saving…");
+  // The name the site had, typed back before the answer: the save is about
+  // to store the other one, so this is a change still.
+  fireEvent.change(name(), { target: { value: "Slack Water" } });
+  await land();
+  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
+  expect(name().value).toBe("Slack Water");
+  expect(brand()).toBe("Slack Water");
+  expect(state()).toBe("Not saved yet");
+  expect(save().getAttribute("aria-disabled")).toBeNull();
+  await act(async () => fireEvent.click(save()));
+  expect(site.siteChanges.at(-1)).toEqual({ revision: 1, name: "Slack Water", menu: SITE.menu, action: SITE.action, footer: SITE.footer });
+  await waitFor(() => expect(state()).toBe("Saved for every page"));
+  expect(env.ui.getState().siteDraft).toBeNull();
+
+  // Changed and changed back to what is being saved, while it is on its
+  // way: once it lands, that is what is stored, and nothing waits.
+  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
+  const second = holdSiteSave(site);
+  await act(async () => fireEvent.click(save()));
+  fireEvent.change(name(), { target: { value: "Shingle Cove" } });
+  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
+  await second();
+  expect(env.ui.getState().site).toMatchObject({ name: "Shingle Cove Swimmers", revision: 3 });
+  expect(state()).toBe("Saved for every page");
+  expect(env.ui.getState().siteDraft).toBeNull();
+  expect(brand()).toBe("Shingle Cove Swimmers");
 });
 
 test("closing the tab asks first while the header and footer have a change not saved", async () => {

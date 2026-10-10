@@ -808,7 +808,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // editor's own check of $defs/site lets them; a refusal leaves them in
   // the panel, each problem at its value. Kept, they are what the canvas
   // and every published page draw; a change typed while the save was on
-  // its way stays waiting.
+  // its way stays waiting unless it is what the storage answers it holds
+  // now, which is what the panel measures a change against.
   const siteSaving = useRef(false);
   const saveSite = useCallback(async (values: SiteValues, from?: number): Promise<SiteSaveResult> => {
     const stored = ui.getState().site;
@@ -826,7 +827,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (outcome.ok) {
         ui.getState().setSite(outcome.value);
         const waiting = ui.getState().siteDraft;
-        if (waiting !== null && sameJson(waiting, values)) ui.getState().setSiteDraft(null);
+        if (waiting !== null && sameJson(waiting, siteValues(outcome.value))) ui.getState().setSiteDraft(null);
         ui.getState().setSiteErrors([]);
         setSiteSave({ phase: "saved" });
         return "saved";

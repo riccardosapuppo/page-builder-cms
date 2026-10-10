@@ -85,9 +85,12 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
   const saving = session.siteSave.phase === "saving";
   // A change: kept as the change waiting (none, when it is what is
   // stored), and the refusals it answers, those whose pointer `answered`
-  // names, no longer stand.
+  // names, no longer stand. While a save is on its way, what is stored is
+  // about to change: a change is kept even when it is what is stored now
+  // (the values from before the save, typed back), and the save's answer
+  // settles it (./App.tsx says how).
   const change = (next: SiteValues, answered: (pointer: string) => boolean) => {
-    ui.getState().setSiteDraft(sameJson(next, stored) ? null : next);
+    ui.getState().setSiteDraft(!saving && sameJson(next, stored) ? null : next);
     ui.getState().setSiteErrors(ui.getState().siteErrors.filter((e) => !answered(e.pointer)));
   };
   const at = (pointer: string) => (p: string) => p === pointer;
