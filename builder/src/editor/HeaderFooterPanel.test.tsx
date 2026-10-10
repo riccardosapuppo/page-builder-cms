@@ -88,18 +88,18 @@ test("every value is labelled, each limit said, and one line says what a change 
 
 test("a value typed goes to the canvas at once, and to the session only on Save, whole", async () => {
   const { kit, saves } = draw();
-  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Northshore Swimmers" } });
-  expect(kit.ui.getState().siteDraft?.name).toBe("Northshore Swimmers");
+  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Samphire Bay Swimmers" } });
+  expect(kit.ui.getState().siteDraft?.name).toBe("Samphire Bay Swimmers");
   expect(saves).toEqual([]);
   expect(screen.getByText("Not saved yet")).toBeTruthy();
   // Typed back to what is stored: no change waits.
   fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Slack Water" } });
   expect(kit.ui.getState().siteDraft).toBeNull();
-  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Northshore Swimmers" } });
+  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Samphire Bay Swimmers" } });
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
   });
-  expect(saves).toEqual([{ values: { name: "Northshore Swimmers", menu: site.menu, action: site.action, footer: site.footer }, from: undefined }]);
+  expect(saves).toEqual([{ values: { name: "Samphire Bay Swimmers", menu: site.menu, action: site.action, footer: site.footer }, from: undefined }]);
 });
 
 test("a link is added with the focus on its words, up to eight, and the ninth is said, not offered", async () => {
@@ -196,9 +196,9 @@ test("a value past its limit is said as it is typed; an empty one once the perso
 
 test("a conflict with another tab's save offers Reload and Keep mine, which saves this tab's values from the revision it named", async () => {
   let reloaded = 0;
-  const conflict: SiteSave = { phase: "conflict", revision: 6, theirs: { ...site, name: "Harbour Swimmers" } };
+  const conflict: SiteSave = { phase: "conflict", revision: 6, theirs: { ...site, name: "Shingle Cove Swimmers" } };
   const { saves } = draw({ siteSave: conflict, reloadSite: async () => { reloaded += 1; } });
-  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Northshore Swimmers" } });
+  fireEvent.change(screen.getByLabelText("Site name"), { target: { value: "Samphire Bay Swimmers" } });
   const alert = screen.getByRole("alert");
   expect(alert.textContent).toContain("Changed in another tab.");
   // The warning icon the page's own conflict has (SaveStatus), before the
@@ -208,7 +208,7 @@ test("a conflict with another tab's save offers Reload and Keep mine, which save
   await act(async () => {
     fireEvent.click(within(alert).getByRole("button", { name: "Keep mine" }));
   });
-  expect(saves).toEqual([{ values: expect.objectContaining({ name: "Northshore Swimmers" }), from: 6 }]);
+  expect(saves).toEqual([{ values: expect.objectContaining({ name: "Samphire Bay Swimmers" }), from: 6 }]);
   await act(async () => {
     fireEvent.click(within(alert).getByRole("button", { name: "Reload" }));
   });

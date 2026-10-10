@@ -250,7 +250,7 @@ try {
 
   // The sum against words drawn whole, in each place.
   const SAMPLES = [
-    "Slack Water", "Swims", "Gallery", "Meet us", "Questions", "Join", "Northfield Swimming Club", "Become a member",
+    "Slack Water", "Swims", "Gallery", "Meet us", "Questions", "Join", "Sea Thrift Swimming Club", "Become a member",
     "WWWWWWWW", "MMMMMMMM", "AVATAR", "To Wa", "Ïllüstrâtïön", "Œuvre Ærø", "0123456789", "Q&A — FAQ’s…", "“Open” • ‘water’", "tel: +44 (0)1234", "ffi ffl fi fl",
     "‘a’ “b” ‘c’ “d” • ‘e’ “f”", "“‘“‘“‘“‘”’”’”’”’", "• • • • • • • •",
     `Cafe${String.fromCodePoint(0x301)} de${String.fromCodePoint(0x301)}ja${String.fromCodePoint(0x300)}`,

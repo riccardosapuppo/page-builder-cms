@@ -274,10 +274,10 @@ test("the header and footer, changed in this browser: the canvas draws them as t
   const defaults = readSiteTheme();
   const menu = (defaults.menu as Array<{ label: string; href: string }>).map((link) => [link.label, link.href]);
   const changed = {
-    name: "Harbour Swim Club",
+    name: "Eelgrass Bay Swim Club",
     links: [...menu, ["Winter", "/winter-series"]],
     button: 0,
-    footer: `Harbour Swim Club, since 1931. ${(defaults.footer as { text: string }).text}`,
+    footer: `Eelgrass Bay Swim Club, since 1931. ${(defaults.footer as { text: string }).text}`,
   };
   await openDemo(page);
   expect((await themeOf(page, CANVAS)).name).toBe(defaults.name);
@@ -302,8 +302,8 @@ test("the header and footer, changed in this browser: the canvas draws them as t
   await expect(page.locator(`${CANVAS.header} .sw-nav-links a`).last()).toHaveText("Winter");
   await panel.getByRole("button", { name: "Remove the button" }).click();
   await expect(page.locator(`${CANVAS.header} .sw-btn`)).toHaveCount(0);
-  await panel.getByLabel("Bold words").fill("Harbour Swim Club, since 1931.");
-  await expect(page.locator(`${CANVAS.footer} strong`)).toHaveText("Harbour Swim Club, since 1931.");
+  await panel.getByLabel("Bold words").fill("Eelgrass Bay Swim Club, since 1931.");
+  await expect(page.locator(`${CANVAS.footer} strong`)).toHaveText("Eelgrass Bay Swim Club, since 1931.");
   await expect(panel.getByRole("status").filter({ hasText: "Not saved yet" })).toBeVisible();
 
   await panel.getByRole("button", { name: "Save" }).click();
@@ -348,7 +348,7 @@ test("the header and footer, changed in this browser: the canvas draws them as t
   await expect(panel.getByLabel("Site name")).toHaveValue(changed.name);
   await expect(panel.getByRole("group", { name: `Link ${menu.length + 1}` }).getByLabel("Link")).toHaveValue("/winter-series");
   await expect(panel.getByText("No button in the header.")).toBeVisible();
-  await expect(panel.getByLabel("Bold words")).toHaveValue("Harbour Swim Club, since 1931.");
+  await expect(panel.getByLabel("Bold words")).toHaveValue("Eelgrass Bay Swim Club, since 1931.");
   await view.goto(`${DEMO_BASE}?published=1`);
   await expect(view.locator("header.sw-header .sw-brand")).toHaveText(changed.name);
   expect(await themeOf(view)).toEqual(changed);

@@ -62,10 +62,10 @@ export const HEADER_CASES: HeaderCase[] = [
   {
     label: "every length at its limit, in words of average width",
     site: {
-      name: "The Northfield Swimming Club",
+      name: "The Sea Thrift Swimming Club",
       menu: links("Timetable for the winter", "Membership and our fees", "Open water safety notes", "Coaches and their swims", "Meet us on the slipway", "Questions people ask us", "Tide tables for the bay", "Galleries of past swims"),
       action: { label: "Join the club now!", href: "/#join" },
-      footer: { lead: "The Northfield Swimming Club, open water swimming in all seasons.", text: "Tide times are a guide, not a promise: check the board on the slipway, ask a coach, and never swim alone in the bay." },
+      footer: { lead: "The Sea Thrift Swimming Club, open water swimming in all seasons.", text: "Tide times are a guide, not a promise: check the board on the slipway, ask a coach, and never swim alone in the bay." },
     },
     fold: "all",
     average: true,

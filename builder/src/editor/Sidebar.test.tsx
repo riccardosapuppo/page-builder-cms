@@ -134,7 +134,7 @@ test("Header and footer opens a level below Page beside Site style, on the site'
   const panel = screen.getByRole("complementary", { name: "Header and footer" });
   await waitFor(() => expect(document.activeElement).toBe(within(panel).getByLabelText("Site name")));
   // A change left waiting is said on the way in, once back on the Page tab.
-  fireEvent.change(within(panel).getByLabelText("Site name"), { target: { value: "Northshore" } });
+  fireEvent.change(within(panel).getByLabelText("Site name"), { target: { value: "Samphire" } });
   fireEvent.click(within(panel).getByRole("button", { name: "Back to Page" }));
   expect(kit.ui.getState().tray).toBe("edit");
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Header and footer" })));

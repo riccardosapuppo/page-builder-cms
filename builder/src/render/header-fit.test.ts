@@ -26,7 +26,7 @@ test("a fifth link needs a wider bar: each count of links lands on the next widt
 
 test("the name and the button count too, and with no links there is nothing to fold", () => {
   const menu = [...defaults.menu, ...links("Contact")];
-  expect(headerFold({ ...defaults, menu, name: "The Northfield Swimming Club" })).toBe("1120");
+  expect(headerFold({ ...defaults, menu, name: "The Sea Thrift Swimming Club" })).toBe("1120");
   expect(headerFold({ ...defaults, menu, action: null })).toBeNull();
   expect(headerFold({ ...defaults, menu: [], name: "W".repeat(28) })).toBeNull();
 });

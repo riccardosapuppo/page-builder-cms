@@ -36,7 +36,7 @@ class HeaderFitTest < ActiveSupport::TestCase
     menu = Site.defaults["menu"] + links("Contact")
 
     assert_equal "880", HeaderFit.fold(site(menu: menu))
-    assert_equal "1120", HeaderFit.fold(site(menu: menu, name: "The Northfield Swimming Club"))
+    assert_equal "1120", HeaderFit.fold(site(menu: menu, name: "The Sea Thrift Swimming Club"))
     assert_nil HeaderFit.fold(site(menu: menu, action: nil))
   end
 

@@ -635,15 +635,15 @@ test("the header and footer show on the canvas as typed and reach the storage on
   const panel = screen.getByRole("complementary", { name: "Header and footer" });
   const name = () => within(panel).getByLabelText("Site name");
   const save = () => within(panel).getByRole("button", { name: "Save" });
-  fireEvent.change(name(), { target: { value: "Northshore Swimmers" } });
-  expect(brand()).toBe("Northshore Swimmers");
+  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
+  expect(brand()).toBe("Samphire Bay Swimmers");
   expect(site.siteChanges).toEqual([]);
   await act(async () => fireEvent.click(save()));
-  expect(site.siteChanges).toEqual([{ revision: 0, name: "Northshore Swimmers", menu: SITE.menu, action: SITE.action, footer: SITE.footer }]);
+  expect(site.siteChanges).toEqual([{ revision: 0, name: "Samphire Bay Swimmers", menu: SITE.menu, action: SITE.action, footer: SITE.footer }]);
   await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
   expect(env.ui.getState().siteDraft).toBeNull();
-  expect(env.ui.getState().site).toMatchObject({ name: "Northshore Swimmers", revision: 1 });
-  expect(brand()).toBe("Northshore Swimmers");
+  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
+  expect(brand()).toBe("Samphire Bay Swimmers");
 
   // A name past its limit: the editor's own check refuses it, nothing is
   // sent, and the focus goes to it.
@@ -656,16 +656,16 @@ test("the header and footer show on the canvas as typed and reach the storage on
   // Another tab saves first: the save is a conflict, which leaves this
   // tab's values on the canvas; Keep mine saves them from the revision it
   // named.
-  fireEvent.change(name(), { target: { value: "Harbour Swimmers" } });
+  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
   site.siteSavedElsewhere({ name: "Saved elsewhere" });
   await act(async () => fireEvent.click(save()));
   const conflict = within(panel).getByRole("alert");
   expect(conflict.textContent).toContain("Changed in another tab.");
   await waitFor(() => expect(document.activeElement).toBe(within(conflict).getByRole("button", { name: "Reload" })));
-  expect(brand()).toBe("Harbour Swimmers");
+  expect(brand()).toBe("Shingle Cove Swimmers");
   await act(async () => fireEvent.click(within(conflict).getByRole("button", { name: "Keep mine" })));
-  expect(site.siteChanges.at(-1)).toMatchObject({ revision: 2, name: "Harbour Swimmers" });
-  expect(env.ui.getState().site).toMatchObject({ name: "Harbour Swimmers", revision: 3 });
+  expect(site.siteChanges.at(-1)).toMatchObject({ revision: 2, name: "Shingle Cove Swimmers" });
+  expect(env.ui.getState().site).toMatchObject({ name: "Shingle Cove Swimmers", revision: 3 });
   await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
 
   // Reload takes the other tab's, leaving this tab's change.

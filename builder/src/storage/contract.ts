@@ -1057,7 +1057,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     async run(env) {
       const other = env.openTab();
       const before = await env.adapter.getSite();
-      const theirs: SiteValues = { ...valuesOf(before), name: "Harbour Swimmers" };
+      const theirs: SiteValues = { ...valuesOf(before), name: "Shingle Cove Swimmers" };
       const mine: SiteValues = { ...valuesOf(before), footer: { lead: "Mine.", text: "This tab's footer." } };
       try {
         const first = value(await other.setSite({ revision: before.revision, ...theirs }), "the other tab's change");

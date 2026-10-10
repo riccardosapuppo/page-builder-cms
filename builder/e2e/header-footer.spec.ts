@@ -120,8 +120,8 @@ test("the name changed, a link added to a page's section, the button taken away,
     const canvasHeader = page.locator('.canvas [data-theme-part="header"]');
 
     // The name, on the canvas as it is typed.
-    await panel.getByLabel("Site name").fill("Northshore Swimmers");
-    await expect(canvasHeader.locator(".sw-brand")).toHaveText("Northshore Swimmers");
+    await panel.getByLabel("Site name").fill("Samphire Bay Swimmers");
+    await expect(canvasHeader.locator(".sw-brand")).toHaveText("Samphire Bay Swimmers");
     await expect(panel.getByRole("status").filter({ hasText: "Not saved yet" })).toBeVisible();
 
     // A new link, its words first, then its address chosen among those the
@@ -150,7 +150,7 @@ test("the name changed, a link added to a page's section, the button taken away,
     await expect(panel.getByRole("status").filter({ hasText: "Saved for every page" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Save" })).toBeFocused();
     const stored = await siteNow(request);
-    expect(stored).toMatchObject({ name: "Northshore Swimmers", action: null, menu: [...found.menu, { label: "Tides", href: `/${slug}#tides` }], footer: found.footer });
+    expect(stored).toMatchObject({ name: "Samphire Bay Swimmers", action: null, menu: [...found.menu, { label: "Tides", href: `/${slug}#tides` }], footer: found.footer });
 
     // The visitor's next visit, still with the old ETag, gets the new
     // header: the CMS draws the page around its blocks again, once, and
@@ -161,7 +161,7 @@ test("the name changed, a link added to a page's section, the button taken away,
     expect(after.etag).not.toBe(first.etag);
     expect(await fragments() - before, "the page's own fragment; its six blocks reused").toBe(1);
     const header = reader.tab.locator("header");
-    await expect(header.locator(".sw-brand")).toHaveText("Northshore Swimmers");
+    await expect(header.locator(".sw-brand")).toHaveText("Samphire Bay Swimmers");
     await expect(header.locator(".sw-nav-links a")).toHaveText([...found.menu.map((l) => l.label), "Tides"]);
     expect(await header.locator(".sw-nav-links a").last().getAttribute("href")).toBe(`/${slug}#tides`);
     await expect(header.locator(".sw-btn")).toHaveCount(0);
