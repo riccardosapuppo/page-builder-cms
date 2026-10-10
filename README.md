@@ -686,9 +686,9 @@ suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.m
 says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 10 October 2026, on the virtual machine of [Measurements](#measurements),
-with every server of the run on 3901 (the CMS's), 4901 (the editor's) and
-4912 (the demo's) in turn, one run of the whole check, ending at 01:35 UTC,
-spent 32 minutes in its suites. It ended
+with every server of the run on 3901 (the CMS's) and 4901 (the editor's and
+the demo's) in turn, one run of the whole check, ending at 04:12 UTC, spent
+33 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
@@ -710,7 +710,7 @@ for want of its advisory database (CI runs it). Its counts:
 | the browser demo, as Pages serves it | 9 passed |
 | accessibility: the keyboard path, focus, axe | 46 passed |
 | how the shell, the demo and the pages are served | 60 checks |
-| the CMS in production, over HTTP and in a browser | 61 checks |
+| the CMS in production, over HTTP and in a browser | 62 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 
 **The three that failed** on 8 October, at 1024 by 768, were about text, and
