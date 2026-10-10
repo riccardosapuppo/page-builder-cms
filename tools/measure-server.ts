@@ -39,7 +39,11 @@
 // Storage root and the uploaded pictures are in a folder under cms/tmp
 // made for this run, the precompiled assets are removed with
 // assets:clobber, the server's tree is stopped and its port shown closed
-// before the folder is deleted. Ruby on the PATH, the CMS's gems installed.
+// before the folder is deleted. A run stopped before its end leaves its
+// build in cms/public/assets, so before it waits for a quiet machine it
+// removes a build it finds there, and stops if anything of it remains
+// (tools/lib/build-left-behind.ts). Ruby on the PATH, the CMS's gems
+// installed.
 //
 // Exits 0 when it measured and its own checks passed, 1 when one of them
 // failed, 2 when it could not run here (the port taken, no Ruby, a machine
@@ -51,6 +55,7 @@ import { existsSync, mkdirSync, openSync, closeSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
+import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
 import { api, countBlocks, headings, publishLargePage, withHeadingText, type Document } from "./lib/measure-site.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "./lib/processes.ts";
 
@@ -291,6 +296,7 @@ try {
   if (taken.length) throw new CouldNotRun(`port ${PORT} is already taken (${taken.map((l) => `${l.address}, process ${l.pid}`).join("; ")}): nothing was started`);
 
   console.log(banner("measure-server"));
+  clearBuildLeftBehind(join(cms, "public", "assets"), check);
   const quiet = await waitForQuiet({ say: (line) => console.log(line) });
   console.log(`the machine was ${quiet.readings.map((r) => `${r.toFixed(0)}%`).join(" then ")} busy before the run (waited ${quiet.waited.toFixed(0)} s)`);
   underLoad ||= quiet.underLoad;

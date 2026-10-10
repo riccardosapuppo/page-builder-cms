@@ -43,7 +43,10 @@
 // through the API on that empty database, the precompiled assets are
 // removed with assets:clobber, the server tree is stopped (taskkill on
 // Windows, its process group elsewhere), and the port is shown closed
-// before the folder is deleted. Ruby must be on the PATH, the gems of
+// before the folder is deleted. A run stopped before its end leaves its
+// build in cms/public/assets, so before it precompiles the check removes
+// a build it finds there, and stops if anything of it remains
+// (tools/lib/build-left-behind.ts). Ruby must be on the PATH, the gems of
 // cms/ installed, and Playwright's Chromium in its cache.
 //
 // Runs on Windows, Linux and macOS. Exits 0 when every check passes, 1
@@ -56,6 +59,7 @@ import { spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
 import { headerChecks, type SiteValues } from "./lib/header-checks.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
@@ -340,6 +344,7 @@ let exitCode = 0;
 // the RESULT line, so that a run that held less does not read as all.
 let notHeld: string | null = null;
 try {
+  clearBuildLeftBehind(join(cms, "public", "assets"), check);
   rails(["assets:precompile"], "assets:precompile");
   rails(["db:create", "db:schema:load"], "databases in " + `cms/tmp/${run}`);
 
