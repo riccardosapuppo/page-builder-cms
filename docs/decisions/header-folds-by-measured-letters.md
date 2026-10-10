@@ -57,10 +57,11 @@ itself and fold the links when they do not fit.
   drew each script the face lacks: where a machine draws one with other
   fonts (another machine, or these fonts after an update), `--check`
   compares all the rest and says it could not run here, rather than
-  failing. CI does not run it. Other browsers draw the face at the same
-  advances, but nothing here measures them; and the letters the face
-  lacks are drawn by a visitor's own fonts, of which the file holds what
-  the measuring machine's drew, the widest of four.
+  failing. CI does not run it as a check: its production job only asks
+  it which rows of the header it may hold. Other browsers draw the face
+  at the same advances, but nothing here measures them; and the letters
+  the face lacks are drawn by a visitor's own fonts, of which the file
+  holds what the measuring machine's drew, the widest of four.
 - **The sum errs wide, and in the face's own letters never narrow.** It
   leaves out kerning and adds 1% for the pairs the face sets apart, and a
   step is 80 px: a menu may fold up to a step sooner than it must. A
@@ -74,17 +75,18 @@ itself and fold the links when they do not fit.
   wider than its sum in a link. Any other character counts 1.5 times the
   font size, so a word of symbols or of another script folds sooner still.
 - **The menu may still wrap the bar, inside the page.** The promise that
-  it does not holds for the face's own letters. A letter that a
-  visitor's font draws wider than the file counted, or a character
-  counted at 1.5 em that is drawn wider still, can put the bar on two
-  rows at a width where the sum says one row fits: three of U+FDFD, the
-  Arabic bismillah ligature, as a fifth link of the design's header (each
-  drawn 91 px wide in a link, where 22.5 are counted) took two rows
-  (118 px) at 880 and 920, where the sum puts the fold, and one (80 px) at
-  1248 and 1440. `site.css` lets the links wrap inside the bar rather
-  than leave the page, so nothing leaves it; the fold is not a guarantee
-  of one row for such a letter, and the production check holds only the
-  first for them.
+  it does not holds for the face's own letters, and for those of the
+  scripts the file measures where the visitor's fonts are those it was
+  measured with. A letter that a visitor's font draws wider than the file
+  counted, or a character counted at 1.5 em that is drawn wider still,
+  can put the bar on two rows at a width where the sum says one row fits:
+  three of U+FDFD, the Arabic bismillah ligature, as a fifth link of the
+  design's header (each drawn 91 px wide in a link, where 22.5 are
+  counted) took two rows (118 px) at 880 and 920, where the sum puts the
+  fold, and one (80 px) at 1248 and 1440. `site.css` lets the links wrap
+  inside the bar rather than leave the page, so nothing leaves it; the
+  fold is not a guarantee of one row for such a letter, and the
+  production check holds only the first for it.
 - **Two programs add up the file:** the server, and the editor's canvas,
   which the parity of the theme's header with the served one
   (`builder/test/theme.rails.test.tsx`) must hold together.
@@ -100,18 +102,24 @@ Arabic and CJK too (with those scripts' widths cut to a third it fails on
 the Greek words; with Arabic letters measured alone again, on eight
 Arabic words such as مهم and مهرجان). With the serif family drawing Greek
 and Cyrillic in another font, it says it could not compare those two and
-exits 2, having compared the rest. `node tools/check-production.ts`
-sets nine headers
-through the API on a production CMS and draws its home page in Chromium at
-23 widths from 320 to 1440 px: nothing leaves the page, the links show
-exactly where `data-fold` says, and, for letters of the face, the bar is
-one 80 px row there (for letters outside the face the machine's fonts
-decide that, and it is not held); with the fold planted away, three of the
-nine fail. From `builder/`, `npm run e2e -- header-footer` sets a short
-Hebrew, a Greek and a Cyrillic header and shows their links in the bar at
-1024 and at 1440, on the published page and in the editor (with every
-letter outside the face counted at 1.5 em again, the Hebrew one fails at
-1024). From `cms/`, `ruby bin/rails test test/models/header_fit_test.rb`
+exits 2, having compared the rest. `node tools/check-production.ts` sets
+ten headers through the API on a production CMS and draws its home page
+in Chromium at 23 widths from 320 to 1440 px: nothing leaves the page, the
+links show exactly where `data-fold` says, and there the bar is one 80 px
+row with its right padding whole: for the face's letters (the padding
+where `--check` finds them drawn as the file holds them) and, where it
+finds this machine's fonts to be those the file was measured with, for
+the letters of the scripts it measures; elsewhere those rows are not
+held, nor that of a character counted at 1.5 em. With the fold
+planted away, four of the ten fail; with the tool and the file as they
+were before Arabic letters were measured joined, and the fold of the
+seven Arabic links left unpinned, those links take no fold and run
+6.70 px into the right padding at 800, and fail. From `builder/`,
+`npm run e2e -- header-footer` sets a short Hebrew, a Greek and a
+Cyrillic header and shows their links in the bar at 1024 and at 1440, on
+the published page and in the editor (with every letter outside the face
+counted at 1.5 em again, the Hebrew one fails at 1024). From `cms/`,
+`ruby bin/rails test test/models/header_fit_test.rb`
 holds the sums, the lookup of a letter in its script, and the widths
 site.css folds at; `builder/src/render/header-fit.rails.test.ts` holds the
 editor's twin to it, to the bit.

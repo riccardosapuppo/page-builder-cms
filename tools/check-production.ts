@@ -34,8 +34,9 @@
 //   drawn around blocks all read back (headerCacheChecks); and in
 //   Chromium, for headers from the design's to every length at its limit,
 //   nothing leaves the page at any width, and the links show where the
-//   header's data-fold says, on one row with the brand
-//   (tools/lib/header-checks.ts).
+//   header's data-fold says, on one row with the brand and the bar's right
+//   padding whole, for letters this machine draws as the server counts
+//   them (tools/lib/header-checks.ts).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
