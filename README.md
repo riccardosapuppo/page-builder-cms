@@ -690,7 +690,7 @@ says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 10 October 2026, on the virtual machine of [Measurements](#measurements),
 with every server of the run on 3901 (the CMS's) and 4901 (the editor's and
-the demo's) in turn, one run of the whole check, ending at 04:12 UTC, spent
+the demo's) in turn, one run of the whole check, ending at 06:44 UTC, spent
 33 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
@@ -698,7 +698,7 @@ for want of its advisory database (CI runs it). Its counts:
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
-| the tools' own tests | 110 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the tools' own tests | 117 passed, 1 skipped (it needs process groups, and runs in CI) |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 441 files, 0 warnings |
 | the editor's unit tests, and the render contract's editor half | 931 passed in 120 files; 25 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
