@@ -64,10 +64,12 @@ itself and fold the links when they do not fit.
   letter of Greek, Cyrillic, Hebrew, Arabic or CJK counts what it was
   drawn at, at its widest among those fonts (for CJK, the widest letter
   of the script), so a short menu in those alphabets keeps its links in the
-  bar as one of Latin letters does, though Arabic letters are measured
-  alone and a joined word is narrower. Any other character counts 1.5
-  times the font size, so a word of symbols or of another script folds
-  sooner still.
+  bar as one of Latin letters does. An Arabic letter counts the widest of
+  the four forms it takes alone and joined to the letters beside it: heh,
+  meem, alef, teh marbuta and keheh are drawn wider joined than alone, and
+  counted alone, as they were until 10 October, the word مهم was drawn 17%
+  wider than its sum in a link. Any other character counts 1.5 times the
+  font size, so a word of symbols or of another script folds sooner still.
 - **The menu may still wrap the bar, inside the page.** The promise that
   it does not holds for the face's own letters. A letter that a
   visitor's font draws wider than the file counted, or a character
@@ -92,7 +94,9 @@ From the repository root, `node tools/header-metrics.ts --check` measures
 again and compares (a wrong width planted in the file fails it), and
 checks its sum against words drawn whole, in Greek, Cyrillic, Hebrew,
 Arabic and CJK too (with those scripts' widths cut to a third it fails on
-the Greek words). `node tools/check-production.ts` sets nine headers
+the Greek words; with Arabic letters measured alone again, on eight
+Arabic words such as مهم and مهرجان). `node tools/check-production.ts`
+sets nine headers
 through the API on a production CMS and draws its home page in Chromium at
 23 widths from 320 to 1440 px: nothing leaves the page, the links show
 exactly where `data-fold` says, and, for letters of the face, the bar is

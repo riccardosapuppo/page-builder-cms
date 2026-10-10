@@ -22,7 +22,8 @@
 // - for each script the face lacks and a header may hold (Greek, Cyrillic,
 //   Hebrew, Arabic, CJK), the widest advance its letters are drawn with, in
 //   each place, by the fonts this machine falls back to: the page's own
-//   stack and three generic families, whichever draws a letter widest.
+//   stack and three generic families, whichever draws a letter widest, and
+//   an Arabic letter in whichever of its four joined forms is widest.
 //   Greek, Cyrillic, Hebrew and Arabic letters each count their own, CJK
 //   letters the widest of their script's. Any other character is counted as
 //   1.5 times the place's font size, wider than any letter measured, so a
@@ -38,8 +39,10 @@
 //   and those site.css gives data-fold, each checked by drawing the header
 //   just below and at it.
 // It then checks its own sum on words drawn whole (the design's labels,
-// capitals, accents, digits, punctuation): the sum must never be narrower
-// than the drawn run, or a menu that does not fit could be told it does.
+// capitals, accents, digits, punctuation, and words of the other scripts,
+// Arabic ones whose letters join): the sum must never be narrower than the
+// drawn run, or a menu that does not fit could be told it does. It writes
+// nothing if it is.
 //
 // --check measures again and compares with the file, writing nothing:
 // exit 1 on a difference. Run it after a change to the header's styles or
@@ -65,19 +68,24 @@ const COMBINING: Array<[number, number]> = [[0x300, 0x36f]];
 // The scripts the face lacks, as ranges of code points. A letter of one
 // counts what it is drawn at, at its widest among the fallback fonts, if
 // the script's letters are measured one by one (`letters`: Greek, Cyrillic,
-// Hebrew and Arabic, where a letter alone is drawn as wide as it ever is: an
-// Arabic letter that joins its neighbours is drawn narrower than the
-// isolated form measured here), and the script's widest letter if not (CJK,
-// where every ideograph has the same advance, and too many to list). The
-// ranges hold the letters, digits and punctuation in common use, not
-// the marks that sit on a letter, historic letters or presentation forms,
-// which count 1.5 em; of a range longer than 1000 code points every
-// `every`th is drawn, which for CJK is as good as every one.
-const SCRIPTS: Array<{ name: string; ranges: Array<[number, number]>; letters?: true; every?: number }> = [
+// Hebrew and Arabic), and the script's widest letter if not (CJK, where
+// every ideograph has the same advance, and too many to list). An Arabic
+// letter takes another shape where it joins the letters beside it, and
+// some of those shapes are drawn wider than the letter alone (heh and meem
+// where a letter follows them, alef and teh marbuta after a letter that
+// joins them, keheh at the end of a word, by up to 2.5 px in a link): so a
+// letter of a script that `joins` is drawn in its four forms, alone, joined
+// to a letter after it, to letters on both sides and to one before it (a
+// zero-width joiner, U+200D, standing for the neighbour), and counts the
+// widest. The ranges hold the letters, digits and punctuation in common
+// use, not the marks that sit on a letter, historic letters or
+// presentation forms, which count 1.5 em; of a range longer than 1000 code
+// points every `every`th is drawn, which for CJK is as good as every one.
+const SCRIPTS: Array<{ name: string; ranges: Array<[number, number]>; letters?: true; joins?: true; every?: number }> = [
   { name: "Greek", ranges: [[0x386, 0x3ce]], letters: true },
   { name: "Cyrillic", ranges: [[0x400, 0x45f], [0x490, 0x491]], letters: true },
   { name: "Hebrew", ranges: [[0x5d0, 0x5ea]], letters: true },
-  { name: "Arabic", ranges: [[0x621, 0x64a], [0x660, 0x669], [0x66e, 0x6d3]], letters: true },
+  { name: "Arabic", ranges: [[0x621, 0x64a], [0x660, 0x669], [0x66e, 0x6d3]], letters: true, joins: true },
   { name: "CJK", ranges: [[0x3000, 0x303f], [0x3041, 0x30ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xac00, 0xd7a3], [0xff01, 0xff60]], every: 37 },
 ];
 // The code points of a script that are drawn: assigned letters, digits,
@@ -208,14 +216,21 @@ try {
       // the page's own stack and the three generic families: a letter the
       // face lacks is drawn by whichever font the machine falls back to, so
       // the widest of four such fonts is the bound this machine can vouch
-      // for. The script's own width is the widest of its letters.
-      const drawnScripts = scripts.map(({ sample, letters }) => {
+      // for. A letter of a script that joins is drawn in its four forms,
+      // a zero-width joiner standing for the neighbour it joins, which
+      // must itself draw nothing. The script's own width is the widest of
+      // its letters.
+      const families = ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`];
+      const ZWJ = "\u200D";
+      const joiner = Math.max(...families.map((family) => set(element, ZWJ, family)));
+      const drawnScripts = scripts.map(({ sample, letters, joins }) => {
         let advance = 0;
         const each: Record<string, number> = {};
         for (const point of sample) {
           const ch = String.fromCodePoint(point);
+          const forms = joins ? [ch, ch + ZWJ, ZWJ + ch + ZWJ, ZWJ + ch] : [ch];
           let widest = 0;
-          for (const family of ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`]) widest = Math.max(widest, set(element, ch, family));
+          for (const family of families) for (const form of forms) widest = Math.max(widest, set(element, form, family));
           advance = Math.max(advance, widest);
           if (letters) each[ch] = widest;
         }
@@ -223,7 +238,7 @@ try {
       });
       set(element, "");
       const style = getComputedStyle(element);
-      return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts };
+      return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts, joiner };
     };
     const brandStyle = getComputedStyle(brand);
     const mark = brand.querySelector("svg")!.getBoundingClientRect().width;
@@ -235,18 +250,21 @@ try {
       page: { padX: px(getComputedStyle(row).paddingLeft), widest: px(getComputedStyle(row).maxWidth) },
     };
     return result;
-  }, { points: codePoints(RANGES), combining: codePoints(COMBINING), scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), letters: script.letters === true })) });
+  }, { points: codePoints(RANGES), combining: codePoints(COMBINING), scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), letters: script.letters === true, joins: script.joins === true })) });
 
-  // A script none of whose letters was drawn would be counted at no width.
+  // A script none of whose letters was drawn would be counted at no width;
+  // a joiner drawn with a width would be counted in a joined form.
   for (const which of ["brand", "link", "button"] as const) {
     measured[which].scripts.forEach(({ advance }, k) => {
       if (!(advance > 0)) throw new Error(`${SCRIPTS[k]!.name}: no letter of it was drawn with a width in the ${which} place`);
     });
+    if (measured[which].joiner > 0.001) throw new Error(`a zero-width joiner is drawn ${measured[which].joiner} px wide in the ${which} place: the joined forms would count it`);
   }
 
   // The three places share one face, so they must lack the same letters.
   const lacking = (which: "brand" | "link" | "button") => measured[which].missing.join("");
   if (lacking("brand") !== lacking("link") || lacking("brand") !== lacking("button")) throw new Error("the header's three places do not have the same letters");
+
 
   // The sum against words drawn whole, in each place.
   const SAMPLES = [
@@ -254,9 +272,14 @@ try {
     "WWWWWWWW", "MMMMMMMM", "AVATAR", "To Wa", "Ïllüstrâtïön", "Œuvre Ærø", "0123456789", "Q&A — FAQ’s…", "“Open” • ‘water’", "tel: +44 (0)1234", "ffi ffl fi fl",
     "‘a’ “b” ‘c’ “d” • ‘e’ “f”", "“‘“‘“‘“‘”’”’”’”’", "• • • • • • • •",
     `Cafe${String.fromCodePoint(0x301)} de${String.fromCodePoint(0x301)}ja${String.fromCodePoint(0x300)}`,
-    // Other scripts, whole: each letter counts its script's widest.
+    // Other scripts, whole: each letter counts its own width, or its
+    // script's widest. Among them Arabic words whose heh, meem, alef, teh
+    // marbuta and keheh join their neighbours, whose sum, each letter
+    // counted alone as before 10 October, was up to 30% narrower than the
+    // word drawn.
     "Ήρεμα νερά", "Ερωτήσεις", "ΩΜΕΓΑ ΔΩΡΟ", "Тихая вода", "ЩЮЖШЫ Ёё", "Вопросы и ответы", "מים שקטים", "שאלות ושחייה", "מרחב",
-    "مرحبا بكم", "السباحة في البحر", "ضصطظ", "潮の会", "日本語の案内", "ひらがなカタカナ", "한국어 수영 클럽", "Slack Water 潮",
+    "مرحبا بكم", "السباحة في البحر", "ضصطظ", "مهم", "مهارات", "مهرجان", "جمهور", "المهمة", "مہمان", "ههههه", "طاطاطاطا", "کمک",
+    "潮の会", "日本語の案内", "ひらがなカタカナ", "한국어 수영 클럽", "Slack Water 潮",
   ];
   const drawn = await tab.evaluate((samples) => {
     const measure = (id: string, text: string) => {
@@ -312,7 +335,7 @@ try {
   if (short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.join("\n  ")}`);
 
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them; any other character not listed counts otherwise. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
     fold: { breakpoint, steps, widest: measured.page.widest },
     slack: SLACK,
     page: { padX: measured.page.padX },
