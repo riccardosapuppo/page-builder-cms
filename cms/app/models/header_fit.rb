@@ -20,8 +20,9 @@
 # lacks is drawn by whatever font the visitor's machine falls back to, so
 # the file holds, for the scripts a header may hold (Greek, Cyrillic,
 # Hebrew, Arabic, CJK), the widest advance each letter was drawn with where
-# it was measured (for CJK, the script's widest letter), and a letter of
-# one counts that; any other character counts 1.5 times the font size,
+# it was measured, after any letter of its script or in any of its joined
+# forms (for CJK, the script's widest letter), and a letter of one counts
+# that; any other character counts 1.5 times the font size,
 # wider than any letter of the face. So the sum errs wide: in the face's own
 # letters a menu may fold a step early, never late. For a letter of another script it is as good as
 # the measure: a font that draws one wider than counted, or a character

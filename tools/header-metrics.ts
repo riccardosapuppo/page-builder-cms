@@ -22,8 +22,10 @@
 // - for each script the face lacks and a header may hold (Greek, Cyrillic,
 //   Hebrew, Arabic, CJK), the widest advance its letters are drawn with, in
 //   each place, by the fonts this machine falls back to: the page's own
-//   stack and three generic families, whichever draws a letter widest, and
-//   an Arabic letter in whichever of its four joined forms is widest.
+//   stack and three generic families, whichever draws a letter widest; a
+//   letter of Greek, Cyrillic or Hebrew alone and after each letter of its
+//   script, whichever adds most, and an Arabic letter in whichever of its
+//   four joined forms is widest.
 //   Greek, Cyrillic, Hebrew and Arabic letters each count their own, CJK
 //   letters the widest of their script's. Any other character is counted as
 //   1.5 times the place's font size, wider than any letter measured, so a
@@ -39,10 +41,10 @@
 //   and those site.css gives data-fold, each checked by drawing the header
 //   just below and at it.
 // It then checks its own sum on words drawn whole (the design's labels,
-// capitals, accents, digits, punctuation, and words of the other scripts,
-// Arabic ones whose letters join): the sum must never be narrower than the
-// drawn run, or a menu that does not fit could be told it does. It writes
-// nothing if it is.
+// capitals, accents, digits, punctuation, and words of the other scripts:
+// Arabic ones whose letters join, Cyrillic pairs the fonts set apart): the
+// sum must never be narrower than the drawn run, or a menu that does not
+// fit could be told it does. It writes nothing if it is.
 //
 // --check measures again and compares with the file, writing nothing. Run
 // it after a change to the header's styles or to the fonts, and write the
@@ -78,22 +80,30 @@ const COMBINING: Array<[number, number]> = [[0x300, 0x36f]];
 // counts what it is drawn at, at its widest among the fallback fonts, if
 // the script's letters are measured one by one (`letters`: Greek, Cyrillic,
 // Hebrew and Arabic), and the script's widest letter if not (CJK, where
-// every ideograph has the same advance, and too many to list). An Arabic
-// letter takes another shape where it joins the letters beside it, and
-// some of those shapes are drawn wider than the letter alone (heh and meem
-// where a letter follows them, alef and teh marbuta after a letter that
-// joins them, keheh at the end of a word, by up to 2.5 px in a link): so a
-// letter of a script that `joins` is drawn in its four forms, alone, joined
-// to a letter after it, to letters on both sides and to one before it (a
-// zero-width joiner, U+200D, standing for the neighbour), and counts the
-// widest. The ranges hold the letters, digits and punctuation in common
+// every ideograph has the same advance, and too many to list).
+// A font's kerning sets a few pairs apart: Cyrillic Д after А is drawn
+// 0.7 px wider in the name than the two alone, so that pair was 2.6% wider
+// than its sum. A letter of a script that `kerns` is drawn after each
+// letter of its script too, and counts the most it adds to the one before
+// it, if that is more than its own width: no pair of Greek, Cyrillic or
+// Hebrew letters is then wider than its sum.
+// An Arabic letter takes another shape where it joins the letters beside
+// it, and some of those shapes are drawn wider than the letter alone (heh
+// and meem where a letter follows them, alef and teh marbuta after a
+// letter that joins them, keheh at the end of a word, by up to 2.5 px in a
+// link): so a letter of a script that `joins` is drawn in its four forms,
+// alone, joined to a letter after it, to letters on both sides and to one
+// before it (a zero-width joiner, U+200D, standing for the neighbour), and
+// counts the widest; no pair or run of them was found drawn wider than its
+// sum with the slack, nor of CJK, which are not drawn in pairs.
+// The ranges hold the letters, digits and punctuation in common
 // use, not the marks that sit on a letter, historic letters or
 // presentation forms, which count 1.5 em; of a range longer than 1000 code
 // points every `every`th is drawn, which for CJK is as good as every one.
-const SCRIPTS: Array<{ name: string; ranges: Array<[number, number]>; letters?: true; joins?: true; every?: number }> = [
-  { name: "Greek", ranges: [[0x386, 0x3ce]], letters: true },
-  { name: "Cyrillic", ranges: [[0x400, 0x45f], [0x490, 0x491]], letters: true },
-  { name: "Hebrew", ranges: [[0x5d0, 0x5ea]], letters: true },
+const SCRIPTS: Array<{ name: string; ranges: Array<[number, number]>; letters?: true; joins?: true; kerns?: true; every?: number }> = [
+  { name: "Greek", ranges: [[0x386, 0x3ce]], letters: true, kerns: true },
+  { name: "Cyrillic", ranges: [[0x400, 0x45f], [0x490, 0x491]], letters: true, kerns: true },
+  { name: "Hebrew", ranges: [[0x5d0, 0x5ea]], letters: true, kerns: true },
   { name: "Arabic", ranges: [[0x621, 0x64a], [0x660, 0x669], [0x66e, 0x6d3]], letters: true, joins: true },
   { name: "CJK", ranges: [[0x3000, 0x303f], [0x3041, 0x30ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xac00, 0xd7a3], [0xff01, 0xff60]], every: 37 },
 ];
@@ -109,6 +119,17 @@ const sampleOf = (script: (typeof SCRIPTS)[number]): number[] => {
   }
   return [...points].filter((point) => DRAWN.test(String.fromCodePoint(point))).sort((a, b) => a - b);
 };
+// The stacks a letter the face lacks is drawn in: the page's own, and the
+// face before each of three generic families, as unlike as can be.
+const STACKS = ["", "monospace", "serif", "sans-serif"];
+// The forms a letter is drawn in, as what stands before and after it:
+// alone; and for a script that joins, joined to a letter after it, on both
+// sides and before it, a zero-width joiner standing for the neighbour.
+const ZWJ = "\u200D";
+const ALONE: Array<[string, string]> = [["", ""]];
+const JOINED: Array<[string, string]> = [["", ""], ["", ZWJ], [ZWJ, ZWJ], [ZWJ, ""]];
+const PLACES = ["brand", "link", "button"] as const;
+type Place = (typeof PLACES)[number];
 const codePoints = (ranges: Array<[number, number]>) => ranges.flatMap(([from, to]) => Array.from({ length: to - from + 1 }, (_, k) => from + k));
 // Rounded to 1/1000 px: Chromium lays text out in 1/64 px.
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -170,7 +191,7 @@ try {
   if (await linksShown()) throw new Error(`data-fold="all" shows the links at ${WIDE} px`);
 
   await open(WIDE);
-  const measured = await tab.evaluate(({ points, combining, scripts }) => {
+  const measured = await tab.evaluate(({ points, combining, scripts, stacks, zwj }) => {
     const px = (value: string) => Number.parseFloat(value) || 0;
     const name = document.getElementById("name")!;
     const link = document.getElementById("link")!;
@@ -225,25 +246,27 @@ try {
       // the page's own stack and the three generic families: a letter the
       // face lacks is drawn by whichever font the machine falls back to, so
       // the widest of four such fonts is the bound this machine can vouch
-      // for. A letter of a script that joins is drawn in its four forms,
-      // a zero-width joiner standing for the neighbour it joins, which
-      // must itself draw nothing. The script's own width is the widest of
-      // its letters.
-      const families = ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`];
-      const ZWJ = "\u200D";
-      const joiner = Math.max(...families.map((family) => set(element, ZWJ, family)));
-      const drawnScripts = scripts.map(({ sample, letters, joins }) => {
-        let advance = 0;
-        const each: Record<string, number> = {};
-        for (const point of sample) {
-          const ch = String.fromCodePoint(point);
-          const forms = joins ? [ch, ch + ZWJ, ZWJ + ch + ZWJ, ZWJ + ch] : [ch];
-          let widest = 0;
-          for (const family of families) for (const form of forms) widest = Math.max(widest, set(element, form, family));
-          advance = Math.max(advance, widest);
-          if (letters) each[ch] = widest;
+      // for. A letter is drawn in each of its forms (a zero-width joiner,
+      // which must itself draw nothing, standing for a neighbour it joins),
+      // and, in a script that kerns, after each letter of its script, where
+      // it counts what it adds to the one before it.
+      const stack = (generic: string) => (generic ? `${face}, ${generic}` : "");
+      const joiner = Math.max(...stacks.map((generic) => set(element, zwj, stack(generic))));
+      const drawnScripts = scripts.map(({ sample, forms, letters, kerns }) => {
+        const draw = (text: string, family: string) => set(element, text, family);
+        const chars = sample.map((point) => String.fromCodePoint(point));
+        const widest: Record<string, number> = {};
+        for (const generic of stacks) {
+          const family = stack(generic);
+          const alone: Record<string, number> = {};
+          for (const ch of chars) {
+            const widths = forms.map(([before, after]) => draw(before + ch + after, family));
+            alone[ch] = widths[0]!;
+            widest[ch] = Math.max(widest[ch] ?? 0, ...widths);
+          }
+          if (kerns) for (const a of chars) for (const b of chars) widest[b] = Math.max(widest[b]!, draw(a + b, family) - alone[a]!);
         }
-        return { advance, letters: each };
+        return { advance: Math.max(...Object.values(widest)), letters: letters ? widest : {} };
       });
       set(element, "");
       const style = getComputedStyle(element);
@@ -259,11 +282,17 @@ try {
       page: { padX: px(getComputedStyle(row).paddingLeft), widest: px(getComputedStyle(row).maxWidth) },
     };
     return result;
-  }, { points: codePoints(RANGES), combining: codePoints(COMBINING), scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), letters: script.letters === true, joins: script.joins === true })) });
+  }, {
+    points: codePoints(RANGES),
+    combining: codePoints(COMBINING),
+    scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), forms: script.joins ? JOINED : ALONE, letters: script.letters === true, kerns: script.kerns === true })),
+    stacks: STACKS,
+    zwj: ZWJ,
+  });
 
   // A script none of whose letters was drawn would be counted at no width;
   // a joiner drawn with a width would be counted in a joined form.
-  for (const which of ["brand", "link", "button"] as const) {
+  for (const which of PLACES) {
     measured[which].scripts.forEach(({ advance }, k) => {
       if (!(advance > 0)) throw new Error(`${SCRIPTS[k]!.name}: no letter of it was drawn with a width in the ${which} place`);
     });
@@ -271,7 +300,7 @@ try {
   }
 
   // The three places share one face, so they must lack the same letters.
-  const lacking = (which: "brand" | "link" | "button") => measured[which].missing.join("");
+  const lacking = (which: Place) => measured[which].missing.join("");
   if (lacking("brand") !== lacking("link") || lacking("brand") !== lacking("button")) throw new Error("the header's three places do not have the same letters");
 
   // Which fonts drew each script, as a fingerprint the file keeps: each of
@@ -308,8 +337,11 @@ try {
     // script's widest. Among them Arabic words whose heh, meem, alef, teh
     // marbuta and keheh join their neighbours, whose sum, each letter
     // counted alone as before 10 October, was up to 30% narrower than the
-    // word drawn.
+    // word drawn; and Cyrillic pairs the fonts' kerning sets apart, whose
+    // sum, each letter counted alone, was up to 2.6% narrower than the pair
+    // drawn, beyond the slack.
     "Ήρεμα νερά", "Ερωτήσεις", "ΩΜΕΓΑ ΔΩΡΟ", "Тихая вода", "ЩЮЖШЫ Ёё", "Вопросы и ответы", "מים שקטים", "שאלות ושחייה", "מרחב",
+    "АД", "ЖЪ", "Ца", "са", "ух", "ху", "ца", "АДРЕС", "Цапля", "сахар", "уха",
     "مرحبا بكم", "السباحة في البحر", "ضصطظ", "مهم", "مهارات", "مهرجان", "جمهور", "المهمة", "مہمان", "ههههه", "طاطاطاطا", "کمک",
     "潮の会", "日本語の案内", "ひらがなカタカナ", "한국어 수영 클럽", "Slack Water 潮",
   ];
@@ -331,22 +363,22 @@ try {
   };
   // The scripts as the file holds them, in each place.
   type ScriptTable = { name: string; ranges: Array<[number, number]>; advance: number; letters: Record<string, number> };
-  const scriptTables = Object.fromEntries((["brand", "link", "button"] as const).map((which) => [which, SCRIPTS.map((script, k): ScriptTable => {
+  const scriptTables = Object.fromEntries(PLACES.map((which) => [which, SCRIPTS.map((script, k): ScriptTable => {
     const drawnScript = measured[which].scripts[k]!;
     return { name: script.name, ranges: script.ranges, advance: round(drawnScript.advance), letters: Object.fromEntries(Object.entries(drawnScript.letters).map(([letter, width]) => [letter, round(width)])) };
-  })])) as Record<"brand" | "link" | "button", ScriptTable[]>;
+  })])) as Record<Place, ScriptTable[]>;
   // What a character counts in a place, as header_fit.rb and header-fit.ts
   // count it: its own advance in the face, else, in a script, its own width
   // if the script has its letters measured and the script's widest letter
   // if not, else 1.5 times the place's font size.
-  const advanceOf = (which: "brand" | "link" | "button", ch: string): number => {
+  const advanceOf = (which: Place, ch: string): number => {
     const own = tables[which][ch];
     if (own !== undefined) return own;
     const point = ch.codePointAt(0)!;
     const script = scriptTables[which].find((s) => s.ranges.some(([from, to]) => point >= from && point <= to));
     return script ? (script.letters[ch] ?? script.advance) : measured[which].size * 1.5;
   };
-  const sum = (which: "brand" | "link" | "button", text: string) => [...text].reduce((n, ch) => n + advanceOf(which, ch), 0);
+  const sum = (which: Place, text: string) => [...text].reduce((n, ch) => n + advanceOf(which, ch), 0);
   // How much wider than the sum a run can be drawn: the face pulls most
   // pairs together, but sets a few apart (a quote mark beside a letter, by
   // a tenth of a pixel). The estimate adds SLACK of the sum to every run;
@@ -363,7 +395,7 @@ try {
   const short: Array<{ line: string; scripts: string[] }> = [];
   for (const sample of drawn) {
     const scripts = [...new Set([...sample.text].filter((ch) => tables.link[ch] === undefined).map(scriptOf))];
-    for (const which of ["brand", "link", "button"] as const) {
+    for (const which of PLACES) {
       const plain = sum(which, sample.text);
       widest = Math.max(widest, sample[which] / plain - 1);
       const spare = plain * (1 + SLACK) - sample[which];
@@ -375,7 +407,7 @@ try {
   if (!checking && short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.map((s) => s.line).join("\n  ")}`);
 
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` is a fingerprint of the fallback fonts that drew each script, by which --check tells a machine that draws a script with other fonts, whose widths it cannot compare, from a file it no longer writes. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` is a fingerprint of the fallback fonts that drew each script, by which --check tells a machine that draws a script with other fonts, whose widths it cannot compare, from a file it no longer writes. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
     fold: { breakpoint, steps, widest: measured.page.widest },
     slack: SLACK,
     page: { padX: measured.page.padX },
