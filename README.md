@@ -685,7 +685,7 @@ says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 10 October 2026, on the virtual machine of [Measurements](#measurements),
 with every server of the run on 3901 (the CMS's), 4901 (the editor's) and
-4912 (the demo's) in turn, one run of the whole check, ending at 00:55 UTC,
+4912 (the demo's) in turn, one run of the whole check, ending at 01:35 UTC,
 spent 32 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
