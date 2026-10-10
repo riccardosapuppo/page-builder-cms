@@ -683,10 +683,10 @@ as not run, and the run exits 2, never 0. `npm run check -- --list` names the
 suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.md#npm-run-check)
 says how a floor works and how the Vitest suites hold on a busy machine.
 
-On 9 October 2026, on the virtual machine of [Measurements](#measurements),
+On 10 October 2026, on the virtual machine of [Measurements](#measurements),
 with every server of the run on 3901 (the CMS's), 4901 (the editor's) and
-4912 (the demo's) in turn, one run of the whole check, ending at 21:37 UTC,
-spent 31 minutes in its suites. It ended
+4912 (the demo's) in turn, one run of the whole check, ending at 00:55 UTC,
+spent 32 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
@@ -695,20 +695,20 @@ for want of its advisory database (CI runs it). Its counts:
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 110 passed, 1 skipped (it needs process groups, and runs in CI) |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 441 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 927 passed in 120 files; 25 passed |
+| the editor's unit tests, and the render contract's editor half | 931 passed in 120 files; 25 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 249 corpus files, the header and footer's 50 and the example site's 3 pages, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
 | the API description | valid, 0 warnings |
-| the Rails tests | 396 runs, 2307 assertions, 0 failures, 0 errors, 0 skips; 349 API answers held to `cms/openapi.yaml` |
-| RuboCop, Brakeman | 152 files, no offenses; 79 checks, 0 warnings |
-| the editor against a CMS of its own | 84 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and their fold against the CMS's, and the API examples of `cms/README.md` run as written (83 where Windows PowerShell is not) |
-| the editor in Chromium against a CMS of its own | 225 passed, among them the three that failed on this machine before (below) |
-| the editor on the browser's own storage | 76 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the Rails tests | 404 runs, 2462 assertions, 0 failures, 0 errors, 0 skips; 362 API answers held to `cms/openapi.yaml` |
+| RuboCop, Brakeman | 153 files, no offenses; 79 checks, 0 warnings |
+| the editor against a CMS of its own | 85 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and their fold against the CMS's, and the API examples of `cms/README.md` run as written (84 where Windows PowerShell is not) |
+| the editor in Chromium against a CMS of its own | 227 passed, among them the three that failed on this machine before (below) |
+| the editor on the browser's own storage | 77 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 9 passed |
 | accessibility: the keyboard path, focus, axe | 46 passed |
 | how the shell, the demo and the pages are served | 60 checks |
-| the CMS in production, over HTTP and in a browser | 58 checks |
+| the CMS in production, over HTTP and in a browser | 61 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 
 **The three that failed** on 8 October, at 1024 by 768, were about text, and
