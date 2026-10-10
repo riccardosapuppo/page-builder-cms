@@ -53,12 +53,18 @@ itself and fold the links when they do not fit.
 - **A file of letter widths, measured in one browser on one machine,** to
   write again after any change to the header's styles or fonts, or to the
   fonts of the machine that measures. `--check`, in the check's fixtures,
-  says when it is stale. The file keeps a fingerprint of the fonts that
-  drew each script the face lacks: where a machine draws one with other
-  fonts (another machine, or these fonts after an update), `--check`
-  compares all the rest and says it could not run here, rather than
-  failing. CI does not run it as a check: its production job only asks
-  it which rows of the header it may hold. Other browsers draw the face
+  says when it is stale. The file keeps two fingerprints of each script
+  the face lacks: one of every width the fonts drew its letters at (in
+  the three places and the four stacks, alone, joined and after each
+  letter of its script), and one of that with what was drawn and the
+  widths the file holds. Where a machine draws a script with other fonts
+  (another machine, or these fonts after an update), `--check` compares
+  all the rest and says it could not run here, rather than failing; a
+  file the tool no longer writes from these styles, or one edited, fails
+  wherever it runs. CI does not run it as a check: its production job
+  asks it which rows of the header it may hold, says in its result what
+  it did not hold, and fails only a file not drawn as it holds where no
+  script is drawn with other fonts. Other browsers draw the face
   at the same advances, but nothing here measures them; and the letters
   the face lacks are drawn by a visitor's own fonts, of which the file
   holds what the measuring machine's drew, the widest of four.
@@ -68,7 +74,11 @@ itself and fold the links when they do not fit.
   letter of Greek, Cyrillic, Hebrew, Arabic or CJK counts what it was
   drawn at, at its widest among those fonts (for CJK, the widest letter
   of the script), so a short menu in those alphabets keeps its links in the
-  bar as one of Latin letters does. An Arabic letter counts the widest of
+  bar as one of Latin letters does. A letter of Greek, Cyrillic or Hebrew
+  counts the most it adds after any letter of its script: the fonts'
+  kerning sets a few Cyrillic pairs apart, and with each letter counted
+  alone, as until 10 October, АД was drawn 2.6% wider than its sum in
+  the name, beyond the slack. An Arabic letter counts the widest of
   the four forms it takes alone and joined to the letters beside it: heh,
   meem, alef, teh marbuta and keheh are drawn wider joined than alone, and
   counted alone, as they were until 10 October, the word مهم was drawn 17%
@@ -100,9 +110,15 @@ again and compares (a wrong width planted in the file fails it), and
 checks its sum against words drawn whole, in Greek, Cyrillic, Hebrew,
 Arabic and CJK too (with those scripts' widths cut to a third it fails on
 the Greek words; with Arabic letters measured alone again, on eight
-Arabic words such as مهم and مهرجان). With the serif family drawing Greek
-and Cyrillic in another font, it says it could not compare those two and
-exits 2, having compared the rest. `node tools/check-production.ts` sets
+Arabic words such as مهم and مهرجان; with Cyrillic letters counted
+without the letter before them, on the pairs АД, ЖЪ, Ца, са, ух, ху and
+ца). With the tab's sans-serif another font, or a font that draws only
+the joined forms of heh, or only the name's Cyrillic letters, otherwise,
+it says it could not compare those scripts and exits 2, having compared
+the rest; with the file's fingerprint of Arabic, its check or one of its
+widths edited, with Cyrillic letters drawn alone again by the tool, or
+with the header's stack falling back to serif, it fails.
+`node tools/check-production.ts` sets
 ten headers through the API on a production CMS and draws its home page
 in Chromium at 23 widths from 320 to 1440 px: nothing leaves the page, the
 links show exactly where `data-fold` says, and there the bar is one 80 px
@@ -114,7 +130,13 @@ held, nor that of a character counted at 1.5 em. With the fold
 planted away, four of the ten fail; with the tool and the file as they
 were before Arabic letters were measured joined, and the fold of the
 seven Arabic links left unpinned, those links take no fold and run
-6.70 px into the right padding at 800, and fail. From `builder/`,
+6.70 px into the right padding at 800, and fail. Its RESULT line says
+what the verdict held back: with the tab's sans-serif another font, the
+row and padding of the four headers in other scripts, 62 checks passing;
+with one width of the face planted in the file, those four rows and the
+padding of eight headers, and the check fails, this machine's fonts being
+those the file was measured with (with that font as well, it passes and
+says so). From `builder/`,
 `npm run e2e -- header-footer` sets a short Hebrew, a Greek and a
 Cyrillic header and shows their links in the bar at 1024 and at 1440, on
 the published page and in the editor (with every letter outside the face
