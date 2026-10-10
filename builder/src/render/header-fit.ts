@@ -20,13 +20,27 @@ export interface HeaderWords {
   action: { label: string } | null;
 }
 
-interface Place {
+// A script the face lacks: the widest advance its letters were drawn with
+// where the file was measured, for the characters of its ranges, and the
+// widest advance of each letter that it lists.
+export interface Script {
+  name: string;
+  ranges: ReadonlyArray<readonly [number, number]>;
+  advance: number;
+  letters: Readonly<Record<string, number>>;
+}
+
+export interface Place {
+  // The place's font size, in CSS px.
+  size: number;
   advances: Readonly<Record<string, number>>;
-  // The width of a character the face has no measure for.
+  scripts: readonly Script[];
+  // The width of a character that neither the face nor a script has a
+  // measure for.
   otherwise: number;
 }
 
-interface Metrics {
+export interface Metrics {
   fold: { breakpoint: number; steps: readonly number[]; widest: number };
   slack: number;
   page: { padX: number };
@@ -36,7 +50,7 @@ interface Metrics {
   button: Place & { fixed: number };
 }
 
-const METRICS = metricsFile as unknown as Metrics;
+export const METRICS = metricsFile as unknown as Metrics;
 
 // Ruby's sum of floats: the Kahan-Babuska balancing compensated sum, as
 // array.c and enum.c write it. Integers the file holds add exactly either
@@ -53,11 +67,23 @@ export function rubySum(values: Iterable<number>): number {
   return f + c;
 }
 
+// What one character counts in a place: its own advance in the face; else,
+// in a script the file measured, its own width if the script lists its
+// letters, and the script's widest letter if not; else the place's
+// `otherwise`.
+export function advanceOf(place: Place, ch: string): number {
+  if (Object.hasOwn(place.advances, ch)) return place.advances[ch]!;
+  const point = ch.codePointAt(0)!;
+  const script = place.scripts.find((s) => s.ranges.some(([from, to]) => point >= from && point <= to));
+  if (!script) return place.otherwise;
+  return Object.hasOwn(script.letters, ch) ? script.letters[ch]! : script.advance;
+}
+
 // A run of text in one of the header's places, by code point, with the
 // file's slack.
 export function runWidth(place: Place, text: string, metrics: Metrics = METRICS): number {
   const widths = function* () {
-    for (const ch of text) yield Object.hasOwn(place.advances, ch) ? place.advances[ch]! : place.otherwise;
+    for (const ch of text) yield advanceOf(place, ch);
   };
   return rubySum(widths()) * (1 + metrics.slack);
 }

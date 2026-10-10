@@ -18,10 +18,19 @@
 // - the advance of every character of Basic Latin, Latin-1, Latin
 //   Extended-A and the common punctuation that the face's file holds (it
 //   is a subset), in each of the three places: the name, a link, the
-//   button. A combining accent counts what it adds to its letter. Any
-//   other character is counted as 1.5 times the place's font size, wider
-//   than any letter measured, so words in another script fold the menu
-//   early rather than late;
+//   button. A combining accent counts what it adds to its letter;
+// - for each script the face lacks and a header may hold (Greek, Cyrillic,
+//   Hebrew, Arabic, CJK), the widest advance its letters are drawn with, in
+//   each place, by the fonts this machine falls back to: the page's own
+//   stack and three generic families, whichever draws a letter widest.
+//   Greek, Cyrillic, Hebrew and Arabic letters each count their own, CJK
+//   letters the widest of their script's. Any other character is counted as
+//   1.5 times the place's font size, wider than any letter measured, so a
+//   symbol or a script left out folds the menu early rather than late. What
+//   a visitor's own fonts draw is theirs: these are the widths on the
+//   machine that measures, and a letter that a font draws wider than
+//   counted here can still put the bar on two rows (site.css lets it wrap
+//   inside the page);
 // - the spacing around them, read from the computed style: the mark and
 //   its gap, the gaps between links and after them, the button's padding,
 //   the page's padding, and the width where the bar stops growing;
@@ -52,6 +61,37 @@ const RANGES: Array<[number, number]> = [
   [0x2010, 0x2014], [0x2018, 0x201f], [0x2022, 0x2022], [0x2026, 0x2026], [0x2030, 0x2030], [0x2039, 0x203a], [0x20ac, 0x20ac], [0x2122, 0x2122],
 ];
 const COMBINING: Array<[number, number]> = [[0x300, 0x36f]];
+
+// The scripts the face lacks, as ranges of code points. A letter of one
+// counts what it is drawn at, at its widest among the fallback fonts, if
+// the script's letters are measured one by one (`letters`: Greek, Cyrillic,
+// Hebrew and Arabic, where a letter alone is drawn as wide as it ever is: an
+// Arabic letter that joins its neighbours is drawn narrower than the
+// isolated form measured here), and the script's widest letter if not (CJK,
+// where every ideograph has the same advance, and too many to list). The
+// ranges hold the letters, digits and punctuation in common use, not
+// the marks that sit on a letter, historic letters or presentation forms,
+// which count 1.5 em; of a range longer than 1000 code points every
+// `every`th is drawn, which for CJK is as good as every one.
+const SCRIPTS: Array<{ name: string; ranges: Array<[number, number]>; letters?: true; every?: number }> = [
+  { name: "Greek", ranges: [[0x386, 0x3ce]], letters: true },
+  { name: "Cyrillic", ranges: [[0x400, 0x45f], [0x490, 0x491]], letters: true },
+  { name: "Hebrew", ranges: [[0x5d0, 0x5ea]], letters: true },
+  { name: "Arabic", ranges: [[0x621, 0x64a], [0x660, 0x669], [0x66e, 0x6d3]], letters: true },
+  { name: "CJK", ranges: [[0x3000, 0x303f], [0x3041, 0x30ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xac00, 0xd7a3], [0xff01, 0xff60]], every: 37 },
+];
+// The code points of a script that are drawn: assigned letters, digits,
+// punctuation, symbols and spaces, no marks, controls or unassigned ones.
+const DRAWN = /^[\p{L}\p{N}\p{P}\p{S}\p{Z}]$/u;
+const sampleOf = (script: (typeof SCRIPTS)[number]): number[] => {
+  const points = new Set<number>();
+  for (const [from, to] of script.ranges) {
+    const step = to - from + 1 > 1000 ? script.every ?? 1 : 1;
+    for (let point = from; point <= to; point += step) points.add(point);
+    points.add(to);
+  }
+  return [...points].filter((point) => DRAWN.test(String.fromCodePoint(point))).sort((a, b) => a - b);
+};
 const codePoints = (ranges: Array<[number, number]>) => ranges.flatMap(([from, to]) => Array.from({ length: to - from + 1 }, (_, k) => from + k));
 // Rounded to 1/1000 px: Chromium lays text out in 1/64 px.
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -113,7 +153,7 @@ try {
   if (await linksShown()) throw new Error(`data-fold="all" shows the links at ${WIDE} px`);
 
   await open(WIDE);
-  const measured = await tab.evaluate(({ points, combining }) => {
+  const measured = await tab.evaluate(({ points, combining, scripts }) => {
     const px = (value: string) => Number.parseFloat(value) || 0;
     const name = document.getElementById("name")!;
     const link = document.getElementById("link")!;
@@ -164,9 +204,26 @@ try {
         if (Math.max(...adds) - Math.min(...adds) > 0.001) missing.push(mark);
         else advances[mark] = Math.max(0, adds[0]!);
       }
+      // What each letter of the scripts is drawn at, at its widest among
+      // the page's own stack and the three generic families: a letter the
+      // face lacks is drawn by whichever font the machine falls back to, so
+      // the widest of four such fonts is the bound this machine can vouch
+      // for. The script's own width is the widest of its letters.
+      const drawnScripts = scripts.map(({ sample, letters }) => {
+        let advance = 0;
+        const each: Record<string, number> = {};
+        for (const point of sample) {
+          const ch = String.fromCodePoint(point);
+          let widest = 0;
+          for (const family of ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`]) widest = Math.max(widest, set(element, ch, family));
+          advance = Math.max(advance, widest);
+          if (letters) each[ch] = widest;
+        }
+        return { advance, letters: each };
+      });
       set(element, "");
       const style = getComputedStyle(element);
-      return { advances, missing, size: px(style.fontSize), face };
+      return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts };
     };
     const brandStyle = getComputedStyle(brand);
     const mark = brand.querySelector("svg")!.getBoundingClientRect().width;
@@ -178,7 +235,14 @@ try {
       page: { padX: px(getComputedStyle(row).paddingLeft), widest: px(getComputedStyle(row).maxWidth) },
     };
     return result;
-  }, { points: codePoints(RANGES), combining: codePoints(COMBINING) });
+  }, { points: codePoints(RANGES), combining: codePoints(COMBINING), scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), letters: script.letters === true })) });
+
+  // A script none of whose letters was drawn would be counted at no width.
+  for (const which of ["brand", "link", "button"] as const) {
+    measured[which].scripts.forEach(({ advance }, k) => {
+      if (!(advance > 0)) throw new Error(`${SCRIPTS[k]!.name}: no letter of it was drawn with a width in the ${which} place`);
+    });
+  }
 
   // The three places share one face, so they must lack the same letters.
   const lacking = (which: "brand" | "link" | "button") => measured[which].missing.join("");
@@ -190,6 +254,9 @@ try {
     "WWWWWWWW", "MMMMMMMM", "AVATAR", "To Wa", "Ïllüstrâtïön", "Œuvre Ærø", "0123456789", "Q&A — FAQ’s…", "“Open” • ‘water’", "tel: +44 (0)1234", "ffi ffl fi fl",
     "‘a’ “b” ‘c’ “d” • ‘e’ “f”", "“‘“‘“‘“‘”’”’”’”’", "• • • • • • • •",
     `Cafe${String.fromCodePoint(0x301)} de${String.fromCodePoint(0x301)}ja${String.fromCodePoint(0x300)}`,
+    // Other scripts, whole: each letter counts its script's widest.
+    "Ήρεμα νερά", "Ερωτήσεις", "ΩΜΕΓΑ ΔΩΡΟ", "Тихая вода", "ЩЮЖШЫ Ёё", "Вопросы и ответы", "מים שקטים", "שאלות ושחייה", "מרחב",
+    "مرحبا بكم", "السباحة في البحر", "ضصطظ", "潮の会", "日本語の案内", "ひらがなカタカナ", "한국어 수영 클럽", "Slack Water 潮",
   ];
   const drawn = await tab.evaluate((samples) => {
     const measure = (id: string, text: string) => {
@@ -207,7 +274,24 @@ try {
     link: Object.fromEntries(Object.entries(measured.link.advances).map(([k, v]) => [k, round(v)])),
     button: Object.fromEntries(Object.entries(measured.button.advances).map(([k, v]) => [k, round(v)])),
   };
-  const sum = (table: Record<string, number>, size: number, text: string) => [...text].reduce((n, ch) => n + (table[ch] ?? size * 1.5), 0);
+  // The scripts as the file holds them, in each place.
+  type ScriptTable = { name: string; ranges: Array<[number, number]>; advance: number; letters: Record<string, number> };
+  const scriptTables = Object.fromEntries((["brand", "link", "button"] as const).map((which) => [which, SCRIPTS.map((script, k): ScriptTable => {
+    const drawnScript = measured[which].scripts[k]!;
+    return { name: script.name, ranges: script.ranges, advance: round(drawnScript.advance), letters: Object.fromEntries(Object.entries(drawnScript.letters).map(([letter, width]) => [letter, round(width)])) };
+  })])) as Record<"brand" | "link" | "button", ScriptTable[]>;
+  // What a character counts in a place, as header_fit.rb and header-fit.ts
+  // count it: its own advance in the face, else, in a script, its own width
+  // if the script has its letters measured and the script's widest letter
+  // if not, else 1.5 times the place's font size.
+  const advanceOf = (which: "brand" | "link" | "button", ch: string): number => {
+    const own = tables[which][ch];
+    if (own !== undefined) return own;
+    const point = ch.codePointAt(0)!;
+    const script = scriptTables[which].find((s) => s.ranges.some(([from, to]) => point >= from && point <= to));
+    return script ? (script.letters[ch] ?? script.advance) : measured[which].size * 1.5;
+  };
+  const sum = (which: "brand" | "link" | "button", text: string) => [...text].reduce((n, ch) => n + advanceOf(which, ch), 0);
   // How much wider than the sum a run can be drawn: the face pulls most
   // pairs together, but sets a few apart (a quote mark beside a letter, by
   // a tenth of a pixel). The estimate adds SLACK of the sum to every run;
@@ -218,7 +302,7 @@ try {
   const short: string[] = [];
   for (const sample of drawn) {
     for (const which of ["brand", "link", "button"] as const) {
-      const plain = sum(tables[which], measured[which].size, sample.text);
+      const plain = sum(which, sample.text);
       widest = Math.max(widest, sample[which] / plain - 1);
       const spare = plain * (1 + SLACK) - sample[which];
       tightest = Math.min(tightest, spare);
@@ -228,17 +312,18 @@ try {
   if (short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.join("\n  ")}`);
 
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A character not listed counts otherwise. Do not edit: run the script again after a change to the header's styles or fonts; --check compares.",
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them; any other character not listed counts otherwise. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
     fold: { breakpoint, steps, widest: measured.page.widest },
     slack: SLACK,
     page: { padX: measured.page.padX },
-    brand: { size: measured.brand.size, fixed: round(measured.brand.fixed), after: measured.brand.after, otherwise: measured.brand.size * 1.5, advances: tables.brand },
-    link: { size: measured.link.size, gap: measured.link.gap, after: measured.link.after, otherwise: measured.link.size * 1.5, advances: tables.link },
+    brand: { size: measured.brand.size, fixed: round(measured.brand.fixed), after: measured.brand.after, otherwise: measured.brand.size * 1.5, advances: tables.brand, scripts: scriptTables.brand },
+    link: { size: measured.link.size, gap: measured.link.gap, after: measured.link.after, otherwise: measured.link.size * 1.5, advances: tables.link, scripts: scriptTables.link },
     nav: { gap: measured.nav.gap },
-    button: { size: measured.button.size, fixed: measured.button.fixed, otherwise: measured.button.size * 1.5, advances: tables.button },
+    button: { size: measured.button.size, fixed: measured.button.fixed, otherwise: measured.button.size * 1.5, advances: tables.button, scripts: scriptTables.button },
   };
-  const text = JSON.stringify(metrics, null, 2) + "\n";
-  const counts = `${Object.keys(tables.brand).length} characters of the face in each of 3 places (${measured.brand.missing.length} of the ranges it lacks count otherwise); folds at ${breakpoint} px and at ${steps.join(", ")}; ${drawn.length} words drawn whole in each place are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
+  // A range of code points on one line: [from, to].
+  const text = JSON.stringify(metrics, null, 2).replace(/\[\s+(\d+),\s+(\d+)\s+\]/g, "[$1, $2]") + "\n";
+  const counts = `${Object.keys(tables.brand).length} characters of the face in each of 3 places (${measured.brand.missing.length} of the ranges it lacks count otherwise, but the letters of ${SCRIPTS.map((s) => s.name).join(", ")} count what the fallback fonts draw them at); folds at ${breakpoint} px and at ${steps.join(", ")}; ${drawn.length} words drawn whole in each place are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
 
   if (process.argv.includes("--check")) {
     const committed = readFileSync(target, "utf8");

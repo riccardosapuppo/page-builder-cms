@@ -16,13 +16,19 @@
 # every width, for a menu wider than the widest bar.
 #
 # The sum leaves out kerning, which in this face pulls most pairs together,
-# and adds the file's slack for the few it sets apart; a character the
-# face lacks counts as 1.5 times the font size, wider than any it has. So
-# the sum errs wide: in the face's own letters a menu may fold a step
-# early, never late (site.css lets the links wrap inside the bar, should a
-# fallback font draw a letter wider still). The editor's canvas must add
-# up the same file the same way to draw the same header at the same
-# widths.
+# and adds the file's slack for the few it sets apart. A character the face
+# lacks is drawn by whatever font the visitor's machine falls back to, so
+# the file holds, for the scripts a header may hold (Greek, Cyrillic,
+# Hebrew, Arabic, CJK), the widest advance each letter was drawn with where
+# it was measured (for CJK, the script's widest letter), and a letter of
+# one counts that; any other character counts 1.5 times the font size,
+# wider than any letter of the face. So the sum errs wide: in the face's own
+# letters a menu may fold a step early, never late. For a letter of another script it is as good as
+# the measure: a font that draws one wider than counted, or a character
+# counted at 1.5 em that is drawn wider still (a ligature such as U+FDFD),
+# can put the bar on two rows, which site.css lets the links do inside the
+# bar rather than leave the page. The editor's canvas must add up the same
+# file the same way to draw the same header at the same widths.
 module HeaderFit
   PATH = Rails.application.config.x.schema_dir.join("header-metrics.json")
 
@@ -55,9 +61,19 @@ module HeaderFit
   # A run of text in one of the header's places, by code point, with the
   # slack.
   def run(place, text)
-    advances = place.fetch("advances")
-    otherwise = place.fetch("otherwise")
-    text.to_s.each_char.sum { |ch| advances.fetch(ch, otherwise) } * (1 + metrics.fetch("slack"))
+    text.to_s.each_char.sum { |ch| advance(place, ch) } * (1 + metrics.fetch("slack"))
+  end
+
+  # What one character counts in a place: its own advance in the face; else,
+  # in a script the file measured, its own width if the script lists its
+  # letters, and the script's widest letter if not; else the place's
+  # `otherwise`.
+  def advance(place, ch)
+    place.fetch("advances").fetch(ch) do
+      point = ch.ord
+      script = place.fetch("scripts").find { |s| s.fetch("ranges").any? { |from, to| point.between?(from, to) } }
+      script ? script.fetch("letters").fetch(ch, script.fetch("advance")) : place.fetch("otherwise")
+    end
   end
 
   def metrics

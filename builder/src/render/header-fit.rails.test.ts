@@ -18,14 +18,22 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { afterAll, expect, test } from "vitest";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
-import metrics from "../../../schema/header-metrics.json";
-import { headerFold, widthNeeded, type HeaderWords } from "./header-fit.ts";
+import { advanceOf, headerFold, METRICS as metrics, widthNeeded, type HeaderWords, type Place } from "./header-fit.ts";
 
 const SEED = 20261009;
 
-// The face's own letters, and some it does not have.
+// The face's own letters, and some it does not have: letters of the scripts
+// the file measured (those it lists, the ends of each range, a code point in
+// one that no letter lists, and two just outside Greek's), and what nothing
+// measured (emoji, a ligature, an arrow, a combining mark).
 const inFace = Object.keys(metrics.link.advances);
-const outOfFace = ["日", "本", "語", "\u{1F30A}", "\u{1F3CA}", "Ω", "ﬁ", "́", "‍", "ئ"];
+const outOfFace = [
+  "の", "한", "！", "　", "、", "鿿", "｠",
+  "ά", "Ά", "ώ", "΋", "΅", "Ϗ",
+  "Щ", "ж", "Ґ", "Ѐ", "џ",
+  "ש", "מ", "א", "ת",
+  "ض", "ء", "ي", "٩", "ۓ", "۔", "\u{FDFD}", "→",
+  "日", "本", "語", "\u{1F30A}", "\u{1F3CA}", "Ω","ﬁ", "́", "‍", "ئ"];
 const word = (most: number) => fc.array(fc.oneof({ weight: 9, arbitrary: fc.constantFrom(...inFace) }, { weight: 1, arbitrary: fc.constantFrom(...outOfFace) }), { maxLength: most }).map((letters) => letters.join(""));
 const link = fc.record({ label: word(30), href: fc.constant("/") });
 const header: fc.Arbitrary<HeaderWords> = fc.record({ name: word(40), menu: fc.array(link, { maxLength: 9 }), action: fc.option(link, { nil: null }) });
@@ -40,8 +48,7 @@ const bits = (x: number): string => {
 // The fault this comparison is there to catch: the same sums added in turn
 // with +, as JavaScript would add them, not compensated as Ruby does.
 function addedInTurn(site: HeaderWords): number {
-  type Place = { advances: Record<string, number>; otherwise: number };
-  const run = (place: Place, text: string) => [...text].reduce((sum, ch) => sum + (Object.hasOwn(place.advances, ch) ? place.advances[ch]! : place.otherwise), 0) * (1 + metrics.slack);
+  const run = (place: Place, text: string) => [...text].reduce((sum, ch) => sum + advanceOf(place, ch), 0) * (1 + metrics.slack);
   const m = metrics;
   const brand = m.brand.fixed + run(m.brand, site.name) + m.brand.after;
   const menu = site.menu.reduce((sum, l) => sum + run(m.link, l.label), 0) + m.link.gap * (site.menu.length - 1) + m.link.after;
@@ -52,8 +59,22 @@ function addedInTurn(site: HeaderWords): number {
 const work = mkdtempSync(join(tmpdir(), "header-fit-"));
 afterAll(() => rmSync(work, { recursive: true, force: true }));
 
+// Short headers as a person writes them in each script the file measured,
+// which go through the server beside the generated ones: they keep their
+// links in the bar from 800 up, as the design's own header does. Each letter
+// counted at 1.5 em folded the Hebrew one below 1200 and the Greek one at
+// every width.
+const one = (name: string, labels: string[], action: string): HeaderWords => ({ name, menu: labels.map((label) => ({ label })), action: { label: action } });
+const SHORT: Record<string, HeaderWords> = {
+  Hebrew: one("מים שקטים", ["שחייה", "גלריה", "עלינו", "שאלות"], "הצטרפו"),
+  Greek: one("Ήρεμα νερά", ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"], "Γραφτείτε"),
+  Cyrillic: one("Тихая вода", ["Заплывы", "Галерея", "Встречи", "Вопросы"], "Вступить"),
+  Arabic: one("المياه الهادئة", ["السباحة", "المعرض", "لقاء", "أسئلة"], "انضم"),
+  CJK: one("潮の会", ["泳ぎ方", "写真", "会合", "質問"], "参加する"),
+};
+
 test("the header folds at the width the server's HeaderFit names, its sum the same to the bit", { timeout: 180_000 }, () => {
-  const headers = fc.sample(header, { seed: SEED, numRuns: 4000 });
+  const headers = [...Object.values(SHORT), ...fc.sample(header, { seed: SEED, numRuns: 4000 })];
   writeFileSync(join(work, "in.json"), JSON.stringify({ headers }));
   const ruby = spawnSync("ruby", [join(builderRoot, "test", "ruby", "header_fit.rb"), join(work, "in.json"), join(work, "out.json")], {
     cwd: join(repoRoot, "cms"),
@@ -73,6 +94,21 @@ test("the header folds at the width the server's HeaderFit names, its sum the sa
     return ours.bits === theirs.bits && ours.fold === theirs.fold ? [] : [{ site, editor: { ...ours, needed: widthNeeded(site) }, server: theirs }];
   });
   expect(differ.slice(0, 3)).toEqual([]);
+
+  // The short headers in each script keep their links in the bar, on the
+  // server's word and the editor's.
+  Object.keys(SHORT).forEach((script, index) => {
+    expect(server[index]!.fold, `${script}, the server's`).toBeNull();
+    expect(headerFold(read[index]!), `${script}, the editor's`).toBeNull();
+  });
+
+  // The generated headers reach each script the file measured, so the
+  // lookup of a letter in it is compared and not left to the short ones.
+  const holds = (site: HeaderWords, from: number, to: number) => [site.name, ...site.menu.map((l) => l.label), site.action?.label ?? ""].some((text) => [...text].some((ch) => ch.codePointAt(0)! >= from && ch.codePointAt(0)! <= to));
+  for (const script of metrics.link.scripts) {
+    const reached = read.slice(Object.keys(SHORT).length).filter((site) => script.ranges.some(([from, to]) => holds(site, from, to))).length;
+    expect(reached, `generated headers with a letter of ${script.name}`).toBeGreaterThan(50);
+  }
 
   // Some of every answer, so the comparison meets each.
   const folds = new Set(server.map((s) => s.fold));
