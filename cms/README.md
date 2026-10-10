@@ -295,7 +295,8 @@ had made one pool, and none was connected).
   read ([test/config/build_left_behind_test.rb](test/config/build_left_behind_test.rb)).
   `tools/check-production.ts` and `tools/measure-server.ts` precompile
   into that folder and empty it at their end, which a run killed before
-  then never reaches. The public file server, which answers before
+  then never reaches (each now also removes, before it precompiles, a
+  build it finds there). The public file server, which answers before
   Propshaft's own server, would hand the tests the build's files, and
   Propshaft would take every digest from its manifest. A build made on
   Windows is not even the same text: Propshaft 1.3.2 writes the
@@ -1086,9 +1087,12 @@ size from `schema/tokens.json`; no page may scroll sideways at 320, 340,
 find each ring drawn, 2 px or more, at 3:1 against its band, and each
 text link at 4.5:1. It then stops the server tree, shows the port
 closed, removes the precompiled assets with `assets:clobber` and deletes
-its databases. It runs on Windows (netstat, taskkill) and on Linux and
-macOS (ss or lsof, and the server's own process group, signalled). On
-2 October 2026 it printed `RESULT: 35 checks passed` on Windows, on 3902
+its databases. A run stopped before its end leaves its build in
+`public/assets`, so before it precompiles the check removes a build it
+finds there, and stops if anything of it remains. It runs on Windows
+(netstat, taskkill) and on Linux and macOS (ss or lsof, and the server's
+own process group, signalled). On 2 October 2026 it printed
+`RESULT: 35 checks passed` on Windows, on 3902
 and again with `PRODUCTION_CHECK_PORT=3901`, and passed in CI on Linux;
 it has not run on macOS. With stage 4's cache checks it printed
 `RESULT: 42 checks passed` twice on 4 October 2026, on Windows on 3902,

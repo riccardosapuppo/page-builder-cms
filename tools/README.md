@@ -117,6 +117,12 @@ no Chromium, a port taken, bundler-audit without its advisory database) is
 listed at the end as not run, and the run exits 2, never 0. The run also
 fails if `cms/public/assets` is left over from a production build, which
 development would serve in place of the stylesheets being edited.
+`npm run check:production` and `npm run measure:server` precompile into
+that folder and empty it at their end, which a run stopped before then
+never reaches; so each first removes a build it finds there, and stops,
+before precompiling, if anything of it remains
+([lib/build-left-behind.ts](lib/build-left-behind.ts)). The Rails tests
+never read such a build (`cms/config/environments/test.rb`).
 `npm run check -- --list` names the suites; `--only` and `--skip` take
 those names.
 
