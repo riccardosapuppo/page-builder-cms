@@ -14,10 +14,12 @@ The page document's one schema, and the design tokens it names.
   server draws them inline on the published page, and the editor reuses
   the file.
 - [`header-metrics.json`](header-metrics.json): the width of each letter
-  of the header's name, links and button in the site's typeface, and the
-  spacing around them, written by `npm run header-metrics` from the CMS's
-  stylesheets and fonts; the server and the editor add them up to fold a
-  menu too long for the bar (see the site's header and footer, below).
+  of the header's name, links and button in the site's typeface, what the
+  fallback fonts of the machine that measured draw the letters of Greek,
+  Cyrillic, Hebrew, Arabic and CJK at, and the spacing around them, written
+  by `npm run header-metrics` from the CMS's stylesheets and fonts; the
+  server and the editor add them up to fold a menu too long for the bar
+  (see the site's header and footer, below).
 
 ## The document
 
@@ -160,8 +162,14 @@ CMS keeps once for the whole site and draws around every page (`PUT
   the header's letters measured in the site's typeface by
   `npm run header-metrics` (`tools/header-metrics.ts`), and folds a menu
   too long for the bar into Menu below the width it needs
-  ([cms/app/models/header_fit.rb](../cms/app/models/header_fit.rb)), so
-  the menu never wraps the bar.
+  ([cms/app/models/header_fit.rb](../cms/app/models/header_fit.rb)). In
+  the face's own letters the menu then does not wrap the bar: the sum errs
+  wide, so it may fold a step early, never late. A letter of Greek,
+  Cyrillic, Hebrew, Arabic or CJK counts what the fallback fonts of the
+  machine that measured drew it at, and any other character 1.5 times the
+  font size; a font that draws one wider than that can still put the bar
+  on two rows, which `site.css` lets happen inside the page rather than
+  leave it.
 
 ## What the schema cannot say, and where it is said
 

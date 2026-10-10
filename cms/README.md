@@ -1087,14 +1087,19 @@ header.
 Since 9 October 2026 it also changes the header and footer through
 `PUT /api/site`: the old ETag then gets the page under the new header,
 a 200, and Solid Cache gains the page's own entry alone, every block
-read back (54 fragments, then 55). It then sets six headers in turn (the
+read back (54 fragments, then 55). It then sets nine headers in turn (the
 design's; a fifth link; every length at its limit, in words of average
-width and in the widest letter; three links in another script; no links
-and no button) and draws the home page in Chromium at 23 widths from 320
-to 1440 px: nothing leaves the page, the links show exactly where
-`data-fold` says, and there they stand on one row with the brand. On
-9 October 2026, on Windows on 3901, it printed
-`RESULT: 58 checks passed`.
+width and in the widest letter; three links in another script; a short
+header in Hebrew and one in Greek; a link of three bismillah ligatures;
+no links and no button) and draws the home page in Chromium at 23 widths
+from 320 to 1440 px: nothing leaves the page, the links show exactly where
+`data-fold` says, and there they stand on one row with the brand. For
+letters outside the face, which the visitor's own fonts draw, only the
+first two are held, not the row: the short Hebrew and Greek headers must
+name no fold, and the ligatures, drawn about four times wider than
+counted, may take two rows from the width the sum says fits, inside the
+page. On 10 October 2026, on Windows on 3901, it printed
+`RESULT: 61 checks passed`.
 
 `npm run test:tools`, from the repository root, tests how the check reads
 who listens from netstat, ss and lsof, on any system, with a sample of

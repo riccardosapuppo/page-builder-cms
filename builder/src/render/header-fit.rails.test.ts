@@ -2,7 +2,9 @@
 // HeaderFit (cms/app/models/header_fit.rb), on the same generated headers:
 // names, links and buttons in the face's letters and out of it (other
 // scripts, emoji, combining accents), of every length and count the sum
-// meets, valid or not, since HeaderFit adds up whatever it is given. Each
+// meets, valid or not, since HeaderFit adds up whatever it is given, and
+// five short headers in Hebrew, Greek, Cyrillic, Arabic and CJK, which must
+// keep their links in the bar. Each
 // side's width is compared to the bit, and its data-fold as a string: the
 // canvas draws the header the published page draws only if both fold it
 // at the same width. Ruby runs ../../test/ruby/header_fit.rb with the CMS's

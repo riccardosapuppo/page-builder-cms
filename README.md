@@ -267,8 +267,10 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
 - **A menu too long for the bar folds into Menu where the widths of its
   letters say.** A page runs no script, so the server adds up letter
   widths measured once in the site's typeface. Cost: a file to measure
-  again when the header's styles change, and a fold that may come a step
-  early. [The note](docs/decisions/header-folds-by-measured-letters.md).
+  again when the header's styles or the measuring machine's fonts change, a
+  fold that may come a step early, and, where a visitor's font draws a
+  letter wider than the file counted, a bar that wraps onto two rows
+  inside the page. [The note](docs/decisions/header-folds-by-measured-letters.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
   it runs 49 of the 56 cases.
