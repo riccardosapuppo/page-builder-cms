@@ -703,7 +703,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       // The title is the document's: a new page is an empty document
       // holding it, checked as any document is.
       const made = validateDocument({ schemaVersion: CURRENT, title: body.title, sections: [] });
-      if (!made.valid) return invalid("invalid_request", made.errors.map((e) => fieldError(e.pointer, e.keyword, e.message)));
+      if (!made.valid) return invalid("invalid_request", unique(made.errors).map((e) => fieldError(e.pointer, e.keyword, e.message)));
       const slug = body.slug as string;
       const wrong = slugErrors(slug);
       if (wrong.length > 0) return invalid("invalid_request", wrong);

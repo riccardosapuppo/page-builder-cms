@@ -257,7 +257,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
-    name: "a page is refused at the field at fault: an address taken, reserved or malformed, an empty title",
+    name: "a page is refused at the field at fault: an address taken, reserved or malformed, an empty title, a title of the wrong type, once",
     needs: [],
     async run(env) {
       const taken = env.unique("taken");
@@ -272,6 +272,14 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         env.expect(problem.kind, JSON.stringify(request)).toBe("invalid");
         // One field at fault, which may break more than one rule.
         env.expect([...new Set(problem.errors.map((e) => e.pointer))], JSON.stringify(request)).toEqual([pointer]);
+      }
+      // A title of the wrong type is one fault, listed once: the schema
+      // finds it twice, at the definition and at the keyword beside it, and
+      // each adapter says it once, as the list is compared whole.
+      for (const wrong of [5, null, true, {}, []]) {
+        const problem = refusal(await env.adapter.createPage({ title: wrong as unknown as string, slug: env.unique("wrong-type") }), `a title of ${JSON.stringify(wrong)}`);
+        if (problem.kind !== "invalid") throw new Error(`a title of ${JSON.stringify(wrong)} was refused as ${problem.kind}, not as invalid`);
+        env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`), `a title of ${JSON.stringify(wrong)}`).toEqual(["/title type"]);
       }
     },
   },

@@ -310,8 +310,8 @@ makes its own pages; the site style and the header and footer are put
 back as they were found. The cases: pages and drafts, the conflict between two tabs, the
 same save sent twice being a success counted once, the same `saveId` with
 another document being a conflict, the schema's and the application
-rules' refusals by block and field, a page's address and home mark,
-versions and restore, publishing and publishing a stale revision, the
+rules' refusals by block and field, a page's address and home mark, a title
+refused at its field (a wrong type once, not twice), versions and restore, publishing and publishing a stale revision, the
 draft revision what is live came from (the saves since it are the changes
 not live), a publish set for a time (pending on the page, replaced by a
 second, cancelled, refused at its field or as a conflict, and, on the

@@ -79,5 +79,6 @@ change of the header and footer's revision not required, its maximum
 taken away, or its four members not required, in the browser's adapter,
 the case that sends it a change without them failed; with the revision not
 required in the CMS's controller, so did that case on the CMS's
-adapter; and with the browser's list of faults left as ajv gives it, which
-repeats some, the case of the faults of each value failed.
+adapter; and with the browser's list of faults, for the header and footer's
+values and for a new page's title, left as ajv gives it, which repeats some,
+the case of each failed.
