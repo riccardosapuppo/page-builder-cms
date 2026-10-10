@@ -62,8 +62,12 @@
 // compared all the rest. Where it draws it as the file was measured, its
 // widths are compared as the face's own letters are. And a file whose
 // `holds` does not go with its own `drew` and widths and with what this
-// tool draws (written by another version of the tool or from other
-// styles, or edited) fails wherever it runs. The last line of --check is
+// tool draws (edited, or written from other letters, places or stacks)
+// fails wherever it runs. What `drew` records is the letters alone at the
+// links' weight: a font change only in the joined forms or in the bold
+// faces of the name and the button fails rather than exiting 2, and a
+// file written with the pairs drawn otherwise or another font-variant
+// setting exits 2 rather than failing. The last line of --check is
 // the verdict, for the programs that act on it (lib/header-metrics-
 // verdict.ts).
 import { chromium } from "playwright";

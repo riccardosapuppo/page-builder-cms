@@ -60,8 +60,15 @@ itself and fold the links when they do not fit.
   widths the file holds. Where a machine draws a script with other fonts
   (another machine, or these fonts after an update), `--check` compares
   all the rest and says it could not run here, rather than failing; a
-  file the tool no longer writes from these styles, or one edited, fails
-  wherever it runs. CI does not run it as a check: its production job
+  file edited, or written from other letters, places or stacks, fails
+  wherever it runs. Two gaps are left, both measured in review: what it
+  records of the fonts drawn is the letters alone at the links' weight,
+  not the joined forms nor the bold faces of the name and the button, so
+  a font change in those alone fails here instead of saying it could not
+  run; and a file written with the pairs drawn otherwise (their order,
+  their stack) or with another font-variant setting is taken for a
+  machine that draws a script otherwise, and says it could not run
+  instead of failing. CI does not run it as a check: its production job
   asks it which rows of the header it may hold, says in its result what
   it did not hold, and fails only a file not drawn as it holds where no
   script is drawn with other fonts. Other browsers draw the face
