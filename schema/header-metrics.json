@@ -1,5 +1,5 @@
 {
-  "$comment": "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` is a fingerprint of the fallback fonts that drew each script, by which --check tells a machine that draws a script with other fonts, whose widths it cannot compare, from a file it no longer writes. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+  "$comment": "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` keeps two fingerprints of each script: `drew`, of every width the fallback fonts drew its letters at, by which --check tells a machine that draws the script with other fonts, whose widths it cannot compare; and `holds`, of `drew` with what was drawn and the widths this file holds for the script, by which it tells a file it no longer writes, or one edited. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
   "fold": {
     "breakpoint": 800,
     "steps": [
@@ -1993,10 +1993,25 @@
     ]
   },
   "fonts": {
-    "Greek": "43ad9e23a684a307",
-    "Cyrillic": "171189e4b681f112",
-    "Hebrew": "47fa4a2163575a39",
-    "Arabic": "09007384600022cf",
-    "CJK": "2d9a6a191c1f3ac9"
+    "Greek": {
+      "drew": "78f35f81b7c055fc",
+      "holds": "60b5c283ed5a1657"
+    },
+    "Cyrillic": {
+      "drew": "5244be818bb7396b",
+      "holds": "01161086e0947c96"
+    },
+    "Hebrew": {
+      "drew": "7fde2dae023d0862",
+      "holds": "4f597adcf20bcdc1"
+    },
+    "Arabic": {
+      "drew": "a3661da3a98d6d15",
+      "holds": "0254a697783f5242"
+    },
+    "CJK": {
+      "drew": "179909b9926f121a",
+      "holds": "870f2a1c1ce6938a"
+    }
   }
 }

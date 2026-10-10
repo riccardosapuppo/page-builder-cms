@@ -51,17 +51,27 @@
 // file again with the plain command. It exits 1 on a difference, or on a
 // word drawn wider than its sum. The widths of the letters outside the
 // face are those the fonts of the measuring machine drew, so the file
-// keeps a fingerprint of the fonts that drew each script (`fonts`): where
-// this machine draws a script with other fonts (another machine, or these
-// fonts after an update), that script's widths and words cannot be
-// compared here, and it says so and exits 2, having compared all the rest.
-// On the fonts the file was measured with they are compared as the face's
-// own letters are, so a file the tool no longer writes there fails.
+// keeps two fingerprints of each script (`fonts`): `drew`, of every width
+// those fonts drew its letters at, in the three places, the four stacks
+// and every form and pair; and `holds`, of `drew` together with what was
+// drawn (its letters, their forms and pairs, the stacks, the type of the
+// three places) and the widths the file holds for the script. Where this
+// machine draws a script otherwise (another machine, or these fonts after
+// an update), its `drew` is not the file's: that script's widths and words
+// cannot be compared here, and --check says so and exits 2, having
+// compared all the rest. Where it draws it as the file was measured, its
+// widths are compared as the face's own letters are. And a file whose
+// `holds` does not go with its own `drew` and widths and with what this
+// tool draws (written by another version of the tool or from other
+// styles, or edited) fails wherever it runs. The last line of --check is
+// the verdict, for the programs that act on it (lib/header-metrics-
+// verdict.ts).
 import { chromium } from "playwright";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { verdictLine, type Verdict } from "./lib/header-metrics-verdict.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const assets = join(root, "cms", "app", "assets");
@@ -128,6 +138,9 @@ const STACKS = ["", "monospace", "serif", "sans-serif"];
 const ZWJ = "\u200D";
 const ALONE: Array<[string, string]> = [["", ""]];
 const JOINED: Array<[string, string]> = [["", ""], ["", ZWJ], [ZWJ, ZWJ], [ZWJ, ""]];
+// The properties of a place's type that choose a fallback font or set the
+// widths it draws at.
+const TYPE = ["font-family", "font-size", "font-weight", "font-stretch", "font-style", "font-kerning", "font-feature-settings", "font-variation-settings", "font-variant-ligatures", "font-synthesis", "letter-spacing", "word-spacing", "text-transform", "text-rendering"];
 const PLACES = ["brand", "link", "button"] as const;
 type Place = (typeof PLACES)[number];
 const codePoints = (ranges: Array<[number, number]>) => ranges.flatMap(([from, to]) => Array.from({ length: to - from + 1 }, (_, k) => from + k));
@@ -191,7 +204,7 @@ try {
   if (await linksShown()) throw new Error(`data-fold="all" shows the links at ${WIDE} px`);
 
   await open(WIDE);
-  const measured = await tab.evaluate(({ points, combining, scripts, stacks, zwj }) => {
+  const measured = await tab.evaluate(({ points, combining, scripts, stacks, zwj, type }) => {
     const px = (value: string) => Number.parseFloat(value) || 0;
     const name = document.getElementById("name")!;
     const link = document.getElementById("link")!;
@@ -249,11 +262,17 @@ try {
       // for. A letter is drawn in each of its forms (a zero-width joiner,
       // which must itself draw nothing, standing for a neighbour it joins),
       // and, in a script that kerns, after each letter of its script, where
-      // it counts what it adds to the one before it.
+      // it counts what it adds to the one before it. Every width drawn is
+      // kept, in the order drawn, for the fingerprint of the fonts.
       const stack = (generic: string) => (generic ? `${face}, ${generic}` : "");
       const joiner = Math.max(...stacks.map((generic) => set(element, zwj, stack(generic))));
       const drawnScripts = scripts.map(({ sample, forms, letters, kerns }) => {
-        const draw = (text: string, family: string) => set(element, text, family);
+        const drew: number[] = [];
+        const draw = (text: string, family: string) => {
+          const width = set(element, text, family);
+          drew.push(width);
+          return width;
+        };
         const chars = sample.map((point) => String.fromCodePoint(point));
         const widest: Record<string, number> = {};
         for (const generic of stacks) {
@@ -266,11 +285,11 @@ try {
           }
           if (kerns) for (const a of chars) for (const b of chars) widest[b] = Math.max(widest[b]!, draw(a + b, family) - alone[a]!);
         }
-        return { advance: Math.max(...Object.values(widest)), letters: letters ? widest : {} };
+        return { advance: Math.max(...Object.values(widest)), letters: letters ? widest : {}, drew };
       });
       set(element, "");
       const style = getComputedStyle(element);
-      return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts, joiner };
+      return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts, joiner, type: type.map((property) => style.getPropertyValue(property)) };
     };
     const brandStyle = getComputedStyle(brand);
     const mark = brand.querySelector("svg")!.getBoundingClientRect().width;
@@ -280,6 +299,7 @@ try {
       button: { ...place(button), fixed: px(getComputedStyle(buttonBox).paddingLeft) + px(getComputedStyle(buttonBox).paddingRight) },
       nav: { gap: px(getComputedStyle(nav).columnGap) },
       page: { padX: px(getComputedStyle(row).paddingLeft), widest: px(getComputedStyle(row).maxWidth) },
+      lang: document.documentElement.lang,
     };
     return result;
   }, {
@@ -288,6 +308,7 @@ try {
     scripts: SCRIPTS.map((script) => ({ sample: sampleOf(script), forms: script.joins ? JOINED : ALONE, letters: script.letters === true, kerns: script.kerns === true })),
     stacks: STACKS,
     zwj: ZWJ,
+    type: TYPE,
   });
 
   // A script none of whose letters was drawn would be counted at no width;
@@ -302,30 +323,6 @@ try {
   // The three places share one face, so they must lack the same letters.
   const lacking = (which: Place) => measured[which].missing.join("");
   if (lacking("brand") !== lacking("link") || lacking("brand") !== lacking("button")) throw new Error("the header's three places do not have the same letters");
-
-  // Which fonts drew each script, as a fingerprint the file keeps: each of
-  // its letters drawn alone in a link, in the four stacks, by code of its
-  // own, apart from how the widths above are counted. --check reads it to
-  // tell a machine whose fonts are not those the file was measured with
-  // (its widths cannot be compared there) from a file this tool no longer
-  // writes on the same fonts (stale, or changed by hand).
-  const prints = await tab.evaluate((samples) => {
-    const element = document.getElementById("link")!;
-    const face = getComputedStyle(element).fontFamily.split(",")[0]!.trim();
-    const range = document.createRange();
-    const widths = samples.map((sample) => sample.map((point) => ["", `${face}, monospace`, `${face}, serif`, `${face}, sans-serif`].map((family) => {
-      element.textContent = String.fromCodePoint(point);
-      element.style.fontFamily = family;
-      element.style.whiteSpace = "pre";
-      range.selectNodeContents(element);
-      return range.getBoundingClientRect().width;
-    })));
-    element.textContent = "";
-    element.style.fontFamily = "";
-    element.style.whiteSpace = "";
-    return widths;
-  }, SCRIPTS.map(sampleOf));
-  const fonts = Object.fromEntries(SCRIPTS.map((script, k) => [script.name, createHash("sha256").update(JSON.stringify(prints[k]!.map((widths) => widths.map(round)))).digest("hex").slice(0, 16)]));
 
   // The sum against words drawn whole, in each place.
   const SAMPLES = [
@@ -406,8 +403,31 @@ try {
   const checking = process.argv.includes("--check");
   if (!checking && short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.map((s) => s.line).join("\n  ")}`);
 
+  // The fingerprints of each script. `drew`: every width this machine's
+  // fonts drew its letters at, in the three places. `holds`: `drew` with
+  // what was drawn (the letters, their forms, the pairs, the stacks, the
+  // type of the three places and the page's language) and the script's
+  // entries as a file holds them, in one order, letters by code point.
+  const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
+  const drew = SCRIPTS.map((_, k) => sha(PLACES.map((which) => measured[which].scripts[k]!.drew.map(round))));
+  const plans = SCRIPTS.map((script) => ({
+    sample: sampleOf(script),
+    forms: script.joins ? JOINED : ALONE,
+    kerns: script.kerns === true,
+    stacks: STACKS,
+    type: PLACES.map((which) => Object.fromEntries(TYPE.map((property, k) => [property, measured[which].type[k]]))),
+    lang: measured.lang,
+  }));
+  const entriesOf = (file: unknown, k: number) => PLACES.map((which) => {
+    const entry = (file as Record<string, { scripts?: unknown[] } | undefined> | null)?.[which]?.scripts?.[k] as { name?: unknown; ranges?: unknown; advance?: unknown; letters?: unknown } | undefined;
+    if (typeof entry !== "object" || entry === null) return null;
+    const letters = typeof entry.letters === "object" && entry.letters !== null ? Object.entries(entry.letters).sort(([a], [b]) => a.codePointAt(0)! - b.codePointAt(0)!) : entry.letters;
+    return { name: entry.name, ranges: entry.ranges, advance: entry.advance, letters };
+  });
+  const holds = (k: number, drewThere: unknown, file: unknown) => sha({ plan: plans[k], drew: drewThere, entries: entriesOf(file, k) });
+
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` is a fingerprint of the fallback fonts that drew each script, by which --check tells a machine that draws a script with other fonts, whose widths it cannot compare, from a file it no longer writes. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` keeps two fingerprints of each script: `drew`, of every width the fallback fonts drew its letters at, by which --check tells a machine that draws the script with other fonts, whose widths it cannot compare; and `holds`, of `drew` with what was drawn and the widths this file holds for the script, by which it tells a file it no longer writes, or one edited. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
     fold: { breakpoint, steps, widest: measured.page.widest },
     slack: SLACK,
     page: { padX: measured.page.padX },
@@ -415,22 +435,31 @@ try {
     link: { size: measured.link.size, gap: measured.link.gap, after: measured.link.after, otherwise: measured.link.size * 1.5, advances: tables.link, scripts: scriptTables.link },
     nav: { gap: measured.nav.gap },
     button: { size: measured.button.size, fixed: measured.button.fixed, otherwise: measured.button.size * 1.5, advances: tables.button, scripts: scriptTables.button },
-    fonts,
+    fonts: {} as Record<string, { drew: string; holds: string }>,
   };
+  metrics.fonts = Object.fromEntries(SCRIPTS.map((script, k) => [script.name, { drew: drew[k]!, holds: holds(k, drew[k], metrics) }]));
   // A range of code points on one line: [from, to].
   const text = JSON.stringify(metrics, null, 2).replace(/\[\s+(\d+),\s+(\d+)\s+\]/g, "[$1, $2]") + "\n";
   const counts = `${Object.keys(tables.brand).length} characters of the face in each of 3 places (${measured.brand.missing.length} of the ranges it lacks count otherwise, but the letters of ${SCRIPTS.map((s) => s.name).join(", ")} count what the fallback fonts draw them at); folds at ${breakpoint} px and at ${steps.join(", ")}; ${drawn.length} words drawn whole in each place are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
 
   if (checking) {
     const committed = readFileSync(target, "utf8");
-    const was = JSON.parse(committed) as { fonts?: Record<string, string> };
+    const was = JSON.parse(committed) as { fonts?: Record<string, { drew?: unknown; holds?: unknown } | undefined> };
+    const names = SCRIPTS.map((s) => s.name);
+    // A script whose fingerprints go with the file's widths of it and with
+    // what this tool draws; else the file was not written as it stands by
+    // this tool, from these styles.
+    const sealed = names.map((name, k) => {
+      const prints = was.fonts?.[name];
+      return typeof prints?.drew === "string" && prints.holds === holds(k, prints.drew, was);
+    });
     // The scripts this machine draws with other fonts than the file was
-    // measured with, by their fingerprints: their widths are those fonts',
-    // and cannot be compared here. Every other difference can: the face's,
-    // the styles', the tool's own, and the widths of a script drawn here
-    // with the fonts the file was measured with.
-    const others = was.fonts ? SCRIPTS.map((s) => s.name).filter((name) => was.fonts![name] !== fonts[name]) : [];
-    const differences: string[] = [];
+    // measured with: their widths are those fonts', and cannot be compared
+    // here. Every other difference can: the face's, the styles', the
+    // tool's own, and the widths of a script drawn here as the file was
+    // measured, or whose fingerprints do not go with the file.
+    const others = names.filter((name, k) => sealed[k] && was.fonts?.[name]?.drew !== drew[k]);
+    const differences: string[] = names.filter((_, k) => !sealed[k]).map((name) => `/fonts/${name}: the file's fingerprints of ${name} do not go with its widths of ${name} and with what this tool draws from these styles: it was written by another version of the tool or from other styles, or edited`);
     const elsewhere: string[] = [];
     if (committed !== text) {
       const scriptPath = /^\/(?:brand|link|button)\/scripts\/(\d+)\/(?:advance|letters\/.+)$/;
@@ -438,7 +467,7 @@ try {
         if (typeof a === "object" && a !== null && typeof b === "object" && b !== null) {
           for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) compare(`${path}/${key}`, (a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]);
         } else if (a !== b) {
-          // A fingerprint that differs is what `others` reads, not a difference.
+          // The fingerprints are what `sealed` and `others` read, not a difference.
           if (path.startsWith("/fonts/")) return;
           const line = `${path}: the file has ${JSON.stringify(a)}, the fonts and styles give ${JSON.stringify(b)}`;
           const k = scriptPath.exec(path)?.[1];
@@ -453,22 +482,26 @@ try {
     // fault of the sum; on other fonts, it is what those fonts draw.
     const shortHere = short.filter((s) => !s.scripts.some((name) => others.includes(name)));
     const shortElsewhere = short.filter((s) => s.scripts.some((name) => others.includes(name)));
+    let verdict: Verdict;
     if (differences.length > 0 || shortHere.length > 0) {
       if (differences.length > 0) {
         console.log(`header-metrics.json is NOT what the fonts and styles give (${differences.length} difference(s)${elsewhere.length > 0 ? `, besides ${elsewhere.length} in letters this machine draws with other fonts` : ""}); run node tools/header-metrics.ts`);
         for (const line of differences.slice(0, 20)) console.log(`  ${line}`);
       }
       if (shortHere.length > 0) console.log(`the sum of advances is narrower than what Chromium draws:\n  ${shortHere.map((s) => s.line).join("\n  ")}`);
-      process.exitCode = 1;
+      verdict = "neither";
     } else if (others.length > 0) {
-      const compared = SCRIPTS.map((s) => s.name).filter((name) => !others.includes(name));
+      const compared = names.filter((name) => !others.includes(name));
       console.log(`header-metrics.json could not be compared here for the letters of ${others.join(", ")}: this machine draws them with other fonts than the file was measured with (${elsewhere.length} of their widths differ); the face's own ${Object.keys(tables.brand).length} characters, the spacing, the folds${compared.length > 0 ? ` and the letters of ${compared.join(", ")}` : ""} are what it holds`);
       for (const line of elsewhere.slice(0, 10)) console.log(`  ${line}`);
       if (shortElsewhere.length > 0) console.log(`  and on these fonts the sum is narrower than ${shortElsewhere.length} word(s) of those letters drawn whole: ${shortElsewhere.slice(0, 5).map((s) => s.line).join("; ")}`);
-      process.exitCode = 2;
+      verdict = "face";
     } else {
       console.log(`header-metrics.json is what the fonts and styles give: ${counts}`);
+      verdict = "file";
     }
+    console.log(verdictLine(verdict, others));
+    process.exitCode = { file: 0, face: 2, neither: 1 }[verdict];
   } else {
     writeFileSync(target, text);
     console.log(`wrote schema/header-metrics.json: ${counts}`);
