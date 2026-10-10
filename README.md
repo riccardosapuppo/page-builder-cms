@@ -543,7 +543,7 @@ so only the shares are to be read:
 
 ### The bundle
 
-`npm run measure:bundle`, on 10 October 2026 at 00:22 UTC (its output ended
+`npm run measure:bundle`, on 10 October 2026 at 03:38 UTC (its output ended
 `RESULT: 9 checks passed`). It builds the editor twice, as `npm run
 builder:build` does, into folders of its own: the two builds are the same
 files, byte for byte. This is the editor that talks to the CMS; the demo's
@@ -552,11 +552,11 @@ sizes do not depend on the load of the machine.
 
 | File | What | Raw | Gzipped |
 | --- | --- | --- | --- |
-| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 941,490 B (919.4 KiB) | 252,257 B (246.3 KiB) |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 941,849 B (919.8 KiB) | 252,474 B (246.6 KiB) |
 | `index-*.css` | The stylesheet, loaded at once | 107,600 B (105.1 KiB) | 19,490 B (19.0 KiB) |
-| `index.html` | The page | 1,423 B | 758 B |
-| | Loaded at once, in all | 1,050,513 B (1025.9 KiB) | 272,505 B (266.1 KiB) |
-| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
+| `index.html` | The page | 1,423 B | 757 B |
+| | Loaded at once, in all | 1,050,872 B (1026.2 KiB) | 272,721 B (266.3 KiB) |
+| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,514 B (110.9 KiB) |
 | `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
 | 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
 
@@ -565,7 +565,9 @@ On 4 October, before the form widget and Form responses, the main chunk was
 panel and the letter widths the canvas folds its menu by, 889,647 B
 (236,091 gzipped); on 9 October, before those letter widths held what
 the fallback fonts draw the letters of Greek, Cyrillic, Hebrew, Arabic and
-CJK at, 929,971 B (247,707 gzipped).
+CJK at, 929,971 B (247,707 gzipped); on 10 October, before an Arabic
+letter counted the widest of its joined forms and the file kept a
+fingerprint of the fonts, 941,490 B (252,257 gzipped).
 
 What is lazy is read from the files: `index.html` names only the entry, the
 entry reaches the text editor and the upload code with `import()` and never
