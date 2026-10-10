@@ -10,8 +10,10 @@
 // database, helpers/cms-store.ts). On a phone 375 wide the new header
 // still fits. A footer of words that cannot break (an e-mail address, a
 // web address, a long compound word), which the panel takes, stays inside
-// a window of 375 and of 320, and inside the editor's phone view. Then the
-// panel by the keyboard alone, with axe; a save another tab made first;
+// a window of 375 and of 320, and inside the editor's phone view. A short
+// menu in Hebrew, Greek or Cyrillic keeps its links in the bar at 1024 and
+// 1440, as one in Latin letters of its length does. Then the panel by the
+// keyboard alone, with axe; a save another tab made first;
 // and a refusal from the storage, said at its value. The tests of a run
 // share one CMS, so each puts the header and footer back as it found
 // them.
@@ -231,6 +233,56 @@ test("a footer of words that cannot break stays inside the window: published at 
       await device(page, "Phone").click();
       await expect(page.locator('.canvas [data-theme-part="footer"] p')).toHaveText(`${footer.lead} ${footer.text}`);
       expect(await footerFit(page, '.canvas [data-theme-part="footer"]'), `"${footer.text}" in the editor's phone view`).toEqual({ window: 0, site: 0, inside: true });
+    }
+  } finally {
+    await putBack(request, found);
+  }
+});
+
+// A short menu in another alphabet is no longer than the same words in
+// Latin letters: its links stay in the bar where the design keeps them. The
+// server counted every letter outside the face at 1.5 em, and folded the
+// links of a short Hebrew header below 1200 and of a Greek one at every
+// width, behind Menu on a wide screen where they fit; each letter is now
+// counted at what the browser's fallback fonts draw it at. Nothing here
+// asks how a visitor's own fonts draw them, only where the page puts the
+// links: that follows the file's widths, the same on every machine.
+test("short menus in Hebrew, Greek and Cyrillic keep their links in the bar at 1024 and at 1440, on the published page and in the editor", async ({ page, request, browser }) => {
+  const found = await siteNow(request);
+  const { id, slug } = await tidePage(request);
+  expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+  const link = (label: string, k: number) => ({ label, href: `/#part-${k + 1}` });
+  const headers: Array<{ script: string; name: string; menu: SiteValues["menu"]; action: SiteValues["action"] }> = [
+    { script: "Hebrew", name: "מים שקטים", menu: ["שחייה", "גלריה", "עלינו", "שאלות"].map(link), action: { label: "הצטרפו", href: "/#join" } },
+    { script: "Greek", name: "Ήρεμα νερά", menu: ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"].map(link), action: { label: "Γραφτείτε", href: "/#join" } },
+    { script: "Cyrillic", name: "Тихая вода", menu: ["Заплывы", "Галерея", "Встречи", "Вопросы"].map(link), action: { label: "Вступить", href: "/#join" } },
+  ];
+  try {
+    for (const { script, name, menu, action } of headers) {
+      const { revision } = await siteNow(request);
+      const put = await request.put(`${cms()}/api/site`, { data: { revision, name, menu, action, footer: found.footer } });
+      expect(put.status(), await put.text()).toBe(200);
+      for (const width of [1024, 1440]) {
+        const context = await browser.newContext({ viewport: { width, height: 900 }, locale: "en-US", timezoneId: "UTC" });
+        try {
+          const tab = await context.newPage();
+          await tab.goto(`${cms()}/${slug}`);
+          await expect(tab.locator("header .sw-brand")).toHaveText(name);
+          await expect(tab.locator("header .sw-nav-links a"), `${script} at ${width}: the links in the bar`).toHaveText(menu.map((l) => l.label));
+          await expect(tab.locator("header .sw-nav-links"), `${script} at ${width}`).toBeVisible();
+          await expect(tab.locator("header .sw-menu"), `${script} at ${width}: no Menu beside them`).toBeHidden();
+          const sideways = await tab.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          expect(sideways, `${script} at ${width}: the page scrolls sideways`).toBe(0);
+        } finally {
+          await context.close();
+        }
+      }
+      // The editor's desktop view draws the same header with the same links.
+      await open(page, id);
+      const canvasHeader = page.locator('.canvas [data-theme-part="header"]');
+      await expect(canvasHeader.locator(".sw-brand")).toHaveText(name);
+      await expect(canvasHeader.locator(".sw-nav-links"), `${script} in the editor`).toBeVisible();
+      await expect(canvasHeader.locator(".sw-menu"), `${script} in the editor: no Menu beside them`).toBeHidden();
     }
   } finally {
     await putBack(request, found);

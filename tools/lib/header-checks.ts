@@ -10,7 +10,11 @@
 //   800 up without one, from its width up with one, nowhere with "all"),
 //   and Menu where they are not;
 // - where they are shown, the menu does not wrap the bar: the links on
-//   one line, in one row with the brand, the bar the design's 80 px.
+//   one line, in one row with the brand, the bar the design's 80 px. That is
+//   held for letters of the face, whose widths no machine changes; letters
+//   it lacks are drawn by the machine's own fonts (HeaderCase.outsideFace),
+//   and for them the first two hold on every machine and this one is the
+//   measuring machine's.
 // The design's own header must have no data-fold and one row at 375, and
 // a fifth link must fold below 880, so the server's sum is held to the
 // steps; at the limits, in words of average width, the name, the button's
@@ -43,6 +47,13 @@ export interface HeaderCase {
   fold?: string | null;
   // Whether the lengths' promise at 375 px applies: words of average width.
   average?: boolean;
+  // Letters the face lacks, which each visitor's machine draws with fonts
+  // of its own: the file counts them at what the machine that measured drew
+  // (tools/header-metrics.ts), so whether the links then stay on one row is
+  // that machine's to say, not this check's on any other. What no font can
+  // break is still held: nothing leaves the page, Menu is inside it, and
+  // the links are where data-fold says.
+  outsideFace?: boolean;
 }
 
 export const HEADER_CASES: HeaderCase[] = [
@@ -64,7 +75,27 @@ export const HEADER_CASES: HeaderCase[] = [
     site: { name: "W".repeat(28), menu: links("W".repeat(24), "W".repeat(24)), action: { label: "W".repeat(18), href: "/#join" }, footer: FOOTER },
     fold: "all",
   },
-  { label: "three links in another script", site: { ...DESIGN, name: "潮の会", menu: links("日本語の案内", "مرحبا بكم", "Ελληνικά") } },
+  { label: "three links in another script", site: { ...DESIGN, name: "潮の会", menu: links("日本語の案内", "مرحبا بكم", "Ελληνικά") }, outsideFace: true },
+  // Short headers as a person writes them in Hebrew and in Greek: the links
+  // stay in the bar from the design's 800 up, where they were folded below
+  // 1200 and at every width when every letter outside the face counted 1.5 em.
+  {
+    label: "a short header in Hebrew",
+    site: { ...DESIGN, name: "מים שקטים", menu: links("שחייה", "גלריה", "עלינו", "שאלות"), action: { label: "הצטרפו", href: "/#join" } },
+    fold: null,
+    outsideFace: true,
+  },
+  {
+    label: "a short header in Greek",
+    site: { ...DESIGN, name: "Ήρεμα νερά", menu: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"), action: { label: "Γραφτείτε", href: "/#join" } },
+    fold: null,
+    outsideFace: true,
+  },
+  // A letter the file counts at 1.5 em and a font draws wider (three of the
+  // Arabic bismillah ligature, about 90 px wide where 22.5 is counted): the
+  // bar may take two rows from the width the sum says it fits at, but it
+  // stays inside the page.
+  { label: "a link of a letter drawn wider than counted", site: { ...DESIGN, menu: [...DESIGN.menu, { label: "\u{FDFD}\u{FDFD}\u{FDFD}", href: "/#contact" }] }, outsideFace: true },
   { label: "no links and no button", site: { ...DESIGN, menu: [], action: null }, fold: null },
 ];
 
@@ -160,7 +191,7 @@ export async function headerChecks(base: string, steps: readonly number[], check
           const expectLinks = width >= foldsBelow;
           if (d.linksShown !== expectLinks) problems.push(`${at}: the links are ${d.linksShown ? "shown" : "folded"} under data-fold ${d.fold}`);
           if (d.menuShown === d.linksShown) problems.push(`${at}: Menu is ${d.menuShown ? "shown with" : "hidden with"} the links`);
-          if (d.linksShown && (d.linkRows !== 1 || d.rowLines !== 1 || Math.round(d.header) !== 80)) {
+          if (d.linksShown && !c.outsideFace && (d.linkRows !== 1 || d.rowLines !== 1 || Math.round(d.header) !== 80)) {
             problems.push(`${at}: the menu wraps the bar (links on ${d.linkRows} line(s), brand and links on ${d.rowLines} row(s), the bar ${d.header} px)`);
           }
         }
@@ -173,7 +204,7 @@ export async function headerChecks(base: string, steps: readonly number[], check
         }
       }
       if (c.fold !== undefined && (folds.size !== 1 || !folds.has(String(c.fold)))) problems.push(`data-fold is ${[...folds].join(" and ")}, not ${c.fold}`);
-      check(problems.length === 0, `the header, ${c.label}: inside the page at ${headerWidths(steps).length} widths, the links where data-fold (${[...folds].join()}) says and on one row there`, problems.slice(0, 6).join("; "));
+      check(problems.length === 0, `the header, ${c.label}: inside the page at ${headerWidths(steps).length} widths, the links where data-fold (${[...folds].join()}) says${c.outsideFace ? " (letters outside the face: whether they stay on one row is the machine's fonts', not held)" : " and on one row there"}`, problems.slice(0, 6).join("; "));
     }
   } finally {
     await browser.close();
