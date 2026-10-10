@@ -91,7 +91,9 @@ jobs:
       # production job draws headers that fold by them, at 23 widths, and
       # asks tools/header-metrics.ts --check only whether this machine
       # draws their letters as the file counts them, to know which rows of
-      # those headers it may hold.
+      # those headers it may hold; its result says what it did not hold,
+      # and a file not drawn as it holds fails it only where no script is
+      # drawn with other fonts than the file was measured with.
       - name: The 500-block contract fixture is what its generator writes
         run: node tools/gen-contract-500.ts --check
       - name: Lint the API description

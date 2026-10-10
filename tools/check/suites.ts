@@ -216,7 +216,7 @@ export const SUITES: Suite[] = [
       const why = first(packages(repoRoot, "the repository root"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(node, ["--test", "--test-reporter=tap", "tools/**/*.test.ts"], { cwd: repoRoot });
-      return readNodeTap(step.output, step.code, 110);
+      return readNodeTap(step.output, step.code, 117);
     },
   },
   {
@@ -475,7 +475,11 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(node, ["tools/check-production.ts"], { cwd: repoRoot });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? step.output.trim().split(/\r?\n/).slice(-1)[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 62);
+      // What the header's checks did not hold here, which the RESULT line
+      // says after the count, is said beside it.
+      const verdict = readChecks(step.output, step.code, 62);
+      const notHeld = /^RESULT: \d+ checks passed; ([^\r\n]+)$/m.exec(step.output)?.[1];
+      return verdict.status === "passed" && notHeld ? { ...verdict, counts: `${verdict.counts} (${notHeld})` } : verdict;
     },
   },
   {

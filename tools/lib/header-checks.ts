@@ -21,7 +21,10 @@
 // fonts, and the file holds what the fonts of the machine that measured
 // drew: for them both are held where --check finds this machine's fonts
 // to be those, and not elsewhere. A character the file does not measure,
-// counted at 1.5 em, is held to the first two only.
+// counted at 1.5 em, is held to the first two only. What the verdict holds
+// back is said in the check's RESULT line, not only in each header's; and
+// a file that is not what a machine with the fonts it was measured with
+// draws (stale, edited, or its sum narrower than a word) fails here.
 // The design's own header must have no data-fold and one row at 375, and
 // a fifth link must fold below 880, so the server's sum is held to the
 // steps; at the limits, in words of average width, the name, the button's
@@ -32,6 +35,7 @@ import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readVerdict, type FontsHere } from "./header-metrics-verdict.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -129,30 +133,63 @@ export function lettersOutside(site: SiteValues, metrics: Metrics): { scripts: s
   return { scripts: [...scripts], unmeasured };
 }
 
-// What tools/header-metrics.ts --check says of the file on this machine:
-// "file", it is what this machine draws (exit 0); "face", the face's own
-// letters, the spacing and the folds are, but the scripts named in
-// `others` are drawn here with other fonts than it was measured with
-// (exit 2); "neither", it is not (exit 1: stale, or the sum narrower than
-// a word drawn whole), and nothing is taken from it.
-export interface FontsHere {
-  verdict: "file" | "face" | "neither";
-  others: string[];
-  line: string;
-}
+// What tools/header-metrics.ts --check says of the file on this machine, by
+// the verdict its last line gives (lib/header-metrics-verdict.ts).
 export async function fontsHere(scriptNames: readonly string[]): Promise<FontsHere> {
   const child = spawn(process.execPath, [join(root, "tools", "header-metrics.ts"), "--check"], { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
   let output = "";
   child.stdout.on("data", (chunk: Buffer) => (output += chunk.toString("utf8")));
   child.stderr.on("data", (chunk: Buffer) => (output += chunk.toString("utf8")));
   const code = await new Promise<number | null>((resolve) => child.on("close", resolve));
-  const line = output.split(/\r?\n/).find((l) => l.startsWith("header-metrics.json")) ?? output.trim().split(/\r?\n/).slice(-1)[0] ?? "";
-  if (code === 0) return { verdict: "file", others: [], line };
-  if (code === 2) {
-    const named = /could not be compared here for the letters of ([^:]+):/.exec(line)?.[1]?.split(", ") ?? [];
-    return { verdict: "face", others: named.length > 0 && named.every((name) => scriptNames.includes(name)) ? named : [...scriptNames], line };
+  return readVerdict(code, output, scriptNames);
+}
+
+// What is held of a header here: its row where its letters are counted as
+// this machine draws them (the face's own on every machine), its right
+// padding where, besides, the face is drawn as the file holds it. A file
+// that is not what this machine draws, or no verdict, holds back every
+// letter the face lacks and every padding; a character the file does not
+// measure is held to neither.
+export function held(here: FontsHere, outside: { scripts: readonly string[]; unmeasured: boolean }): { row: boolean; padding: boolean } {
+  const trusted = here.verdict === "file" || here.verdict === "face";
+  const drawnAsCounted = !outside.unmeasured && outside.scripts.every((name) => trusted && !here.others.includes(name));
+  return { row: !outside.unmeasured && (outside.scripts.length === 0 || drawnAsCounted), padding: trusted && drawnAsCounted };
+}
+
+// Whether the verdict is a failure of its own here: the file is not what
+// this machine draws, though no script is drawn here with other fonts than
+// it was measured with. Then the file is stale or edited, or its sum is
+// narrower than a word drawn whole, on a machine whose fonts are those it
+// was measured with. Where some are other fonts (another system, whose
+// drawing of the face nothing shows to be the measuring machine's to the
+// 1/64 px), or the tool gave no verdict, what is not held is said, and the
+// check's fixtures (npm run check) fail a stale file where it was measured.
+export function verdictFails(here: FontsHere): boolean {
+  return here.verdict === "neither" && here.others.length === 0;
+}
+
+// Why the verdict holds back what it does, in a few words.
+function heldBackBy(here: FontsHere): string {
+  if (here.verdict === "face") return `this machine draws the letters of ${here.others.join(", ")} with other fonts than header-metrics.json was measured with`;
+  if (here.verdict === "unknown") return "tools/header-metrics.ts --check gave no verdict here";
+  return "header-metrics.json is not what this machine draws";
+}
+
+// What the verdict held back over the headers checked, against what a file
+// drawn here as it holds would have held: null when nothing.
+export function notHeldHere(here: FontsHere, headers: ReadonlyArray<{ links: number; outside: { scripts: readonly string[]; unmeasured: boolean } }>): string | null {
+  const asFile: FontsHere = { verdict: "file", others: [], line: "" };
+  let rows = 0;
+  let paddings = 0;
+  for (const { links, outside } of headers) {
+    if (links === 0) continue;
+    const now = held(here, outside);
+    const would = held(asFile, outside);
+    if (would.row && !now.row) rows += 1;
+    if (would.padding && !now.padding) paddings += 1;
   }
-  return { verdict: "neither", others: [...scriptNames], line };
+  if (rows + paddings === 0) return null;
+  return `not held here, since ${heldBackBy(here)}: the row of ${rows} header(s), the right padding of ${paddings}`;
 }
 
 // The widths: phones, the tablet, the design's fold, each data-fold width
@@ -228,22 +265,21 @@ async function drawn(page: Page): Promise<Drawn> {
   });
 }
 
-export async function headerChecks(base: string, steps: readonly number[], check: Check, setSite: (site: SiteValues) => Promise<void>): Promise<void> {
+// Checks the headers, and returns what the verdict held back here (null
+// when nothing), for the check's RESULT line.
+export async function headerChecks(base: string, steps: readonly number[], check: Check, setSite: (site: SiteValues) => Promise<void>): Promise<string | null> {
   const origin = new URL(base).origin;
   const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8")) as Metrics;
   // Whether this machine draws the letters as the file counts them.
   const here = await fontsHere(metrics.link.scripts.map((s) => s.name));
   console.log(`the header's letters on this machine, as tools/header-metrics.ts --check finds them: ${here.line}`);
+  if (verdictFails(here)) check(false, "header-metrics.json is what this machine draws, whose fonts are those it was measured with (tools/header-metrics.ts --check)", here.line);
   const browser = await chromium.launch();
   try {
     for (const c of HEADER_CASES) {
-      // What is held of this header here: the row where its letters are
-      // counted as this machine draws them, the padding too where the
-      // face is.
+      // What is held of this header here.
       const outside = lettersOutside(c.site, metrics);
-      const drawnAsCounted = !outside.unmeasured && outside.scripts.every((name) => !here.others.includes(name));
-      const holdRow = !outside.unmeasured && (outside.scripts.length === 0 || drawnAsCounted);
-      const holdPadding = here.verdict !== "neither" && drawnAsCounted;
+      const { row: holdRow, padding: holdPadding } = held(here, outside);
       await setSite(c.site);
       const problems: string[] = [];
       const folds = new Set<string>();
@@ -285,21 +321,22 @@ export async function headerChecks(base: string, steps: readonly number[], check
         }
       }
       if (c.fold !== undefined && (folds.size !== 1 || !folds.has(String(c.fold)))) problems.push(`data-fold is ${[...folds].join(" and ")}, not ${c.fold}`);
-      const stale = "header-metrics.json is not what this machine draws";
+      const notDrawn = here.verdict === "unknown" ? "tools/header-metrics.ts --check gave no verdict here" : "header-metrics.json is not what this machine draws";
       const scripts = outside.scripts.join(", ");
-      const held = (() => {
+      const said = (() => {
         if (c.site.menu.length === 0) return " (it has none, and no Menu)";
         if (shown === 0) return " (they show at none)";
         if (holdRow) {
-          const padding = holdPadding ? ", the right padding whole" : ` (the padding not held: ${stale})`;
+          const padding = holdPadding ? ", the right padding whole" : ` (the padding not held: ${notDrawn})`;
           return `, on one row at the ${shown} widths they show${padding}${outside.scripts.length > 0 ? ` (letters of ${scripts}, drawn here with the fonts the file was measured with)` : ""}`;
         }
         if (outside.unmeasured) return " (a character the file does not measure, counted at 1.5 em: its row is not held)";
-        return ` (letters of ${scripts}: ${here.verdict === "neither" ? stale : "this machine draws them with other fonts than the file was measured with"}, so their row is not held here)`;
+        return ` (letters of ${scripts}: ${here.verdict === "face" ? "this machine draws them with other fonts than the file was measured with" : notDrawn}, so their row is not held here)`;
       })();
-      check(problems.length === 0, `the header, ${c.label}: inside the page at ${headerWidths(steps).length} widths, the links where data-fold (${[...folds].join()}) says${held}`, problems.slice(0, 6).join("; "));
+      check(problems.length === 0, `the header, ${c.label}: inside the page at ${headerWidths(steps).length} widths, the links where data-fold (${[...folds].join()}) says${said}`, problems.slice(0, 6).join("; "));
     }
   } finally {
     await browser.close();
   }
+  return notHeldHere(here, HEADER_CASES.map((c) => ({ links: c.site.menu.length, outside: lettersOutside(c.site, metrics) })));
 }

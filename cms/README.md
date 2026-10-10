@@ -1110,7 +1110,10 @@ way only to words drawn wider than the server counted them). Letters
 outside the face are drawn by the visitor's own fonts: their row and
 padding are held where `tools/header-metrics.ts --check` finds this
 machine's fonts to be those the file was measured with, as on the machine
-that measured it, and elsewhere only the first two. The short Hebrew and
+that measured it, and elsewhere only the first two; the RESULT line says
+what was not held, and why. A file that is not what this machine draws,
+where no script is drawn here with other fonts (stale, edited, or its sum
+narrower than a word), fails the check. The short Hebrew and
 Greek headers must name no fold, the Arabic links fold below 880, and the
 ligatures, a character the file does not measure, drawn about four times
 wider than counted, may take two rows from the width the sum says fits,

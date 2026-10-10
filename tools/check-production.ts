@@ -336,6 +336,9 @@ let main: ChildProcess | undefined;
 let refused: ChildProcess | undefined;
 let jobs: ChildProcess | undefined;
 let exitCode = 0;
+// What the header's checks did not hold on this machine, and why: said in
+// the RESULT line, so that a run that held less does not read as all.
+let notHeld: string | null = null;
 try {
   rails(["assets:precompile"], "assets:precompile");
   rails(["db:create", "db:schema:load"], "databases in " + `cms/tmp/${run}`);
@@ -439,7 +442,7 @@ try {
     // The header and footer the editor sets, last: they change every page.
     await headerCacheChecks();
     const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8")) as { fold: { steps: number[] } };
-    await headerChecks(BASE, metrics.fold.steps, check, setSite);
+    notHeld = await headerChecks(BASE, metrics.fold.steps, check, setSite);
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);
@@ -468,5 +471,6 @@ try {
 
 for (const line of results) console.log(line);
 const total = results.length;
-console.log(exitCode === 2 ? "RESULT: the check could not run to the end" : failed === 0 ? `RESULT: ${total} checks passed` : `RESULT: ${failed} of ${total} checks failed`);
+const also = notHeld ? `; ${notHeld}` : "";
+console.log(exitCode === 2 ? "RESULT: the check could not run to the end" : failed === 0 ? `RESULT: ${total} checks passed${also}` : `RESULT: ${failed} of ${total} checks failed${also}`);
 process.exit(exitCode || (failed ? 1 : 0));
