@@ -181,8 +181,13 @@ export function HeaderFooterPanel({ onClose, onHide }: { onClose: () => void; on
     setSaid("The header and footer as saved in the other tab.");
     afterRender(() => document.querySelector<HTMLElement>(".header-footer [data-autofocus]")?.focus());
   };
+  // Greyed, as Save is, with nothing to discard or a save on its way, and
+  // then it does nothing: values on their way come back with the save's
+  // answer, so they could not be discarded, only said to be. Both buttons
+  // are aria-disabled rather than disabled, so the keyboard still reaches
+  // them, and their handlers are what refuse.
   const discard = () => {
-    if (!dirty) return;
+    if (!dirty || saving) return;
     ui.getState().setSiteDraft(null);
     ui.getState().setSiteErrors([]);
     setVisited(new Set());

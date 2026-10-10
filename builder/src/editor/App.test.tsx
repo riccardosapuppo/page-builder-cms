@@ -8,8 +8,8 @@
 // and comes back when the CMS refuses it; the header and footer show as
 // typed and go to the storage on Save, a conflict settled the same two
 // ways, and what is typed while a save is on its way stays as typed once
-// it lands. An editor that cannot start says why, with the one button
-// that can help.
+// it lands, which Discard leaves alone meanwhile. An editor that cannot
+// start says why, with the one button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
@@ -733,6 +733,32 @@ test("the header and footer typed back to what they were while the save is on it
   expect(state()).toBe("Saved for every page");
   expect(env.ui.getState().siteDraft).toBeNull();
   expect(brand()).toBe("Shingle Cove Swimmers");
+});
+
+test("Discard, greyed while the header and footer's save is on its way, does nothing and says nothing then; the save lands as sent", async () => {
+  const { site, env } = start(1, { headerFooter: true });
+  await opened();
+  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
+  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
+  const panel = screen.getByRole("complementary", { name: "Header and footer" });
+  const name = () => within(panel).getByLabelText("Site name") as HTMLInputElement;
+  const discard = () => within(panel).getByRole("button", { name: "Discard changes" });
+  const said = () => panel.querySelector(".tray-body > [role=status]")?.textContent;
+
+  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
+  const land = holdSiteSave(site);
+  await act(async () => fireEvent.click(within(panel).getByRole("button", { name: "Save" })));
+  expect(discard().getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(discard());
+  expect(name().value).toBe("Samphire Bay Swimmers");
+  expect(brand()).toBe("Samphire Bay Swimmers");
+  expect(said()).toBe("");
+  await land();
+  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
+  expect(name().value).toBe("Samphire Bay Swimmers");
+  expect(panel.querySelector(".style-save")?.textContent).toBe("Saved for every page");
+  expect(said()).toBe("");
+  expect(env.ui.getState().siteDraft).toBeNull();
 });
 
 test("closing the tab asks first while the header and footer have a change not saved", async () => {
