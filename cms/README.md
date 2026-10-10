@@ -218,24 +218,31 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 9 October 2026 (Windows 10, Ruby 3.4.11), with exactly these
-two commands, after the tests of the header and footer the editor sets
-(the run of 8 October, before them, had 363 runs and 2138 assertions):
+The run of 10 October 2026 (Windows 10, Ruby 3.4.11), with exactly these
+two commands, after the tests of the header and footer's revision, of the
+boot check of `config/site.yml` and of the scripts the header's fold counts
+(the run of 9 October, before them, had 396 runs and 2307 assertions, and
+that of 8 October, before the header and footer the editor sets, 363 runs
+and 2138):
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 103.553114s, 3.8241 runs/s, 22.2784 assertions/s.
-396 runs, 2307 assertions, 0 failures, 0 errors, 0 skips
-openapi: 349 API response(s) checked against cms/openapi.yaml
+Finished in 116.474509s, 3.4686 runs/s, 21.1377 assertions/s.
+404 runs, 2462 assertions, 0 failures, 0 errors, 0 skips
+openapi: 362 API response(s) checked against cms/openapi.yaml
 ```
 
-The run includes six tests that start Rails in processes of their own,
+The run includes seven tests that start Rails in processes of their own,
 in the development, test or e2e environment: `test/lib/tasks/db_drop_test.rb`,
 `test/db/migrations_keep_rows_test.rb`, `test/lib/queue_orphans_test.rb`,
 `test/bin/jobs_test.rb` (the jobs command, started for real),
 `test/jobs/failed_publishes_test.rb` (the sweep, on Solid Queue's real
-tables) and the one in `test/models/page_cache_test.rb` that asks a
-process of its own for its release's digest before any visit.
+tables), the one in `test/models/page_cache_test.rb` that asks a
+process of its own for its release's digest before any visit, and
+`test/config/site_boot_test.rb`, which starts the application as
+`bin/rails runner` does, with values of `config/site.yml` changed as the
+file is read, and shows that defaults the editor could not save back stop
+it with a message naming each value, and that a valid change boots.
 The first five send every database of their environment to a folder of
 their own ([test/support/own_databases.rb](test/support/own_databases.rb),
 which reads them from `config/database.yml`), and the `db:drop`, queue
@@ -243,7 +250,9 @@ orphans and failed publishes tests fail if the tasks name any database
 outside it: before that, the `db:drop` test made, emptied and deleted
 development's queue database at every run. The sixth runs the test
 environment's own `bin/rails runner`, which opens no database: at its end
-no connection pool of that environment is connected.
+no connection pool of that environment is connected. The seventh boots
+the same environment and opens none either (on 10 October 2026 the boot
+had made one pool, and none was connected).
 
 - **Every API response is held to `openapi.yaml`**
   ([test/support/openapi_contract.rb](test/support/openapi_contract.rb)):
@@ -394,7 +403,9 @@ no warnings, the same morning).
   links, the button (or none) and the footer's two lines, kept in one row
   for the whole site (`Site`). Until the editor first changes them, the
   defaults of [config/site.yml](config/site.yml) apply, checked as the
-  CMS starts against the rules a change is held to. A change reaches
+  CMS starts against the rules a change is held to (a test starts the
+  CMS in a process of its own with a default broken, and it stops,
+  naming the value). A change reaches
   every published page at its next visit, with nothing to publish (see
   how the pages are cached, below).
 

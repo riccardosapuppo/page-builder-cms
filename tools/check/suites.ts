@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 927);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 931);
     },
   },
   {
@@ -356,7 +356,7 @@ export const SUITES: Suite[] = [
         const prepare = await ctx.step("ruby", ["bin/rails", "db:test:prepare"], { cwd: cmsRoot });
         if (prepare.code !== 0) return failed("", `db:test:prepare failed (exit ${prepare.code})`);
         const tests = await ctx.step("ruby", ["bin/rails", "test"], { cwd: cmsRoot });
-        return readMinitest(tests.output, tests.code, 396, 349);
+        return readMinitest(tests.output, tests.code, 404, 362);
       });
     },
   },
@@ -367,7 +367,7 @@ export const SUITES: Suite[] = [
       const why = ruby();
       if (why) return notRun(why);
       const step = await ctx.step("ruby", ["bin/rubocop"], { cwd: cmsRoot });
-      return readRubocop(step.output, step.code, 152);
+      return readRubocop(step.output, step.code, 153);
     },
   },
   {
@@ -400,9 +400,9 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)]]));
-      // 83 on every platform; the test of cms/README.md's PowerShell example
-      // runs only where Windows PowerShell is, and makes 84 there.
-      return why ? notRun(why) : vitestProject(ctx, "rails", 83);
+      // 84 on every platform; the test of cms/README.md's PowerShell example
+      // runs only where Windows PowerShell is, and makes 85 there.
+      return why ? notRun(why) : vitestProject(ctx, "rails", 84);
     },
   },
   {
@@ -411,7 +411,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 225);
+      return why ? notRun(why) : playwright(ctx, "e2e", 227);
     },
   },
   {
@@ -421,7 +421,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:browser")) return failed("", "builder/package.json has no e2e:browser script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the editor on the browser's storage", portNumber("E2E_BROWSER_PORT", 4902)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:browser", 76);
+      return why ? notRun(why) : playwright(ctx, "e2e:browser", 77);
     },
   },
   {
@@ -468,7 +468,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(node, ["tools/check-production.ts"], { cwd: repoRoot });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? step.output.trim().split(/\r?\n/).slice(-1)[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 58);
+      return readChecks(step.output, step.code, 61);
     },
   },
   {
