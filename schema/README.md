@@ -16,10 +16,11 @@ The page document's one schema, and the design tokens it names.
 - [`header-metrics.json`](header-metrics.json): the width of each letter
   of the header's name, links and button in the site's typeface, what the
   fallback fonts of the machine that measured draw the letters of Greek,
-  Cyrillic, Hebrew, Arabic and CJK at, and the spacing around them, written
-  by `npm run header-metrics` from the CMS's stylesheets and fonts; the
-  server and the editor add them up to fold a menu too long for the bar
-  (see the site's header and footer, below).
+  Cyrillic, Hebrew, Arabic and CJK at (an Arabic letter at the widest of
+  its joined forms), with a fingerprint of those fonts, and the spacing
+  around them, written by `npm run header-metrics` from the CMS's
+  stylesheets and fonts; the server and the editor add them up to fold a
+  menu too long for the bar (see the site's header and footer, below).
 
 ## The document
 
