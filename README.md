@@ -543,7 +543,7 @@ so only the shares are to be read:
 
 ### The bundle
 
-`npm run measure:bundle`, on 9 October 2026 at 21:41 UTC (its output ended
+`npm run measure:bundle`, on 10 October 2026 at 00:22 UTC (its output ended
 `RESULT: 9 checks passed`). It builds the editor twice, as `npm run
 builder:build` does, into folders of its own: the two builds are the same
 files, byte for byte. This is the editor that talks to the CMS; the demo's
@@ -552,18 +552,20 @@ sizes do not depend on the load of the machine.
 
 | File | What | Raw | Gzipped |
 | --- | --- | --- | --- |
-| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 929,971 B (908.2 KiB) | 247,707 B (241.9 KiB) |
-| `index-*.css` | The stylesheet, loaded at once | 107,217 B (104.7 KiB) | 19,434 B (19.0 KiB) |
-| `index.html` | The page | 1,423 B | 753 B |
-| | Loaded at once, in all | 1,038,611 B (1014.3 KiB) | 267,894 B (261.6 KiB) |
-| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,514 B (110.9 KiB) |
+| `index-*.js` | The main chunk, loaded at once: React, the drag library, the schema's validator, the widgets, the header's letter widths, the editor | 941,490 B (919.4 KiB) | 252,257 B (246.3 KiB) |
+| `index-*.css` | The stylesheet, loaded at once | 107,600 B (105.1 KiB) | 19,490 B (19.0 KiB) |
+| `index.html` | The page | 1,423 B | 758 B |
+| | Loaded at once, in all | 1,050,513 B (1025.9 KiB) | 272,505 B (266.1 KiB) |
+| `TextEditor-*.js` | The text editor (TipTap, ProseMirror), loaded when a text is first edited | 358,570 B (350.2 KiB) | 113,515 B (110.9 KiB) |
 | `activestorage.esm-*.js` | The upload code, loaded at the first upload | 15,268 B (14.9 KiB) | 5,026 B (4.9 KiB) |
 | 4 `.woff2` files | The fonts, fetched when a page uses them | 399,984 B (390.6 KiB) | no smaller: they are compressed already |
 
 On 4 October, before the form widget and Form responses, the main chunk was
 842,681 B (226,273 gzipped); on 8 October, before the header and footer's
 panel and the letter widths the canvas folds its menu by, 889,647 B
-(236,091 gzipped).
+(236,091 gzipped); on 9 October, before those letter widths held what
+the fallback fonts draw the letters of Greek, Cyrillic, Hebrew, Arabic and
+CJK at, 929,971 B (247,707 gzipped).
 
 What is lazy is read from the files: `index.html` names only the entry, the
 entry reaches the text editor and the upload code with `import()` and never
