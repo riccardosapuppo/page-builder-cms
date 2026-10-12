@@ -181,7 +181,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   adapter reads or writes is written out once more as a table of its keys,
   each with its JSON type, whether it may be null and whether it is
   required; the compiler holds the table to the type, and the test holds
-  it to the schema the API gives for it (47 of them, answers and requests),
+  it to the schema the API gives for it (46 of them, answers and requests),
   with the version reasons, the image types, the kinds of a kept form
   field, the longest part of a response list, the list's query
   parameters (against `ResponseQuery`) and the refusal codes. The
@@ -199,7 +199,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the
-  end. It first checks the battery holds its 56 cases (at least 50),
+  end. It first checks the battery holds its 57 cases (at least 50),
   each named once, and that the Rails adapter skips none of them (with
   `publish` planted as absent in its capabilities, that check failed). A
   visitor's form is sent by the runner as a browser sends it from the

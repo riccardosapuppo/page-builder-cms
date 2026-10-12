@@ -49,7 +49,7 @@ editor would meet them as bugs.
 - **A rule in two languages again.** The browser's checks are a copy of
   Ruby's. A test reads the Ruby files and fails when they drift, but the
   copy is still work every time the CMS refuses something new.
-- **The browser's adapter is weaker, honestly.** It runs 47 of the 54
+- **The browser's adapter is weaker, honestly.** It runs 50 of the 57
   cases: scheduling and form responses need a server and are not there.
   What it keeps lives in one browser; clearing the site's data deletes it.
 - **Every call is asynchronous and can fail in the same four ways**, even
@@ -68,10 +68,10 @@ npm run e2e:browser
 
 The first starts a CMS of its own and runs the battery on the CMS's
 adapter: on 12 October 2026, with the cases of the site's parts, the file
-of the battery ran 58 tests, the 56 cases each named once and none
+of the battery ran 59 tests, the 57 cases each named once and none
 skipped, with two checks of the battery itself. The second runs it on the
-browser's adapter in Chromium, with real IndexedDB: 50 tests passed (the
-49 cases it can run and its check of the battery) and 7 were skipped, the
+browser's adapter in Chromium, with real IndexedDB: 51 tests passed (the
+50 cases it can run and its check of the battery) and 7 were skipped, the
 cases that need a server, named in the first test. With the revision check
 removed from the browser's adapter, five tests failed; with a refused open
 or a full quota not mapped to its sentence, the test of each failed
