@@ -533,6 +533,15 @@ was busy 47.7 s of the 52.3 (91%), 27.6 s of that in JavaScript, 1.7 in style
 recalculation and 0.3 in layout; on the 4-block page, 1.5 s. That is 99 ms of
 main thread for a pointer move, against 3.2.
 
+These numbers are from before the header and footer became parts of the
+site, which the canvas now draws, locked, around the page. A run of 12
+October 2026 with them (14:07 to 14:33 UTC, `RESULT: 19 checks passed`,
+two runs of the development server thrown away, the machine 47% and 16%
+busy after them, and taken again) opened the page in the production build
+in 1,077 ms (993 to 1,183), its data after 291, with 3,034 DOM nodes; the
+drag across it had a pointer latency of 61.7 ms at the median and 190 at
+the 95th percentile.
+
 **These numbers are bad and are left as they are.** The 500-block page takes
 about 1.2 s to open, 0.9 s of it after its data has arrived, and a drag
 across it takes the pointer's moves at about nine a second, with a latency of

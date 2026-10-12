@@ -123,7 +123,9 @@ function probe(): void {
   }
   const look = (): void => {
     if (m.blocksAt !== null) return;
-    const n = document.querySelectorAll(".canvas [data-block-id][data-block-type]").length;
+    // The page's own blocks: the header and footer drawn locked around it
+    // on the canvas are not in its .sw-main.
+    const n = document.querySelectorAll(".canvas .sw-main [data-block-id][data-block-type]").length;
     if (n < 500) return;
     m.blocksAt = performance.now();
     m.blocks = n;
@@ -349,7 +351,7 @@ async function measureForm(name: string, what: string, preview: string | undefin
     const warmPage = await warm.newPage();
     await warmPage.goto(`${editor.url}/?page=${large.id}`);
     // Attached, not visible: the last block of the page is a spacer.
-    await warmPage.locator(".canvas [data-block-id][data-block-type]").nth(499).waitFor({ state: "attached", timeout: 120_000 });
+    await warmPage.locator(".canvas .sw-main [data-block-id][data-block-type]").nth(499).waitFor({ state: "attached", timeout: 120_000 });
     await warm.close();
 
     // One visit in a fresh context. Run again, by the caller, when the
@@ -380,7 +382,7 @@ async function measureForm(name: string, what: string, preview: string | undefin
         if (expected === 500) {
           await page.waitForFunction(() => (window as unknown as { __open?: { done: boolean } }).__open?.done === true, null, { timeout: 120_000, polling: 100 });
         } else {
-          await page.locator(".canvas [data-block-id][data-block-type]").nth(expected - 1).waitFor({ state: "attached", timeout: 60_000 });
+          await page.locator(".canvas .sw-main [data-block-id][data-block-type]").nth(expected - 1).waitFor({ state: "attached", timeout: 60_000 });
         }
         const loaded = await page.evaluate(collect, id);
         const opened: Opened = { ...loaded, thread: threadBetween({}, await metrics(cdp)) };
