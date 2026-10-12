@@ -8,21 +8,19 @@
 // block is dragged its settings wait: the Block tab says what moves and
 // where from, its groups closed and out of reach, and the Page tab is
 // inert, since the page changes under the drag. Site
-// style, and the header and footer where the storage keeps a change of
-// them (capabilities.headerFooter), open a level below Page, in the
-// sidebar's place, and close back to it; a click on the header or the
-// footer on the canvas opens the second too. The top bar's sidebar key,
-// or the sidebar's own close button, hides it, and the canvas takes its
-// room.
+// style opens a level below Page, in the sidebar's place, and closes back
+// to it. The Page tab of a page leads to the site's header and footer,
+// which open in the editor as pages do; the Page tab of a header or a
+// footer says it is on every page, and leads back to the page around it.
+// The top bar's sidebar key, or the sidebar's own close button, hides it,
+// and the canvas takes its room.
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
-import { sameJson } from "../document/json.ts";
+import { PART_KINDS, type PartKind } from "../storage/adapter.ts";
 import { afterRender } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
-import { siteValues } from "./header-footer.ts";
-import { focusSiteField, HeaderFooterPanel } from "./HeaderFooterPanel.tsx";
 import { Icon } from "./icons.tsx";
-import { BlockPanel, MovingPanel, PagePanel } from "./panels/EditPanel.tsx";
-import { useOptionalSession } from "./session.tsx";
+import { BlockPanel, MovingPanel, PagePanel, PartPanel } from "./panels/EditPanel.tsx";
+import { PART_NAMES, partOf, useOpenKind, useSession } from "./session.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
 import type { SideTab, UiStore } from "./ui-store.ts";
 
@@ -35,13 +33,6 @@ const TAB_NAMES: Readonly<Record<Tab, string>> = { page: "Page", block: "Block" 
 export function openSiteStyle(ui: UiStore): void {
   ui.setState({ sidebarOpen: true, tray: "site-style" });
   afterRender(() => document.querySelector<HTMLElement>(".site-style [data-autofocus]")?.focus());
-}
-
-// Opens the header and footer in the sidebar the same way, the focus on
-// the value `field` points at ("/menu/2/label"), else on the site's name.
-export function openHeaderFooter(ui: UiStore, field = "/name"): void {
-  ui.setState({ sidebarOpen: true, tray: "header-footer" });
-  focusSiteField(field);
 }
 
 // A level below Page, back to it: the Page tab, whatever is selected, the
@@ -71,13 +62,6 @@ export function Sidebar() {
     return (
       <aside className="sidebar chrome" aria-label="Site style">
         <SiteStylePanel onClose={() => backToPage(ui, store.getState().selection, "data-site-style")} onHide={() => toggleSidebar(ui)} />
-      </aside>
-    );
-  }
-  if (tray === "header-footer") {
-    return (
-      <aside className="sidebar chrome" aria-label="Header and footer">
-        <HeaderFooterPanel onClose={() => backToPage(ui, store.getState().selection, "data-header-footer")} onHide={() => toggleSidebar(ui)} />
       </aside>
     );
   }
@@ -149,29 +133,55 @@ function Settings() {
 function PageTab() {
   const { ui } = useEnv();
   const id = useId();
-  // The header and footer only where the storage keeps a change of them;
-  // a change not saved yet is said under their name.
-  const headerFooter = useOptionalSession()?.capabilities.headerFooter ?? false;
-  const waiting = useUi((u) => u.siteDraft !== null && u.site !== null && !sameJson(u.siteDraft, siteValues(u.site)));
+  const kind = useOpenKind();
+  const style = (
+    <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
+      <Icon name="style" />
+      <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
+      <Icon name="chevron-right" className="i i-xs" />
+    </button>
+  );
+  if (kind !== "page") return <PartPanel kind={kind} after={style} />;
   return (
     <PagePanel
       after={(
         <>
-          {headerFooter && (
-            <button className="sb-link" type="button" data-header-footer="" aria-label="Header and footer" aria-describedby={`${id}-frame`} onClick={() => openHeaderFooter(ui)}>
-              <Icon name="globe" />
-              <span><strong>Header and footer</strong><small id={`${id}-frame`}>{waiting ? "Changes not saved yet" : "Name, menu, button and footer of every page"}</small></span>
-              <Icon name="chevron-right" className="i i-xs" />
-            </button>
-          )}
-          <button className="sb-link" type="button" data-site-style="" aria-label="Site style" aria-describedby={`${id}-what`} onClick={() => openSiteStyle(ui)}>
-            <Icon name="style" />
-            <span><strong>Site style</strong><small id={`${id}-what`}>Palette and type scale for every page</small></span>
-            <Icon name="chevron-right" className="i i-xs" />
-          </button>
+          {PART_KINDS.map((part) => <PartLink key={part} kind={part} />)}
+          {style}
         </>
       )}
     />
+  );
+}
+
+// The way from a page to the site's header or footer, which opens in the
+// editor as a page does, made of blocks like it.
+function PartLink({ kind }: { kind: PartKind }) {
+  const { ui } = useEnv();
+  const session = useSession();
+  const id = useId();
+  const part = partOf(session, kind);
+  const name = PART_NAMES[kind];
+  const state = !part ? "Made of blocks, on every page" : part.published === null ? "Not published yet: every page shows the starting one" : part.revision > part.published.draftRevision ? "Changes not published yet" : "Published, on every page";
+  return (
+    <button
+      className="sb-link"
+      type="button"
+      data-part-link={kind}
+      aria-label={name}
+      aria-describedby={`${id}-state`}
+      disabled={!part}
+      onClick={() => {
+        if (!part) return;
+        void session.openPage(part.id).then((why) => {
+          if (why) ui.getState().say(why);
+        });
+      }}
+    >
+      <Icon name="globe" />
+      <span><strong>{name}</strong><small id={`${id}-state`}>{state}</small></span>
+      <Icon name="chevron-right" className="i i-xs" />
+    </button>
   );
 }
 

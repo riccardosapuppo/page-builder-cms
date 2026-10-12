@@ -28,6 +28,12 @@
 // The page's own links, buttons and disclosures do nothing here: a click
 // selects the block it falls in, a right click opens its menu.
 //
+// Around a page the canvas draws the site's header and footer, the parts'
+// drafts, locked: a click on one opens it, to be edited as a page is. A
+// part being edited is drawn in its own element, header or footer, with the
+// page opened last around it, dimmed and locked: a click on that page goes
+// back to it.
+//
 // A text block is edited where it stands (./rich/): a click on the text
 // block already selected, or a double click on any, opens its editor with
 // the caret at the click, and Enter opens it at the end. While it is open
@@ -43,10 +49,11 @@ import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
+import { PageSections } from "../render/blocks.tsx";
 import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
-import { linkHref } from "../render/policy.ts";
-import { SiteFooter, SiteHeader } from "../render/theme.tsx";
+import { SitePart } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
+import type { PartKind } from "../storage/adapter.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
 import { COLUMN_GAP_DEFAULT } from "../shared/site-tokens.ts";
@@ -74,9 +81,8 @@ import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
 import { placeSeamTip } from "./seam-tip.ts";
-import { useOptionalSession } from "./session.tsx";
-import { openHeaderFooter } from "./Sidebar.tsx";
-import { pushes, type Preview } from "./ui-store.ts";
+import { PART_NAMES, partOf, useOptionalSession } from "./session.tsx";
+import { pushes, type PartsShown, type Preview } from "./ui-store.ts";
 
 // How a block stands to the selection, for the marks it draws.
 type Relation =
@@ -783,10 +789,15 @@ export function Canvas() {
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
   const siteStyle = useUi((u) => u.siteStyle);
-  // The header and footer as their panel has them while they are changed,
-  // as they are typed; else as the storage keeps them.
-  const site = useUi((u) => u.siteDraft ?? u.site);
-  const headerFooter = useOptionalSession()?.capabilities.headerFooter ?? false;
+  // What is edited: a page, with the parts drawn around it; or a part,
+  // with the page opened last around it.
+  const opened = useOptionalSession();
+  const kind = opened?.current?.kind ?? "page";
+  const parts = useUi((u) => u.parts);
+  const around = useUi((u) => u.aroundPart);
+  // The part, or the page around a part, the pointer is over: it is
+  // outlined, and says what a click does there.
+  const [lockedHover, setLockedHover] = useState<LockedPlace | null>(null);
   // The bottom line's Block edges: every block's edges drawn (editor.css).
   const edges = useUi((u) => u.blockEdges);
   const frame = useRef<HTMLDivElement>(null);
@@ -982,14 +993,17 @@ export function Canvas() {
               if (element?.closest(`${EDITOR_CONTROLS}, .invite, .ov-link, .rte`)) return;
               // A link or a disclosure of the page does nothing on the canvas.
               event.preventDefault();
-              // The site's header and footer are inert, so a click on them
-              // reaches the page around them: it opens their panel, on the
-              // value clicked; where the storage keeps no change of them,
-              // it says why nothing happens.
-              const part = themePartAt(event.currentTarget, event.clientX, event.clientY);
-              if (part) {
-                if (headerFooter) openHeaderFooter(ui, site ? themeFieldAt(part, site, event.clientX, event.clientY) : undefined);
-                else ui.getState().say(`The site's ${part.part} is the same on every page, and this storage cannot change it.`);
+              // The site's header and footer around a page, and the page
+              // around a part, are inert, so a click on them reaches the
+              // frame: it opens the part, or goes back to the page.
+              const locked = lockedAt(event.currentTarget, event.clientX, event.clientY);
+              if (locked && opened) {
+                const id = locked === "page" ? around?.id : partOf(opened, locked)?.id;
+                if (id !== undefined) {
+                  void opened.openPage(id).then((why) => {
+                    if (why) ui.getState().say(why);
+                  });
+                }
                 return;
               }
               pick(event.target);
@@ -1022,6 +1036,8 @@ export function Canvas() {
               if (ui.getState().hover !== id) ui.getState().setHover(id);
             }}
             onPointerMove={(event) => {
+              const locked = store.getState().drag ? null : lockedAt(event.currentTarget, event.clientX, event.clientY);
+              if (locked !== lockedHover) setLockedHover(locked);
               if (store.getState().drag || canvasUi(ui).getState().inserting) return;
               const seam = seamAt(event.currentTarget, event.clientX, event.clientY);
               canvasUi(ui).getState().setSeam(seam);
@@ -1030,15 +1046,19 @@ export function Canvas() {
             onPointerLeave={() => {
               ui.getState().setHover(null);
               canvasUi(ui).getState().setSeam(null);
+              setLockedHover(null);
             }}
+            data-locked-hover={lockedHover ?? undefined}
           >
-            {document.sections.length === 0 ? (
-              <>
-                {site && <ThemeAround siteStyle={siteStyle}><SiteHeader site={site} locked /></ThemeAround>}
-                <Invite />
-                {site && <ThemeAround siteStyle={siteStyle}><SiteFooter site={site} locked /></ThemeAround>}
-              </>
-            ) : <PageRoot document={drawn} ctx={ctx} siteStyle={siteStyle} landmark={false} site={site} lockedTheme {...(width === undefined ? {} : { width })} />}
+            {kind !== "page"
+              ? <PartRoot kind={kind} document={drawn} ctx={ctx} siteStyle={siteStyle} parts={parts} around={around?.document ?? null} aroundTitle={around?.title ?? null} width={width} />
+              : document.sections.length === 0 ? (
+                <>
+                  <ThemeAround siteStyle={siteStyle}><SitePart kind="header" document={parts.header} ctx={ctx} locked /></ThemeAround>
+                  <Invite />
+                  <ThemeAround siteStyle={siteStyle}><SitePart kind="footer" document={parts.footer} ctx={ctx} locked /></ThemeAround>
+                </>
+              ) : <PageRoot document={drawn} ctx={ctx} siteStyle={siteStyle} landmark={false} parts={parts} lockedParts {...(width === undefined ? {} : { width })} />}
           </div>
           <FitNow frame={frame} scale={scale} />
         </div>
@@ -1069,45 +1089,80 @@ function seamAt(frame: Element, x: number, y: number): number | null {
   return at < 0 ? null : at;
 }
 
-// A page root around the theme's header or footer alone, with the site's
+// A page root around the site's header or footer alone, with the site's
 // style, for the empty page: the invitation to add a section sits between
 // them, outside the page's stylesheets' reach.
 function ThemeAround({ siteStyle, children }: { siteStyle: SiteStyleChoice | null; children: ReactNode }) {
   return <div className="site" {...siteStyleAttributes(siteStyle)}><div className="sw">{children}</div></div>;
 }
 
-interface ThemePart {
-  part: "header" | "footer";
-  element: HTMLElement;
-}
+// What locked thing of the canvas a point falls on: the site's header or
+// footer around a page, which a click opens, or the page around a part,
+// which a click goes back to.
+type LockedPlace = PartKind | "page";
 
 const holds = (element: Element, x: number, y: number) => {
   const box = element.getBoundingClientRect();
   return box.width > 0 && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
 };
 
-// Which of the site's parts a point of the canvas falls on, if any.
-function themePartAt(frame: Element, x: number, y: number): ThemePart | null {
-  for (const element of frame.querySelectorAll<HTMLElement>("[data-theme-part]")) {
-    if (holds(element, x, y)) return { part: element.dataset.themePart === "footer" ? "footer" : "header", element };
+function lockedAt(frame: Element, x: number, y: number): LockedPlace | null {
+  for (const element of frame.querySelectorAll<HTMLElement>("[data-theme-part], [data-around-page]")) {
+    if (!holds(element, x, y)) continue;
+    if (element.dataset.aroundPage !== undefined) return "page";
+    return element.dataset.themePart === "footer" ? "footer" : "header";
   }
   return null;
 }
 
-// The value of the header and footer a point of their part shows, as the
-// Header and footer panel's pointer: the button, a link of the menu (by
-// its place among those drawn, which are the menu's links the link rules
-// take), the first link under Menu, else the site's name; in the footer,
-// the bold words or the words after them.
-function themeFieldAt({ part, element }: ThemePart, site: { menu: ReadonlyArray<{ href: string }> }, x: number, y: number): string {
-  const hit = (selector: string) => [...element.querySelectorAll(selector)].findIndex((e) => holds(e, x, y));
-  if (part === "footer") return hit("strong") >= 0 ? "/footer/lead" : "/footer/text";
-  if (hit(".sw-btn") >= 0) return "/action/label";
-  const link = hit(".sw-nav-links a");
-  const drawn = site.menu.flatMap((l, index) => (linkHref(l.href) === null ? [] : [index]));
-  if (link >= 0 && drawn[link] !== undefined) return `/menu/${drawn[link]}/label`;
-  if (hit(".sw-menu") >= 0 && drawn[0] !== undefined) return `/menu/${drawn[0]}/label`;
-  return "/name";
+// A part being edited: its sections, editable, in the element the
+// published page draws it in, header or footer, so the part looks as it
+// will; the page opened last around it, dimmed and locked, and the other
+// part locked, as a visitor sees them together. An empty part takes the
+// invitation to add a section in its place, outside the page's
+// stylesheets' reach.
+function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, width }: {
+  kind: PartKind;
+  document: PageDocument;
+  ctx: RenderContext;
+  siteStyle: SiteStyleChoice | null;
+  parts: PartsShown;
+  around: PageDocument | null;
+  aroundTitle: string | null;
+  width: number | undefined;
+}) {
+  // The page around and the other part are drawn with nothing of the
+  // editor's: no selection, no "+", no drop target.
+  const quiet = useMemo<RenderContext>(() => ({ media: ctx.media }), [ctx.media]);
+  const sized = width === undefined ? undefined : { width: `${width}px` };
+  const Element = kind;
+  const editing = document.sections.length === 0
+    ? null
+    : <Element className={`sw-${kind} sw-editing`} data-editing-part={kind}><div className="sw-main"><PageSections document={document} ctx={ctx} /></div></Element>;
+  const page = (
+    <div className="sw-around" inert data-around-page="" aria-label={aroundTitle ? `${aroundTitle}, the page around the ${kind}` : undefined}>
+      {around && around.sections.length > 0 ? <PageSections document={around} ctx={quiet} /> : <p className="around-none chrome">The page goes here.</p>}
+    </div>
+  );
+  const other = <SitePart kind={kind === "header" ? "footer" : "header"} document={kind === "header" ? parts.footer : parts.header} ctx={quiet} locked />;
+  if (!editing) {
+    return (
+      <>
+        {kind === "footer" && <ThemeAround siteStyle={siteStyle}>{other}{page}</ThemeAround>}
+        <Invite part={kind} />
+        {kind === "header" && <ThemeAround siteStyle={siteStyle}>{page}{other}</ThemeAround>}
+      </>
+    );
+  }
+  return (
+    <div className="site" {...siteStyleAttributes(siteStyle)} style={sized}>
+      <div className="sw">
+        {kind === "header" ? editing : other}
+        {page}
+        {kind === "footer" ? editing : other}
+      </div>
+    </div>
+  );
 }
 
 // The page's margin on each side of the canvas (editor.css, .frame-fit):
@@ -1146,11 +1201,12 @@ function FitNow({ frame, scale }: { frame: RefObject<HTMLDivElement | null>; sca
 
 // ------------------------------------------------------- the empty page
 
-function Invite() {
+function Invite({ part }: { part?: PartKind }) {
   const { store, newId } = useEnv();
   const { insertMade } = useInsert();
   const [picking, setPicking] = useState(false);
   const canPublish = useOptionalSession()?.capabilities.publish ?? false;
+  const name = part ? PART_NAMES[part].toLowerCase() : "page";
   const addPreset = (preset: Preset, image?: ImageRef) => {
     const doc = store.getState().document;
     return insertMade(makeInsert(doc, presetSection(doc, preset, newId, image), { parentId: null, index: doc.sections.length }));
@@ -1161,10 +1217,11 @@ function Invite() {
         {/* The page's first seam, open: the section picker laid out on the page. */}
         <div className="invite-title">
           <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" /></span>
-          <h2>Start this page with a section</h2>
+          <h2>Start this {name} with a section</h2>
         </div>
-        <p>A section is a band across the page. Pick its columns; you can change them later.</p>
-        {canPublish && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
+        <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : "A section is a band across the page. Pick its columns; you can change them later."}</p>
+        {canPublish && !part && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
+        {canPublish && part && <p className="invite-publish"><Icon name="info" className="i i-xs" />Published empty, the site has no {name}.</p>}
         <div className="invite-layouts" role="group" aria-label="Add a section">
           {[1, 2, 3, 4].map((n) => (
             <button key={n} type="button" className="layout-btn" onClick={() => insertMade(makeInsertSection(store.getState().document, n, 0, newId))}>

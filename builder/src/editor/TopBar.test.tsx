@@ -13,7 +13,7 @@ import type { OpenPage } from "./session.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 const live: Published = { slug: "winter-series", versionNumber: 4, draftRevision: 3, publishedAt: "2026-09-28T07:02:00.000Z" };
-const open = (changes: Partial<OpenPage>): OpenPage => ({ id: 1, slug: "winter-series", home: false, published: live, revision: 3, links: { preview: "/preview/1", live: "/winter-series" }, ...changes });
+const open = (changes: Partial<OpenPage>): OpenPage => ({ id: 1, kind: "page", slug: "winter-series", home: false, published: live, revision: 3, links: { preview: "/preview/1", live: "/winter-series" }, ...changes });
 const status = () => document.querySelector(".tb-status")?.textContent;
 
 test("the line under the title counts the saves visitors do not see yet, and describes the title's button", () => {
@@ -40,7 +40,7 @@ test("a publish set for a time follows on the line, by the site's clock, whateve
     [open({ published: null, scheduled }), "Not published yet · scheduled for Oct 5 at 7:15 AM"],
   ] as const) {
     const kit = editorKit({ document: page(), session: { current } });
-    kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+    kit.ui.getState().setSite({ timeZone: "Europe/London" });
     const { unmount } = kit.render(<TopBar />);
     expect(status()).toBe(said);
     expect(document.querySelector(".tb-status")!.getAttribute("title")).toContain("A publish is scheduled for Oct 5 at 7:15 AM (UTC+1): the Publish menu cancels it.");
@@ -54,7 +54,7 @@ test("a publish set for a time follows on the line, by the site's clock, whateve
 test("a publish set for a time that has passed, with the page still not live, says it should have gone live, once it is half a minute late", async () => {
   const scheduled: Schedule = { id: 3, at: "2026-10-02T09:00:00.000Z", revision: 9, versionNumber: 12, state: "pending", createdAt: "2026-10-02T08:00:00.000Z", settledAt: null, publishedVersionNumber: null };
   const kit = editorKit({ document: page(), session: { current: open({ revision: 9, scheduled }) } });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+  kit.ui.getState().setSite({ timeZone: "Europe/London" });
   kit.render(<TopBar />);
 
   expect(status()).toBe("Published, 6 changes not live · scheduled for Oct 2 at 10:00 AM");
@@ -74,7 +74,7 @@ test("a publish whose time is long past is said to be late from the first draw, 
     ["2026-10-02T09:01:00.000Z", "Not published yet · scheduled for Oct 2 at 10:01 AM"],
   ] as const) {
     const kit = editorKit({ document: page(), session: { current: open({ published: null, scheduled: at(iso) }) } });
-    kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+    kit.ui.getState().setSite({ timeZone: "Europe/London" });
     const { unmount } = kit.render(<TopBar />);
     expect(status()).toBe(said);
     unmount();
@@ -108,7 +108,7 @@ test("Insert, Outline and History each open their drawer and close it, one open 
 test("the page switch lists the site's pages with their addresses and whether they are live, finds them, and opens the one chosen", async () => {
   const opened: number[] = [];
   const summary = (id: number, title: string, slug: string, home: boolean, published: Published | null = null, revision = 1): PageSummary => ({
-    id, title, slug, home, revision, updatedAt: "2026-10-02T08:00:00.000Z", published, scheduled: null,
+    id, kind: "page", title, slug, home, revision, updatedAt: "2026-10-02T08:00:00.000Z", published, scheduled: null,
     links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null },
   });
   const kit = editorKit({
@@ -171,6 +171,39 @@ test("the page switch lists the site's pages with their addresses and whether th
   expect(screen.getByRole("dialog", { name: "New page" })).toBeTruthy();
 });
 
+test("the page switch lists the header and the footer apart, on every page, and opens them as it opens a page", async () => {
+  const opened: number[] = [];
+  const part = (id: number, kind: "header" | "footer", published: Published | null): PageSummary => ({
+    id, kind, title: kind === "header" ? "Header" : "Footer", slug: null, home: false, revision: 2, updatedAt: "2026-10-12T08:00:00.000Z", published, scheduled: null,
+    links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null },
+  });
+  const kit = editorKit({
+    document: page(),
+    session: {
+      current: open({}),
+      pages: [{ ...part(1, "header", live), kind: "page", title: "Winter series", slug: "winter-series", links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: "/winter-series" } }],
+      parts: [part(4, "header", { ...live, slug: null, draftRevision: 2 }), part(5, "footer", null)],
+      openPage: async (id) => {
+        opened.push(id);
+        return null;
+      },
+    },
+  });
+  kit.render(<TopBar />);
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
+  const pages = screen.getByRole("dialog", { name: "Pages" });
+  const group = within(pages).getByRole("heading", { name: "On every page" });
+  const parts = [...(group.nextElementSibling?.querySelectorAll<HTMLElement>(".page-row") ?? [])];
+  expect(parts.map((r) => r.textContent)).toEqual(["HeaderEvery pagePublished", "FooterEvery pageNot published yet"]);
+  // The search finds them by their names too.
+  fireEvent.change(within(pages).getByRole("searchbox", { name: "Find a page" }), { target: { value: "foot" } });
+  expect(within(pages).queryAllByRole("button").filter((b) => b.classList.contains("page-row")).map((r) => r.querySelector("strong")?.textContent)).toEqual(["Footer"]);
+  await act(async () => {
+    fireEvent.click(within(pages).getByRole("button", { name: /^Footer/ }));
+  });
+  expect(opened).toEqual([5]);
+});
+
 test("the sidebar's key hides the sidebar and brings it back, pressed while it shows", () => {
   const kit = editorKit({ document: page(), session: { current: open({}) } });
   kit.render(<TopBar />);
@@ -194,7 +227,7 @@ test("the mark's menu opens the site style in the sidebar, the sidebar shown if 
 });
 
 test("where the storage serves no page (the browser demo), the line counts what is still to publish, not what visitors do not see", () => {
-  const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: false } };
+  const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false } };
   for (const [current, said, tip] of [
     [open({ published: null }), "Not published yet", undefined],
     [open({}), "Published", "Published <when>."],

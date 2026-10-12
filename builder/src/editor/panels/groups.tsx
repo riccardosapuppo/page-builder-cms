@@ -83,6 +83,8 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   gallery: ["content", "spacing", "shown"],
   iconbox: ["content", "text-color", "alignment", "shown"],
   form: ["content", "shown"],
+  logo: ["content", "text-color", "alignment", "shown"],
+  menu: ["content", "text-color", "alignment", "shown"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -228,7 +230,7 @@ export function useBlockGroups(block: Block): GroupSpec[] {
       }
       case "columns":
         if (block.type !== "section") return [];
-        return [{ id, name: "Columns", keys: [], holds: (field) => field === "/children" || field === "/props/columnWidths", summary: columnsWords(block), body: <SectionColumns block={block} /> }];
+        return [{ id, name: "Columns", keys: [], holds: (field) => field === "/children" || field === "/props/columnWidths" || field === "/props/stack", summary: columnsWords(block), body: <SectionColumns block={block} /> }];
       case "name":
         if (block.type !== "section") return [];
         return [{ id, name: "Name and link", keys: [], holds: (field) => field === "/props/label" || field === "/props/anchor", summary: nameWords(block), body: <SectionName block={block} /> }];

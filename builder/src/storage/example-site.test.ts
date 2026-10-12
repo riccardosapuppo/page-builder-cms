@@ -40,6 +40,8 @@ function recorder(existing: { pages?: number; media?: number } = {}, refuse: str
     name: "recorder",
     listPages: async () => Array.from({ length: existing.pages ?? 0 }, () => ({})),
     listMedia: async () => Array.from({ length: existing.media ?? 0 }, () => ({})),
+    // The header and footer as a new store makes them, nothing published.
+    listParts: async () => [{ id: 101, kind: "header", revision: 0, published: null }, { id: 102, kind: "footer", revision: 0, published: null }],
     uploadMedia: async (upload: { file: File; width: number; height: number; alt?: string }) => {
       calls.push(`upload ${upload.file.name} ${upload.width}x${upload.height} "${upload.alt}"`);
       if (refuse === upload.file.name) return { ok: false, problem: refused };
@@ -66,7 +68,7 @@ function recorder(existing: { pages?: number; media?: number } = {}, refuse: str
 }
 
 describe("the demo's seed", () => {
-  test("puts the example site into an empty site: pictures, then each page saved and published, and the home page", async () => {
+  test("puts the example site into an empty site: pictures, then each page saved and published, and the home page; then the header and footer published as they are", async () => {
     const { adapter, calls } = recorder();
     expect(await seedExampleSite(adapter, source(), marks())).toBe("seeded");
     expect(calls).toEqual([
@@ -79,6 +81,8 @@ describe("the demo's seed", () => {
       'create second "Second"',
       "save 2 at 0 as example-second: lib2,lib1",
       "publish 2 at 1",
+      "publish 101 at 0",
+      "publish 102 at 0",
     ]);
   });
 
@@ -119,14 +123,17 @@ describe("the demo's seed", () => {
 });
 
 // A storage that keeps what it is given, as the browser's does, and can be
-// cut short once: an upload of the named file, or a publish of the page
-// with that id, throws as a closed tab or a full storage would.
+// cut short once: an upload of the named file, or a publish of the page or
+// part with that id, throws as a closed tab or a full storage would.
 function store(cut: { upload?: string; publish?: number } = {}) {
   const media: Array<{ id: string; filename: string; alt: string }> = [];
   const pages: Array<{ id: number; slug: string; title: string; home: boolean; revision: number; published: object | null }> = [];
+  // The header and footer, made as a new store makes them.
+  const parts = [{ id: 101, kind: "header", revision: 0, published: null as object | null }, { id: 102, kind: "footer", revision: 0, published: null as object | null }];
   const adapter = {
     name: "store",
     listPages: async () => pages.map((page) => ({ ...page })),
+    listParts: async () => parts.map((part) => ({ ...part })),
     listMedia: async () => media.map((item) => ({ ...item })),
     uploadMedia: async ({ file, alt }: { file: File; alt?: string }) => {
       if (cut.upload === file.name) {
@@ -154,7 +161,7 @@ function store(cut: { upload?: string; publish?: number } = {}) {
         delete cut.publish;
         throw new Error("The tab was closed.");
       }
-      pages.find((each) => each.id === id)!.published = {};
+      [...pages, ...parts].find((each) => each.id === id)!.published = {};
       return { ok: true, value: {} };
     },
     updatePage: async (id: number, changes: { home?: boolean }) => {
@@ -162,14 +169,15 @@ function store(cut: { upload?: string; publish?: number } = {}) {
       return { ok: true, value: {} };
     },
   };
-  return { adapter: adapter as unknown as StorageAdapter, media, pages };
+  return { adapter: adapter as unknown as StorageAdapter, media, pages, parts };
 }
 
 // The example site as a whole: each picture once, each page once,
-// published, and the home page set.
+// published, the home page set, and the header and footer published.
 function whole(kept: ReturnType<typeof store>) {
   expect(kept.media.map((item) => item.filename)).toEqual(["one.png", "two.png"]);
   expect(kept.pages.map((page) => [page.slug, page.home, page.published !== null])).toEqual([["home", true, true], ["second", false, true]]);
+  expect(kept.parts.map((part) => [part.kind, part.published !== null])).toEqual([["header", true], ["footer", true]]);
 }
 
 describe("a seed cut short", () => {
@@ -193,6 +201,17 @@ describe("a seed cut short", () => {
     whole(kept);
   });
 
+  test("is finished by the next visit, after the header was published: the footer goes on, the header left as it is", async () => {
+    const kept = store({ publish: 102 });
+    const mark = marks();
+    await expect(seedExampleSite(kept.adapter, source(), mark)).rejects.toThrow("The tab was closed.");
+    const header = kept.parts[0]!.published;
+    expect(header).not.toBeNull();
+    expect(await seedExampleSite(kept.adapter, source(), mark)).toBe("seeded");
+    whole(kept);
+    expect(kept.parts[0]!.published, "the same publish, not a second").toBe(header);
+  });
+
   test("a whole seed is never put in again, even into a site that looks empty", async () => {
     const kept = store();
     expect(await seedExampleSite(kept.adapter, source(), marks("seeded"))).toBe("not empty");
@@ -211,6 +230,23 @@ describe("a seed cut short", () => {
 });
 
 describe("the adapter that waits for the seed", () => {
+  test("lists the header and footer once the seed is done too, the seed run once for both", async () => {
+    const said: string[] = [];
+    const base = {
+      name: "base",
+      listPages: async () => { said.push("pages"); return []; },
+      listParts: async () => { said.push("parts"); return []; },
+    } as unknown as StorageAdapter;
+    const adapter = withExampleSite(base, async () => {
+      said.push("seed");
+      await new Promise((done) => setTimeout(done, 0));
+      said.push("seeded");
+    });
+    await Promise.all([adapter.listParts(), adapter.listPages()]);
+    expect(said.slice(0, 2)).toEqual(["seed", "seeded"]);
+    expect(said.slice(2).sort()).toEqual(["pages", "parts"]);
+  });
+
   test("lists the pages once the seed is done, seeds once, and seeds again after a failure", async () => {
     const said: string[] = [];
     let fail = true;

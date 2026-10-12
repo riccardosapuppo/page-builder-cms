@@ -11,7 +11,7 @@ import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import { Sidebar, toggleSidebar } from "./Sidebar.tsx";
 
-const current = { id: 7, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
+const current = { id: 7, kind: "page" as const, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
 const tab = (name: "Page" | "Block") => screen.getByRole("tab", { name });
 
 test("the tabs follow the selection, and either can be chosen by hand", () => {
@@ -120,33 +120,45 @@ test("Site style opens a level below Page, and closes back to it, the focus on t
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Site style" })));
 });
 
-test("Header and footer opens a level below Page beside Site style, on the site's name, and closes back to it, the focus on the way in", async () => {
-  const capabilities = { publish: true, schedule: false, responses: false, headerFooter: true, imageVariants: false, livePages: true };
-  const kit = editorKit({ document: page(), session: { current, capabilities } });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "Lead.", text: "Text." }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+// The site's header and footer, as the session lists them: the header
+// published, with a change since; the footer never published.
+const part = (id: number, kind: "header" | "footer", published: { draftRevision: number } | null) => ({
+  id, kind, title: kind === "header" ? "Header" : "Footer", slug: null, home: false, revision: 3, updatedAt: "2026-10-12T08:00:00.000Z",
+  published: published && { slug: null, versionNumber: 2, draftRevision: published.draftRevision, publishedAt: "2026-10-12T07:00:00.000Z" },
+  scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: `/preview/${id}`, live: null },
+});
+const PARTS = [part(4, "header", { draftRevision: 2 }), part(5, "footer", null)];
+
+test("a page's Page tab leads to the header and the footer, each saying where it stands, beside Site style; a click opens the part", async () => {
+  const opened: number[] = [];
+  const kit = editorKit({ document: page(), session: { current, parts: PARTS, openPage: async (id) => { opened.push(id); return null; } } });
   kit.render(<Sidebar />);
-  const link = screen.getByRole("button", { name: "Header and footer" });
-  expect(document.getElementById(link.getAttribute("aria-describedby")!)?.textContent).toBe("Name, menu, button and footer of every page");
-  // Beside Site style, at the foot of the Page tab.
-  expect([...screen.getByRole("tabpanel").querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Header and footer", "Site style"]);
-  fireEvent.click(link);
-  expect(kit.ui.getState().tray).toBe("header-footer");
-  const panel = screen.getByRole("complementary", { name: "Header and footer" });
-  await waitFor(() => expect(document.activeElement).toBe(within(panel).getByLabelText("Site name")));
-  // A change left waiting is said on the way in, once back on the Page tab.
-  fireEvent.change(within(panel).getByLabelText("Site name"), { target: { value: "Samphire" } });
-  fireEvent.click(within(panel).getByRole("button", { name: "Back to Page" }));
-  expect(kit.ui.getState().tray).toBe("edit");
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Header and footer" })));
-  expect(document.getElementById(screen.getByRole("button", { name: "Header and footer" }).getAttribute("aria-describedby")!)?.textContent).toBe("Changes not saved yet");
+  expect([...screen.getByRole("tabpanel").querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Header", "Footer", "Site style"]);
+  const said = (name: string) => document.getElementById(screen.getByRole("button", { name }).getAttribute("aria-describedby")!)?.textContent;
+  expect(said("Header")).toBe("Changes not published yet");
+  expect(said("Footer")).toBe("Not published yet: every page shows the starting one");
+  fireEvent.click(screen.getByRole("button", { name: "Footer" }));
+  await act(async () => {});
+  expect(opened).toEqual([5]);
 });
 
-test("a storage that keeps no change of the header and footer has no way to them", () => {
-  const kit = editorKit({ document: page(), session: { current } });
+test("a header's Page tab says it is on every page and how it goes live, and leads back to the page it was opened from", async () => {
+  const opened: number[] = [];
+  const header = { id: 4, kind: "header" as const, slug: null, home: false, published: null, revision: 3, links: { preview: "/preview/4", live: null } };
+  const kit = editorKit({ document: page(), session: { current: header, parts: PARTS, openPage: async (id) => { opened.push(id); return null; } } });
+  kit.ui.getState().setAroundPart({ id: 7, title: "Winter series", document: page() });
   kit.render(<Sidebar />);
-  expect(kit.ui.getState().tray).toBe("edit");
-  expect(screen.queryByRole("button", { name: "Header and footer" })).toBeNull();
-  expect(screen.getByRole("button", { name: "Site style" })).toBeTruthy();
+  const panel = screen.getByRole("tabpanel");
+  expect(panel.textContent).toContain("On every page, not published yet");
+  expect(panel.textContent).toContain("Until then, every page shows the header the site started with.");
+  // None of a page's own settings (its title and address, its search
+  // results): a part is seen only around a page. The site style is still a
+  // click away.
+  for (const field of ["Title", "Description"]) expect(within(panel).queryByLabelText(field), field).toBeNull();
+  expect([...panel.querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Site style"]);
+  fireEvent.click(within(panel).getByRole("button", { name: "Back to Winter series" }));
+  await act(async () => {});
+  expect(opened).toEqual([7]);
 });
 
 test("over the site style too, the sidebar's close button hides the sidebar, which comes back on the site style", async () => {

@@ -63,6 +63,11 @@ export function excerpt(block: Block): string {
     case "form":
       // What its button says it does: "Send request".
       return block.props.submitLabel;
+    case "logo":
+      // The name beside the mark, or what the mark alone is.
+      return block.props.name ?? "Mark only";
+    case "menu":
+      return `${block.props.items.length} ${block.props.items.length === 1 ? "link" : "links"}`;
     case "spacer":
       return tokenName(block.props.size);
     case "divider":

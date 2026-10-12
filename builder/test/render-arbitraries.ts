@@ -13,7 +13,7 @@
 // from the schema fails loudly instead of testing less.
 import fc from "fast-check";
 import {
-  COLUMN_WIDTHS_BY_COUNT, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS, WIDGET_TYPES,
+  COLUMN_WIDTHS_BY_COUNT, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS, WIDGET_TYPES,
   type BlockType, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -179,6 +179,11 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
       submitLabel: line(60),
       confirmation: paragraph(500),
     });
+    case "logo": return fc.option(line(40), { nil: undefined }).map((name) => compact({ name }));
+    case "menu": return fc.record({
+      label: line(40),
+      items: fc.array(fc.record({ label: line(40), href }), { minLength: 1, maxLength: 12 }),
+    });
   }
 }
 
@@ -213,9 +218,11 @@ function section(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
       label: fc.option(line(60), { nil: undefined }),
       anchor: fc.option(fc.stringMatching(/^[a-z][a-z0-9-]{0,63}$/), { nil: undefined }),
       widths: presets.length > 0 ? fc.option(fc.constantFrom(...presets), { nil: undefined }) : fc.constant(undefined),
+      // A section of one column has nothing to stack, and names no stacking.
+      stack: count > 1 ? fc.option(fc.constantFrom(...STACK_TOKENS), { nil: undefined }) : fc.constant(undefined),
       style: style("section"),
-    }).map(({ columns, label, anchor, widths, style: s }) => ({
-      id: "", type: "section", props: compact({ label, anchor, columnWidths: widths }), children: columns, style: s,
+    }).map(({ columns, label, anchor, widths, stack, style: s }) => ({
+      id: "", type: "section", props: compact({ label, anchor, columnWidths: widths, stack }), children: columns, style: s,
     }));
   });
 }

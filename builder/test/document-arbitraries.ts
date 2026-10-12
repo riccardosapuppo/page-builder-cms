@@ -17,7 +17,7 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
   WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
@@ -160,6 +160,8 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
     submitLabel: line,
     confirmation: paragraph,
   }),
+  logo: fc.option(line, { nil: undefined }).map((name) => compact({ name })),
+  menu: fc.record({ label: line, items: fc.array(fc.record({ label: line, href }), { minLength: 1, maxLength: 4 }) }),
 };
 
 // The tokens each style key takes.
@@ -193,11 +195,13 @@ const section = fc.integer({ min: 1, max: 4 }).chain((count) => fc.record({
   label: fc.option(fc.constantFrom("Hero", "Join", "Members’ words"), { nil: undefined }),
   anchor: fc.option(fc.constantFrom("join", "faq", "winter-2026"), { nil: undefined }),
   widths: fc.option(fc.constantFrom(...(COLUMN_WIDTHS_BY_COUNT[count as 1 | 2 | 3 | 4] as readonly string[]), "equal"), { nil: undefined }),
+  // A section of one column has nothing to stack, and names no stacking.
+  stack: fc.option(fc.constantFrom(...STACK_TOKENS), { nil: undefined }).map((stack) => (count > 1 ? stack : undefined)),
   style: style("section"),
-}).map(({ columns, label, anchor, widths, style: s }) => ({
+}).map(({ columns, label, anchor, widths, stack, style: s }) => ({
   id: "",
   type: "section",
-  props: compact({ label, anchor, columnWidths: widths === "equal" ? undefined : widths }),
+  props: compact({ label, anchor, columnWidths: widths === "equal" ? undefined : widths, stack }),
   children: columns,
   style: s,
 })));
@@ -246,6 +250,7 @@ export type Intent =
   | { kind: "props"; pick: number; variant: number; value: number }
   | { kind: "style"; pick: number; device: Device; key: number; token: number; remove: boolean }
   | { kind: "widths"; pick: number; preset: number }
+  | { kind: "stack"; pick: number; stack: number }
   | { kind: "count"; pick: number; count: number }
   | { kind: "page"; variant: number; value: number }
   | { kind: "items"; pick: number; action: "insert" | "remove" | "move" | "set"; index: number; other: number; item: number }
@@ -269,6 +274,7 @@ export const intent: fc.Arbitrary<Intent> = fc.oneof(
   { weight: 4, arbitrary: fc.record({ kind: fc.constant("props" as const), pick: n, variant: n, value: n }) },
   { weight: 4, arbitrary: fc.record({ kind: fc.constant("style" as const), pick: n, device: fc.constantFrom(...DEVICES), key: n, token: n, remove: fc.boolean() }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("widths" as const), pick: n, preset: n }) },
+  { weight: 1, arbitrary: fc.record({ kind: fc.constant("stack" as const), pick: n, stack: n }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("count" as const), pick: n, count: fc.integer({ min: 1, max: 5 }) }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant("page" as const), variant: n, value: n }) },
   { weight: 3, arbitrary: fc.record({ kind: fc.constant("items" as const), pick: n, action: fc.constantFrom("insert" as const, "remove" as const, "move" as const, "set" as const), index: n, other: n, item: n }) },
@@ -371,6 +377,15 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       const fits = preset === "equal" || (COLUMN_WIDTHS_BY_COUNT[picked.block.children.length as 1 | 2 | 3 | 4] as readonly string[]).includes(preset);
       return { made: c.makeSetColumnWidths(doc, picked.block.id, preset), mustAccept: fits };
     }
+    case "stack": {
+      // On tablets and phones, the setting's absence, fits any section; the
+      // others, a section of two columns or more.
+      const sections = blocks.filter((b) => b.block.type === "section");
+      const picked = at(sections, wish.pick);
+      if (!picked) return null;
+      const stack = at([...STACK_TOKENS, "tablet" as const], wish.stack) ?? "tablet";
+      return { made: c.makeSetStack(doc, picked.block.id, stack), mustAccept: stack === "tablet" || picked.block.children.length > 1 };
+    }
     case "count": {
       const sections = blocks.filter((b) => b.block.type === "section");
       const picked = at(sections, wish.pick);
@@ -399,19 +414,21 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: c.makeSetItem(doc, picked.block.id, index, formFieldUpdates(c.REMOVE, items[index] as AnyObject, edit, wish.value)), mustAccept: true };
     }
     case "items": {
-      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "form");
+      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "form" || b.block.type === "menu");
       const picked = at(lists, wish.pick);
       if (!picked) return null;
       const items = (picked.block.props as { items: AnyObject[] }).items;
       const gallery = picked.block.type === "gallery";
       const form = picked.block.type === "form";
+      const menu = picked.block.type === "menu";
       // A form's new field may take a name the form has: the page must
       // refuse it then, by the rule on a form's field names.
       const fieldName = at(["name", "email", "notes", "field-4", "a", "added"], wish.item) as string;
       const newItem = gallery ? { mediaId: at(MEDIA_IDS, wish.item) as string, alt: "Added picture" }
         : form ? { name: fieldName, kind: "checkbox", label: "Added box", required: false }
-          : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
-      const max = gallery ? 24 : form ? 20 : 30;
+          : menu ? { label: at(LINES, wish.item) as string, href: at(HREFS, wish.item) as string }
+            : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
+      const max = gallery ? 24 : form ? 20 : menu ? 12 : 30;
       const free = !form || !items.some((item) => item.name === fieldName);
       switch (wish.action) {
         case "insert":
@@ -424,7 +441,8 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
           const updates: Commands.Updates = gallery
             ? (wish.other % 2 === 0 ? { alt: at(LINES, wish.item) as string, decorative: c.REMOVE } : { decorative: true, alt: c.REMOVE })
             : form ? formFieldUpdates(c.REMOVE, items[wish.index % items.length] as AnyObject, wish.other, wish.item)
-              : { question: at(LINES, wish.item) as string };
+              : menu ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { href: at(HREFS, wish.item) as string })
+                : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
       }
@@ -496,6 +514,10 @@ function propUpdates(REMOVE: typeof Commands.REMOVE, type: BlockType, props: Any
         return [{ text: pick(PARAGRAPHS) }, { attribution: pick(LINES) }, { attribution: REMOVE }];
       case "form":
         return [{ submitLabel: pick(LINES) }, { confirmation: pick(PARAGRAPHS) }];
+      case "logo":
+        return [{ name: pick(LINES) }, { name: REMOVE }];
+      case "menu":
+        return [{ label: pick(LINES) }];
       default:
         return [];
     }

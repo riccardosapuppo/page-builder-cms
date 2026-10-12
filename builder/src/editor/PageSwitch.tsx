@@ -2,7 +2,8 @@
 // design/layout/shots-extra/pages.png): the page being edited, like a
 // document's name, with whether it is live under it; pressed, it opens the
 // site's pages, a search over them, each with its address and whether it
-// is live, and New page. A small window that stays beside its button (a
+// is live, then the site's header and footer, which open as pages do, and
+// New page. A small window that stays beside its button (a
 // non-modal dialog): its search takes the focus, the arrows move between
 // the pages, Esc, a click elsewhere or the focus leaving it closes it, and
 // the focus goes back to the title.
@@ -117,7 +118,7 @@ export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
 
 const matches = (page: PageSummary, query: string) => {
   const wanted = query.trim().toLowerCase();
-  return wanted === "" || page.title.toLowerCase().includes(wanted) || page.slug.toLowerCase().includes(wanted);
+  return wanted === "" || page.title.toLowerCase().includes(wanted) || (page.slug ?? "").toLowerCase().includes(wanted);
 };
 
 interface PagesWindowProps {
@@ -142,6 +143,7 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
   });
   const current = session.current;
   const shown = session.pages.filter((page) => matches(page, query));
+  const shownParts = session.parts.filter((part) => matches(part, query));
 
   useEffect(() => {
     search.current?.focus();
@@ -154,13 +156,41 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
     return () => document.removeEventListener("pointerdown", away);
   }, [button]);
 
-  // A page's address as a person reads it, and whether it is live.
-  const address = (page: PageSummary) => (page.home ? siteAddress("/", session.cmsOrigin) : `/${page.slug}`);
+  // A page's address as a person reads it, and whether it is live; a part
+  // has none, and is on every page.
+  const address = (page: PageSummary) => (page.kind !== "page" ? "Every page" : page.home ? siteAddress("/", session.cmsOrigin) : `/${page.slug ?? ""}`);
   const state = (page: PageSummary): { dot: string; words: string } => {
     const isOpen = current?.id === page.id;
     if (!(isOpen ? current.published : page.published)) return { dot: "dot-draft", words: "Not published yet" };
     const notLive = isOpen ? changesNotLive(current, snapshot) : Math.max(0, page.revision - (page.published?.draftRevision ?? page.revision));
     return notLive > 0 ? { dot: "dot-part", words: publishWords(session.capabilities.livePages).notLive(changes(notLive)) } : { dot: "dot-live", words: "Published" };
+  };
+
+  // One page or part of the list: opens it, or, open already, closes the
+  // window.
+  const pageRow = (page: PageSummary) => {
+    const isOpen = current?.id === page.id;
+    const said = state(page);
+    return (
+      <button
+        type="button"
+        className="page-row"
+        aria-current={isOpen ? "page" : undefined}
+        data-kind={page.kind}
+        onClick={() => {
+          close.current();
+          if (isOpen) {
+            button.current?.focus();
+            return;
+          }
+          void session.openPage(page.id).then((why) => ui.getState().say(why));
+        }}
+      >
+        <Icon name={page.kind === "page" ? "page" : "globe"} />
+        <span className="page-row-name"><strong>{isOpen ? title : page.title}</strong><small>{address(page)}</small></span>
+        <span className="pr-state"><span className={said.dot} aria-hidden="true" />{said.words}</span>
+      </button>
+    );
   };
 
   const rows = () => [...(box.current?.querySelectorAll<HTMLElement>(".page-row") ?? [])];
@@ -202,34 +232,18 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
       </label>
       {shown.length > 0 && (
         <ul className="pages-list" aria-label="The site's pages">
-          {shown.map((page) => {
-            const isOpen = current?.id === page.id;
-            const said = state(page);
-            return (
-              <li key={page.id}>
-                <button
-                  type="button"
-                  className="page-row"
-                  aria-current={isOpen ? "page" : undefined}
-                  onClick={() => {
-                    close.current();
-                    if (isOpen) {
-                      button.current?.focus();
-                      return;
-                    }
-                    void session.openPage(page.id).then((why) => ui.getState().say(why));
-                  }}
-                >
-                  <Icon name="page" />
-                  <span className="page-row-name"><strong>{isOpen ? title : page.title}</strong><small>{address(page)}</small></span>
-                  <span className="pr-state"><span className={said.dot} aria-hidden="true" />{said.words}</span>
-                </button>
-              </li>
-            );
-          })}
+          {shown.map((page) => <li key={page.id}>{pageRow(page)}</li>)}
         </ul>
       )}
       {shown.length === 0 && <p className="hint pages-none" role="status">{session.pages.length === 0 ? "No pages yet." : `No page is called “${query.trim()}”.`}</p>}
+      {shownParts.length > 0 && (
+        <>
+          <h3 className="pages-group" id="pages_site">On every page</h3>
+          <ul className="pages-list" aria-labelledby="pages_site">
+            {shownParts.map((part) => <li key={part.id}>{pageRow(part)}</li>)}
+          </ul>
+        </>
+      )}
       <div className="pop-foot">
         <button className="btn btn-secondary" type="button" onClick={onNew}><Icon name="plus" />New page</button>
       </div>

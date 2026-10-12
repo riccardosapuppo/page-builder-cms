@@ -8,8 +8,8 @@ import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
   COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
-  ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
-  SPACE_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
+  MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
+  SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
 
@@ -58,7 +58,7 @@ describe("the document's types match the schema", () => {
   test("every token list", () => {
     const pairs: Array<[readonly unknown[], string]> = [
       [SPACE_TOKENS, "spaceToken"], [SECTION_SPACE_TOKENS, "sectionSpaceToken"],
-      [COLUMN_WIDTHS_TOKENS, "columnWidthsToken"], [ASPECT_TOKENS, "aspectToken"],
+      [COLUMN_WIDTHS_TOKENS, "columnWidthsToken"], [STACK_TOKENS, "stackToken"], [ASPECT_TOKENS, "aspectToken"],
       [PALETTE_SLOTS, "paletteSlot"], [BACKGROUND_TOKENS, "backgroundToken"], [TYPE_STEPS, "typeStep"],
       [ALIGN_TOKENS, "alignToken"], [VERTICAL_ALIGN_TOKENS, "verticalAlignToken"], [VISIBILITY_TOKENS, "visibilityToken"],
     ];
@@ -110,6 +110,8 @@ describe("the document's types match the schema", () => {
     expect(sorted(ACCORDION_ITEM_KEYS)).toEqual(sorted(keyTable(deref(accordionItems.items as Node))));
     const formItems = properties(branch("form").props).items as Node;
     expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
+    const menuItems = properties(branch("menu").props).items as Node;
+    expect(sorted(MENU_LINK_KEYS)).toEqual(sorted(keyTable(deref(menuItems.items as Node))));
     expect(sorted(DOCUMENT_KEYS)).toEqual(sorted(keyTable(schema)));
     expect(properties(schema).schemaVersion?.const).toBe(SCHEMA_VERSION);
   });
@@ -137,6 +139,20 @@ describe("the document's types match the schema", () => {
       for (let count = min; count <= max; count++) byCount[count] = widths?.enum ? [...(widths.enum as unknown[])] : [];
     }
     expect(byCount).toEqual(Object.fromEntries(Object.entries(COLUMN_WIDTHS_BY_COUNT).map(([count, list]) => [count, [...list]])));
+  });
+
+  test("a section of one column names neither a preset nor where to stack, and only it", () => {
+    const forbidden = (rule: Node): string[] => {
+      const not = (properties(rule.then as Node).props as Node).not as Node | undefined;
+      const entries = not ? ((not.anyOf as Node[] | undefined) ?? [not]) : [];
+      return entries.flatMap((entry) => (entry.required ?? []) as string[]).sort();
+    };
+    const byCount: Record<number, string[]> = {};
+    for (const rule of def("sectionBlock").allOf as Node[]) {
+      const children = properties(rule.if as Node).children as Node;
+      for (let count = (children.minItems as number | undefined) ?? 1; count <= ((children.maxItems as number | undefined) ?? 4); count++) byCount[count] = forbidden(rule);
+    }
+    expect(byCount).toEqual({ 1: ["columnWidths", "stack"], 2: [], 3: [], 4: ["columnWidths"] });
   });
 
   test("the rich-text nodes and marks", () => {

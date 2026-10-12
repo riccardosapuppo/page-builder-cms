@@ -15,12 +15,12 @@ import type { OpenPage, Session } from "./session.tsx";
 const LONDON = "Europe/London";
 const NOW = Date.UTC(2026, 9, 2, 9);
 const live: Published = { slug: "winter-series", versionNumber: 4, draftRevision: 3, publishedAt: "2026-09-28T07:02:00.000Z" };
-const open = (changes: Partial<OpenPage> = {}): OpenPage => ({ id: 7, slug: "winter-series", home: false, published: live, revision: 9, links: { preview: "/preview/7", live: "/winter-series" }, ...changes });
+const open = (changes: Partial<OpenPage> = {}): OpenPage => ({ id: 7, kind: "page", slug: "winter-series", home: false, published: live, revision: 9, links: { preview: "/preview/7", live: "/winter-series" }, ...changes });
 
 function draw(session: Partial<Session> = {}) {
   const closed: number[] = [];
-  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, headerFooter: false, imageVariants: false, livePages: true }, ...session } });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: LONDON, revision: 0, updatedAt: null });
+  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true }, ...session } });
+  kit.ui.getState().setSite({ timeZone: LONDON });
   kit.render(<ScheduleDialog onClose={() => closed.push(1)} />);
   return { kit, closed };
 }

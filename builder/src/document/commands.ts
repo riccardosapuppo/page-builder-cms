@@ -11,8 +11,8 @@
 // may go there, the preset fits the columns) and refuse with a sentence;
 // the reducer checks what the schema says when the command is applied.
 import {
-  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_REF_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
-  type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock,
+  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
+  type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock, type StackToken,
   type StyleTokens, type WidgetBlock,
 } from "../shared/document.ts";
 import { checkNesting, nestingMessage, refusal, type CommandError } from "./check.ts";
@@ -27,7 +27,7 @@ import { childrenOf, locate, typeOf, type ParentId, type Position } from "./tree
 
 export type CommandKind =
   | "insert" | "delete" | "move" | "duplicate" | "paste"
-  | "props" | "style" | "columnWidths" | "columns" | "page" | "items";
+  | "props" | "style" | "columnWidths" | "stack" | "columns" | "page" | "items";
 
 // The block a command is about, and for a list command the item: where
 // the editor puts the focus once it is applied (./reducer.ts).
@@ -114,13 +114,31 @@ function keySteps(id: string | null, path: Path, object: Record<string, unknown>
 
 // The widths preset names one part per column, so it cannot outlive a
 // change in the number of columns: the step that takes it out goes with
-// any insert, removal or move that changes the count.
-function clearWidths(doc: PageDocument, sectionId: string | null): Op[] {
+// any insert, removal or move that changes the count. Where the columns
+// stack means nothing to a section left with one column, which the schema
+// refuses it for: given the count after the change, the step that takes it
+// out goes too.
+function clearWidths(doc: PageDocument, sectionId: string | null, countAfter?: number): Op[] {
   if (sectionId === null) return [];
   const section = locate(doc, sectionId)?.block;
-  if (section?.type !== "section" || section.props.columnWidths === undefined) return [];
-  const props = section.props as Record<string, unknown>;
-  return [{ op: "set", id: sectionId, path: ["props"], key: "columnWidths", before: section.props.columnWidths, at: keyIndex(props, "columnWidths") }];
+  if (section?.type !== "section") return [];
+  const ops: Op[] = [];
+  let props = section.props as Record<string, unknown>;
+  if (section.props.columnWidths !== undefined) {
+    ops.push({ op: "set", id: sectionId, path: ["props"], key: "columnWidths", before: section.props.columnWidths, at: keyIndex(props, "columnWidths") });
+    props = withoutKey(props, "columnWidths");
+  }
+  if (countAfter !== undefined && countAfter < 2 && section.props.stack !== undefined) {
+    ops.push({ op: "set", id: sectionId, path: ["props"], key: "stack", before: section.props.stack, at: keyIndex(props, "stack") });
+  }
+  return ops;
+}
+
+// How many columns a section holds now.
+function columnCount(doc: PageDocument, sectionId: string | null): number {
+  if (sectionId === null) return 0;
+  const section = locate(doc, sectionId)?.block;
+  return section?.type === "section" ? section.children.length : 0;
 }
 
 // Moving a column inside its section moves its part of the preset with
@@ -204,7 +222,7 @@ export function makeDelete(doc: PageDocument, id: string): Made {
   const found = locate(doc, id);
   if (!found) return unknown(id);
   const at = { parentId: found.parentId, index: found.index };
-  const ops: Op[] = [...(found.block.type === "column" ? clearWidths(doc, found.parentId) : []), { op: "remove", at, block: copyJson(found.block) }];
+  const ops: Op[] = [...(found.block.type === "column" ? clearWidths(doc, found.parentId, columnCount(doc, found.parentId) - 1) : []), { op: "remove", at, block: copyJson(found.block) }];
   return made("delete", `Deleted ${blockWithPlace(doc, id)}`, { id }, ops);
 }
 
@@ -231,7 +249,7 @@ export function makeMove(doc: PageDocument, id: string, to: Position): Made {
   const ops: Op[] = [];
   if (found.block.type === "column" && found.parentId !== null && to.parentId !== null) {
     if (sameParent) ops.push(...permuteWidths(doc, found.parentId, found.index, to.index));
-    else ops.push(...clearWidths(doc, found.parentId), ...clearWidths(doc, to.parentId));
+    else ops.push(...clearWidths(doc, found.parentId, columnCount(doc, found.parentId) - 1), ...clearWidths(doc, to.parentId));
   }
   ops.push({ op: "move", id, from: { parentId: found.parentId, index: found.index }, to });
   const label = sameParent
@@ -367,8 +385,9 @@ function styleLabel(doc: PageDocument, id: string, device: Device, updates: Styl
 // -------------------------------------------------------- column widths
 
 // A section's widths preset, or "equal" for none. The preset must have one
-// part per column: two columns take 3:2, 2:3, 2:1 or 1:2; three take
-// 2:1:1, 1:2:1 or 1:1:2; one and four take none.
+// part per column: two columns take 3:2, 2:3, 2:1, 1:2, fit:1 or 1:fit;
+// three take 2:1:1, 1:2:1, 1:1:2 or fit:1:fit; one and four take none. A
+// fit part is a column as wide as what it holds.
 export function makeSetColumnWidths(doc: PageDocument, sectionId: string, preset: ColumnWidthsToken | "equal"): Made {
   const found = locate(doc, sectionId);
   if (found?.block.type !== "section") return unknown(sectionId);
@@ -384,6 +403,26 @@ export function makeSetColumnWidths(doc: PageDocument, sectionId: string, preset
   return made("columnWidths", preset === "equal" ? `Set equal column widths in ${name}` : `Set the column widths of ${name} to ${preset}`, { id: sectionId }, ops);
 }
 
+// Where a section's columns go one under the other: "tablet" (tablets and
+// phones, the setting's absence), "phone" (phones only) or "never". A
+// section of one column has nothing to stack.
+export const STACK_WORDS: Readonly<Record<StackToken | "tablet", string>> = {
+  tablet: "on tablets and phones",
+  phone: "on phones only",
+  never: "never",
+};
+
+export function makeSetStack(doc: PageDocument, sectionId: string, stack: StackToken | "tablet"): Made {
+  const found = locate(doc, sectionId);
+  if (found?.block.type !== "section") return unknown(sectionId);
+  const section = found.block;
+  const name = blockName(doc, sectionId);
+  if (stack !== "tablet" && section.children.length < 2) return refuse(refusal("invalid", `${name} has 1 column: there is nothing to stack.`));
+  const { ops } = keySteps(sectionId, ["props"], section.props as Record<string, unknown>, { stack: stack === "tablet" ? REMOVE : stack }, propOrder("section"));
+  const label = stack === "never" ? `Set the columns of ${name} to never stack` : `Set the columns of ${name} to stack ${STACK_WORDS[stack]}`;
+  return made("stack", label, { id: sectionId }, ops);
+}
+
 // A section's number of columns. New columns are empty and go at the end.
 // Fewer columns keep their widgets: those of the columns that go are moved,
 // in order, to the end of the last column that stays, so nothing on the
@@ -394,7 +433,7 @@ export function makeSetColumnCount(doc: PageDocument, sectionId: string, count: 
   const section = found.block;
   const current = section.children.length;
   if (!Number.isInteger(count) || count < 1) return refuse(refusal("empty", `${blockName(doc, sectionId)} must keep at least 1 column.`));
-  const ops: Op[] = [...clearWidths(doc, sectionId)];
+  const ops: Op[] = [...clearWidths(doc, sectionId, count)];
   if (count > current) {
     const draw = idDraw(doc, newId);
     for (let index = current; index < count; index++) ops.push({ op: "insert", at: { parentId: sectionId, index }, block: newColumn(draw) });
@@ -451,7 +490,10 @@ function itemList(doc: PageDocument, id: string): { block: Block; items: readonl
   const names = ITEM_NAMES[block.type];
   const items = (block.props as Record<string, unknown>).items;
   if (!names || !Array.isArray(items)) return null;
-  const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS) : block.type === "form" ? Object.keys(FORM_FIELD_KEYS) : IMAGE_REF_KEYS;
+  const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS)
+    : block.type === "form" ? Object.keys(FORM_FIELD_KEYS)
+    : block.type === "menu" ? Object.keys(MENU_LINK_KEYS)
+    : IMAGE_REF_KEYS;
   return { block, items: items as Json[], ...names, order };
 }
 

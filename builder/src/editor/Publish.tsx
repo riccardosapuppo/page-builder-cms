@@ -23,9 +23,10 @@ import { useSession, type OpenPage } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 
-// Why Publish waits, or null when it can go.
-export function publishPaused(snapshot: SaveSnapshot | null, sections: number): string | null {
-  if (sections === 0) return "Add a section first. An empty page has nothing to publish.";
+// Why Publish waits, or null when it can go. A header or a footer may go
+// empty: published so, the site has none.
+export function publishPaused(snapshot: SaveSnapshot | null, sections: number, part = false): string | null {
+  if (sections === 0 && !part) return "Add a section first. An empty page has nothing to publish.";
   switch (snapshot?.phase) {
     case "conflict":
       return "Publish is paused until you choose Reload or Keep mine.";
@@ -99,20 +100,29 @@ export function PreviewButton() {
 export function scheduleLine(page: OpenPage, notLive: number, zone: string): { line: string; nothing: boolean } {
   const pending = page.scheduled ?? null;
   if (pending) return { line: `Set for ${siteWhen(zone, pending.at)}. Choose another time.`, nothing: false };
-  if (!page.published) return { line: "Choose the day and time visitors first see this page.", nothing: false };
+  if (!page.published) return { line: page.kind === "page" ? "Choose the day and time visitors first see this page." : `Choose the day and time every page first shows this ${page.kind}.`, nothing: false };
   if (notLive === 0) return { line: "Visitors already see this draft: there is nothing to schedule.", nothing: true };
   return { line: `Choose the day and time visitors see your ${changes(notLive)}.`, nothing: false };
 }
 
 // What Publish now does, under its name: on a storage that serves the
 // page, what visitors see; on one that only keeps it (the browser demo),
-// what is kept, and where it shows.
+// what is kept, and where it shows. A header or a footer has no address:
+// it goes onto every page at once.
 function nowLine(page: OpenPage, notLive: number): string {
+  if (page.kind !== "page") {
+    if (!page.published) return `Every page shows this ${page.kind} right away.`;
+    return notLive > 0 ? `Every page shows your ${changes(notLive)} right away.` : "Every page already shows this draft; publishing keeps it as a new version.";
+  }
   if (!page.published) return `Visitors see this page at ${page.home ? "/" : `/${page.slug}`} right away.`;
   return notLive > 0 ? `Visitors see your ${changes(notLive)} right away.` : "Visitors already see this draft; publishing keeps it as a new version.";
 }
 
 function keptLine(page: OpenPage, notLive: number): string {
+  if (page.kind !== "page") {
+    if (!page.published) return "Kept as published in this browser, on every page published here; the home page shows it in a new tab.";
+    return notLive > 0 ? `Your ${changes(notLive)} go onto every page published here; the home page shows them in a new tab.` : `The published ${page.kind} is this draft already; publishing keeps it as a new version.`;
+  }
   if (!page.published) return "Kept as published in this browser, and shown in a new tab.";
   return notLive > 0 ? `Your ${changes(notLive)} go into the published page, shown in a new tab.` : "The published page is this draft already; publishing keeps it as a new version.";
 }
@@ -128,12 +138,16 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
   const page = session.current;
   if (!session.capabilities.publish || !page) return null;
 
-  const paused = publishPaused(snapshot, sections);
+  const part = page.kind !== "page";
+  const paused = publishPaused(snapshot, sections, part);
   const busy = session.publishing || session.scheduling;
   const keys = entry("publish");
   const off = paused !== null || busy;
   const notLive = changesNotLive(page, snapshot);
-  const live = page.links.live === null ? null : cmsAddress(page.links.live, session.cmsOrigin);
+  // A header or a footer has no address of its own: it is seen on the home
+  // page, as on every other.
+  const livePath = part ? session.pages.find((p) => p.home)?.links.live ?? null : page.links.live;
+  const live = livePath === null ? null : cmsAddress(livePath, session.cmsOrigin);
   const schedule = session.capabilities.schedule && onSchedule ? scheduleLine(page, notLive, zone) : null;
   const pending = session.capabilities.schedule ? page.scheduled ?? null : null;
   // With no live page (the browser demo), the page as published opens from
@@ -231,7 +245,7 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
               <Icon name="close" />
               <span>
                 <strong>Cancel scheduled publish</strong>
-                <small>Set for {siteWhen(zone, pending.at)}. The live page stays as it is.</small>
+                <small>Set for {siteWhen(zone, pending.at)}. {part ? "Every page" : "The live page"} stays as it is.</small>
               </span>
             </button>
           )}
@@ -251,7 +265,7 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
             >
               <Icon name="external" />
               <span>
-                <strong>View published page</strong>
+                <strong>{part ? "View published home page" : "View published page"}</strong>
                 <small>Published {when(page.published.publishedAt)} in this browser. Opens in a new tab.</small>
               </span>
             </a>
@@ -273,7 +287,7 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
             >
               <Icon name="external" />
               <span>
-                <strong>View live page</strong>
+                <strong>{part ? "View live home page" : "View live page"}</strong>
                 <small className="menu-addr">{shownAddress(live)}</small>
                 <small>Published {when(page.published.publishedAt)}. Opens in a new tab.</small>
               </span>

@@ -1,11 +1,11 @@
 // servedWithStyle (./style-served.ts), against a CMS that another test file
 // is changing the style of: a page served while the style was changed and
 // put back is served again, and one served while it held still comes back
-// with that style. servedWithSite, the same for the header and footer.
+// with that style. servedWithParts, the same for the header and footer.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import type { Site, SiteStyle } from "../src/storage/adapter.ts";
-import { servedWithSite, servedWithStyle } from "./style-served.ts";
+import type { PageSummary, SiteStyle } from "../src/storage/adapter.ts";
+import { servedWithParts, servedWithStyle } from "./style-served.ts";
 
 const style = (typeScale: string, updatedAt: string | null): SiteStyle => ({ palette: { primary: "site-sea" }, typeScale, updatedAt, choices: { palette: { primary: [{ color: "site-sea" }] }, typeScales: [{ name: "balanced" }, { name: "strong" }] } }) as unknown as SiteStyle;
 
@@ -46,29 +46,29 @@ test("a style changed at every serve is said, not waited for", async () => {
   await expect(servedWithStyle(adapter, serve)).rejects.toThrow("the site style changed while the page was served, 5 times running");
 });
 
-// A CMS whose header a contract changes at the given serves and puts back
-// before the next read: each such serve draws the other name, and the
-// revision moves on twice.
-function siteCms(changedAt: number[]) {
-  let stored = { name: "Slack Water", revision: 3 } as Site;
+// A CMS whose header another suite publishes at the given serves: each
+// such serve draws the header before, and its published version moves on.
+function partsCms(publishedAt: number[]) {
+  let version = 1;
   let serves = 0;
-  const adapter = { getSite: async () => stored };
+  const parts = () => [{ kind: "header", published: { versionNumber: version } }, { kind: "footer", published: null }] as unknown as PageSummary[];
+  const adapter = { listParts: async () => parts() };
   const serve = async () => {
     serves += 1;
-    if (!changedAt.includes(serves)) return stored.name;
-    stored = { ...stored, revision: stored.revision + 2 };
-    return "Another name";
+    const drawn = `header ${version}`;
+    if (publishedAt.includes(serves)) version += 1;
+    return drawn;
   };
   return { adapter, serve, serves: () => serves };
 }
 
-test("a page served while the header was changed and put back is served again, then comes with the header stored", async () => {
-  const { adapter, serve, serves } = siteCms([1]);
-  const { served, stored } = await servedWithSite(adapter, serve);
-  expect([served, stored.name, stored.revision, serves()]).toEqual(["Slack Water", "Slack Water", 5, 2]);
+test("a page served while the header was published is served again, then comes with the parts as they stood", async () => {
+  const { adapter, serve, serves } = partsCms([1]);
+  const { served, parts } = await servedWithParts(adapter, serve);
+  expect([served, parts[0]?.published?.versionNumber, serves()]).toEqual(["header 2", 2, 2]);
 });
 
-test("a header changed at every serve is said, not waited for", async () => {
-  const { adapter, serve } = siteCms([1, 2, 3, 4, 5]);
-  await expect(servedWithSite(adapter, serve)).rejects.toThrow("the header and footer changed while the page was served, 5 times running");
+test("a header published at every serve is said, not waited for", async () => {
+  const { adapter, serve } = partsCms([1, 2, 3, 4, 5]);
+  await expect(servedWithParts(adapter, serve)).rejects.toThrow("the header or footer was published while the page was served, 5 times running");
 });

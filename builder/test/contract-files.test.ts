@@ -13,7 +13,7 @@ import { readContractFiles, RENDERER_SOURCES } from "./contract-files.ts";
 test("the real goldens are current: six fixtures or more, each with its golden, every hash as recorded", () => {
   const files = readContractFiles(repoRoot);
   expect(files.problems).toEqual([]);
-  expect(files.fixtures).toEqual(["edge.json", "empty.json", "large-500.json", "traps-form.json", "traps-media.json", "traps-structure.json", "traps-text.json"]);
+  expect(files.fixtures).toEqual(["edge.json", "empty.json", "large-500.json", "traps-form.json", "traps-media.json", "traps-site.json", "traps-structure.json", "traps-text.json"]);
 });
 
 // A repository of the files the check reads, copied from the real one.
@@ -79,6 +79,6 @@ describe("a planted fault makes the goldens unusable", () => {
       unlinkSync(join(root, "contract", "fixtures", `${name}.json`));
       unlinkSync(join(root, "contract", "rendered", `${name}.html`));
     }
-    expect(readContractFiles(root).problems).toEqual(["only 4 fixture(s) in contract/fixtures, fewer than 6", "contract/rendered/manifest.json is missing"]);
+    expect(readContractFiles(root).problems).toEqual(["only 5 fixture(s) in contract/fixtures, fewer than 6", "contract/rendered/manifest.json is missing"]);
   });
 });

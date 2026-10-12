@@ -14,13 +14,14 @@
 //
 // Every case makes the pages it uses, under names no other case takes, so
 // the cases share one store and run in any order, but one. The media
-// library, the site style and the header and footer are one per store: a
-// case reads the library for the items it made, and puts the site style
-// and the header and footer back as it found them. The one is the case
-// that reads the header and footer as a new store has them, before any
-// case changes them: each runner starts the battery on a store of its own
-// and runs the cases in their order here, where that case comes before
-// the others of the header and footer.
+// library, the site style and the site's parts (the header and the footer)
+// are one per store: a case reads the library for the items it made, puts
+// the site style back as it found it, and saves a part's draft back as it
+// found it; a part is published only as a new store makes it, its starter,
+// which every page draws either way. The one is the case that reads the
+// parts as a new store makes them, before any case saves one: each runner
+// starts the battery on a store of its own and runs the cases in their
+// order here, where that case comes before the others of the parts.
 import {
   errorsByBlock,
   isStorageError,
@@ -31,13 +32,11 @@ import {
   StorageError,
   type DraftSave,
   type Failure,
-  type FieldError,
   type OptionalOperation,
   type Outcome,
   type PageSummary,
-  type Site,
-  type SiteChange,
-  type SiteValues,
+  PART_KINDS,
+  type PartKind,
   type StorageAdapter,
 } from "./adapter.ts";
 import { createAutosave, type Autosave, type SavePhase, type SaveSnapshot } from "./autosave.ts";
@@ -74,10 +73,10 @@ export interface ContractEnv {
   // runner does it; only the cases that need responses ask for it, and a
   // send the storage does not keep fails the case.
   sendForm(live: string, formId: string, answers: Readonly<Record<string, string>>): Promise<void>;
-  // The header and footer a store has before anyone changes them: the
-  // defaults of cms/config/site.yml, read by the runner from the file the
-  // storage reads them from.
-  siteDefaults: SiteValues;
+  // The header and footer a store starts from: the starters of
+  // cms/config/parts, read by the runner from the files the storage reads
+  // them from.
+  starters: Readonly<Record<PartKind, PageDocument>>;
 }
 
 export interface ContractCase {
@@ -152,16 +151,6 @@ async function newPage(env: ContractEnv, prefix: string): Promise<{ id: number; 
 
 async function saved(adapter: StorageAdapter, pageId: number, save: DraftSave, what = "the save"): Promise<number> {
   return value(await adapter.saveDraft(pageId, save), what).revision;
-}
-
-// The header and footer's four values, as a change sends them.
-const valuesOf = (site: Site): SiteValues => ({ name: site.name, menu: site.menu, action: site.action, footer: site.footer });
-
-// Puts the header and footer back to what a case found, from whatever
-// revision they are at now.
-async function putSiteBack(env: ContractEnv, found: SiteValues): Promise<void> {
-  const now = await env.adapter.getSite();
-  value(await env.adapter.setSite({ revision: now.revision, ...found }), "putting the header and footer back");
 }
 
 // A 3 by 2 PNG: green, a yellow middle column.
@@ -473,7 +462,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
       // Nothing was kept, and the page is as it was.
       env.expect(await env.adapter.listVersions(page.id)).toEqual(before.versions);
       env.expect(await env.adapter.getDraft(page.id)).toEqual(before.draft);
-      env.expect((await env.adapter.listPages()).filter((p) => p.slug.startsWith("lone-")), "no page was made").toEqual([]);
+      env.expect((await env.adapter.listPages()).filter((p) => (p.slug ?? "").startsWith("lone-")), "no page was made").toEqual([]);
       env.expect((await env.adapter.listMedia()).find((m) => m.id === item.id)?.alt).toBe("");
       // A whole pair is text like any other.
       const pair = value(await env.adapter.saveVersion(page.id, { name: "Swim \u{1F3CA}" }), "a version named with a whole pair");
@@ -943,169 +932,153 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
-  // -------------------------------------------------------- the theme
+  // -------------------------------------------------- the site's settings
   {
-    name: "the theme's header and footer are read as every page draws them, the same twice",
+    name: "the site's settings are its time zone, the same twice",
     needs: [],
     async run(env) {
       const site = await env.adapter.getSite();
-      env.expect(site.name.length).toBeGreaterThan(0);
-      env.expect(site.menu.every((link) => link.label.length > 0 && link.href.length > 0)).toBe(true);
-      env.expect(site.action === null || (site.action.label.length > 0 && site.action.href.length > 0)).toBe(true);
-      env.expect(typeof site.footer.lead).toBe("string");
-      env.expect(typeof site.footer.text).toBe("string");
+      env.expect(Object.keys(site)).toEqual(["timeZone"]);
+      env.expect(site.timeZone.length).toBeGreaterThan(0);
       env.expect(await env.adapter.getSite()).toEqual(site);
     },
   },
 
-  // -------------------------------------------- the header and footer
-  // Before every other case of the header and footer: see the top of this
-  // file.
+  // ------------------------------------------------ the header and footer
+  // Before every other case of the parts: see the top of this file.
   {
-    name: "until they are first changed, the header and footer are config/site.yml's, at revision 0 with no time of change",
+    name: "the header and footer are listed apart from the pages, made once, each with its starter as the draft, no address, and nothing live but the starter",
     needs: [],
     async run(env) {
-      const site = await env.adapter.getSite();
-      env.expect({ revision: site.revision, updatedAt: site.updatedAt }, "a store no change of the header and footer has reached").toEqual({ revision: 0, updatedAt: null });
-      env.expect(valuesOf(site)).toEqual(env.siteDefaults);
-      env.expect(site.timeZone.length).toBeGreaterThan(0);
+      const parts = await env.adapter.listParts();
+      env.expect(parts.map((part) => part.kind)).toEqual([...PART_KINDS]);
+      for (const part of parts) {
+        env.expect(part, part.kind).toMatchObject({ slug: null, home: false, revision: 0, scheduled: null } satisfies Partial<PageSummary>);
+        env.expect(part.links.live, part.kind).toBe(null);
+        const opened = await env.adapter.getPage(part.id);
+        env.expect(opened.page, part.kind).toMatchObject({ id: part.id, kind: part.kind, slug: null, home: false });
+        env.expect(opened.draft.document, part.kind).toEqual(env.starters[part.kind as PartKind]);
+        // Nothing live, or the starter itself: every page draws the starter
+        // either way. A store shared with a seed of the example site, which
+        // publishes the parts as they are, has the second.
+        if (part.published) env.expect((await env.adapter.getVersion(part.id, part.published.versionNumber)).document, part.kind).toEqual(env.starters[part.kind as PartKind]);
+      }
+      env.expect((await env.adapter.listParts()).map((part) => part.id), "the same parts, not made again").toEqual(parts.map((part) => part.id));
+      const pages = await env.adapter.listPages();
+      env.expect(pages.filter((page) => page.kind !== "page"), "no part among the pages").toEqual([]);
     },
   },
   {
-    name: "a change of the header and footer is kept whole at the next revision, with its time, the time zone left as it was; the same change again writes nothing",
-    needs: ["headerFooter"],
+    name: "a part is saved and versioned as a page is, and published with no address: its live link stays null",
+    needs: ["publish"],
     async run(env) {
-      const before = await env.adapter.getSite();
-      const change: SiteValues = {
-        name: "Tide Table Swimmers",
-        menu: [{ label: "Tides", href: "/tides#today" }, ...before.menu.slice(0, 1)],
-        action: null,
-        footer: { lead: "Swim with a friend.", text: "The tide tables change every day." },
-      };
+      // A part's publish cannot be taken back, and every page draws what
+      // it puts live. So the case saves the footer's draft, keeps a
+      // version, puts the draft back as it found it, the starter, and
+      // publishes that, which every page drew already.
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      env.expect(before.document, "the footer's draft as the store made it").toEqual(env.starters.footer);
+      const changed = documentOf("Footer", section(heading("Tide club")));
+      let back: number;
       try {
-        const saved = value(await env.adapter.setSite({ revision: before.revision, ...change }), "the change");
-        env.expect(valuesOf(saved)).toEqual(change);
-        env.expect(saved.revision).toBe(before.revision + 1);
-        env.expect(saved.updatedAt).not.toBe(null);
-        env.expect(saved.timeZone, "the time zone is the storage's own setting").toBe(before.timeZone);
-        env.expect(await env.adapter.getSite()).toEqual(saved);
-        // The same values again, from the revision they made: nothing is
-        // written, so the revision and the time of the change stay.
-        await new Promise((done) => setTimeout(done, 25));
-        const again = value(await env.adapter.setSite({ revision: saved.revision, ...change }), "the same change again");
-        env.expect({ revision: again.revision, updatedAt: again.updatedAt }).toEqual({ revision: saved.revision, updatedAt: saved.updatedAt });
+        const revision = await saved(env.adapter, footer.id, { revision: before.revision, document: changed, saveId: "part-1" }, "the footer's save");
+        env.expect(revision).toBe(before.revision + 1);
+        env.expect((await env.adapter.getDraft(footer.id)).document).toEqual(changed);
+        const version = value(await env.adapter.saveVersion(footer.id, { name: "A footer kept" }), "the footer's version");
+        env.expect(version).toMatchObject({ reason: "manual", name: "A footer kept", published: false });
+        env.expect((await env.adapter.listParts()).find((part) => part.kind === "footer")?.revision).toBe(revision);
       } finally {
-        await putSiteBack(env, valuesOf(before));
+        const now = await env.adapter.getDraft(footer.id);
+        back = await saved(env.adapter, footer.id, { revision: now.revision, document: before.document, saveId: "part-back" }, "putting the footer's draft back");
+      }
+      const live = value(await env.adapter.publish(footer.id, { revision: back }), "the footer's publish");
+      env.expect(live.published).toMatchObject({ slug: null, draftRevision: back });
+      env.expect(live.links.live).toBe(null);
+      env.expect((await env.adapter.getVersion(footer.id, live.published.versionNumber)).document).toEqual(before.document);
+      const listed = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      env.expect(listed.published).toMatchObject({ slug: null, versionNumber: live.published.versionNumber });
+      env.expect(listed.links.live).toBe(null);
+    },
+  },
+  {
+    name: "a part's version restores into its draft as a page's does, the draft it replaced kept as a version",
+    needs: [],
+    async run(env) {
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      const old = documentOf("Footer", section(heading("Old words")));
+      const now = documentOf("Footer", section(heading("New words")));
+      try {
+        const r1 = await saved(env.adapter, footer.id, { revision: before.revision, document: old, saveId: "part-restore-1" }, "the footer's first save");
+        const kept = value(await env.adapter.saveVersion(footer.id, { name: "Old words" }), "the footer's version");
+        const r2 = await saved(env.adapter, footer.id, { revision: r1, document: now, saveId: "part-restore-2" }, "the footer's second save");
+        const restored = value(await env.adapter.restoreVersion(footer.id, kept.number), "the footer's restore");
+        env.expect(restored.draft.document).toEqual(old);
+        env.expect(restored.draft.revision).toBeGreaterThan(r2);
+        env.expect(restored.version).toMatchObject({ reason: "restore", restoredFrom: kept.number });
+        env.expect(restored.kept?.reason).toBe("before-restore");
+        env.expect((await env.adapter.getVersion(footer.id, restored.kept!.number)).document).toEqual(now);
+        env.expect((await env.adapter.getPage(footer.id)).page).toMatchObject({ kind: "footer", slug: null, home: false });
+      } finally {
+        const at = await env.adapter.getDraft(footer.id);
+        await saved(env.adapter, footer.id, { revision: at.revision, document: before.document, saveId: "part-restore-back" }, "putting the footer's draft back");
       }
     },
   },
   {
-    name: "a header and footer the schema refuses are refused at the pointer of each value at fault, each fault once, and nothing is stored",
-    needs: ["headerFooter"],
+    name: "a part has no address and is never the home page: either is refused at the member sent, keyword part, and nothing changes",
+    needs: [],
     async run(env) {
-      const before = await env.adapter.getSite();
-      // Not what the types allow, which is what a client's mistake is: a
-      // number for a link's words and for the footer's text, and a link
-      // with no words. The schema finds a wrong type, or a missing member,
-      // in two places (the definition and the keyword beside it), and each
-      // adapter says it once, as the list is compared whole below.
-      const wrongLinks = [{ label: 5, href: "/tides" }, { href: "/tides" }] as unknown as SiteValues["menu"];
-      const problem = refusal(await env.adapter.setSite({
-        revision: before.revision,
-        name: "N".repeat(29),
-        menu: [...before.menu.slice(0, 1), { label: "Run", href: "javascript:alert(1)" }, ...wrongLinks],
-        action: { label: "Join the swimming club", href: "/join" },
-        footer: { lead: "Two\nlines", text: 5 as unknown as string },
-      }), "a name too long, a link that runs script, a number for a link's words, a link with no words, a button's label too long, a lead of two lines and a number for the footer's text");
+      const header = (await env.adapter.listParts()).find((part) => part.kind === "header")!;
+      const before = await env.adapter.getPage(header.id);
+      for (const [member, changes] of [["slug", { slug: env.unique("header") }], ["home", { home: true }]] as const) {
+        const problem = refusal(await env.adapter.updatePage(header.id, changes), `the header's ${member}`);
+        if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+        env.expect(problem.code, member).toBe("invalid_request");
+        env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`), member).toEqual([`/${member} part`]);
+      }
+      env.expect(await env.adapter.getPage(header.id)).toEqual(before);
+      env.expect((await env.adapter.listPages()).filter((page) => page.home && page.id === header.id)).toEqual([]);
+    },
+  },
+  {
+    name: "a part's draft holds no form: it is refused at the form block, keyword part, and a page's draft takes the same document",
+    needs: [],
+    async run(env) {
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      const withForm = documentOf("Footer", section(heading("Join us"), form([{ name: "email", kind: "email", label: "Email", required: true }], "newsletter")));
+      const problem = refusal(await env.adapter.saveDraft(footer.id, { revision: before.revision, document: withForm, saveId: "part-form" }), "a form in the footer");
       if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
-      env.expect(problem.code).toBe("invalid_request");
-      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort()).toEqual([
-        "/action/label maxLength", "/footer/lead not", "/footer/text type", "/menu/1/href pattern", "/menu/2/label type", "/menu/3 required", "/name maxLength",
-      ]);
-      env.expect(problem.errors.every((e) => e.blockPointer === null)).toBe(true);
-      env.expect(await env.adapter.getSite()).toEqual(before);
+      env.expect(problem.code).toBe("invalid_document");
+      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`)).toEqual(["/document/sections/0/children/0/children/1 part"]);
+      env.expect(problem.errors[0]?.blockPointer).toBe("/document/sections/0/children/0/children/1");
+      env.expect(errorsByBlock(withForm, problem.errors).map((e) => [e.blockId, e.field, e.keyword])).toEqual([["newsletter", "", "part"]]);
+      env.expect(await env.adapter.getDraft(footer.id), "the footer, untouched").toEqual(before);
+
+      const page = await newPage(env, "form-page");
+      await saved(env.adapter, page.id, { revision: page.revision, document: withForm, saveId: "page-form" }, "the same document on a page");
     },
   },
   {
-    name: "a change that leaves out a member or the revision, or whose revision is no whole number up to 2**53 - 1, is refused at that value and nothing else, and nothing is stored",
-    needs: ["headerFooter"],
+    name: "an image the footer's draft shows is not deleted: the refusal names the footer, which has no address",
+    needs: [],
     async run(env) {
-      const before = await env.adapter.getSite();
-      const whole: Record<string, unknown> = { revision: before.revision, ...valuesOf(before) };
-      // What the types forbid and a client can send: a change put together by hand.
-      const faults = async (what: string, change: Record<string, unknown>): Promise<string[]> => {
-        const problem = refusal(await env.adapter.setSite(change as unknown as SiteChange), what);
-        if (problem.kind !== "invalid") throw new Error(`${what} was refused as ${problem.kind}, not as invalid`);
-        env.expect(problem.code, what).toBe("invalid_request");
-        return problem.errors.map((e) => `${e.pointer} ${e.keyword}`).sort();
-      };
-      const without = (member: string): Record<string, unknown> => Object.fromEntries(Object.entries(whole).filter(([key]) => key !== member));
-      // Each of the four values must be there, the button's too (no button
-      // is null), and then the values are not looked at.
-      for (const member of ["name", "menu", "action", "footer"]) {
-        env.expect(await faults(`a change with no ${member}`, without(member)), `no ${member}`).toEqual([`/${member} required`]);
-      }
-      env.expect(await faults("a change with no revision", without("revision")), "no revision").toEqual(["/revision required"]);
-      env.expect(await faults("a revision above the largest whole number a browser holds", { ...whole, revision: 2 ** 53 }), "revision 2**53").toEqual(["/revision maximum"]);
-      env.expect(await faults("a revision of 2**63", { ...whole, revision: 2 ** 63 }), "revision 2**63").toEqual(["/revision maximum"]);
-      env.expect(await faults("a revision in quotes", { ...whole, revision: "1" }), "revision \"1\"").toEqual(["/revision type"]);
-      env.expect(await faults("a revision with a fraction", { ...whole, revision: 0.5 }), "revision 0.5").toEqual(["/revision type"]);
-      env.expect(await faults("a revision of null", { ...whole, revision: null }), "revision null").toEqual(["/revision type"]);
-      // The largest revision allowed is one no change has reached: a change
-      // from it is a conflict, not an invalid request.
-      const changed: SiteValues = { ...valuesOf(before), action: before.action === null ? { label: "Join", href: "/join" } : null };
-      const largest = refusal(await env.adapter.setSite({ ...changed, revision: Number.MAX_SAFE_INTEGER }), "a change from the largest revision allowed");
-      env.expect(largest.kind, "a change from the largest revision allowed").toBe("conflict");
-      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(before);
-    },
-  },
-  {
-    name: "a change from a revision another tab has moved past is a conflict holding what is there now; that sent from the old revision is answered as saved, and the change goes through from the new one",
-    needs: ["headerFooter"],
-    async run(env) {
-      const other = env.openTab();
-      const before = await env.adapter.getSite();
-      const theirs: SiteValues = { ...valuesOf(before), name: "Shingle Cove Swimmers" };
-      const mine: SiteValues = { ...valuesOf(before), footer: { lead: "Mine.", text: "This tab's footer." } };
+      const item = await upload(env, `${env.unique("in-footer")}.png`, "A buoy");
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      const image: WidgetBlock = { id: id("i"), type: "image", props: { mediaId: item.id, alt: "A buoy off the slipway" }, children: [], style: { base: {} } };
       try {
-        const first = value(await other.setSite({ revision: before.revision, ...theirs }), "the other tab's change");
-        const conflict = refusal(await env.adapter.setSite({ revision: before.revision, ...mine }), "this tab's change from the revision it read");
-        if (conflict.kind !== "conflict") throw new Error(`refused as ${conflict.kind}, not as a conflict`);
-        env.expect({ currentRevision: conflict.currentRevision, site: conflict.site }).toEqual({ currentRevision: first.revision, site: theirs });
-        env.expect(valuesOf(await env.adapter.getSite()), "the other tab's change is kept").toEqual(theirs);
-        // What is there now, from the old revision, would put back nothing:
-        // answered as saved, at the revision it is at, nothing written.
-        const same = value(await env.adapter.setSite({ revision: before.revision, ...theirs }), "what is there now, from the old revision");
-        env.expect({ revision: same.revision, updatedAt: same.updatedAt }).toEqual({ revision: first.revision, updatedAt: first.updatedAt });
-        const kept = value(await env.adapter.setSite({ revision: conflict.currentRevision, ...mine }), "this tab's change from the revision the conflict named");
-        env.expect({ revision: kept.revision, ...valuesOf(kept) }).toEqual({ revision: first.revision + 1, ...mine });
+        await saved(env.adapter, footer.id, { revision: before.revision, document: documentOf("Footer", section(image)), saveId: "footer-image" }, "the footer's save");
+        const problem = refusal(await env.adapter.deleteMedia(item.id), "deleting an image the footer shows");
+        env.expect(problem.kind).toBe("in-use");
+        env.expect(problem.usedBy.pages).toEqual([{ id: footer.id, title: "Footer", slug: null }]);
+        env.expect((await env.adapter.listMedia()).map((m) => m.id)).toContain(item.id);
       } finally {
-        await putSiteBack(env, valuesOf(before));
+        const now = await env.adapter.getDraft(footer.id);
+        await saved(env.adapter, footer.id, { revision: now.revision, document: before.document, saveId: "footer-image-back" }, "putting the footer's draft back");
       }
-    },
-  },
-  {
-    name: "a header and footer with half of a surrogate pair in any text are no text the CMS reads: the whole change is refused as malformed JSON, and nothing is stored",
-    needs: ["headerFooter"],
-    async run(env) {
-      const before = await env.adapter.getSite();
-      const malformed = { kind: "refused", status: 400, code: "malformed_json" };
-      const link = { label: "Tides", href: "/tides" };
-      for (const text of ["\ud800", "\udfff", `a\ud83d`]) {
-        const shown = JSON.stringify(text);
-        const changes: Array<[string, SiteValues]> = [
-          ["the name", { ...valuesOf(before), name: text }],
-          ["a link's words", { ...valuesOf(before), menu: [{ ...link, label: text }] }],
-          ["the button's address", { ...valuesOf(before), action: { label: "Join", href: `/join#${text}` } }],
-          ["the footer's words", { ...valuesOf(before), footer: { ...before.footer, text } }],
-          // A name of a member is text as well.
-          ["the name of a link's member", { ...valuesOf(before), menu: [{ ...link, [`key${text}`]: "x" } as typeof link] }],
-        ];
-        for (const [where, change] of changes) {
-          env.expect(await failure(env.adapter.setSite({ revision: before.revision, ...change }), `${where} ${shown}`), `${where} ${shown}`).toMatchObject(malformed);
-        }
-      }
-      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(before);
     },
   },
 
@@ -1211,31 +1184,23 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     needs: [],
     async run(env) {
       // Every optional operation is called so that it changes nothing: on a
-      // page that does not exist, or, for the header and footer, from a
-      // revision no change can name. So the case does as much on an
-      // adapter that has them all as on one that has none: one the adapter
-      // has answers that there is no such page, or refuses the change; one
-      // it lacks is refused before anything is looked up.
+      // page that does not exist. So the case does as much on an adapter
+      // that has them all as on one that has none: one the adapter has
+      // answers that there is no such page; one it lacks is refused before
+      // anything is looked up.
       const nowhere = 987_654_321;
-      const site = await env.adapter.getSite();
       const calls: Record<OptionalOperation, () => Promise<unknown>> = {
         publish: () => env.adapter.publish(nowhere),
         schedule: () => env.adapter.schedulePublish(nowhere, { revision: 0, at: inMs(HOUR) }),
         responses: () => env.adapter.listResponses(nowhere),
-        headerFooter: () => env.adapter.setSite({ revision: -1, name: site.name, menu: site.menu, action: site.action, footer: site.footer }),
       };
       for (const operation of OPTIONAL_OPERATIONS) {
         if (!env.adapter.capabilities[operation]) {
           env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "unsupported", operation });
-        } else if (operation === "headerFooter") {
-          const outcome = (await calls.headerFooter()) as Outcome<unknown, { kind: string; errors?: FieldError[] }>;
-          env.expect(outcome.ok ? "saved" : outcome.problem.kind, operation).toBe("invalid");
-          env.expect(outcome.ok ? [] : outcome.problem.errors?.map((e) => e.pointer), operation).toEqual(["/revision"]);
         } else {
           env.expect(await failure(calls[operation](), operation), operation).toMatchObject({ kind: "not-found" });
         }
       }
-      env.expect(await env.adapter.getSite(), "the header and footer, untouched").toEqual(site);
       env.expect(Object.keys(env.adapter.capabilities).sort()).toEqual([...OPTIONAL_OPERATIONS, "imageVariants", "livePages"].sort());
     },
   },

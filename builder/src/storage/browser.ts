@@ -6,17 +6,18 @@
 // What it keeps: pages with their draft and its revision, the versions
 // (Save version, the automatic ones, the copy kept before a restore), a
 // publish as a version and the page's published state, the media library
-// with each image's bytes as a blob, the site style, and the header and
-// footer at a revision of their own. What it cannot do it says it cannot
+// with each image's bytes as a blob, and the site style. The site's header
+// and footer are pages too, of their own kind, made the first time they are
+// asked for from the starters the build serves. What it cannot do it says it cannot
 // (capabilities): there is no server to serve a page, to publish it at a
 // time, or to take a visitor's form, so links.live stays null, and
 // scheduling and responses are refused as unsupported. It makes no
 // smaller copies of an image either, so the editor resizes each image
 // before it goes up, as it does for the CMS.
 //
-// It refuses what the CMS refuses, in the same shapes: the document and
-// the header and footer by the editor's twin of the schema and the
-// application rules (../shared/validate.ts), the rest by the twins of the
+// It refuses what the CMS refuses, in the same shapes: the document, and
+// a part's rule, by the editor's twin of the schema and the application
+// rules (../shared/validate.ts), the rest by the twins of the
 // CMS's own checks (./browser-rules.ts). Stored documents are brought up to
 // the current schemaVersion when read and restored by the twin of the
 // CMS's upgrades (../document/upgrade.ts).
@@ -50,18 +51,17 @@ import {
   type Outcome,
   type Page,
   type PageChanges,
+  type PageKind,
   type PageLinks,
   type PageSummary,
+  PART_KINDS,
+  type PartKind,
   type Published,
   type PublishRequest,
   type RestoreResult,
   type Site,
-  type SiteChange,
-  type SiteConflict,
-  type SiteLink,
   type SiteStyle,
   type SiteStyleChange,
-  type SiteValues,
   type StorageAdapter,
   type Time,
   type Upload,
@@ -80,7 +80,6 @@ import {
   MEDIA_ID,
   mediaRefs,
   SAVE_ID,
-  SITE_MEMBERS,
   sizeErrors,
   siteStyleErrors,
   slugErrors,
@@ -95,7 +94,7 @@ import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
-import { isLine, normalise, validateDocument, validateSite } from "../shared/validate.ts";
+import { isLine, PART_FORM, partForms, validateDocument } from "../shared/validate.ts";
 
 export const BROWSER_CAPABILITIES: Capabilities = {
   // A publish is kept as a version, with the page's published state, for
@@ -107,11 +106,6 @@ export const BROWSER_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // Nothing is served: there is no live address to give.
   livePages: false,
-  // Kept here, one record for the site at a revision of its own, and until
-  // the first change cms/config/site.yml's defaults, read when the editor
-  // is built. Every page the editor draws shows them: the canvas, and the
-  // pages the demo draws as previewed and as published.
-  headerFooter: true,
 };
 
 export const DATABASE_NAME = "page-builder-cms";
@@ -144,12 +138,15 @@ type StoreName = (typeof STORES)[number];
 
 interface PageRecord {
   id: number;
+  // A page, or one of the site's parts; absent, as in the records a build
+  // before the parts kept, a page.
+  kind?: PageKind;
   createdAt: Time;
   // The latest change of the page or of its draft.
   updatedAt: Time;
   home: boolean;
-  // The next address, the draft's.
-  slug: string;
+  // The next address, the draft's; null for a part, which has none.
+  slug: string | null;
   // The address it went live under, null before the first publish.
   liveSlug: string | null;
   draft: { document: unknown; revision: number; lastSaveId: string | null; updatedAt: Time };
@@ -187,17 +184,6 @@ interface StyleRecord {
   key: "style";
   palette: Record<string, string>;
   typeScale: string;
-  updatedAt: Time;
-}
-
-// The header and footer once first changed, beside the style in the site
-// store, as the CMS keeps them in a row of their own (Site): none until
-// then, and the defaults apply.
-const HEADER_FOOTER = "headerFooter";
-
-interface HeaderFooterRecord extends SiteValues {
-  key: typeof HEADER_FOOTER;
-  revision: number;
   updatedAt: Time;
 }
 
@@ -538,8 +524,10 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
     return typeof title === "string" ? title : "";
   };
 
+  const kindOf = (record: PageRecord): PageKind => record.kind ?? "page";
+
   const publishedOf = (record: PageRecord): Published | null =>
-    record.published === null ? null : { slug: record.liveSlug ?? record.slug, versionNumber: record.published.versionNumber, draftRevision: record.published.draftRevision, publishedAt: record.published.publishedAt };
+    record.published === null ? null : { slug: kindOf(record) === "page" ? (record.liveSlug ?? record.slug) : null, versionNumber: record.published.versionNumber, draftRevision: record.published.draftRevision, publishedAt: record.published.publishedAt };
 
   // A stored document brought up to the current schemaVersion, as the CMS
   // answers one; a document of a version this build does not know is
@@ -554,10 +542,18 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
   }
 
   // A stored document upgraded and checked again, as what a version made
-  // from it holds (Draft.upgrade_and_check).
-  function checked(document: unknown): Outcome<PageDocument, Invalid> {
+  // from it holds (Draft.upgrade_and_check): a part's by a part's rule
+  // too, as its saves are.
+  function checked(record: PageRecord, document: unknown): Outcome<PageDocument, Invalid> {
     const opened = openDocument(document);
-    return opened.ok ? { ok: true, value: opened.document } : invalid("invalid_document", opened.errors.map(underDocument));
+    if (!opened.ok) return invalid("invalid_document", opened.errors.map(underDocument));
+    return partRefusal(record, opened.document) ?? { ok: true, value: opened.document };
+  }
+
+  // A part holds no form (SiteParts.check): refused at each form block.
+  function partRefusal(record: PageRecord, document: PageDocument): { ok: false; problem: Invalid } | null {
+    const forms = kindOf(record) === "page" ? [] : partForms(document);
+    return forms.length > 0 ? invalid("invalid_document", forms.map((pointer) => underDocument({ pointer, keyword: "part", message: PART_FORM }))) : null;
   }
 
   const draftOf = (record: PageRecord): Draft => ({ revision: record.draft.revision, lastSaveId: record.draft.lastSaveId, updatedAt: record.draft.updatedAt, document: upgraded(record.draft.document) });
@@ -565,7 +561,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
   const savedOf = (record: PageRecord): DraftSaved => ({ revision: record.draft.revision, lastSaveId: record.draft.lastSaveId, updatedAt: record.draft.updatedAt });
 
   const pageOf = (record: PageRecord): Page => ({
-    page: { id: record.id, title: titleOf(record), slug: record.slug, home: record.home, createdAt: record.createdAt },
+    page: { id: record.id, kind: kindOf(record), title: titleOf(record), slug: record.slug, home: record.home, createdAt: record.createdAt },
     draft: draftOf(record),
     published: publishedOf(record),
     scheduled: null,
@@ -574,6 +570,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
 
   const summaryOf = (record: PageRecord): PageSummary => ({
     id: record.id,
+    kind: kindOf(record),
     title: titleOf(record),
     slug: record.slug,
     home: record.home,
@@ -690,7 +687,30 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
 
     async listPages(options) {
       checkSignal(options, "Reading the pages");
-      return read(["pages"], async (tx) => ((await request(tx.objectStore("pages").getAll())) as PageRecord[]).sort((a, b) => a.id - b.id).map(summaryOf));
+      return read(["pages"], async (tx) => ((await request(tx.objectStore("pages").getAll())) as PageRecord[]).filter((record) => kindOf(record) === "page").sort((a, b) => a.id - b.id).map(summaryOf));
+    },
+
+    // As the CMS's GET /api/pages makes them (Page.part!): a part not here
+    // yet is made, in the same transaction that looks for it, with the
+    // starter the build serves as its draft and nothing published, so two
+    // tabs asking at once make one each of none.
+    async listParts(options) {
+      checkSignal(options, "Reading the header and footer");
+      return write(["pages"], async (tx) => {
+        const store = tx.objectStore("pages");
+        const records = (await request(store.getAll())) as PageRecord[];
+        const parts: PageSummary[] = [];
+        for (const kind of PART_KINDS) {
+          let record = records.find((r) => kindOf(r) === kind);
+          if (!record) {
+            const at = now();
+            const made: Omit<PageRecord, "id"> = { kind, createdAt: at, updatedAt: at, home: false, slug: null, liveSlug: null, draft: { document: structuredClone(SITE_THEME.parts[kind as PartKind]), revision: 0, lastSaveId: null, updatedAt: at }, published: null };
+            record = { ...made, id: (await request(store.add(made))) as number };
+          }
+          parts.push(summaryOf(record));
+        }
+        return parts;
+      });
     },
 
     async createPage(page: NewPage, options) {
@@ -740,6 +760,9 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       if (check.errors.length > 0) return invalid("invalid_request", check.errors);
       return write(["pages"], async (tx): Promise<Outcome<Page, Invalid>> => {
         const record = await pageIn(tx, pageId);
+        // A part has no address and is never home: refused at the member
+        // sent, as the CMS refuses it.
+        if (kindOf(record) !== "page") return invalid("invalid_request", [fieldError(body.slug !== undefined ? "/slug" : "/home", "part", WORDS.partNoAddress)]);
         const pages = tx.objectStore("pages");
         const at = now();
         if (typeof body.slug === "string" && body.slug !== record.slug) {
@@ -794,6 +817,9 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
           }
           return { ok: false as const, problem: { kind: "conflict" as const, message: WORDS.conflict, currentRevision: record.draft.revision, lastSaveId: record.draft.lastSaveId } };
         }
+        // A part holds no form, after a page's checks.
+        const refused = partRefusal(record, document);
+        if (refused) return refused;
         const missing = await missingMedia(tx, document);
         if (missing.length > 0) return invalid("invalid_document", missing);
         const at = now();
@@ -822,7 +848,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
         if (typeof body.revision === "number" && body.revision !== record.draft.revision) {
           return { ok: false as const, problem: { kind: "conflict" as const, message: WORDS.conflict, currentRevision: record.draft.revision, lastSaveId: record.draft.lastSaveId } };
         }
-        const document = checked(record.draft.document);
+        const document = checked(record, record.draft.document);
         if (!document.ok) return document;
         const at = now();
         const version = await recordVersion(tx, pageId, document.value, "publish", at);
@@ -875,7 +901,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       const name = typeof body.name === "string" ? body.name : null;
       return write(["pages", "versions", "media"], async (tx): Promise<Outcome<Version, Invalid>> => {
         const page = await pageIn(tx, pageId);
-        const document = checked(page.draft.document);
+        const document = checked(page, page.draft.document);
         if (!document.ok) return document;
         if (name !== null && !isLine(name, VERSION_NAME_MAX_LENGTH)) return invalid("invalid_request", [fieldError("/name", "invalid", WORDS.versionName)]);
         const version = await recordVersion(tx, pageId, document.value, "manual", now(), { name });
@@ -889,7 +915,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
         const page = await pageIn(tx, pageId);
         const source = Number.isSafeInteger(number) && number >= 1 ? ((await request(tx.objectStore("versions").get([pageId, number]))) as VersionRecord | undefined) : undefined;
         if (!source) throw notFound();
-        const current = checked(page.draft.document);
+        const current = checked(page, page.draft.document);
         if (!current.ok) return current;
         const at = now();
         // The draft as it is now is kept first, so the edits a restore
@@ -902,7 +928,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
           if (!made.ok) return made;
           kept = made.value;
         }
-        const restored = checked(source.document);
+        const restored = checked(page, source.document);
         if (!restored.ok) return restored;
         const missing = await missingMedia(tx, restored.value);
         if (missing.length > 0) return invalid("invalid_document", missing);
@@ -1075,48 +1101,12 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
       });
     },
 
+    // The site's time zone, as the build serves it from the file the CMS
+    // reads.
     async getSite(options) {
       checkSignal(options, "Reading the site");
-      return siteOf(await read(["site"], async (tx) => ((await request(tx.objectStore("site").get(HEADER_FOOTER))) as HeaderFooterRecord | undefined) ?? null));
-    },
-
-    // As the CMS's PUT /api/site and Site.replace! take a change: every
-    // fault of the request in one refusal, the revision's with those of
-    // the values (the application rules, then $defs/site), which are
-    // looked at once all four are there, each fault once by its pointer and
-    // keyword, as the CMS lists them (ajv finds a wrong type, or a missing
-    // member, twice: at the definition and at the keyword beside it).
-    // Then, in one transaction, the
-    // revision checked and the record written, so of two changes from one
-    // revision, in two tabs at once, the second is the conflict.
-    async setSite(change: SiteChange, options) {
-      checkSignal(options, "Changing the header and footer");
-      const body = wire({ revision: change.revision, name: change.name, menu: change.menu, action: change.action, footer: change.footer }) as Record<string, unknown>;
-      const check = new BodyCheck(body);
-      // BlockDocument::Rules::MAX_SAFE_INTEGER, the same number.
-      check.integer("revision", { required: true, minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
-      const present = SITE_MEMBERS.map((member) => check.required(member));
-      const errors = [...check.errors];
-      if (present.every(Boolean)) {
-        const values = validateSite({ name: body.name, menu: body.menu, action: body.action, footer: body.footer });
-        if (!values.valid) errors.push(...unique(values.errors).map((e) => fieldError(e.pointer, e.keyword, e.message)));
-      }
-      if (errors.length > 0) return invalid("invalid_request", errors);
-      const revision = body.revision as number;
-      const values = normalise({ name: body.name, menu: body.menu, action: body.action, footer: body.footer }) as SiteValues;
-      return write(["site"], async (tx): Promise<Outcome<Site, SiteConflict | Invalid>> => {
-        const store = tx.objectStore("site");
-        const current = siteOf(((await request(store.get(HEADER_FOOTER))) as HeaderFooterRecord | undefined) ?? null);
-        // What is stored already, from any revision: nothing is written, so
-        // the revision and the time of the last change stay; and a change
-        // sent again after its answer was lost is a success.
-        if (sameJson(valuesOf(current), values)) return { ok: true, value: current };
-        // From another revision, it would put back what was changed since.
-        if (current.revision !== revision) return { ok: false, problem: { kind: "conflict", message: WORDS.siteConflict, currentRevision: current.revision, site: valuesOf(current) } };
-        const record: HeaderFooterRecord = { key: HEADER_FOOTER, ...values, revision: revision + 1, updatedAt: now() };
-        await request(store.put(record));
-        return { ok: true, value: siteOf(record) };
-      });
+      const site: Site = { timeZone: SITE_THEME.timeZone };
+      return site;
     },
 
     async listResponses() {
@@ -1155,18 +1145,3 @@ function styleOf(stored: StyleRecord | null): SiteStyle {
   };
 }
 
-// The header and footer as the CMS answers them at GET /api/site: the
-// record, or, until the first change, the defaults of the file the CMS
-// reads, at revision 0 with no time of change, as the build serves them
-// once they pass the CMS's own check of them (../../build/site-theme.ts).
-// The time zone is the file's whatever the record holds: no change sets
-// it.
-function siteOf(stored: HeaderFooterRecord | null): Site {
-  const values: SiteValues = stored
-    ? { name: stored.name, menu: stored.menu, action: stored.action, footer: stored.footer }
-    : structuredClone({ name: SITE_THEME.name, menu: SITE_THEME.menu as SiteLink[], action: SITE_THEME.action, footer: SITE_THEME.footer });
-  return { ...values, timeZone: SITE_THEME.timeZone, revision: stored?.revision ?? 0, updatedAt: stored?.updatedAt ?? null };
-}
-
-// The four values a change sends, as $defs/site has them.
-const valuesOf = (site: Site): SiteValues => ({ name: site.name, menu: site.menu, action: site.action, footer: site.footer });

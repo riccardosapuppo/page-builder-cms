@@ -5,11 +5,11 @@
 // Publishing saves what waits first and publishes at that revision; the
 // preview opens on the CMS once the edits are sent; a conflict is settled
 // by Reload or Keep mine; the site style shows at once and goes to the CMS,
-// and comes back when the CMS refuses it; the header and footer show as
-// typed and go to the storage on Save, a conflict settled the same two
-// ways, and what is typed while a save is on its way stays as typed once
-// it lands, which Discard leaves alone meanwhile. An editor that cannot
-// start says why, with the one button that can help.
+// and comes back when the CMS refuses it. The site's header and footer
+// open as pages do, the page left drawn dimmed around them, and are saved
+// and published as pages are; their drafts are what the canvas draws
+// around every page. An editor that cannot start says why, with the one
+// button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
@@ -20,15 +20,17 @@ import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
-import { StorageError, type DraftSave, type FieldError, type Page, type PageSummary, type Published, type Schedule, type ScheduleRequest, type Site, type SiteChange, type SiteStyle, type SiteStyleChange, type SiteValues, type StorageAdapter } from "../storage/adapter.ts";
+import { SITE_THEME } from "virtual:site-theme";
+import { StorageError, type DraftSave, type FieldError, type Page, type PageKind, type PageSummary, type Published, type Schedule, type ScheduleRequest, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { thisTab } from "./SaveStatus.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
-// The header and footer around every page, as the CMS answers them.
-const SITE: Site = { name: "Slack Water", menu: [{ label: "Swims", href: "/#swims" }], action: { label: "Join", href: "/#join" }, footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide." }, timeZone: "Europe/London", revision: 0, updatedAt: null };
+// The site's header and footer, by their ids.
+const HEADER = 101;
+const FOOTER = 102;
 const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, schedules: `/api/pages/${id}/schedules`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
@@ -47,12 +49,13 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
   };
 }
 
-// The CMS as the adapter's caller sees it: pages with drafts, saves taken
-// at the draft's revision (another tab's save makes the next one a
-// conflict), publishing at a revision, the site style, and a 422 when the
-// test asks for one.
+// The CMS as the adapter's caller sees it: pages with drafts, and the
+// site's header and footer beside them, each with its starter as its draft
+// and nothing live; saves taken at the draft's revision (another tab's save
+// makes the next one a conflict), publishing at a revision, the site style,
+// and a 422 when the test asks for one.
 class FakeSite {
-  readonly drafts = new Map<number, { title: string; slug: string; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null }>();
+  readonly drafts = new Map<number, { kind: PageKind; title: string; slug: string | null; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null }>();
   readonly saves: DraftSave[] = [];
   readonly publishes: Array<{ id: number; revision: number | undefined }> = [];
   // Scheduling, when a test turns it on: what was asked, and how many
@@ -73,38 +76,32 @@ class FakeSite {
   // The storage's refusal of every read of the pages, while set: an editor
   // that cannot start.
   refuseStart: StorageError | null = null;
-  // The header and footer, kept as the CMS keeps them when a test turns it
-  // on: the changes asked, each at the revision it names.
-  headerFooter = false;
-  site: Site = SITE;
-  readonly siteChanges: SiteChange[] = [];
-  // The next change waits for this before the CMS takes it, when a test
-  // sets it: a save still on its way.
-  siteHeld: Promise<void> | null = null;
-
-  // Another tab saves the header and footer.
-  siteSavedElsewhere(values: Partial<SiteValues>): void {
-    this.site = { ...this.site, ...values, revision: this.site.revision + 1, updatedAt: T };
-  }
 
   constructor() {
-    this.drafts.set(1, { title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
-    this.drafts.set(2, { title: "Home", slug: "home", home: true, revision: 1, document: { schemaVersion: 1, title: "Home", sections: [] }, published: null });
+    this.drafts.set(1, { kind: "page", title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
+    this.drafts.set(2, { kind: "page", title: "Home", slug: "home", home: true, revision: 1, document: { schemaVersion: 1, title: "Home", sections: [] }, published: null });
+    this.drafts.set(HEADER, { kind: "header", title: "Header", slug: null, home: false, revision: 0, document: structuredClone(SITE_THEME.parts.header) as PageDocument, published: null });
+    this.drafts.set(FOOTER, { kind: "footer", title: "Footer", slug: null, home: false, revision: 0, document: structuredClone(SITE_THEME.parts.footer) as PageDocument, published: null });
   }
 
+  // A part has no address: it is seen on every page.
   links(id: number) {
     const d = this.drafts.get(id)!;
-    return { ...links(id), live: d.published && this.livePages ? (d.home ? "/" : `/${d.published.slug}`) : null };
+    return { ...links(id), live: d.published && this.livePages && d.kind === "page" ? (d.home ? "/" : `/${d.published.slug}`) : null };
   }
 
   summary(id: number): PageSummary {
     const d = this.drafts.get(id)!;
-    return { id, title: d.title, slug: d.slug, home: d.home, revision: d.revision, updatedAt: T, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
+    return { id, kind: d.kind, title: d.title, slug: d.slug, home: d.home, revision: d.revision, updatedAt: T, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
   }
 
   page(id: number): Page {
     const d = this.drafts.get(id)!;
-    return { page: { id, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
+    return { page: { id, kind: d.kind, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
+  }
+
+  ids(kind: "page" | "part"): number[] {
+    return [...this.drafts.entries()].filter(([, d]) => (d.kind === "page") === (kind === "page")).map(([id]) => id);
   }
 
   // The CMS's job, at the schedule's time: the scheduled revision goes live.
@@ -125,28 +122,17 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, headerFooter: this.headerFooter, imageVariants: false, livePages: this.livePages },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages },
       listPages: async () => {
         if (this.refuseStart) throw this.refuseStart;
-        return [...this.drafts.keys()].map((id) => this.summary(id));
+        return this.ids("page").map((id) => this.summary(id));
       },
+      listParts: async () => this.ids("part").map((id) => this.summary(id)),
       getPage: async (id) => this.page(id),
       getDraft: async (id) => this.page(id).draft,
       listMedia: async () => [],
       getSiteStyle: async () => this.style,
-      getSite: async () => this.site,
-      setSite: async (change) => {
-        this.siteChanges.push(change);
-        const held = this.siteHeld;
-        this.siteHeld = null;
-        if (held) await held;
-        const { revision, ...values } = change;
-        const now: SiteValues = { name: this.site.name, menu: this.site.menu, action: this.site.action, footer: this.site.footer };
-        if (JSON.stringify(values) === JSON.stringify(now)) return { ok: true, value: this.site };
-        if (revision !== this.site.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: this.site.revision, site: now } };
-        this.site = { ...this.site, ...values, revision: revision + 1, updatedAt: T };
-        return { ok: true, value: this.site };
-      },
+      getSite: async () => ({ timeZone: "Europe/London" }),
       setSiteStyle: async (change) => {
         this.styles.push(change);
         if (this.refuseStyle) return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/palette/primary", keyword: "inclusion", blockPointer: null, message: "must be one of the slot's tones" }] } };
@@ -205,8 +191,8 @@ class FakeSite {
       },
       createPage: async (request) => {
         if (request.slug === "winter-series") return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/slug", keyword: "taken", blockPointer: null, message: "is already the address of another page" }] } };
-        const id = this.drafts.size + 1;
-        this.drafts.set(id, { title: request.title, slug: request.slug, home: false, revision: 0, document: { schemaVersion: 1, title: request.title, sections: [] }, published: null });
+        const id = this.ids("page").length + 1;
+        this.drafts.set(id, { kind: "page", title: request.title, slug: request.slug, home: false, revision: 0, document: { schemaVersion: 1, title: request.title, sections: [] }, published: null });
         return { ok: true, value: this.page(id) };
       },
     };
@@ -224,12 +210,11 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; headerFooter?: boolean } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
   site.schedule = options.schedule ?? false;
-  site.headerFooter = options.headerFooter ?? false;
   site.livePages = !options.demo;
   site.refuseStart = options.refuseStart ?? null;
   const written: number[] = [];
@@ -634,144 +619,72 @@ test("a site style change shows on the canvas at once and goes to the CMS; refus
   expect(env.ui.getState().siteStyle?.palette.primary).toBe("site-harbour");
 });
 
-test("the header and footer show on the canvas as typed and reach the storage on Save, whole; values the editor's check refuses are not sent; another tab's save first is a conflict that Keep mine saves over", async () => {
-  const { site, env } = start(1, { headerFooter: true });
+// The canvas's parts: the one being edited, the page around it and the
+// other part, locked.
+const editing = () => document.querySelector<HTMLElement>(".canvas [data-editing-part]");
+const around = () => document.querySelector<HTMLElement>(".canvas [data-around-page]");
+const locked = (kind: string) => document.querySelector<HTMLElement>(`.canvas [data-theme-part="${kind}"]`);
+
+test("the header and footer are drawn locked around a page, from their drafts; the Page tab opens one as a page is opened, the page left drawn dimmed around it, and leads back to it", async () => {
+  const { written } = start(1);
   await opened();
-  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
-  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
-  const panel = screen.getByRole("complementary", { name: "Header and footer" });
-  const name = () => within(panel).getByLabelText("Site name");
-  const save = () => within(panel).getByRole("button", { name: "Save" });
-  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
-  expect(brand()).toBe("Samphire Bay Swimmers");
-  expect(site.siteChanges).toEqual([]);
-  await act(async () => fireEvent.click(save()));
-  expect(site.siteChanges).toEqual([{ revision: 0, name: "Samphire Bay Swimmers", menu: SITE.menu, action: SITE.action, footer: SITE.footer }]);
-  await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
-  expect(env.ui.getState().siteDraft).toBeNull();
-  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
-  expect(brand()).toBe("Samphire Bay Swimmers");
-
-  // A name past its limit: the editor's own check refuses it, nothing is
-  // sent, and the focus goes to it.
-  fireEvent.change(name(), { target: { value: "N".repeat(29) } });
-  await act(async () => fireEvent.click(save()));
-  expect(site.siteChanges).toHaveLength(1);
-  expect(screen.getByRole("alert").textContent).toBe("Not saved: every page keeps the header and footer it had. Put right what is marked below.");
-  await waitFor(() => expect(document.activeElement).toBe(name()));
-
-  // Another tab saves first: the save is a conflict, which leaves this
-  // tab's values on the canvas; Keep mine saves them from the revision it
-  // named.
-  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
-  site.siteSavedElsewhere({ name: "Saved elsewhere" });
-  await act(async () => fireEvent.click(save()));
-  const conflict = within(panel).getByRole("alert");
-  expect(conflict.textContent).toContain("Changed in another tab.");
-  await waitFor(() => expect(document.activeElement).toBe(within(conflict).getByRole("button", { name: "Reload" })));
-  expect(brand()).toBe("Shingle Cove Swimmers");
-  await act(async () => fireEvent.click(within(conflict).getByRole("button", { name: "Keep mine" })));
-  expect(site.siteChanges.at(-1)).toMatchObject({ revision: 2, name: "Shingle Cove Swimmers" });
-  expect(env.ui.getState().site).toMatchObject({ name: "Shingle Cove Swimmers", revision: 3 });
-  await waitFor(() => expect(within(panel).getByText("Saved for every page")).toBeTruthy());
-
-  // Reload takes the other tab's, leaving this tab's change.
-  fireEvent.change(name(), { target: { value: "Not to be kept" } });
-  site.siteSavedElsewhere({ name: "Theirs" });
-  await act(async () => fireEvent.click(save()));
-  await act(async () => fireEvent.click(within(within(panel).getByRole("alert")).getByRole("button", { name: "Reload" })));
-  expect(env.ui.getState().siteDraft).toBeNull();
-  expect(brand()).toBe("Theirs");
-  expect((name() as HTMLInputElement).value).toBe("Theirs");
+  expect(locked("header")?.hasAttribute("inert")).toBe(true);
+  expect(locked("footer")?.hasAttribute("inert")).toBe(true);
+  expect(locked("header")?.querySelector(".w-logo-link span")?.textContent).toBe("Slack Water");
+  fireEvent.click(screen.getByRole("button", { name: "Header" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Header" });
+  expect(written).toEqual([1, HEADER]);
+  expect(editing()?.dataset.editingPart).toBe("header");
+  expect(editing()?.tagName).toBe("HEADER");
+  // The page left, as it was left, dimmed and locked under the header; the
+  // footer locked under it.
+  expect(around()?.hasAttribute("inert")).toBe(true);
+  expect(around()?.querySelectorAll(":scope > [data-block-type=section]")).toHaveLength(page().sections.length);
+  expect(locked("footer")).not.toBeNull();
+  expect(locked("header")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Back to Winter series" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Winter series" });
+  expect(written).toEqual([1, HEADER, 1]);
+  expect(editing()).toBeNull();
 });
 
-// The next change of the header and footer is held until the test lets it
-// land.
-function holdSiteSave(site: FakeSite): () => Promise<void> {
-  let release: () => void = () => {};
-  site.siteHeld = new Promise<void>((resolve) => (release = resolve));
-  return async () => act(async () => release());
-}
-
-test("the header and footer typed back to what they were while the save is on its way stay as typed once it lands, not saved yet; a change that ends where the save does leaves nothing waiting", async () => {
-  const { site, env } = start(1, { headerFooter: true });
+test("an edit of the footer is saved as a page's is, drawn around the page opened next, and Publish puts it on every page", async () => {
+  const { site, env, clock } = start(1);
   await opened();
-  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
-  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
-  const panel = screen.getByRole("complementary", { name: "Header and footer" });
-  const name = () => within(panel).getByLabelText("Site name") as HTMLInputElement;
-  const save = () => within(panel).getByRole("button", { name: "Save" });
-  const state = () => panel.querySelector(".style-save")?.textContent;
-
-  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
-  const land = holdSiteSave(site);
-  await act(async () => fireEvent.click(save()));
-  expect(state()).toBe("Saving…");
-  // The name the site had, typed back before the answer: the save is about
-  // to store the other one, so this is a change still.
-  fireEvent.change(name(), { target: { value: "Slack Water" } });
-  await land();
-  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
-  expect(name().value).toBe("Slack Water");
-  expect(brand()).toBe("Slack Water");
-  expect(state()).toBe("Not saved yet");
-  expect(save().getAttribute("aria-disabled")).toBeNull();
-  await act(async () => fireEvent.click(save()));
-  expect(site.siteChanges.at(-1)).toEqual({ revision: 1, name: "Slack Water", menu: SITE.menu, action: SITE.action, footer: SITE.footer });
-  await waitFor(() => expect(state()).toBe("Saved for every page"));
-  expect(env.ui.getState().siteDraft).toBeNull();
-
-  // Changed and changed back to what is being saved, while it is on its
-  // way: once it lands, that is what is stored, and nothing waits.
-  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
-  const second = holdSiteSave(site);
-  await act(async () => fireEvent.click(save()));
-  fireEvent.change(name(), { target: { value: "Shingle Cove" } });
-  fireEvent.change(name(), { target: { value: "Shingle Cove Swimmers" } });
-  await second();
-  expect(env.ui.getState().site).toMatchObject({ name: "Shingle Cove Swimmers", revision: 3 });
-  expect(state()).toBe("Saved for every page");
-  expect(env.ui.getState().siteDraft).toBeNull();
-  expect(brand()).toBe("Shingle Cove Swimmers");
+  fireEvent.click(screen.getByRole("button", { name: "Footer" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Footer" });
+  relabel("Site foot");
+  await act(() => clock.advance(1_000));
+  expect(site.saves.at(-1)).toMatchObject({ revision: 0 });
+  expect(site.drafts.get(FOOTER)!.document.sections[0]!.props.label).toBe("Site foot");
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toEqual([{ id: FOOTER, revision: 1 }]);
+  expect(env.ui.getState().notice).toBe("Published: every page shows this footer at its next visit.");
+  expect(screen.getByRole("link", { name: "View the home page" }).getAttribute("href")).toBe("http://127.0.0.1:3900/");
+  // Back on a page, from the Page tab, the footer around it is the draft as
+  // edited.
+  fireEvent.click(screen.getByRole("tab", { name: "Page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Back to Winter series" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Winter series" });
+  expect(env.ui.getState().parts.footer?.sections[0]?.props.label).toBe("Site foot");
 });
 
-test("Discard, greyed while the header and footer's save is on its way, does nothing and says nothing then; the save lands as sent", async () => {
-  const { site, env } = start(1, { headerFooter: true });
-  await opened();
-  const brand = () => document.querySelector('.canvas [data-theme-part="header"] .sw-brand span')?.textContent;
-  fireEvent.click(screen.getByRole("button", { name: "Header and footer" }));
-  const panel = screen.getByRole("complementary", { name: "Header and footer" });
-  const name = () => within(panel).getByLabelText("Site name") as HTMLInputElement;
-  const discard = () => within(panel).getByRole("button", { name: "Discard changes" });
-  const said = () => panel.querySelector(".tray-body > [role=status]")?.textContent;
-
-  fireEvent.change(name(), { target: { value: "Samphire Bay Swimmers" } });
-  const land = holdSiteSave(site);
-  await act(async () => fireEvent.click(within(panel).getByRole("button", { name: "Save" })));
-  expect(discard().getAttribute("aria-disabled")).toBe("true");
-  fireEvent.click(discard());
-  expect(name().value).toBe("Samphire Bay Swimmers");
-  expect(brand()).toBe("Samphire Bay Swimmers");
-  expect(said()).toBe("");
-  await land();
-  expect(env.ui.getState().site).toMatchObject({ name: "Samphire Bay Swimmers", revision: 1 });
-  expect(name().value).toBe("Samphire Bay Swimmers");
-  expect(panel.querySelector(".style-save")?.textContent).toBe("Saved for every page");
-  expect(said()).toBe("");
-  expect(env.ui.getState().siteDraft).toBeNull();
+test("a part named by the address opens around the home page's draft; Insert offers no form there", async () => {
+  start(HEADER);
+  await screen.findByRole("button", { name: "Switch page. Open: Header" });
+  await waitFor(() => expect(around()).not.toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+  expect(screen.queryByRole("button", { name: "Form" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Menu" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Back to Home" })).toBeTruthy();
 });
 
-test("closing the tab asks first while the header and footer have a change not saved", async () => {
-  const { env } = start(1, { headerFooter: true });
-  await opened();
-  const asks = () => {
-    const event = new Event("beforeunload", { cancelable: true });
-    window.dispatchEvent(event);
-    return event.defaultPrevented;
-  };
-  expect(asks()).toBe(false);
-  act(() => env.ui.getState().setSiteDraft({ name: "Changed", menu: SITE.menu, action: SITE.action, footer: SITE.footer }));
-  expect(asks()).toBe(true);
-  act(() => env.ui.getState().setSiteDraft(null));
-  expect(asks()).toBe(false);
+test("in the browser demo, publishing a part opens the home page as published, the part on it", async () => {
+  const { site, env, tabs } = start(FOOTER, { demo: true });
+  await screen.findByRole("button", { name: "Switch page. Open: Footer" });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toEqual([{ id: FOOTER, revision: 0 }]);
+  const shown = new URL("?published=2", window.location.href).href;
+  await expect(tabs[0]).resolves.toBe(shown);
+  expect(env.ui.getState().notice).toContain("footer");
 });

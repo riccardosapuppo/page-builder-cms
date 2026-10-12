@@ -5,10 +5,14 @@
 // frame; the sidebar on the right, with its Page and Block tabs; the bottom
 // line under the canvas, with the selection's path, the devices and the
 // page's width. It holds the page being edited: it reads the site's pages,
-// media library, site style and theme through the storage adapter, opens a
-// page (its draft upgraded and checked, openDocument, before the store
-// takes it), and gives every new document the store makes to the page's
-// autosave. Nothing here talks to a server but through the adapter.
+// its parts (the header and the footer), media library, site style and
+// settings through the storage adapter, opens a page or a part (its draft
+// upgraded and checked, openDocument, before the store takes it), and gives
+// every new document the store makes to its autosave. Nothing here talks to
+// a server but through the adapter. A part is edited as a page is; the
+// canvas draws the parts' drafts around a page, and around a part the page
+// opened last (the interface store's parts and aroundPart), which this
+// keeps as they are edited.
 //
 // It also publishes: the edits waiting are saved first (flush), then the
 // draft is put live at the revision just saved, so what goes live is what
@@ -17,8 +21,7 @@
 // way, saved first, and the page is read again when its time comes, since
 // the CMS's job puts it live. It settles a conflict the person's way
 // (reload, keep mine), and sends the site style's changes, one request at
-// a time, the latest change last, and the header and footer when the
-// person saves them, checked first as the storage will check them.
+// a time, the latest change last.
 //
 // The page's versions: the list the history panel shows (./HistoryPanel.tsx),
 // "Save version" and restore, each after the edits waiting are saved. A
@@ -36,8 +39,7 @@ import { makeReplacePage } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { validateSite } from "../shared/validate.ts";
-import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type SiteValues, type StorageAdapter, type Version } from "../storage/adapter.ts";
+import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type PartKind, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
 import { cmsAddress } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
@@ -46,7 +48,6 @@ import { Canvas } from "./Canvas.tsx";
 import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { DragLayer } from "./drag/DragLayer.tsx";
 import { DrawerShell } from "./Drawer.tsx";
-import { SITE_NOT_SAVED, sectionTargets, siteValues } from "./header-footer.ts";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
@@ -59,7 +60,7 @@ import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
 import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
-import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type SectionTarget, type Session, type SiteSave, type SiteSaveResult, type StyleSave, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
@@ -93,6 +94,11 @@ export const NO_PAGE: PageDocument = { schemaVersion: 1, title: "", sections: []
 // What a publish in the browser demo did, and what the full system does
 // with it: the demo keeps it, and serves nothing.
 export const PUBLISHED_IN_BROWSER = "Published in this browser. In the full system, Rails publishes and serves this page, with the cache.";
+
+// The same for the header or the footer, which every page draws.
+export function partPublishedInBrowser(kind: PartKind): string {
+  return `Published in this browser: every page shown here draws this ${kind}. In the full system, Rails puts it on every page at once, with the cache.`;
+}
 
 // A promise settled from outside, once: what a tab opened ahead waits for.
 // Settling it again does nothing.
@@ -158,13 +164,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const publishedWords = useMemo(() => publishWords(adapter.capabilities.livePages), [adapter]);
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [pages, setPages] = useState<readonly PageSummary[]>([]);
+  const [parts, setParts] = useState<readonly PageSummary[]>([]);
   const [current, setCurrent] = useState<OpenPage | null>(null);
   const [autosave, setAutosave] = useState<Autosave | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [styleSave, setStyleSave] = useState<StyleSave>({ phase: "idle" });
-  const [siteSave, setSiteSave] = useState<SiteSave>({ phase: "idle" });
   const [versions, setVersions] = useState<VersionList>(NO_VERSIONS);
   const [restoring, setRestoring] = useState<number | null>(null);
   const live = useRef<{ autosave: Autosave | null; unsubscribe: () => void; adopting: boolean }>({ autosave: null, unsubscribe: () => {}, adopting: false });
@@ -177,14 +183,36 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
   const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
+  // The pages and the parts, read again: a publish, a schedule, a new page
+  // or address changes what the lists say of them.
   const refreshPages = useCallback(async () => {
-    const list = await adapter.listPages();
+    const [list, partList] = await Promise.all([adapter.listPages(), adapter.listParts()]);
     setPages(list);
+    setParts(partList);
     return list;
   }, [adapter]);
 
+  // A part's draft as the canvas draws it around a page, read again.
+  const readPart = useCallback(async (part: PageSummary) => {
+    const taken = openDocument((await adapter.getDraft(part.id)).document);
+    if (taken.ok) ui.getState().setParts({ [part.kind]: taken.document });
+  }, [adapter, ui]);
+
   // The latest page asked for: an earlier request still loading gives way.
   const opening = useRef(0);
+  // The home page's draft, as the page drawn around a part, unless another
+  // page was opened meanwhile.
+  const aroundHome = useCallback(async (ticket: number) => {
+    const home = (await adapter.listPages().catch(() => [])).find((p) => p.home);
+    if (!home) return;
+    try {
+      const taken = openDocument((await adapter.getDraft(home.id)).document);
+      if (taken.ok && opening.current === ticket && ui.getState().aroundPart === null) ui.getState().setAroundPart({ id: home.id, title: home.title, document: taken.document });
+    } catch {
+      // The part is drawn alone.
+    }
+  }, [adapter, ui]);
+
   // The same for the versions: only the latest read is shown.
   const versionReads = useRef(0);
   const openPage = useCallback(async (id: number): Promise<string | null> => {
@@ -215,8 +243,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       return opening.current === ticket ? `The page could not be opened: ${describe(error)}` : null;
     }
     if (opening.current !== ticket) return null;
-    const opened = openDocument(page.draft.document);
-    if (!opened.ok) return `The page could not be opened: ${opened.errors[0]?.message ?? "its document is not valid"}.`;
+    const taken = openDocument(page.draft.document);
+    if (!taken.ok) return `The page could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`;
     // The page being left stayed open while the next one loaded, and the
     // person may have edited it meanwhile: those edits are saved too. The
     // last look (left) and the switch below run with no await between
@@ -226,9 +254,14 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (opening.current !== ticket) return null;
     }
 
+    // A page left for a part is the page drawn around it, as it was left.
+    const leaving = opened.current;
+    if (leaving?.kind === "page" && page.page.kind !== "page") {
+      ui.getState().setAroundPart({ id: leaving.id, title: store.getState().document.title, document: store.getState().document });
+    }
     live.current.unsubscribe();
     previous?.dispose();
-    store.getState().load(opened.document);
+    store.getState().load(taken.document);
     ui.setState({ serverErrors: [], hover: null, notice: null, tray: "edit", sideTab: null });
     // The page left's versions, and any read of them still on its way, go.
     versionReads.current += 1;
@@ -236,7 +269,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
     // The document of each save, so the server's errors can be put on the
     // blocks of the document they were about.
-    let sent: PageDocument = opened.document;
+    let sent: PageDocument = taken.document;
     const saving = createAutosave({
       adapter: {
         getDraft: (pageId, options) => adapter.getDraft(pageId, options),
@@ -247,13 +280,19 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       },
       pageId: page.page.id,
       revision: page.draft.revision,
-      document: opened.document,
+      document: taken.document,
       savedAt: page.draft.updatedAt,
       clock,
     });
+    // A part's draft, as it is edited, is what the canvas draws around the
+    // pages opened after it.
+    const kind = page.page.kind;
+    if (kind !== "page") ui.getState().setParts({ [kind]: taken.document });
     const stopEdits = store.subscribe((state, before) => {
+      if (state.document === before.document) return;
+      if (kind !== "page") ui.getState().setParts({ [kind]: state.document });
       // The server's own draft, taken after a conflict, is no edit.
-      if (state.document !== before.document && !live.current.adopting) saving.edit(state.document);
+      if (!live.current.adopting) saving.edit(state.document);
     });
     const stopErrors = saving.subscribe((snapshot) => {
       if (snapshot.phase === "invalid") ui.getState().setServerErrors(errorsByBlock(sent, snapshot.errors));
@@ -268,28 +307,34 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       adopting: false,
     };
     setAutosave(saving);
-    setCurrent({ id: page.page.id, slug: page.page.slug, home: page.page.home, published: page.published, scheduled: page.scheduled, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live } });
+    setCurrent({ id: page.page.id, kind, slug: page.page.slug, home: page.page.home, published: page.published, scheduled: page.scheduled, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live } });
     setStatus({ kind: "ready" });
     address.write(page.page.id);
+    // A part opened with no page before it (the address named it) is drawn
+    // around the home page's draft, read now.
+    if (kind !== "page" && ui.getState().aroundPart === null) void aroundHome(ticket);
     return null;
-  }, [adapter, address, clock, store, ui, words]);
+  }, [adapter, address, aroundHome, clock, store, ui, words]);
 
-  // The site as the editor starts on it: its pages, library, style and
-  // theme; then the page the address names, else the home page, else the
-  // first.
+  // The site as the editor starts on it: its pages and parts, the parts'
+  // drafts the canvas draws around a page, its library, style and
+  // settings; then the page or part the address names, else the home page,
+  // else the first.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setStatus({ kind: "loading" });
       try {
-        const [list, media, style, site] = await Promise.all([adapter.listPages(), adapter.listMedia(), adapter.getSiteStyle(), adapter.getSite()]);
+        const [list, partList, media, style, site] = await Promise.all([adapter.listPages(), adapter.listParts(), adapter.listMedia(), adapter.getSiteStyle(), adapter.getSite()]);
+        await Promise.all(partList.map(readPart));
         if (cancelled) return;
         setPages(list);
+        setParts(partList);
         ui.getState().setMedia(media);
         ui.getState().setSiteStyle(style);
         ui.getState().setSite(site);
         const wanted = address.read();
-        const first = list.find((p) => p.id === wanted) ?? list.find((p) => p.home) ?? list[0];
+        const first = [...list, ...partList].find((p) => p.id === wanted) ?? list.find((p) => p.home) ?? list[0];
         if (!first) {
           setStatus({ kind: "no-pages" });
           return;
@@ -305,7 +350,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     return () => {
       cancelled = true;
     };
-  }, [adapter, address, attempt, openPage, ui]);
+  }, [adapter, address, attempt, openPage, readPart, ui]);
 
   useEffect(() => () => {
     live.current.unsubscribe();
@@ -395,7 +440,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         ui.getState().say(`Not published: ${unsavedWhy(settled.phase, words.server)}`);
         return;
       }
-      if (store.getState().document.sections.length === 0) {
+      // A header or footer may be empty: the site then has none.
+      if (page.kind === "page" && store.getState().document.sections.length === 0) {
         ui.getState().say("Not published: an empty page has nothing to publish. Add a section first.");
         return;
       }
@@ -427,11 +473,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       // The publish is a version of its own, and the live one now: the
       // history, if it shows the versions, lists it.
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
-      await refreshPages().catch(() => undefined);
+      const listed = await refreshPages().catch(() => null);
+      // A part has no page of its own: it is seen on the home page.
+      const seenOn = page.kind === "page" ? page.id : (listed ?? []).find((p) => p.home)?.id ?? listed?.[0]?.id ?? null;
       if (shown && publishedView) {
-        const view = cmsAddress(publishedView(page.id), cmsOrigin);
+        if (seenOn === null) {
+          shown.reject(new Error("no page to show the part on"));
+          ui.getState().say(page.kind === "page" ? PUBLISHED_IN_BROWSER : partPublishedInBrowser(page.kind));
+          return;
+        }
+        const view = cmsAddress(publishedView(seenOn), cmsOrigin);
         shown.resolve(view);
-        ui.getState().say(PUBLISHED_IN_BROWSER, { href: view, label: "View published page" });
+        ui.getState().say(page.kind === "page" ? PUBLISHED_IN_BROWSER : partPublishedInBrowser(page.kind), { href: view, label: page.kind === "page" ? "View published page" : "View the home page" });
+        return;
+      }
+      if (page.kind !== "page") {
+        const home = cmsAddress("/", cmsOrigin);
+        ui.getState().say(`Published: every page shows this ${page.kind} at its next visit.`, { href: home, label: "View the home page" });
         return;
       }
       const where = result.links.live === null ? null : cmsAddress(result.links.live, cmsOrigin);
@@ -465,7 +523,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       ui.getState().pending.deliver();
       const settled = await saving.flush();
       if (settled.phase !== "saved") return problem("unsaved", `Not scheduled: ${unsavedWhy(settled.phase, words.server)}`);
-      if (store.getState().document.sections.length === 0) return problem("empty", "Not scheduled: an empty page has nothing to publish. Add a section first.");
+      if (page.kind === "page" && store.getState().document.sections.length === 0) return problem("empty", "Not scheduled: an empty page has nothing to publish. Add a section first.");
       let outcome;
       try {
         outcome = await adapter.schedulePublish(page.id, { revision: settled.revision, at });
@@ -803,85 +861,15 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     })();
   }, [adapter, ui]);
 
-  // The header and footer: the panel's values go whole, one save at a
-  // time, from the revision read (or the one a conflict named), once the
-  // editor's own check of $defs/site lets them; a refusal leaves them in
-  // the panel, each problem at its value. Kept, they are what the canvas
-  // and every published page draw; a change typed while the save was on
-  // its way stays waiting unless it is what the storage answers it holds
-  // now, which is what the panel measures a change against.
-  const siteSaving = useRef(false);
-  const saveSite = useCallback(async (values: SiteValues, from?: number): Promise<SiteSaveResult> => {
-    const stored = ui.getState().site;
-    if (!stored || siteSaving.current) return "busy";
-    const check = validateSite(values);
-    if (!check.valid) {
-      ui.getState().setSiteErrors(check.errors.map((e) => ({ pointer: e.pointer, keyword: e.keyword, blockPointer: null, message: e.message })));
-      setSiteSave({ phase: "failed", message: SITE_NOT_SAVED, marked: true });
-      return "invalid";
-    }
-    siteSaving.current = true;
-    setSiteSave({ phase: "saving" });
-    try {
-      const outcome = await adapter.setSite({ revision: from ?? stored.revision, ...values });
-      if (outcome.ok) {
-        ui.getState().setSite(outcome.value);
-        const waiting = ui.getState().siteDraft;
-        if (waiting !== null && sameJson(waiting, siteValues(outcome.value))) ui.getState().setSiteDraft(null);
-        ui.getState().setSiteErrors([]);
-        setSiteSave({ phase: "saved" });
-        return "saved";
-      }
-      if (outcome.problem.kind === "conflict") {
-        setSiteSave({ phase: "conflict", revision: outcome.problem.currentRevision, theirs: outcome.problem.site });
-        return "conflict";
-      }
-      ui.getState().setSiteErrors(outcome.problem.errors);
-      const marked = outcome.problem.errors.length > 0;
-      setSiteSave({ phase: "failed", message: marked ? SITE_NOT_SAVED : `Not saved: every page keeps the header and footer it had. ${outcome.problem.message}`, marked });
-      return "invalid";
-    } catch (error) {
-      setSiteSave({ phase: "failed", message: `Not saved: every page keeps the header and footer it had. ${describe(error)}`, marked: false });
-      return "failed";
-    } finally {
-      siteSaving.current = false;
-    }
-  }, [adapter, ui]);
-
-  const reloadSite = useCallback(async () => {
-    try {
-      ui.getState().setSite(await adapter.getSite());
-      ui.getState().setSiteDraft(null);
-      ui.getState().setSiteErrors([]);
-      setSiteSave({ phase: "idle" });
-    } catch (error) {
-      setSiteSave({ phase: "failed", message: `The header and footer could not be read again: ${describe(error)}`, marked: false });
-    }
-  }, [adapter, ui]);
-
-  // The anchors of a page's sections, from its draft, for the links of
-  // the header.
-  const pageSections = useCallback(async (pageId: number): Promise<readonly SectionTarget[] | null> => {
-    try {
-      const opened = openDocument((await adapter.getDraft(pageId)).document);
-      return opened.ok ? sectionTargets(opened.document) : null;
-    } catch {
-      return null;
-    }
-  }, [adapter]);
-
-  // Closing the tab while edits are only here asks first: the page's
-  // edits, text typed in a field and not handed over yet (handed over
-  // now, so the autosave counts it), a site style on its way to the
-  // CMS or waiting behind the one that is, and a header and footer changed
-  // in their panel and not saved, or on their way.
+  // Closing the tab while edits are only here asks first: the page's or
+  // the part's edits, text typed in a field and not handed over yet
+  // (handed over now, so the autosave counts it), and a site style on its
+  // way to the CMS or waiting behind the one that is.
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       ui.getState().pending.deliver();
       const style = styleQueue.current;
-      const { site, siteDraft } = ui.getState();
-      const siteWaiting = siteSaving.current || (siteDraft !== null && site !== null && !sameJson(siteDraft, siteValues(site)));
-      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null || siteWaiting;
+      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
       if (unsaved) event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
@@ -889,11 +877,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   }, [ui]);
 
   const session = useMemo<Session>(() => ({
-    pages, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
+    pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
     openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
-    siteSave, saveSite, reloadSite, pageSections,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, siteSave, saveSite, reloadSite, pageSections, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);

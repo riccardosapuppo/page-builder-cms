@@ -18,6 +18,7 @@ export const BLOCK_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
   "gallery", "video", "map", "iconbox", "quote", "accordion",
   "form",
+  "logo", "menu",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -26,6 +27,7 @@ export const WIDGET_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
   "gallery", "video", "map", "iconbox", "quote", "accordion",
   "form",
+  "logo", "menu",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -35,17 +37,24 @@ export type SpaceToken = (typeof SPACE_TOKENS)[number];
 export const SECTION_SPACE_TOKENS = [...SPACE_TOKENS, "section-s", "section-l"] as const;
 export type SectionSpaceToken = (typeof SECTION_SPACE_TOKENS)[number];
 
-export const COLUMN_WIDTHS_TOKENS = ["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"] as const;
+export const COLUMN_WIDTHS_TOKENS = ["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2", "fit:1", "1:fit", "fit:1:fit"] as const;
 export type ColumnWidthsToken = (typeof COLUMN_WIDTHS_TOKENS)[number];
 
 // The presets a section may name for each count of columns: absent means
-// equal widths, and one or four columns take no preset.
+// equal widths, and one or four columns take no preset. A fit part is a
+// column as wide as what it holds; the others share what is left.
 export const COLUMN_WIDTHS_BY_COUNT = {
   1: [],
-  2: ["3:2", "2:3", "2:1", "1:2"],
-  3: ["2:1:1", "1:2:1", "1:1:2"],
+  2: ["3:2", "2:3", "2:1", "1:2", "fit:1", "1:fit"],
+  3: ["2:1:1", "1:2:1", "1:1:2", "fit:1:fit"],
   4: [],
 } as const satisfies Record<1 | 2 | 3 | 4, readonly ColumnWidthsToken[]>;
+
+// Where a section's columns go one under the other: absent, on tablets and
+// phones; phone, on phones only; never, on no device. A section of one
+// column names none.
+export const STACK_TOKENS = ["phone", "never"] as const;
+export type StackToken = (typeof STACK_TOKENS)[number];
 
 export const ASPECT_TOKENS = ["original", "16:9", "3:2", "4:3", "5:4", "1:1"] as const;
 export type AspectToken = (typeof ASPECT_TOKENS)[number];
@@ -130,6 +139,7 @@ export const STYLE_TOKENS = {
 const TEXT_STYLE = ["textSize", "color", "align", "visibility"] as const;
 const LINE_STYLE = ["color", "visibility"] as const;
 const PLAIN_STYLE = ["visibility"] as const;
+const NAV_STYLE = ["color", "align", "visibility"] as const;
 
 export const STYLE_KEYS_BY_TYPE = {
   section: ["background", "spaceAbove", "spaceBelow", "spaceBetween", "visibility"],
@@ -147,6 +157,8 @@ export const STYLE_KEYS_BY_TYPE = {
   form: PLAIN_STYLE,
   gallery: ["spaceBetween", "visibility"],
   iconbox: ["color", "align", "visibility"],
+  logo: NAV_STYLE,
+  menu: NAV_STYLE,
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
 
 export type StyleKeyOf<T extends BlockType> = (typeof STYLE_KEYS_BY_TYPE)[T][number];
@@ -245,6 +257,7 @@ export interface SectionProps {
   // In-page link target: #anchor scrolls to the section.
   anchor?: string;
   columnWidths?: ColumnWidthsToken;
+  stack?: StackToken;
 }
 export interface HeadingProps {
   level: HeadingLevel;
@@ -311,6 +324,22 @@ export interface FormProps {
   // What the visitor reads once the server has kept the answer.
   confirmation: string;
 }
+// The site's mark, with the site's name beside it as a link to the home
+// page, or alone (decorative) when there is no name.
+export interface LogoProps {
+  name?: string;
+}
+// One link of a menu.
+export interface MenuLink {
+  label: string;
+  href: string;
+}
+// The site's links, folding into Menu where the block is too narrow for
+// them; label names the menu for a screen reader.
+export interface MenuProps {
+  label: string;
+  items: MenuLink[];
+}
 
 // ---------------------------------------------------------------- blocks
 
@@ -340,11 +369,13 @@ export type IconboxBlock = BlockOf<"iconbox", IconboxProps, NoChildren>;
 export type QuoteBlock = BlockOf<"quote", QuoteProps, NoChildren>;
 export type AccordionBlock = BlockOf<"accordion", AccordionProps, NoChildren>;
 export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
+export type LogoBlock = BlockOf<"logo", LogoProps, NoChildren>;
+export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
 
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
   | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
-  | FormBlock;
+  | FormBlock | LogoBlock | MenuBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -370,7 +401,7 @@ type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K
 type KeyTable<T> = { readonly [K in keyof T]-?: K extends RequiredKeys<T> ? "required" : "optional" };
 
 export const PROP_KEYS = {
-  section: { label: "optional", anchor: "optional", columnWidths: "optional" },
+  section: { label: "optional", anchor: "optional", columnWidths: "optional", stack: "optional" },
   column: {},
   heading: { level: "required", text: "required", href: "optional" },
   text: { doc: "required" },
@@ -384,12 +415,15 @@ export const PROP_KEYS = {
   quote: { text: "required", attribution: "optional" },
   accordion: { items: "required" },
   form: { items: "required", submitLabel: "required", confirmation: "required" },
+  logo: { name: "optional" },
+  menu: { label: "required", items: "required" },
 } as const satisfies { [T in Exclude<BlockType, "image" | "column" | "divider">]: KeyTable<PropsOf<T>> } & {
   column: Record<string, never>;
   divider: Record<string, never>;
 };
 
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
+export const MENU_LINK_KEYS = { label: "required", href: "required" } as const satisfies KeyTable<MenuLink>;
 // A field's keys whatever its kind: maxLength is optional here, and the
 // schema says for which kinds it is required and for which absent.
 export const FORM_FIELD_KEYS = {

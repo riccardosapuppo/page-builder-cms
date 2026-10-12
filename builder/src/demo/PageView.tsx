@@ -1,11 +1,12 @@
 // A page as the demo shows it in a tab of its own, where the full system's
 // CMS would serve it: the draft as it would be published (Preview), or the
 // page as it was published in this browser (Publish). The same renderer as
-// the canvas and the same markup as the CMS's page (../render/), with the
-// header and footer and the site style as this browser keeps them, read
-// when the page is opened, so a change of them shows on every page
-// published here with nothing published again; the images from the
-// browser's library.
+// the canvas and the same markup as the CMS's page (../render/), inside the
+// site's header and footer as the CMS draws them: a published page inside
+// the parts published here (or the starters, for a part never published),
+// a preview inside the parts' drafts; and a part's own preview is the home
+// page's. The site style is this browser's, the images from the browser's
+// library, all read when the page is opened.
 //
 // The demo serves nothing, so the page says so in one line above it, and
 // what would leave for the server stays here:
@@ -20,20 +21,23 @@ import { mediaResolver } from "../editor/media.ts";
 import { PUBLISHED_IN_BROWSER } from "../editor/App.tsx";
 import { PageRoot } from "../render/page.tsx";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
-import type { MediaItem, PageSummary, Site, SiteStyle, StorageAdapter } from "../storage/adapter.ts";
+import { SITE_THEME } from "virtual:site-theme";
+import type { SiteParts } from "../render/theme.tsx";
+import type { MediaItem, PageSummary, SiteStyle, StorageAdapter } from "../storage/adapter.ts";
 import { isStorageError } from "../storage/adapter.ts";
 import { DemoLine } from "./DemoLine.tsx";
 import { previewAddress, publishedAddress, type View } from "./views.ts";
 
 export const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 export const NOT_PUBLISHED_LINE = "This page is not published in this browser yet: Publish in the editor shows it here.";
+export const NO_HOME_LINE = "This browser has no page to show the header and footer on yet: make one in the editor.";
 export const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 export const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
 
 type Shown =
   | { kind: "loading" }
   | { kind: "failed"; message: string }
-  | { kind: "ready"; document: unknown; title: string; line: string; pages: readonly PageSummary[]; site: Site; style: SiteStyle; media: ReadonlyMap<string, MediaItem> };
+  | { kind: "ready"; document: unknown; title: string; line: string; pages: readonly PageSummary[]; parts: SiteParts; style: SiteStyle; media: ReadonlyMap<string, MediaItem> };
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
@@ -43,16 +47,37 @@ const describe = (error: unknown): string => (isStorageError(error) ? error.fail
 // otherwise read an empty store and say there is nothing there.
 export async function readShown(adapter: StorageAdapter, view: View): Promise<Shown> {
   const pages = await adapter.listPages();
-  const [page, site, style, media] = await Promise.all([
-    adapter.getPage(view.pageId), adapter.getSite(), adapter.getSiteStyle(), adapter.listMedia(),
+  const [opened, partList, style, media] = await Promise.all([
+    adapter.getPage(view.pageId), adapter.listParts(), adapter.getSiteStyle(), adapter.listMedia(),
   ]);
   const library = new Map(media.map((item) => [item.id, item]));
+  // The parts around the page: their drafts in a preview; published, what
+  // each published, or its starter, as the CMS draws them.
+  const partDocument = async (part: PageSummary): Promise<unknown> => {
+    if (view.kind === "preview") return (await adapter.getDraft(part.id)).document;
+    if (part.published) return (await adapter.getVersion(part.id, part.published.versionNumber)).document;
+    return SITE_THEME.parts[part.kind === "footer" ? "footer" : "header"];
+  };
+  const [header, footer] = await Promise.all(["header", "footer"].map((kind) => {
+    const part = partList.find((p) => p.kind === kind);
+    return part ? partDocument(part) : Promise.resolve(SITE_THEME.parts[kind === "footer" ? "footer" : "header"]);
+  }));
+  const parts: SiteParts = { header, footer };
+  // A part has no page of its own: its preview is the home page's.
+  const page = opened.page.kind === "page" ? opened : await homeOf(adapter, pages);
+  if (!page) return { kind: "failed", message: NO_HOME_LINE };
   if (view.kind === "preview") {
-    return { kind: "ready", document: page.draft.document, title: page.draft.document.title, line: PREVIEW_LINE, pages, site, style, media: library };
+    return { kind: "ready", document: page.draft.document, title: page.draft.document.title, line: PREVIEW_LINE, pages, parts, style, media: library };
   }
   if (!page.published) return { kind: "failed", message: NOT_PUBLISHED_LINE };
-  const version = await adapter.getVersion(view.pageId, page.published.versionNumber);
-  return { kind: "ready", document: version.document, title: version.document.title, line: PUBLISHED_IN_BROWSER, pages, site, style, media: library };
+  const version = await adapter.getVersion(page.page.id, page.published.versionNumber);
+  return { kind: "ready", document: version.document, title: version.document.title, line: PUBLISHED_IN_BROWSER, pages, parts, style, media: library };
+}
+
+// The home page of this browser, or its first page.
+async function homeOf(adapter: StorageAdapter, pages: readonly PageSummary[]) {
+  const home = pages.find((p) => p.home) ?? pages[0];
+  return home ? adapter.getPage(home.id) : null;
 }
 
 // The line under a form, which sending says again, as news.
@@ -138,7 +163,7 @@ export function PageView({ adapter, view }: { adapter: StorageAdapter; view: Vie
       </aside>
       {shown.kind === "ready" && ctx && (
         <div onClick={follow}>
-          <PageRoot document={shown.document} ctx={ctx} siteStyle={shown.style} site={shown.site} />
+          <PageRoot document={shown.document} ctx={ctx} siteStyle={shown.style} parts={shown.parts} />
         </div>
       )}
       <DemoLine />

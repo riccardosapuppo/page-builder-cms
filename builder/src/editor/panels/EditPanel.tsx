@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import { makeSetPage, REMOVE } from "../../document/commands.ts";
 import { TYPE_NAMES } from "../../document/labels.ts";
 import type { Block } from "../../shared/document.ts";
-import type { BlockFieldError, FieldError } from "../../storage/adapter.ts";
+import type { BlockFieldError, FieldError, PartKind } from "../../storage/adapter.ts";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
 import { describedBy, ErrorList, TextField, useFieldClaims } from "../controls.tsx";
@@ -16,11 +16,56 @@ import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, fromLine, placeLine } from "../names.ts";
 import { siteAddress } from "../Publish.tsx";
-import { publishWords, useKeptWords, useSession } from "../session.tsx";
+import { PART_NAMES, publishWords, useKeptWords, useSession } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
 import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
 import { DEVICE_WORDS } from "./StyleFields.tsx";
+
+// ------------------------------------------------------------- the parts
+
+// The Page tab of the site's header or footer, which has no title,
+// address or description of its own: what it is and where it shows,
+// whether it is published, and the way back to the page drawn around it;
+// then `after`, the way to the site style.
+export function PartPanel({ kind, after }: { kind: PartKind; after?: ReactNode }) {
+  const { ui } = useEnv();
+  const session = useSession();
+  const around = useUi((u) => u.aroundPart);
+  const name = PART_NAMES[kind];
+  const published = session.current?.published ?? null;
+  const live = session.capabilities.livePages;
+  const back = around ?? (() => {
+    const home = session.pages.find((page) => page.home) ?? session.pages[0];
+    return home ? { id: home.id, title: home.title } : null;
+  })();
+  const where = kind === "header" ? "above" : "below";
+  return (
+    <>
+      <div className="ed-title">
+        <span className="ed-icon"><Icon name="globe" className="i i-tile" /></span>
+        <div><strong>{name}</strong><span>{published ? "On every page, published" : "On every page, not published yet"}</span></div>
+      </div>
+      <div className="sb-body sb-body-pad part-panel">
+        <p>The {kind} is drawn on every page, {where} its sections. Build it as you build a page: sections, columns and blocks. Logo and Menu are in Insert, under Site.</p>
+        <p>{live ? `Publish puts it on every page at once.` : `Publish puts it on every page shown in this browser.`} {published ? "" : `Until then, every page shows the ${kind} the site started with.`}</p>
+        {back && (
+          <button
+            className="btn btn-secondary btn-block"
+            type="button"
+            data-part-back=""
+            onClick={() => void session.openPage(back.id).then((why) => {
+              if (why) ui.getState().say(why);
+            })}
+          >
+            <Icon name="arrow-left" />Back to {back.title}
+          </button>
+        )}
+        {after}
+      </div>
+    </>
+  );
+}
 
 // ------------------------------------------------------------- the page
 

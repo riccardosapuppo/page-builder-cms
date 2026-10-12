@@ -5,13 +5,15 @@
 // preview (../shared/preview-widths.ts: 768 and 390) lays out as a tablet
 // or a phone, whatever the window's width: the canvas needs no iframe.
 //
-// Given the theme's parts (GET /api/site), the root draws the header above
-// the sections and the footer below them, as the layout does (./theme.tsx);
-// the canvas draws them locked. Without them it draws the sections alone,
-// as the render contract compares them.
+// Given the site's parts (the header and footer pages), the root draws the
+// header above the sections and the footer below them, as the layout does
+// (./theme.tsx); the canvas draws them locked, with nothing of the
+// editor's on their blocks. Without them it draws the sections alone, as
+// the render contract compares them.
+import { useMemo } from "react";
 import type { RenderContext } from "./context.ts";
 import { PageSections } from "./blocks.tsx";
-import { SiteFooter, SiteHeader, type Site } from "./theme.tsx";
+import { SitePart, type SiteParts } from "./theme.tsx";
 
 // The parts of the site style the page root carries, as the API gives them
 // (GET /api/site-style).
@@ -50,20 +52,22 @@ interface PageRootProps {
   // A <main> landmark around the sections, as on the page; the canvas, a
   // part of the editor's own page, passes false and gets a plain block.
   landmark?: boolean;
-  // The theme's header and footer, drawn around the sections; locked (inert,
-  // and marked as the theme's) on the canvas.
-  site?: Site | null;
-  lockedTheme?: boolean;
+  // The site's header and footer, drawn around the sections; locked (inert,
+  // and marked as the site's parts) on the canvas.
+  parts?: SiteParts | null;
+  lockedParts?: boolean;
 }
 
-export function PageRoot({ document, ctx, siteStyle, width, landmark = true, site, lockedTheme = false }: PageRootProps) {
+export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false }: PageRootProps) {
   const sections = <PageSections document={document} ctx={ctx} />;
+  const quiet = useMemo<RenderContext>(() => ({ media: ctx.media }), [ctx.media]);
+  const partCtx = lockedParts ? quiet : ctx;
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={width === undefined ? undefined : { width: `${width}px` }}>
       <div className="sw">
-        {site && <SiteHeader site={site} locked={lockedTheme} />}
+        {parts && <SitePart kind="header" document={parts.header} ctx={partCtx} locked={lockedParts} />}
         {landmark ? <main>{sections}</main> : <div className="sw-main">{sections}</div>}
-        {site && <SiteFooter site={site} locked={lockedTheme} />}
+        {parts && <SitePart kind="footer" document={parts.footer} ctx={partCtx} locked={lockedParts} />}
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ import { WIDGET_RENDERERS } from "../widgets/registry.ts";
 import { BlockRoot, blockProps, blockStyle, classNames } from "./block-root.tsx";
 import type { BlockRenderProps, Decoration, RawBlock, RenderContext } from "./context.ts";
 import { anchor } from "./policy.ts";
-import { classValue, columnWidths, styleClasses, visibilityClasses } from "./style.ts";
+import { classValue, columnWidths, stack, styleClasses, visibilityClasses } from "./style.ts";
 
 const SECTIONS: readonly string[] = ["section"];
 const COLUMNS: readonly string[] = ["column"];
@@ -60,24 +60,26 @@ export const BlockView = memo(function BlockView({ block, ctx }: { block: RawBlo
 });
 
 // A band across the page: its columns side by side on desktop, stacked
-// below. The column count is the number of its columns, and columnWidths the
-// share of each on desktop, equal when the section names no preset for that
+// below unless stack says on phones only or never. The column count is the
+// number of its columns, and columnWidths the share of each wherever they
+// stand side by side, equal when the section names no preset for that
 // count.
 function Section({ block, ctx, decoration }: BlockRenderProps) {
   const style = blockStyle(block);
   const props = blockProps(block);
   const columns = Array.isArray(block.children) ? block.children.filter((child: unknown) => isObject(child) && child.type === "column") : [];
   const widths = columnWidths(props, columns.length);
+  const stacks = stack(props, columns.length);
   return (
     <BlockRoot
       as="section"
       block={block}
       classes={["sec", styleClasses(style, "background"), styleClasses(style, "spaceAbove"), styleClasses(style, "spaceBelow"), visibilityClasses(style)]}
       attributes={{ id: anchor(props.anchor) }}
-      data={{ columns: columns.length, "column-widths": widths }}
+      data={{ columns: columns.length, "column-widths": widths, stack: stacks }}
       decoration={decoration}
     >
-      <div className={classNames("sw-inner", "cols", `cols-${Math.min(Math.max(columns.length, 1), 4)}`, widths && `widths-${classValue(widths)}`, styleClasses(style, "spaceBetween", { family: "cols-gap" }))}>
+      <div className={classNames("sw-inner", "cols", `cols-${Math.min(Math.max(columns.length, 1), 4)}`, widths && `widths-${classValue(widths)}`, stacks && `stack-${stacks}`, styleClasses(style, "spaceBetween", { family: "cols-gap" }))}>
         {renderBlocks(columns, COLUMNS, ctx)}
       </div>
     </BlockRoot>

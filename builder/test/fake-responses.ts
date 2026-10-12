@@ -56,6 +56,7 @@ export class FakeResponses implements ResponsesStorage {
   page(id: number, title: string, live: number | null, draft: PageDocument): this {
     this.pages.push({
       id,
+      kind: "page",
       title,
       slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       home: false,

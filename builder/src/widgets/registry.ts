@@ -1,5 +1,6 @@
 // Every widget, in the Insert drawer's order (the approved design's: Basic,
-// Media, Content, Forms), and the renderer of each type. registry.test.ts
+// Media, Content, Forms; then Site, the header's and footer's blocks), and
+// the renderer of each type. registry.test.ts
 // holds the list to the schema's widget types, one definition each.
 //
 // Adding a widget is one commit: the schema's branch, its folder here
@@ -17,7 +18,9 @@ import { gallery } from "./gallery/definition.ts";
 import { heading } from "./heading/definition.ts";
 import { iconbox } from "./iconbox/definition.ts";
 import { image } from "./image/definition.ts";
+import { logo } from "./logo/definition.ts";
 import { map } from "./map/definition.ts";
+import { menu } from "./menu/definition.ts";
 import { quote } from "./quote/definition.ts";
 import { spacer } from "./spacer/definition.ts";
 import { text } from "./text/definition.ts";
@@ -29,6 +32,7 @@ export const WIDGETS: readonly AnyWidgetDefinition[] = [
   gallery, video, map,
   iconbox, quote, accordion,
   form,
+  logo, menu,
 ];
 
 export const WIDGET_RENDERERS: ReadonlyMap<string, ComponentType<BlockRenderProps>> = new Map(WIDGETS.map((w) => [w.type, w.render]));

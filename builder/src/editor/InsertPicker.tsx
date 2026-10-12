@@ -26,7 +26,7 @@ import { idDraw } from "../document/ids.ts";
 import { plural } from "../document/labels.ts";
 import type { ImageRef, VideoProvider, WidgetBlock } from "../shared/document.ts";
 import { WidgetIcon } from "../widgets/icon.tsx";
-import { LAYOUT, WIDGETS } from "../widgets/registry.ts";
+import { LAYOUT } from "../widgets/registry.ts";
 import { newWidget, type AnyWidgetDefinition, type InputOf } from "../widgets/types.ts";
 import { afterRender } from "./act.ts";
 import { canvasUi, useCanvasUi, type Asking, type InsertPlace } from "./canvas-ui.ts";
@@ -34,11 +34,12 @@ import { useEditor, useEnv, type EditorEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { openDrawer } from "./Drawer.tsx";
 import { Icon } from "./icons.tsx";
-import { useInsert } from "./insert.ts";
+import { insertableWidgets, useInsert } from "./insert.ts";
 import { placeExists, placeKey, placeWords, type PlaceWords } from "./insert-place.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, PRESETS, type Preset } from "./presets.ts";
+import { useOpenKind } from "./session.tsx";
 import { askedWidget, DRAG_WORDS, presetTile, sectionTile, widgetTile, type TileSource } from "./tiles.ts";
 
 // What takes the focus back when the picker closes: the "+" that opened
@@ -167,6 +168,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
   // (canvas.css, ./Canvas.tsx).
   const dragging = useEditor((s) => s.drag !== null);
   const { insertMade } = useInsert();
+  const kind = useOpenKind();
   const [query, setQuery] = useState("");
   // Opened by a dropped key, the picker opens on that key's window.
   const [asking, setAsking] = useState<AnyWidgetDefinition | "picture" | null>(() => (dropped === null ? null : dropped.kind === "picture" ? "picture" : askedWidget(dropped)));
@@ -251,7 +253,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
     return settle(makeInsert(page, presetSection(page, preset, newId, image), { parentId: null, index: place.kind === "section" ? place.index : 0 }));
   };
 
-  const widgets = place.kind === "block" ? WIDGETS.filter((w) => matching(w.label, query)) : [];
+  const widgets = place.kind === "block" ? insertableWidgets(kind).filter((w) => matching(w.label, query)) : [];
   const layouts = place.kind === "section" ? LAYOUT.columns.filter((c) => matching(c.label, query)) : [];
   const presets = place.kind === "section" ? PRESETS.filter((p) => matching(PRESET_LABELS[p], query)) : [];
 

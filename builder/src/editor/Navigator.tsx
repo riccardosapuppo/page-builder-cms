@@ -35,7 +35,8 @@ import { draggedName } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
-import { useKeptWords, useOptionalSession } from "./session.tsx";
+import type { PartKind } from "../storage/adapter.ts";
+import { PART_NAMES, partOf, useKeptWords, useOpenKind, useOptionalSession } from "./session.tsx";
 
 interface Row {
   block: Block;
@@ -94,7 +95,8 @@ export function Navigator() {
   }, [drag]);
   const selection = useEditor((s) => s.selection);
   const serverErrors = useUi((u) => u.serverErrors);
-  const site = useUi((u) => u.site);
+  // Around a page, the site's header and footer, each a row that opens it.
+  const aroundPage = useOpenKind() === "page";
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   // The row with the Tab stop: the selection's, else the first.
   const [active, setActive] = useState<string | null>(null);
@@ -230,7 +232,7 @@ export function Navigator() {
       </div>
       <div className="drawer-body drawer-body-tree" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`}>
         {tab === "headings" ? <Headings /> : (<>
-          {site && <ThemeRow part="header" />}
+          {aroundPage && <ThemeRow part="header" />}
           {sections === 0 ? (
             <p className="t-empty">No sections yet. Each section you add shows up here, with its columns and widgets inside.</p>
           ) : (
@@ -255,7 +257,7 @@ export function Navigator() {
               ))}
             </ul>
           )}
-          {site && <ThemeRow part="footer" />}
+          {aroundPage && <ThemeRow part="footer" />}
           {sections > 0 && <p className="hint hint-pad tree-hint">Select a row and the page scrolls to it.</p>}
         </>)}
       </div>
@@ -421,15 +423,29 @@ function TreeItem(props: TreeItemProps) {
   );
 }
 
-// The site's header or footer: a row like the tree's, outside it, locked:
-// they are changed in the Header and footer panel, where the storage keeps
-// a change of them, not on the page.
-function ThemeRow({ part }: { part: "header" | "footer" }) {
-  const name = part === "header" ? "Site header" : "Site footer";
-  const changeable = useOptionalSession()?.capabilities.headerFooter ?? false;
+// The site's header or footer: a row like the tree's, outside it, locked
+// on the page: it is made of blocks of its own, and the row opens it to be
+// edited as a page is.
+function ThemeRow({ part }: { part: PartKind }) {
+  const { ui } = useEnv();
+  const session = useOptionalSession();
+  const found = session ? partOf(session, part) : undefined;
+  const name = PART_NAMES[part];
   return (
-    <p className="t-row t-theme" title={`${name}: the same on every page.${changeable ? " Change it under Page, in Header and footer." : ""}`}>
-      <Icon name="lock" /><span>{name}</span>{" "}<em aria-hidden="true">Every page</em><span className="visually-hidden">, locked: the same on every page</span>
-    </p>
+    <button
+      className="t-row t-theme"
+      type="button"
+      data-part-row={part}
+      disabled={!found}
+      title={`${name}: the same on every page. Open it to edit its blocks.`}
+      onClick={() => {
+        if (!session || !found) return;
+        void session.openPage(found.id).then((why) => {
+          if (why) ui.getState().say(why);
+        });
+      }}
+    >
+      <Icon name="globe" /><span>{name}</span>{" "}<em aria-hidden="true">Every page</em><span className="visually-hidden">: the same on every page. Opens it.</span>
+    </button>
   );
 }

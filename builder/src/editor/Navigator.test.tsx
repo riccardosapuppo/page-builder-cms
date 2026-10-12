@@ -140,9 +140,15 @@ test("Headings lists the page's headings in order and by level; one chosen is se
   expect(screen.getByRole("tree", { name: "Page structure" })).toBeTruthy();
 });
 
-test("a column's row says how many widgets it holds, as a section's says its columns; the theme's rows say they are on every page", () => {
-  const kit = editorKit({ document: page() });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+// The site's header and footer, as the session lists them.
+const part = (id: number, kind: "header" | "footer") => ({
+  id, kind, title: kind === "header" ? "Header" : "Footer", slug: null, home: false, revision: 1, updatedAt: "2026-10-12T08:00:00.000Z",
+  published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: `/preview/${id}`, live: null },
+});
+const PARTS = [part(4, "header"), part(5, "footer")];
+
+test("a column's row says how many widgets it holds, as a section's says its columns; the parts' rows say they are on every page", () => {
+  const kit = editorKit({ document: page(), session: { parts: PARTS } });
   kit.render(<Navigator />);
   act(() => kit.store.getState().select("c1"));
   expect(within(item("Hero")).getByText("2 columns")).toBeTruthy();
@@ -155,14 +161,33 @@ test("a column's row says how many widgets it holds, as a section's says its col
     kit.store.getState().dispatch(made.command);
   });
   expect(within(item("Column 2")).getByText("0 widgets")).toBeTruthy();
-  const header = screen.getByText("Site header").closest("p")!;
-  const footer = screen.getByText("Site footer").closest("p")!;
-  for (const row of [header, footer]) {
+  const rows = [...document.querySelectorAll<HTMLButtonElement>("[data-part-row]")];
+  expect(rows.map((row) => row.dataset.partRow)).toEqual(["header", "footer"]);
+  for (const row of rows) {
     expect(within(row).getByText("Every page")).toBeTruthy();
-    // Said once to a screen reader: its name and why it is locked.
+    // Said once to a screen reader: its name, that it is on every page, and
+    // what a click does.
     expect(within(row).getByText("Every page").getAttribute("aria-hidden")).toBe("true");
-    expect(row.textContent).toMatch(/, locked: the same on every page$/);
+    expect(row.textContent).toMatch(/: the same on every page\. Opens it\.$/);
   }
+});
+
+test("a part's row opens it as a page is opened; with a part open there are no such rows, and with no part listed they are off", async () => {
+  const opened: number[] = [];
+  const kit = editorKit({ document: page(), session: { parts: PARTS, openPage: async (id) => { opened.push(id); return null; } } });
+  const first = kit.render(<Navigator />);
+  fireEvent.click(document.querySelector<HTMLButtonElement>("[data-part-row=footer]")!);
+  await act(async () => {});
+  expect(opened).toEqual([5]);
+  first.unmount();
+  const header = { id: 4, kind: "header" as const, slug: null, home: false, published: null, revision: 1, links: { preview: "/preview/4", live: null } };
+  const inPart = editorKit({ document: page(), session: { parts: PARTS, current: header } });
+  const second = inPart.render(<Navigator />);
+  expect(document.querySelectorAll("[data-part-row]")).toHaveLength(0);
+  second.unmount();
+  const none = editorKit({ document: page() });
+  none.render(<Navigator />);
+  expect([...document.querySelectorAll<HTMLButtonElement>("[data-part-row]")].map((row) => row.disabled)).toEqual([true, true]);
 });
 
 test("the selected row, and only it, has a … key that opens the More menu; a right click opens the same", () => {

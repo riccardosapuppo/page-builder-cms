@@ -11,7 +11,7 @@ import { page } from "../../../test/document-page.ts";
 import { errorsByBlock } from "../../storage/adapter.ts";
 import { PagePanel } from "./EditPanel.tsx";
 
-const current = { id: 7, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
+const current = { id: 7, kind: "page" as const, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
 
 test("title and description change the page by the page command", () => {
   const kit = editorKit({ document: page(), session: { current } });
@@ -86,7 +86,7 @@ test("the server's 422 on the title opens its group, closed before, and shows on
 const published = (slug: string) => ({ slug, versionNumber: 2, draftRevision: 3, publishedAt: "2026-10-02T08:00:00.000Z" });
 // A storage that keeps a publish and serves nothing, with no CMS: the
 // browser demo's.
-const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: false } };
+const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false } };
 
 test("where the storage serves pages, the Address says where visitors find the page, and where the old address leads", () => {
   for (const [open, hint] of [

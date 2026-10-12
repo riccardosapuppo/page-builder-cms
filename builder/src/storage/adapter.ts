@@ -26,6 +26,15 @@ export type Time = string;
 
 // ------------------------------------------------------------- pages
 
+// A page, or one of the site's parts: the header and the footer, documents
+// like a page's, edited, versioned and published as a page is, which every
+// page draws around its sections. A part has no address and is never the
+// home page; the storage lists the two apart from the pages (listParts).
+export const PAGE_KINDS = ["page", "header", "footer"] as const;
+export type PageKind = (typeof PAGE_KINDS)[number];
+export type PartKind = Exclude<PageKind, "page">;
+export const PART_KINDS = ["header", "footer"] as const satisfies readonly PartKind[];
+
 export interface PageLinks {
   // The API's own addresses of the page.
   self: string;
@@ -34,8 +43,10 @@ export interface PageLinks {
   publish: string;
   schedules: string;
   // The draft as the published page would look, and the live page (null
-  // before the first publish): paths on the CMS's own origin, which the
-  // editor's development proxy does not forward.
+  // before the first publish, and for a part, which has no page of its
+  // own): paths on the CMS's own origin, which the editor's development
+  // proxy does not forward. A part's preview is the home page's draft
+  // inside the parts' drafts.
   preview: string;
   live: string | null;
 }
@@ -43,8 +54,8 @@ export interface PageLinks {
 // What is live, or null before the first publish.
 export interface Published {
   // The live address, which a later PATCH of the slug changes only at the
-  // next publish.
-  slug: string;
+  // next publish; null for a part, which has none.
+  slug: string | null;
   versionNumber: number;
   // The draft's revision the live version was taken from. The draft's own
   // revision minus this is the number of saves visitors do not see yet
@@ -57,9 +68,10 @@ export interface Published {
 
 export interface PageSummary {
   id: number;
+  kind: PageKind;
   title: string;
-  // The next address: the one the next publish applies.
-  slug: string;
+  // The next address: the one the next publish applies; null for a part.
+  slug: string | null;
   // Whether this is the page the site's root address serves.
   home: boolean;
   revision: number;
@@ -72,8 +84,9 @@ export interface PageSummary {
 
 export interface PageInfo {
   id: number;
+  kind: PageKind;
   title: string;
-  slug: string;
+  slug: string | null;
   home: boolean;
   createdAt: Time;
 }
@@ -197,7 +210,7 @@ export interface MediaItem {
 // Who still shows an image the editor asked to delete.
 export interface MediaUse {
   // Pages whose draft shows it.
-  pages: Array<{ id: number; title: string; slug: string }>;
+  pages: Array<{ id: number; title: string; slug: string | null }>;
   // Kept versions that show it.
   versions: Array<{ pageId: number; number: number }>;
 }
@@ -230,43 +243,13 @@ export interface SiteStyle {
   };
 }
 
-// ------------------------------------------------------ the theme
+// ------------------------------------------------------- the site
 
-// A link of the site's header, its address as the published page writes it.
-export interface SiteLink {
-  label: string;
-  href: string;
-}
-
-// The header and footer around every page: the same on every page. The
-// published page draws them around its sections, and the canvas draws them
-// there too. The storage keeps one for the whole site; until it is first
-// changed (capability headerFooter) it is the defaults, at revision 0.
+// The site's own settings, which no request changes.
 export interface Site {
-  // The site's name, beside its mark in the header.
-  name: string;
-  menu: SiteLink[];
-  // The header's button; null when there is none.
-  action: SiteLink | null;
-  footer: { lead: string; text: string };
   // The site's time zone, an IANA name ("Europe/London"): a scheduled
-  // publish is set and shown in it, the same for every visitor. The
-  // storage's setting: no change sets it.
+  // publish is set and shown in it, the same for every visitor.
   timeZone: string;
-  // The revision a change names; 0 while the header and footer are the
-  // defaults.
-  revision: number;
-  // null until the header and footer are first changed.
-  updatedAt: Time | null;
-}
-
-// The header and footer as a change sends them, and as $defs/site of the
-// page schema describes them (the same rules as a page's lines and links).
-export interface SiteValues {
-  name: string;
-  menu: SiteLink[];
-  action: SiteLink | null;
-  footer: { lead: string; text: string };
 }
 
 // ---------------------------------------------------- form answers
@@ -400,11 +383,6 @@ export interface SiteStyleChange {
   typeScale: string;
 }
 
-// The header and footer whole, from the revision they were read at.
-export interface SiteChange extends SiteValues {
-  revision: number;
-}
-
 export interface CallOptions {
   // Abandons the call. A write abandoned this way may still have reached
   // the server: the call fails with an unknown outcome.
@@ -451,16 +429,6 @@ export interface Conflict {
   lastSaveId: string | null;
 }
 
-// A change of the header and footer from a revision older than theirs,
-// which would have put back what was changed since: site is what is there
-// now, at currentRevision.
-export interface SiteConflict {
-  kind: "conflict";
-  message: string;
-  currentRevision: number;
-  site: SiteValues;
-}
-
 export interface InUse {
   kind: "in-use";
   message: string;
@@ -477,11 +445,10 @@ export interface NotPending {
 
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
 
-export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses", "headerFooter"] as const;
+export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses"] as const;
 // What an adapter may lack: publishing (keeping what goes live as a
 // version, with the page's published state; whether it is then served is
-// livePages, below), scheduled publishing, form answers, changing the
-// header and footer (every adapter reads them).
+// livePages, below), scheduled publishing, form answers.
 export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 
 // Says which optional operations this adapter has. The editor shows no
@@ -538,7 +505,6 @@ const OPERATION_VERBS: Record<OptionalOperation, string> = {
   publish: "publish pages",
   schedule: "schedule a publish",
   responses: "keep form answers",
-  headerFooter: "change the header and footer",
 };
 
 // ---------------------------------------------------------- the adapter
@@ -548,8 +514,16 @@ export interface StorageAdapter {
   readonly name: string;
   readonly capabilities: Capabilities;
 
-  // Pages, oldest first.
+  // Pages, oldest first: those of kind page, which a visitor finds at an
+  // address.
   listPages(options?: CallOptions): Promise<PageSummary[]>;
+  // The site's parts, the header then the footer, made the first time they
+  // are asked for, each with its starter as the draft and nothing live.
+  // Every other operation on pages takes a part by its id as it takes a
+  // page, but for a part's own rules: no address and never the home page
+  // (updatePage: invalid at the member, keyword part), and no form in its
+  // document (saveDraft: invalid at the form block, keyword part).
+  listParts(options?: CallOptions): Promise<PageSummary[]>;
   // A new page: an empty document holding its title, nothing live.
   createPage(page: NewPage, options?: CallOptions): Promise<Outcome<Page, Invalid>>;
   getPage(pageId: number, options?: CallOptions): Promise<Page>;
@@ -591,14 +565,8 @@ export interface StorageAdapter {
 
   getSiteStyle(options?: CallOptions): Promise<SiteStyle>;
   setSiteStyle(style: SiteStyleChange, options?: CallOptions): Promise<Outcome<SiteStyle, Invalid>>;
-  // The header and footer, as every page draws them, and the time zone.
+  // The site's settings: its time zone.
   getSite(options?: CallOptions): Promise<Site>;
-  // Capability headerFooter: the header and footer whole, from
-  // change.revision. Invalid at the pointer of each value $defs/site
-  // refuses; a conflict, holding what is there now, from an older revision
-  // unless the change asks for exactly what is stored, which writes
-  // nothing and is answered as saved.
-  setSite(change: SiteChange, options?: CallOptions): Promise<Outcome<Site, SiteConflict | Invalid>>;
 
   // Capability responses: what visitors sent with the page's forms, a part
   // at a time, newest first.

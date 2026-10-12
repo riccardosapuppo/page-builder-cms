@@ -15,7 +15,7 @@ import type { WidgetType } from "../shared/document.ts";
 // name and, for a heading, level; for a form's field, whether the
 // accessibility tree says it is required, which a screen reader announces.
 export interface Exposed {
-  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button";
+  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button" | "navigation";
   name?: string;
   level?: number;
   count?: number;

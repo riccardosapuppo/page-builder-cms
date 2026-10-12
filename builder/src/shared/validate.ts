@@ -7,7 +7,7 @@
 // schema's validator is ajv's, compiled ahead of time with the options the
 // comparator uses. The server still decides: this lets the editor say what
 // is wrong before a save is refused for it.
-import validateSchema, { validateBlock, validateLine, validateSite as validateSiteSchema } from "virtual:block-document-validator";
+import validateSchema, { validateBlock, validateLine } from "virtual:block-document-validator";
 import { checkDocument, checkTree, escapePointer, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
 import type { Block, PageDocument } from "./document.ts";
 
@@ -84,16 +84,25 @@ export function validateBlockSchema(value: unknown): BlockValidation {
   return { valid: false, errors: schemaErrors(validateBlock.errors) };
 }
 
-// The site's header and footer as a change sends them (name, menu, action,
-// footer), checked as the server checks one (Site.check): the application
-// rules first (well-formed strings, finite numbers, depth), then the
-// schema's $defs/site. Pointers run from the values ("/menu/1/href"), as
-// the server's 422 gives them.
-export function validateSite(value: unknown): { valid: true } | { valid: false; errors: DocumentError[] } {
-  const rules = checkTree(value);
-  if (rules.length > 0) return { valid: false, errors: rules.map((e) => ({ pointer: e.pointer, keyword: e.keyword, message: e.message, layer: "rules" })) };
-  if (validateSiteSchema(value)) return { valid: true };
-  return { valid: false, errors: schemaErrors(validateSiteSchema.errors) };
+// What a header or footer is refused for that a page is not: a form, whose
+// answers belong to the page it is on. The server's words (SiteParts.check).
+export const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
+
+// The pointer of every form block of a document, in page order, as the
+// server's SiteParts.forms finds them.
+export function partForms(document: PageDocument): string[] {
+  return document.sections.flatMap((section, s) => section.children.flatMap((column, c) =>
+    column.children.flatMap((block, w) => (block.type === "form" ? [`/sections/${s}/children/${c}/children/${w}`] : []))));
+}
+
+// A part's document (the site's header or footer), checked as the server
+// checks a part's draft (SiteParts.check): a page's checks, then no form.
+export function validatePart(value: unknown): Validation {
+  const result = validateDocument(value);
+  if (!result.valid) return result;
+  const forms = partForms(result.document);
+  if (forms.length === 0) return result;
+  return { valid: false, errors: forms.map((pointer) => ({ pointer, keyword: "part", message: PART_FORM, layer: "rules" })) };
 }
 
 function finish(result: ParseResult): Validation {

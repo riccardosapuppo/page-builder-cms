@@ -14,16 +14,16 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type FormResponse, type FormResponseCount, type InUse, type Invalid,
   type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
   type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
   type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
-  type Site, type SiteConflict, type SiteLink, type SiteStyle, type SiteStyleChange,
+  type Site, type SiteStyle, type SiteStyleChange,
   type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import { FORM_FIELD_KINDS } from "../shared/document.ts";
-import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId } from "./rails.ts";
+import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId, type PageList } from "./rails.ts";
 
 // ------------------------------------------------- shapes, held by tsc
 
@@ -47,11 +47,12 @@ const orNull = <F extends { nullable: false }>(field: F) => ({ ...field, nullabl
 const optional = <F extends { required: true }>(field: F) => ({ ...field, required: false }) as Omit<F, "required"> & { required: false };
 
 const PAGE_LINKS = { self: str, draft: str, versions: str, publish: str, schedules: str, preview: str, live: orNull(str) } as const satisfies Shape<PageLinks>;
-const PUBLISHED = { slug: str, versionNumber: num, draftRevision: num, publishedAt: str } as const satisfies Shape<Published>;
+const PUBLISHED = { slug: orNull(str), versionNumber: num, draftRevision: num, publishedAt: str } as const satisfies Shape<Published>;
 const PAGE_SUMMARY = {
-  id: num, title: str, slug: str, home: bool, revision: num, updatedAt: str, published: orNull(obj), scheduled: orNull(obj), links: obj,
+  id: num, kind: str, title: str, slug: orNull(str), home: bool, revision: num, updatedAt: str, published: orNull(obj), scheduled: orNull(obj), links: obj,
 } as const satisfies Shape<PageSummary>;
-const PAGE_INFO = { id: num, title: str, slug: str, home: bool, createdAt: str } as const satisfies Shape<PageInfo>;
+const PAGE_LIST = { pages: arr, parts: arr } as const satisfies Shape<PageList>;
+const PAGE_INFO = { id: num, kind: str, title: str, slug: orNull(str), home: bool, createdAt: str } as const satisfies Shape<PageInfo>;
 const PAGE = { page: obj, draft: obj, published: orNull(obj), scheduled: orNull(obj), links: obj } as const satisfies Shape<Page>;
 const DRAFT_SAVED = { revision: num, lastSaveId: orNull(str), updatedAt: str } as const satisfies Shape<DraftSaved>;
 const DRAFT = { ...DRAFT_SAVED, document: obj } as const satisfies Shape<Draft>;
@@ -65,21 +66,17 @@ const MEDIA_ITEM = {
   id: str, alt: str, width: num, height: num, contentType: str, byteSize: num, filename: str, url: str, createdAt: str,
 } as const satisfies Shape<MediaItem>;
 const MEDIA_USE = { pages: arr, versions: arr } as const satisfies Shape<MediaUse>;
-const MEDIA_USE_PAGE = { id: num, title: str, slug: str } as const satisfies Shape<MediaUse["pages"][number]>;
+const MEDIA_USE_PAGE = { id: num, title: str, slug: orNull(str) } as const satisfies Shape<MediaUse["pages"][number]>;
 const MEDIA_USE_VERSION = { pageId: num, number: num } as const satisfies Shape<MediaUse["versions"][number]>;
 const SITE_STYLE = { palette: obj, typeScale: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
-const SITE = { name: str, menu: arr, action: orNull(obj), footer: obj, timeZone: str, revision: num, updatedAt: orNull(str) } as const satisfies Shape<Site>;
-const SITE_LINK = { label: str, href: str } as const satisfies Shape<SiteLink>;
-const SITE_FOOTER = { lead: str, text: str } as const satisfies Shape<Site["footer"]>;
+const SITE = { timeZone: str } as const satisfies Shape<Site>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
 // The refusals, less the member each side names its kind with: the API's
 // `error` code, the interface's `kind`.
 const CONFLICT = { message: str, currentRevision: num, lastSaveId: orNull(str) } as const satisfies Shape<Omit<Conflict, "kind">>;
-// What is there now: the page schema's $defs/site, an object here.
-const SITE_CONFLICT = { message: str, currentRevision: num, site: obj } as const satisfies Shape<Omit<SiteConflict, "kind">>;
 const INVALID = { message: str, errors: arr } as const satisfies Shape<Omit<Invalid, "kind" | "code">>;
 const IN_USE = { message: str, usedBy: obj } as const satisfies Shape<Omit<InUse, "kind">>;
 const NOT_PENDING = { message: str, schedule: obj } as const satisfies Shape<Omit<NotPending, "kind">>;
@@ -182,6 +179,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["PageLinks", PAGE_LINKS, "#/components/schemas/PageLinks"],
     ["Published", PUBLISHED, "#/components/schemas/Published"],
     ["PageSummary", PAGE_SUMMARY, "#/components/schemas/PageSummary"],
+    ["PageList", PAGE_LIST, response("/api/pages", "get", 200)],
     ["PageInfo", PAGE_INFO, "#/components/schemas/Page/properties/page"],
     ["Page", PAGE, "#/components/schemas/Page"],
     ["DraftSaved", DRAFT_SAVED, "#/components/schemas/DraftSaved"],
@@ -207,11 +205,8 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["ToneChoice", TONE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/palette/additionalProperties/items"],
     ["TypeScaleChoice", TYPE_SCALE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/typeScales/items"],
     ["Site", SITE, "#/components/schemas/Site"],
-    ["SiteLink", SITE_LINK, "#/components/schemas/SiteLink"],
-    ["Site's footer", SITE_FOOTER, "#/components/schemas/Site/properties/footer"],
     ["FieldError", FIELD_ERROR, "#/components/schemas/ErrorDetail"],
     ["Conflict", CONFLICT, "#/components/schemas/ConflictError", ["error"]],
-    ["SiteConflict", SITE_CONFLICT, "#/components/schemas/SiteConflictError", ["error"]],
     ["Invalid, as a request's", INVALID, "#/components/schemas/InvalidRequestError", ["error"]],
     ["Invalid, as a document's", INVALID, "#/components/schemas/InvalidDocumentError", ["error"]],
     ["Invalid, as a key named twice", INVALID, "#/components/schemas/DuplicateKeyError", ["error", "pointer"]],
@@ -231,6 +226,10 @@ describe("the adapter's types match cms/openapi.yaml", () => {
 
   test.each(pairs)("%s", (_name, shape, pointer, without) => {
     expect(sortKeys(shape)).toEqual(sortKeys(shapeOf(pointer, without)));
+  });
+
+  test("the kinds of page", () => {
+    expect([...PAGE_KINDS]).toEqual(at("#/components/schemas/Kind").enum);
   });
 
   test("the version reasons and the image types", () => {
@@ -268,7 +267,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(48);
+    expect(pairs).toHaveLength(46);
   });
 });
 

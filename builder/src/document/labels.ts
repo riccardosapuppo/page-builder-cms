@@ -23,6 +23,8 @@ export const TYPE_NAMES: Readonly<Record<BlockType, string>> = {
   quote: "Quote",
   accordion: "Accordion",
   form: "Form",
+  logo: "Logo",
+  menu: "Menu",
 };
 
 const PLURALS: Readonly<Record<ContainerType, string>> = {
@@ -42,6 +44,8 @@ const PLURALS: Readonly<Record<ContainerType, string>> = {
   quote: "quotes",
   accordion: "accordions",
   form: "forms",
+  logo: "logos",
+  menu: "menus",
 };
 
 export function plural(type: ContainerType, count: number): string {
@@ -124,7 +128,7 @@ export function onDevice(device: Device): string {
 // "Changed Button text in Join". A key without a name here is told by the
 // widget's own name ("Changed Quote in Members' words").
 export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<string, string>>>>> = {
-  section: { label: "Section label", anchor: "Anchor id" },
+  section: { label: "Section label", anchor: "Anchor id", stack: "Stacking" },
   heading: { level: "Heading level", href: "Heading link" },
   button: { label: "Button text", href: "Button link" },
   image: { alt: "Alt text", decorative: "Alt text" },
@@ -134,6 +138,8 @@ export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<str
   iconbox: { icon: "Icon", title: "Icon box title", text: "Icon box text" },
   quote: { attribution: "Quote attribution" },
   form: { submitLabel: "Form button text", confirmation: "Form message" },
+  logo: { name: "Site name" },
+  menu: { label: "Menu name" },
 };
 
 // What one item of a list is called: an image of a gallery, a question of
@@ -142,4 +148,5 @@ export const ITEM_NAMES: Readonly<Partial<Record<BlockType, { one: string; many:
   gallery: { one: "image", many: "images" },
   accordion: { one: "question", many: "questions" },
   form: { one: "field", many: "fields" },
+  menu: { one: "link", many: "links" },
 };

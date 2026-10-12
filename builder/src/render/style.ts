@@ -10,7 +10,7 @@
 // write a class of its own choosing. The lists come from
 // ../shared/document.ts, which document.test.ts holds to the schema.
 import { isObject } from "../document/json.ts";
-import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
+import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STACK_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
 
 export type StyleKey = keyof StyleTokens;
 
@@ -110,4 +110,12 @@ export function dataStyle(style: unknown): string | null {
 export function columnWidths(props: unknown, count: number): string | null {
   const value = isObject(props) && Object.hasOwn(props, "columnWidths") ? props.columnWidths : undefined;
   return typeof value === "string" && (COLUMN_WIDTHS_TOKENS as readonly string[]).includes(value) && value.split(":").length === count ? value : null;
+}
+
+// A section's stack when the schema lists it and the section has columns
+// to stack, two or more; null otherwise, and they stack on tablets and
+// phones.
+export function stack(props: unknown, count: number): string | null {
+  const value = isObject(props) && Object.hasOwn(props, "stack") ? props.stack : undefined;
+  return typeof value === "string" && (STACK_TOKENS as readonly string[]).includes(value) && count >= 2 ? value : null;
 }

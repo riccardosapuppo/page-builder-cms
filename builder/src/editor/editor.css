@@ -541,10 +541,33 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* A page drawn smaller to fit (Canvas.tsx, fitPreview) is scaled from its
    top left corner; the box around it takes its scaled size. */
 .frame { background: var(--white); border-radius: 4px; }
-/* The theme's header and footer (render/theme.tsx), locked: inert, and,
-   while a block is dragged, washed grey as no place for it. */
-.canvas .site [data-theme-part] { position: relative; }
-.canvas-drag .site [data-theme-part]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: var(--shut); }
+/* The site's header and footer around a page (render/theme.tsx), and the
+   page around a part being edited (Canvas.tsx, PartRoot), locked: inert,
+   with no block edges, and, while a block is dragged, washed grey as no
+   place for it. The page around a part is dimmed: the part is what is
+   edited. The locked thing under the pointer is outlined and says what a
+   click does there (Canvas.tsx, data-locked-hover). */
+.canvas .site :is([data-theme-part], [data-around-page]) { position: relative; }
+.canvas .site [data-around-page]::after { content: ""; position: absolute; inset: 0; z-index: 3; background: rgb(255 255 255 / .55); }
+.frame[data-locked-hover="page"] [data-around-page]::after { background: rgb(255 255 255 / .3); }
+.canvas-drag .site :is([data-theme-part], [data-around-page])::after { content: ""; position: absolute; inset: 0; z-index: 3; background: var(--shut); }
+.canvas-edges .site :is([data-theme-part], [data-around-page]) [data-block-id]:not(:focus-visible) { outline: none; }
+.frame[data-locked-hover] { cursor: pointer; }
+.frame[data-locked-hover="header"] [data-theme-part="header"],
+.frame[data-locked-hover="footer"] [data-theme-part="footer"],
+.frame[data-locked-hover="page"] [data-around-page] { outline: 2px solid var(--mark); outline-offset: -2px; }
+.frame[data-locked-hover="header"] [data-theme-part="header"]::before,
+.frame[data-locked-hover="footer"] [data-theme-part="footer"]::before,
+.frame[data-locked-hover="page"] [data-around-page]::before {
+  position: absolute; left: 8px; top: 8px; z-index: 6; padding: 3px 6px; border: 1.5px solid var(--mark-line); border-radius: 3px;
+  background: var(--mark); color: var(--on-mark); font: 600 12px/14px var(--font-ui); letter-spacing: normal; white-space: nowrap;
+  transform: scale(var(--canvas-unscale, 1)); transform-origin: 0 0;
+}
+.frame[data-locked-hover="header"] [data-theme-part="header"]::before { content: "Edit the header"; }
+.frame[data-locked-hover="footer"] [data-theme-part="footer"]::before { content: "Edit the footer"; }
+.frame[data-locked-hover="page"] [data-around-page]::before { content: "Back to the page"; }
+/* Where the page around a part has no section yet. */
+.canvas .around-none { margin: 0; padding: 72px 24px; text-align: center; color: var(--steel); font: 500 14px/20px var(--font-ui); }
 
 /* Block edges (the bottom line): every block's edges dashed, sections and
    columns too, drawn inside each block so the page's layout does not
@@ -943,33 +966,15 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .scale-name { font-weight: 500; }
 .scale-num { font-size: 12px; color: var(--steel); }
 
-/* Header and footer: a level below Page, laid out as Site style is; each
-   link of the menu a framed group, its move and remove keys on the frame's
-   top edge; Save under the values, always in view. */
-.header-footer .hf-title { margin-top: 24px; }
-.header-footer .hf-hint { margin-top: -4px; }
-.header-footer .hf-none { margin-top: 0; }
-.hf-links { list-style: none; padding: 0; display: grid; gap: 14px; margin-top: 16px; }
-.hf-link fieldset { position: relative; min-width: 0; margin: 0; padding: 4px 10px 12px; border: 1px solid var(--alloy); border-radius: var(--r-field); }
-.hf-link legend { padding: 0 4px; margin-left: -4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); }
-.hf-link .field:first-of-type { margin-top: 6px; }
-.hf-link .field { margin-top: 12px; }
-.hf-link-keys { position: absolute; top: -13px; right: 6px; display: flex; gap: 2px; padding: 0 2px; background: var(--plate); }
+/* A small key that cannot be pressed now: dimmed, with no hover. */
 .ibtn[aria-disabled="true"] { color: var(--rule); cursor: not-allowed; }
 .ibtn[aria-disabled="true"]:hover { background: none; }
-.hf-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.hf-actions { flex: none; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; box-shadow: inset 0 1px 0 var(--alloy); }
-/* The conflict the panel has when another tab saved the header and footer
-   first: the page's own (design/layout/shots-extra/conflict.png) at the
-   panel's size, with its warning icon, amber tint and edge, where it was a
-   grey note. The words and the two buttons are the same. */
-.hf-conflict { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 10px; border-radius: var(--r-control); background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); }
-.hf-conflict > .i { width: 16px; height: 16px; color: var(--warn); }
-.hf-conflict > div { min-width: 0; }
-.hf-conflict p { font-size: 12px; line-height: 16px; color: var(--graphite); }
-.hf-conflict strong { font-weight: 700; }
-.hf-conflict .banner-actions { margin-top: 8px; }
-.hf-conflict .btn-secondary { border-color: var(--graphite); box-shadow: inset 0 -1px 0 var(--graphite); }
+
+/* A header's or a footer's Page tab (panels/EditPanel.tsx, PartPanel):
+   what it is and how it goes live, then the way back to the page. */
+.part-panel p { font-size: 13px; line-height: 18px; color: var(--graphite); }
+.part-panel p + p { margin-top: 8px; }
+.part-panel [data-part-back] { margin: 14px 0 6px; }
 
 /* About (design/shots-extra/about.png). */
 .dlg-about { width: 440px; padding: 28px; align-items: flex-start; gap: 10px; }

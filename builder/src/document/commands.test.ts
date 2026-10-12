@@ -12,7 +12,7 @@ import { clipboardText, copyBlock, readClipboard } from "./clipboard.ts";
 import {
   invertCommand, makeDelete, makeDuplicate, makeInsert, makeInsertItems, makeInsertSection, makeInsertUploadedImage, makeMove,
   makeMoveItem, makePaste, makeRemoveItem, makeSetColumnCount, makeSetColumnWidths, makeSetItem, makeSetPage, makeSetProps,
-  makeSetStyle, pasteTarget, REMOVE, type Command, type Made,
+  makeSetStack, makeSetStyle, pasteTarget, REMOVE, type Command, type Made,
 } from "./commands.ts";
 import { applyCommand, type Applied } from "./reducer.ts";
 import { locate } from "./tree.ts";
@@ -320,7 +320,10 @@ describe("columns", () => {
     expect(block(equal.document, "hero").props).toEqual({ label: "Hero" });
     expect(equal.command.label).toBe("Set equal column widths in Hero");
     const wrong = makeSetColumnWidths(doc, "hero", "2:1:1");
-    expect(wrong.ok ? null : wrong.error.message).toBe("Hero has 2 columns: its widths can be 3:2, 2:3, 2:1 or 1:2.");
+    expect(wrong.ok ? null : wrong.error.message).toBe("Hero has 2 columns: its widths can be 3:2, 2:3, 2:1, 1:2, fit:1 or 1:fit.");
+    // A fit part: a column as wide as what it holds.
+    const fit = apply(doc, makeSetColumnWidths(doc, "hero", "fit:1"));
+    expect(block(fit.document, "hero").props).toEqual({ label: "Hero", columnWidths: "fit:1" });
     const single = makeSetColumnWidths(doc, "join", "2:1");
     expect(single.ok ? null : single.error.message).toBe("Join has 1 column: its widths can be only equal widths.");
   });
@@ -341,6 +344,34 @@ describe("columns", () => {
     const { document } = apply(withWidget, makeSetColumnCount(withWidget, "hero", 1, counter("x")));
     expect(ids(document, "hero")).toEqual(["c1"]);
     expect(ids(document, "c1")).toEqual(["h1", "b1", "i1", "t1"]);
+  });
+
+  test("stacking: on phones only, or never, for two columns or more; on tablets and phones is no key at all", () => {
+    const doc = page();
+    const never = apply(doc, makeSetStack(doc, "hero", "never"));
+    expect(block(never.document, "hero").props).toEqual({ label: "Hero", columnWidths: "2:1", stack: "never" });
+    expect(never.command.label).toBe("Set the columns of Hero to never stack");
+    expect(never.command.kind).toBe("stack");
+    expect(never.focus).toEqual({ id: "hero" });
+    const phone = apply(never.document, makeSetStack(never.document, "hero", "phone"));
+    expect(block(phone.document, "hero").props).toEqual({ label: "Hero", columnWidths: "2:1", stack: "phone" });
+    expect(phone.command.label).toBe("Set the columns of Hero to stack on phones only");
+    const back = apply(phone.document, makeSetStack(phone.document, "hero", "tablet"));
+    expect(block(back.document, "hero").props).toEqual({ label: "Hero", columnWidths: "2:1" });
+    expect(back.command.label).toBe("Set the columns of Hero to stack on tablets and phones");
+    const single = makeSetStack(doc, "join", "never");
+    expect(single.ok ? null : single.error).toMatchObject({ reason: "invalid", message: "Join has 1 column: there is nothing to stack." });
+  });
+
+  test("one column left: the stacking goes with the widths, and an undo gives both back in their places", () => {
+    const doc = page();
+    const widths = done(applyCommand(doc, command(makeSetColumnWidths(doc, "hero", "fit:1")))).document;
+    const stacked = done(applyCommand(widths, command(makeSetStack(widths, "hero", "never")))).document;
+    const one = apply(stacked, makeSetColumnCount(stacked, "hero", 1, counter("x")));
+    expect(block(one.document, "hero").props).toEqual({ label: "Hero" });
+    // Columns left to stack: the stacking stays; the widths of two go.
+    const three = apply(stacked, makeSetColumnCount(stacked, "hero", 3, counter("x")));
+    expect(block(three.document, "hero").props).toEqual({ label: "Hero", stack: "never" });
   });
 });
 
@@ -371,6 +402,45 @@ describe("items", () => {
     const one = done(applyCommand(doc, command(makeRemoveItem(doc, "g1", 0)))).document;
     const none = applyCommand(one, command(makeRemoveItem(one, "g1", 0)));
     expect(none.ok ? null : none.error).toMatchObject({ reason: "empty", message: "Gallery in Join must keep at least 1 image." });
+  });
+});
+
+describe("a menu's links", () => {
+  // A page with a menu of three links at the top of its first column.
+  const withMenu = (): PageDocument => {
+    const doc = page();
+    const menu: Block = {
+      id: "m9",
+      type: "menu",
+      props: { label: "Main", items: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Join", href: "/#join" }] },
+      children: [],
+      style: { base: {} },
+    };
+    return done(applyCommand(doc, command(makeInsert(doc, menu, { parentId: "c1", index: 0 })))).document;
+  };
+  const links = (doc: PageDocument) => (block(doc, "m9").props as { items: Array<{ label: string; href: string }> }).items;
+
+  test("a link is added, moved, changed and removed by one command each, with the focus on it", () => {
+    const doc = withMenu();
+    const added = apply(doc, makeInsertItems(doc, "m9", 3, [{ label: "Meet us", href: "/#meet" }]));
+    expect(links(added.document).map((link) => link.label)).toEqual(["Swims", "Gallery", "Join", "Meet us"]);
+    expect(added.focus).toEqual({ id: "m9", item: 3 });
+    const moved = apply(doc, makeMoveItem(doc, "m9", 2, 0));
+    expect(links(moved.document).map((link) => link.label)).toEqual(["Join", "Swims", "Gallery"]);
+    // A link's keys stay in the schema's order, whatever order the change names.
+    const changed = apply(doc, makeSetItem(doc, "m9", 1, { href: "/gallery", label: "Pictures" }));
+    expect(links(changed.document)[1]).toEqual({ label: "Pictures", href: "/gallery" });
+    expect(Object.keys(links(changed.document)[1]!)).toEqual(["label", "href"]);
+    const removed = apply(doc, makeRemoveItem(doc, "m9", 0));
+    expect(links(removed.document).map((link) => link.label)).toEqual(["Gallery", "Join"]);
+  });
+
+  test("a menu keeps at least one link", () => {
+    let doc = withMenu();
+    doc = done(applyCommand(doc, command(makeRemoveItem(doc, "m9", 0)))).document;
+    doc = done(applyCommand(doc, command(makeRemoveItem(doc, "m9", 0)))).document;
+    const none = applyCommand(doc, command(makeRemoveItem(doc, "m9", 0)));
+    expect(none.ok ? null : none.error).toMatchObject({ reason: "empty" });
   });
 });
 

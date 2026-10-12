@@ -12,6 +12,9 @@ import { makeInsert, pasteTarget, type Made } from "../document/commands.ts";
 import { nestingMessage, type CommandError } from "../document/check.ts";
 import { childrenOf, type Position } from "../document/tree.ts";
 import type { Block, BlockType, PageDocument } from "../shared/document.ts";
+import type { PageKind } from "../storage/adapter.ts";
+import { WIDGETS } from "../widgets/registry.ts";
+import type { AnyWidgetDefinition } from "../widgets/types.ts";
 import { focusBlock } from "./act.ts";
 import { runMade, useEnv } from "./context.tsx";
 
@@ -20,6 +23,13 @@ export function insertTarget(doc: PageDocument, type: BlockType, selection: stri
   if (at || selection !== null || type === "section" || type === "column") return at;
   const column = doc.sections.at(-1)?.children.at(-1);
   return column ? { parentId: column.id, index: column.children.length } : null;
+}
+
+// The widgets what is open takes: a header or a footer holds no form
+// (../shared/validate.ts, PART_FORM), so neither the drawer nor a "+"
+// offers one there.
+export function insertableWidgets(kind: PageKind): readonly AnyWidgetDefinition[] {
+  return kind === "page" ? WIDGETS : WIDGETS.filter((widget) => widget.type !== "form");
 }
 
 // Why a block has nowhere to go: for a widget on a page with no section,

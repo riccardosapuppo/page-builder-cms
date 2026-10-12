@@ -20,7 +20,7 @@ import { stepTime } from "./history-words.ts";
 import { NO_VERSIONS, type OpenPage, type Session } from "./session.tsx";
 import { TopBar } from "./TopBar.tsx";
 
-const open: OpenPage = { id: 1, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/1", live: null } };
+const open: OpenPage = { id: 1, kind: "page", slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/1", live: null } };
 
 function apply(kit: Kit, make: (doc: PageDocument) => Made): PageDocument {
   const made = make(kit.doc());
@@ -104,7 +104,7 @@ const version = (number: number, reason: Version["reason"], createdAt: string, e
 test("where the storage serves no page (the browser demo), the version shown as published is the latest publish, and nothing promises a live page", () => {
   const session: Partial<Session> = {
     cmsOrigin: null,
-    capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: false },
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false },
     current: { ...open, revision: 1, published: { slug: "winter-series", versionNumber: 2, draftRevision: 1, publishedAt: "2026-09-28T07:02:00.000Z" } },
     versions: { phase: "ready", message: null, items: [version(3, "auto", "2026-10-02T07:58:00Z"), version(2, "publish", "2026-09-28T07:02:00Z", { published: true })] },
   };
@@ -244,14 +244,14 @@ test("a publish set for a time waits under the draft, by the site's clock, and C
     document: page(),
     session: {
       current: { ...open, scheduled },
-      capabilities: { publish: true, schedule: true, responses: false, headerFooter: false, imageVariants: false, livePages: true },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true },
       versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-02T08:00:00Z")], message: null },
       cancelSchedule: async () => {
         cancelled += 1;
       },
     },
   });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+  kit.ui.getState().setSite({ timeZone: "Europe/London" });
   kit.render(<HistoryPanel />);
   const rows = within(screen.getByRole("list", { name: "Versions" })).getAllByRole("listitem");
   expect(rows.map((row) => row.querySelector(".ver-kind")?.textContent)).toEqual(["Current draft", "Scheduled publish", "Kept for a scheduled publish"]);
@@ -267,11 +267,11 @@ test("a publish whose time has passed without going live is listed as one that s
     document: page(),
     session: {
       current: { ...open, scheduled },
-      capabilities: { publish: true, schedule: true, responses: false, headerFooter: false, imageVariants: false, livePages: true },
+      capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true },
       versions: { phase: "ready", items: [version(2, "scheduled", "2026-10-01T08:00:00Z")], message: null },
     },
   });
-  kit.ui.getState().setSite({ name: "Slack Water", menu: [], action: null, footer: { lead: "", text: "" }, timeZone: "Europe/London", revision: 0, updatedAt: null });
+  kit.ui.getState().setSite({ timeZone: "Europe/London" });
   kit.render(<HistoryPanel />);
 
   const rows = within(screen.getByRole("list", { name: "Versions" })).getAllByRole("listitem");

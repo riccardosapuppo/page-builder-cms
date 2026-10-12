@@ -36,10 +36,6 @@ export const ALT_MAX_LENGTH = 300;
 export const FILENAME_MAX_LENGTH = 255;
 export const AUTO_VERSION_EVERY_MS = 10 * 60_000;
 
-// Site::MEMBERS: what a change of the header and footer sends, beside the
-// revision it was read at, each one required.
-export const SITE_MEMBERS = ["name", "menu", "action", "footer"] as const;
-
 // MediaItem::SIGNATURES, in their order: the kind of image the first
 // bytes are.
 export const IMAGE_SIGNATURES: ReadonlyArray<[ImageType, (head: Uint8Array) => boolean]> = [
@@ -95,7 +91,7 @@ export const WORDS = {
   invalidRequest: "The request is not valid.",
   invalidDocument: "The document is not valid.",
   conflict: "The draft has changed since the revision sent.",
-  siteConflict: "The header and footer have changed since the revision sent.",
+  partNoAddress: "A header or footer has no address and is never the home page: it is drawn on every page.",
   notFound: "There is nothing at this address.",
   inUse: "Pages still use this image.",
   mediaMissing: (id: string) => `The media library has no item ${id}.`,

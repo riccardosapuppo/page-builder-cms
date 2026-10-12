@@ -1,9 +1,10 @@
 // What the interface agrees on besides the page itself: which block the
 // pointer is over, the width the canvas previews and the width it lays the
 // page out at, which drawer is open and what the sidebar shows, the media
-// library, the site style and the header and footer the canvas draws with
-// (and their change waiting to be saved), the errors of the last
-// save the server refused, whether the shortcuts window or the About
+// library, the site style and settings, the header and footer the canvas
+// draws around a page and the page it draws around a header or footer, the
+// errors of the last save the server refused, whether the shortcuts window
+// or the About
 // window is open, and the text typed in a field and not handed over yet. A
 // vanilla zustand store, like the editor's own (../store), so each part of
 // the interface subscribes to the one value it draws and nothing else
@@ -12,7 +13,8 @@
 // The page document, the selection and the history are not here: they are
 // the editor store's, changed only by its commands.
 import { createStore, type StoreApi } from "zustand/vanilla";
-import type { BlockFieldError, FieldError, MediaItem, Site, SiteStyle, SiteValues } from "../storage/adapter.ts";
+import type { PageDocument } from "../shared/document.ts";
+import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
 import { PendingText } from "./pending.ts";
 import type { TextEditing, TextTools } from "./rich/tools.ts";
 
@@ -36,9 +38,23 @@ export interface SideTabPick {
 export type OpenGroups = Readonly<Record<string, Readonly<Record<string, boolean>>>>;
 
 // What the sidebar shows: the settings of the page and of the selection
-// (its Page and Block tabs), or, a level below Page, the site style or the
-// header and footer.
-export type Tray = "edit" | "site-style" | "header-footer";
+// (its Page and Block tabs), or, a level below Page, the site style.
+export type Tray = "edit" | "site-style";
+
+// The site's header and footer as the canvas draws them around a page: each
+// part's draft as the storage last gave it, or as it was edited last in
+// this tab; null until it is read.
+export interface PartsShown {
+  header: PageDocument | null;
+  footer: PageDocument | null;
+}
+
+// The page drawn around a part, and the way back to it.
+export interface AroundPart {
+  id: number;
+  title: string;
+  document: PageDocument;
+}
 
 // The top bar's drawers, one open at a time (./Drawer.tsx): Insert floats
 // over the left of the canvas; Outline and History push the page aside.
@@ -87,17 +103,13 @@ export interface UiState {
   // again for them (./library/service.ts, ensure).
   mediaLooking: ReadonlySet<string>;
   siteStyle: SiteStyle | null;
-  // The site's header and footer as the storage keeps them, drawn around
-  // the page on the canvas.
+  // The site's settings: its time zone.
   site: Site | null;
-  // The header and footer as the Header and footer panel has them while
-  // they are changed and not saved yet (null: no change waiting). The
-  // canvas draws these, as they are typed.
-  siteDraft: SiteValues | null;
-  // The last refused save of the header and footer: each problem at the
-  // pointer of its value ("/menu/1/href"), the editor's own checks' or the
-  // storage's.
-  siteErrors: readonly FieldError[];
+  // The header and footer drawn around a page on the canvas.
+  parts: PartsShown;
+  // The page drawn, dimmed and locked, around the header or footer being
+  // edited: the page opened last, as it was then; null before any.
+  aroundPart: AroundPart | null;
   // The last refused save's errors, each on its block and field.
   serverErrors: readonly BlockFieldError[];
   // One sentence about what just happened, or why nothing did, and a link
@@ -149,8 +161,8 @@ export interface UiState {
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
   setSite(site: Site | null): void;
-  setSiteDraft(values: SiteValues | null): void;
-  setSiteErrors(errors: readonly FieldError[]): void;
+  setParts(parts: Partial<PartsShown>): void;
+  setAroundPart(page: AroundPart | null): void;
   setServerErrors(errors: readonly BlockFieldError[]): void;
   say(notice: string | null, link?: NoticeLink | null): void;
   setShortcutsOpen(open: boolean): void;
@@ -163,7 +175,7 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "siteDraft">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart">> = {}): UiStore {
   const drawer = initial.drawer ?? null;
   return createStore<UiState>()((set, get) => ({
     hover: null,
@@ -179,8 +191,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     mediaLooking: new Set(),
     siteStyle: initial.siteStyle ?? null,
     site: initial.site ?? null,
-    siteDraft: initial.siteDraft ?? null,
-    siteErrors: [],
+    parts: initial.parts ?? { header: null, footer: null },
+    aroundPart: initial.aroundPart ?? null,
     serverErrors: [],
     notice: null,
     noticeLink: null,
@@ -210,8 +222,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
     setSiteStyle: (siteStyle) => set({ siteStyle }),
     setSite: (site) => set({ site }),
-    setSiteDraft: (siteDraft) => set({ siteDraft }),
-    setSiteErrors: (siteErrors) => set({ siteErrors }),
+    setParts: (parts) => set((state) => ({ parts: { ...state.parts, ...parts } })),
+    setAroundPart: (aroundPart) => set({ aroundPart }),
     setServerErrors: (serverErrors) => set({ serverErrors }),
     say: (notice, link = null) => set({ notice, noticeLink: notice === null ? null : link }),
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),

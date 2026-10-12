@@ -28,7 +28,6 @@ import { thisTab } from "./SaveStatus.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 const T = "2026-10-02T08:00:00.000Z";
-const SITE = { name: "Slack Water", menu: [], action: null, footer: { lead: "Slack Water.", text: "A guide." }, timeZone: "Europe/London", revision: 0, updatedAt: null };
 const LINKS = { self: "/api/pages/1", draft: "/api/pages/1/draft", versions: "/api/pages/1/versions", publish: "/api/pages/1/publish", schedules: "/api/pages/1/schedules", preview: "/preview/1", live: null };
 // The site style as a new site has it, from the tokens.
 const SLOTS = ["text", "background", "primary", "accent", "soft", "muted"] as const;
@@ -69,13 +68,15 @@ class VersionSite {
     const draft = () => ({ revision: this.revision, lastSaveId: this.lastSaveId, updatedAt: T, document: structuredClone(this.document) });
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: false, responses: false, headerFooter: false, imageVariants: false, livePages: true },
-      listPages: async () => [{ id: 1, title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, scheduled: null, links: LINKS }],
-      getPage: async (): Promise<Page> => ({ page: { id: 1, title: "Winter series", slug: "winter-series", home: false, createdAt: T }, draft: draft(), published: null, scheduled: null, links: LINKS }),
+      capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
+      listPages: async () => [{ id: 1, kind: "page", title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, scheduled: null, links: LINKS }],
+      // A site with no header or footer of its own made yet.
+      listParts: async () => [],
+      getPage: async (): Promise<Page> => ({ page: { id: 1, kind: "page", title: "Winter series", slug: "winter-series", home: false, createdAt: T }, draft: draft(), published: null, scheduled: null, links: LINKS }),
       getDraft: async () => draft(),
       listMedia: async () => [],
       getSiteStyle: async () => STYLE,
-      getSite: async () => SITE,
+      getSite: async () => ({ timeZone: "Europe/London" }),
       saveDraft: async (_id, save) => {
         this.saves.push(save);
         if (save.revision !== this.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: this.revision, lastSaveId: this.lastSaveId } };

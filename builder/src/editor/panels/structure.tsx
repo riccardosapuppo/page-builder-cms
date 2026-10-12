@@ -1,27 +1,44 @@
 // A section's own groups (design/layout/, the section state). Columns: how
-// many, and how they share the width on desktop. Name and link: the
+// many, how they share the width on desktop, and on which devices they go
+// one under another. Name and link: the
 // section's label, which only the editor shows, and its anchor for links
 // to it, the one block that has one (widgets have none in the real
 // editor, so the layout draws none for them).
-import { makeSetColumnCount, makeSetColumnWidths, REMOVE } from "../../document/commands.ts";
+import { makeSetColumnCount, makeSetColumnWidths, makeSetStack, REMOVE } from "../../document/commands.ts";
 import { plural } from "../../document/labels.ts";
-import { COLUMN_WIDTHS_BY_COUNT, type ColumnWidthsToken, type SectionBlock } from "../../shared/document.ts";
+import { COLUMN_WIDTHS_BY_COUNT, type ColumnWidthsToken, type SectionBlock, type StackToken } from "../../shared/document.ts";
 import { RadioField, TextField } from "../controls.tsx";
 import { useEnv, useRun } from "../context.tsx";
 import { useBlockCommands } from "./hooks.ts";
 
-// A preset drawn as its columns side by side, each as wide as its share.
-function WidthsPicture({ parts }: { parts: readonly number[] }) {
+// A preset drawn as its columns side by side, each as wide as its share; a
+// fit part, a column as wide as what it holds, drawn narrow.
+function WidthsPicture({ parts }: { parts: readonly string[] }) {
   return (
-    <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: parts.map((p) => `${p}fr`).join(" "), gap: 3, width: 44, height: 18 }}>
+    <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: parts.map((p) => (p === "fit" ? "8px" : `${p}fr`)).join(" "), gap: 3, width: 44, height: 18 }}>
       {parts.map((_, i) => <i key={i} style={{ border: "1.5px solid currentColor", borderRadius: 2 }} />)}
     </span>
   );
 }
 
-// What Columns says closed: "2, equal", "2, 2:1".
+// A fit preset in words, for its title.
+const FIT_TITLES: Readonly<Partial<Record<ColumnWidthsToken, string>>> = {
+  "fit:1": "The first column as wide as what it holds, the second takes the rest",
+  "1:fit": "The last column as wide as what it holds, the first takes the rest",
+  "fit:1:fit": "The outer columns as wide as what they hold, the middle one takes the rest",
+};
+
+const STACK_CHOICES: ReadonlyArray<{ value: StackToken | "tablet"; label: string; title: string }> = [
+  { value: "tablet", label: "Tablet", title: "One under another on tablets and phones" },
+  { value: "phone", label: "Phone", title: "One under another on phones only" },
+  { value: "never", label: "Never", title: "Side by side on every device" },
+];
+
+// What Columns says closed: "2, equal", "2, 2:1", "3, fit:1:fit, never
+// stacked".
 export function columnsWords(block: SectionBlock): string {
-  return `${block.children.length}, ${block.props.columnWidths ?? "equal"}`;
+  const stack = block.props.stack === "phone" ? "stacked on phones" : block.props.stack === "never" ? "never stacked" : null;
+  return [String(block.children.length), block.props.columnWidths ?? "equal", stack].filter((part) => part !== null).join(", ");
 }
 
 export function SectionColumns({ block }: { block: SectionBlock }) {
@@ -37,7 +54,7 @@ export function SectionColumns({ block }: { block: SectionBlock }) {
         value={count}
         blockId={block.id}
         field="/children"
-        hint="Side by side on desktop, one under another on tablets and phones. Fewer columns move their widgets into the last column that stays."
+        hint="Side by side on desktop. Fewer columns move their widgets into the last column that stays."
         onChange={(n) => run(makeSetColumnCount(store.getState().document, block.id, n, newId))}
       />
       {presets.length > 0 && (
@@ -45,14 +62,25 @@ export function SectionColumns({ block }: { block: SectionBlock }) {
           label="Column widths"
           look="choices"
           choices={[
-            { value: "equal", label: "Equal", content: <><WidthsPicture parts={Array.from({ length: count }, () => 1)} /><span>Equal</span></> },
-            ...presets.map((preset) => ({ value: preset, label: preset, content: <><WidthsPicture parts={preset.split(":").map(Number)} /><span>{preset}</span></> })),
+            { value: "equal", label: "Equal", content: <><WidthsPicture parts={Array.from({ length: count }, () => "1")} /><span>Equal</span></> },
+            ...presets.map((preset) => ({ value: preset, label: preset, ...(FIT_TITLES[preset] ? { title: FIT_TITLES[preset] } : {}), content: <><WidthsPicture parts={preset.split(":")} /><span>{preset}</span></> })),
           ]}
           value={block.props.columnWidths ?? "equal"}
           blockId={block.id}
           field="/props/columnWidths"
-          hint="How the columns share the width on desktop."
+          hint="How the columns share the width on desktop. A fit column is as wide as what it holds."
           onChange={(preset) => run(makeSetColumnWidths(store.getState().document, block.id, preset))}
+        />
+      )}
+      {count > 1 && (
+        <RadioField<StackToken | "tablet">
+          label="Stack columns"
+          choices={STACK_CHOICES}
+          value={block.props.stack ?? "tablet"}
+          blockId={block.id}
+          field="/props/stack"
+          hint="Where the columns go one under another: from tablets down, on phones only, or never."
+          onChange={(stack) => run(makeSetStack(store.getState().document, block.id, stack))}
         />
       )}
     </>

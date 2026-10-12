@@ -12,12 +12,14 @@ import { panel as gallery } from "./gallery/panel.tsx";
 import { panel as heading } from "./heading/panel.tsx";
 import { panel as iconbox } from "./iconbox/panel.tsx";
 import { panel as image } from "./image/panel.tsx";
+import { panel as logo } from "./logo/panel.tsx";
 import { panel as map } from "./map/panel.tsx";
+import { panel as menu } from "./menu/panel.tsx";
 import { panel as quote } from "./quote/panel.tsx";
 import { panel as spacer } from "./spacer/panel.tsx";
 import { panel as text } from "./text/panel.tsx";
 import { panel as video } from "./video/panel.tsx";
 
 export const WIDGET_PANELS: { readonly [T in WidgetType]: WidgetPanel<T> } = {
-  heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, form,
+  heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, form, logo, menu,
 };

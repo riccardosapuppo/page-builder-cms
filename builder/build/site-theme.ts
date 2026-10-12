@@ -1,25 +1,23 @@
-// The theme's parts around every page, read from cms/config/site.yml when
-// the editor is built (./site-file.ts) and served as `virtual:site-theme`:
-// the site's name, the header's menu and button, the footer's two lines
-// and the site's time zone. The CMS reads the same file: the header and
-// footer as the defaults that apply until the editor first changes them,
-// the time zone as its own setting. The browser's storage adapter, which
-// has no CMS to ask, starts from this module instead, so the canvas draws
+// The site's own files, read from cms/ when the editor is built
+// (./site-file.ts) and served as `virtual:site-theme`: the header's and
+// footer's starters, the documents a site draws until it publishes its own
+// parts, and the site's time zone. The browser's storage adapter, which
+// has no CMS to ask, starts its parts from this module, so the canvas draws
 // the same header and footer in both modes.
 //
-// The CMS checks the defaults as it starts (config/initializers/site.rb)
-// against the rules a change from the editor is held to, and a file that
-// breaks them stops it, naming each value: a default the editor could not
-// save back would be drawn on every page and refused when sent back
-// unchanged. The build makes the same check, with the editor's engine
-// (the application rules of schema/tools/rules.ts, then $defs/site of the
-// page schema by ajv, with the options the editor's validator is compiled
-// with), and stops the same way.
+// The CMS checks the starters as it starts (config/initializers/
+// site_parts.rb) against the rules a part's draft is held to, and a file
+// that breaks them stops it, naming each value: a starter the editor could
+// not save back would be drawn on every page and refused when sent back
+// unchanged. The build makes the same check, with the editor's engine (the
+// application rules of schema/tools/rules.ts, then the page schema by ajv,
+// with the options the editor's validator is compiled with, then the
+// part's own rule: no form), and stops the same way.
 import type { Plugin } from "vite";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
 import { checkTree, escapePointer } from "../../schema/tools/rules.ts";
-import { readSiteTheme, siteDefaults, siteFile } from "./site-file.ts";
+import { PART_KINDS, partFile, readSiteTheme, siteFile } from "./site-file.ts";
 import { readSchema } from "./validator.ts";
 
 // ajv is CommonJS: the constructor is module.exports.default.
@@ -28,24 +26,25 @@ const Ajv2020 = Ajv2020Module.default;
 export const SITE_THEME_MODULE = "virtual:site-theme";
 const RESOLVED = `\0${SITE_THEME_MODULE}`;
 
-// Each rule the defaults break, as the CMS names it when it refuses to
-// start ("/menu/0/href (pattern): ..."): the application rules first and,
-// when they pass, $defs/site, the order Site.check follows. None when the
-// defaults are values the editor could save back.
-export function siteDefaultsProblems(values: unknown, schema: object = readSchema()): string[] {
-  const rules = checkTree(values);
-  const errors = rules.length > 0 ? rules : schemaErrors(values, schema);
-  return errors.map((e) => `${e.pointer || "the whole"} (${e.keyword}): ${e.message}`);
+// The words of the part's own rule, the server's (SiteParts.check).
+const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
+
+// Each rule a starter breaks, as the CMS names it when it refuses to start
+// ("/sections/0/children/1/children/0 (part): ..."): the application rules
+// first and, when they pass, the schema, then the part's rule, the order
+// SiteParts.check follows. None when the starter is a part's draft the
+// editor could save back.
+export function starterProblems(document: unknown, schema: object = readSchema()): string[] {
+  const rules = checkTree(document);
+  const errors = rules.length > 0 ? rules : schemaErrors(document, schema);
+  const found = errors.length > 0 ? errors : forms(document).map((pointer) => ({ pointer, keyword: "part", message: PART_FORM }));
+  return found.map((e) => `${e.pointer || "the whole"} (${e.keyword}): ${e.message}`);
 }
 
-function schemaErrors(values: unknown, schema: object): Array<{ pointer: string; keyword: string; message: string }> {
-  const id = (schema as { $id?: unknown }).$id;
-  if (typeof id !== "string") throw new Error("the schema has no $id to name $defs/site by");
+function schemaErrors(document: unknown, schema: object): Array<{ pointer: string; keyword: string; message: string }> {
   const ajv = new Ajv2020({ ...AJV_OPTIONS });
-  ajv.addSchema(schema);
-  const validate = ajv.getSchema(`${id}#/$defs/site`);
-  if (!validate) throw new Error("the schema has no $defs/site");
-  if (validate(values)) return [];
+  const validate = ajv.compile(schema);
+  if (validate(document)) return [];
   // As the editor reads ajv's errors (src/shared/validate.ts): no "if" at
   // a branch that failed, and an unknown member pointed at by its name.
   return (validate.errors ?? []).filter((e) => e.keyword !== "if").map((e) => {
@@ -54,18 +53,24 @@ function schemaErrors(values: unknown, schema: object): Array<{ pointer: string;
   });
 }
 
-// The module: the defaults, once they pass the CMS's check, and the time
-// zone. Defaults that break it stop the build, each value named.
-export function siteThemeSource(text?: string): string {
-  const theme = readSiteTheme(text);
-  const values = siteDefaults(theme);
-  const problems = siteDefaultsProblems(values);
-  if (problems.length > 0) throw new Error(`${siteFile}: the header and footer break the rules a change from the editor is held to: ${problems.join("; ")}`);
-  return `// Generated by builder/build/site-theme.ts from cms/config/site.yml.\nexport const SITE_THEME = ${JSON.stringify({ ...values, timeZone: theme.timeZone })};\n`;
+// The pointer of every form block of a valid document.
+function forms(document: unknown): string[] {
+  const sections = (document as { sections: Array<{ children: Array<{ children: Array<{ type: string }> }> }> }).sections;
+  return sections.flatMap((section, s) => section.children.flatMap((column, c) =>
+    column.children.flatMap((block, w) => (block.type === "form" ? [`/sections/${s}/children/${c}/children/${w}`] : []))));
+}
+
+// The module: the starters, once they pass the CMS's check, and the time
+// zone. A starter that breaks it stops the build, each value named.
+export function siteThemeSource(text?: string, readPart?: Parameters<typeof readSiteTheme>[1]): string {
+  const theme = readSiteTheme(text, readPart);
+  const problems = PART_KINDS.flatMap((kind) => starterProblems(theme.parts[kind]).map((problem) => `${kind}.json: ${problem}`));
+  if (problems.length > 0) throw new Error(`cms/config/parts: the starters break the rules a header's or footer's draft is held to: ${problems.join("; ")}`);
+  return `// Generated by builder/build/site-theme.ts from cms/config/site.yml and cms/config/parts.\nexport const SITE_THEME = ${JSON.stringify(theme)};\n`;
 }
 
 // `import { SITE_THEME } from "virtual:site-theme"`, read again from the
-// file whenever the module is loaded, so it is never older than the file.
+// files whenever the module is loaded, so it is never older than they are.
 export function siteTheme(): Plugin {
   return {
     name: "page-builder-cms:site-theme",
@@ -75,6 +80,7 @@ export function siteTheme(): Plugin {
     load(id) {
       if (id !== RESOLVED) return null;
       this.addWatchFile(siteFile);
+      for (const kind of PART_KINDS) this.addWatchFile(partFile(kind));
       return siteThemeSource();
     },
   };

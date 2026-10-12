@@ -12,6 +12,9 @@ export const WIDGET_GROUPS = [
   { id: "media", label: "Media" },
   { id: "content", label: "Content" },
   { id: "forms", label: "Forms" },
+  // After the design's groups: the blocks a header and a footer are made
+  // of, which the approved design drew as fixed parts of the theme.
+  { id: "site", label: "Site" },
 ] as const;
 export type WidgetGroup = (typeof WIDGET_GROUPS)[number]["id"];
 
@@ -46,6 +49,8 @@ export interface InputOf {
   quote: void;
   accordion: void;
   form: void;
+  logo: void;
+  menu: void;
 }
 export type Needs = null | "image" | "images" | "video";
 

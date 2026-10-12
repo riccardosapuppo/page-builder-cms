@@ -3,7 +3,8 @@
 // a click puts a block; Enter or a click on a key adds the widget where the
 // selection says and selects it; a widget that needs an image asks for it
 // first; a page with no section says where widgets go; the Sections tab
-// adds a ready-made section after the selection's section.
+// adds a ready-made section after the selection's section. A header or a
+// footer holds no form: the drawer offers none there.
 // @vitest-environment jsdom
 import { fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
@@ -25,9 +26,21 @@ test("the groups are labelled groups of buttons, in the layout's order", () => {
     ["Media", ["Gallery", "Video", "Map"]],
     ["Content", ["Icon box", "Quote", "Accordion"]],
     ["Forms", ["Form"]],
+    ["Site", ["Logo", "Menu"]],
   ]);
   // The search takes the focus when the drawer opens.
   expect(screen.getByRole("searchbox", { name: "Search blocks and sections" }).hasAttribute("data-autofocus")).toBe(true);
+});
+
+test("in a header or a footer the drawer offers no form, and the Site group's blocks are there", () => {
+  const header = { id: 7, kind: "header" as const, slug: null, home: false, published: null, revision: 0, links: { preview: "/preview/7", live: null } };
+  const kit = editorKit({ document: page(), session: { current: header } });
+  kit.render(<Palette />);
+  const named = groups().map((g) => document.getElementById(g.getAttribute("aria-labelledby")!)?.textContent);
+  expect(named).toEqual(["New section, by number of columns", "Basic", "Media", "Content", "Site"]);
+  expect(screen.queryByRole("button", { name: "Form" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Logo" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Menu" })).toBeTruthy();
 });
 
 test("the search keeps the keys whose name or group it matches", () => {

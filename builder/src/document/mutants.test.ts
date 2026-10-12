@@ -91,7 +91,9 @@ const MUTANTS: Array<{ name: string; plants: Plant[]; expect: RegExp }> = [
     // inverse must put it back, or a text field is left with none.
     name: "an inverse that does not give a form field's longest answer back when its type changes",
     plants: [{ file: "document/ops.ts", search: "if (\"before\" in op) inverse.after = op.before as Json;", replace: "if (\"before\" in op && op.key !== \"maxLength\") inverse.after = op.before as Json;" }],
-    expect: /undoing Changed field .* was refused: .*maxLength/,
+    // Seen as the undo's own step refused for the limit it does not give
+    // back, or as an inverse undone again that is not the command.
+    expect: /undoing Changed field .* was refused: .*maxLength|the inverse of the inverse of Changed field .* is not the command/,
   },
   {
     name: "a duplicate that draws its ids when it is applied, not when it is made",
@@ -122,7 +124,12 @@ const MUTANTS: Array<{ name: string; plants: Plant[]; expect: RegExp }> = [
   },
   {
     name: "column widths that outlive a change in the number of columns",
-    plants: [{ file: "document/commands.ts", search: "function clearWidths(doc: PageDocument, sectionId: string | null): Op[] {\n", replace: "function clearWidths(doc: PageDocument, sectionId: string | null): Op[] {\n  if (sectionId !== \"\") return [];\n" }],
+    plants: [{ file: "document/commands.ts", search: "function clearWidths(doc: PageDocument, sectionId: string | null, countAfter?: number): Op[] {\n", replace: "function clearWidths(doc: PageDocument, sectionId: string | null, countAfter?: number): Op[] {\n  if (sectionId !== \"\") return [];\n" }],
+    expect: /must be possible here, and was refused/,
+  },
+  {
+    name: "a stacking that outlives a section left with one column",
+    plants: [{ file: "document/commands.ts", search: "  if (countAfter !== undefined && countAfter < 2 && section.props.stack !== undefined) {\n", replace: "  if (countAfter === -1 && section.props.stack !== undefined) {\n" }],
     expect: /must be possible here, and was refused/,
   },
   {

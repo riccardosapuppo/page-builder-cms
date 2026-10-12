@@ -4,7 +4,9 @@
 // demo is built. Each picture goes into the media library the way an
 // upload does; then each page is made, its document saved as the draft
 // with its images named by the ids the library gave them, and published;
-// and the home page is set.
+// and the home page is set. Last, the site's header and footer, which the
+// storage makes from their starters (the example site's own, cms/config/
+// parts), are published as they are, as the CMS's seed publishes them.
 //
 // Only into an empty site, with no page and no image: a site someone has
 // worked on is never added to. The one exception is the seed's own work,
@@ -153,6 +155,12 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
         if (!home.ok) throw refusal(`home page ${entry.file}`, home.problem);
       }
     }
+    // A part the seed published before it was cut short is as it left it.
+    for (const part of await adapter.listParts()) {
+      if (part.published) continue;
+      const published = await adapter.publish(part.id, { revision: part.revision });
+      if (!published.ok) throw new Error(`The example site's ${part.kind} was not published: ${published.problem.message}`);
+    }
     marks.write("seeded");
     return "seeded";
   };
@@ -160,20 +168,29 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
   return locks ? locks.request(SEED_LOCK, putIn) : putIn();
 }
 
-// The adapter, whose first listing of the pages waits for the seed: the
-// editor lists them first, so it opens on the example site. A seed that
-// failed is tried again by the next listing (the editor's Try again), or
-// by the next visit, and goes on from where it stopped (seedExampleSite).
+// The adapter, whose first listing of the pages, or of the header and
+// footer, waits for the seed: the editor lists them first, so it opens on
+// the example site, and the parts, which the storage makes when they are
+// first asked for, are made after the pages, as the seed makes them in an
+// empty site. A seed that failed is tried again by the next listing (the
+// editor's Try again), or by the next visit, and goes on from where it
+// stopped (seedExampleSite).
 export function withExampleSite(adapter: StorageAdapter, seed: () => Promise<unknown>): StorageAdapter {
   let seeding: Promise<unknown> | null = null;
+  const seeded = () => {
+    seeding ??= seed().catch((error: unknown) => {
+      seeding = null;
+      throw error;
+    });
+    return seeding;
+  };
   return {
     ...adapter,
     listPages(options) {
-      seeding ??= seed().catch((error: unknown) => {
-        seeding = null;
-        throw error;
-      });
-      return seeding.then(() => adapter.listPages(options));
+      return seeded().then(() => adapter.listPages(options));
+    },
+    listParts(options) {
+      return seeded().then(() => adapter.listParts(options));
     },
   };
 }

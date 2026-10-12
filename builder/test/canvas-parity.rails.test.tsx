@@ -128,7 +128,9 @@ async function settle(page: Page): Promise<void> {
   });
 }
 
-// Every element under the page root's sections, in document order.
+// Every element of the page's own sections, in document order: those of
+// the sections' container, not of the site's header and footer the CMS
+// draws around it (./theme.rails.test.tsx holds those).
 async function measure(page: Page, rootSelector: string): Promise<Measured[]> {
   return page.evaluate(([selector, properties]) => {
     const root = document.querySelector<HTMLElement>(selector as string)!;
@@ -139,7 +141,7 @@ async function measure(page: Page, rootSelector: string): Promise<Measured[]> {
     // Layout works in 1/64 of a pixel; anything finer is the float error of
     // a drawing's box (an svg path's) at another place in the window.
     const round = (n: number) => Math.round(n * 64) / 64;
-    return [...root.querySelectorAll<Element>("section.sec, section.sec *")].map((element) => {
+    return [...main.querySelectorAll<Element>("section.sec, section.sec *")].map((element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
       // An element that is not drawn (display: none) has no box at all.
