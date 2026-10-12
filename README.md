@@ -393,12 +393,13 @@ How a number is taken:
   the same drag on a page of four blocks say what the stack and the harness
   cost by themselves.
 - **Able to fail.** Each command also checks that it measured what it says:
-  that every answer had the 500 blocks, that a cold visit wrote 501 rows,
-  that the drag was engaged and saved nothing, that the editor's text chunk
-  was not loaded to open the page. `npm run test:tools` runs the tests of
-  the tools themselves, among them one that reads this section and fails if
-  a command in it does not exist. The measurements are not part of `npm run
-  check`, which does not wait for a quiet machine: those tests are.
+  that every answer had the page's 500 blocks, that a cold visit wrote a row
+  for the page, each of its blocks and each block of the header and footer
+  around it, that the drag was engaged and saved nothing, that the editor's
+  text chunk was not loaded to open the page. `npm run test:tools` runs the
+  tests of the tools themselves, among them one that reads this section and
+  fails if a command in it does not exist. The measurements are not part of
+  `npm run check`, which does not wait for a quiet machine: those tests are.
 
 ### A published page, on the server
 
@@ -430,6 +431,15 @@ visit each):
 | A 304 | 0 | 0 | 0 | 0 | 0 |
 | One heading changed | 4 | 37 | 33 | 4 | 4 |
 | The site style changed | 2 | 26 | 25 | 1 | 1 |
+
+These numbers are from before the header and footer became parts of the
+site. A run of 12 October 2026 with them (from 14:04 UTC, the machine 2%
+then 3% busy, no run thrown away, `RESULT: 30 checks passed`) found every
+median inside the range given above for its row: cold 391 ms, the first
+visit after a start 569, warm 5.01, a 304 2.95. What changed is what is
+cached: a page also draws the header's and footer's 12 blocks around its
+own, each a fragment, so a cold visit asks for and writes 513 fragments in
+97 reads and 97 writes, and one heading changed asks for 39 and finds 35.
 
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
   the preview does, and also makes the 501 keys, asks for them in 88 reads

@@ -56,7 +56,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
-import { api, countBlocks, headings, publishLargePage, withHeadingText, type Document } from "./lib/measure-site.ts";
+import { api, countBlocks, headings, publishLargePage, starterBlocks, withHeadingText, type Document } from "./lib/measure-site.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "./lib/processes.ts";
 
 // The experimental-feature notice node:sqlite prints is the only warning
@@ -135,6 +135,8 @@ interface Visit {
   // X-Runtime, ms: the time the application took.
   runtime: number | null;
   bytes: number;
+  // The page's own blocks, those of its main: not the header's and
+  // footer's drawn around it.
   blocks: number;
   etag: string | null;
   hash: string;
@@ -169,7 +171,7 @@ function visit(path: string, headers: Record<string, string> = {}): Promise<Visi
           status: response.statusCode ?? 0, head, total,
           runtime: runtime === null ? null : Number(runtime) * 1000,
           bytes: body.length,
-          blocks: (body.toString("utf8").match(/ data-block-id="/g) ?? []).length,
+          blocks: (/<main id="main_content">([\s\S]*?)<\/main>/.exec(body.toString("utf8"))?.[1]?.match(/ data-block-id="/g) ?? []).length,
           etag: one("etag"),
           hash: createHash("sha256").update(body).digest("hex"),
           cacheControl: one("cache-control"),
@@ -327,6 +329,11 @@ try {
     `the server listens on 127.0.0.1:${PORT} only, and it is the process started here`, owners.map((l) => `${l.address} (process ${l.pid})`).join(", "));
 
   const page = await publishLargePage(BASE, SLUG);
+  // What a first visit writes: a fragment for the page, one for each of its
+  // blocks, and one for each block of the header and footer around it.
+  const parts = starterBlocks();
+  const fragments = 1 + countBlocks(page.document.sections) + parts;
+  const written = `the page, its ${countBlocks(page.document.sections)} blocks and the header's and footer's ${parts}`;
   cache = openCache();
   const path = `/${SLUG}`;
   const edits = headings(page.document);
@@ -363,14 +370,14 @@ try {
     cache!.clear();
     return visit(path);
   }, cache);
-  check(cold.rows.every(([, after]) => after === 501), "a cold visit writes the page's 501 fragments: the 500 blocks and the page", `${seen(cold.rows.map(([, after]) => after))} rows after; ${kinds(cache.keys())}`);
+  check(cold.rows.every(([, after]) => after === fragments), `a cold visit writes ${fragments} fragments: ${written}`, `${seen(cold.rows.map(([, after]) => after))} rows after; ${kinds(cache.keys())}`);
   check(cold.runs.every((v) => v.status === 200 && v.blocks === 500), "a cold visit answers 200 with the 500 blocks, every time");
 
   // --- Warm -------------------------------------------------------------------------
   const warm = await phase("warm", "the page read whole from Solid Cache", runsFrom("MEASURE_RUNS_WARM", 100), () => visit(path), cache, false);
   check(warm.runs.every((v) => v.status === 200 && v.blocks === 500 && v.cacheControl === "max-age=0, public, must-revalidate"), "a warm visit answers 200 with the 500 blocks and the page's Cache-Control, every time");
   check(new Set(warm.runs.map((v) => v.hash)).size === 1 && warm.runs[0]!.hash === cold.runs[0]!.hash, "the warm page has the bytes of the cold one, all the runs", `${warm.runs[0]!.bytes} bytes`);
-  check(warm.rows.every(([a, b]) => a === 501 && b === 501), "a warm visit writes nothing", `rows before and after: ${seen(warm.rows.map((r) => r.join(" to ")))}`);
+  check(warm.rows.every(([a, b]) => a === fragments && b === fragments), "a warm visit writes nothing", `rows before and after: ${seen(warm.rows.map((r) => r.join(" to ")))}`);
   const etag = warm.runs[0]!.etag;
   check(etag !== null, "the page has an ETag");
 
@@ -443,7 +450,7 @@ try {
   check(new Set(processes).size === processes.length && processes.length >= afterStart.runs.length, "every run of the first visit started a server of its own", `${processes.length} processes: ${processes.join(", ")}`);
   check(emptyAtTheVisit.every((rows) => rows === 0), "Solid Cache held no fragment when each first visit came", `${seen(emptyAtTheVisit)} fragments`);
   check(afterStart.runs.every((v) => v.status === 200 && v.blocks === 500), "the first visit after a start answers 200 with the 500 blocks, every time");
-  check(afterStart.rows.every(([, after]) => after === 501), "the first visit after a start writes the page's 501 fragments: the 500 blocks and the page", `${seen(afterStart.rows.map(([, after]) => after))} rows after`);
+  check(afterStart.rows.every(([, after]) => after === fragments), `the first visit after a start writes ${fragments} fragments: ${written}`, `${seen(afterStart.rows.map(([, after]) => after))} rows after`);
 
   // --- Report -------------------------------------------------------------------------------
   const rowBytes = cache.bytes();
@@ -482,7 +489,7 @@ try {
   const warmCount = counts.find((c) => c.phase === "warm");
   check(!!warmCount && warmCount.read_calls === 1 && warmCount.keys_found === 1 && warmCount.keys_written === 0, "the counting run: a warm visit is one read, found, and writes nothing", JSON.stringify(warmCount ?? {}));
   const coldCount = counts.find((c) => c.phase === "cold");
-  check(!!coldCount && Number(coldCount.keys_written) === 501 && Number(coldCount.keys_found) === 0, "the counting run: a cold visit finds nothing and writes the 501 fragments", JSON.stringify(coldCount ?? {}));
+  check(!!coldCount && Number(coldCount.keys_written) === fragments && Number(coldCount.keys_found) === 0, `the counting run: a cold visit finds nothing and writes the ${fragments} fragments`, JSON.stringify(coldCount ?? {}));
   check(counts.find((c) => c.phase === "not modified")?.status === 304 && counts.find((c) => c.phase === "not modified")?.read_calls === 0, "the counting run: a 304 reads nothing from the cache");
   if (underLoad) console.log("UNDER LOAD: the machine was not quiet during this run (or MEASURE_ALLOW_BUSY=1 was given): these numbers are not to be quoted");
 } catch (error) {

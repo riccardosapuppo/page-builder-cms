@@ -35,6 +35,12 @@ export interface Document {
 
 export const fixtureDocument = (): Document => JSON.parse(readFileSync(FIXTURE, "utf8")) as Document;
 
+// The blocks of the header and footer a site draws until it publishes its
+// own (cms/config/parts), each a fragment of Solid Cache as a page's block
+// is: the measurement publishes neither.
+export const starterBlocks = (): number =>
+  ["header", "footer"].reduce((n, kind) => n + countBlocks((JSON.parse(readFileSync(join(root, "cms", "config", "parts", `${kind}.json`), "utf8")) as Document).sections), 0);
+
 export function countBlocks(blocks: readonly Block[]): number {
   return blocks.reduce((n, b) => n + 1 + countBlocks(b.children), 0);
 }
