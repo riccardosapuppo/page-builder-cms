@@ -8,6 +8,7 @@ again.
 | Picture | Shows |
 | --- | --- |
 | `editor.png` | The editor, 1440 by 900, with the home page open, its heading selected, the Outline on the left and the heading's settings on the right. |
+| `header.png` | The site's header open in the editor, 1440 by 900, as a page is opened: its menu selected, the menu's links on the right, the home page dimmed under it. |
 | `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
 | `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |
 | `history.png` | The editor's History: this session's changes, a version kept under a name, the version that is live. |

@@ -6,7 +6,8 @@
 // into docs/images/ (--out for another folder): the editor with a block
 // selected, the published page on a desktop and on a phone, the version
 // history, Form responses, the browser demo with its bottom line, and the
-// GIF of a real publication. Their names, sizes and limits are listed in
+// GIF of a real publication, and the site's header open in the editor as a
+// page is. Their names, sizes and limits are listed in
 // tools/lib/shot-images.ts, which also reads the result back.
 //
 // It starts a CMS of its own in the e2e environment on 127.0.0.1:3905
@@ -229,6 +230,24 @@ async function editorShot(browser: Browser, shots: Staging, editor: string, cms:
   await page.context().close();
 }
 
+// The site's header, opened by a click on it around the home page, as a
+// page is opened: its menu selected, the menu's links beside it, and the
+// home page dimmed and locked under the header.
+async function headerShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "header");
+  const box = await page.locator('.canvas [data-theme-part="header"]').boundingBox();
+  must(box !== null, "the canvas draws no header around the home page");
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.getByRole("button", { name: "Switch page. Open: Header" }).waitFor();
+  await page.locator(".canvas [data-around-page]").waitFor();
+  await page.locator('.canvas [data-block-id="header-menu"]').click();
+  must((await page.locator(".canvas [data-editor-selected=true]").count()) === 1, "the header's menu is not the one block selected");
+  await settled(page);
+  await parked(page);
+  await shots.shoot(page, "header.png");
+  await page.context().close();
+}
+
 // Three changes in this session, the last undone, a version kept under a
 // name, the History drawer open and nothing selected; then the changes
 // undone, so the page is as the seed has it.
@@ -437,7 +456,7 @@ function sweep(cmsPort: number): void {
 async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: number, editorPort: number): Promise<void> {
   let browser: Browser | null = null;
   try {
-    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "history.png", "form-responses.png", "publish.gif"].some((name) => wanted.has(name));
+    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "header.png", "history.png", "form-responses.png", "publish.gif"].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
       const cms = await startCms(cmsPort);
@@ -450,6 +469,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
       await publishedPages(browser, shots, cms.url);
       if (wanted.has("form-responses.png")) await visitorsSend(browser, cms.url);
       if (wanted.has("editor.png")) await editorShot(browser, shots, editor.url, cms.url);
+      if (wanted.has("header.png")) await headerShot(browser, shots, editor.url, cms.url);
       if (wanted.has("history.png") || wanted.has("form-responses.png")) {
         const page = await historyShot(browser, shots, editor.url, cms.url);
         if (wanted.has("form-responses.png")) await responsesShot(shots, page);
