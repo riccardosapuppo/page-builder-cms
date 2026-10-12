@@ -163,6 +163,42 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "uni-l",
+              "type": "logo",
+              "props": {
+                "name": "Øresund Bådelaug"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "uni-n",
+              "type": "menu",
+              "props": {
+                "label": "Menü",
+                "items": [
+                  {
+                    "label": "日本語の案内",
+                    "href": "/"
+                  },
+                  {
+                    "label": "مرحبا",
+                    "href": "/ar"
+                  },
+                  {
+                    "label": "Été ✓ 🌊",
+                    "href": "/ete"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {

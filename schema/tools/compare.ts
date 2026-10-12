@@ -17,12 +17,10 @@
 // It reports, without failing, how many invalid files get identical error
 // sets from both engines.
 //
-//   node compare.ts [--corpus DIR] [--schema PATH] [--def NAME] [--min-files N]
+//   node compare.ts [--corpus DIR] [--schema PATH] [--min-files N]
 //                   [--rules off] [--regexp ruby] [--drop-ruby FILE]
 //                   [--ruby-normalize off]
 //
-// --def holds both engines to $defs/NAME instead of the root: the site's
-// header and footer, $defs/site, with its own corpus (npm run compare:site).
 // The last four exist to show the comparator failing; see README.md.
 import { spawnSync } from "node:child_process";
 import { join, relative, sep } from "node:path";
@@ -32,7 +30,6 @@ import { escapePointer } from "./rules.ts";
 const argv = process.argv.slice(2);
 const corpus = argValue(argv, "--corpus", CORPUS);
 const schema = argValue(argv, "--schema", SCHEMA);
-const def = argValue(argv, "--def", "");
 const minFiles = Number(argValue(argv, "--min-files", "60"));
 const rules = argValue(argv, "--rules", "on");
 const regexp = argValue(argv, "--regexp", "ecma");
@@ -96,7 +93,7 @@ function run(label: string, command: string, args: string[], env: NodeJS.Process
   return out;
 }
 
-const common = ["--corpus", corpus, "--schema", schema, "--rules", rules, ...(def ? ["--def", def] : [])];
+const common = ["--corpus", corpus, "--schema", schema, "--rules", rules];
 const ajv = run("ajv", process.execPath, [join(TOOLS, "validate.ts"), ...common], process.env);
 const rubyArgs = [
   join(TOOLS, "validate.rb"), ...common, "--regexp", regexp, "--normalize", rubyNormalize,
@@ -244,10 +241,7 @@ const describe = (r: Run): string =>
   [r.header.engine, r.header.parser, r.header.runtime, typeof r.header.bundle === "string" ? `bundle ${r.header.bundle}` : undefined]
     .filter((x) => typeof x === "string").join(", ") || "(no header)";
 const shown = (path: string): string => relative(TOOLS, path).split(sep).join("/");
-console.log(`schema:  ${shown(schema)}${def ? `#/$defs/${def}` : ""}`);
-// Each runner says what it validated against: a runner that ignored --def
-// would check the wrong schema and could still agree with the other.
-for (const r of [ajv, schemer]) if ((r.header.def ?? "") !== def) fail(`${r.label} validated against ${r.header.def ? `$defs/${String(r.header.def)}` : "the root"}, not ${def ? `$defs/${def}` : "the root"}`);
+console.log(`schema:  ${shown(schema)}`);
 console.log(`corpus:  ${shown(corpus)}: ${files.length} files (${count("valid/")} valid, ${count("invalid/")} invalid, ${count("upgrade/")} upgrade); the manifest lists ${listed.length}`);
 console.log(`ajv:          ${describe(ajv)}; ${ajv.results.size} results in ${ajv.seconds.toFixed(1)} s`);
 console.log(`json_schemer: ${describe(schemer)}, regexp resolver ${regexp}; ${schemer.results.size} results in ${schemer.seconds.toFixed(1)} s`);

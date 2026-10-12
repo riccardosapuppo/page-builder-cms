@@ -1,5 +1,4 @@
-// Writes schema/corpus: valid/ and invalid/ documents and manifest.json;
-// and corpus/site/, the same for the site's header and footer ($defs/site).
+// Writes schema/corpus: valid/ and invalid/ documents and manifest.json.
 //
 // Every invalid file is the base page (valid/landing.json) with ONE change,
 // and the manifest records the rule it breaks and where both validators
@@ -61,6 +60,9 @@ const accordion = (id: string, items: J[]): J => block(id, "accordion", { items 
 const form = (id: string, items: J[], submitLabel: string, confirmation: string): J => block(id, "form", { items, submitLabel, confirmation });
 const field = (name: string, kind: string, label: string, required: boolean, maxLength?: number): J =>
   (maxLength === undefined ? { name, kind, label, required } : { name, kind, label, required, maxLength });
+const logo = (id: string, name?: string, style: Style = plain()): J => block(id, "logo", name === undefined ? {} : { name }, [], style);
+const menu = (id: string, label: string, items: J[], style: Style = plain()): J => block(id, "menu", { label, items }, [], style);
+const menuLink = (label: string, href: string): J => ({ label, href });
 
 // --- rich text ------------------------------------------------------------------
 const t = (s: string, marks?: J[]): J => (marks ? { type: "text", text: s, marks } : { type: "text", text: s });
@@ -153,6 +155,17 @@ function landing(): J {
         ], "Send request", `Thank you. We reply within two days${NEWLINE}with the next trial date and what to bring.`),
       ]),
     ], { anchor: "join" }),
+    section("site", [
+      column("site-1", [logo("site-logo", "Slack Water", { base: { color: "primary" }, phone: { align: "center" } })], { base: { verticalAlign: "middle" } }),
+      column("site-2", [
+        menu("site-menu", "Footer", [
+          menuLink("Swims", "/#swims"),
+          menuLink("Winter series", "/winter-series"),
+          menuLink("Write to us", "mailto:hello@slackwater.example"),
+        ], { base: { align: "right", color: "text" }, tablet: { align: "center" }, phone: { visibility: "hidden" } }),
+      ], { base: { verticalAlign: "middle" } }),
+      column("site-3", [button("site-join", "Join", "#join"), logo("site-mark")]),
+    ], { label: "Site band", columnWidths: "fit:1:fit", stack: "phone" }, { base: { spaceAbove: "m", spaceBelow: "m", spaceBetween: "l" }, phone: { spaceBetween: "s" } }),
   ], "Dawn swims, beginners’ courses and a winter series, timed to slack water.");
 }
 
@@ -199,6 +212,9 @@ const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
 const FORM = P("join-form");
+const SITE = P("site");
+const LOGO = P("site-logo");
+const MENU = P("site-menu");
 
 // --- output ---------------------------------------------------------------------
 interface ValidEntry { rule: string }
@@ -267,9 +283,36 @@ valid("columns-one-to-four", "sections with one, two, three and four columns, an
   section("three", [column("three-1", []), column("three-2", []), column("three-3", [divider("three-d")])]),
   section("four", [column("four-1", []), column("four-2", []), column("four-3", []), column("four-4", [heading("four-h", 4, "Four")])]),
 ]));
-valid("columns-widths-every-preset", "every column-width preset, each on a section with as many columns as it has parts", doc("Column widths", [
-  ...["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"].map((widths, k) =>
+valid("columns-widths-every-preset", "every column-width preset, each on a section with as many columns as it has parts, fit ones included", doc("Column widths", [
+  ...["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2", "fit:1", "1:fit", "fit:1:fit"].map((widths, k) =>
     section(`widths-${k}`, widths.split(":").map((_, c) => column(`widths-${k}-${c + 1}`, [])), { columnWidths: widths })),
+]));
+valid("columns-stack-every-value", "where columns stack, on two, three and four columns: on phones only, or never; with a preset, fit ones included, and without", doc("Stacking", [
+  section("stack-2", [column("stack-2-1", []), column("stack-2-2", [])], { stack: "phone" }),
+  section("stack-2-fit", [column("stack-2-fit-1", [logo("stack-2-logo", "Tide club")]), column("stack-2-fit-2", [])], { columnWidths: "fit:1", stack: "never" }),
+  section("stack-3", [column("stack-3-1", []), column("stack-3-2", []), column("stack-3-3", [])], { columnWidths: "fit:1:fit", stack: "never" }),
+  section("stack-3-phone", [column("stack-3-phone-1", []), column("stack-3-phone-2", []), column("stack-3-phone-3", [])], { columnWidths: "1:2:1", stack: "phone" }),
+  section("stack-4", [column("stack-4-1", []), column("stack-4-2", []), column("stack-4-3", []), column("stack-4-4", [])], { stack: "never" }),
+]));
+valid("logo-and-menu", "a logo with and without a name, and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too", doc("Logo and menu", [
+  section("lm", [
+    column("lm-1", [logo("lm-logo-named", "N".repeat(40)), logo("lm-logo-mark"), logo("lm-logo-emoji", cp(0x1f30a).repeat(40))]),
+    column("lm-2", [
+      menu("lm-menu-one", "Main", [menuLink("Home", "/")]),
+      menu("lm-menu-twelve", "L".repeat(40), Array.from({ length: 12 }, (_, k) => menuLink(`${"L".repeat(38)}${String(k).padStart(2, "0")}`, `/#part-${k + 1}`))),
+      menu("lm-menu-links", "Every link", [
+        menuLink("Elsewhere", "https://example.org/tides?when=today#now"),
+        menuLink("Plain", "http://example.org"),
+        menuLink("Write", "mailto:swim@example.org"),
+        menuLink("Call", "tel:+44-1234-567890"),
+        menuLink("Winter", "/winter-series"),
+        menuLink("Join", "/#join"),
+        menuLink("Search", "?q=tides"),
+        menuLink("Top", "#top"),
+        menuLink(`e${COMBINING_ACUTE}`.repeat(20), "/accents"),
+      ]),
+    ]),
+  ], { columnWidths: "fit:1" }),
 ]));
 valid("image-sources", "library image, external https image, site path, decorative image without alt", doc("Images", [
   section("imgs", [column("imgs-1", [
@@ -381,6 +424,8 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
     form("uni-f", [field("nom", "text", "Prénom et nom", true, 80), field("accord", "checkbox", "J’accepte d’être rappelé·e ☎", false)], "Envoyer ✉", `Merci ! À bientôt.${NEWLINE}— Le club`),
+    logo("uni-l", "Øresund Bådelaug"),
+    menu("uni-n", "Menü", [menuLink("日本語の案内", "/"), menuLink("مرحبا", "/ar"), menuLink("Été ✓ 🌊", "/ete")]),
   ])]),
 ], "Ünïcödé désçription"));
 valid("text-length-emoji-at-max", "200 emoji in a heading: 200 code points (400 UTF-16 units), maxLength 200", doc("Emoji", [
@@ -528,7 +573,7 @@ invalid("tree-section-in-column", "a column holds widgets only", `${COL}/childre
   at(d, COL).children.push(section("nested-section", [column("nested-col", [])]));
 });
 invalid("tree-column-in-column", "columns do not nest", `${COL}/children/3/type`, "enum", (d) => { at(d, COL).children.push(column("nested-col", [])); });
-invalid("tree-section-at-column-level", "the page holds sections only", "/sections/7/type", "const", (d) => { d.sections.push(column("loose-col", [])); });
+invalid("tree-section-at-column-level", "the page holds sections only", `/sections/${BASE.sections.length}/type`, "const", (d) => { d.sections.push(column("loose-col", [])); });
 invalid("tree-section-no-columns", "a section has at least one column", `${HERO}/children`, "minItems", (d) => { at(d, HERO).children = []; });
 invalid("tree-section-five-columns", "a section has at most four columns", `${HERO}/children`, "maxItems", (d) => {
   at(d, HERO).children.push(column("c3", []), column("c4", []), column("c5", []));
@@ -548,6 +593,16 @@ invalid("section-anchor-duplicate-first-changed", "the second section with an an
 });
 invalid("tree-section-label-too-long", "a section label has at most 60 characters", `${HERO}/props/label`, "maxLength", (d) => { at(d, HERO).props.label = "x".repeat(61); });
 invalid("tree-section-unknown-prop", "section props are closed", `${HERO}/props/columns`, "additionalProperties", (d) => { at(d, HERO).props.columns = 2; });
+invalid("tree-section-widths-fit-for-two-on-three", "a fit preset of two parts on a section of three columns", `${SITE}/props/columnWidths`, "enum", (d) => { at(d, SITE).props.columnWidths = "fit:1"; });
+invalid("tree-section-widths-all-fit", "every column as wide as its content leaves nothing to take the rest: no such preset", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "fit:fit"; });
+invalid("tree-section-widths-fit-on-four", "four columns take no preset, fit ones included", `${P("swims")}/props/columnWidths`, "enum", (d) => {
+  at(d, P("swims")).children.push(column("swims-4", []));
+  at(d, P("swims")).props.columnWidths = "fit:1:1:fit";
+});
+invalid("section-stack-unknown", "columns stack on phones only, or never; tablet is the absence of the setting, never written", `${HERO}/props/stack`, "enum", (d) => { at(d, HERO).props.stack = "tablet"; });
+invalid("section-stack-boolean", "where to stack is a name, not true or false", `${SITE}/props/stack`, "enum", (d) => { at(d, SITE).props.stack = false; });
+invalid("section-stack-one-column", "a section of one column has nothing to stack", `${P("gallery")}/props`, "not", (d) => { at(d, P("gallery")).props.stack = "never"; });
+invalid("section-stack-in-style", "where columns stack is the section's, one setting for every device, not a style per device", `${SITE}/style/phone/stack`, "additionalProperties", (d) => { at(d, SITE).style.phone.stack = "never"; });
 
 // =============================== INVALID: style =================================
 invalid("style-null-value", "an absent key means inherit; null is not a value", `${HERO}/style/base/background`, "enum", (d) => { at(d, HERO).style.base.background = null; });
@@ -781,6 +836,38 @@ invalid("form-action-prop", "a form's address is the page's own: none is stored"
 invalid("form-style-color", "a form can only be hidden per device: it takes the theme's colours", `${FORM}/style/base/color`, "additionalProperties", (d) => { at(d, FORM).style.base.color = "primary"; });
 invalid("form-with-children", "a form holds no blocks", `${FORM}/children`, "maxItems", (d) => { at(d, FORM).children.push(heading("in-form", 2, "In the form")); });
 
+// =============================== INVALID: logo ==================================
+invalid("logo-name-too-long", "a logo's name has at most 40 characters", `${LOGO}/props/name`, "maxLength", (d) => { at(d, LOGO).props.name = "N".repeat(41); });
+invalid("logo-name-blank", "a name has a visible character: a logo without one leaves the name out", `${LOGO}/props/name`, "pattern", (d) => { at(d, LOGO).props.name = `${NBSP}${NBSP}`; });
+invalid("logo-name-newline", "a name is one line", `${LOGO}/props/name`, "not", (d) => { at(d, LOGO).props.name = `Slack${NEWLINE}Water`; });
+invalid("logo-name-number", "a name is text", `${LOGO}/props/name`, "type", (d) => { at(d, LOGO).props.name = 7; });
+invalid("logo-href", "a logo with a name goes to the home page: no address is stored", `${LOGO}/props/href`, "additionalProperties", (d) => { at(d, LOGO).props.href = "https://elsewhere.example/"; });
+invalid("logo-image", "the mark is the theme's drawing, never an image of the library", `${LOGO}/props/mediaId`, "additionalProperties", (d) => { at(d, LOGO).props.mediaId = "hero-dawn"; });
+invalid("logo-style-text-size", "a logo's size is the theme's", `${LOGO}/style/base/textSize`, "additionalProperties", (d) => { at(d, LOGO).style.base.textSize = "display"; });
+invalid("logo-with-children", "a logo holds no blocks", `${LOGO}/children`, "maxItems", (d) => { at(d, LOGO).children.push(heading("in-logo", 2, "In the logo")); });
+
+// =============================== INVALID: menu ==================================
+const MENU_LINK = (k: number): string => `${MENU}/props/items/${k}`;
+invalid("menu-no-links", "a menu has at least one link", `${MENU}/props/items`, "minItems", (d) => { at(d, MENU).props.items = []; });
+invalid("menu-13-links", "a menu has at most twelve links", `${MENU}/props/items`, "maxItems", (d) => {
+  at(d, MENU).props.items.push(...Array.from({ length: 10 }, (_, k) => menuLink(`More ${k}`, `/more-${k}`)));
+});
+invalid("menu-label-missing", "a menu has a name for a screen reader", `${MENU}/props`, "required", (d) => { delete at(d, MENU).props.label; });
+invalid("menu-label-too-long", "a menu's name has at most 40 characters", `${MENU}/props/label`, "maxLength", (d) => { at(d, MENU).props.label = "x".repeat(41); });
+invalid("menu-label-blank", "a menu's name has a visible character", `${MENU}/props/label`, "pattern", (d) => { at(d, MENU).props.label = ZERO_WIDTH_SPACE.repeat(2); });
+invalid("menu-link-null", "a link of a menu is a link", MENU_LINK(0), "type", (d) => { at(d, MENU).props.items[0] = null; });
+invalid("menu-link-no-address", "a link has an address", MENU_LINK(0), "required", (d) => { delete at(d, MENU).props.items[0].href; });
+invalid("menu-link-extra-member", "a link has a label and an address, nothing else: the page decides how it opens", `${MENU_LINK(0)}/target`, "additionalProperties", (d) => { at(d, MENU).props.items[0].target = "_blank"; });
+invalid("menu-link-label-too-long", "a link's label has at most 40 characters", `${MENU_LINK(1)}/label`, "maxLength", (d) => { at(d, MENU).props.items[1].label = "L".repeat(41); });
+invalid("menu-link-label-tab", "a link's label is one line", `${MENU_LINK(1)}/label`, "not", (d) => { at(d, MENU).props.items[1].label = `Winter${TAB}series`; });
+invalid("menu-link-label-ideographic-space", "an ideographic space is blank", `${MENU_LINK(1)}/label`, "pattern", (d) => { at(d, MENU).props.items[1].label = IDEOGRAPHIC_SPACE; });
+invalid("menu-link-href-javascript", "a menu's link follows a page's link rules", `${MENU_LINK(2)}/href`, "pattern", (d) => { at(d, MENU).props.items[2].href = "javascript:alert(1)"; });
+invalid("menu-link-href-protocol-relative", "no //host address", `${MENU_LINK(2)}/href`, "pattern", (d) => { at(d, MENU).props.items[2].href = "//elsewhere.example/"; });
+invalid("menu-link-href-newline-then-https", "the line-anchor trap", `${MENU_LINK(2)}/href`, "not", (d) => { at(d, MENU).props.items[2].href = `javascript:alert(1)${NEWLINE}https://ok.example`; });
+invalid("menu-style-text-size", "a menu's size is the theme's: its fold is worked out at that size", `${MENU}/style/tablet/textSize`, "additionalProperties", (d) => { at(d, MENU).style.tablet.textSize = "large"; });
+invalid("menu-style-background", "a menu takes the band's background", `${MENU}/style/base/background`, "additionalProperties", (d) => { at(d, MENU).style.base.background = "accent"; });
+invalid("menu-with-children", "a menu holds no blocks", `${MENU}/children`, "maxItems", (d) => { at(d, MENU).children.push(button("in-menu", "In the menu", "/")); });
+
 // =============================== INVALID: the text itself ======================
 // Duplicate keys: JavaScript keeps the last value, Ruby's json 3 rejects the text.
 invalidRaw("dup-key-type", "a block type given twice: each parser would see a different block (a rule)", `${H}/type`, "duplicateKey",
@@ -823,127 +910,6 @@ parseError("json-leading-zero", "numbers have no leading zero (a rule)", TEXT_BY
   encodingError("utf8-overlong", "an overlong encoding of / (C0 AF) is not UTF-8 (a rule)", concat(TEXT_BYTES("Swim "), bytes(0xc0, 0xaf), TEXT_BYTES(" at slack water")));
 }
 
-// =============================== THE SITE ======================================
-// corpus/site: the site's header and footer, $defs/site, which the CMS keeps
-// apart from any page (PUT /api/site) and checks with the same two engines.
-// The same layout as the documents' corpus, with a manifest of its own:
-// every invalid file is the base (valid/slack-water.json) with ONE change.
-// npm run compare:site holds both validators to it.
-const siteFiles = new Map<string, Uint8Array>();
-const siteManifest: Record<string, ValidEntry | InvalidEntry> = {};
-const SITE_BASE: J = {
-  name: "Slack Water",
-  menu: [
-    { label: "Swims", href: "/#swims" },
-    { label: "Gallery", href: "/#gallery" },
-    { label: "Meet us", href: "/#meet" },
-    { label: "Questions", href: "/#questions" },
-  ],
-  action: { label: "Join", href: "/#join" },
-  footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide, not a promise." },
-};
-function siteAdd(name: string, content: Uint8Array, entry: ValidEntry | InvalidEntry): void {
-  if (siteFiles.has(name)) throw new Error(`duplicate site corpus file ${name}`);
-  siteFiles.set(name, content);
-  siteManifest[name] = entry;
-}
-const siteValid = (name: string, rule: string, value: J): void => siteAdd(`valid/${name}.json`, encoder.encode(serialise(value)), { rule });
-function siteInvalid(name: string, rule: string, pointer: string, keyword: string, mutate: (s: J) => void): void {
-  const s = structuredClone(SITE_BASE);
-  mutate(s);
-  siteAdd(`invalid/${name}.json`, encoder.encode(serialise(s)), invalidEntry(rule, pointer, keyword));
-}
-// One change that JSON.stringify cannot write, as invalidRaw does for pages.
-function siteInvalidRaw(name: string, rule: string, pointer: string, keyword: string, mutate: (s: J) => void, raw: string): void {
-  const s = structuredClone(SITE_BASE);
-  mutate(s);
-  const parts = serialise(s).split(serialise(s).includes('"__RAW__": 0') ? '"__RAW__": 0' : '"__RAW__"');
-  if (parts.length !== 2) throw new Error(`${name}: placeholder found ${parts.length - 1} times`);
-  siteAdd(`invalid/${name}.json`, encoder.encode(`${parts[0]}${raw}${parts[1]}`), invalidEntry(rule, pointer, keyword));
-}
-const times = (s: string, n: number): string => s.repeat(n);
-const link8 = (label: string): J[] => Array.from({ length: 8 }, (_, k) => ({ label, href: `/#part-${k + 1}` }));
-
-// --- valid ---
-siteValid("slack-water", "the example site's header and footer, as config/site.yml gives them; each invalid file changes one thing in it", SITE_BASE);
-siteValid("bare", "no menu and no button: the menu may be empty, and null says there is no button", { name: "Tide club", menu: [], action: null, footer: { lead: "Tide club.", text: "Swims at slack water." } });
-siteValid("every-limit", "every length at its limit: 28 for the name, 8 links of 24, 18 for the button, 80 and 160 for the footer", {
-  name: times("N", 28), menu: link8(times("L", 24)), action: { label: times("B", 18), href: "/join" },
-  footer: { lead: times("l", 80), text: times("t", 160) },
-});
-siteValid("every-limit-in-code-points", "lengths count code points, as maxLength does in both engines: 28 emoji, and letters written as letter plus combining accent", {
-  name: times(cp(0x1f30a), 28), menu: [{ label: times(`e${COMBINING_ACUTE}`, 12), href: "/" }], action: { label: times(cp(0x1f3ca), 18), href: "/" },
-  footer: { lead: "Slack Water swimming club.", text: "Tide times are a guide, not a promise." },
-});
-siteValid("every-link-form", "every form a link may take, as on a page: https, http, mailto, tel, a path, a section of a page, a query, a fragment", {
-  ...SITE_BASE,
-  menu: [
-    { label: "Elsewhere", href: "https://example.org/tides?when=today#now" },
-    { label: "Plain", href: "http://example.org" },
-    { label: "Write", href: "mailto:swim@example.org" },
-    { label: "Call", href: "tel:+44-1234-567890" },
-    { label: "Winter", href: "/winter-series" },
-    { label: "Join", href: "/#join" },
-    { label: "Search", href: "?q=tides" },
-    { label: "Top", href: "#top" },
-  ],
-});
-siteValid("non-ascii", "names and words in other scripts and with accents, right to left included", {
-  name: "Øresund Bådelaug", menu: [{ label: "日本語の案内", href: "/" }, { label: "مرحبا", href: "/" }], action: { label: "Été ✓", href: "/" },
-  footer: { lead: "Ça nage à l’étale.", text: "Ünïcödé, emoji 🌊 and all." },
-});
-
-// --- the whole and its members ---
-siteInvalid("unknown-member-time-zone", "the time zone is the CMS's setting, not the editor's: a member the header and footer do not have", "/timeZone", "additionalProperties", (s) => { s.timeZone = "Europe/London"; });
-siteInvalid("name-missing", "every member is there, the button too (null for none)", "", "required", (s) => { delete s.name; });
-siteInvalid("action-missing", "no button is null, not an absent member", "", "required", (s) => { delete s.action; });
-siteInvalid("name-number", "the name is text", "/name", "type", (s) => { s.name = 7; });
-siteInvalid("name-empty", "the name has a visible character", "/name", "pattern", (s) => { s.name = ""; });
-siteInvalid("name-nbsp-only", "no-break spaces are not a visible character", "/name", "pattern", (s) => { s.name = times(NBSP, 3); });
-siteInvalid("name-too-long", "the name has at most 28 characters", "/name", "maxLength", (s) => { s.name = times("N", 29); });
-siteInvalid("name-newline", "the name is one line", "/name", "not", (s) => { s.name = `Slack${NEWLINE}Water`; });
-siteInvalid("name-bell", "no control character in a name", "/name", "not", (s) => { s.name = `Slack Water${BELL}`; });
-siteInvalid("name-line-separator", "a line separator breaks the line too", "/name", "not", (s) => { s.name = `Slack${LINE_SEPARATOR}Water`; });
-// --- the menu ---
-siteInvalid("menu-not-a-list", "the menu is a list", "/menu", "type", (s) => { s.menu = { label: "Swims", href: "/#swims" }; });
-siteInvalid("menu-nine-links", "at most 8 links", "/menu", "maxItems", (s) => { s.menu = [...link8("Swims"), { label: "More", href: "/" }]; });
-siteInvalid("menu-link-null", "a link of the menu is a link, never null (only the button may be)", "/menu/0", "type", (s) => { s.menu[0] = null; });
-siteInvalid("menu-link-extra-member", "a link has a label and an address, nothing else", "/menu/0/target", "additionalProperties", (s) => { s.menu[0].target = "_blank"; });
-siteInvalid("menu-link-no-address", "a link has an address", "/menu/0", "required", (s) => { delete s.menu[0].href; });
-siteInvalid("menu-label-blank", "a link's label has a visible character", "/menu/1/label", "pattern", (s) => { s.menu[1].label = times(IDEOGRAPHIC_SPACE, 2); });
-siteInvalid("menu-label-zero-width", "zero-width spaces are not a visible character", "/menu/1/label", "pattern", (s) => { s.menu[1].label = times(ZERO_WIDTH_SPACE, 2); });
-siteInvalid("menu-label-too-long", "a link's label has at most 24 characters", "/menu/1/label", "maxLength", (s) => { s.menu[1].label = times("L", 25); });
-siteInvalid("menu-label-tab", "a label is one line", "/menu/1/label", "not", (s) => { s.menu[1].label = `Meet${TAB}us`; });
-siteInvalid("menu-href-javascript", "no javascript: address, as on a page", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "javascript:alert(1)"; });
-siteInvalid("menu-href-javascript-mixed-case", "nor in another case", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "JavaScript:alert(1)"; });
-siteInvalid("menu-href-data", "no data: address", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "data:text/html,<p>hi</p>"; });
-siteInvalid("menu-href-protocol-relative", "no //host: a path starts with one slash", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "//elsewhere.example/"; });
-siteInvalid("menu-href-user-info", "no user info before the host", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "https://user@elsewhere.example/"; });
-siteInvalid("menu-href-space", "no raw space: the editor percent-encodes it", "/menu/2/href", "pattern", (s) => { s.menu[2].href = "/meet us"; });
-siteInvalid("menu-href-empty", "an address is not empty", "/menu/2/href", "pattern", (s) => { s.menu[2].href = ""; });
-siteInvalid("menu-href-trailing-newline", "a newline after a good address", "/menu/2/href", "not", (s) => { s.menu[2].href = `/#meet${NEWLINE}`; });
-siteInvalid("menu-href-newline-then-https", "a line that hides a second address", "/menu/2/href", "not", (s) => { s.menu[2].href = `javascript:alert(1)${NEWLINE}https://ok.example`; });
-siteInvalid("menu-href-too-long", "an address has at most 2048 characters", "/menu/2/href", "maxLength", (s) => { s.menu[2].href = `/${times("a", 2048)}`; });
-// --- the button ---
-siteInvalid("action-string", "the button is a link or null", "/action", "type", (s) => { s.action = "Join"; });
-siteInvalid("action-no-label", "the button has a label", "/action", "required", (s) => { delete s.action.label; });
-siteInvalid("action-extra-member", "the button has a label and an address, nothing else", "/action/style", "additionalProperties", (s) => { s.action.style = "accent"; });
-siteInvalid("action-label-too-long", "the button's label has at most 18 characters, fewer than a link's", "/action/label", "maxLength", (s) => { s.action.label = times("B", 19); });
-siteInvalid("action-href-javascript", "the button's address follows a page's rules too", "/action/href", "pattern", (s) => { s.action.href = "javascript:alert(1)"; });
-// --- the footer ---
-siteInvalid("footer-not-an-object", "the footer is two lines, by name", "/footer", "type", (s) => { s.footer = "Slack Water swimming club."; });
-siteInvalid("footer-no-text", "the footer has both lines", "/footer", "required", (s) => { delete s.footer.text; });
-siteInvalid("footer-extra-member", "the footer has a lead and a text, nothing else", "/footer/note", "additionalProperties", (s) => { s.footer.note = "More."; });
-siteInvalid("footer-lead-too-long", "the lead has at most 80 characters", "/footer/lead", "maxLength", (s) => { s.footer.lead = times("l", 81); });
-siteInvalid("footer-text-too-long", "the text has at most 160 characters", "/footer/text", "maxLength", (s) => { s.footer.text = times("t", 161); });
-siteInvalid("footer-text-blank", "the text has a visible character", "/footer/text", "pattern", (s) => { s.footer.text = " "; });
-siteInvalid("footer-lead-newline", "the lead is one line", "/footer/lead", "not", (s) => { s.footer.lead = `Slack Water${NEWLINE}swimming club.`; });
-// --- what only the rules see, as for a page ---
-siteInvalidRaw("name-lone-surrogate", "a lone high surrogate: Ruby's parser refuses it, JavaScript's reads it (a rule)", "/name", "wellFormed", (s) => { s.name = "__RAW__"; }, `"Slack ${uEscape("d83c")} Water"`);
-siteInvalidRaw("dup-key-name", "a name given twice: each parser would see a different header (a rule)", "/name", "duplicateKey", (s) => { s.__RAW__ = 0; }, '"name": "Another name"');
-siteAdd("invalid/json-trailing-comma.json", encoder.encode(replaceOnce(serialise(SITE_BASE), `"/#join"${NEWLINE}`, `"/#join",${NEWLINE}`, "site json-trailing-comma")),
-  invalidEntry("trailing commas are not JSON (a rule)", "", "parse"));
-
 // --- helpers used above ----------------------------------------------------------
 function jsonDepth(value: J): number {
   if (value === null || typeof value !== "object") return 0;
@@ -969,25 +935,22 @@ function firstTooDeep(value: J): string {
 }
 
 // =============================== write or check =================================
-// The pages' corpus in corpus/, the site's in corpus/site/, each with its
-// manifest; the pages' folders are valid/ and invalid/ only, so neither
-// corpus sees the other's files.
+// The corpus in corpus/, with its manifest.
 const check = process.argv.includes("--check");
 const same = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length && a.every((x, k) => x === b[k]);
 function writeOrCheck(dir: string, corpusFiles: Map<string, Uint8Array>, corpusManifest: Record<string, ValidEntry | InvalidEntry>): string[] {
-  const shown = dir === CORPUS ? "" : "site/";
   const problems: string[] = [];
   const manifestText = JSON.stringify(Object.fromEntries([...Object.entries(corpusManifest)].sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n";
   for (const sub of ["valid", "invalid"]) {
     const folder = join(dir, sub);
     if (!existsSync(folder)) {
-      if (check) problems.push(`missing folder ${shown}${sub}/`);
+      if (check) problems.push(`missing folder ${sub}/`);
       else mkdirSync(folder, { recursive: true });
       continue;
     }
     for (const f of readdirSync(folder)) {
       if (!corpusFiles.has(`${sub}/${f}`)) {
-        if (check) problems.push(`${shown}${sub}/${f} is on disk but not generated`);
+        if (check) problems.push(`${sub}/${f} is on disk but not generated`);
         else rmSync(join(folder, f));
       }
     }
@@ -995,22 +958,22 @@ function writeOrCheck(dir: string, corpusFiles: Map<string, Uint8Array>, corpusM
   for (const [name, content] of [...corpusFiles, ["manifest.json", encoder.encode(manifestText)] as const]) {
     const path = join(dir, name);
     if (check) {
-      if (!existsSync(path)) problems.push(`${shown}${name} is missing`);
-      else if (!same(new Uint8Array(readFileSync(path)), content)) problems.push(`${shown}${name} differs from what the generator writes`);
+      if (!existsSync(path)) problems.push(`${name} is missing`);
+      else if (!same(new Uint8Array(readFileSync(path)), content)) problems.push(`${name} differs from what the generator writes`);
     } else {
       writeFileSync(path, content);
     }
   }
   return problems;
 }
-const problems = [...writeOrCheck(CORPUS, files, manifest), ...writeOrCheck(join(CORPUS, "site"), siteFiles, siteManifest)];
+const problems = writeOrCheck(CORPUS, files, manifest);
 const counted = (corpusFiles: Map<string, Uint8Array>): string => {
   const nValid = [...corpusFiles.keys()].filter((f) => f.startsWith("valid/")).length;
   return `${corpusFiles.size} files (${nValid} valid, ${corpusFiles.size - nValid} invalid)`;
 };
 if (check) {
   for (const problem of problems) console.log(`  ${problem}`);
-  console.log(problems.length === 0 ? `corpus is up to date: ${counted(files)}; the site's: ${counted(siteFiles)}` : `corpus is NOT up to date: ${problems.length} difference(s)`);
+  console.log(problems.length === 0 ? `corpus is up to date: ${counted(files)}` : `corpus is NOT up to date: ${problems.length} difference(s)`);
   process.exit(problems.length === 0 ? 0 : 1);
 }
-console.log(`wrote ${counted(files)} and manifest.json; the site's: ${counted(siteFiles)} and site/manifest.json`);
+console.log(`wrote ${counted(files)} and manifest.json`);

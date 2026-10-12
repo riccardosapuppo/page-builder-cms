@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "title": "Logo and menu",
+  "sections": [
+    {
+      "id": "lm",
+      "type": "section",
+      "props": {
+        "columnWidths": "fit:1"
+      },
+      "children": [
+        {
+          "id": "lm-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "lm-logo-named",
+              "type": "logo",
+              "props": {
+                "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "lm-logo-mark",
+              "type": "logo",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "lm-logo-emoji",
+              "type": "logo",
+              "props": {
+                "name": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "lm-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "lm-menu-one",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Home",
+                    "href": "/"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "lm-menu-twelve",
+              "type": "menu",
+              "props": {
+                "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL",
+                "items": [
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL00",
+                    "href": "/#part-1"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL01",
+                    "href": "/#part-2"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL02",
+                    "href": "/#part-3"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL03",
+                    "href": "/#part-4"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL04",
+                    "href": "/#part-5"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL05",
+                    "href": "/#part-6"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL06",
+                    "href": "/#part-7"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL07",
+                    "href": "/#part-8"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL08",
+                    "href": "/#part-9"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL09",
+                    "href": "/#part-10"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL10",
+                    "href": "/#part-11"
+                  },
+                  {
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL11",
+                    "href": "/#part-12"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "lm-menu-links",
+              "type": "menu",
+              "props": {
+                "label": "Every link",
+                "items": [
+                  {
+                    "label": "Elsewhere",
+                    "href": "https://example.org/tides?when=today#now"
+                  },
+                  {
+                    "label": "Plain",
+                    "href": "http://example.org"
+                  },
+                  {
+                    "label": "Write",
+                    "href": "mailto:swim@example.org"
+                  },
+                  {
+                    "label": "Call",
+                    "href": "tel:+44-1234-567890"
+                  },
+                  {
+                    "label": "Winter",
+                    "href": "/winter-series"
+                  },
+                  {
+                    "label": "Join",
+                    "href": "/#join"
+                  },
+                  {
+                    "label": "Search",
+                    "href": "?q=tides"
+                  },
+                  {
+                    "label": "Top",
+                    "href": "#top"
+                  },
+                  {
+                    "label": "éééééééééééééééééééé",
+                    "href": "/accents"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "title": "Stacking",
+  "sections": [
+    {
+      "id": "stack-2",
+      "type": "section",
+      "props": {
+        "stack": "phone"
+      },
+      "children": [
+        {
+          "id": "stack-2-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-2-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-2-fit",
+      "type": "section",
+      "props": {
+        "columnWidths": "fit:1",
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "stack-2-fit-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "stack-2-logo",
+              "type": "logo",
+              "props": {
+                "name": "Tide club"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-2-fit-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-3",
+      "type": "section",
+      "props": {
+        "columnWidths": "fit:1:fit",
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "stack-3-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-3-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-3-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-3-phone",
+      "type": "section",
+      "props": {
+        "columnWidths": "1:2:1",
+        "stack": "phone"
+      },
+      "children": [
+        {
+          "id": "stack-3-phone-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-3-phone-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-3-phone-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-4",
+      "type": "section",
+      "props": {
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "stack-4-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-4-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-4-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-4-4",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

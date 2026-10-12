@@ -739,6 +739,132 @@
       "style": {
         "base": {}
       }
+    },
+    {
+      "id": "site",
+      "type": "section",
+      "props": {
+        "label": "Site band",
+        "columnWidths": "fit:1:fit",
+        "stack": "phone"
+      },
+      "children": [
+        {
+          "id": "site-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-logo",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "align": "center"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "site-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-menu",
+              "type": "menu",
+              "props": {
+                "label": "Footer",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  },
+                  {
+                    "label": "Winter series",
+                    "href": "/winter-series"
+                  },
+                  {
+                    "label": "Write to us",
+                    "href": "mailto:hello@slackwater.example"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "align": "right",
+                  "color": "text"
+                },
+                "tablet": {
+                  "align": "center"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "site-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-join",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "#join"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "site-mark",
+              "type": "logo",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "m",
+          "spaceBelow": "m",
+          "spaceBetween": "l"
+        },
+        "phone": {
+          "spaceBetween": "s"
+        }
+      }
     }
   ]
 }
@@ -1482,6 +1608,132 @@
       ],
       "style": {
         "base": {}
+      }
+    },
+    {
+      "id": "site",
+      "type": "section",
+      "props": {
+        "label": "Site band",
+        "columnWidths": "fit:1:fit",
+        "stack": "phone"
+      },
+      "children": [
+        {
+          "id": "site-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-logo",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "align": "center"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "site-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-menu",
+              "type": "menu",
+              "props": {
+                "label": "Footer",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  },
+                  {
+                    "label": "Winter series",
+                    "href": "/winter-series"
+                  },
+                  {
+                    "label": "Write to us",
+                    "href": "mailto:hello@slackwater.example"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "align": "right",
+                  "color": "text"
+                },
+                "tablet": {
+                  "align": "center"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "site-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-join",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "#join"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "site-mark",
+              "type": "logo",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "m",
+          "spaceBelow": "m",
+          "spaceBetween": "l"
+        },
+        "phone": {
+          "spaceBetween": "s"
+        }
       }
     }
   ]

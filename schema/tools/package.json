@@ -11,7 +11,6 @@
   "scripts": {
     "compare": "node compare.ts",
     "compare:examples": "node compare-examples.ts",
-    "compare:site": "node compare.ts --corpus ../corpus/site --def site --min-files 50",
     "corpus": "node gen-corpus.ts",
     "corpus:check": "node gen-corpus.ts --check",
     "lint": "node lint.ts",

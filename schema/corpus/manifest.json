@@ -887,6 +887,54 @@
     "keyword": "parse",
     "layer": "rules"
   },
+  "invalid/logo-href.json": {
+    "rule": "a logo with a name goes to the home page: no address is stored",
+    "pointer": "/sections/7/children/0/children/0/props/href",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/logo-image.json": {
+    "rule": "the mark is the theme's drawing, never an image of the library",
+    "pointer": "/sections/7/children/0/children/0/props/mediaId",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/logo-name-blank.json": {
+    "rule": "a name has a visible character: a logo without one leaves the name out",
+    "pointer": "/sections/7/children/0/children/0/props/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/logo-name-newline.json": {
+    "rule": "a name is one line",
+    "pointer": "/sections/7/children/0/children/0/props/name",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/logo-name-number.json": {
+    "rule": "a name is text",
+    "pointer": "/sections/7/children/0/children/0/props/name",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/logo-name-too-long.json": {
+    "rule": "a logo's name has at most 40 characters",
+    "pointer": "/sections/7/children/0/children/0/props/name",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/logo-style-text-size.json": {
+    "rule": "a logo's size is the theme's",
+    "pointer": "/sections/7/children/0/children/0/style/base/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/logo-with-children.json": {
+    "rule": "a logo holds no blocks",
+    "pointer": "/sections/7/children/0/children/0/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/map-label-blank.json": {
     "rule": "a map has a label",
     "pointer": "/sections/3/children/1/children/1/props/label",
@@ -941,6 +989,108 @@
     "keyword": "required",
     "layer": "schema"
   },
+  "invalid/menu-13-links.json": {
+    "rule": "a menu has at most twelve links",
+    "pointer": "/sections/7/children/1/children/0/props/items",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/menu-label-blank.json": {
+    "rule": "a menu's name has a visible character",
+    "pointer": "/sections/7/children/1/children/0/props/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/menu-label-missing.json": {
+    "rule": "a menu has a name for a screen reader",
+    "pointer": "/sections/7/children/1/children/0/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/menu-label-too-long.json": {
+    "rule": "a menu's name has at most 40 characters",
+    "pointer": "/sections/7/children/1/children/0/props/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/menu-link-extra-member.json": {
+    "rule": "a link has a label and an address, nothing else: the page decides how it opens",
+    "pointer": "/sections/7/children/1/children/0/props/items/0/target",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/menu-link-href-javascript.json": {
+    "rule": "a menu's link follows a page's link rules",
+    "pointer": "/sections/7/children/1/children/0/props/items/2/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/menu-link-href-newline-then-https.json": {
+    "rule": "the line-anchor trap",
+    "pointer": "/sections/7/children/1/children/0/props/items/2/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/menu-link-href-protocol-relative.json": {
+    "rule": "no //host address",
+    "pointer": "/sections/7/children/1/children/0/props/items/2/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/menu-link-label-ideographic-space.json": {
+    "rule": "an ideographic space is blank",
+    "pointer": "/sections/7/children/1/children/0/props/items/1/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/menu-link-label-tab.json": {
+    "rule": "a link's label is one line",
+    "pointer": "/sections/7/children/1/children/0/props/items/1/label",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/menu-link-label-too-long.json": {
+    "rule": "a link's label has at most 40 characters",
+    "pointer": "/sections/7/children/1/children/0/props/items/1/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/menu-link-no-address.json": {
+    "rule": "a link has an address",
+    "pointer": "/sections/7/children/1/children/0/props/items/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/menu-link-null.json": {
+    "rule": "a link of a menu is a link",
+    "pointer": "/sections/7/children/1/children/0/props/items/0",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/menu-no-links.json": {
+    "rule": "a menu has at least one link",
+    "pointer": "/sections/7/children/1/children/0/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/menu-style-background.json": {
+    "rule": "a menu takes the band's background",
+    "pointer": "/sections/7/children/1/children/0/style/base/background",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/menu-style-text-size.json": {
+    "rule": "a menu's size is the theme's: its fold is worked out at that size",
+    "pointer": "/sections/7/children/1/children/0/style/tablet/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/menu-with-children.json": {
+    "rule": "a menu holds no blocks",
+    "pointer": "/sections/7/children/1/children/0/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/nesting-200-levels.json": {
     "rule": "200 nested arrays inside props: past the rules' 64 and Ruby's own 100; the scanner stops first",
     "pointer": "/sections/0/children/0/children/0/props/junk/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0",
@@ -988,6 +1138,30 @@
     "pointer": "/sections/6/props/anchor",
     "keyword": "uniqueAnchor",
     "layer": "rules"
+  },
+  "invalid/section-stack-boolean.json": {
+    "rule": "where to stack is a name, not true or false",
+    "pointer": "/sections/7/props/stack",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/section-stack-in-style.json": {
+    "rule": "where columns stack is the section's, one setting for every device, not a style per device",
+    "pointer": "/sections/7/style/phone/stack",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/section-stack-one-column.json": {
+    "rule": "a section of one column has nothing to stack",
+    "pointer": "/sections/2/props",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/section-stack-unknown.json": {
+    "rule": "columns stack on phones only, or never; tablet is the absence of the setting, never written",
+    "pointer": "/sections/0/props/stack",
+    "keyword": "enum",
+    "layer": "schema"
   },
   "invalid/spacer-size-missing.json": {
     "rule": "a spacer has a size",
@@ -1219,7 +1393,7 @@
   },
   "invalid/tree-section-at-column-level.json": {
     "rule": "the page holds sections only",
-    "pointer": "/sections/7/type",
+    "pointer": "/sections/8/type",
     "keyword": "const",
     "layer": "schema"
   },
@@ -1253,9 +1427,27 @@
     "keyword": "additionalProperties",
     "layer": "schema"
   },
+  "invalid/tree-section-widths-all-fit.json": {
+    "rule": "every column as wide as its content leaves nothing to take the rest: no such preset",
+    "pointer": "/sections/0/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
   "invalid/tree-section-widths-equal-written.json": {
     "rule": "equal widths are the absence of a preset, never written",
     "pointer": "/sections/0/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-fit-for-two-on-three.json": {
+    "rule": "a fit preset of two parts on a section of three columns",
+    "pointer": "/sections/7/props/columnWidths",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/tree-section-widths-fit-on-four.json": {
+    "rule": "four columns take no preset, fit ones included",
+    "pointer": "/sections/1/props/columnWidths",
     "keyword": "enum",
     "layer": "schema"
   },
@@ -1346,8 +1538,11 @@
   "valid/columns-one-to-four.json": {
     "rule": "sections with one, two, three and four columns, and an empty column"
   },
+  "valid/columns-stack-every-value.json": {
+    "rule": "where columns stack, on two, three and four columns: on phones only, or never; with a preset, fit ones included, and without"
+  },
   "valid/columns-widths-every-preset.json": {
-    "rule": "every column-width preset, each on a section with as many columns as it has parts"
+    "rule": "every column-width preset, each on a section with as many columns as it has parts, fit ones included"
   },
   "valid/every-icon-and-provider.json": {
     "rule": "every icon name, both video providers, map extremes"
@@ -1378,6 +1573,9 @@
   },
   "valid/large-500-blocks.json": {
     "rule": "exactly 500 blocks: 20 sections of 4 columns of 5 widgets"
+  },
+  "valid/logo-and-menu.json": {
+    "rule": "a logo with and without a name, and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too"
   },
   "valid/minimal.json": {
     "rule": "the smallest document: no description, no sections"

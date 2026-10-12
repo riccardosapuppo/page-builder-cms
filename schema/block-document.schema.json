@@ -41,7 +41,8 @@
         "section", "column",
         "heading", "text", "image", "button", "divider", "spacer",
         "gallery", "video", "map", "iconbox", "quote", "accordion",
-        "form"
+        "form",
+        "logo", "menu"
       ]
     },
     "widgetType": {
@@ -49,7 +50,8 @@
       "enum": [
         "heading", "text", "image", "button", "divider", "spacer",
         "gallery", "video", "map", "iconbox", "quote", "accordion",
-        "form"
+        "form",
+        "logo", "menu"
       ]
     },
     "block": {
@@ -79,12 +81,14 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "iconbox" } } }, "then": { "$ref": "#/$defs/iconboxBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "quote" } } }, "then": { "$ref": "#/$defs/quoteBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } },
-        { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } }
+        { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "logo" } } }, "then": { "$ref": "#/$defs/logoBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } }
       ]
     },
 
     "sectionBlock": {
-      "description": "A band of the page. Its column count is the number of its children, one to four; there is no separate count to keep in step. Side by side on desktop, the columns share the width equally unless columnWidths names a preset for that many columns; on tablets and phones they stack.",
+      "description": "A band of the page. Its column count is the number of its children, one to four; there is no separate count to keep in step. Side by side on desktop, the columns share the width equally unless columnWidths names a preset for that many columns; on tablets and phones they stack, unless stack says otherwise.",
       "type": "object",
       "properties": {
         "props": {
@@ -102,7 +106,8 @@
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]{0,63}$"
             },
-            "columnWidths": { "$ref": "#/$defs/columnWidthsToken" }
+            "columnWidths": { "$ref": "#/$defs/columnWidthsToken" },
+            "stack": { "$ref": "#/$defs/stackToken" }
           }
         },
         "children": {
@@ -117,19 +122,22 @@
         },
         "style": { "$ref": "#/$defs/sectionStyle" }
       },
-      "$comment": "Which presets a section may name depends on how many columns it holds: one branch per count, keyed on the length of children (the lint checks that every count has one, and that each preset has as many parts as its branch has columns). The 'properties: {columnWidths: true}' beside the 'required' under 'not' only declares the key for ajv's strictRequired.",
+      "$comment": "Which presets a section may name depends on how many columns it holds: one branch per count, keyed on the length of children (the lint checks that every count has one, and that each preset has as many parts as its branch has columns). A section of one column has nothing to share or to stack, so it names neither a preset nor where to stack. The 'properties: {columnWidths: true}' beside each 'required' under 'not' only declares the key for ajv's strictRequired.",
       "allOf": [
         {
           "if": { "required": ["children"], "properties": { "children": { "type": "array", "maxItems": 1 } } },
-          "then": { "properties": { "props": { "type": "object", "not": { "type": "object", "properties": { "columnWidths": true }, "required": ["columnWidths"] } } } }
+          "then": { "properties": { "props": { "type": "object", "not": { "type": "object", "anyOf": [
+            { "type": "object", "properties": { "columnWidths": true }, "required": ["columnWidths"] },
+            { "type": "object", "properties": { "stack": true }, "required": ["stack"] }
+          ] } } } }
         },
         {
           "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 2, "maxItems": 2 } } },
-          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["3:2", "2:3", "2:1", "1:2"] } } } } }
+          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["3:2", "2:3", "2:1", "1:2", "fit:1", "1:fit"] } } } } }
         },
         {
           "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 3, "maxItems": 3 } } },
-          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["2:1:1", "1:2:1", "1:1:2"] } } } } }
+          "then": { "properties": { "props": { "type": "object", "properties": { "columnWidths": { "enum": ["2:1:1", "1:2:1", "1:1:2", "fit:1:fit"] } } } } }
         },
         {
           "if": { "required": ["children"], "properties": { "children": { "type": "array", "minItems": 4 } } },
@@ -404,6 +412,54 @@
         "style": { "$ref": "#/$defs/plainStyle" }
       }
     },
+    "logoBlock": {
+      "description": "The site's mark, the theme's own drawing. With a name, the mark and the name beside it are a link to the home page, as a header has them; without one, the mark alone, which a screen reader skips, as the design's footer has it. On a dark band (a background of the text or primary slot) the mark draws itself the other way round.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/navStyle" }
+      }
+    },
+    "menuBlock": {
+      "description": "The site's links in a row, which fold into Menu, a disclosure that opens them as a sheet with no script, wherever the block is narrower than the row needs. A published page cannot measure itself, so the server works that width out from the widths of the labels' letters (HeaderFit) and the block names the step it folds below. label names the menu for a screen reader (Main, Footer): two menus of one page need two names.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["label", "items"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 },
+            "items": {
+              "description": "The links, in the order the row shows them.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 12,
+              "items": { "$ref": "#/$defs/menuLink" }
+            }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/navStyle" }
+      }
+    },
+    "menuLink": {
+      "description": "One link of a menu: its words and where it goes, by the link rules of a page.",
+      "type": "object",
+      "required": ["label", "href"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 },
+        "href": { "$ref": "#/$defs/href" }
+      }
+    },
     "formField": {
       "description": "One field: a line of text, an email address, a longer text, or a checkbox; its label, whether it must be filled in (a checkbox: ticked), and for the two kinds of text the most characters an answer may have.",
       "type": "object",
@@ -534,8 +590,12 @@
       "enum": ["none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l"]
     },
     "columnWidthsToken": {
-      "description": "How a section's columns share the width on desktop, as parts in column order: 3:2 gives the first column three fifths. Absent, they share it equally; equal is never written. Which presets a section may name depends on its column count (sectionBlock): two columns 3:2, 2:3, 2:1 or 1:2, three columns 2:1:1, 1:2:1 or 1:1:2, one and four columns none.",
-      "enum": ["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"]
+      "description": "How a section's columns share the width wherever they are side by side, as parts in column order: 3:2 gives the first column three fifths. fit is a column as wide as what it holds, and the columns with parts share what is left: fit:1:fit is a header's mark, links and button. Absent, they share it equally; equal is never written. Which presets a section may name depends on its column count (sectionBlock): two columns 3:2, 2:3, 2:1, 1:2, fit:1 or 1:fit, three columns 2:1:1, 1:2:1, 1:1:2 or fit:1:fit, one and four columns none.",
+      "enum": ["3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2", "fit:1", "1:fit", "fit:1:fit"]
+    },
+    "stackToken": {
+      "description": "Where a section's columns go one under the other. Absent, below the desktop layout, on tablets and phones; phone, on phones only; never, on no device, as a header's mark and links stay on one row. A section of one column names none.",
+      "enum": ["phone", "never"]
     },
     "aspectToken": {
       "description": "The shape an image is cropped to, the keys of aspect.site in tokens.json: width to height, or original for the image's own shape.",
@@ -652,6 +712,20 @@
       }
     },
     "iconboxStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "align": true, "visibility": true }
+    },
+    "navStyle": {
+      "description": "Logo and menu: the colour of their words, where they sit in their column, and whether they are shown.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/navStyleKeys" },
+        "tablet": { "$ref": "#/$defs/navStyleKeys" },
+        "phone": { "$ref": "#/$defs/navStyleKeys" }
+      }
+    },
+    "navStyleKeys": {
       "type": "object",
       "additionalProperties": false,
       "properties": { "color": true, "align": true, "visibility": true }
@@ -893,43 +967,6 @@
             "class": { "type": "null" }
           }
         }
-      }
-    },
-
-    "site": {
-      "description": "The site's header and footer, the same around every page: the site's name beside its mark, the menu, the header's button (null for none) and the footer's two lines. Not part of a page: the CMS keeps one for the whole site (PUT /api/site) and checks it against this definition, as the editor does, so its words and links follow the rules of a page's. The header's lengths are what a 375 px phone shows in its place on one line, in words of average width: the name on a row of its own, the button's label beside Menu, a link in Menu's sheet; wider letters break inside their place rather than leave the page. The footer's two lines run on as a paragraph.",
-      "$comment": "Not reachable from the page document's root: validated on its own, as #/$defs/site (the server's BlockDocument::Schema, the editor's build/validator.ts, schema/tools with --def site).",
-      "type": "object",
-      "required": ["name", "menu", "action", "footer"],
-      "additionalProperties": false,
-      "properties": {
-        "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 28 },
-        "menu": {
-          "description": "The header's links, in order. On a page narrower than the bar they need, they fold into Menu.",
-          "type": "array",
-          "maxItems": 8,
-          "items": { "$ref": "#/$defs/siteLink", "type": "object", "properties": { "label": { "type": "string", "maxLength": 24 } } }
-        },
-        "action": { "$ref": "#/$defs/siteLink", "type": ["object", "null"], "properties": { "label": { "type": "string", "maxLength": 18 } } },
-        "footer": {
-          "type": "object",
-          "required": ["lead", "text"],
-          "additionalProperties": false,
-          "properties": {
-            "lead": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
-            "text": { "$ref": "#/$defs/line", "type": "string", "maxLength": 160 }
-          }
-        }
-      }
-    },
-    "siteLink": {
-      "$comment": "A menu link, or the button, which may also be null; each use gives its label a length, so a label has one maxLength and one message.",
-      "type": ["object", "null"],
-      "required": ["label", "href"],
-      "additionalProperties": false,
-      "properties": {
-        "label": { "$ref": "#/$defs/line" },
-        "href": { "$ref": "#/$defs/href" }
       }
     }
   }

@@ -443,8 +443,20 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
   // the length of children, naming the presets for that count or none.
   // Every count from one to four has exactly one branch, every preset has
   // as many parts as its branch has columns, and the branches offer the
-  // whole of columnWidthsToken between them.
+  // whole of columnWidthsToken between them. A part is a whole share from
+  // 1 to 9, or fit (as wide as the column's content); at least one part is
+  // a share, which takes what the fit columns leave.
+  //
+  // A section of one column has nothing to share or to stack: its branch
+  // forbids both a preset and stack, under one not (directly, or each in an
+  // entry of the not's anyOf).
+  const notRequires = (schemaNot: unknown, key: string): boolean => {
+    if (!isObject(schemaNot)) return false;
+    const entries = Array.isArray(schemaNot.anyOf) ? schemaNot.anyOf : [schemaNot];
+    return entries.some((entry: unknown) => isObject(entry) && Array.isArray(entry.required) && entry.required.includes(key));
+  };
   const presetsFor = new Map<number, unknown[]>();
+  const stackForbidden = new Set<number>();
   const section = deref(defs.sectionBlock);
   for (const [index, branch] of (Array.isArray(section?.allOf) ? section.allOf : []).entries()) {
     const at = `#/$defs/sectionBlock/allOf/${index}`;
@@ -455,13 +467,14 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
     }
     const props = isObject(branch.then) && isObject(branch.then.properties) ? branch.then.properties.props : undefined;
     const offered = isObject(props) && isObject(props.properties) ? enumOf(props.properties.columnWidths) : undefined;
-    const forbids = isObject(props) && isObject(props.not) && Array.isArray(props.not.required) && props.not.required.includes("columnWidths");
+    const forbids = isObject(props) && notRequires(props.not, "columnWidths");
     if (!offered && !forbids) problem("column widths", `${at}: the branch neither lists presets nor forbids them`);
     const low = Math.max(typeof children.minItems === "number" ? children.minItems : 0, 1);
     const high = Math.min(typeof children.maxItems === "number" ? children.maxItems : 4, 4);
     for (let count = low; count <= high; count++) {
       if (presetsFor.has(count)) problem("column widths", `${count} column(s) have two branches`);
       presetsFor.set(count, offered ?? []);
+      if (isObject(props) && notRequires(props.not, "stack")) stackForbidden.add(count);
     }
   }
   const allPresets = enumOf(defs.columnWidthsToken) ?? [];
@@ -472,12 +485,18 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
       offeredPresets.add(preset);
       const parts = typeof preset === "string" ? preset.split(":") : [];
       if (parts.length !== count) problem("column widths", `${JSON.stringify(preset)} is offered to ${count} column(s) and has ${parts.length} parts`);
-      if (!parts.every((p) => /^[1-9]$/.test(p))) problem("column widths", `${JSON.stringify(preset)} is not whole parts from 1 to 9 joined by colons`);
+      if (!parts.every((p) => /^(?:[1-9]|fit)$/.test(p))) problem("column widths", `${JSON.stringify(preset)} is not parts from 1 to 9, or fit, joined by colons`);
+      if (!parts.some((p) => /^[1-9]$/.test(p))) problem("column widths", `${JSON.stringify(preset)} has no share: every column would be as wide as its content, and none would take the rest`);
       if (!allPresets.includes(preset)) problem("column widths", `${JSON.stringify(preset)} is not in $defs/columnWidthsToken`);
     }
   }
   for (const preset of allPresets) if (!offeredPresets.has(preset)) problem("column widths", `${JSON.stringify(preset)} is in $defs/columnWidthsToken but offered to no column count`);
-  report.push(`column widths: ${[1, 2, 3, 4].map((n) => `${n} column${n > 1 ? "s" : ""}: ${(presetsFor.get(n) ?? []).length || "no"} preset(s)`).join(", ")}; ${offeredPresets.size}/${allPresets.length} presets offered`);
+  const stackOffered = isObject(deref((deref(defs.sectionBlock)?.properties as Obj | undefined)?.props)?.properties) &&
+    "stack" in (deref((deref(defs.sectionBlock)?.properties as Obj | undefined)?.props)?.properties as Obj);
+  if (!stackOffered) problem("column widths", "a section's props do not name stack");
+  if (!stackForbidden.has(1)) problem("column widths", "a section of one column may name where its columns stack");
+  for (const count of [2, 3, 4]) if (stackForbidden.has(count)) problem("column widths", `a section of ${count} columns may not name where they stack`);
+  report.push(`column widths: ${[1, 2, 3, 4].map((n) => `${n} column${n > 1 ? "s" : ""}: ${(presetsFor.get(n) ?? []).length || "no"} preset(s)`).join(", ")}; ${offeredPresets.size}/${allPresets.length} presets offered; stack named from 2 columns`);
 }
 
 // --- 5. tokens ---------------------------------------------------------------------------

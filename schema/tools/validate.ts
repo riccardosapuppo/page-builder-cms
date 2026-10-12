@@ -2,11 +2,10 @@
 // application rules of rules.ts. Prints a header line, then one JSON line per
 // corpus file.
 //
-//   node validate.ts [--schema PATH] [--corpus DIR] [--rules on|off] [--def NAME]
+//   node validate.ts [--schema PATH] [--corpus DIR] [--rules on|off]
 //
 // --rules off skips the application rules (the comparator uses it to show
-// what they protect against). --def validates against $defs/NAME of the
-// schema instead of its root: the site's header and footer are $defs/site.
+// what they protect against).
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -29,23 +28,12 @@ const argv = process.argv.slice(2);
 const schemaPath = argValue(argv, "--schema", SCHEMA);
 const corpus = argValue(argv, "--corpus", CORPUS);
 const useRules = argValue(argv, "--rules", "on") === "on";
-const def = argValue(argv, "--def", "");
 
 const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as { $id: string };
-const validate = def === "" ? makeAjv().compile(schema) : definition(schema, def);
-
-// $defs/NAME, compiled with the whole schema around it, so its $refs to
-// the rest of the file resolve as they do from the root.
-function definition(whole: { $id: string }, name: string) {
-  const ajv = makeAjv();
-  ajv.addSchema(whole);
-  const found = ajv.getSchema(`${whole.$id}#/$defs/${name}`);
-  if (!found) throw new Error(`the schema has no $defs/${name}`);
-  return found;
-}
+const validate = makeAjv().compile(schema);
 
 const ajvVersion = (createRequire(import.meta.url)("ajv/package.json") as { version: string }).version;
-process.stdout.write(JSON.stringify({ engine: `ajv ${ajvVersion}`, parser: "JSON.parse", runtime: `node ${process.version}`, rules: useRules, def }) + "\n");
+process.stdout.write(JSON.stringify({ engine: `ajv ${ajvVersion}`, parser: "JSON.parse", runtime: `node ${process.version}`, rules: useRules }) + "\n");
 
 for (const file of listCorpus(corpus)) {
   let line: ResultLine;
