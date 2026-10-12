@@ -1,45 +1,42 @@
 // node tools/header-metrics.ts [--check]
 //
-// How wide the header's letters are, measured once in the site's own
-// typeface, so that the server can tell, from the words alone, where a
-// menu stops fitting the bar. A published page runs no script and cannot
-// measure itself; the editor sets the site's name, the menu and the
-// button's label (PUT /api/site); and the bar of the desktop layout has
-// room for the design's four links at 800 px with 46 px to spare. So the
-// CMS adds up these widths for the words it draws (app/models/
-// header_fit.rb) and names, on the header, the width below which the links
-// fold into Menu as they do on a tablet (data-fold). The editor's canvas
-// reads the same file to draw the same header.
+// How wide a menu's letters are, measured once in the site's own typeface,
+// so that the server can tell, from the words alone, where a menu's row of
+// links stops fitting its block. A published page runs no script and
+// cannot measure itself; the editor sets a menu's links (a menu block, in
+// the header, the footer or a page), and its row folds into Menu wherever
+// the block is narrower than the row. So the CMS adds up these widths for
+// the labels it draws (app/models/header_fit.rb) and names, on the block,
+// the step of site.css's container queries below which the links fold
+// (data-fold). The editor's canvas reads the same file to draw the same
+// menu.
 //
-// It renders the header of the CMS's stylesheets (cms/app/assets: site.css,
+// It renders a menu of the CMS's stylesheets (cms/app/assets: site.css,
 // tokens.css and the fonts) in Chromium headless (Playwright 1.62.1, from
-// the root package), in the desktop layout, and writes
-// schema/header-metrics.json:
+// the root package), and writes schema/header-metrics.json:
 // - the advance of every character of Basic Latin, Latin-1, Latin
 //   Extended-A and the common punctuation that the face's file holds (it
-//   is a subset), in each of the three places: the name, a link, the
-//   button. A combining accent counts what it adds to its letter;
-// - for each script the face lacks and a header may hold (Greek, Cyrillic,
-//   Hebrew, Arabic, CJK), the widest advance its letters are drawn with, in
-//   each place, by the fonts this machine falls back to: the page's own
-//   stack and three generic families, whichever draws a letter widest; a
-//   letter of Greek, Cyrillic or Hebrew alone and after each letter of its
-//   script, whichever adds most, and an Arabic letter in whichever of its
-//   four joined forms is widest.
+//   is a subset), in a link of the menu. A combining accent counts what it
+//   adds to its letter;
+// - for each script the face lacks and a label may hold (Greek, Cyrillic,
+//   Hebrew, Arabic, CJK), the widest advance its letters are drawn with, by
+//   the fonts this machine falls back to: the page's own stack and three
+//   generic families, whichever draws a letter widest; a letter of Greek,
+//   Cyrillic or Hebrew alone and after each letter of its script,
+//   whichever adds most, and an Arabic letter in whichever of its four
+//   joined forms is widest.
 //   Greek, Cyrillic, Hebrew and Arabic letters each count their own, CJK
 //   letters the widest of their script's. Any other character is counted as
-//   1.5 times the place's font size, wider than any letter measured, so a
-//   symbol or a script left out folds the menu early rather than late. What
-//   a visitor's own fonts draw is theirs: these are the widths on the
-//   machine that measures, and a letter that a font draws wider than
-//   counted here can still put the bar on two rows (site.css lets it wrap
-//   inside the page);
-// - the spacing around them, read from the computed style: the mark and
-//   its gap, the gaps between links and after them, the button's padding,
-//   the page's padding, and the width where the bar stops growing;
-// - the widths where the links fold: the design's own (found by drawing),
-//   and those site.css gives data-fold, each checked by drawing the header
-//   just below and at it.
+//   1.5 times the font size, wider than any letter measured, so a symbol or
+//   a script left out folds the menu early rather than late. What a
+//   visitor's own fonts draw is theirs: these are the widths on the machine
+//   that measures, and a letter that a font draws wider than counted here
+//   can still put the row on two lines (site.css lets it wrap inside the
+//   block);
+// - the gap between two links, read from the computed style;
+// - the widths where the links fold, those site.css gives data-fold, each
+//   checked by drawing the menu in a block just narrower than it and as
+//   wide as it, and "all", checked at the widest page.
 // It then checks its own sum on words drawn whole (the design's labels,
 // capitals, accents, digits, punctuation, and words of the other scripts:
 // Arabic ones whose letters join, Cyrillic pairs the fonts set apart): the
@@ -47,29 +44,27 @@
 // fit could be told it does. It writes nothing if it is.
 //
 // --check measures again and compares with the file, writing nothing. Run
-// it after a change to the header's styles or to the fonts, and write the
+// it after a change to the menu's styles or to the fonts, and write the
 // file again with the plain command. It exits 1 on a difference, or on a
 // word drawn wider than its sum. The widths of the letters outside the
 // face are those the fonts of the measuring machine drew, so the file
 // keeps two fingerprints of each script (`fonts`): `drew`, of every width
-// those fonts drew its letters at, in the three places, the four stacks
-// and every form and pair; and `holds`, of `drew` together with what was
-// drawn (its letters, their forms and pairs, the stacks, the type of the
-// three places) and the widths the file holds for the script. Where this
-// machine draws a script otherwise (another machine, or these fonts after
-// an update), its `drew` is not the file's: that script's widths and words
-// cannot be compared here, and --check says so and exits 2, having
-// compared all the rest. Where it draws it as the file was measured, its
-// widths are compared as the face's own letters are. And a file whose
-// `holds` does not go with its own `drew` and widths and with what this
-// tool draws (edited, or written from other letters, places or stacks)
-// fails wherever it runs. What `drew` records is the letters alone at the
-// links' weight: a font change only in the joined forms or in the bold
-// faces of the name and the button fails rather than exiting 2, and a
-// file written with the pairs drawn otherwise or another font-variant
-// setting exits 2 rather than failing. The last line of --check is
-// the verdict, for the programs that act on it (lib/header-metrics-
-// verdict.ts).
+// those fonts drew its letters at, in the four stacks and every form and
+// pair; and `holds`, of `drew` together with what was drawn (its letters,
+// their forms and pairs, the stacks, the type of a link) and the widths the
+// file holds for the script. Where this machine draws a script otherwise
+// (another machine, or these fonts after an update), its `drew` is not the
+// file's: that script's widths and words cannot be compared here, and
+// --check says so and exits 2, having compared all the rest. Where it
+// draws it as the file was measured, its widths are compared as the
+// face's own letters are. And a file whose `holds` does not go with its
+// own `drew` and widths and with what this tool draws (edited, or written
+// from other letters, places or stacks) fails wherever it runs. What
+// `drew` records is the letters alone: a font change only in the joined
+// forms fails rather than exiting 2, and a file written with the pairs
+// drawn otherwise or another font-variant setting exits 2 rather than
+// failing. The last line of --check is the verdict, for the programs that
+// act on it (lib/header-metrics-verdict.ts).
 import { chromium } from "playwright";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -145,7 +140,8 @@ const JOINED: Array<[string, string]> = [["", ""], ["", ZWJ], [ZWJ, ZWJ], [ZWJ, 
 // The properties of a place's type that choose a fallback font or set the
 // widths it draws at.
 const TYPE = ["font-family", "font-size", "font-weight", "font-stretch", "font-style", "font-kerning", "font-feature-settings", "font-variation-settings", "font-variant-ligatures", "font-synthesis", "letter-spacing", "word-spacing", "text-transform", "text-rendering"];
-const PLACES = ["brand", "link", "button"] as const;
+// One place: a link of a menu.
+const PLACES = ["link"] as const;
 type Place = (typeof PLACES)[number];
 const codePoints = (ranges: Array<[number, number]>) => ranges.flatMap(([from, to]) => Array.from({ length: to - from + 1 }, (_, k) => from + k));
 // Rounded to 1/1000 px: Chromium lays text out in 1/64 px.
@@ -153,21 +149,22 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 
 const css = (name: string) => readFileSync(join(assets, "stylesheets", name), "utf8");
 const siteCss = css("site.css");
-// The widths site.css folds the links below, as data-fold names them.
-const steps = [...new Set([...siteCss.matchAll(/\.sw-header\[data-fold="(\d+)"\]/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+// The widths site.css folds a menu's links below, as data-fold names them.
+const steps = [...new Set([...siteCss.matchAll(/\.w-menu\[data-fold="(\d+)"\]/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
 if (steps.length === 0) throw new Error("site.css gives data-fold no width");
-if (!/\.sw-header\[data-fold="all"\]/.test(siteCss)) throw new Error('site.css has no rule for data-fold="all"');
+if (!/\.w-menu\[data-fold="all"\]/.test(siteCss)) throw new Error('site.css has no rule for data-fold="all"');
 
-// The header as the layout draws it (layouts/public.html.erb), with an id
-// on each place a text goes.
-const page = (fold: string | null) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+// A menu block as the partial draws it (app/views/blocks/_menu.html.erb),
+// in a box of the width given, on a page as wide as the window; an id on
+// the row and on the link whose text is measured.
+const page = (fold: string | null, width: number) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <link rel="stylesheet" href="/site.css"><link rel="stylesheet" href="/tokens.css"></head><body>
-<div class="site"><div class="sw"><header class="sw-header"${fold ? ` data-fold="${fold}"` : ""}><div class="sw-inner sw-header-row"><a class="sw-brand" href="/"><svg class="sw-brand-mark" viewBox="0 0 40 40"></svg><span id="name">Slack Water</span></a><nav class="sw-nav" aria-label="Main"><div class="sw-nav-links" id="links"><a href="/" id="link">Swims</a><a href="/">Gallery</a><a href="/">Meet us</a><a href="/">Questions</a></div><a class="sw-btn sw-btn-small" href="/"><span id="button">Join</span></a><details class="sw-menu"><summary class="sw-menu-button">Menu</summary><div class="sw-menu-sheet"><a href="/">Swims</a></div></details></nav></div></header><main></main></div></div></body></html>`;
+<div class="site"><div class="sw"><main><div style="width: ${width}px"><div class="w w-menu"${fold ? ` data-fold="${fold}"` : ""}><nav aria-label="Main"><div class="w-menu-links" id="links"><a href="/" id="link">Swims</a><a href="/">Gallery</a><a href="/">Meet us</a><a href="/">Questions</a></div><details class="w-menu-fold"><summary class="sw-menu-button">Menu</summary><div class="sw-menu-sheet"><a href="/">Swims</a></div></details></nav></div></div></main></div></div></body></html>`;
 
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({ deviceScaleFactor: 1 });
-  let html = page(null);
+  let html = page(null, WIDE);
   await context.route(`${ORIGIN}/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/") return route.fulfill({ contentType: "text/html", body: html });
@@ -176,27 +173,19 @@ try {
     return route.fulfill({ status: 404, body: "" });
   });
   const tab = await context.newPage();
+  // A menu in a block `width` wide, on a page as wide as the widest.
   const open = async (width: number, fold: string | null = null) => {
-    html = page(fold);
-    await tab.setViewportSize({ width, height: 600 });
+    html = page(fold, width);
+    await tab.setViewportSize({ width: WIDE, height: 600 });
     await tab.goto(`${ORIGIN}/`);
     await tab.evaluate(() => document.fonts.ready);
   };
 
-  // Where the links fold: the design's width, found by drawing, and each
-  // data-fold width, checked just below and at it.
+  // Where the links fold: never without data-fold, and below each data-fold
+  // width, checked in a block just narrower than it and as wide as it.
   const linksShown = () => tab.evaluate(() => getComputedStyle(document.getElementById("links")!).display !== "none");
-  let low = 320;
-  let high = WIDE;
-  await open(high);
-  if (!(await linksShown())) throw new Error(`the links are folded at ${WIDE} px without data-fold`);
-  while (high - low > 1) {
-    const mid = Math.floor((low + high) / 2);
-    await open(mid);
-    if (await linksShown()) high = mid;
-    else low = mid;
-  }
-  const breakpoint = high;
+  await open(40);
+  if (!(await linksShown())) throw new Error("the links are folded in a block 40 px wide without data-fold");
   for (const step of steps) {
     await open(step - 1, String(step));
     const below = await linksShown();
@@ -210,18 +199,7 @@ try {
   await open(WIDE);
   const measured = await tab.evaluate(({ points, combining, scripts, stacks, zwj, type }) => {
     const px = (value: string) => Number.parseFloat(value) || 0;
-    const name = document.getElementById("name")!;
     const link = document.getElementById("link")!;
-    // The button's label is measured in a span of its own: the button is
-    // a flex container, which draws no run of white space alone, so a
-    // space measured there would be 0. The span inherits every property
-    // that sets the text's width.
-    const button = document.getElementById("button")!;
-    const buttonBox = button.parentElement!;
-    const brand = name.parentElement!;
-    const links = document.getElementById("links")!;
-    const nav = links.parentElement!;
-    const row = brand.parentElement!;
     const textWidth = (element: HTMLElement) => {
       const range = document.createRange();
       range.selectNodeContents(element);
@@ -295,17 +273,13 @@ try {
       const style = getComputedStyle(element);
       return { advances, missing, size: px(style.fontSize), face, scripts: drawnScripts, joiner, type: type.map((property) => style.getPropertyValue(property)) };
     };
-    const brandStyle = getComputedStyle(brand);
-    const mark = brand.querySelector("svg")!.getBoundingClientRect().width;
-    const result = {
-      brand: { ...place(name), fixed: mark + px(brandStyle.columnGap), after: px(brandStyle.marginRight) },
-      link: { ...place(link), gap: px(getComputedStyle(links).columnGap), after: px(getComputedStyle(links).marginRight) },
-      button: { ...place(button), fixed: px(getComputedStyle(buttonBox).paddingLeft) + px(getComputedStyle(buttonBox).paddingRight) },
-      nav: { gap: px(getComputedStyle(nav).columnGap) },
-      page: { padX: px(getComputedStyle(row).paddingLeft), widest: px(getComputedStyle(row).maxWidth) },
+    // Two links stand their margins apart: the right one of the first and
+    // the left one of the next.
+    const linkStyle = getComputedStyle(link);
+    return {
+      link: { ...place(link), gap: px(linkStyle.marginLeft) + px(linkStyle.marginRight) },
       lang: document.documentElement.lang,
     };
-    return result;
   }, {
     points: codePoints(RANGES),
     combining: codePoints(COMBINING),
@@ -323,10 +297,6 @@ try {
     });
     if (measured[which].joiner > 0.001) throw new Error(`a zero-width joiner is drawn ${measured[which].joiner} px wide in the ${which} place: the joined forms would count it`);
   }
-
-  // The three places share one face, so they must lack the same letters.
-  const lacking = (which: Place) => measured[which].missing.join("");
-  if (lacking("brand") !== lacking("link") || lacking("brand") !== lacking("button")) throw new Error("the header's three places do not have the same letters");
 
   // The sum against words drawn whole, in each place.
   const SAMPLES = [
@@ -354,13 +324,11 @@ try {
       range.selectNodeContents(element);
       return range.getBoundingClientRect().width;
     };
-    return samples.map((text) => ({ text, brand: measure("name", text), link: measure("link", text), button: measure("button", text) }));
+    return samples.map((text) => ({ text, link: measure("link", text) }));
   }, SAMPLES);
 
   const tables = {
-    brand: Object.fromEntries(Object.entries(measured.brand.advances).map(([k, v]) => [k, round(v)])),
     link: Object.fromEntries(Object.entries(measured.link.advances).map(([k, v]) => [k, round(v)])),
-    button: Object.fromEntries(Object.entries(measured.button.advances).map(([k, v]) => [k, round(v)])),
   };
   // The scripts as the file holds them, in each place.
   type ScriptTable = { name: string; ranges: Array<[number, number]>; advance: number; letters: Record<string, number> };
@@ -408,9 +376,9 @@ try {
   if (!checking && short.length > 0) throw new Error(`the sum of advances is narrower than what Chromium draws:\n  ${short.map((s) => s.line).join("\n  ")}`);
 
   // The fingerprints of each script. `drew`: every width this machine's
-  // fonts drew its letters at, in the three places. `holds`: `drew` with
-  // what was drawn (the letters, their forms, the pairs, the stacks, the
-  // type of the three places and the page's language) and the script's
+  // fonts drew its letters at, in a link. `holds`: `drew` with what was
+  // drawn (the letters, their forms, the pairs, the stacks, the type of a
+  // link and the page's language) and the script's
   // entries as a file holds them, in one order, letters by code point.
   const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
   const drew = SCRIPTS.map((_, k) => sha(PLACES.map((which) => measured[which].scripts[k]!.drew.map(round))));
@@ -431,20 +399,16 @@ try {
   const holds = (k: number, drewThere: unknown, file: unknown) => sha({ plan: plans[k], drew: drewThere, entries: entriesOf(file, k) });
 
   const metrics = {
-    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless in the desktop layout. The widths, in CSS px, of each character in the header's three places, and the spacing around them: the CMS (app/models/header_fit.rb) and the editor add them up to find the width below which a menu folds into Menu (data-fold on the header). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` keeps two fingerprints of each script: `drew`, of every width the fallback fonts drew its letters at, by which --check tells a machine that draws the script with other fonts, whose widths it cannot compare; and `holds`, of `drew` with what was drawn and the widths this file holds for the script, by which it tells a file it no longer writes, or one edited. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
-    fold: { breakpoint, steps, widest: measured.page.widest },
+    $comment: "Written by `node tools/header-metrics.ts` from cms/app/assets (site.css, tokens.css, the fonts), measured in Chromium headless. The widths, in CSS px, of each character in a link of a menu, the gap between two links, and the steps site.css folds a menu below: the CMS (app/models/header_fit.rb) and the editor add them up to find the step below which a menu's links fold into Menu (data-fold on the menu block). A letter of a script listed counts its own width if the script lists its letters, else the script's widest letter, as the fallback fonts of the machine that measured draw them: a Greek, Cyrillic or Hebrew letter at the most it adds after any letter of its script, an Arabic letter in the widest of its four joined forms; any other character not listed counts otherwise. `fonts` keeps two fingerprints of each script: `drew`, of every width the fallback fonts drew its letters at, by which --check tells a machine that draws the script with other fonts, whose widths it cannot compare; and `holds`, of `drew` with what was drawn and the widths this file holds for the script, by which it tells a file it no longer writes, or one edited. Do not edit: run the script again after a change to the header's styles or fonts, or to the fonts of the machine that measures; --check compares.",
+    fold: { steps },
     slack: SLACK,
-    page: { padX: measured.page.padX },
-    brand: { size: measured.brand.size, fixed: round(measured.brand.fixed), after: measured.brand.after, otherwise: measured.brand.size * 1.5, advances: tables.brand, scripts: scriptTables.brand },
-    link: { size: measured.link.size, gap: measured.link.gap, after: measured.link.after, otherwise: measured.link.size * 1.5, advances: tables.link, scripts: scriptTables.link },
-    nav: { gap: measured.nav.gap },
-    button: { size: measured.button.size, fixed: measured.button.fixed, otherwise: measured.button.size * 1.5, advances: tables.button, scripts: scriptTables.button },
+    link: { size: measured.link.size, gap: measured.link.gap, otherwise: measured.link.size * 1.5, advances: tables.link, scripts: scriptTables.link },
     fonts: {} as Record<string, { drew: string; holds: string }>,
   };
   metrics.fonts = Object.fromEntries(SCRIPTS.map((script, k) => [script.name, { drew: drew[k]!, holds: holds(k, drew[k], metrics) }]));
   // A range of code points on one line: [from, to].
   const text = JSON.stringify(metrics, null, 2).replace(/\[\s+(\d+),\s+(\d+)\s+\]/g, "[$1, $2]") + "\n";
-  const counts = `${Object.keys(tables.brand).length} characters of the face in each of 3 places (${measured.brand.missing.length} of the ranges it lacks count otherwise, but the letters of ${SCRIPTS.map((s) => s.name).join(", ")} count what the fallback fonts draw them at); folds at ${breakpoint} px and at ${steps.join(", ")}; ${drawn.length} words drawn whole in each place are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
+  const counts = `${Object.keys(tables.link).length} characters of the face in a link (${measured.link.missing.length} of the ranges it lacks count otherwise, but the letters of ${SCRIPTS.map((s) => s.name).join(", ")} count what the fallback fonts draw them at); folds below ${steps.length} steps, ${steps[0]} to ${steps.at(-1)} px; ${drawn.length} words drawn whole are at most ${(widest * 100).toFixed(2)}% wider than the sum, and the sum with its ${SLACK * 100}% slack is never narrower (closest: ${tightest.toFixed(3)} px wider)`;
 
   if (checking) {
     const committed = readFileSync(target, "utf8");
@@ -466,7 +430,7 @@ try {
     const differences: string[] = names.filter((_, k) => !sealed[k]).map((name) => `/fonts/${name}: the file's fingerprints of ${name} do not go with its widths of ${name} and with what this tool draws from these styles: it was written by another version of the tool or from other styles, or edited`);
     const elsewhere: string[] = [];
     if (committed !== text) {
-      const scriptPath = /^\/(?:brand|link|button)\/scripts\/(\d+)\/(?:advance|letters\/.+)$/;
+      const scriptPath = /^\/link\/scripts\/(\d+)\/(?:advance|letters\/.+)$/;
       const compare = (path: string, a: unknown, b: unknown) => {
         if (typeof a === "object" && a !== null && typeof b === "object" && b !== null) {
           for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) compare(`${path}/${key}`, (a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]);
@@ -496,7 +460,7 @@ try {
       verdict = "neither";
     } else if (others.length > 0) {
       const compared = names.filter((name) => !others.includes(name));
-      console.log(`header-metrics.json could not be compared here for the letters of ${others.join(", ")}: this machine draws them with other fonts than the file was measured with (${elsewhere.length} of their widths differ); the face's own ${Object.keys(tables.brand).length} characters, the spacing, the folds${compared.length > 0 ? ` and the letters of ${compared.join(", ")}` : ""} are what it holds`);
+      console.log(`header-metrics.json could not be compared here for the letters of ${others.join(", ")}: this machine draws them with other fonts than the file was measured with (${elsewhere.length} of their widths differ); the face's own ${Object.keys(tables.link).length} characters, the spacing, the folds${compared.length > 0 ? ` and the letters of ${compared.join(", ")}` : ""} are what it holds`);
       for (const line of elsewhere.slice(0, 10)) console.log(`  ${line}`);
       if (shortElsewhere.length > 0) console.log(`  and on these fonts the sum is narrower than ${shortElsewhere.length} word(s) of those letters drawn whole: ${shortElsewhere.slice(0, 5).map((s) => s.line).join("; ")}`);
       verdict = "face";

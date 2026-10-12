@@ -1,24 +1,17 @@
-// Where the header's links fold into Menu: the twin of the CMS's HeaderFit
+// Where a menu's links fold into Menu: the twin of the CMS's HeaderFit
 // (cms/app/models/header_fit.rb), from the same letter widths
 // (schema/header-metrics.json, measured once in Chromium by
 // tools/header-metrics.ts). A published page runs no script and cannot
-// measure itself, so the server adds up the width its bar needs, brand,
-// links and button, and names on the header the narrowest of site.css's
-// data-fold widths at which they fit; below it the links fold into Menu.
-// The canvas draws the header with the same site.css, so it adds them up
-// the same way, and to the bit: Ruby adds a run of floats with the
-// Kahan-Babuska compensated sum (Array#sum, Enumerable#sum), so this does
-// too, and a sum on the edge of a step falls on the same side of it on
-// both. header-fit.rails.test.ts holds the two to each other, generated
-// sites through the server's own module.
+// measure itself, so the server adds up the width a menu's row of links
+// needs, and names on the block the narrowest of site.css's fold steps at
+// which the row fits; below it, in a block narrower than that, the links
+// fold into Menu. The canvas draws the menu with the same site.css, so it
+// adds them up the same way, and to the bit: Ruby adds a run of floats
+// with the Kahan-Babuska compensated sum (Array#sum, Enumerable#sum), so
+// this does too, and a sum on the edge of a step falls on the same side of
+// it on both. header-fit.rails.test.ts holds the two to each other,
+// generated menus through the server's own module.
 import metricsFile from "../../../schema/header-metrics.json";
-
-// The parts of a header the sum reads (theme.tsx's Site has them).
-export interface HeaderWords {
-  name: string;
-  menu: ReadonlyArray<{ label: string }>;
-  action: { label: string } | null;
-}
 
 // A script the face lacks: the widest advance its letters were drawn with
 // where the file was measured, for the characters of its ranges, and the
@@ -41,13 +34,9 @@ export interface Place {
 }
 
 export interface Metrics {
-  fold: { breakpoint: number; steps: readonly number[]; widest: number };
+  fold: { steps: readonly number[] };
   slack: number;
-  page: { padX: number };
-  brand: Place & { fixed: number; after: number };
-  link: Place & { gap: number; after: number };
-  nav: { gap: number };
-  button: Place & { fixed: number };
+  link: Place & { gap: number };
 }
 
 export const METRICS = metricsFile as unknown as Metrics;
@@ -67,8 +56,8 @@ export function rubySum(values: Iterable<number>): number {
   return f + c;
 }
 
-// What one character counts in a place: its own advance in the face; else,
-// in a script the file measured, its own width if the script lists its
+// What one character counts: its own advance in the face; else, in a
+// script the file measured, its own width if the script lists its
 // letters, and the script's widest letter if not; else the place's
 // `otherwise`.
 export function advanceOf(place: Place, ch: string): number {
@@ -79,8 +68,7 @@ export function advanceOf(place: Place, ch: string): number {
   return Object.hasOwn(script.letters, ch) ? script.letters[ch]! : script.advance;
 }
 
-// A run of text in one of the header's places, by code point, with the
-// file's slack.
+// A run of text in a link, by code point, with the file's slack.
 export function runWidth(place: Place, text: string, metrics: Metrics = METRICS): number {
   const widths = function* () {
     for (const ch of text) yield advanceOf(place, ch);
@@ -88,26 +76,18 @@ export function runWidth(place: Place, text: string, metrics: Metrics = METRICS)
   return rubySum(widths()) * (1 + metrics.slack);
 }
 
-// The width of the page at which the bar holds the brand, every link and
-// the button on one row, with the page's padding on both sides.
-export function widthNeeded(site: HeaderWords, metrics: Metrics = METRICS): number {
-  const m = metrics;
-  const links = site.menu;
-  const brand = m.brand.fixed + runWidth(m.brand, site.name, m) + m.brand.after;
-  const menu = rubySum(links.map((link) => runWidth(m.link, link.label, m))) + m.link.gap * (links.length - 1) + m.link.after;
-  const button = site.action ? m.nav.gap + m.button.fixed + runWidth(m.button, site.action.label, m) : 0;
-  return 2 * m.page.padX + brand + menu + button;
+// The width of a menu's row: every label, and the gap between two links.
+export function widthNeeded(labels: readonly string[], metrics: Metrics = METRICS): number {
+  const link = metrics.link;
+  return rubySum(labels.map((label) => runWidth(link, label, metrics))) + link.gap * (labels.length - 1);
 }
 
-// data-fold for the header of site: the step below which its links fold,
-// "all" for a menu wider than the widest bar, or null for the design's
-// own fold (a header that fits the bar from its breakpoint up, or one
-// with no links).
-export function headerFold(site: HeaderWords, metrics: Metrics = METRICS): string | null {
-  if (site.menu.length === 0) return null;
-  const needed = widthNeeded(site, metrics);
-  const fold = metrics.fold;
-  if (needed <= fold.breakpoint) return null;
-  const step = fold.steps.find((width) => needed <= Math.min(width, fold.widest));
+// data-fold for a menu whose links have these labels: the step below which
+// they fold, "all" for a row wider than the widest step, or null for a menu
+// with no link, which has nothing to fold.
+export function menuFold(labels: readonly string[], metrics: Metrics = METRICS): string | null {
+  if (labels.length === 0) return null;
+  const needed = widthNeeded(labels, metrics);
+  const step = metrics.fold.steps.find((width) => needed <= width);
   return step === undefined ? "all" : String(step);
 }

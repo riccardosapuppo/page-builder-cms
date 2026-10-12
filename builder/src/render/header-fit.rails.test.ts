@@ -1,15 +1,14 @@
-// The editor's fold of the header (./header-fit.ts) beside the server's own
-// HeaderFit (cms/app/models/header_fit.rb), on the same generated headers:
-// names, links and buttons in the face's letters and out of it (other
-// scripts, emoji, combining accents), of every length and count the sum
-// meets, valid or not, since HeaderFit adds up whatever it is given, and
-// five short headers in Hebrew, Greek, Cyrillic, Arabic and CJK, which must
-// keep their links in the bar. Each
-// side's width is compared to the bit, and its data-fold as a string: the
-// canvas draws the header the published page draws only if both fold it
-// at the same width. Ruby runs ../../test/ruby/header_fit.rb with the CMS's
-// gems, loading the application as the CMS does; nothing of the CMS the
-// project starts.
+// The editor's fold of a menu (./header-fit.ts) beside the server's own
+// HeaderFit (cms/app/models/header_fit.rb), on the same generated menus:
+// labels in the face's letters and out of it (other scripts, emoji,
+// combining accents), of every length and count the sum meets, valid or
+// not, since HeaderFit adds up whatever it is given, and five short menus
+// in Hebrew, Greek, Cyrillic, Arabic and Japanese, which must fold no later
+// than the design's four links. Each side's width is compared to the bit,
+// and its data-fold as a string: the canvas draws the menu the published
+// page draws only if both fold it at the same step. Ruby runs
+// ../../test/ruby/header_fit.rb with the CMS's gems, loading the
+// application as the CMS does; nothing of the CMS the project starts.
 //
 // In the "rails" project for its Ruby.
 // @vitest-environment node
@@ -20,9 +19,9 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { afterAll, expect, test } from "vitest";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
-import { advanceOf, headerFold, METRICS as metrics, widthNeeded, type HeaderWords, type Place } from "./header-fit.ts";
+import { advanceOf, menuFold, METRICS as metrics, widthNeeded } from "./header-fit.ts";
 
-const SEED = 20261009;
+const SEED = 20261012;
 
 // The face's own letters, and some it does not have: letters of the scripts
 // the file measured (those it lists, the ends of each range, a code point in
@@ -35,10 +34,16 @@ const outOfFace = [
   "Щ", "ж", "Ґ", "Ѐ", "џ",
   "ש", "מ", "א", "ת",
   "ض", "ء", "ي", "٩", "ۓ", "۔", "\u{FDFD}", "→",
-  "日", "本", "語", "\u{1F30A}", "\u{1F3CA}", "Ω","ﬁ", "́", "‍", "ئ"];
-const word = (most: number) => fc.array(fc.oneof({ weight: 9, arbitrary: fc.constantFrom(...inFace) }, { weight: 1, arbitrary: fc.constantFrom(...outOfFace) }), { maxLength: most }).map((letters) => letters.join(""));
-const link = fc.record({ label: word(30), href: fc.constant("/") });
-const header: fc.Arbitrary<HeaderWords> = fc.record({ name: word(40), menu: fc.array(link, { maxLength: 9 }), action: fc.option(link, { nil: null }) });
+  "日", "本", "語", "\u{1F30A}", "\u{1F3CA}", "Ω", "ﬁ", "́", "‍", "ئ"];
+// Lengths drawn across the whole range given ("max"), not kept small as
+// fast-check keeps them by default: the rows must reach the widest step.
+const word = (most: number) => fc.array(fc.oneof({ weight: 9, arbitrary: fc.constantFrom(...inFace) }, { weight: 1, arbitrary: fc.constantFrom(...outOfFace) }), { maxLength: most, size: "max" }).map((letters) => letters.join(""));
+// Up to a menu's twelve links, mostly short, as a person writes them, so
+// the rows land on every step and past the widest.
+const menu: fc.Arbitrary<string[]> = fc.oneof(
+  { weight: 3, arbitrary: fc.array(word(12), { maxLength: 12, size: "max" }) },
+  { weight: 1, arbitrary: fc.array(word(40), { maxLength: 12, size: "max" }) },
+);
 
 // A double's bits, big-endian, as Ruby's pack("G") writes them.
 const bits = (x: number): string => {
@@ -49,35 +54,30 @@ const bits = (x: number): string => {
 
 // The fault this comparison is there to catch: the same sums added in turn
 // with +, as JavaScript would add them, not compensated as Ruby does.
-function addedInTurn(site: HeaderWords): number {
-  const run = (place: Place, text: string) => [...text].reduce((sum, ch) => sum + advanceOf(place, ch), 0) * (1 + metrics.slack);
-  const m = metrics;
-  const brand = m.brand.fixed + run(m.brand, site.name) + m.brand.after;
-  const menu = site.menu.reduce((sum, l) => sum + run(m.link, l.label), 0) + m.link.gap * (site.menu.length - 1) + m.link.after;
-  const button = site.action ? m.nav.gap + m.button.fixed + run(m.button, site.action.label) : 0;
-  return 2 * m.page.padX + brand + menu + button;
+function addedInTurn(labels: readonly string[]): number {
+  const link = metrics.link;
+  const run = (text: string) => [...text].reduce((sum, ch) => sum + advanceOf(link, ch), 0) * (1 + metrics.slack);
+  return labels.reduce((sum, label) => sum + run(label), 0) + link.gap * (labels.length - 1);
 }
 
 const work = mkdtempSync(join(tmpdir(), "header-fit-"));
 afterAll(() => rmSync(work, { recursive: true, force: true }));
 
-// Short headers as a person writes them in each script the file measured,
-// which go through the server beside the generated ones: they keep their
-// links in the bar from 800 up, as the design's own header does. Each letter
-// counted at 1.5 em folded the Hebrew one below 1200 and the Greek one at
-// every width.
-const one = (name: string, labels: string[], action: string): HeaderWords => ({ name, menu: labels.map((label) => ({ label })), action: { label: action } });
-const SHORT: Record<string, HeaderWords> = {
-  Hebrew: one("מים שקטים", ["שחייה", "גלריה", "עלינו", "שאלות"], "הצטרפו"),
-  Greek: one("Ήρεμα νερά", ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"], "Γραφτείτε"),
-  Cyrillic: one("Тихая вода", ["Заплывы", "Галерея", "Встречи", "Вопросы"], "Вступить"),
-  Arabic: one("المياه الهادئة", ["السباحة", "المعرض", "لقاء", "أسئلة"], "انضم"),
-  CJK: one("潮の会", ["泳ぎ方", "写真", "会合", "質問"], "参加する"),
+// Short menus as a person writes them in each script the file measured,
+// which go through the server beside the generated ones: they fold no later
+// than the design's four links (360). Each letter counted at 1.5 em, the
+// Greek and Cyrillic ones would need 720 px.
+const SHORT: Record<string, { labels: string[]; fold: string }> = {
+  Hebrew: { labels: ["שחייה", "גלריה", "עלינו", "שאלות"], fold: "240" },
+  Greek: { labels: ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"], fold: "360" },
+  Cyrillic: { labels: ["Заплывы", "Галерея", "Встречи", "Вопросы"], fold: "360" },
+  Arabic: { labels: ["السباحة", "المعرض", "لقاء", "أسئلة"], fold: "280" },
+  CJK: { labels: ["泳ぎ方", "写真", "会合", "質問"], fold: "240" },
 };
 
-test("the header folds at the width the server's HeaderFit names, its sum the same to the bit", { timeout: 180_000 }, () => {
-  const headers = [...Object.values(SHORT), ...fc.sample(header, { seed: SEED, numRuns: 4000 })];
-  writeFileSync(join(work, "in.json"), JSON.stringify({ headers }));
+test("a menu folds at the step the server's HeaderFit names, its sum the same to the bit", { timeout: 180_000 }, () => {
+  const menus = [...Object.values(SHORT).map((short) => short.labels), ...fc.sample(menu, { seed: SEED, numRuns: 4000 })];
+  writeFileSync(join(work, "in.json"), JSON.stringify({ menus }));
   const ruby = spawnSync("ruby", [join(builderRoot, "test", "ruby", "header_fit.rb"), join(work, "in.json"), join(work, "out.json")], {
     cwd: join(repoRoot, "cms"),
     env: { ...process.env, BUNDLE_GEMFILE: join(repoRoot, "cms", "Gemfile") },
@@ -85,39 +85,42 @@ test("the header folds at the width the server's HeaderFit names, its sum the sa
   });
   expect(ruby.status, ruby.stderr).toBe(0);
   const server = JSON.parse(readFileSync(join(work, "out.json"), "utf8")) as Array<{ needed: number; bits: string; fold: string | null }>;
-  expect(server).toHaveLength(headers.length);
+  expect(server).toHaveLength(menus.length);
 
-  // The headers as the server read them back from JSON, so both sides see
+  // The menus as the server read them back from JSON, so both sides see
   // the same input.
-  const read = JSON.parse(JSON.stringify(headers)) as HeaderWords[];
-  const differ = read.flatMap((site, index) => {
+  const read = JSON.parse(JSON.stringify(menus)) as string[][];
+  const differ = read.flatMap((labels, index) => {
     const theirs = server[index]!;
-    const ours = { bits: bits(widthNeeded(site)), fold: headerFold(site) };
-    return ours.bits === theirs.bits && ours.fold === theirs.fold ? [] : [{ site, editor: { ...ours, needed: widthNeeded(site) }, server: theirs }];
+    const ours = { bits: bits(widthNeeded(labels)), fold: menuFold(labels) };
+    return ours.bits === theirs.bits && ours.fold === theirs.fold ? [] : [{ labels, editor: { ...ours, needed: widthNeeded(labels) }, server: theirs }];
   });
   expect(differ.slice(0, 3)).toEqual([]);
 
-  // The short headers in each script keep their links in the bar, on the
-  // server's word and the editor's.
-  Object.keys(SHORT).forEach((script, index) => {
-    expect(server[index]!.fold, `${script}, the server's`).toBeNull();
-    expect(headerFold(read[index]!), `${script}, the editor's`).toBeNull();
+  // The short menus in each script fold where the design's four links do or
+  // sooner, on the server's word and the editor's.
+  Object.entries(SHORT).forEach(([script, short], index) => {
+    expect(server[index]!.fold, `${script}, the server's`).toBe(short.fold);
+    expect(menuFold(read[index]!), `${script}, the editor's`).toBe(short.fold);
   });
 
-  // The generated headers reach each script the file measured, so the
-  // lookup of a letter in it is compared and not left to the short ones.
-  const holds = (site: HeaderWords, from: number, to: number) => [site.name, ...site.menu.map((l) => l.label), site.action?.label ?? ""].some((text) => [...text].some((ch) => ch.codePointAt(0)! >= from && ch.codePointAt(0)! <= to));
+  // The generated menus reach each script the file measured, so the lookup
+  // of a letter in it is compared and not left to the short ones.
+  const holds = (labels: readonly string[], from: number, to: number) => labels.some((text) => [...text].some((ch) => ch.codePointAt(0)! >= from && ch.codePointAt(0)! <= to));
   for (const script of metrics.link.scripts) {
-    const reached = read.slice(Object.keys(SHORT).length).filter((site) => script.ranges.some(([from, to]) => holds(site, from, to))).length;
-    expect(reached, `generated headers with a letter of ${script.name}`).toBeGreaterThan(50);
+    const reached = read.slice(Object.keys(SHORT).length).filter((labels) => script.ranges.some(([from, to]) => holds(labels, from, to))).length;
+    expect(reached, `generated menus with a letter of ${script.name}`).toBeGreaterThan(50);
   }
 
-  // Some of every answer, so the comparison meets each.
+  // Some of every answer, so the comparison meets each: no link, the
+  // narrowest step, beyond the widest, and most steps between.
   const folds = new Set(server.map((s) => s.fold));
-  for (const fold of [null, "880", "960", "1040", "1120", "1200", "1248", "all"]) expect(folds.has(fold), String(fold)).toBe(true);
+  for (const fold of [null, "80", "all"]) expect(folds.has(fold), String(fold)).toBe(true);
+  const met = metrics.fold.steps.filter((step) => folds.has(String(step)));
+  expect(met.length, `the steps met: ${met.join(", ")}`).toBeGreaterThanOrEqual(20);
   // The sum added in turn differs from the server's in its last bits on a
-  // good share of these headers: so a twin that did that would be seen.
-  const inTurn = read.filter((site, index) => bits(addedInTurn(site)) !== server[index]!.bits).length;
+  // good share of these menus: so a twin that did that would be seen.
+  const inTurn = read.filter((labels, index) => labels.length > 0 && bits(addedInTurn(labels)) !== server[index]!.bits).length;
   expect(inTurn).toBeGreaterThan(100);
-  console.log(`header fit: ${read.length} headers, the same width to the bit and the same fold as the server's; added in turn, ${inTurn} would differ`);
+  console.log(`header fit: ${read.length} menus, the same width to the bit and the same fold as the server's; added in turn, ${inTurn} would differ`);
 });

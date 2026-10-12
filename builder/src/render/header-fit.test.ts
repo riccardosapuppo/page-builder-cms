@@ -1,34 +1,43 @@
-// Where the header's links fold (./header-fit.ts), on the cases the
-// server's own test holds HeaderFit to (cms/test/models/header_fit_test.rb),
-// from the example site's header as config/site.yml gives it. That the two
-// add up the same on any header is header-fit.rails.test.ts's to show,
-// through Ruby.
+// Where a menu's links fold (./header-fit.ts), on the cases the server's
+// own test holds HeaderFit to (cms/test/models/header_fit_test.rb), from
+// the design's four links, the ones the header's starter has
+// (cms/config/parts/header.json). That the two add up the same on any menu
+// is header-fit.rails.test.ts's to show, through Ruby.
 // @vitest-environment node
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "vitest";
-import { readSiteTheme } from "../../build/site-file.ts";
-import { advanceOf, headerFold, METRICS as metrics, rubySum, runWidth, widthNeeded, type HeaderWords } from "./header-fit.ts";
+import { repoRoot } from "../../build/paths.ts";
+import { advanceOf, menuFold, METRICS as metrics, rubySum, runWidth, widthNeeded } from "./header-fit.ts";
 
-const theme = readSiteTheme();
-const defaults: HeaderWords = { name: theme.name as string, menu: theme.menu as HeaderWords["menu"], action: theme.action as HeaderWords["action"] };
-const links = (...labels: string[]) => labels.map((label) => ({ label, href: "/" }));
+const DESIGN = ["Swims", "Gallery", "Meet us", "Questions"];
+const times = (n: number, label: string) => Array.from({ length: n }, () => label);
 
-test("the design's own header fits the bar from 800 up, so it names no fold", () => {
-  expect(headerFold(defaults)).toBeNull();
-  expect(Math.abs(widthNeeded(defaults) - 761)).toBeLessThanOrEqual(1);
+test("the design's four links need 327 px, so they fold in a block narrower than 360; the starter's menu is those links", () => {
+  expect(Math.abs(widthNeeded(DESIGN) - 327)).toBeLessThanOrEqual(1);
+  expect(menuFold(DESIGN)).toBe("360");
+  const header = JSON.parse(readFileSync(join(repoRoot, "cms", "config", "parts", "header.json"), "utf8")) as { sections: Array<{ children: Array<{ children: Array<{ type: string; props: { items?: Array<{ label: string }> } }> }> }> };
+  const menus = header.sections.flatMap((s) => s.children.flatMap((c) => c.children.filter((b) => b.type === "menu")));
+  expect(menus.map((menu) => menu.props.items?.map((item) => item.label))).toEqual([DESIGN]);
 });
 
-test("a fifth link needs a wider bar: each count of links lands on the next width, until no bar holds them", () => {
-  expect(headerFold({ ...defaults, menu: [...defaults.menu, ...links("Contact")] })).toBe("880");
-  const folds = [1, 3, 4, 5, 6, 7, 8, 9].map((n) => headerFold({ ...defaults, menu: links(...Array.from({ length: n }, () => "Timetable")) }));
-  expect(folds).toEqual([null, null, "880", "960", "1040", "1200", "1248", "all"]);
-  expect(headerFold({ ...defaults, menu: links(...Array.from({ length: 8 }, () => "W".repeat(24))) })).toBe("all");
+test("the row is every label and a gap between two: one link more is its word and a gap more", () => {
+  const more = widthNeeded([...DESIGN, "Contact"]) - widthNeeded(DESIGN);
+  expect(more).toBeCloseTo(runWidth(metrics.link, "Contact") + metrics.link.gap, 3);
+  expect(metrics.link.gap).toBe(28);
 });
 
-test("the name and the button count too, and with no links there is nothing to fold", () => {
-  const menu = [...defaults.menu, ...links("Contact")];
-  expect(headerFold({ ...defaults, menu, name: "The Sea Thrift Swimming Club" })).toBe("1120");
-  expect(headerFold({ ...defaults, menu, action: null })).toBeNull();
-  expect(headerFold({ ...defaults, menu: [], name: "W".repeat(28) })).toBeNull();
+// Each "Timetable" is about 76 px, and a gap 28: each count of them lands
+// on the step of 40 px that holds it (8 need 804 px, 11 need 1116), until
+// no step does.
+test("the step is the narrowest that holds the row, each in turn, and a row no step holds folds at every width", () => {
+  expect(runWidth(metrics.link, "Timetable")).toBeCloseTo(75.8, 1);
+  expect([1, 2, 4, 8, 11, 12].map((n) => menuFold(times(n, "Timetable")))).toEqual(["80", "200", "400", "840", "1120", "all"]);
+  expect(menuFold(times(12, "W".repeat(40)))).toBe("all");
+});
+
+test("a menu with no link has nothing to fold", () => {
+  expect(menuFold([])).toBeNull();
 });
 
 test("a character neither the face nor a script has a measure for counts 1.5 times the font size, wider than any letter of the face", () => {
@@ -39,56 +48,55 @@ test("a character neither the face nor a script has a measure for counts 1.5 tim
 });
 
 test("the letters of the scripts the file measured count what they were drawn at, less than a character nothing measured", () => {
-  for (const place of [metrics.brand, metrics.link, metrics.button]) {
-    expect(place.scripts.map((script) => script.name)).toEqual(["Greek", "Cyrillic", "Hebrew", "Arabic", "CJK"]);
-    for (const script of place.scripts) {
-      expect(script.advance, script.name).toBeGreaterThan(0);
-      expect(script.advance, script.name).toBeLessThan(place.otherwise);
-      const widths = Object.values(script.letters);
-      if (widths.length > 0) expect(script.advance, script.name).toBe(Math.max(...widths));
-    }
+  const link = metrics.link;
+  expect(link.scripts.map((script) => script.name)).toEqual(["Greek", "Cyrillic", "Hebrew", "Arabic", "CJK"]);
+  for (const script of link.scripts) {
+    expect(script.advance, script.name).toBeGreaterThan(0);
+    expect(script.advance, script.name).toBeLessThan(link.otherwise);
+    const widths = Object.values(script.letters);
+    if (widths.length > 0) expect(script.advance, script.name).toBe(Math.max(...widths));
   }
-  const scripts = Object.fromEntries(metrics.link.scripts.map((script) => [script.name, script]));
+  const scripts = Object.fromEntries(link.scripts.map((script) => [script.name, script]));
   // Greek, Cyrillic, Hebrew and Arabic list each of their letters: a letter counts its own width.
   for (const [name, letter] of [["Greek", "Ω"], ["Cyrillic", "Щ"], ["Hebrew", "ש"], ["Arabic", "ض"]] as const) {
-    expect(advanceOf(metrics.link, letter), name).toBe(scripts[name]!.letters[letter]);
+    expect(advanceOf(link, letter), name).toBe(scripts[name]!.letters[letter]);
   }
   // A code point of a script's range that is no letter listed (an unassigned
   // one) counts the script's widest, and CJK, which lists none, counts it
   // for every ideograph, kana, Hangul syllable and fullwidth form.
-  expect(advanceOf(metrics.link, "΋")).toBe(scripts.Greek!.advance);
-  for (const character of ["日", "本", "の", "한", "！", "　"]) expect(advanceOf(metrics.link, character), character).toBe(scripts.CJK!.advance);
-  expect(scripts.CJK!.advance).toBeLessThan(metrics.link.otherwise);
+  expect(advanceOf(link, "΋")).toBe(scripts.Greek!.advance);
+  for (const character of ["日", "本", "の", "한", "！", "　"]) expect(advanceOf(link, character), character).toBe(scripts.CJK!.advance);
+  expect(scripts.CJK!.advance).toBeLessThan(link.otherwise);
 });
 
-// The Hebrew, Greek, Cyrillic, Arabic or CJK header as short as it is: the
-// same four links, a name and a button, whose letters are no wider than a
-// Latin header's, keep their links in the bar from the design's 800 up. Each
-// letter counted at 1.5 em folded the Hebrew one below 1200 and the Greek
-// one at every width.
-test("short headers in Hebrew, Greek, Cyrillic, Arabic and CJK keep their links in the bar from 800 up, as the design's does", () => {
-  const one = (name: string, labels: string[], action: string): HeaderWords => ({ name, menu: links(...labels), action: { label: action } });
-  const headers: Record<string, HeaderWords> = {
-    Hebrew: one("מים שקטים", ["שחייה", "גלריה", "עלינו", "שאלות"], "הצטרפו"),
-    Greek: one("Ήρεμα νερά", ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"], "Γραφτείτε"),
-    Cyrillic: one("Тихая вода", ["Заплывы", "Галерея", "Встречи", "Вопросы"], "Вступить"),
-    Arabic: one("المياه الهادئة", ["السباحة", "المعرض", "لقاء", "أسئلة"], "انضم"),
-    CJK: one("潮の会", ["泳ぎ方", "写真", "会合", "質問"], "参加する"),
+// A visitor reads a Hebrew, Greek, Cyrillic, Arabic or Japanese menu as
+// short as it is: four links whose letters are no wider than the design's
+// fold no later than the design's do (360). Counted at 1.5 em each, the
+// Greek and Cyrillic ones would need 720 px and fold below 720.
+test("short menus in Hebrew, Greek, Cyrillic, Arabic and Japanese fold no later than the design's four links", () => {
+  const menus: Record<string, string[]> = {
+    Hebrew: ["שחייה", "גלריה", "עלינו", "שאלות"],
+    Greek: ["Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"],
+    Cyrillic: ["Заплывы", "Галерея", "Встречи", "Вопросы"],
+    Arabic: ["السباحة", "المعرض", "لقاء", "أسئلة"],
+    CJK: ["泳ぎ方", "写真", "会合", "質問"],
   };
-  for (const [name, header] of Object.entries(headers)) {
-    expect(headerFold(header), name).toBeNull();
-    expect(widthNeeded(header), name).toBeLessThanOrEqual(metrics.fold.breakpoint);
-  }
-});
-
-test("a longer menu in another script folds below the width its letters need, and one no bar holds folds at every width", () => {
-  const greek: HeaderWords = { name: "Ήρεμα νερά", menu: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις", "Επικοινωνία", "Τιμές"), action: { label: "Γραφτείτε" } };
-  expect(headerFold(greek)).toBe("1040");
-  expect(headerFold({ name: "潮の会", menu: links(...Array.from({ length: 8 }, () => "日本語の案内です")), action: null })).toBe("all");
+  const folds = Object.fromEntries(Object.entries(menus).map(([name, labels]) => [name, menuFold(labels)]));
+  expect(folds).toEqual({ Hebrew: "240", Greek: "360", Cyrillic: "360", Arabic: "280", CJK: "240" });
 });
 
 test("a combining accent adds nothing to its letter, as the face draws it", () => {
-  expect(runWidth(metrics.brand, "Café")).toBeCloseTo(runWidth(metrics.brand, "Cafe"), 9);
+  expect(runWidth(metrics.link, "Café")).toBeCloseTo(runWidth(metrics.link, "Cafe"), 9);
+});
+
+test("the steps the file folds at are the ones the page's stylesheet gives data-fold, each with its rule", () => {
+  const css = readFileSync(join(repoRoot, "cms", "app", "assets", "stylesheets", "site.css"), "utf8");
+  const rows = [...css.matchAll(/@container menu \(width < (\d+)px\) \{ \.w-menu\[data-fold="\1"\] \.w-menu-links \{ display: none; \}/g)].map((m) => Number(m[1]));
+  const folds = [...css.matchAll(/\.w-menu\[data-fold="(\d+)"\] \.w-menu-fold \{ display: block; \}/g)].map((m) => Number(m[1]));
+  const steps = Array.from({ length: 27 }, (_, i) => 80 + 40 * i);
+  expect(metrics.fold.steps).toEqual(steps);
+  expect(rows).toEqual(steps);
+  expect(folds).toEqual(steps);
 });
 
 test("a run of floats adds up as Ruby's sum does, compensated, not as a loop of + does", () => {

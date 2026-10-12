@@ -1,47 +1,39 @@
 require "test_helper"
 
-# Where the header's links fold, from the widths of their letters. That
-# the widths are right, and that the links then fit the bar where they are
+# Where a menu's links fold, from the widths of their letters. That the
+# widths are right, and that the links then fit the block where they are
 # shown, is measured in Chromium by tools/header-metrics.ts and by the
 # production check (tools/lib/header-checks.ts); here, the sums and the
 # steps.
 class HeaderFitTest < ActiveSupport::TestCase
-  def site(**changes)
-    Site.new(id: Site::ID, revision: 1, **Site.defaults.merge(changes.transform_keys(&:to_s)).symbolize_keys)
+  DESIGN = [ "Swims", "Gallery", "Meet us", "Questions" ].freeze
+
+  test "the design's four links need 327 px, so they fold in a block narrower than 360" do
+    assert_in_delta 327, HeaderFit.width_needed(DESIGN), 1
+    assert_equal "360", HeaderFit.menu_fold(DESIGN)
   end
 
-  def links(*labels) = labels.map { |label| { "label" => label, "href" => "/" } }
+  test "the row is every label and a gap between two: one link more is its word and a gap more" do
+    link = HeaderFit.metrics["link"]
+    more = HeaderFit.width_needed(DESIGN + [ "Contact" ]) - HeaderFit.width_needed(DESIGN)
 
-  test "the design's own header fits the bar from 800 up, so it names no fold, with 39 px to spare" do
-    needed = HeaderFit.width_needed(Site.current)
-
-    assert_nil HeaderFit.fold(Site.current)
-    assert_in_delta 761, needed, 1
+    assert_in_delta HeaderFit.run(link, "Contact") + link["gap"], more, 0.001
+    assert_equal 28, link["gap"]
   end
 
-  test "a fifth link needs a wider bar: the links fold below the next width site.css has" do
-    assert_equal "880", HeaderFit.fold(site(menu: Site.defaults["menu"] + links("Contact")))
+  # Each "Timetable" is about 76 px, and a gap 28: each count of them lands
+  # on the step of 40 px that holds it (8 need 804 px, 11 need 1116), until
+  # no step does.
+  test "the step is the narrowest that holds the row, each in turn, and a row no step holds folds at every width" do
+    folds = [ 1, 2, 4, 8, 11, 12 ].map { |n| HeaderFit.menu_fold(Array.new(n) { "Timetable" }) }
+
+    assert_in_delta 75.8, HeaderFit.run(HeaderFit.metrics["link"], "Timetable"), 0.1
+    assert_equal %w[80 200 400 840 1120 all], folds
+    assert_equal "all", HeaderFit.menu_fold(Array.new(12) { "W" * 40 })
   end
 
-  # One more link of 9 letters is about 104 px more bar: each count of them
-  # lands on the next width, until no bar holds them.
-  test "the step is the narrowest width that holds the bar, each in turn, and a menu no bar holds folds at every width" do
-    folds = [ 1, 3, 4, 5, 6, 7, 8, 9 ].map { |n| HeaderFit.fold(site(menu: links(*Array.new(n) { "Timetable" }))) }
-
-    assert_equal [ nil, nil, "880", "960", "1040", "1200", "1248", "all" ], folds
-    assert_equal "all", HeaderFit.fold(site(menu: links(*Array.new(8) { "W" * 24 })))
-  end
-
-  test "the name and the button count too: the same links fold sooner beside a longer name, and later with no button" do
-    menu = Site.defaults["menu"] + links("Contact")
-
-    assert_equal "880", HeaderFit.fold(site(menu: menu))
-    assert_equal "1120", HeaderFit.fold(site(menu: menu, name: "The Sea Thrift Swimming Club"))
-    assert_nil HeaderFit.fold(site(menu: menu, action: nil))
-  end
-
-  test "with no links there is nothing to fold, whatever the name" do
-    assert_nil HeaderFit.fold(site(menu: [], name: "W" * 28))
+  test "a menu with no link has nothing to fold" do
+    assert_nil HeaderFit.menu_fold([])
   end
 
   # What nothing measured is drawn at is anyone's guess: a symbol, an emoji,
@@ -59,20 +51,17 @@ class HeaderFitTest < ActiveSupport::TestCase
 
   # The face is a Latin subset: a letter of another script is drawn by the
   # fonts the browser falls back to, which tools/header-metrics.ts drew in
-  # Chromium, at their widest of four, in each of the three places.
+  # Chromium, at their widest of four.
   test "the letters of the scripts the file measured count what they were drawn at, less than a character nothing measured" do
-    places = HeaderFit.metrics.values_at("brand", "link", "button")
+    link = HeaderFit.metrics["link"]
 
-    places.each do |place|
-      assert_equal %w[Greek Cyrillic Hebrew Arabic CJK], place["scripts"].map { |script| script["name"] }
-      place["scripts"].each do |script|
-        assert_operator script["advance"], :>, 0, script["name"]
-        assert_operator script["advance"], :<, place["otherwise"], script["name"]
-        assert_equal script["advance"], script["letters"].values.max, script["name"] unless script["letters"].empty?
-      end
+    assert_equal %w[Greek Cyrillic Hebrew Arabic CJK], link["scripts"].map { |script| script["name"] }
+    link["scripts"].each do |script|
+      assert_operator script["advance"], :>, 0, script["name"]
+      assert_operator script["advance"], :<, link["otherwise"], script["name"]
+      assert_equal script["advance"], script["letters"].values.max, script["name"] unless script["letters"].empty?
     end
 
-    link = HeaderFit.metrics["link"]
     scripts = link["scripts"].index_by { |script| script["name"] }
     # Greek, Cyrillic, Hebrew and Arabic list each of their letters: a letter counts its own width.
     { "Greek" => "Ω", "Cyrillic" => "Щ", "Hebrew" => "ש", "Arabic" => "ض" }.each do |name, letter|
@@ -86,50 +75,39 @@ class HeaderFitTest < ActiveSupport::TestCase
     assert_operator scripts["CJK"]["advance"], :<, link["otherwise"]
   end
 
-  # A visitor reads the Hebrew, Greek, Cyrillic or Arabic header as short
-  # as it is: the same four links, a name and a button, whose letters are no
-  # wider than a Latin header's, keep their links in the bar from the
-  # design's 800 up, as the design's own header does. Counted at 1.5 em each
-  # they folded the Hebrew one below 1200 and the Greek one at every width.
-  test "short headers in Hebrew, Greek, Cyrillic and Arabic keep their links in the bar from 800 up, as the design's does" do
-    headers = {
-      "Hebrew" => site(name: "מים שקטים", menu: links("שחייה", "גלריה", "עלינו", "שאלות"), action: { "label" => "הצטרפו", "href" => "/" }),
-      "Greek" => site(name: "Ήρεμα νερά", menu: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"), action: { "label" => "Γραφτείτε", "href" => "/" }),
-      "Cyrillic" => site(name: "Тихая вода", menu: links("Заплывы", "Галерея", "Встречи", "Вопросы"), action: { "label" => "Вступить", "href" => "/" }),
-      "Arabic" => site(name: "المياه الهادئة", menu: links("السباحة", "المعرض", "لقاء", "أسئلة"), action: { "label" => "انضم", "href" => "/" }),
-      "CJK" => site(name: "潮の会", menu: links("泳ぎ方", "写真", "会合", "質問"), action: { "label" => "参加する", "href" => "/" })
+  # A visitor reads a Hebrew, Greek, Cyrillic, Arabic or Japanese menu as
+  # short as it is: four links whose letters are no wider than the design's
+  # fold no later than the design's do (360). Counted at 1.5 em each, the
+  # Greek and Cyrillic ones would need 720 px and fold below 720.
+  test "short menus in Hebrew, Greek, Cyrillic, Arabic and Japanese fold no later than the design's four links" do
+    menus = {
+      "Hebrew" => [ "שחייה", "גלריה", "עלינו", "שאלות" ],
+      "Greek" => [ "Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις" ],
+      "Cyrillic" => [ "Заплывы", "Галерея", "Встречи", "Вопросы" ],
+      "Arabic" => [ "السباحة", "المعرض", "لقاء", "أسئلة" ],
+      "CJK" => [ "泳ぎ方", "写真", "会合", "質問" ]
     }
 
-    headers.each do |name, header|
-      assert_nil HeaderFit.fold(header), name
-      assert_operator HeaderFit.width_needed(header), :<=, HeaderFit.metrics["fold"]["breakpoint"], name
-    end
-  end
-
-  test "a longer menu in another script folds below the width its letters need, and one no bar holds folds at every width" do
-    greek = site(name: "Ήρεμα νερά", menu: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις", "Επικοινωνία", "Τιμές"), action: { "label" => "Γραφτείτε", "href" => "/" })
-    cjk = site(name: "潮の会", menu: links(*Array.new(8) { "日本語の案内です" }), action: nil)
-
-    assert_equal "1040", HeaderFit.fold(greek)
-    assert_equal "all", HeaderFit.fold(cjk)
+    folds = menus.transform_values { |labels| HeaderFit.menu_fold(labels) }
+    assert_equal({ "Hebrew" => "240", "Greek" => "360", "Cyrillic" => "360", "Arabic" => "280", "CJK" => "240" }, folds)
   end
 
   test "a combining accent adds nothing to its letter, as the face draws it" do
-    plain = HeaderFit.run(HeaderFit.metrics["brand"], "Cafe")
-    accented = HeaderFit.run(HeaderFit.metrics["brand"], "Café")
+    link = HeaderFit.metrics["link"]
 
-    assert_in_delta plain, accented, 0.001
+    assert_in_delta HeaderFit.run(link, "Cafe"), HeaderFit.run(link, "Café"), 0.001
   end
 
-  test "the widths the file folds at are the ones site.css gives data-fold, and site.css has a rule for every width" do
+  test "the steps the file folds at are the ones site.css gives data-fold, and site.css has a rule for every step" do
     css = Rails.root.join("app", "assets", "stylesheets", "site.css").read
-    widths = css.scan(/\.sw-header\[data-fold="(\d+)"\] \.sw-nav-links \{ display: none; \}/).flatten.map(&:to_i)
-    menus = css.scan(/\.sw-header\[data-fold="(\d+)"\] \.sw-menu \{ display: block; \}/).flatten.map(&:to_i)
-    fold = HeaderFit.metrics["fold"]
+    rows = css.scan(/@container menu \(width < (\d+)px\) \{ \.w-menu\[data-fold="\1"\] \.w-menu-links \{ display: none; \}/).flatten.map(&:to_i)
+    folds = css.scan(/\.w-menu\[data-fold="(\d+)"\] \.w-menu-fold \{ display: block; \}/).flatten.map(&:to_i)
+    steps = HeaderFit.metrics["fold"]["steps"]
 
-    assert_equal fold["steps"], widths
-    assert_equal fold["steps"], menus
-    assert_includes css, '.sw-header[data-fold="all"] .sw-nav-links { display: none; }'
-    assert_equal [ 800, 1248 ], [ fold["breakpoint"], fold["widest"] ]
+    assert_equal (80..1120).step(40).to_a, steps
+    assert_equal steps, rows
+    assert_equal steps, folds
+    assert_includes css, '.w-menu[data-fold="all"] .w-menu-links { display: none; }'
+    assert_includes css, '.w-menu[data-fold="all"] .w-menu-fold { display: block; }'
   end
 end
