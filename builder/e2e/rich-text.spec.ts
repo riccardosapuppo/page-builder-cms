@@ -341,7 +341,7 @@ const NEXT: Array<[string, (page: Page) => Promise<void>, (stored: string) => vo
   ["Duplicate in the clamp's More", async (page) => {
     await page.locator('.canvas [data-block-id="t"]').getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^More/ }).click();
     await page.getByRole("menu", { name: "Text actions" }).getByRole("menuitem", { name: /^Duplicate/ }).click();
-    await expect(page.locator('.canvas [data-block-type="text"]')).toHaveCount(2);
+    await expect(page.locator('.canvas .sw-main [data-block-type="text"]')).toHaveCount(2);
   }, () => {}],
 ];
 

@@ -7,10 +7,12 @@
 // time (an automatic version at most every ten minutes, a publish that is
 // never dated before the last one) on a clock the test moves; a stored draft
 // no check passes, which cannot be published; a call given up on before
-// it starts, which is not made; and the header and footer changed in two
-// tabs at the same moment, and dated by the clock the test moves.
+// it starts, which is not made; the site's header and footer asked for in
+// two tabs at the same moment, in a browser that has none yet; and a form a
+// broken build left in the footer, which no publish, version or restore
+// lets through.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import type { Capabilities, Site, SiteValues, StorageAdapter } from "../../src/storage/adapter.ts";
+import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";
 
@@ -248,40 +250,62 @@ test("a call abandoned before it starts is not made: nothing is saved, and nothi
 
 // ------------------------------------------------ the header and footer
 
-const valuesOf = ({ name, menu, action, footer }: Site): SiteValues => ({ name, menu, action, footer });
-
-test("two tabs changing the header and footer from one revision at the same moment: one change is kept, the other is the conflict holding it, from the very first change", async () => {
-  const mine = remoteAdapter(first, capabilities);
-  const theirs = remoteAdapter(second, capabilities);
-  // The first round is the first change of all, which makes the record:
-  // none is there yet in this run's browser context.
-  expect((await mine.getSite()).revision, "no change before this test").toBe(0);
-  for (let round = 0; round < 5; round += 1) {
-    const now = await mine.getSite();
-    const [a, b] = await Promise.all([
-      mine.setSite({ ...valuesOf(now), revision: now.revision, name: `Mine ${round}` }),
-      theirs.setSite({ ...valuesOf(now), revision: now.revision, name: `Theirs ${round}` }),
-    ]);
-    const kept = [a, b].flatMap((outcome) => (outcome.ok ? [outcome.value] : []));
-    expect(kept, `round ${round}`).toHaveLength(1);
-    expect([a, b].find((outcome) => !outcome.ok), `round ${round}`).toMatchObject({ ok: false, problem: { kind: "conflict", currentRevision: now.revision + 1, site: valuesOf(kept[0]!) } });
-    expect(await theirs.getSite(), `round ${round}`).toEqual(kept[0]);
+// The battery reads the parts as a new store makes them; here two tabs ask
+// at the same moment, in a browser of their own that has none yet: each
+// tab's request looks and makes in one transaction, so they make one of
+// each between them, and both are answered with those.
+test("two tabs asking for the header and footer at the same moment, in a browser that has none yet, make one of each between them", async ({ browser }) => {
+  const fresh = await browser.newContext();
+  try {
+    const one = await storagePage(await fresh.newPage());
+    const two = await storagePage(await fresh.newPage());
+    const own = await one.evaluate(() => window.storagePage!.open("capabilities"));
+    const [a, b] = await Promise.all([remoteAdapter(one, own).listParts(), remoteAdapter(two, own).listParts()]);
+    expect(a.map((part) => [part.kind, part.slug, part.revision, part.published])).toEqual([["header", null, 0, null], ["footer", null, 0, null]]);
+    expect(b).toEqual(a);
+    expect(await remoteAdapter(two, own).listParts(), "asked again, the same two").toEqual(a);
+    expect((await remoteAdapter(one, own).listPages()).filter((page) => a.some((part) => part.id === page.id)), "no part among the pages").toEqual([]);
+  } finally {
+    await fresh.close();
   }
 });
 
-test("a change of the header and footer is dated by the adapter's clock, and the same change again keeps that date once the clock has moved on", async () => {
-  const tab = remoteAdapter(first, capabilities);
-  const start = "2026-10-09T08:00:00.000Z";
-  const now = await tab.getSite();
-  const change = (footer: SiteValues["footer"], revision: number) => tab.setSite({ ...valuesOf(now), footer, revision });
+// A form in the footer, as a broken build might have left one in its draft
+// or in a version: no save of a part lets one through, and a publish, a
+// version and a restore, which check again what is stored, hold a part to
+// a part's rule too, as the CMS does. In a browser of its own, since the
+// footer is the store's one.
+test("a form a broken build left in a part's draft or version is not published, kept or restored: each is refused at the form, keyword part", async ({ browser }) => {
+  const fresh = await browser.newContext();
   try {
-    await setTime(start);
-    const dated = await change({ lead: "Dated.", text: "By the adapter's clock." }, now.revision);
-    expect(dated).toMatchObject({ ok: true, value: { revision: now.revision + 1, updatedAt: start } });
-    await setTime(at(start, 90 * MINUTE));
-    expect(await change({ lead: "Dated.", text: "By the adapter's clock." }, now.revision + 1)).toMatchObject({ ok: true, value: { revision: now.revision + 1, updatedAt: start } });
-    expect(await change({ lead: "Dated again.", text: "An hour and a half later." }, now.revision + 1)).toMatchObject({ ok: true, value: { revision: now.revision + 2, updatedAt: at(start, 90 * MINUTE) } });
+    const tab = await storagePage(await fresh.newPage());
+    const adapter = remoteAdapter(tab, await tab.evaluate(() => window.storagePage!.open("capabilities")));
+    const footer = (await adapter.listParts()).find((part) => part.kind === "footer")!;
+    const read = await adapter.getPage(footer.id);
+    const form = { id: "f", type: "form", props: { items: [{ name: "email", kind: "email", label: "Email", required: true }], submitLabel: "Send", confirmation: "Thank you." }, children: [], style: { base: {} } };
+    const withForm = { schemaVersion: 1, title: "Footer", sections: [{ id: "s", type: "section", props: {}, style: { base: {} }, children: [{ id: "c", type: "column", props: {}, style: { base: {} }, children: [form] }] }] };
+    const atTheForm = { ok: false, problem: { kind: "invalid", code: "invalid_document", errors: [{ pointer: "/document/sections/0/children/0/children/0", keyword: "part" }] } };
+
+    await tab.evaluate((version) => window.storagePage!.put("versions", version), { pageId: footer.id, number: 1, reason: "manual", name: "Broken", restoredFrom: null, createdAt: read.draft.updatedAt, document: withForm });
+    expect(await adapter.restoreVersion(footer.id, 1)).toMatchObject(atTheForm);
+    expect(await adapter.getDraft(footer.id), "the draft, untouched").toEqual(read.draft);
+
+    await tab.evaluate((record) => window.storagePage!.put("pages", record), {
+      id: footer.id,
+      kind: "footer",
+      createdAt: read.page.createdAt,
+      updatedAt: read.draft.updatedAt,
+      home: false,
+      slug: null,
+      liveSlug: null,
+      draft: { document: withForm, revision: read.draft.revision, lastSaveId: read.draft.lastSaveId, updatedAt: read.draft.updatedAt },
+      published: null,
+    });
+    expect(await adapter.publish(footer.id, { revision: read.draft.revision })).toMatchObject(atTheForm);
+    expect(await adapter.saveVersion(footer.id, { name: "Broken too" })).toMatchObject(atTheForm);
+    expect((await adapter.getPage(footer.id)).published).toBe(null);
+    expect((await adapter.listVersions(footer.id)).map((version) => version.number), "nothing kept by the refusals").toEqual([1]);
   } finally {
-    await setTime(null);
+    await fresh.close();
   }
 });

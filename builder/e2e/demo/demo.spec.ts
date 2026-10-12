@@ -23,7 +23,6 @@
 import { join } from "node:path";
 import { test as base, expect, type BrowserContext, type Page } from "@playwright/test";
 import { DEMO_BASE } from "../../build/demo.ts";
-import { readSiteTheme } from "../../build/site-file.ts";
 import { axe } from "../helpers/axe.ts";
 import { block } from "../helpers/canvas.ts";
 import { saveState } from "../helpers/heading.ts";
@@ -35,7 +34,7 @@ const PUBLISHED_LINE = "Published in this browser. In the full system, Rails pub
 const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
-const REACH_LINE = "Saved changes show at once on every page published in this browser, with nothing to publish.";
+const PART_LINE = "Publish puts it on every page shown in this browser.";
 
 // Every page of the context held to no error, in it or in its console, and
 // to no request off the demo's own path.
@@ -100,11 +99,11 @@ const saved = (page: Page) => expect(saveState(page)).toHaveText("Saved");
 // The editor's one sentence about what just happened.
 const notice = (page: Page) => page.locator(".notice");
 
-test("a first visit opens the example site: three pages, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
+test("a first visit opens the example site: three pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
   const pages = page.getByRole("dialog", { name: "Pages" });
-  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "Notices/noticesPublished"]);
+  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
   await shoot(page, "demo-pages");
   await page.keyboard.press("Escape");
 
@@ -245,113 +244,121 @@ test("Publish opens the page as published, with its line; the form says what the
   await noSeriousFinding(preview, "the draft's preview");
 });
 
-// A click in the middle of what the selector finds. The canvas's header
-// and footer are inert, so the click reaches the canvas, which opens their
-// panel on the value under it.
-async function clickMiddle(page: Page, selector: string): Promise<void> {
+// A click on what the selector finds, brought into view first: in its
+// middle, or as far down from its top as given. The canvas's header and
+// footer around a page, and the page around a part, are inert, so the
+// click reaches the canvas, which opens the part or goes back to the page.
+async function clickOn(page: Page, selector: string, fromTop?: number): Promise<void> {
+  await page.locator(selector).evaluate((element, start) => element.scrollIntoView({ block: start ? "start" : "center" }), fromTop !== undefined);
   const box = (await page.locator(selector).boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2, fromTop === undefined ? box.y + box.height / 2 : box.y + fromTop);
 }
 
-// The header and footer as a page draws them: the canvas's own two parts,
-// or those of a page the demo draws. Their words as the document holds
-// them (textContent: no CSS casing), each link with its address.
-async function themeOf(page: Page, around = { header: "header.sw-header", footer: "footer.sw-footer" }) {
-  const text = (selector: string) => page.locator(selector).evaluate((element) => (element.textContent ?? "").replace(/\s+/g, " ").trim());
+// The header and footer as a page draws them: the canvas's, or those of a
+// page the demo draws. The logo's name, the menu's links each with its
+// address, and the footer's words, as the document holds them
+// (textContent: no CSS casing).
+async function partsOf(page: Page, around = { header: "header.sw-header", footer: "footer.sw-footer" }) {
+  const text = (selector: string) => page.locator(selector).first().evaluate((element) => (element.textContent ?? "").replace(/\s+/g, " ").trim());
   return {
-    name: await text(`${around.header} .sw-brand`),
-    links: await page.locator(`${around.header} .sw-nav-links a`).evaluateAll((links) => links.map((link) => [link.textContent, link.getAttribute("href")])),
-    button: await page.locator(`${around.header} .sw-btn`).count(),
-    footer: await text(`${around.footer} p`),
+    name: await text(`${around.header} .w-logo-link span`),
+    links: await page.locator(`${around.header} .w-menu-links a`).evaluateAll((links) => links.map((link) => [link.textContent, link.getAttribute("href")])),
+    footer: await text(around.footer),
   };
 }
 
 const CANVAS = { header: '.canvas [data-theme-part="header"]', footer: '.canvas [data-theme-part="footer"]' };
+// The header open on the canvas, and the footer locked under the page.
+const EDITING = { header: '.canvas [data-editing-part="header"]', footer: '.canvas [data-theme-part="footer"]' };
 
-test("the header and footer, changed in this browser: the canvas draws them as typed; saved, the published pages show them with nothing published again, and so does the preview; a reload finds them kept", async ({ page, context, baseURL }) => {
-  // What the example site starts with: config/site.yml's, as the build
-  // gives them to the browser's storage.
-  const defaults = readSiteTheme();
-  const menu = (defaults.menu as Array<{ label: string; href: string }>).map((link) => [link.label, link.href]);
-  const changed = {
-    name: "Eelgrass Bay Swim Club",
-    links: [...menu, ["Winter", "/winter-series"]],
-    button: 0,
-    footer: `Eelgrass Bay Swim Club, since 1931. ${(defaults.footer as { text: string }).text}`,
-  };
+test("the header, opened from the canvas, is edited as a page is, the page dimmed around it; published, every page published here shows it, the preview its draft, and a reload finds it kept", async ({ page, context, baseURL }) => {
+  // What the example site starts with: the starter of cms/config/parts,
+  // published by the seed.
   await openDemo(page);
-  expect((await themeOf(page, CANVAS)).name).toBe(defaults.name);
+  const before = await partsOf(page, CANVAS);
+  expect(before.name).toBe("Slack Water");
+  expect(before.links.map(([label]) => label)).toEqual(["Swims", "Gallery", "Meet us", "Questions"]);
+  const changed = { ...before, name: "Eelgrass Bay", links: [...before.links, ["Winter", "/winter-series"]] };
 
-  // A click on the site's name in the canvas opens the panel on it.
-  await clickMiddle(page, `${CANVAS.header} .sw-brand`);
-  const panel = page.getByRole("complementary", { name: "Header and footer" });
-  await expect(panel.getByLabel("Site name")).toBeFocused();
-  await expect(panel).toContainText(REACH_LINE);
+  // A click on the header around the page opens it, the page dimmed and
+  // locked around it, and the footer locked under that.
+  await clickOn(page, CANVAS.header);
+  await expect(page.getByRole("button", { name: "Switch page. Open: Header" })).toBeVisible();
+  await expect(page.locator(EDITING.header)).toBeVisible();
+  await expect(page.locator(".canvas [data-around-page]")).toBeVisible();
+  await expect(page.locator(".canvas [data-around-page]")).toHaveAttribute("inert", "");
 
-  // Each change on the canvas as it is typed.
-  await panel.getByLabel("Site name").fill(changed.name);
-  await expect(page.locator(`${CANVAS.header} .sw-brand`)).toHaveText(changed.name);
-  // A link to another page of the site, chosen among those offered.
-  await panel.getByRole("button", { name: "Add a link" }).click();
-  const added = panel.getByRole("group", { name: `Link ${menu.length + 1}` });
-  await expect(added.getByLabel("Text")).toBeFocused();
-  await page.keyboard.type("Winter");
-  const offered = panel.locator('datalist option[value="/winter-series"]');
-  await expect(offered).toHaveText("Winter series");
-  await added.getByLabel("Link").fill((await offered.getAttribute("value"))!);
-  await expect(page.locator(`${CANVAS.header} .sw-nav-links a`).last()).toHaveText("Winter");
-  await panel.getByRole("button", { name: "Remove the button" }).click();
-  await expect(page.locator(`${CANVAS.header} .sw-btn`)).toHaveCount(0);
-  await panel.getByLabel("Bold words").fill("Eelgrass Bay Swim Club, since 1931.");
-  await expect(page.locator(`${CANVAS.footer} strong`)).toHaveText("Eelgrass Bay Swim Club, since 1931.");
-  await expect(panel.getByRole("status").filter({ hasText: "Not saved yet" })).toBeVisible();
+  // The logo's name and a link more, in their panels, drawn as typed.
+  await block(page, "header-logo").click();
+  const name = page.getByLabel("Site name");
+  await name.fill(changed.name);
+  await name.blur();
+  await expect(page.locator(`${EDITING.header} .w-logo-link span`)).toHaveText(changed.name);
+  await block(page, "header-menu").click();
+  await page.getByRole("button", { name: "Add a link" }).click();
+  const added = before.links.length + 1;
+  await page.getByLabel(`Text ${added}`, { exact: true }).fill("Winter");
+  await page.getByLabel(`Text ${added}`, { exact: true }).blur();
+  await page.getByLabel(`Link ${added}`, { exact: true }).fill("/winter-series");
+  await page.getByLabel(`Link ${added}`, { exact: true }).blur();
+  await expect(page.locator(`${EDITING.header} .w-menu-links a`).last()).toHaveText("Winter");
+  await saved(page);
+  await shoot(page, "demo-header");
+  await noSeriousFinding(page, "the header open in the editor");
 
-  await panel.getByRole("button", { name: "Save" }).click();
-  await expect(panel.getByRole("status").filter({ hasText: "Saved for every page" })).toBeVisible();
-  expect(await themeOf(page, CANVAS)).toEqual(changed);
-  await shoot(page, "demo-header-footer");
-  await noSeriousFinding(page, "the Header and footer panel");
-
-  // The home page as published in this browser, with nothing published
-  // since the example site went in: the new header and footer.
+  // Published: the home page as published, in a new tab, has it.
   const opened = context.waitForEvent("page");
-  await page.getByRole("button", { name: "More publish options" }).click();
-  await page.getByRole("menuitem", { name: /^View published page/ }).click();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
   const view = await opened;
   await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
   await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText(PUBLISHED_LINE);
-  await expect(view.locator("header.sw-header .sw-brand")).toHaveText(changed.name);
-  expect(await themeOf(view)).toEqual(changed);
+  await expect(view.locator("header.sw-header .w-logo-link span")).toHaveText(changed.name);
+  expect(await partsOf(view)).toEqual(changed);
   // The new link opens the winter series as published, under the same
   // header and footer.
   await view.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Winter", exact: true }).first().click();
   await view.waitForURL(`${baseURL}${DEMO_BASE}?published=2`);
   await expect(view.getByRole("heading", { level: 1, name: "Winter series" })).toBeVisible();
-  expect(await themeOf(view)).toEqual(changed);
-  await shoot(view, "demo-header-footer-published");
+  expect(await partsOf(view)).toEqual(changed);
+  await shoot(view, "demo-header-published");
 
-  // The preview of the draft too.
+  // A click on the page dimmed around the header goes back to it, the new
+  // header around it.
+  await clickOn(page, ".canvas [data-around-page]", 40);
+  await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
+  await expect(page.locator(`${CANVAS.header} .w-logo-link span`)).toHaveText(changed.name);
+
+  // The preview draws the parts' drafts: the footer's logo named and not
+  // published shows there, around the home page, and not on the page as
+  // published.
+  await clickOn(page, CANVAS.footer);
+  await expect(page.getByRole("button", { name: "Switch page. Open: Footer" })).toBeVisible();
+  await block(page, "footer-logo").click();
+  await page.getByLabel("Site name").fill("Eelgrass Bay Swim Club");
+  await page.getByLabel("Site name").blur();
+  await saved(page);
   const previewed = context.waitForEvent("page");
   await page.getByRole("link", { name: "Preview" }).click();
   const preview = await previewed;
-  await preview.waitForURL(`${baseURL}${DEMO_BASE}?preview=1`);
-  await expect(preview.locator("header.sw-header .sw-brand")).toHaveText(changed.name);
-  expect(await themeOf(preview)).toEqual(changed);
-
-  // Kept in this browser: after a reload, the canvas and the panel have
-  // them, and so has the page as published.
-  await page.reload();
-  await expect(page.locator(`${CANVAS.header} .sw-brand`)).toHaveText(changed.name, { timeout: 30_000 });
-  expect(await themeOf(page, CANVAS)).toEqual(changed);
-  await page.getByRole("complementary", { name: "Settings" }).getByRole("tab", { name: "Page" }).click();
-  await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Header and footer" }).click();
-  await expect(panel.getByLabel("Site name")).toHaveValue(changed.name);
-  await expect(panel.getByRole("group", { name: `Link ${menu.length + 1}` }).getByLabel("Link")).toHaveValue("/winter-series");
-  await expect(panel.getByText("No button in the header.")).toBeVisible();
-  await expect(panel.getByLabel("Bold words")).toHaveValue("Eelgrass Bay Swim Club, since 1931.");
+  await preview.waitForURL(/\?preview=\d+$/);
+  await expect(preview.getByRole("complementary", { name: "About this page" })).toHaveText(PREVIEW_LINE);
+  await expect(preview.getByRole("heading", { level: 1 }).first()).toBeVisible();
+  const shown = await partsOf(preview);
+  expect({ ...shown, footer: null }).toEqual({ ...changed, footer: null });
+  // The logo's name, then the footer's words, whatever space the markup
+  // leaves between the two columns.
+  expect(shown.footer.replace(/\s/g, "")).toBe(`Eelgrass Bay Swim Club${changed.footer}`.replace(/\s/g, ""));
   await view.goto(`${DEMO_BASE}?published=1`);
-  await expect(view.locator("header.sw-header .sw-brand")).toHaveText(changed.name);
-  expect(await themeOf(view)).toEqual(changed);
+  expect(await partsOf(view)).toEqual(changed);
+
+  // Kept in this browser: after a reload, the footer opens as it was
+  // left, and the canvas around the home page has the header as edited.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Footer" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.canvas [data-editing-part="footer"] .w-logo-link span')).toHaveText("Eelgrass Bay Swim Club");
+  await page.goto(`${DEMO_BASE}?page=1`);
+  await expect(page.locator(`${CANVAS.header} .w-logo-link span`)).toHaveText(changed.name, { timeout: 30_000 });
+  expect((await partsOf(page, CANVAS)).links).toEqual(changed.links);
 });
 
 // What the demo's screens say that only the full system does: visitors, a
@@ -391,12 +398,15 @@ test("the screens promise nothing the browser cannot do: no visitor, live page o
   await expect(page.getByText("This is the home page. In the full system, visitors find it at the site’s root address, /.")).toBeVisible();
   await expect(page.locator(".ed-title")).toContainText("The home page of the site");
   await promisesNothing(page, "the Page tab of the home page", found);
-  // The header and footer's panel, a level below it.
-  await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Header and footer" }).click();
-  const headerFooter = page.getByRole("complementary", { name: "Header and footer" });
-  await expect(headerFooter).toContainText(REACH_LINE);
-  await promisesNothing(page, "the Header and footer panel", found);
-  await headerFooter.getByRole("button", { name: "Back to Page" }).click();
+  // The header, open as a page is, from the Page tab, and back.
+  await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Header" }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Header" })).toBeVisible();
+  await expect(page.locator(".part-panel")).toContainText(PART_LINE);
+  await promisesNothing(page, "the header's Page tab", found);
+  await page.getByRole("button", { name: "More publish options" }).click();
+  await promisesNothing(page, "the header's Publish menu", found);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Back to Slack Water" }).click();
   await expect(address).toBeVisible();
 
   // Another page, published, with a next address that differs: published

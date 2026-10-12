@@ -69,11 +69,15 @@ async function getJson(url: string): Promise<{ status: number; body: unknown }> 
   return { status: response.status, body: await response.json() };
 }
 
-// The empty database's answer to GET /api/pages: a run that met another
-// server's data would see pages here.
+// The empty database's answer to GET /api/pages: no page, and the site's
+// header and footer, which the CMS makes at this first look, each with
+// nothing live. A run that met another server's data would see pages
+// here, or parts already published.
 async function emptyPageList(url: string): Promise<boolean> {
   const { status, body } = await getJson(`${url}/api/pages`);
-  return status === 200 && JSON.stringify(body) === JSON.stringify({ pages: [] });
+  const list = body as { pages?: unknown; parts?: Array<{ kind?: unknown; published?: unknown }> } | null;
+  return status === 200 && Array.isArray(list?.pages) && list.pages.length === 0
+    && JSON.stringify(list.parts?.map((part) => [part.kind, part.published])) === JSON.stringify([["header", null], ["footer", null]]);
 }
 
 function assertOwnListener(port: number, child: ChildProcess, what: string): void {

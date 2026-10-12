@@ -1,36 +1,37 @@
-// The header the editor sets, as a visitor's browser draws it: headless
-// Chromium (Playwright 1.62.1, from the root package) on the published
-// home page of a running CMS, for headers set through PUT /api/site.
+// The site's header as a visitor's browser draws it: headless Chromium
+// (Playwright 1.62.1, from the root package) on the published home page of
+// a running CMS, for headers published through the API, each the header's
+// starter (cms/config/parts/header.json) with a case's words: its logo's
+// name, its menu's links, its button's label, or no menu or no button.
 //
 // For each header, at every width that matters (the phones, the tablet,
-// the design's 800 and each width site.css folds a long menu below, the
-// widest bar):
+// the desktop widths, and the windows around the one at which the menu
+// block is as wide as the step its data-fold names):
 // - nothing leaves the page: no sideways scroll, Menu inside the window;
-// - the links are shown exactly where the header's data-fold says (from
-//   800 up without one, from its width up with one, nowhere with "all"),
-//   and Menu where they are not;
-// - where they are shown, the menu does not wrap the bar: the links on
-//   one line, in one row with the brand, the bar the design's 80 px;
-// - and there the bar keeps its right padding whole, which gives way only
-//   when the words are drawn wider than the server counted them: the
-//   sharpest test of the sum (a menu counted 7 px narrower than drawn
-//   still keeps to one row, the padding giving way).
-// The row is held for the face's own letters on every machine, and the
-// padding where tools/header-metrics.ts --check finds the face drawn as
-// the file holds it. Letters the face lacks are drawn by the machine's own
-// fonts, and the file holds what the fonts of the machine that measured
-// drew: for them both are held where --check finds this machine's fonts
-// to be those, and not elsewhere. A character the file does not measure,
-// counted at 1.5 em, is held to the first two only. What the verdict holds
-// back is said in the check's RESULT line, not only in each header's; and
-// a file that is not what a machine with the fonts it was measured with
-// draws (stale, edited, or its sum narrower than a word) fails here.
-// The design's own header must have no data-fold and one row at 375, and
-// a fifth link must fold below 880, so the server's sum is held to the
-// steps; at the limits, in words of average width, the name, the button's
-// label and each link of Menu's sheet must sit on one line at 375, as
-// $defs/site of the schema says they do.
-import { chromium, type Page } from "playwright";
+// - the header holds one row, its logo, menu and button side by side, as
+//   its section never stacks (stack: never);
+// - the links are shown exactly where the menu's data-fold says: where the
+//   block is as wide as the step it names or wider, never with "all", and
+//   Menu where they are not;
+// - where they are shown, they stand on one line inside the block. Just
+//   past the step, the block is no wider than the row the server counted,
+//   less what its step rounds up: there a row drawn wider than counted
+//   wraps, the sharpest test of the sum.
+// The line is held for the face's own letters on every machine, and just
+// past the step where tools/header-metrics.ts --check finds the face drawn
+// as the file holds it. Letters the face lacks are drawn by the machine's
+// own fonts, and the file holds what the fonts of the machine that
+// measured drew: for them both are held where --check finds this
+// machine's fonts to be those, and not elsewhere. A character the file
+// does not measure, counted at 1.5 em, is held to the first two checks
+// only. What the verdict holds back is said in the check's RESULT line,
+// not only in each header's; and a file that is not what a machine with
+// the fonts it was measured with draws (stale, edited, or its sum narrower
+// than a word) fails here. The design's four links must fold below 360 and
+// the header hold one 64 px row at 375, and a fifth link must move the
+// step to 440, so the server's sum is held to the steps; at the limits, in
+// words of average width, Menu's sheet must stay inside the window at 375.
+import { chromium, type Browser, type Page } from "playwright";
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -41,87 +42,111 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export type Check = (ok: boolean, what: string, detail?: string) => void;
 
-export interface SiteValues {
+// A header's words: the logo's name ("" for the mark alone), the menu's
+// links (none: no menu), the button (null: none).
+export interface HeaderWords {
   name: string;
-  menu: Array<{ label: string; href: string }>;
-  action: { label: string; href: string } | null;
-  footer: { lead: string; text: string };
+  links: Array<{ label: string; href: string }>;
+  button: { label: string; href: string } | null;
 }
 
-const FOOTER = { lead: "Slack Water swimming club.", text: "Tide times are a guide, not a promise." };
+type Block = { id: string; type: string; props: Record<string, unknown>; children: Block[]; style: unknown };
+type HeaderDocument = { schemaVersion: number; title: string; sections: Block[] };
+
+const starter = (): HeaderDocument => JSON.parse(readFileSync(join(root, "cms", "config", "parts", "header.json"), "utf8")) as HeaderDocument;
+
+// The starter with the words of a header in its logo, menu and button.
+export function headerDocument(words: HeaderWords, from: HeaderDocument = starter()): HeaderDocument {
+  const document = structuredClone(from);
+  for (const section of document.sections) {
+    for (const column of section.children) {
+      column.children = column.children.flatMap((block): Block[] => {
+        if (block.type === "logo") return [{ ...block, props: words.name === "" ? {} : { name: words.name } }];
+        if (block.type === "menu") return words.links.length === 0 ? [] : [{ ...block, props: { ...block.props, items: words.links } }];
+        if (block.type === "button") return words.button ? [{ ...block, props: { label: words.button.label, href: words.button.href } }] : [];
+        return [block];
+      });
+    }
+  }
+  return document;
+}
+
 const links = (...labels: string[]) => labels.map((label, k) => ({ label, href: `/#part-${k + 1}` }));
-const DESIGN: SiteValues = {
+const DESIGN: HeaderWords = {
   name: "Slack Water",
-  menu: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
-  action: { label: "Join", href: "/#join" },
-  footer: FOOTER,
+  links: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
+  button: { label: "Join", href: "/#join" },
 };
 
 export interface HeaderCase {
   label: string;
-  site: SiteValues;
+  words: HeaderWords;
   // The data-fold the server must name, when the case pins it.
   fold?: string | null;
-  // Whether the lengths' promise at 375 px applies: words of average width.
+  // Whether the promise at 375 px of words of average width applies.
   average?: boolean;
 }
 
 export const HEADER_CASES: HeaderCase[] = [
-  { label: "the design's header", site: DESIGN, fold: null },
-  { label: "a fifth link", site: { ...DESIGN, menu: [...DESIGN.menu, { label: "Contact", href: "/#contact" }] }, fold: "880" },
+  { label: "the design's header", words: DESIGN, fold: "360" },
+  { label: "a fifth link", words: { ...DESIGN, links: [...DESIGN.links, { label: "Contact", href: "/#contact" }] }, fold: "440" },
   {
     label: "every length at its limit, in words of average width",
-    site: {
-      name: "The Sea Thrift Swimming Club",
-      menu: links("Timetable for the winter", "Membership and our fees", "Open water safety notes", "Coaches and their swims", "Meet us on the slipway", "Questions people ask us", "Tide tables for the bay", "Galleries of past swims"),
-      action: { label: "Join the club now!", href: "/#join" },
-      footer: { lead: "The Sea Thrift Swimming Club, open water swimming in all seasons.", text: "Tide times are a guide, not a promise: check the board on the slipway, ask a coach, and never swim alone in the bay." },
+    words: {
+      name: "The Sea Thrift Open Water Swimming Club",
+      links: links(
+        "Timetable for the winter and the summer", "Membership, our fees and what they cover", "Open water safety notes for every swim",
+        "Coaches and the swims each of them leads", "Meet us on the slipway before the swim", "Questions people ask us about the club",
+        "Tide tables for the bay and the harbour", "Galleries of the swims of the past years", "The kit to bring, and the kit we lend",
+        "Our history, from the first swim of all", "Swimming with children in the summer", "How to reach the slipway, where to park",
+      ),
+      button: { label: "Join the Sea Thrift Open Water Swimming Club for a trial swim", href: "/#join" },
     },
     fold: "all",
     average: true,
   },
   {
     label: "every length at its limit, in the widest letter",
-    site: { name: "W".repeat(28), menu: links("W".repeat(24), "W".repeat(24)), action: { label: "W".repeat(18), href: "/#join" }, footer: FOOTER },
+    words: { name: "W".repeat(40), links: links(...Array.from({ length: 12 }, () => "W".repeat(40))), button: { label: "W".repeat(80), href: "/#join" } },
     fold: "all",
   },
-  { label: "three links in another script", site: { ...DESIGN, name: "潮の会", menu: links("日本語の案内", "مرحبا بكم", "Ελληνικά") } },
-  // Short headers as a person writes them in Hebrew and in Greek: the links
-  // stay in the bar from the design's 800 up, where they were folded below
-  // 1200 and at every width when every letter outside the face counted 1.5 em.
+  { label: "three links in another script", words: { ...DESIGN, name: "潮の会", links: links("日本語の案内", "مرحبا بكم", "Ελληνικά") }, fold: "320" },
+  // Short menus as a person writes them in Hebrew and in Greek: they fold
+  // where the design's four links do or sooner, where they folded at every
+  // width when every letter outside the face counted 1.5 em.
   {
-    label: "a short header in Hebrew",
-    site: { ...DESIGN, name: "מים שקטים", menu: links("שחייה", "גלריה", "עלינו", "שאלות"), action: { label: "הצטרפו", href: "/#join" } },
-    fold: null,
+    label: "a short menu in Hebrew",
+    words: { name: "מים שקטים", links: links("שחייה", "גלריה", "עלינו", "שאלות"), button: { label: "הצטרפו", href: "/#join" } },
+    fold: "240",
   },
   {
-    label: "a short header in Greek",
-    site: { ...DESIGN, name: "Ήρεμα νερά", menu: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"), action: { label: "Γραφτείτε", href: "/#join" } },
-    fold: null,
+    label: "a short menu in Greek",
+    words: { name: "Ήρεμα νερά", links: links("Κολύμπι", "Εικόνες", "Εμείς", "Ερωτήσεις"), button: { label: "Γραφτείτε", href: "/#join" } },
+    fold: "360",
   },
   // Arabic words whose heh and meem join the letters beside them, drawn
-  // wider than alone: counted at their widest joined form the menu folds
-  // below 880. Counted alone, as before 10 October, it was 799.39 px wide,
-  // no fold, and the bar ran 7 px into its right padding at 800.
-  { label: "seven Arabic links whose letters join", site: { ...DESIGN, menu: links("مهرجان", "مهارات", "جمهور", "مهم", "المهمة", "وجههم", "معهم") }, fold: "880" },
+  // wider than alone: counted at their widest joined form.
+  { label: "seven Arabic links whose letters join", words: { ...DESIGN, links: links("مهرجان", "مهارات", "جمهور", "مهم", "المهمة", "وجههم", "معهم") }, fold: "400" },
   // A letter the file counts at 1.5 em and a font draws wider (three of the
   // Arabic bismillah ligature, about 90 px wide where 22.5 is counted): the
-  // bar may take two rows from the width the sum says it fits at, but it
-  // stays inside the page.
-  { label: "a link of a letter drawn wider than counted", site: { ...DESIGN, menu: [...DESIGN.menu, { label: "\u{FDFD}\u{FDFD}\u{FDFD}", href: "/#contact" }] } },
-  { label: "no links and no button", site: { ...DESIGN, menu: [], action: null }, fold: null },
+  // links may wrap where the sum says they fit, but they stay inside the
+  // page.
+  { label: "a link of a letter drawn wider than counted", words: { ...DESIGN, links: [...DESIGN.links, { label: "\u{FDFD}\u{FDFD}\u{FDFD}", href: "/#contact" }] }, fold: "440" },
+  { label: "no menu and no button", words: { ...DESIGN, links: [], button: null }, fold: null },
 ];
 
-// The letters of a header the face lacks, by what the file does with
+// The letters of a menu's links the face lacks, by what the file does with
 // them: the scripts it measured that they belong to, and whether any is a
-// character it does not measure (counted at 1.5 em).
+// character it does not measure (counted at 1.5 em). Only the links count:
+// the server adds up their words alone, and the logo and the button stand
+// in columns of their own.
 interface Metrics {
   link: { advances: Record<string, number>; scripts: Array<{ name: string; ranges: Array<[number, number]> }> };
 }
-export function lettersOutside(site: SiteValues, metrics: Metrics): { scripts: string[]; unmeasured: boolean } {
+export function lettersOutside(words: HeaderWords, metrics: Metrics): { scripts: string[]; unmeasured: boolean } {
   const scripts = new Set<string>();
   let unmeasured = false;
-  for (const text of [site.name, ...site.menu.map((link) => link.label), site.action?.label ?? ""]) {
+  for (const text of words.links.map((link) => link.label)) {
     for (const ch of text) {
       if (metrics.link.advances[ch] !== undefined) continue;
       const point = ch.codePointAt(0)!;
@@ -144,16 +169,16 @@ export async function fontsHere(scriptNames: readonly string[]): Promise<FontsHe
   return readVerdict(code, output, scriptNames);
 }
 
-// What is held of a header here: its row where its letters are counted as
-// this machine draws them (the face's own on every machine), its right
-// padding where, besides, the face is drawn as the file holds it. A file
-// that is not what this machine draws, or no verdict, holds back every
-// letter the face lacks and every padding; a character the file does not
+// What is held of a menu here: its links on one line where its letters are
+// counted as this machine draws them (the face's own on every machine), and
+// so just past its step where, besides, the face is drawn as the file holds
+// it. A file that is not what this machine draws, or no verdict, holds back
+// every letter the face lacks and every step; a character the file does not
 // measure is held to neither.
-export function held(here: FontsHere, outside: { scripts: readonly string[]; unmeasured: boolean }): { row: boolean; padding: boolean } {
+export function held(here: FontsHere, outside: { scripts: readonly string[]; unmeasured: boolean }): { row: boolean; step: boolean } {
   const trusted = here.verdict === "file" || here.verdict === "face";
   const drawnAsCounted = !outside.unmeasured && outside.scripts.every((name) => trusted && !here.others.includes(name));
-  return { row: !outside.unmeasured && (outside.scripts.length === 0 || drawnAsCounted), padding: trusted && drawnAsCounted };
+  return { row: !outside.unmeasured && (outside.scripts.length === 0 || drawnAsCounted), step: trusted && drawnAsCounted };
 }
 
 // Whether the verdict is a failure of its own here: the file is not what
@@ -175,99 +200,113 @@ function heldBackBy(here: FontsHere): string {
   return "header-metrics.json is not what this machine draws";
 }
 
-// What the verdict held back over the headers checked, against what a file
+// What the verdict held back over the menus checked, against what a file
 // drawn here as it holds would have held: null when nothing.
-export function notHeldHere(here: FontsHere, headers: ReadonlyArray<{ links: number; outside: { scripts: readonly string[]; unmeasured: boolean } }>): string | null {
+export function notHeldHere(here: FontsHere, menus: ReadonlyArray<{ links: number; outside: { scripts: readonly string[]; unmeasured: boolean } }>): string | null {
   const asFile: FontsHere = { verdict: "file", others: [], line: "" };
   let rows = 0;
-  let paddings = 0;
-  for (const { links, outside } of headers) {
-    if (links === 0) continue;
+  let steps = 0;
+  for (const { links: count, outside } of menus) {
+    if (count === 0) continue;
     const now = held(here, outside);
     const would = held(asFile, outside);
     if (would.row && !now.row) rows += 1;
-    if (would.padding && !now.padding) paddings += 1;
+    if (would.step && !now.step) steps += 1;
   }
-  if (rows + paddings === 0) return null;
-  return `not held here, since ${heldBackBy(here)}: the row of ${rows} header(s), the right padding of ${paddings}`;
+  if (rows + steps === 0) return null;
+  return `not held here, since ${heldBackBy(here)}: the line of the links of ${rows} menu(s), the line just past the step of ${steps}`;
 }
 
-// The widths: phones, the tablet, the design's fold, each data-fold width
-// and the pixel below it, and the widest bar.
-export function headerWidths(steps: readonly number[]): number[] {
-  const widths = new Set([320, 340, 360, 375, 390, 560, 768, 799, 800, 1280, 1440]);
-  for (const step of steps) {
-    widths.add(step - 1);
-    widths.add(step);
-  }
-  return [...widths].sort((a, b) => a - b);
-}
+// The windows every header is drawn in: phones, the tablet, the desktop.
+export const HEADER_WIDTHS = [320, 340, 360, 375, 390, 560, 768, 799, 800, 1024, 1280, 1440] as const;
 
 interface Drawn {
   fold: string | null;
+  // The menu block's own width, the container its data-fold speaks of.
+  menuWidth: number;
   scroll: number;
   client: number;
   header: number;
+  // The logo, the menu and the button side by side.
+  oneRow: boolean;
   linksShown: boolean;
-  menuShown: boolean;
+  foldShown: boolean;
   menuRight: number;
-  linkRows: number;
-  rowLines: number;
-  // The page's padding, and what is left of it right of the nav.
-  padX: number;
-  padRight: number;
-  brandLines: number;
-  buttonLines: number;
-  sheetLines: number[];
+  linkLines: number;
+  linksRight: number;
+  blockRight: number;
+  // Menu's sheet, opened: inside the window.
+  sheetInside: boolean;
 }
 
 // What the page draws, read in the page.
 async function drawn(page: Page): Promise<Drawn> {
   return page.evaluate(() => {
-    const lines = (element: Element | null): number => {
-      if (!element) return 0;
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
-    };
     const header = document.querySelector(".sw-header")!;
+    const menu = header.querySelector(".w-menu");
     const shown = (selector: string) => {
       const element = header.querySelector(selector);
       return element !== null && getComputedStyle(element).display !== "none";
     };
-    const tops = (selector: string) => new Set([...header.querySelectorAll(selector)].map((e) => Math.round(e.getBoundingClientRect().top)));
-    const brand = header.querySelector(".sw-brand")!.getBoundingClientRect();
-    const nav = header.querySelector(".sw-nav")!.getBoundingClientRect();
-    // The row's right padding is the item after the nav (::after), which
-    // grows to the page's padding and gives way before the row wraps.
-    const row = header.querySelector(".sw-header-row")!;
+    const boxes = [...header.querySelectorAll(".w-logo, .w-menu, .w-button")].map((e) => e.getBoundingClientRect());
+    const anchors = [...header.querySelectorAll(".w-menu-links a")].map((a) => a.getBoundingClientRect()).filter((box) => box.width > 0);
     const details = header.querySelector("details");
     if (details) details.open = true;
-    const sheetLines = [...header.querySelectorAll(".sw-menu-sheet a")].map((a) => lines(a));
+    const sheet = header.querySelector(".sw-menu-sheet")?.getBoundingClientRect();
+    const sheetInside = !details || !sheet || (sheet.left >= -0.5 && sheet.right <= document.documentElement.clientWidth + 0.5);
     if (details) details.open = false;
     return {
-      fold: header.getAttribute("data-fold"),
+      fold: menu?.getAttribute("data-fold") ?? null,
+      menuWidth: menu?.getBoundingClientRect().width ?? 0,
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,
       header: header.getBoundingClientRect().height,
-      linksShown: shown(".sw-nav-links"),
-      menuShown: shown(".sw-menu"),
+      oneRow: boxes.length === 0 || Math.max(...boxes.map((b) => b.top)) < Math.min(...boxes.map((b) => b.bottom)),
+      linksShown: shown(".w-menu-links"),
+      foldShown: shown(".w-menu-fold"),
       menuRight: header.querySelector(".sw-menu-button")?.getBoundingClientRect().right ?? 0,
-      linkRows: tops(".sw-nav-links a").size,
-      // The brand and the nav side by side: their boxes share a row.
-      rowLines: nav.top >= brand.bottom ? 2 : 1,
-      padX: Number.parseFloat(getComputedStyle(row).paddingLeft) || 0,
-      padRight: row.getBoundingClientRect().right - nav.right,
-      brandLines: lines(header.querySelector(".sw-brand > span")),
-      buttonLines: lines(header.querySelector(".sw-btn-small")),
-      sheetLines,
+      linkLines: new Set(anchors.map((box) => Math.round(box.top))).size,
+      linksRight: Math.max(0, ...anchors.map((box) => box.right)),
+      blockRight: menu?.getBoundingClientRect().right ?? 0,
+      sheetInside,
     };
   });
 }
 
+async function drawnAt(browser: Browser, origin: string, width: number): Promise<Drawn> {
+  const page = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
+  try {
+    await page.route("**/*", (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
+    await page.goto(`${origin}/`, { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready);
+    return await drawn(page);
+  } finally {
+    await page.close();
+  }
+}
+
+// The windows around the one at which the menu block is as wide as its
+// step: from the widest window, the block growing with the window as one
+// where the page's layout does not change, each guess drawn and the next
+// taken from what it drew, until it lands; none where no window puts the
+// block there.
+async function aroundTheStep(browser: Browser, origin: string, step: number): Promise<number[]> {
+  let width = 1440;
+  let d = await drawnAt(browser, origin, width);
+  if (d.menuWidth < step) return [];
+  for (let tries = 0; tries < 4; tries += 1) {
+    const next = Math.floor(width - (d.menuWidth - step));
+    if (next < 320) return [];
+    if (next === width) break;
+    width = next;
+    d = await drawnAt(browser, origin, width);
+  }
+  return [width - 1, width, width + 1, width + 2];
+}
+
 // Checks the headers, and returns what the verdict held back here (null
 // when nothing), for the check's RESULT line.
-export async function headerChecks(base: string, steps: readonly number[], check: Check, setSite: (site: SiteValues) => Promise<void>): Promise<string | null> {
+export async function headerChecks(base: string, check: Check, publishHeader: (words: HeaderWords) => Promise<void>): Promise<string | null> {
   const origin = new URL(base).origin;
   const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8")) as Metrics;
   // Whether this machine draws the letters as the file counts them.
@@ -277,66 +316,63 @@ export async function headerChecks(base: string, steps: readonly number[], check
   const browser = await chromium.launch();
   try {
     for (const c of HEADER_CASES) {
-      // What is held of this header here.
-      const outside = lettersOutside(c.site, metrics);
-      const { row: holdRow, padding: holdPadding } = held(here, outside);
-      await setSite(c.site);
+      // What is held of this menu here.
+      const outside = lettersOutside(c.words, metrics);
+      const { row: holdRow, step: holdStep } = held(here, outside);
+      await publishHeader(c.words);
       const problems: string[] = [];
       const folds = new Set<string>();
+      const fold = c.words.links.length === 0 ? null : (await drawnAt(browser, origin, 1440)).fold;
+      const widths = [...new Set([...HEADER_WIDTHS, ...(fold === null || fold === "all" ? [] : await aroundTheStep(browser, origin, Number(fold)))])].sort((a, b) => a - b);
       let shown = 0;
-      for (const width of headerWidths(steps)) {
-        const page = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
-        await page.route("**/*", (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
-        await page.goto(`${origin}/`, { waitUntil: "load" });
-        await page.evaluate(() => document.fonts.ready);
-        const d = await drawn(page);
-        await page.close();
+      let pastTheStep = 0;
+      for (const width of widths) {
+        const d = await drawnAt(browser, origin, width);
         folds.add(String(d.fold));
-        if (d.linksShown) shown += 1;
         const at = `at ${width}`;
         if (d.scroll > d.client) problems.push(`${at}: the page scrolls sideways (${d.scroll} > ${d.client})`);
-        if (d.menuShown && d.menuRight > d.client) problems.push(`${at}: Menu ends at ${d.menuRight}, outside the window`);
-        if (c.site.menu.length === 0) {
-          // No links: nothing to fold, and no Menu to open.
-          if (d.menuShown || d.linkRows !== 0) problems.push(`${at}: a header with no links draws ${d.linkRows} link(s)${d.menuShown ? " and Menu" : ""}`);
+        if (d.foldShown && d.menuRight > d.client) problems.push(`${at}: Menu ends at ${d.menuRight}, outside the window`);
+        if (!d.oneRow) problems.push(`${at}: the logo, the menu and the button are not on one row`);
+        if (c.words.links.length === 0) {
+          // No menu: nothing to fold, and no Menu to open.
+          if (d.fold !== null || d.linksShown || d.foldShown) problems.push(`${at}: a header with no menu draws one`);
         } else {
-          const foldsBelow = d.fold === "all" ? Infinity : Math.max(800, d.fold === null ? 0 : Number(d.fold));
-          const expectLinks = width >= foldsBelow;
-          if (d.linksShown !== expectLinks) problems.push(`${at}: the links are ${d.linksShown ? "shown" : "folded"} under data-fold ${d.fold}`);
-          if (d.menuShown === d.linksShown) problems.push(`${at}: Menu is ${d.menuShown ? "shown with" : "hidden with"} the links`);
-          if (d.linksShown && holdRow && (d.linkRows !== 1 || d.rowLines !== 1 || Math.round(d.header) !== 80)) {
-            problems.push(`${at}: the menu wraps the bar (links on ${d.linkRows} line(s), brand and links on ${d.rowLines} row(s), the bar ${d.header} px)`);
-          }
-          // A layout unit (1/64 px) of rounding allowed.
-          if (d.linksShown && holdPadding && d.padRight < d.padX - 1 / 64) {
-            problems.push(`${at}: the bar runs ${(d.padX - d.padRight).toFixed(2)} px into its right padding (${d.padRight.toFixed(2)} of ${d.padX} px left): its words are drawn wider than the server counted them`);
+          const expectLinks = d.fold !== "all" && d.fold !== null && d.menuWidth >= Number(d.fold);
+          if (d.linksShown !== expectLinks) problems.push(`${at}: the links are ${d.linksShown ? "shown" : "folded"} in a block ${d.menuWidth.toFixed(2)} px wide under data-fold ${d.fold}`);
+          if (d.foldShown === d.linksShown) problems.push(`${at}: Menu is ${d.foldShown ? "shown with" : "hidden with"} the links`);
+          if (d.linksShown) {
+            shown += 1;
+            // Just past the step: the block no wider than the step and two
+            // pixels, where a row drawn wider than counted wraps.
+            const justPast = d.menuWidth - Number(d.fold) < 2;
+            if (justPast) pastTheStep += 1;
+            const hold = justPast ? holdStep : holdRow;
+            if (hold && (d.linkLines !== 1 || d.linksRight > d.blockRight + 1 / 64)) {
+              problems.push(`${at}: the links take ${d.linkLines} line(s) in a block ${d.menuWidth.toFixed(2)} px wide${justPast ? ", just past their step: their words are drawn wider than the server counted them" : ""}`);
+            }
           }
         }
-        if (c.fold === null && width === 375 && (d.rowLines !== 1 || Math.round(d.header) !== 64)) problems.push(`${at}: the design's header is not one 64 px row (${d.rowLines} row(s), ${d.header} px)`);
-        if (c.average && width === 375) {
-          if (d.brandLines !== 1) problems.push(`${at}: the name runs onto ${d.brandLines} lines`);
-          if (d.buttonLines !== 1) problems.push(`${at}: the button's label runs onto ${d.buttonLines} lines`);
-          const long = d.sheetLines.filter((n) => n !== 1).length;
-          if (d.sheetLines.length !== c.site.menu.length || long > 0) problems.push(`${at}: ${long} of Menu's ${d.sheetLines.length} links run onto two lines or more`);
-        }
+        if (c.label === "the design's header" && width === 375 && (!d.oneRow || Math.round(d.header) !== 64)) problems.push(`${at}: the design's header is not one 64 px row (${d.header} px)`);
+        if (c.average && width === 375 && !d.sheetInside) problems.push(`${at}: Menu's sheet, opened, leaves the window`);
       }
       if (c.fold !== undefined && (folds.size !== 1 || !folds.has(String(c.fold)))) problems.push(`data-fold is ${[...folds].join(" and ")}, not ${c.fold}`);
+      if (fold !== null && fold !== "all" && pastTheStep === 0) problems.push(`no window put the menu just past its step of ${fold} px`);
       const notDrawn = here.verdict === "unknown" ? "tools/header-metrics.ts --check gave no verdict here" : "header-metrics.json is not what this machine draws";
       const scripts = outside.scripts.join(", ");
       const said = (() => {
-        if (c.site.menu.length === 0) return " (it has none, and no Menu)";
+        if (c.words.links.length === 0) return " (it has no menu, and no Menu)";
         if (shown === 0) return " (they show at none)";
         if (holdRow) {
-          const padding = holdPadding ? ", the right padding whole" : ` (the padding not held: ${notDrawn})`;
-          return `, on one row at the ${shown} widths they show${padding}${outside.scripts.length > 0 ? ` (letters of ${scripts}, drawn here with the fonts the file was measured with)` : ""}`;
+          const step = holdStep ? ", and just past their step" : ` (just past their step not held: ${notDrawn})`;
+          return `, on one line at the ${shown} widths they show${step}${outside.scripts.length > 0 ? ` (letters of ${scripts}, drawn here with the fonts the file was measured with)` : ""}`;
         }
-        if (outside.unmeasured) return " (a character the file does not measure, counted at 1.5 em: its row is not held)";
-        return ` (letters of ${scripts}: ${here.verdict === "face" ? "this machine draws them with other fonts than the file was measured with" : notDrawn}, so their row is not held here)`;
+        if (outside.unmeasured) return " (a character the file does not measure, counted at 1.5 em: its line is not held)";
+        return ` (letters of ${scripts}: ${here.verdict === "face" ? "this machine draws them with other fonts than the file was measured with" : notDrawn}, so their line is not held here)`;
       })();
-      check(problems.length === 0, `the header, ${c.label}: inside the page at ${headerWidths(steps).length} widths, the links where data-fold (${[...folds].join()}) says${said}`, problems.slice(0, 6).join("; "));
+      check(problems.length === 0, `the header, ${c.label}: inside the page on one row at ${widths.length} widths, the links where data-fold (${[...folds].join()}) says${said}`, problems.slice(0, 6).join("; "));
     }
   } finally {
     await browser.close();
   }
-  return notHeldHere(here, HEADER_CASES.map((c) => ({ links: c.site.menu.length, outside: lettersOutside(c.site, metrics) })));
+  return notHeldHere(here, HEADER_CASES.map((c) => ({ links: c.words.links.length, outside: lettersOutside(c.words, metrics) })));
 }

@@ -1,70 +1,95 @@
 // node --test tools/lib/header-checks.test.ts
 //
 // What the production check holds of a header, decided before any browser
-// draws it: the letters of the header the face lacks, found by the
-// committed widths file (none in the design's header, the scripts of the
-// others, a character the file does not measure, nothing from the
-// footer); what each verdict of tools/header-metrics.ts --check holds of a
-// header of the face's letters, of one in another script and of one with a
-// character the file does not measure; which verdict fails on its own; and
-// what the RESULT line says was held back over the ten headers.
+// draws it: each case's document, the header's starter with the case's
+// words in its logo, menu and button, or with no menu and no button; the
+// letters of a menu's links the face lacks, found by the committed widths
+// file (none in the design's menu, the scripts of the others, a character
+// the file does not measure, nothing from the logo or the button); what
+// each verdict of tools/header-metrics.ts --check holds of a menu of the
+// face's letters, of one in another script and of one with a character the
+// file does not measure; which verdict fails on its own; and what the
+// RESULT line says was held back over the ten headers.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HEADER_CASES, held, lettersOutside, notHeldHere, verdictFails, type SiteValues } from "./header-checks.ts";
+import { HEADER_CASES, headerDocument, held, lettersOutside, notHeldHere, verdictFails, type HeaderWords } from "./header-checks.ts";
 import type { FontsHere } from "./header-metrics-verdict.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8"));
+const starter = JSON.parse(readFileSync(join(root, "cms", "config", "parts", "header.json"), "utf8"));
 const SCRIPTS = ["Greek", "Cyrillic", "Hebrew", "Arabic", "CJK"];
-const site = (label: string): SiteValues => {
+const words = (label: string): HeaderWords => {
   const found = HEADER_CASES.find((c) => c.label === label);
   assert.ok(found, label);
-  return found.site;
+  return found.words;
 };
 const here = (verdict: FontsHere["verdict"], others: string[] = []): FontsHere => ({ verdict, others, line: "" });
+type Block = { id: string; type: string; props: Record<string, unknown>; children: Block[] };
+const widgets = (document: { sections: Block[] }) => document.sections.flatMap((s) => s.children.flatMap((c) => c.children));
 
-test("the letters of a header that the face lacks, by the widths file", () => {
-  assert.deepEqual(lettersOutside(site("the design's header"), metrics), { scripts: [], unmeasured: false });
-  assert.deepEqual(lettersOutside(site("every length at its limit, in the widest letter"), metrics), { scripts: [], unmeasured: false });
-  assert.deepEqual(lettersOutside(site("three links in another script"), metrics), { scripts: ["CJK", "Arabic", "Greek"], unmeasured: false });
-  assert.deepEqual(lettersOutside(site("a short header in Hebrew"), metrics), { scripts: ["Hebrew"], unmeasured: false });
-  assert.deepEqual(lettersOutside(site("seven Arabic links whose letters join"), metrics), { scripts: ["Arabic"], unmeasured: false });
-  assert.deepEqual(lettersOutside(site("a link of a letter drawn wider than counted"), metrics), { scripts: [], unmeasured: true });
-  const design = site("the design's header");
-  // An accented letter the face holds is its own; a code point of Greek's
-  // range that lists no letter is still Greek; a symbol in no range is a
-  // character the file does not measure, in the button as in the name.
-  assert.deepEqual(lettersOutside({ ...design, name: "Café Ærø" }, metrics), { scripts: [], unmeasured: false });
-  assert.deepEqual(lettersOutside({ ...design, name: "\u038B" }, metrics), { scripts: ["Greek"], unmeasured: false });
-  assert.deepEqual(lettersOutside({ ...design, action: { label: "☺", href: "/" } }, metrics), { scripts: [], unmeasured: true });
-  // The footer is not in the header's bar: its letters are not counted.
-  assert.deepEqual(lettersOutside({ ...design, footer: { lead: "Ωμέγα", text: "日本 ☺" } }, metrics), { scripts: [], unmeasured: false });
+test("a case's header is the starter with its words in the logo, the menu and the button, and the starter's own words are the design's", () => {
+  assert.deepEqual(headerDocument(words("the design's header")), starter);
+  const fifth = widgets(headerDocument(words("a fifth link")));
+  assert.deepEqual(fifth.map((b) => b.type), ["logo", "menu", "button"]);
+  assert.equal((fifth[1]!.props.items as unknown[]).length, 5);
+  assert.equal(fifth[1]!.props.label, "Main");
+  // No menu and no button: the logo alone, in the same three columns.
+  const bare = headerDocument(words("no menu and no button"));
+  assert.deepEqual(bare.sections[0]!.children.map((c) => c.children.map((b) => b.type)), [["logo"], [], []]);
+  assert.deepEqual(headerDocument({ name: "", links: [], button: null }).sections[0]!.children[0]!.children[0]!.props, {});
+  // Every case's header within the schema's limits: a name of 40, links
+  // of 40, at most 12 of them, a button's label of 80.
+  for (const c of HEADER_CASES) {
+    assert.ok([...c.words.name].length <= 40, c.label);
+    assert.ok(c.words.links.length <= 12 && c.words.links.every((l) => [...l.label].length <= 40), c.label);
+    assert.ok(!c.words.button || [...c.words.button.label].length <= 80, c.label);
+  }
 });
 
-test("what each verdict holds of a header of the face's letters, of one in Greek, and of one with a character the file does not measure", () => {
+test("the letters of a menu's links that the face lacks, by the widths file", () => {
+  assert.deepEqual(lettersOutside(words("the design's header"), metrics), { scripts: [], unmeasured: false });
+  assert.deepEqual(lettersOutside(words("every length at its limit, in the widest letter"), metrics), { scripts: [], unmeasured: false });
+  assert.deepEqual(lettersOutside(words("three links in another script"), metrics), { scripts: ["CJK", "Arabic", "Greek"], unmeasured: false });
+  assert.deepEqual(lettersOutside(words("a short menu in Hebrew"), metrics), { scripts: ["Hebrew"], unmeasured: false });
+  assert.deepEqual(lettersOutside(words("seven Arabic links whose letters join"), metrics), { scripts: ["Arabic"], unmeasured: false });
+  assert.deepEqual(lettersOutside(words("a link of a letter drawn wider than counted"), metrics), { scripts: [], unmeasured: true });
+  const design = words("the design's header");
+  // An accented letter the face holds is its own; a code point of Greek's
+  // range that lists no letter is still Greek; a symbol in no range is a
+  // character the file does not measure.
+  assert.deepEqual(lettersOutside({ ...design, links: [{ label: "Café Ærø", href: "/" }] }, metrics), { scripts: [], unmeasured: false });
+  assert.deepEqual(lettersOutside({ ...design, links: [{ label: "΋", href: "/" }] }, metrics), { scripts: ["Greek"], unmeasured: false });
+  assert.deepEqual(lettersOutside({ ...design, links: [{ label: "☺", href: "/" }] }, metrics), { scripts: [], unmeasured: true });
+  // The logo and the button stand in columns of their own: their letters
+  // are not counted.
+  assert.deepEqual(lettersOutside({ ...design, name: "Ωμέγα ☺", button: { label: "日本", href: "/" } }, metrics), { scripts: [], unmeasured: false });
+});
+
+test("what each verdict holds of a menu of the face's letters, of one in Greek, and of one with a character the file does not measure", () => {
   const face = { scripts: [], unmeasured: false };
   const greek = { scripts: ["Greek"], unmeasured: false };
   const symbol = { scripts: [], unmeasured: true };
-  // The file is what this machine draws: every row and padding, but never
-  // for a character counted at 1.5 em.
-  assert.deepEqual(held(here("file"), face), { row: true, padding: true });
-  assert.deepEqual(held(here("file"), greek), { row: true, padding: true });
-  assert.deepEqual(held(here("file"), symbol), { row: false, padding: false });
-  // Greek drawn here with other fonts: the face's header whole, the Greek
+  // The file is what this machine draws: every line, and just past every
+  // step, but never for a character counted at 1.5 em.
+  assert.deepEqual(held(here("file"), face), { row: true, step: true });
+  assert.deepEqual(held(here("file"), greek), { row: true, step: true });
+  assert.deepEqual(held(here("file"), symbol), { row: false, step: false });
+  // Greek drawn here with other fonts: the face's menu whole, the Greek
   // one neither; other scripts drawn otherwise leave the Greek one whole.
-  assert.deepEqual(held(here("face", ["Greek"]), face), { row: true, padding: true });
-  assert.deepEqual(held(here("face", ["Greek"]), greek), { row: false, padding: false });
-  assert.deepEqual(held(here("face", ["Arabic", "CJK"]), greek), { row: true, padding: true });
-  // Not what this machine draws, or no verdict: the row of the face's
+  assert.deepEqual(held(here("face", ["Greek"]), face), { row: true, step: true });
+  assert.deepEqual(held(here("face", ["Greek"]), greek), { row: false, step: false });
+  assert.deepEqual(held(here("face", ["Arabic", "CJK"]), greek), { row: true, step: true });
+  // Not what this machine draws, or no verdict: the line of the face's
   // letters only, whatever scripts are named.
   for (const verdict of ["neither", "unknown"] as const) {
     for (const others of [[], SCRIPTS]) {
-      assert.deepEqual(held(here(verdict, others), face), { row: true, padding: false }, `${verdict} ${others}`);
-      assert.deepEqual(held(here(verdict, others), greek), { row: false, padding: false }, `${verdict} ${others}`);
-      assert.deepEqual(held(here(verdict, others), symbol), { row: false, padding: false }, `${verdict} ${others}`);
+      assert.deepEqual(held(here(verdict, others), face), { row: true, step: false }, `${verdict} ${others}`);
+      assert.deepEqual(held(here(verdict, others), greek), { row: false, step: false }, `${verdict} ${others}`);
+      assert.deepEqual(held(here(verdict, others), symbol), { row: false, step: false }, `${verdict} ${others}`);
     }
   }
 });
@@ -78,14 +103,14 @@ test("a file not drawn here as it holds fails on its own only where no script is
 });
 
 test("the RESULT line says what the verdict held back over the ten headers, and nothing where it held all", () => {
-  const headers = HEADER_CASES.map((c) => ({ links: c.site.menu.length, outside: lettersOutside(c.site, metrics) }));
-  assert.equal(headers.length, 10);
-  assert.equal(notHeldHere(here("file"), headers), null);
-  // Four headers hold letters of other scripts, eight hold links of
-  // letters the file measures (the ninth's U+FDFD is held to neither, the
-  // tenth has no links).
-  assert.equal(notHeldHere(here("neither"), headers), "not held here, since header-metrics.json is not what this machine draws: the row of 4 header(s), the right padding of 8");
-  assert.equal(notHeldHere(here("unknown", SCRIPTS), headers), "not held here, since tools/header-metrics.ts --check gave no verdict here: the row of 4 header(s), the right padding of 8");
-  assert.equal(notHeldHere(here("face", ["Arabic", "CJK"]), headers), "not held here, since this machine draws the letters of Arabic, CJK with other fonts than header-metrics.json was measured with: the row of 2 header(s), the right padding of 2");
-  assert.equal(notHeldHere(here("face", ["Cyrillic"]), headers), null);
+  const menus = HEADER_CASES.map((c) => ({ links: c.words.links.length, outside: lettersOutside(c.words, metrics) }));
+  assert.equal(menus.length, 10);
+  assert.equal(notHeldHere(here("file"), menus), null);
+  // Four menus hold letters of other scripts, eight hold links of letters
+  // the file measures (the ninth's U+FDFD is held to neither, the tenth
+  // header has no menu).
+  assert.equal(notHeldHere(here("neither"), menus), "not held here, since header-metrics.json is not what this machine draws: the line of the links of 4 menu(s), the line just past the step of 8");
+  assert.equal(notHeldHere(here("unknown", SCRIPTS), menus), "not held here, since tools/header-metrics.ts --check gave no verdict here: the line of the links of 4 menu(s), the line just past the step of 8");
+  assert.equal(notHeldHere(here("face", ["Arabic", "CJK"]), menus), "not held here, since this machine draws the letters of Arabic, CJK with other fonts than header-metrics.json was measured with: the line of the links of 2 menu(s), the line just past the step of 2");
+  assert.equal(notHeldHere(here("face", ["Cyrillic"]), menus), null);
 });

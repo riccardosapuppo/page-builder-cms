@@ -9,19 +9,18 @@
 // A case needing what the browser's storage does not have (a publish at a
 // time, a visitor's form: no server) is skipped, visibly, with its reason;
 // the first test names which, so a capability declared absent by mistake
-// fails it rather than skipping more cases quietly. The header and
-// footer's cases run, the first of them on the database as this run's new
-// browser context has it, before any case changes them.
+// fails it rather than skipping more cases quietly. The cases of the
+// site's header and footer run, the first of them on the database as this
+// run's new browser context has it, before any case saves them.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { readSiteTheme } from "../../build/site-file.ts";
-import type { Capabilities, SiteValues } from "../../src/storage/adapter.ts";
+import type { Capabilities } from "../../src/storage/adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv, type Expect } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";
 
-// The header and footer the storage starts with: config/site.yml's, which
-// the editor's build reads for it.
-const theme = readSiteTheme();
-const siteDefaults = { name: theme.name, menu: theme.menu, action: theme.action, footer: theme.footer } as SiteValues;
+// The header's and footer's starters the storage makes them from:
+// config/parts', which the editor's build reads for it.
+const starters = readSiteTheme().parts as ContractEnv["starters"];
 
 // What the browser's storage cannot do, and so the cases it skips.
 const SKIPPED: Readonly<Record<string, string>> = {
@@ -60,7 +59,7 @@ function env(): ContractEnv {
     unique: (prefix) => `${prefix}-${run}-${++names}`,
     readBytes: async (url) => Uint8Array.from(await first.evaluate((address) => window.storagePage!.bytes(address), url)),
     sendForm: () => Promise.reject(new Error("the browser's storage keeps no form answers: no case that needs them runs here")),
-    siteDefaults,
+    starters,
   };
 }
 
@@ -69,7 +68,7 @@ test("the battery holds its cases, and the browser's adapter skips only those of
   expect(new Set(STORAGE_CONTRACT.map((c) => c.name)).size).toBe(STORAGE_CONTRACT.length);
   const skipped = STORAGE_CONTRACT.filter((c) => c.needs.some((operation) => !capabilities[operation])).map((c) => c.name);
   expect(skipped.sort()).toEqual(Object.keys(SKIPPED).sort());
-  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, headerFooter: true, imageVariants: false, livePages: false });
+  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false, livePages: false });
 });
 
 for (const contract of STORAGE_CONTRACT) {

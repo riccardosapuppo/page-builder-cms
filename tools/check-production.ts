@@ -29,14 +29,14 @@
 //   server, as the CMS's README says a production run does: a page
 //   scheduled for 15 seconds ahead is not live before, and is live after
 //   (scheduledChecks);
-// - the header and footer the editor sets (PUT /api/site): a change shows
-//   at the next request under a new ETag, Solid Cache gaining the one page
-//   drawn around blocks all read back (headerCacheChecks); and in
-//   Chromium, for headers from the design's to every length at its limit,
-//   nothing leaves the page at any width, and the links show where the
-//   header's data-fold says, on one row with the brand and the bar's right
-//   padding whole, for letters this machine draws as the server counts
-//   them (tools/lib/header-checks.ts).
+// - the site's header, a part published as the editor publishes it: a
+//   publish shows at the next request under a new ETag, Solid Cache
+//   gaining the page and the header's blocks that changed, the rest read
+//   back (headerCacheChecks); and in Chromium, for headers from the
+//   design's to every length at its limit, nothing leaves the page at any
+//   width, the header holds one row, and the links show where the menu's
+//   data-fold says, on one line just past their step, for letters this
+//   machine draws as the server counts them (tools/lib/header-checks.ts).
 //
 // It leaves nothing behind: the three production databases live in a
 // folder under cms/tmp made for this run, the page it checks is made
@@ -61,7 +61,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
-import { headerChecks, type SiteValues } from "./lib/header-checks.ts";
+import { headerChecks, headerDocument, type HeaderWords } from "./lib/header-checks.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -163,13 +163,20 @@ function blockCount(blocks: unknown): number {
   return Array.isArray(blocks) ? blocks.reduce((n: number, b: { children?: unknown }) => n + 1 + blockCount(b.children), 0) : 0;
 }
 
+// The blocks of the site's header and footer, which every page draws
+// around its own: while the site has published neither, their starters
+// (cms/config/parts).
+function partBlocks(): number {
+  return ["header", "footer"].reduce((n, kind) => n + blockCount((JSON.parse(readFileSync(join(cms, "config", "parts", `${kind}.json`), "utf8")) as { sections: unknown[] }).sections), 0);
+}
+
 // What a visitor's browser and the server's cache keep of the published
 // home page, in production's own Solid Cache: a validator sent back gets
 // a 304; one widget changed and published shows at the next request, the
-// old validator getting the new page; and the cache holds the page and
-// each of its blocks after the first visit, and gains exactly four entries
-// for the change (the widget, its column, its section, the page), the
-// rest being read back.
+// old validator getting the new page; and the cache holds the page, each
+// of its blocks and each of the header's and footer's after the first
+// visit, and gains exactly four entries for the change (the widget, its
+// column, its section, the page), the rest being read back.
 async function cacheChecks(id: number, title: string, etag: string): Promise<void> {
   const again = await get("/", { headers: { "if-none-match": etag } });
   const body = await again.text();
@@ -178,7 +185,7 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
 
   const document = fixture(title) as { sections: unknown[] };
   const before = cacheEntries();
-  check(before.fragments === 1 + blockCount(document.sections), `after the first visit, Solid Cache holds the page and each of its ${blockCount(document.sections)} blocks`, `${before.fragments} fragments (${before.rows} rows in all)`);
+  check(before.fragments === 1 + blockCount(document.sections) + partBlocks(), `after the first visit, Solid Cache holds the page, each of its ${blockCount(document.sections)} blocks and each of the ${partBlocks()} of the header and footer`, `${before.fragments} fragments (${before.rows} rows in all)`);
 
   const edited = JSON.parse(JSON.stringify(document).replace(`"text":"${title}"`, `"text":"${title}, edited"`));
   const draft = await api("GET", `/api/pages/${id}/draft`, undefined);
@@ -191,30 +198,39 @@ async function cacheChecks(id: number, title: string, etag: string): Promise<voi
   check(after.fragments - before.fragments === 4, "one widget changed: Solid Cache gains its widget, its column, its section and the page, and reuses the rest", `${before.fragments} fragments, then ${after.fragments} (${before.rows} rows in all, then ${after.rows})`);
 }
 
-// The header and footer, set as the editor sets them: from the revision
-// read just before.
-async function setSite(site: SiteValues): Promise<void> {
-  const now = await api("GET", "/api/site", undefined);
-  await api("PUT", "/api/site", { revision: now.revision, ...site });
+// The site's header, published as the editor publishes it: the starter
+// with these words saved as the header's draft, at the revision read just
+// before, then published. The CMS makes the header the first time the
+// pages are listed.
+async function publishHeader(words: HeaderWords): Promise<void> {
+  const { parts } = await api("GET", "/api/pages", undefined);
+  const header = parts.find((part: { kind: string }) => part.kind === "header");
+  const draft = await api("GET", `/api/pages/${header.id}/draft`, undefined);
+  await api("PUT", `/api/pages/${header.id}/draft`, { revision: draft.revision, document: headerDocument(words), saveId: `header-${draft.revision + 1}` });
+  await api("POST", `/api/pages/${header.id}/publish`, {});
 }
 
-// A change of the header and footer reaches the published home page with
-// no publish: the old ETag gets a 200 and the page under the new header at
-// the next request, and production's Solid Cache gains one entry, the
-// page drawn around blocks all read back.
+// A publish of the header reaches the published home page at the next
+// request: the old ETag gets a 200 and the page under the new header, and
+// production's Solid Cache gains the page drawn again around its blocks,
+// and of the header the logo with its new name, its column and its
+// section, every other block read back.
 async function headerCacheChecks(): Promise<void> {
   const before = await get("/");
   await before.text();
   const etag = before.headers.get("etag") ?? "";
   const entries = cacheEntries();
-  const site = await api("GET", "/api/site", undefined);
-  await setSite({ name: "Tide club", menu: site.menu, action: site.action, footer: site.footer });
+  await publishHeader({
+    name: "Tide club",
+    links: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
+    button: { label: "Join", href: "/#join" },
+  });
   const next = await get("/", { headers: { "if-none-match": etag } });
   const html = await next.text();
   check(next.status === 200 && html.includes("<span>Tide club</span>") && next.headers.get("etag") !== etag,
-    "after a change of the header and footer, the old ETag gets 200 and the page under the new header at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
+    "after a publish of the header, the old ETag gets 200 and the page under the new header at the next request", `${next.status}, ETag ${next.headers.get("etag")}`);
   const after = cacheEntries();
-  check(after.fragments - entries.fragments === 1, "a new header and footer: Solid Cache gains the page alone, every block read back",
+  check(after.fragments - entries.fragments === 4, "a new header: Solid Cache gains the page, and the header's logo, its column and its section, every other block read back",
     `${entries.fragments} fragments, then ${after.fragments} (${entries.rows} rows in all, then ${after.rows})`);
 }
 
@@ -444,10 +460,9 @@ try {
     // And the jobs, with a process of their own, as the README says.
     await scheduledChecks();
 
-    // The header and footer the editor sets, last: they change every page.
+    // The site's header, last: a publish of it changes every page.
     await headerCacheChecks();
-    const metrics = JSON.parse(readFileSync(join(root, "schema", "header-metrics.json"), "utf8")) as { fold: { steps: number[] } };
-    notHeld = await headerChecks(BASE, metrics.fold.steps, check, setSite);
+    notHeld = await headerChecks(BASE, check, publishHeader);
   }
 } catch (error) {
   console.log(`the check stopped: ${(error as Error).message}`);

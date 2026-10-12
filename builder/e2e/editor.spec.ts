@@ -272,14 +272,13 @@ test("sections anchored with the editor's own ids leave its names and ids alone"
   expect(ids.filter((entry) => !entry.onPage && /^[a-z][a-z0-9-]{0,63}$/.test(entry.id)).map((entry) => entry.id)).toEqual([]);
 });
 
-test("the site's header and footer are drawn around the page, locked, the Outline names them, and a click on either opens their panel on the value clicked", async ({ page, request }) => {
-  const site = (await (await request.get(`${cms()}/api/site`)).json()) as { name: string; menu: Array<{ label: string }>; footer: { lead: string } };
+test("the site's header and footer are drawn around the page, locked, the Outline names them, and a click on either opens it as a page is opened, the page dimmed around it; a click on that page goes back", async ({ page, request }) => {
   const { id } = await makePage(request, "Framed", [section("s", "Story", [column("c", [heading("h", "Inside the theme")])])]);
   await open(page, id);
   const header = page.locator('.canvas [data-theme-part="header"]');
   const footer = page.locator('.canvas [data-theme-part="footer"]');
-  await expect(header).toContainText(site.name);
-  await expect(footer).toContainText(site.footer.lead);
+  await expect(header.locator("[data-block-type=menu]")).toBeVisible();
+  await expect(footer.locator("[data-block-type=text]")).toBeVisible();
   // Locked: inert, so no click, focus or screen reader reaches them.
   await expect(header).toHaveAttribute("inert", "");
   await expect(footer).toHaveAttribute("inert", "");
@@ -293,33 +292,30 @@ test("the site's header and footer are drawn around the page, locked, the Outlin
   expect(story.y).toBeGreaterThanOrEqual(top.y + top.height - 0.5);
   expect(bottom.y).toBeGreaterThanOrEqual(story.y + story.height - 0.5);
 
-  // The Outline: the two locked rows, above and below the tree.
+  // The Outline: the two parts' rows, above and below the tree.
   const tray = await drawer(page, "Outline");
-  await expect(tray.locator(".t-theme")).toHaveText(["Site header Every page, locked: the same on every page", "Site footer Every page, locked: the same on every page"]);
+  await expect(tray.locator(".t-theme")).toHaveText(["Header Every page: the same on every page. Opens it.", "Footer Every page: the same on every page. Opens it."]);
   const rows = await tray.locator(".t-theme, .tree").evaluateAll((elements) => elements.map((e) => e.className));
   expect(rows).toEqual(["t-row t-theme", "tree", "t-row t-theme"]);
+  await page.locator(".topbar").getByRole("button", { name: "Outline", exact: true }).click();
 
-  // A click on the header opens the Header and footer panel, on the
-  // site's name, and leaves the selection as it was.
-  await block(page, "h").click();
+  // The pointer over the header says what a click does there; a click
+  // opens it, the page dimmed and locked around it, the footer under that.
+  await page.mouse.move(top.x + top.width / 2, top.y + top.height / 2);
+  await expect(page.locator(".canvas .frame")).toHaveAttribute("data-locked-hover", "header");
   await page.mouse.click(top.x + top.width / 2, top.y + top.height / 2);
-  const panel = page.getByRole("complementary", { name: "Header and footer" });
-  await expect(panel.getByLabel("Site name")).toBeFocused();
-  await expect(block(page, "h")).toHaveAttribute("data-editor-selected", "true");
-  await expect(page.locator(".notice")).toHaveCount(0);
-  // On a link of the menu, its words; on the button, its words; on the
-  // footer's bold words, those.
-  const at = async (selector: string) => {
-    const box = (await page.locator(selector).boundingBox())!;
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  };
-  await at('.canvas [data-theme-part="header"] .sw-nav-links a >> nth=1');
-  await expect(panel.getByRole("group", { name: "Link 2" }).getByLabel("Text")).toBeFocused();
-  await expect(panel.getByRole("group", { name: "Link 2" }).getByLabel("Text")).toHaveValue(site.menu[1]!.label);
-  await at('.canvas [data-theme-part="header"] .sw-btn');
-  await expect(panel.getByRole("group", { name: "Button" }).getByLabel("Text")).toBeFocused();
-  await at('.canvas [data-theme-part="footer"] strong');
-  await expect(panel.getByLabel("Bold words")).toBeFocused();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Header" })).toBeVisible();
+  await expect(page.locator('.canvas [data-editing-part="header"]')).toBeVisible();
+  const around = page.locator(".canvas [data-around-page]");
+  await expect(around).toHaveAttribute("inert", "");
+  await expect(around).toContainText("Inside the theme");
+  await expect(page.locator('.canvas [data-theme-part="footer"]')).toBeVisible();
+  await expect(page.locator('.canvas [data-theme-part="header"]')).toHaveCount(0);
+  // A click on the page dimmed around the header goes back to it.
+  const dimmed = (await around.boundingBox())!;
+  await page.mouse.click(dimmed.x + dimmed.width / 2, dimmed.y + Math.min(40, dimmed.height / 2));
+  await expect(page.getByRole("button", { name: "Switch page. Open: Framed" })).toBeVisible();
+  await expect(page.locator('.canvas [data-theme-part="header"]')).toHaveAttribute("inert", "");
 });
 
 // The page as wide as the approved layout promises, measured as a Windows
