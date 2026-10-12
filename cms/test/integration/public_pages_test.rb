@@ -34,71 +34,91 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_no_match "Not live yet", response.body
   end
 
-  test "a published page is at its address, in the site's header and footer" do
+  test "a published page is at its address, in the site's header and footer, the starters' until the site publishes its own" do
     publish(title: "Winter series", slug: "winter", widgets: [ heading_block("h1", "Winter series"), text_block("t1", "Short, cold swims.") ])
 
     get "/winter"
 
     assert_response :ok
-    assert_select ".sw-header .sw-brand", text: "Slack Water"
-    assert_select ".sw-header nav[aria-label=Main] a[href='/#swims']", text: "Swims"
+    assert_select "header.sw-header [data-block-type=logo] a.w-logo-link[href='/'] span", text: "Slack Water"
+    assert_select "header.sw-header [data-block-type=menu] nav[aria-label=Main] .w-menu-links a[href='/#swims']", text: "Swims"
+    assert_select "header.sw-header [data-block-type=menu][data-fold='360']"
+    assert_select "header.sw-header [data-block-type=button] a.sw-btn[href='/#join']", text: "Join"
     assert_select "main [data-block-type=heading] h1", text: "Winter series"
     assert_select "main [data-block-type=text] p", text: "Short, cold swims."
-    assert_select ".sw-footer", text: /Tide times are a guide/
+    assert_select "footer.sw-footer section.bg-text [data-block-type=logo] svg.sw-brand-mark"
+    assert_select "footer.sw-footer [data-block-type=text] p", text: "Slack Water swimming club. Tide times are a guide, not a promise."
+    assert_select "footer.sw-footer [data-block-type=text] strong", text: "Slack Water swimming club."
   end
 
-  test "the header and footer the editor set are drawn around every page: a published one, the 404 page, a preview" do
+  test "the header and footer published are drawn around every page: a published one, the 404 page; a preview draws their drafts" do
     page = publish(title: "Winter series", slug: "winter")
-    menu = [ { "label" => "Tides", "href" => "/tides" }, { "label" => "Join us", "href" => "/winter#join" } ]
-    Site.replace!(revision: 0, values: Site.defaults.merge("name" => "Tide club", "menu" => menu, "action" => { "label" => "Book", "href" => "mailto:swim@example.org" },
-                                                          "footer" => { "lead" => "Tide club.", "text" => "Swims at slack water." }))
+    header, footer = Page.parts!
+    menu = { "id" => "m", "type" => "menu", "props" => { "label" => "Main", "items" => [ { "label" => "Tides", "href" => "/tides" }, { "label" => "Join us", "href" => "/winter#join" } ] },
+             "style" => { "base" => {} }, "children" => [] }
+    Draft.save_document!(page_id: header.id, revision: header.draft.revision, document: page_document(title: "Header", widgets: [ menu ]), save_id: "h1")
+    header.publish!
+    Draft.save_document!(page_id: footer.id, revision: footer.draft.revision, document: page_document(title: "Footer", widgets: [ text_block("f", "Tide club.") ]), save_id: "f1")
+    footer.publish!
+    Draft.save_document!(page_id: header.id, revision: header.draft.reload.revision, document: page_document(title: "Header", widgets: [ heading_block("hh", "Draft header") ]), save_id: "h2")
 
-    [ "/winter", "/no-such-page", "/preview/#{page.id}" ].each do |path|
+    [ "/winter", "/no-such-page" ].each do |path|
       get path
 
-      assert_select ".sw-header .sw-brand span", { text: "Tide club" }, path
-      assert_equal menu.map(&:values), css_select(".sw-header .sw-nav-links a").map { |a| [ a.text, a["href"] ] }, path
-      assert_equal menu.map(&:values), css_select(".sw-header .sw-menu-sheet a").map { |a| [ a.text, a["href"] ] }, path
-      assert_select ".sw-header a.sw-btn-small[href='mailto:swim@example.org']", { text: "Book" }, path
-      assert_select ".sw-footer p", { text: "Tide club. Swims at slack water." }, path
-      assert_select ".sw-footer strong", { text: "Tide club." }, path
+      assert_equal [ [ "Tides", "/tides" ], [ "Join us", "/winter#join" ] ], css_select("header.sw-header .w-menu-links a").map { |a| [ a.text, a["href"] ] }, path
+      assert_equal [ [ "Tides", "/tides" ], [ "Join us", "/winter#join" ] ], css_select("header.sw-header .sw-menu-sheet a").map { |a| [ a.text, a["href"] ] }, path
+      assert_select "footer.sw-footer p", { text: "Tide club." }, path
+      assert_no_match "Draft header", response.body, path
     end
+
+    get "/preview/#{page.id}"
+    assert_select "header.sw-header h1", text: "Draft header"
+    assert_select "footer.sw-footer p", text: "Tide club."
   end
 
-  test "a menu too long for the design's bar names on the header the width below which it folds; the design's own names none" do
+  test "a part with no section draws no element: a site may have no footer" do
     publish(title: "Winter series", slug: "winter")
-    get "/winter"
-    assert_select ".sw-header[data-fold]", false
+    footer = Page.part!("footer")
+    Draft.save_document!(page_id: footer.id, revision: footer.draft.revision, document: { "schemaVersion" => 1, "title" => "Footer", "sections" => [] }, save_id: "f1")
+    footer.publish!
 
-    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => Site.defaults["menu"] + [ { "label" => "Contact", "href" => "/#contact" } ]))
     get "/winter"
 
-    assert_select ".sw-header[data-fold='880'] .sw-nav-links a", 5
+    assert_select "header.sw-header", 1
+    assert_select "footer", false
+    assert_select "main h1", text: "Winter series"
   end
 
-  test "with no links there is no Menu to open, and with no button none is drawn" do
-    publish(title: "Winter series", slug: "winter")
-    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => [], "action" => nil))
+  test "the preview of the header or the footer is the home page's draft inside the parts' drafts" do
+    publish(title: "Slack Water", slug: "home", home: true)
+    header = Page.part!("header")
 
-    get "/winter"
+    get "/preview/#{header.id}"
 
-    assert_select ".sw-header .sw-brand span", text: "Slack Water"
-    assert_select ".sw-header .sw-nav-links a", false
-    assert_select ".sw-header .sw-menu", false
-    assert_select ".sw-header .sw-btn-small", false
+    assert_response :ok
+    assert_select "title", text: "Preview: Header"
+    assert_select "header.sw-header [data-block-type=logo]", 1
+    assert_select "main h1", text: "Slack Water"
+    assert_equal "no-store", response.headers["Cache-Control"]
+
+    Page.home_page.unmake_home!
+    get "/preview/#{header.id}"
+    assert_response :ok
+    assert_select "main section", false
   end
 
-  test "a link that reached the row another way, with an address a page's link could not have, is left out as a page leaves it out" do
+  test "a link a menu could not have, in a part that reached the row another way, is left out as a page leaves it out" do
     publish(title: "Winter series", slug: "winter")
-    Site.insert!({ id: Site::ID, revision: 1, name: "Slack Water", menu: [ { "label" => "Ours", "href" => "/ours" }, { "label" => "Script", "href" => "javascript:alert(1)" } ],
-                   action: { "label" => "Bad", "href" => "data:text/html,hi" }, footer: Site.defaults["footer"], created_at: Time.current, updated_at: Time.current })
-    assert_not Site.current.valid?, "the row breaks the rules a write is held to"
+    header = Page.part!("header")
+    bad = { "id" => "m", "type" => "menu", "style" => { "base" => {} }, "children" => [],
+            "props" => { "label" => "Main", "items" => [ { "label" => "Ours", "href" => "/ours" }, { "label" => "Script", "href" => "javascript:alert(1)" } ] } }
+    version = PageVersion.record!(page_id: header.id, document: page_document(title: "Header", widgets: [ bad ]), reason: "publish", at: Time.current)
+    header.update_columns(published_version_id: version.id, published_revision: 0, published_at: Time.current)
 
     get "/winter"
 
-    assert_equal [ [ "Ours", "/ours" ] ], css_select(".sw-header .sw-nav-links a").map { |a| [ a.text, a["href"] ] }
-    assert_select ".sw-header .sw-btn-small", false
-    assert_no_match(/javascript:|data:text/, response.body)
+    assert_equal [ [ "Ours", "/ours" ] ], css_select("header.sw-header .w-menu-links a").map { |a| [ a.text, a["href"] ] }
+    assert_no_match(/javascript:/, response.body)
   end
 
   test "an address the page had before its last publish answers 301 to where it is now" do
@@ -131,7 +151,7 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
 
       assert_response :not_found
       assert_equal "text/html", response.media_type
-      assert_select ".sw-header .sw-brand", text: "Slack Water"
+      assert_select "header.sw-header .w-logo-link span", text: "Slack Water"
       assert_select "main h1", text: "There is no page here"
       assert_select "main a[href='/']", text: "Go to the home page"
     end

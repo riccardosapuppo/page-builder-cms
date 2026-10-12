@@ -6,16 +6,24 @@ info:
   description: |
     Pages, their draft and versions, publishing now or at a set time, the
     responses visitors send with the forms of published pages, the media
-    library, and the site style and the header and footer of Page Builder
-    CMS. The editor talks to the CMS only through this
+    library, the site style and the site's settings of Page Builder CMS.
+    The editor talks to the CMS only through this
     API, so another server that answers the same way can stand in for it.
     (Visitors send their forms to the published page's own address, not to
     this API.)
 
     The page document is not described here: it is the one schema both the
     editor and the server validate with, `schema/block-document.schema.json`,
-    and every document below refers to that file. So does a change of the
-    header and footer, whose members are that file's `$defs/site`.
+    and every document below refers to that file.
+
+    **The header and footer** are pages too, the site's parts, of their own
+    `kind` (`header`, `footer`; every other page's is `page`): documents
+    of that schema, edited, versioned, scheduled and published as a page is,
+    which every published page draws around its sections. A part has no
+    address and is never the home page, and its draft holds no form, a
+    form's answers belonging to a page: 422, keyword `part`. Until a part is
+    published, the pages draw its starter, the CMS's own, which the part's
+    first draft holds.
 
     **Errors** all have one shape, `{"error": <code>, "message": <sentence>}`.
     A 422 adds `errors`, one entry per problem, each with a JSON `pointer`
@@ -60,7 +68,7 @@ tags:
   - name: site-style
     description: The palette and type scale of the whole site.
   - name: site
-    description: The header and footer around every page, and the site's time zone.
+    description: The site's own settings, its time zone.
 
 paths:
   /api/pages:
@@ -70,16 +78,28 @@ paths:
       tags: [pages]
       responses:
         '200':
-          description: Every page, oldest first.
+          description: |
+            Every page, oldest first, and the site's parts, the header then
+            the footer. The CMS makes the parts the first time this is asked,
+            each with its starter as its draft and nothing live, so both are
+            always listed.
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: false
-                required: [pages]
+                required: [pages, parts]
                 properties:
                   pages:
+                    description: The pages of kind `page`.
                     type: array
+                    items:
+                      $ref: '#/components/schemas/PageSummary'
+                  parts:
+                    description: The header, then the footer.
+                    type: array
+                    minItems: 2
+                    maxItems: 2
                     items:
                       $ref: '#/components/schemas/PageSummary'
         '400':
@@ -152,7 +172,8 @@ paths:
         change before. `home: true` makes this the page the site's root
         address `/` serves, at once, and the page that was home stops being
         it; `home: false` leaves `/` with no page. Until the home page is
-        published, `/` answers 404.
+        published, `/` answers 404. A header or footer has neither: 422 at
+        the member sent, keyword `part`.
       tags: [pages]
       requestBody:
         required: true
@@ -222,6 +243,9 @@ paths:
 
         While someone keeps saving, a version of kind `auto` is kept at most
         every ten minutes.
+
+        The draft of a header or footer holds no form: 422 at the form
+        block, keyword `part`.
       tags: [pages]
       requestBody:
         required: true
@@ -937,90 +961,21 @@ paths:
   /api/site:
     get:
       operationId: getSite
-      summary: Read the header and footer
+      summary: Read the site's settings
       description: |
-        The site's name, the header's menu and button, and the footer's two
-        lines, as every published page draws them around its sections, with
-        the revision a change must name. Until someone changes them they
-        are the CMS's defaults (its config/site.yml), at revision 0, with
-        no `updatedAt`. With them, the site's time zone, in which the
-        editor sets scheduled publishes; it is the CMS's setting, and no
-        request changes it.
+        The site's time zone, in which the editor shows and sets scheduled
+        publishes. It is the CMS's setting, and no request changes it. The
+        header and footer are the site's parts, listed with the pages.
       tags: [site]
       responses:
         '200':
-          description: The header and footer, and the time zone.
+          description: The site's settings.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Site'
         '400':
           $ref: '#/components/responses/MalformedJson'
-        '500':
-          $ref: '#/components/responses/InternalError'
-    put:
-      operationId: setSite
-      summary: Change the header and footer
-      description: |
-        The header and footer whole, every member named (`action: null`
-        for no button), from the `revision` they were read at; the revision
-        goes up by one. A request for what is already stored writes
-        nothing, and the revision and `updatedAt` stay as they were. Each
-        member is `$defs/site` of the page document's
-        schema, the definition the editor validates with too: one line of
-        text with a visible character and at most 28 characters for the
-        name, up to 8 links, 24 characters for a link's label and 18 for
-        the button's, 80 and 160 for the footer's lead and text, and every
-        address under the rules a link in a page follows. Every fault comes
-        back in one 422, each at its pointer, with the revision's.
-
-        A change reaches every published page at its next visit: there is
-        nothing to publish. A `revision` older than the header and footer's
-        is a 409 holding them as they are now, since writing every member
-        would put back what was changed since; unless the request asks for
-        exactly what is stored, which loses nothing and is answered 200, so
-        a request sent again after its answer was lost is answered as
-        saved. The time zone is not a member.
-      tags: [site]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [revision, name, menu, action, footer]
-              properties:
-                revision:
-                  description: The revision the header and footer were read at; 0 while they are the defaults.
-                  type: integer
-                  minimum: 0
-                  maximum: 9007199254740991
-                name:
-                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/name'
-                menu:
-                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/menu'
-                action:
-                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/action'
-                footer:
-                  $ref: '../schema/block-document.schema.json#/$defs/site/properties/footer'
-      responses:
-        '200':
-          description: Changed, or a request sent again for what is already stored.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Site'
-        '400':
-          $ref: '#/components/responses/MalformedJson'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/SiteConflict'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType'
-        '422':
-          $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1093,12 +1048,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ConflictError'
-    SiteConflict:
-      description: The header and footer have moved past the revision sent, and the request would change them.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/SiteConflictError'
     InvalidRequest:
       description: The body is not what the request takes, or names a member twice.
       content:
@@ -1170,15 +1119,16 @@ components:
     PageSummary:
       type: object
       additionalProperties: false
-      required: [id, title, slug, home, revision, updatedAt, published, scheduled, links]
+      required: [id, kind, title, slug, home, revision, updatedAt, published, scheduled, links]
       properties:
         id:
           type: integer
+        kind:
+          $ref: '#/components/schemas/Kind'
         title:
           type: string
         slug:
-          description: The next address, the one the next publish applies.
-          type: string
+          $ref: '#/components/schemas/NextAddress'
         home:
           $ref: '#/components/schemas/Home'
         revision:
@@ -1199,15 +1149,16 @@ components:
         page:
           type: object
           additionalProperties: false
-          required: [id, title, slug, home, createdAt]
+          required: [id, kind, title, slug, home, createdAt]
           properties:
             id:
               type: integer
+            kind:
+              $ref: '#/components/schemas/Kind'
             title:
               type: string
             slug:
-              description: The next address, the one the next publish applies.
-              type: string
+              $ref: '#/components/schemas/NextAddress'
             home:
               $ref: '#/components/schemas/Home'
             createdAt:
@@ -1220,6 +1171,13 @@ components:
           $ref: '#/components/schemas/ScheduleOrNone'
         links:
           $ref: '#/components/schemas/PageLinks'
+    Kind:
+      description: A page, or one of the site's parts, the header and the footer, which every published page draws around its sections.
+      type: string
+      enum: [page, header, footer]
+    NextAddress:
+      description: The next address, the one the next publish applies; null for a header or footer, which has none.
+      type: [string, 'null']
     PublishedOrNone:
       description: What is live, or null before the first publish.
       anyOf:
@@ -1232,8 +1190,8 @@ components:
       required: [slug, versionNumber, draftRevision, publishedAt]
       properties:
         slug:
-          description: The live address.
-          type: string
+          description: The live address; null for a header or footer, which has none.
+          type: [string, 'null']
         versionNumber:
           type: integer
         draftRevision:
@@ -1296,10 +1254,10 @@ components:
         schedules:
           type: string
         preview:
-          description: The draft as the published page would look.
+          description: The draft as the published page would look, inside the drafts of the header and footer; for a header or footer, the home page's draft inside them.
           type: string
         live:
-          description: The live page, `/` for the home page, or null before the first publish.
+          description: The live page, `/` for the home page, or null before the first publish, and for a header or footer, which has no page of its own.
           type: [string, 'null']
     DraftSaved:
       type: object
@@ -1472,50 +1430,10 @@ components:
     Site:
       type: object
       additionalProperties: false
-      required: [name, menu, action, footer, timeZone, revision, updatedAt]
+      required: [timeZone]
       properties:
-        name:
-          description: The site's name, beside its mark in the header.
-          type: string
-        menu:
-          description: The header's menu, in order.
-          type: array
-          items:
-            $ref: '#/components/schemas/SiteLink'
-        action:
-          description: The header's button; null when there is none.
-          anyOf:
-            - $ref: '#/components/schemas/SiteLink'
-            - type: 'null'
-        footer:
-          type: object
-          additionalProperties: false
-          required: [lead, text]
-          properties:
-            lead:
-              description: The footer's first words, in bold.
-              type: string
-            text:
-              type: string
         timeZone:
           description: The site's time zone, an IANA name such as Europe/London. The editor shows and takes the time of a scheduled publish in it; the API's times stay in UTC.
-          type: string
-        revision:
-          description: The revision a change must name; 0 while the header and footer are the defaults.
-          type: integer
-          minimum: 0
-        updatedAt:
-          description: Null until the header and footer are first changed.
-          type: [string, 'null']
-    SiteLink:
-      type: object
-      additionalProperties: false
-      required: [label, href]
-      properties:
-        label:
-          type: string
-        href:
-          description: The address, which the published page writes as it is.
           type: string
 
     FormId:
@@ -1691,20 +1609,6 @@ components:
         lastSaveId:
           description: The saveId of the save that brought the draft to currentRevision; null after a restore.
           type: [string, 'null']
-    SiteConflictError:
-      type: object
-      additionalProperties: false
-      required: [error, message, currentRevision, site]
-      properties:
-        error:
-          const: conflict
-        message:
-          type: string
-        currentRevision:
-          type: integer
-        site:
-          description: The header and footer as they are now, at currentRevision, in the shape a change sends them.
-          $ref: '../schema/block-document.schema.json#/$defs/site'
     InvalidRequestError:
       type: object
       additionalProperties: false
@@ -1779,7 +1683,7 @@ components:
           required: [pages, versions]
           properties:
             pages:
-              description: Pages whose draft shows the image.
+              description: Pages whose draft shows the image, the header and footer among them.
               type: array
               items:
                 type: object
@@ -1791,7 +1695,7 @@ components:
                   title:
                     type: string
                   slug:
-                    type: string
+                    $ref: '#/components/schemas/NextAddress'
             versions:
               description: Kept versions that show it.
               type: array

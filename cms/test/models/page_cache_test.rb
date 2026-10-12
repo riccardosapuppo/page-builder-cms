@@ -30,7 +30,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
       [
         -> { edit.call("cms/app/views/show.html.erb", "<p>page!</p>") },
         -> { edit.call("cms/app/views/new.html.erb", "") },
-        -> { edit.call("cms/config/site.yml", "name: Slack Water B") },
+        -> { edit.call("cms/config/site.yml", "time_zone: Europe/Rome") },
         -> { edit.call("cms/Gemfile.lock", "rails (8.1.5)") },
         -> { edit.call("schema/tokens.json", "{\"a\":1}") }
       ].each do |change|
@@ -49,7 +49,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
       booted = PageCache.booted_files(**paths).map { |path| Pathname(path).relative_path_from(root).to_s }
 
       assert_equal %w[cms/app/models/thing.rb cms/app/views/show.html.erb cms/config/locales/en.yml cms/config/routes.rb schema/tokens.json], reloaded
-      assert_equal %w[cms/Gemfile.lock cms/config/site.yml], booted
+      assert_equal %w[cms/Gemfile.lock cms/config/parts/header.json cms/config/site.yml], booted
       assert_equal PageCache.release_files(**paths).size, reloaded.size + booted.size
     end
   end
@@ -114,7 +114,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
     with_release_folder(reloading: true) do |root, edit|
       first = PageCache.revision
 
-      edit.call("cms/config/site.yml", "name: Slack Water B")
+      edit.call("cms/config/site.yml", "time_zone: Europe/Rome")
       edit.call("cms/Gemfile.lock", "rails (8.1.5)")
       assert_equal first, PageCache.revision, "the process is still the one that read the old files"
       edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
@@ -135,7 +135,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
       # The server has started and has been asked for nothing. Its files
       # change, and only then does the first visitor come.
       started = digest_of(root, key: PageCache.release_key)
-      edit.call("cms/config/site.yml", "name: Slack Water B")
+      edit.call("cms/config/site.yml", "time_zone: Europe/Rome")
       edit.call("cms/app/views/show.html.erb", "<p>page, edited</p>")
       edit.call("cms/Gemfile.lock", "rails (8.1.5)")
 
@@ -162,27 +162,25 @@ class PageCacheModelTest < ActiveSupport::TestCase
     page = Page.new(published_version_id: 7, published_at: now)
     other = Page.new(published_version_id: 7, published_at: Time.utc(2026, 10, 4, 18, 0, 45, 451_235))
     style = SiteStyle.new(palette: SiteTokens.default_palette, type_scale: "balanced")
-    site = Site.current
+    parts = SiteParts.live
 
     assert_equal [ 7, "20261004T180045.451234" ], PageCache.published_key(page)
-    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style), PageCache.site_key(site) ], PageCache.page_fragment(page, style, site)
-    assert_not_equal PageCache.page_fragment(page, style, site), PageCache.page_fragment(other, style, site)
-    assert_not_equal PageCache.etag(page, style, site), PageCache.etag(other, style, site)
+    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style), [ [ "header", "starter" ], [ "footer", "starter" ] ] ], PageCache.page_fragment(page, style, parts)
+    assert_not_equal PageCache.page_fragment(page, style, parts), PageCache.page_fragment(other, style, parts)
+    assert_not_equal PageCache.etag(page, style, parts), PageCache.etag(other, style, parts)
   end
 
-  test "the header's and footer's key follows their words and links, not the order a request wrote them in, nor the revision" do
-    site = ->(revision = 1, **changes) { Site.new(id: Site::ID, revision: revision, **Site.defaults.merge(changes.transform_keys(&:to_s)).symbolize_keys) }
-    key = PageCache.site_key(site.call)
-    reordered = Site.defaults["menu"].map { |link| link.to_a.reverse.to_h }
+  test "the header's and footer's key is each one's published version, named as a page's is, or its starter: a draft changes none" do
+    header = Page.part!("header")
+    starters = PageCache.parts_key(SiteParts.live)
+    assert_equal [ [ "header", "starter" ], [ "footer", "starter" ] ], starters
 
-    assert_equal key, PageCache.site_key(Site.current), "the defaults, with no row"
-    assert_equal key, PageCache.site_key(site.call(5))
-    assert_equal key, PageCache.site_key(site.call(menu: reordered))
-    assert_equal key, PageCache.site_key(site.call(footer: Site.defaults["footer"].to_a.reverse.to_h))
-    assert_not_equal key, PageCache.site_key(site.call(name: "Tide club"))
-    assert_not_equal key, PageCache.site_key(site.call(menu: Site.defaults["menu"].reverse))
-    assert_not_equal key, PageCache.site_key(site.call(action: nil))
-    assert_not_equal key, PageCache.site_key(site.call(footer: { "lead" => "Slack Water swimming club.", "text" => "Tide times are a guide." }))
+    Draft.save_document!(page_id: header.id, revision: 0, document: page_document(title: "Header"), save_id: "s1")
+    assert_equal starters, PageCache.parts_key(SiteParts.live), "a draft is no change to a visitor"
+
+    header.publish!(at: Time.utc(2026, 10, 12, 9, 30, 0, 125_000))
+    header.reload
+    assert_equal [ [ "header", header.published_version_id, "20261012T093000.125000" ], [ "footer", "starter" ] ], PageCache.parts_key(SiteParts.live)
   end
 
   test "what the release's digest takes from the app's secret is a digest of a key derived from it, never the secret" do

@@ -10,7 +10,7 @@
 # out. A library image is looked up through media, which answers
 # call(media_id) with a MediaResolver::Image or nil.
 module BlocksHelper
-  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion form].freeze
+  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion form logo menu].freeze
 
   def render_document(document, media:, cached: false, answers: nil)
     sections = document.is_a?(Hash) ? document["sections"] : nil
@@ -77,6 +77,17 @@ module BlocksHelper
   # A string prop, or "" when it is missing or not a string.
   def prop_text(props, key)
     props[key].is_a?(String) ? props[key] : ""
+  end
+
+  # A menu's links as [label, href], in order: those whose address
+  # RenderPolicy accepts, of the items that are objects.
+  def menu_links(items)
+    Array(items).filter_map do |item|
+      next unless item.is_a?(Hash)
+
+      href = RenderPolicy.link_href(item["href"])
+      [ prop_text(item, "label"), href ] if href
+    end
   end
 
   # The image of an image block or a gallery item, as [src, width, height],

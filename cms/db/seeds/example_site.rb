@@ -18,6 +18,11 @@
 # library is reused, and a page whose address is taken, live or in a draft,
 # is left as it is, with whatever its owner has changed since. The site's
 # home is set only while it has none.
+#
+# The header and footer are the site's parts (SiteParts): their starters,
+# config/parts, are the example site's own, so the seed publishes each part
+# as it is, made from its starter if the CMS has not made it yet, and
+# leaves alone a part already published.
 module ExampleSite
   ROOT = Rails.root.join("..", "example-site").expand_path
 
@@ -40,8 +45,19 @@ module ExampleSite
       page.make_home! if entry["home"] && Page.home_page.nil?
       [ entry["slug"], published ? :published : :left_as_it_is ]
     end
+    done += Page::PARTS.map { |kind| [ kind, put_part(kind) ? :published : :left_as_it_is ] }
     report(done.to_h)
     done.to_h
+  end
+
+  # The part of that kind published, and true; or false for a part already
+  # published, left as it is.
+  def put_part(kind)
+    part = Page.part!(kind)
+    return false if part.published?
+
+    part.publish!
+    true
   end
 
   def read_json(root, file)
@@ -125,9 +141,10 @@ module ExampleSite
 
   def report(done)
     Page.includes(:draft, :published_version).order(:id).each do |page|
-      said = done[page.draft.slug] == :left_as_it_is ? ", already there, left as it is" : ""
+      said = done[page.part? ? page.kind : page.draft.slug] == :left_as_it_is ? ", already there, left as it is" : ""
       version = page.published_version ? "version #{page.published_version.number}" : "not published"
-      puts format("  %-28s %-16s %s%s%s", page.draft.document["title"], page.live_path || "/#{page.draft.slug}", version, page.home? ? ", home" : "", said)
+      where = page.part? ? "every page" : page.live_path || "/#{page.draft.slug}"
+      puts format("  %-28s %-16s %s%s%s", page.draft.document["title"], where, version, page.home? ? ", home" : "", said)
     end
     puts "  #{MediaItem.count} images in the media library"
   end

@@ -1,0 +1,5 @@
+<%# The site's mark, the theme's drawing. With a name, the mark and the name beside it are one link to the home page; without one, the mark alone, a decoration the block hides from screen readers as a whole, as a spacer does. On a dark band the mark draws itself the other way round (--mark-disc, --mark-line: tokens.css). -%>
+<%- props = block_props(block) -%>
+<%- style = block_style(block) -%>
+<%- name = prop_text(props, "name") -%>
+<%= tag.div(**block_root(block, [ "w", "w-logo", %w[color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], aria: ({ hidden: true } if name.empty?))) do %><% if name.empty? %><%= theme_svg("mark", css_class: "sw-brand-mark") %><% else %><%= tag.a(safe_join([ theme_svg("mark", css_class: "sw-brand-mark"), tag.span(name) ]), class: "w-logo-link", href: "/") %><% end %><% end %>

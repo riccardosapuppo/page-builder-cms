@@ -64,22 +64,32 @@ module SiteTheme
         out << "}\n"
       end
       out << visibility(tablet_below: tablet_below, phone_below: phone_below)
-      out << column_widths(schema, tablet_below: tablet_below)
+      out << column_widths(schema, tablet_below: tablet_below, phone_below: phone_below)
       out << spacers(schema)
       out.join
     end
 
     # A section's columnWidths is a prop, not a style: the preset's parts as
-    # the grid's tracks, on desktop only. Below it the columns stack, as
-    # site.css lays them out on tablets and phones.
-    def column_widths(schema, tablet_below:)
+    # the grid's tracks, a share of the width (1fr, 2fr...) or fit, a column
+    # as wide as what it holds (auto), the shares taking what the fit ones
+    # leave. They apply wherever the columns stand side by side: on desktop
+    # always; on tablets when the section's stack says phone or never
+    # (stack-phone, stack-never, on the columns' grid), and on phones when
+    # it says never. Elsewhere the columns stack, as site.css lays them out.
+    def column_widths(schema, tablet_below:, phone_below:)
       presets = schema.fetch("$defs").fetch("columnWidthsToken").fetch("enum")
-      rules = presets.map do |preset|
-        tracks = preset.split(":").map { |part| "minmax(0, #{Integer(part, 10)}fr)" }.join(" ")
-        "  .widths-#{class_value(preset)} { grid-template-columns: #{tracks}; }\n"
+      tracks = presets.map do |preset|
+        parts = preset.split(":").map { |part| part == "fit" ? "auto" : "minmax(0, #{Integer(part, 10)}fr)" }
+        [ class_value(preset), parts.join(" ") ]
       end
-      "\n/* ---------- Column widths, on desktop only: below it the columns stack ---------- */\n" \
-        "@container site (width >= #{tablet_below}px) {\n#{rules.join}}\n"
+      rules = lambda do |selector|
+        tracks.map { |name, value| "  #{selector.call(name)} { grid-template-columns: #{value}; }\n" }.join
+      end
+      "\n/* ---------- Column widths, wherever the columns stand side by side ---------- */\n" \
+        "@container site (width >= #{tablet_below}px) {\n#{rules.call(->(name) { ".widths-#{name}" })}}\n" \
+        "@container site (#{phone_below}px <= width < #{tablet_below}px) {\n" \
+        "#{rules.call(->(name) { ".stack-phone.widths-#{name}, .stack-never.widths-#{name}" })}}\n" \
+        "@container site (width < #{phone_below}px) {\n#{rules.call(->(name) { ".stack-never.widths-#{name}" })}}\n"
     end
 
     # A spacer's size is a prop, not a style: one height for every device.
@@ -219,16 +229,20 @@ module SiteTheme
       # of site.css), so that a light column inside a dark band, or a light
       # tablet or phone override of a dark background, does not keep the
       # dark band's paper-coloured text. none shows the band behind, and
-      # takes its colours back (inherit).
-      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }\n"
+      # takes its colours back (inherit). The site's mark (a logo) draws
+      # itself the other way round on the dark slots, as the design's footer
+      # has it: a paper disc, its waterline in the band's own colour
+      # (--mark-disc, --mark-line); elsewhere the theme's (site.css).
+      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }\n"
       slots.each do |slot|
         paired =
           if DARK_SLOTS.include?(slot)
-            "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor;"
+            "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
+              "--mark-disc: var(--sw-background); --mark-line: var(--sw-#{slot});"
           elsif INK_SLOTS.include?(slot)
-            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor;"
+            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial;"
           else
-            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial;"
+            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial;"
           end
         rules << ".#{prefix}bg-#{slot} { background-color: var(--sw-#{slot}); #{paired} }\n"
       end

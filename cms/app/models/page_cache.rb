@@ -15,12 +15,13 @@
 #   must never be taken for the new database's;
 # - the site style, which colours every page (the layout's data
 #   attributes);
-# - the site's header and footer (Site), drawn by the layout around every
-#   page, which the editor changes with no publish;
+# - the site's header and footer (SiteParts), drawn by the layout around
+#   every page: each its published version, named as a page's is, or its
+#   starter until it has one;
 # - the release the server runs: its code, templates, stylesheets, the
-#   header's and footer's defaults in site.yml, the schema's tokens and
-#   icons, its gems, and its secret, which signs the addresses of library
-#   images;
+#   header's and footer's starters in config/parts, the schema's tokens
+#   and icons, its gems, and its secret, which signs the addresses of
+#   library images;
 # - for one block, nothing but its own subtree, rendered through the
 #   partials of that release.
 #
@@ -28,10 +29,11 @@
 # keyed on the version, the site style, the header and footer and the
 # release; each block's fragment on a digest of its subtree and the
 # revision of the token CSS, under the release (PublicPage's
-# fragment_cache_key): the layout is not inside any block, so a new header
-# finds every block where it was. The ETag's digest is made here rather
-# than by fresh_when, whose digest of the action's template does not see
-# the layout or the partials a helper renders.
+# fragment_cache_key), the header's and the footer's blocks too: a new
+# header redraws only its blocks that changed, once, and every page finds
+# them, and its own blocks, where they were. The ETag's digest is made
+# here rather than by fresh_when, whose digest of the action's template
+# does not see the layout or the partials a helper renders.
 module PageCache
   # The files of a release that can change what a page looks like, from
   # the app's root. Broad on purpose: a change that cannot alter a page
@@ -49,9 +51,10 @@ module PageCache
   # change to one reloads it, as an edited model does
   # (config.watchable_files, config/application.rb). Every other file of
   # the release is read once, as the process starts: config/site.yml, the
-  # other config files, the gems. A reloading server that has not been
-  # restarted still draws with what it read then, whatever the disk holds
-  # now, so the release it names is the one it read then.
+  # starters of config/parts, the other config files, the gems. A
+  # reloading server that has not been restarted still draws with what it
+  # read then, whatever the disk holds now, so the release it names is the
+  # one it read then.
   RELOADED = %w[app lib config/routes.rb config/locales].freeze
 
   MUTEX = Mutex.new
@@ -61,15 +64,15 @@ module PageCache
   # The validators of a published page's ETag: what is served, in what
   # colours, under which header and footer, by which release. A visitor's
   # copy stays good until one of them changes.
-  def etag(page, site_style, site)
-    [ "page", *published_key(page), site_style_key(site_style), site_key(site), revision ]
+  def etag(page, site_style, parts)
+    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts), revision ]
   end
 
   # The key of a published page's outer fragment, its whole HTML. The
   # release is not repeated here: every fragment key of the public pages
   # starts with it (PublicPage).
-  def page_fragment(page, site_style, site)
-    [ "page", *published_key(page), site_style_key(site_style), site_key(site) ]
+  def page_fragment(page, site_style, parts)
+    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts) ]
   end
 
   # The published version's id, and when the page was put live, to the
@@ -88,20 +91,12 @@ module PageCache
     ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale ]))
   end
 
-  # The header and footer as a short key: their four members, with every
-  # object's members in name order, so that the same words and links give
-  # the same key whatever order a request wrote them in. The revision is
-  # left out: a write of what was already there changes no page.
-  def site_key(site)
-    ActiveSupport::Digest.hexdigest(JSON.generate(in_name_order(site.values)))
-  end
-
-  def in_name_order(value)
-    case value
-    when Hash then value.sort.map { |name, member| [ name, in_name_order(member) ] }
-    when Array then value.map { |item| in_name_order(item) }
-    else value
-    end
+  # The header and footer the pages draw (SiteParts.live), each as its kind
+  # and its published version, named as a page's is, or "starter" while it
+  # has none: the starters are files of the release (config/parts), whose
+  # change changes the revision.
+  def parts_key(parts)
+    parts.map { |kind, part| [ kind, *part.key ] }
   end
 
   # The digest of the release this process runs. It is made as the process

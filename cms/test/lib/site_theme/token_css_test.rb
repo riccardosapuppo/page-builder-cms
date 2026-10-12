@@ -107,15 +107,24 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     assert_match(/aspectToken/, error.message)
   end
 
-  test "column widths apply on desktop only, one track per part of the preset" do
+  test "column widths apply wherever the columns stand side by side, one track per part of the preset, a fit part as wide as its content" do
     css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
 
     desktop = css[/@container site \(width >= 800px\) \{\n(?:  \.widths-.*\n)+\}/]
     assert desktop, "no desktop block of column widths"
     assert_includes desktop, ".widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }"
     assert_includes desktop, ".widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }"
-    assert_equal 7, desktop.scan(/\.widths-/).size
-    assert_equal 7, css.scan(/\.widths-/).size
+    assert_includes desktop, ".widths-fit-1-fit { grid-template-columns: auto minmax(0, 1fr) auto; }"
+    assert_equal 10, desktop.scan(/\.widths-/).size
+
+    # Below the desktop layout, only where the section's stack keeps the
+    # columns side by side: phone and never on tablets, never on phones.
+    tablet = css[/@container site \(560px <= width < 800px\) \{\n(?:  \.stack-.*\n)+\}/]
+    phone = css[/@container site \(width < 560px\) \{\n(?:  \.stack-.*\n)+\}/]
+    assert_includes tablet, ".stack-phone.widths-fit-1, .stack-never.widths-fit-1 { grid-template-columns: auto minmax(0, 1fr); }"
+    assert_includes phone, ".stack-never.widths-1-fit { grid-template-columns: minmax(0, 1fr) auto; }"
+    assert_not_includes phone, ".stack-phone"
+    assert_equal 10 + 20 + 10, css.scan(/\.widths-/).size
   end
 
   test "a tablet override applies only between the phone and desktop layouts" do

@@ -1,0 +1,513 @@
+{
+  "schemaVersion": 1,
+  "title": "Site traps",
+  "description": "Logos and menus whose words hold markup, refused addresses, items that are not links, labels that are not text; and sections whose columns stay side by side, with fit presets that fit and do not.",
+  "sections": [
+    {
+      "id": "site-header",
+      "type": "section",
+      "props": {
+        "label": "Header",
+        "columnWidths": "fit:1:fit",
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "site-header-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "l-named",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "align": "center"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "site-header-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "m-plain",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  },
+                  {
+                    "label": "Gallery",
+                    "href": "/#gallery"
+                  },
+                  {
+                    "label": "Meet us",
+                    "href": "/#meet"
+                  },
+                  {
+                    "label": "Questions",
+                    "href": "/#questions"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "align": "right"
+                },
+                "tablet": {
+                  "align": "center"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "site-header-3",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "site-join",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "/#join"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "site-traps",
+      "type": "section",
+      "props": {
+        "stack": "phone",
+        "columnWidths": "1:fit"
+      },
+      "children": [
+        {
+          "id": "site-traps-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "l-markup",
+              "type": "logo",
+              "props": {
+                "name": "<b>Slack</b> & \"Water\" <script>alert(1)</script>"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-mark-only",
+              "type": "logo",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {
+                  "visibility": "visible"
+                },
+                "tablet": {
+                  "visibility": "hidden"
+                }
+              }
+            },
+            {
+              "id": "l-name-number",
+              "type": "logo",
+              "props": {
+                "name": 7
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-name-empty",
+              "type": "logo",
+              "props": {
+                "name": ""
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "site-traps-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "m-refused",
+              "type": "menu",
+              "props": {
+                "label": "Footer",
+                "items": [
+                  {
+                    "label": "Ours",
+                    "href": "/ours"
+                  },
+                  {
+                    "label": "Script",
+                    "href": "javascript:alert(1)"
+                  },
+                  {
+                    "label": "Data",
+                    "href": "data:text/html,<p>hi</p>"
+                  },
+                  {
+                    "label": "Protocol relative",
+                    "href": "//elsewhere.example/"
+                  },
+                  {
+                    "label": "Mail",
+                    "href": "mailto:swim@example.org"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-markup",
+              "type": "menu",
+              "props": {
+                "label": "<i>Main</i> \"menu\"",
+                "items": [
+                  {
+                    "label": "<img src=x onerror=alert(1)> & co",
+                    "href": "/?a=1&b=<2>"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-no-links",
+              "type": "menu",
+              "props": {
+                "label": "Empty",
+                "items": [
+                  {
+                    "label": "Nowhere",
+                    "href": "javascript:void(0)"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-items-junk",
+              "type": "menu",
+              "props": {
+                "label": "Junk",
+                "items": [
+                  "a string",
+                  7,
+                  null,
+                  [],
+                  {
+                    "label": 7,
+                    "href": "/seven"
+                  },
+                  {
+                    "href": "/no-label"
+                  },
+                  {
+                    "label": "No address"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-label-missing",
+              "type": "menu",
+              "props": {
+                "items": [
+                  {
+                    "label": "Home",
+                    "href": "/"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-long",
+              "type": "menu",
+              "props": {
+                "label": "Long",
+                "items": [
+                  {
+                    "label": "A long label of a link, number 01",
+                    "href": "/#part-1"
+                  },
+                  {
+                    "label": "A long label of a link, number 02",
+                    "href": "/#part-2"
+                  },
+                  {
+                    "label": "A long label of a link, number 03",
+                    "href": "/#part-3"
+                  },
+                  {
+                    "label": "A long label of a link, number 04",
+                    "href": "/#part-4"
+                  },
+                  {
+                    "label": "A long label of a link, number 05",
+                    "href": "/#part-5"
+                  },
+                  {
+                    "label": "A long label of a link, number 06",
+                    "href": "/#part-6"
+                  },
+                  {
+                    "label": "A long label of a link, number 07",
+                    "href": "/#part-7"
+                  },
+                  {
+                    "label": "A long label of a link, number 08",
+                    "href": "/#part-8"
+                  },
+                  {
+                    "label": "A long label of a link, number 09",
+                    "href": "/#part-9"
+                  },
+                  {
+                    "label": "A long label of a link, number 10",
+                    "href": "/#part-10"
+                  },
+                  {
+                    "label": "A long label of a link, number 11",
+                    "href": "/#part-11"
+                  },
+                  {
+                    "label": "A long label of a link, number 12",
+                    "href": "/#part-12"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "m-scripts",
+              "type": "menu",
+              "props": {
+                "label": "Scripts",
+                "items": [
+                  {
+                    "label": "Ήρεμα νερά",
+                    "href": "/el"
+                  },
+                  {
+                    "label": "Тихая вода",
+                    "href": "/ru"
+                  },
+                  {
+                    "label": "מים שקטים",
+                    "href": "/he"
+                  },
+                  {
+                    "label": "المياه الهادئة",
+                    "href": "/ar"
+                  },
+                  {
+                    "label": "潮の会 🌊",
+                    "href": "/ja"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-one-column",
+      "type": "section",
+      "props": {
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "stack-one-column-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "stack-one-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "One column, never stacked"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-unknown",
+      "type": "section",
+      "props": {
+        "stack": "sometimes",
+        "columnWidths": "fit:1:fit"
+      },
+      "children": [
+        {
+          "id": "stack-unknown-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-unknown-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "stack-four",
+      "type": "section",
+      "props": {
+        "stack": "never",
+        "columnWidths": "fit:1:1:fit"
+      },
+      "children": [
+        {
+          "id": "stack-four-1",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-four-2",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-four-3",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "stack-four-4",
+          "type": "column",
+          "props": {},
+          "children": [],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

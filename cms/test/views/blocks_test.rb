@@ -37,7 +37,9 @@ class BlocksTest < ActionView::TestCase
       block("w-iconbox", "iconbox", { "icon" => "sunrise", "title" => "Dawn swims", "text" => "Twice a week." }),
       block("w-quote", "quote", { "text" => "Cold water, hot tea.", "attribution" => "A member" }),
       block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] }),
-      block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." })
+      block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }),
+      block("w-logo", "logo", { "name" => "Slack Water" }),
+      block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] })
     ]
   end
 
@@ -67,7 +69,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion form], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion form logo menu], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -105,6 +107,69 @@ class BlocksTest < ActionView::TestCase
     grids = %w[two three misfit one].map { |id| html.at_css("[data-block-id=#{id}] > .cols")["class"].split }
     assert_equal [ %w[sw-inner cols cols-2 widths-3-2], %w[sw-inner cols cols-3 widths-1-2-1], %w[sw-inner cols cols-2], %w[sw-inner cols cols-1] ], grids
     assert_equal [ "3:2", "1:2:1", nil, nil ], %w[two three misfit one].map { |id| html.at_css("[data-block-id=#{id}]")["data-column-widths"] }
+  end
+
+  test "a section's columns fit what they hold where a preset names fit, and stack on phones only or never where the section says, with two columns or more" do
+    column = ->(id) { block(id, "column") }
+    document = { "schemaVersion" => 1, "title" => "Fit and stack", "sections" => [
+      block("bar", "section", { "columnWidths" => "fit:1:fit", "stack" => "never" }, children: [ column.call("bar-1"), column.call("bar-2"), column.call("bar-3") ]),
+      block("pair", "section", { "columnWidths" => "1:fit", "stack" => "phone" }, children: [ column.call("pair-1"), column.call("pair-2") ]),
+      block("plain", "section", {}, children: [ column.call("plain-1"), column.call("plain-2") ]),
+      block("alone", "section", { "stack" => "never" }, children: [ column.call("alone-1") ]),
+      block("odd", "section", { "stack" => "sometimes" }, children: [ column.call("odd-1"), column.call("odd-2") ])
+    ] }
+
+    html = html_of(document)
+
+    grids = %w[bar pair plain alone odd].map { |id| html.at_css("[data-block-id=#{id}] > .cols")["class"].split }
+    assert_equal [ %w[sw-inner cols cols-3 widths-fit-1-fit stack-never], %w[sw-inner cols cols-2 widths-1-fit stack-phone], %w[sw-inner cols cols-2],
+                   %w[sw-inner cols cols-1], %w[sw-inner cols cols-2] ], grids
+    assert_equal [ "never", "phone", nil, nil, nil ], %w[bar pair plain alone odd].map { |id| html.at_css("[data-block-id=#{id}]")["data-stack"] }
+  end
+
+  test "a logo with a name is one link home, the theme's mark and the name; without one, the mark alone, which the block hides from a screen reader" do
+    html = html_of(page(block("named", "logo", { "name" => "Slack Water" }), block("bare", "logo")))
+
+    named = html.at_css("[data-block-id=named]")
+    assert_equal %w[w w-logo], named["class"].split
+    assert_nil named["aria-hidden"]
+    link = named.at_css("> a.w-logo-link")
+    assert_equal "/", link["href"]
+    assert_equal "Slack Water", link.at_css("> span").text
+    assert link.at_css("> svg.sw-brand-mark"), "the mark, inside the link"
+    bare = html.at_css("[data-block-id=bare]")
+    assert_equal "true", bare["aria-hidden"], "the block, hidden as a whole"
+    assert_nil bare.at_css("a")
+    mark = bare.at_css("> svg.sw-brand-mark")
+    assert mark, "the mark alone"
+    assert_equal "true", mark["aria-hidden"]
+  end
+
+  test "a menu is a named navigation of its links, and Menu, the sheet they fold into, named on the block by the step its words need" do
+    links = [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" }, { "label" => "Meet us", "href" => "/#meet" }, { "label" => "Questions", "href" => "/#questions" } ]
+    html = html_of(page(block("m", "menu", { "label" => "Main", "items" => links }), block("unnamed", "menu", { "label" => "", "items" => links.first(1) })))
+
+    menu = html.at_css("[data-block-id=m]")
+    assert_equal HeaderFit.menu_fold(links.map { |l| l["label"] }), menu["data-fold"]
+    assert_equal "360", menu["data-fold"]
+    nav = menu.at_css("> nav")
+    assert_equal "Main", nav["aria-label"]
+    assert_equal links.map { |l| [ l["label"], l["href"] ] }, nav.css("> .w-menu-links > a").map { |a| [ a.text, a["href"] ] }
+    fold = nav.at_css("> details.w-menu-fold")
+    assert_equal "Menu", fold.at_css("> summary.sw-menu-button .w-menu-word").text
+    assert_equal links.map { |l| l["href"] }, fold.css("> .sw-menu-sheet > a").map { |a| a["href"] }
+    assert_equal "Menu", html.at_css("[data-block-id=unnamed] > nav")["aria-label"]
+  end
+
+  test "a menu leaves out a link RenderPolicy refuses, and with none left has no Menu to open and nothing to fold" do
+    html = html_of(page(block("some", "menu", { "label" => "Main", "items" => [ { "label" => "Run", "href" => "javascript:alert(1)" }, { "label" => "Swims", "href" => "/#swims" } ] }),
+                        block("none", "menu", { "label" => "Main", "items" => [ { "label" => "Run", "href" => "javascript:alert(1)" } ] })))
+
+    assert_equal [ "Swims" ], html.css("[data-block-id=some] .w-menu-links a").map(&:text)
+    none = html.at_css("[data-block-id=none]")
+    assert_empty none.css(".w-menu-links a")
+    assert_nil none.at_css(".w-menu-fold")
+    assert_nil none["data-fold"]
   end
 
   test "an image is cropped per device by class, and a crop the schema does not list gives none" do

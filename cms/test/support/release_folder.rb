@@ -13,7 +13,8 @@ module ReleaseFolder
     "cms/app/models/thing.rb" => "class Thing; end",
     "cms/config/routes.rb" => "# routes",
     "cms/config/locales/en.yml" => "en: {}",
-    "cms/config/site.yml" => "name: Slack Water A",
+    "cms/config/site.yml" => "time_zone: Europe/London",
+    "cms/config/parts/header.json" => "{}",
     "cms/Gemfile.lock" => "rails (8.1.4)",
     "schema/tokens.json" => "{}",
     "schema/corpus/one.json" => "{}"

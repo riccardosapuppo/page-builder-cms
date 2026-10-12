@@ -13,6 +13,7 @@ class Api::OtherSitesTest < ActionDispatch::IntegrationTest
   setup do
     @page = create_page
     save_draft @page, revision: 0, document: page_document(title: "Not reviewed yet")
+    @header = Page.part!("header")
   end
 
   test "a text/plain body that is JSON does not create a page, with or without an origin" do
@@ -21,7 +22,7 @@ class Api::OtherSitesTest < ActionDispatch::IntegrationTest
 
       assert_response(browser.empty? ? :unsupported_media_type : :forbidden)
     end
-    assert_equal [ "winter" ], Draft.pluck(:slug)
+    assert_equal [ "winter" ], Draft.where.not(slug: nil).pluck(:slug)
   end
 
   test "an empty form post from another site does not publish the draft" do
@@ -54,12 +55,12 @@ class Api::OtherSitesTest < ActionDispatch::IntegrationTest
       put "/api/site-style", params: { "palette" => SiteStyle.current.palette, "typeScale" => "strong" }.to_json, headers: ApiRequests::JSON_HEADERS.merge(browser)
       assert_response :forbidden, browser.inspect
 
-      put "/api/site", params: { "revision" => 0, **Site.defaults, "name" => "Planted by another site" }.to_json, headers: ApiRequests::JSON_HEADERS.merge(browser)
+      post "/api/pages/#{@header.id}/publish", params: +"{}", headers: ApiRequests::JSON_HEADERS.merge(browser)
       assert_response :forbidden, browser.inspect
     end
     assert_equal 1, @page.versions.count
     assert_nil SiteStyle.find_by(id: SiteStyle::ID)
-    assert_nil Site.find_by(id: Site::ID)
+    assert_not @header.reload.published?, "another site cannot put a header live on every page"
   end
 
   test "a delete from another origin leaves the media item" do

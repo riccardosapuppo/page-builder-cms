@@ -6,13 +6,12 @@
   would read the session, and a session writes a cookie onto a page meant
   to be cached and shared. No script either; the Content-Security-Policy
   (PublicPage) says script-src 'none'. The header and footer are the
-  site's (Site: what the editor set, or config/site.yml's defaults), the
-  same on every page. With no links there is no Menu to open; links too
-  long for the bar fold into it on wider pages too, below the width
-  data-fold names (HeaderFit). The main
-  content's id has an underscore, which a section anchor cannot hold (the
-  schema's ^[a-z][a-z0-9-]{0,63}$), so no anchor can take the skip link's
-  target.
+  site's parts (SiteParts), drawn from blocks as the page is: each its
+  published version, or its starter until it has one, the same on every
+  page; the preview draws their drafts. A part with no section draws
+  nothing. The main content's id has an underscore, which a section anchor
+  cannot hold (the schema's ^[a-z][a-z0-9-]{0,63}$), so no anchor can take
+  the skip link's target.
 -%>
 <!doctype html>
 <html lang="en">
@@ -30,13 +29,12 @@
 <body>
 <%= tag.div(class: "site", data: site_style_data(site_style)) do %><div class="sw">
 <a class="sw-skip" href="#main_content">Skip to content</a>
-<%- links = site_links(site.menu) -%>
-<header <%= tag.attributes(class: "sw-header", data: { fold: HeaderFit.fold(site) }) %>><div class="sw-inner sw-header-row"><a class="sw-brand" href="/"><%= theme_svg("mark", css_class: "sw-brand-mark") %><span><%= site.name %></span></a><nav class="sw-nav" aria-label="Main"><div class="sw-nav-links"><%= safe_join(links) %></div><%= site_link(site.action, class: "sw-btn sw-btn-small") %><% if links.any? %><details class="sw-menu"><summary class="sw-menu-button"><%= theme_svg("menu", css_class: "sw-menu-icon") %>Menu</summary><div class="sw-menu-sheet"><%= safe_join(links) %></div></details><% end %></nav></div></header>
+<%= site_part(site_parts.fetch("header"), :header) %>
 <main id="main_content">
 <%= render("pages/form_errors", errors: @form_errors) if @form_errors -%>
 <%= yield %>
 </main>
-<footer class="sw-footer"><div class="sw-inner sw-footer-row"><%= theme_svg("mark", css_class: "sw-brand-mark sw-brand-mark-inv") %><p><strong><%= site.footer["lead"] %></strong> <%= site.footer["text"] %></p></div></footer>
+<%= site_part(site_parts.fetch("footer"), :footer) %>
 </div><% end %>
 </body>
 </html>

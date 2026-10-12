@@ -11,6 +11,25 @@ class PageCacheTest < ActionDispatch::IntegrationTest
 
   CACHE_CONTROL = %w[max-age=0 must-revalidate public].freeze
 
+  # The header and footer a site starts from, here with no section, so the
+  # counts below are the page's own; the tests of the parts give them
+  # blocks of their own.
+  EMPTY_PARTS = %w[header footer].to_h { |kind| [ kind, { "schemaVersion" => 1, "title" => kind.capitalize, "sections" => [] }.freeze ] }.freeze
+
+  setup do
+    @starters = Rails.configuration.x.parts
+    Rails.configuration.x.parts = EMPTY_PARTS
+  end
+
+  teardown do
+    Rails.configuration.x.parts = @starters
+  end
+
+  # A part's document: one section of one column holding a heading.
+  def part_document(title, words)
+    { "schemaVersion" => 1, "title" => title, "sections" => [ section_block("#{title.downcase}-s", [ heading_block("#{title.downcase}-h", words, level: 2) ]) ] }
+  end
+
   def text_block(id, text)
     { "id" => id, "type" => "text", "style" => { "base" => {} }, "children" => [],
       "props" => { "doc" => { "type" => "doc", "content" => [ { "type" => "paragraph", "content" => [ { "type" => "text", "text" => text } ] } ] } } }
@@ -122,27 +141,31 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_not_equal held, response.headers["ETag"]
   end
 
-  # The editor's change applies at once: there is no publish to make a new
-  # version. The pages are asked for with the cache on, so a stale outer
-  # fragment would answer with the old header even under a new ETag.
-  test "a change of the header and footer is a new page for every browser, on every page, at the next visit" do
+  # A header or footer published applies to every page at once, with no
+  # page published. The pages are asked for with the cache on, so a stale
+  # outer fragment would answer with the old header even under a new ETag.
+  test "a header or footer published is a new page for every browser, on every page, at the next visit; its draft is none" do
     published(slug: "tides")
     published(slug: "swims", document: grid_document(title: "Swims"))
     held = %w[/tides /swims].index_with do |path|
       with_page_cache { get path }
-      assert_select ".sw-brand span", text: "Slack Water"
+      assert_select "header", false
       response.headers["ETag"]
     end
+    header, footer = Page.parts!
 
-    Site.replace!(revision: 0, values: Site.defaults.merge("name" => "Tide club", "footer" => { "lead" => "Tide club.", "text" => "Swims at slack water." }))
+    publish(header, part_document("Header", "Tide club"))
+    Draft.save_document!(page_id: footer.id, revision: 0, document: part_document("Footer", "Not live yet"), save_id: "f1")
     held.each do |path, etag|
       with_page_cache { get path, headers: { "If-None-Match" => etag } }
 
       assert_response :ok, path
-      assert_select ".sw-brand span", { text: "Tide club" }, path
-      assert_select ".sw-footer strong", { text: "Tide club." }, path
+      assert_select "header.sw-header h2", { text: "Tide club" }, path
+      assert_select "footer", { count: 0 }, path
       assert_not_equal etag, response.headers["ETag"], path
       assert_cacheable path
+      with_page_cache { get path, headers: { "If-None-Match" => response.headers["ETag"] } }
+      assert_response :not_modified, "#{path}: the footer's draft changes nothing a visitor sees"
     end
   end
 
@@ -186,33 +209,32 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_equal [ [ :read, 1, 1 ] ], shape(calls), "and the new one is read whole from Solid Cache"
   end
 
-  # The pages of a server are drawn with the config it read as it started
-  # (config/site.yml: the header, the menu, the footer). A file edited
-  # under it is not yet what it draws with, so its pages keep their
-  # release; the process that starts on the file is another release.
-  test "a config file edited under a running server changes nothing until a server starts on it, and then every browser gets the new header" do
+  # The pages of a server are drawn with the starters it read as it
+  # started (config/parts: the header and footer a site has until it
+  # publishes its own). A file edited under it is not yet what it draws
+  # with, so its pages keep their release; the process that starts on the
+  # file is another release.
+  test "a starter edited under a running server changes nothing until a server starts on it, and then every browser gets the new header" do
     published
-    was = Rails.configuration.x.site
+    edited = part_document("Header", "Slack Water B")
     with_release_folder do |_root, edit|
-      edit.call("cms/config/site.yml", "name: Slack Water B")
+      edit.call("cms/config/parts/header.json", JSON.generate(edited))
       with_page_cache { get "/tides" }
       held = response.headers["ETag"]
-      assert_select ".sw-brand span", text: was[:name]
+      assert_select "header", false
 
       get "/tides", headers: { "If-None-Match" => held }
-      assert_response :not_modified, "the running server still draws with the config it started on"
+      assert_response :not_modified, "the running server still draws with the starters it started on"
 
-      Rails.configuration.x.site = was.merge(name: "Slack Water B")
+      Rails.configuration.x.parts = EMPTY_PARTS.merge("header" => edited)
       PageCache.boot!
       calls = with_page_cache { get "/tides", headers: { "If-None-Match" => held } }
 
       assert_response :ok
-      assert_select ".sw-brand span", text: "Slack Water B"
+      assert_select "header.sw-header h2", text: "Slack Water B"
       assert_not_equal held, response.headers["ETag"]
       assert_equal 0, found(calls), "none of the fragments of the release before"
     end
-  ensure
-    Rails.configuration.x.site = was
   end
 
   test "the ETag of one page is no use on another, nor on the home page's address" do
@@ -299,19 +321,24 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_equal drawn_directly(grid_document), main_of(response.body)
   end
 
-  test "a change of the header and footer draws the page around blocks that are all read from the cache" do
-    published
+  test "a header published draws the page around blocks that are all read from the cache, and its own blocks once for every page" do
+    published(slug: "tides")
+    published(slug: "swims", document: grid_document(title: "Swims"))
     with_page_cache { get "/tides" }
+    with_page_cache { get "/swims" }
 
-    Site.replace!(revision: 0, values: Site.defaults.merge("menu" => [ { "label" => "Tides", "href" => "/tides" } ], "action" => nil))
+    publish(Page.part!("header"), part_document("Header", "Tide club"))
     calls = with_page_cache { get "/tides" }
 
-    assert_equal [ [ "Tides", "/tides" ] ], css_select(".sw-nav-links a").map { |a| [ a.text, a["href"] ] }
-    assert_select ".sw-btn-small", false
-    assert_equal [ [ :read, 1, 0 ], [ :read_multi, 2, 2 ], [ :write, 1, 0 ] ], shape(calls)
+    assert_select "header.sw-header h2", text: "Tide club"
     assert_equal drawn_directly(grid_document), main_of(response.body)
+    assert_equal [ [ :read, 1, 0 ], [ :read_multi, 2, 2 ], [ :read_multi, 1, 0 ], [ :read_multi, 1, 0 ], [ :read_multi, 1, 0 ] ], shape(calls).first(5),
+                 "the page missed whole, its sections found; the header's section, column and heading drawn"
+    assert_equal 1 + 1 + 1 + 1, written(calls), "the header's three blocks and the page"
     page = response.body
 
+    calls = with_page_cache { get "/swims" }
+    assert_equal [ [ :read, 1, 0 ], [ :read_multi, 2, 2 ], [ :read_multi, 1, 1 ], [ :write, 1, 0 ] ], shape(calls), "another page finds the header's blocks"
     calls = with_page_cache { get "/tides" }
     assert_equal [ [ :read, 1, 1 ] ], shape(calls), "and the page under its new header is read whole next time"
     assert_equal page, response.body

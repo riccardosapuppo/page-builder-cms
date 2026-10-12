@@ -141,4 +141,59 @@ class Api::PagesTest < ActionDispatch::IntegrationTest
     assert_equal "/slug", json["pointer"]
     assert_equal 0, Page.count
   end
+
+  test "the list gives the site's header and footer apart from the pages, made at the first look, each with nothing live and no address" do
+    create_page
+
+    api :get, "/api/pages"
+
+    assert_response :ok
+    assert_equal [ "page" ], json["pages"].map { |p| p["kind"] }
+    assert_equal %w[header footer], json["parts"].map { |p| p["kind"] }
+    json["parts"].each do |part|
+      assert_nil part["slug"], part["kind"]
+      assert_nil part["published"], part["kind"]
+      assert_nil part.dig("links", "live"), part["kind"]
+      assert_equal false, part["home"], part["kind"]
+    end
+    ids = json["parts"].map { |p| p["id"] }
+
+    api :get, "/api/pages"
+    assert_equal ids, json["parts"].map { |p| p["id"] }, "the same parts, not made again"
+    assert_equal SiteParts.starter("header"), Page.find(ids.first).draft.document
+  end
+
+  test "a part takes no address and is never the home page: each is refused at its member, keyword part, and nothing changes" do
+    header, = Page.parts!
+
+    { "/slug" => { "slug" => "header" }, "/home" => { "home" => true } }.each do |pointer, changes|
+      api :patch, "/api/pages/#{header.id}", changes
+
+      assert_response :unprocessable_content
+      assert_equal "invalid_request", json["error"]
+      assert_equal [ [ pointer, "part" ] ], error_pointers, pointer
+    end
+    header.reload
+    assert_nil header.draft.slug
+    assert_not header.home?
+  end
+
+  test "a form in a part's draft is refused at its block, keyword part, and the same document is a page's" do
+    _, footer = Page.parts!
+    form = { "id" => "join", "type" => "form", "children" => [], "style" => { "base" => {} },
+             "props" => { "items" => [ { "name" => "email", "kind" => "email", "label" => "Email", "required" => true } ], "submitLabel" => "Join", "confirmation" => "Thank you." } }
+    document = { "schemaVersion" => 1, "title" => "Footer", "sections" => [ { "id" => "s", "type" => "section", "props" => {}, "style" => { "base" => {} },
+                                                                              "children" => [ { "id" => "c", "type" => "column", "props" => {}, "style" => { "base" => {} }, "children" => [ form ] } ] } ] }
+
+    save_draft(footer, revision: 0, document: document)
+
+    assert_response :unprocessable_content
+    assert_equal "invalid_document", json["error"]
+    assert_equal [ [ "/document/sections/0/children/0/children/0", "part" ] ], error_pointers
+    assert_equal "A header or footer holds no form: a form's answers belong to the page it is on.", json.dig("errors", 0, "message")
+    assert_equal SiteParts.starter("footer"), footer.reload.draft.document
+
+    save_draft(create_page, revision: 0, document: document)
+    assert_response :ok
+  end
 end

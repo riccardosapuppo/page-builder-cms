@@ -125,52 +125,120 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
 a.sw-btn:not([href]) { cursor: default; }
 .sw-btn-small { min-height: 40px; padding: 0 20px; font-size: 15px; }
 
+/* ---------- Logo: the site's mark, and the name beside it ---------- */
+/* The mark is the theme's drawing, in the palette's slots; on a dark band
+   it draws itself the other way round, a paper disc with its waterline in
+   the band's colour (--mark-disc, --mark-line, from the band's background
+   class in tokens.css), as the design's footer has it. With a name, the
+   two are one link to the home page; a name longer than its column breaks
+   between its words, or inside a word too long for the column. */
+.w-logo-link {
+  display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; vertical-align: top;
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+  font-size: 19px; line-height: 1.25; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-align: start;
+  text-decoration: none;
+}
+.w-logo-link > span { min-width: 0; overflow-wrap: anywhere; }
+.w-logo .sw-brand-mark { vertical-align: top; }
+.sw-brand-mark { width: 30px; height: 30px; flex: none; }
+.sw-brand-mark circle { fill: var(--mark-disc, var(--sw-primary)); }
+.sw-brand-mark .sun { fill: var(--sw-accent); }
+.sw-brand-mark .line { stroke: var(--mark-line, var(--sw-background)); stroke-width: 2; }
+
+/* ---------- Menu: links in a row, folding into Menu ---------- */
+/* The block is a container of its own (menu), so the links fold on the
+   width the block is given, wherever it sits: data-fold names the step
+   below which they do, which the server works out from the widths of the
+   labels' letters (app/models/header_fit.rb, schema/header-metrics.json),
+   since a published page runs no script to measure them. Folded, Menu
+   opens the links as a sheet below it: a details element, no script.
+   The links are inline blocks, so the block's alignment (align-*) places
+   the row and Menu alike; the row's negative margins take back the space
+   around its first and last link. */
+.w-menu {
+  container: menu / inline-size;
+  position: relative;
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+  font-size: 15px; font-weight: 500; font-stretch: 110%;
+}
+.w-menu-links { margin: -2px -14px; }
+.w-menu-links a { display: inline-block; margin: 2px 14px; text-decoration: none; }
+.w-menu-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.w-menu-fold { display: none; }
+.w-menu .sw-menu-button { display: inline-flex; }
+@container menu (width < 104px) {
+  .w-menu .sw-menu-button { width: 40px; padding: 0; justify-content: center; }
+  .w-menu-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.w-menu .sw-menu-sheet {
+  position: absolute; top: calc(100% + 8px); right: var(--sheet-inset, 0); left: auto; z-index: 3;
+  max-width: min(320px, calc(100vw - 32px)); text-align: start;
+}
+.w-menu.align-left .sw-menu-sheet { right: auto; left: var(--sheet-inset, 0); }
+/* In the header, the sheet hangs from the header's row, not from the
+   menu's own box, at the row's edge on the menu's side: a menu in a narrow
+   column, beside a long name or a long button, opens its links inside the
+   window. (A query container is no containing block: the row, made one,
+   is the nearest.) */
+.sw-header .sw-inner { position: relative; }
+.sw-header .w-menu { position: static; --sheet-inset: var(--pad-x); }
+/* The links fold below the width the block names. One step every 40 px,
+   from a link alone up to the widest row the page holds; "all", a row
+   wider than any page, folds at every width. tools/header-metrics.ts
+   reads these steps, and checks each by drawing a menu on both sides of
+   it. */
+@container menu (width < 80px) { .w-menu[data-fold="80"] .w-menu-links { display: none; } .w-menu[data-fold="80"] .w-menu-fold { display: block; } }
+@container menu (width < 120px) { .w-menu[data-fold="120"] .w-menu-links { display: none; } .w-menu[data-fold="120"] .w-menu-fold { display: block; } }
+@container menu (width < 160px) { .w-menu[data-fold="160"] .w-menu-links { display: none; } .w-menu[data-fold="160"] .w-menu-fold { display: block; } }
+@container menu (width < 200px) { .w-menu[data-fold="200"] .w-menu-links { display: none; } .w-menu[data-fold="200"] .w-menu-fold { display: block; } }
+@container menu (width < 240px) { .w-menu[data-fold="240"] .w-menu-links { display: none; } .w-menu[data-fold="240"] .w-menu-fold { display: block; } }
+@container menu (width < 280px) { .w-menu[data-fold="280"] .w-menu-links { display: none; } .w-menu[data-fold="280"] .w-menu-fold { display: block; } }
+@container menu (width < 320px) { .w-menu[data-fold="320"] .w-menu-links { display: none; } .w-menu[data-fold="320"] .w-menu-fold { display: block; } }
+@container menu (width < 360px) { .w-menu[data-fold="360"] .w-menu-links { display: none; } .w-menu[data-fold="360"] .w-menu-fold { display: block; } }
+@container menu (width < 400px) { .w-menu[data-fold="400"] .w-menu-links { display: none; } .w-menu[data-fold="400"] .w-menu-fold { display: block; } }
+@container menu (width < 440px) { .w-menu[data-fold="440"] .w-menu-links { display: none; } .w-menu[data-fold="440"] .w-menu-fold { display: block; } }
+@container menu (width < 480px) { .w-menu[data-fold="480"] .w-menu-links { display: none; } .w-menu[data-fold="480"] .w-menu-fold { display: block; } }
+@container menu (width < 520px) { .w-menu[data-fold="520"] .w-menu-links { display: none; } .w-menu[data-fold="520"] .w-menu-fold { display: block; } }
+@container menu (width < 560px) { .w-menu[data-fold="560"] .w-menu-links { display: none; } .w-menu[data-fold="560"] .w-menu-fold { display: block; } }
+@container menu (width < 600px) { .w-menu[data-fold="600"] .w-menu-links { display: none; } .w-menu[data-fold="600"] .w-menu-fold { display: block; } }
+@container menu (width < 640px) { .w-menu[data-fold="640"] .w-menu-links { display: none; } .w-menu[data-fold="640"] .w-menu-fold { display: block; } }
+@container menu (width < 680px) { .w-menu[data-fold="680"] .w-menu-links { display: none; } .w-menu[data-fold="680"] .w-menu-fold { display: block; } }
+@container menu (width < 720px) { .w-menu[data-fold="720"] .w-menu-links { display: none; } .w-menu[data-fold="720"] .w-menu-fold { display: block; } }
+@container menu (width < 760px) { .w-menu[data-fold="760"] .w-menu-links { display: none; } .w-menu[data-fold="760"] .w-menu-fold { display: block; } }
+@container menu (width < 800px) { .w-menu[data-fold="800"] .w-menu-links { display: none; } .w-menu[data-fold="800"] .w-menu-fold { display: block; } }
+@container menu (width < 840px) { .w-menu[data-fold="840"] .w-menu-links { display: none; } .w-menu[data-fold="840"] .w-menu-fold { display: block; } }
+@container menu (width < 880px) { .w-menu[data-fold="880"] .w-menu-links { display: none; } .w-menu[data-fold="880"] .w-menu-fold { display: block; } }
+@container menu (width < 920px) { .w-menu[data-fold="920"] .w-menu-links { display: none; } .w-menu[data-fold="920"] .w-menu-fold { display: block; } }
+@container menu (width < 960px) { .w-menu[data-fold="960"] .w-menu-links { display: none; } .w-menu[data-fold="960"] .w-menu-fold { display: block; } }
+@container menu (width < 1000px) { .w-menu[data-fold="1000"] .w-menu-links { display: none; } .w-menu[data-fold="1000"] .w-menu-fold { display: block; } }
+@container menu (width < 1040px) { .w-menu[data-fold="1040"] .w-menu-links { display: none; } .w-menu[data-fold="1040"] .w-menu-fold { display: block; } }
+@container menu (width < 1080px) { .w-menu[data-fold="1080"] .w-menu-links { display: none; } .w-menu[data-fold="1080"] .w-menu-fold { display: block; } }
+@container menu (width < 1120px) { .w-menu[data-fold="1120"] .w-menu-links { display: none; } .w-menu[data-fold="1120"] .w-menu-fold { display: block; } }
+.w-menu[data-fold="all"] .w-menu-links { display: none; }
+.w-menu[data-fold="all"] .w-menu-fold { display: block; }
+
 /* ---------- Divider and spacer ---------- */
 .sw-divider { margin: 0; border: 0; border-top: 1px solid var(--line-color, var(--sw-muted)); }
 
-/* ---------- Header and footer: part of the theme, on every page ---------- */
-.sw-header { position: relative; z-index: 2; }
-/* One row, the design's 80 px: the brand, then the links and the button
-   on the right. The row wraps when they do not fit side by side: the brand
-   above, the rest below it on the right. The design's own brand, Join and
-   Menu need 359 px, so a window 320 wide (the width WCAG's reflow
-   criterion tests, a 1280 window zoomed to 400%) wraps them; a longer name
-   or button label, which the editor can set, wraps them on wider phones
-   too. A single row is as tall as the design's: the padding plus a 40 px
-   line.
-   The design lets the row run into its right padding before it wraps (at
-   360 Menu ends 1 px from the edge). So the row has no right padding of
-   its own: ::after stands for it, an item that takes no room when the row
-   decides where to wrap and grows back to the padding's width wherever
-   there is room. The brand's margin is the gap between the two. */
-.sw-header-row { display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px; min-height: 80px; padding-block: 20px; padding-right: 0; }
-.sw-header-row::after { content: ""; flex: 1 0 0; max-width: var(--pad-x); }
-.sw-brand, .sw-nav, .sw-menu-button, .sw-accordion summary, .sw-quote figcaption {
+/* ---------- Header and footer: the site's parts, around every page ---------- */
+/* The header and footer are made of blocks, as a page is (SiteParts), and
+   drawn in <header> and <footer>. Their sections take a tighter rhythm
+   than a page's, the design's: the header a row 80 px tall (64 on phones)
+   with the gaps of its bar, the footer its band; a section that sets its
+   own space keeps it. The header stands above the page, so the sheet of a
+   menu folded into Menu opens over what follows, and a button in it is the
+   header's small one, whose label breaks inside it rather than leave the
+   row. */
+.sw-header { position: relative; z-index: 2; --sec-y: 20px; --cols-gap: var(--space-l); }
+.sw-footer { --sec-y: var(--space-xxl); --cols-gap: var(--space-m); }
+.sw-header .w-button .sw-btn { min-height: 40px; padding: 0 20px; font-size: 15px; overflow-wrap: anywhere; }
+.sw-menu-button, .sw-accordion summary, .sw-quote figcaption {
   font-family: "Archivo", "Helvetica Neue", sans-serif;
 }
-/* A name longer than the row it has to itself breaks between its words,
-   or anywhere in a word too long for the row, rather than leaving the
-   window. */
-.sw-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; margin-right: 24px; font-size: 19px; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-decoration: none; }
-.sw-brand > span { overflow-wrap: anywhere; }
-.sw-brand-mark { width: 30px; height: 30px; flex: none; }
-.sw-brand-mark circle { fill: var(--sw-primary); }
-.sw-brand-mark .sun { fill: var(--sw-accent); }
-.sw-brand-mark .line { stroke: var(--sw-background); stroke-width: 2; }
-.sw-brand-mark-inv circle { fill: var(--sw-background); }
-.sw-brand-mark-inv .line { stroke: var(--sw-text); }
-.sw-nav { display: flex; align-items: center; gap: 12px; margin-left: auto; font-size: 15px; font-weight: 500; font-stretch: 110%; }
-/* The links fit the bar where they are shown (data-fold, below, folds
-   them where they would not); should a letter be wider than its measured
-   width says, they wrap inside the bar rather than push the page
-   sideways. */
-.sw-nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 28px; margin-right: 16px; }
-.sw-nav-links a { text-decoration: none; }
-.sw-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
-/* A button's label too long for the row breaks inside the button. */
-.sw-nav .sw-btn-small { overflow-wrap: anywhere; }
-/* Below the desktop layout the links fold into a Menu, which opens as a sheet: a details element, so it needs no script. */
-.sw-menu { display: none; }
+/* Menu, the pill a menu's links fold into, and the sheet it opens: a
+   details element, so it needs no script. On a band too narrow for the
+   pill's word, the pill keeps its icon and the word goes to a screen
+   reader alone (.w-menu, above). */
 .sw-menu-button {
   display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px;
   border-radius: 999px; background: var(--sw-background); color: var(--sw-text);
@@ -178,22 +246,14 @@ a.sw-btn:not([href]) { cursor: default; }
   font-size: 15px; font-weight: 650; font-stretch: 110%; cursor: pointer; list-style: none;
 }
 .sw-menu-button::-webkit-details-marker { display: none; }
-.sw-menu-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.sw-menu-icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .sw-menu-sheet {
-  position: absolute; right: var(--pad-x); top: calc(100% - 8px); z-index: 2;
-  display: grid; min-width: 220px; max-width: calc(100% - 2 * var(--pad-x)); padding: 8px;
-  border-radius: 12px; background: var(--sw-background);
+  display: grid; min-width: 220px; padding: 8px;
+  border-radius: 12px; background: var(--sw-background); color: var(--sw-text);
   box-shadow: 0 0 0 1.5px var(--sw-text), 0 16px 32px -12px rgb(20 48 42 / .35);
 }
 .sw-menu-sheet a { display: block; padding: 12px 14px; border-radius: 8px; font-size: 17px; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
 .sw-menu-sheet a:hover { background: var(--sw-soft); }
-.sw-footer { background: var(--sw-text); color: var(--sw-background); }
-.sw-footer-row { display: flex; align-items: center; gap: 14px; padding-block: var(--space-xxl); font-size: 16px; }
-/* The words are a flex item, whose least width is that of its longest word:
-   an address or a compound word in the footer would hold the row wider than
-   the window. It breaks inside the word when it must, as the brand's does. */
-.sw-footer-row p { min-width: 0; overflow-wrap: anywhere; }
-.sw-footer strong { font-weight: 600; }
 
 /* ---------- Icon box ---------- */
 .sw-iconbox { display: grid; gap: var(--space-m); align-content: start; }
@@ -317,32 +377,22 @@ a.sw-btn:not([href]) { cursor: default; }
     --sec-y: var(--section-s);
     --cols-gap: var(--space-xl);
   }
-  .cols { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
-  .sw-nav-links { display: none; }
-  .sw-menu { display: block; }
+  /* Columns stack, unless their section says on phones only or never. */
+  .cols:not(.stack-phone):not(.stack-never) { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
   .sw-iconbox { grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-l); align-items: start; }
   .sw-iconbox h3 { margin-bottom: var(--space-xs); }
   .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* ---------- A menu too long for the bar: folded on wider pages too ----------
-   The design's four links fit the bar from 800 up. A menu the editor made
-   longer, or a longer name or button, would push the bar onto two rows
-   there, so the server works out from the widths of its letters
-   (schema/header-metrics.json, app/models/header_fit.rb) the width below
-   which the links fold into Menu, as on a tablet, and names it on the
-   header: data-fold="960" folds them below 960. "all" folds them at every
-   width, for a menu wider than the widest bar. No data-fold: the design's
-   800. tools/header-metrics.ts reads these widths from here, and checks
-   each by drawing the header on both sides of it. */
-@container site (width < 880px) { .sw-header[data-fold="880"] .sw-nav-links { display: none; } .sw-header[data-fold="880"] .sw-menu { display: block; } }
-@container site (width < 960px) { .sw-header[data-fold="960"] .sw-nav-links { display: none; } .sw-header[data-fold="960"] .sw-menu { display: block; } }
-@container site (width < 1040px) { .sw-header[data-fold="1040"] .sw-nav-links { display: none; } .sw-header[data-fold="1040"] .sw-menu { display: block; } }
-@container site (width < 1120px) { .sw-header[data-fold="1120"] .sw-nav-links { display: none; } .sw-header[data-fold="1120"] .sw-menu { display: block; } }
-@container site (width < 1200px) { .sw-header[data-fold="1200"] .sw-nav-links { display: none; } .sw-header[data-fold="1200"] .sw-menu { display: block; } }
-@container site (width < 1248px) { .sw-header[data-fold="1248"] .sw-nav-links { display: none; } .sw-header[data-fold="1248"] .sw-menu { display: block; } }
-.sw-header[data-fold="all"] .sw-nav-links { display: none; }
-.sw-header[data-fold="all"] .sw-menu { display: block; }
+/* ---------- A menu's sheet opens on the side its block is aligned to ---------- */
+@container site (560px <= width < 800px) {
+  .w-menu.tablet-align-left .sw-menu-sheet { right: auto; left: var(--sheet-inset, 0); }
+  .w-menu:is(.tablet-align-center, .tablet-align-right) .sw-menu-sheet { left: auto; right: var(--sheet-inset, 0); }
+}
+@container site (width < 560px) {
+  .w-menu.phone-align-left .sw-menu-sheet { right: auto; left: var(--sheet-inset, 0); }
+  .w-menu:is(.phone-align-center, .phone-align-right) .sw-menu-sheet { left: auto; right: var(--sheet-inset, 0); }
+}
 
 /* ---------- Phone layout: narrower than 560 ---------- */
 @container site (width < 560px) {
@@ -350,12 +400,12 @@ a.sw-btn:not([href]) { cursor: default; }
     --pad-x: var(--space-l);
     --sec-y: var(--space-xxl);
   }
-  .sw-header-row { min-height: 64px; padding-block: 12px; }
-  .sw-brand { margin-right: 12px; font-size: 17px; gap: 8px; }
-  .sw-brand .sw-brand-mark { width: 26px; height: 26px; }
-  .sw-nav { gap: 8px; }
-  .sw-nav .sw-btn-small { padding: 0 16px; }
-  .sw-menu-button { padding: 0 14px 0 10px; }
+  .cols.stack-phone { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
+  .w-logo-link { gap: 8px; font-size: 17px; }
+  .w-logo .sw-brand-mark { width: 26px; height: 26px; }
+  .w-menu .sw-menu-button { padding: 0 14px 0 10px; }
+  .sw-header { --sec-y: 12px; --cols-gap: var(--space-s); }
+  .sw-header .w-button .sw-btn { display: inline-flex; width: auto; padding: 0 16px; }
   .w-button .sw-btn { display: flex; width: 100%; }
   .sw-form .sw-btn { justify-self: stretch; }
   .sw-figure img { border-radius: 8px; }
@@ -367,5 +417,4 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
   .sw-embed-bar small { font-size: 14px; }
   .sw-play-dot { width: 52px; height: 52px; }
-  .sw-footer-row { align-items: flex-start; font-size: 15px; }
 }

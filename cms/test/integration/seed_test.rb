@@ -13,7 +13,7 @@ class SeedTest < ActionDispatch::IntegrationTest
   def site = JSON.parse(ExampleSite::ROOT.join("site.json").read)
 
   def stored_pages
-    Page.includes(:draft, :published_version).order(:id).to_h { |page| [ page.draft.slug, [ page.draft.revision, page.draft.document, page.published_version.document, page.home? ] ] }
+    Page.includes(:draft, :published_version).order(:id).to_h { |page| [ page.draft.slug || page.kind, [ page.draft.revision, page.draft.document, page.published_version.document, page.home? ] ] }
   end
 
   test "db:seed publishes the example site on an empty database, and run again on its own result changes nothing" do
@@ -24,11 +24,14 @@ class SeedTest < ActionDispatch::IntegrationTest
     first = [ counts.call, stored_pages ]
     said_again = seed
 
-    assert_equal [ 3, 6, 9, 9 ], first[0]
+    # Three pages and the header and footer, each published once, besides
+    # the automatic version of each page's save.
+    assert_equal [ 5, 8, 9, 9 ], first[0]
     assert_equal first, [ counts.call, stored_pages ]
-    assert_equal %w[home winter-series notices], first[1].keys
+    assert_equal %w[home winter-series notices header footer], first[1].keys
+    assert_equal SiteParts.starter("header"), first[1]["header"][2], "the header published is its starter, the example site's own"
     assert_no_match(/left as it is/, said)
-    assert_equal 3, said_again.scan(/already there, left as it is/).size, said_again
+    assert_equal 5, said_again.scan(/already there, left as it is/).size, said_again
 
     { "/" => "Swim at slack water", "/winter-series" => "Winter series", "/notices" => "Notices" }.each do |path, heading|
       get path
@@ -37,6 +40,8 @@ class SeedTest < ActionDispatch::IntegrationTest
     end
     get "/"
     assert_equal 6, css_select("main [data-block-type=gallery] img").size
+    assert_select "header.sw-header .w-logo-link span", text: "Slack Water"
+    assert_select "footer.sw-footer strong", text: "Slack Water swimming club."
   end
 
   # One place for both engines: what the CMS stores is the file, with each

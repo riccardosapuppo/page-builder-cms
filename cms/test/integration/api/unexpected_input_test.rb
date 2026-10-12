@@ -64,11 +64,6 @@ class Api::UnexpectedInputTest < ActionDispatch::IntegrationTest
     api :put, "/api/site-style", { "palette" => SiteStyle.current.palette, "typeScale" => "balanced#{NUL}" }
     assert_equal [ [ "/typeScale", "pattern" ] ], error_pointers
 
-    # The header's texts and links are lines and links of the schema, whose
-    # control characters include U+0000.
-    api :put, "/api/site", { "revision" => 0, **Site.defaults, "name" => "Slack#{NUL}Water" }
-    assert_equal [ [ "/name", "not" ] ], error_pointers
-
     api :put, "/api/pages/#{@page.id}/draft", { "revision" => 0, "saveId" => "a#{NUL}", "document" => page_document }
     assert_equal [ [ "/saveId", "pattern" ] ], error_pointers
   end

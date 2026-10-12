@@ -1,63 +1,70 @@
 require "test_helper"
 require "open3"
 
-# config/initializers/site.rb: config/site.yml's header and footer are
-# checked as the CMS starts, and a value that a change from the editor could
-# not hold stops it, naming each one. The model's tests call
-# Site.check_defaults! themselves; this one starts the CMS, in a process of
-# its own, the way `bin/rails runner` does (Bundler, then config/environment,
-# which runs every initializer), with some values of config/site.yml changed
-# as the file is read. The file is not touched, and nothing about the check
-# is stubbed: remove the initializer, or its call, and these fail.
+# config/initializers/site_parts.rb: the header's and footer's starters,
+# config/parts/*.json, are read as the CMS starts and checked once it has,
+# and a starter that a part's draft could not hold stops it, naming each
+# value. The model's tests call SiteParts.check themselves; this one starts
+# the CMS, in a process of its own, the way `bin/rails runner` does
+# (Bundler, then config/environment, which runs every initializer), with
+# the header's starter replaced as the file is read. The file is not
+# touched, and nothing about the check is stubbed: remove the initializer,
+# or its check, and these fail.
 class SiteBootTest < ActiveSupport::TestCase
-  # The script the process runs, from its standard input. `changes` (JSON,
-  # in the environment) is put over the file's shared values where
-  # ActiveSupport reads the file for config_for, so what the app boots with
-  # is the file with those values changed.
+  # The script the process runs, from its standard input. HEADER_STARTER
+  # (JSON, in the environment) is what the app reads for
+  # config/parts/header.json, where it reads the file.
   BOOT = <<~RUBY.freeze
     require "./config/boot"
-    require "json"
-    require "active_support"
-    require "active_support/configuration_file"
+    require "pathname"
 
-    module SiteChanged
-      def parse(content_path, **options)
-        parsed = super
-        return parsed unless File.basename(content_path.to_s) == "site.yml"
+    module StarterChanged
+      def read(*args, **options)
+        replaced = ENV["HEADER_STARTER"]
+        return replaced if replaced && to_s.end_with?(File.join("config", "parts", "header.json"))
 
-        parsed.merge("shared" => parsed.fetch("shared").merge(JSON.parse(ENV.fetch("SITE_CHANGES"))))
+        super
       end
     end
-    ActiveSupport::ConfigurationFile.singleton_class.prepend(SiteChanged)
+    Pathname.prepend(StarterChanged)
 
     require "./config/environment"
-    puts "booted with " + Rails.configuration.x.site.fetch(:name).inspect
+    puts "booted with " + Rails.configuration.x.parts.fetch("header").fetch("title").inspect
   RUBY
 
-  # [standard output, standard error, status]
-  def boot(changes = {})
-    Open3.capture3({ "SITE_CHANGES" => JSON.generate(changes) }, RbConfig.ruby, "-", stdin_data: BOOT, chdir: Rails.root.to_s)
+  def header(title, widgets)
+    { "schemaVersion" => 1, "title" => title, "sections" => [ section_block("s", widgets) ] }
   end
 
-  # The same process, the same script, a valid change: it boots, and the
-  # change is what the app has. Without this, the run below could stop for
+  # [standard output, standard error, status]
+  def boot(starter)
+    Open3.capture3({ "HEADER_STARTER" => JSON.generate(starter) }, RbConfig.ruby, "-", stdin_data: BOOT, chdir: Rails.root.to_s)
+  end
+
+  # The same process, the same script, a valid starter: it boots, and the
+  # starter is what the app has. Without this, the runs below could stop for
   # any other reason (a missing gem, a mistake in the script) and still pass.
-  test "a valid change boots, and the app has it" do
-    out, err, status = boot("name" => "Tide club")
+  test "a valid starter boots, and the app has it" do
+    out, err, status = boot(header("Tide club", [ heading_block("h", "Tide club", level: 2) ]))
 
     assert status.success?, err
     assert_equal "booted with \"Tide club\"", out.strip
   end
 
-  test "defaults that break the rules stop the boot, and the message names each value" do
-    menu = [ { "label" => "Script", "href" => "javascript:alert(1)" }, { "label" => "L" * 25, "href" => "/ok" } ]
-    out, err, status = boot("name" => " ", "menu" => menu, "footer" => { "lead" => "Slack Water.", "text" => "x" * 161 })
+  test "a starter that breaks a page's rules, or a part's, stops the boot, and the message names each value" do
+    link = { "id" => "b", "type" => "button", "props" => { "label" => "Script", "href" => "javascript:alert(1)" }, "style" => { "base" => {} }, "children" => [] }
+    out, err, status = boot(header(" ", [ link ]))
 
-    assert_not status.success?, "the CMS booted with defaults the editor could not save back: #{out}"
+    assert_not status.success?, "the CMS booted with a starter the editor could not save back: #{out}"
     assert_not_includes out, "booted"
-    assert_includes err, "config/site.yml"
-    [ "/name (pattern)", "/menu/0/href (pattern)", "/menu/1/label (maxLength)", "/footer/text (maxLength)" ].each do |named|
-      assert_includes err, named
-    end
+    assert_includes err, "config/parts"
+    [ "header.json", "/title (pattern)", "/sections/0/children/0/children/0/props/href (pattern)" ].each { |named| assert_includes err, named }
+
+    form = { "id" => "f", "type" => "form", "style" => { "base" => {} }, "children" => [],
+             "props" => { "items" => [ { "name" => "email", "kind" => "email", "label" => "Email", "required" => true } ], "submitLabel" => "Send", "confirmation" => "Sent." } }
+    out, err, status = boot(header("Header", [ form ]))
+
+    assert_not status.success?, "the CMS booted with a form in its header: #{out}"
+    assert_includes err, "header.json: /sections/0/children/0/children/0 (part)"
   end
 end

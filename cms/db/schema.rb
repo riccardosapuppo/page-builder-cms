@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_090200) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -44,7 +44,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_170000) do
     t.json "document", null: false
     t.integer "revision", default: 0, null: false
     t.string "last_save_id"
-    t.string "slug", null: false
+    t.string "slug"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["page_id"], name: "index_drafts_on_page_id", unique: true
@@ -93,9 +93,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_170000) do
     t.integer "published_version_id"
     t.boolean "home", default: false, null: false
     t.integer "published_revision"
+    t.string "kind", default: "page", null: false
     t.index ["home"], name: "index_pages_one_home", unique: true, where: "home"
+    t.index ["kind"], name: "index_pages_one_part_of_each_kind", unique: true, where: "kind <> 'page'"
     t.index ["published_version_id"], name: "index_pages_on_published_version_id"
     t.index ["slug"], name: "index_pages_on_slug", unique: true
+    t.check_constraint "kind IN ('page', 'header', 'footer') AND (kind = 'page' OR (slug IS NULL AND NOT home))", name: "pages_kind"
   end
 
   create_table "scheduled_publications", force: :cascade do |t|
@@ -123,17 +126,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_170000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.check_constraint "id = 1", name: "site_styles_single_row"
-  end
-
-  create_table "sites", force: :cascade do |t|
-    t.string "name", null: false
-    t.json "menu", null: false
-    t.json "action"
-    t.json "footer", null: false
-    t.integer "revision", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.check_constraint "id = 1", name: "sites_single_row"
   end
 
   create_table "slug_redirects", force: :cascade do |t|

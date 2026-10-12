@@ -192,13 +192,13 @@
 .space-below-xxl { padding-bottom: var(--space-xxl); }
 .space-below-section-s { padding-bottom: var(--section-s); }
 .space-below-section-l { padding-bottom: var(--section-l); }
-.bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
-.bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-.bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-.bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-.bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-.bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-.bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+.bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
+.bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
+.bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+.bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
+.bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
+.bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+.bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
 .bg-none > * { --ring-color: inherit; }
 .bg-text > * { --ring-color: var(--sw-background); }
 .bg-background > * { --ring-color: var(--sw-text); }
@@ -278,13 +278,13 @@
   .tablet-space-below-xxl { padding-bottom: var(--space-xxl); }
   .tablet-space-below-section-s { padding-bottom: var(--section-s); }
   .tablet-space-below-section-l { padding-bottom: var(--section-l); }
-  .tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
-  .tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-  .tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-  .tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
+  .tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
+  .tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+  .tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
+  .tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
+  .tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+  .tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
   .tablet-bg-none > * { --ring-color: inherit; }
   .tablet-bg-text > * { --ring-color: var(--sw-background); }
   .tablet-bg-background > * { --ring-color: var(--sw-text); }
@@ -366,13 +366,13 @@
   .phone-space-below-xxl { padding-bottom: var(--space-xxl); }
   .phone-space-below-section-s { padding-bottom: var(--section-s); }
   .phone-space-below-section-l { padding-bottom: var(--section-l); }
-  .phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; }
-  .phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-  .phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
-  .phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; }
-  .phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; }
+  .phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
+  .phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
+  .phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+  .phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
+  .phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
+  .phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
+  .phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
   .phone-bg-none > * { --ring-color: inherit; }
   .phone-bg-text > * { --ring-color: var(--sw-background); }
   .phone-bg-background > * { --ring-color: var(--sw-text); }
@@ -418,7 +418,7 @@
 @container site (560px <= width < 800px) { .hide-tablet { display: none; } }
 @container site (width < 560px) { .hide-phone { display: none; } }
 
-/* ---------- Column widths, on desktop only: below it the columns stack ---------- */
+/* ---------- Column widths, wherever the columns stand side by side ---------- */
 @container site (width >= 800px) {
   .widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .widths-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
@@ -427,6 +427,33 @@
   .widths-2-1-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
   .widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }
   .widths-1-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+  .widths-fit-1 { grid-template-columns: auto minmax(0, 1fr); }
+  .widths-1-fit { grid-template-columns: minmax(0, 1fr) auto; }
+  .widths-fit-1-fit { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
+@container site (560px <= width < 800px) {
+  .stack-phone.widths-3-2, .stack-never.widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .stack-phone.widths-2-3, .stack-never.widths-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .stack-phone.widths-2-1, .stack-never.widths-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .stack-phone.widths-1-2, .stack-never.widths-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .stack-phone.widths-2-1-1, .stack-never.widths-2-1-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .stack-phone.widths-1-2-1, .stack-never.widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }
+  .stack-phone.widths-1-1-2, .stack-never.widths-1-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+  .stack-phone.widths-fit-1, .stack-never.widths-fit-1 { grid-template-columns: auto minmax(0, 1fr); }
+  .stack-phone.widths-1-fit, .stack-never.widths-1-fit { grid-template-columns: minmax(0, 1fr) auto; }
+  .stack-phone.widths-fit-1-fit, .stack-never.widths-fit-1-fit { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
+@container site (width < 560px) {
+  .stack-never.widths-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .stack-never.widths-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .stack-never.widths-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .stack-never.widths-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .stack-never.widths-2-1-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .stack-never.widths-1-2-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); }
+  .stack-never.widths-1-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+  .stack-never.widths-fit-1 { grid-template-columns: auto minmax(0, 1fr); }
+  .stack-never.widths-1-fit { grid-template-columns: minmax(0, 1fr) auto; }
+  .stack-never.widths-fit-1-fit { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 
 /* ---------- Spacer heights ---------- */

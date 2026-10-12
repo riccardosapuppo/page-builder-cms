@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "title": "Header",
+  "sections": [
+    {
+      "id": "header",
+      "type": "section",
+      "props": {
+        "label": "Header",
+        "columnWidths": "fit:1:fit",
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "header-brand",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "header-logo",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "header-links",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "header-menu",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  },
+                  {
+                    "label": "Gallery",
+                    "href": "/#gallery"
+                  },
+                  {
+                    "label": "Meet us",
+                    "href": "/#meet"
+                  },
+                  {
+                    "label": "Questions",
+                    "href": "/#questions"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "align": "right"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "header-action",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "header-join",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "/#join"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

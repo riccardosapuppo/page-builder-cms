@@ -25,9 +25,6 @@ module BlockDocument
     # could not hold.
     LINE = SCHEMER.ref("#/$defs/line")
 
-    # The site's header and footer (Site), which are not part of a page:
-    # validated on their own against $defs/site, as the editor does.
-    SITE = SCHEMER.ref("#/$defs/site")
 
     module_function
 
@@ -40,11 +37,6 @@ module BlockDocument
     # something to report.
     def errors(document)
       errors_of(SCHEMER, document)
-    end
-
-    # The same for the header and footer: pointers into the values given.
-    def site_errors(values)
-      errors_of(SITE, values)
     end
 
     def errors_of(schemer, value)

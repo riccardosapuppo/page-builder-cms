@@ -1,33 +1,11 @@
-# The defaults of the header and footer around every page: the site's name
-# in the header, the menu, the header's button and the footer's two lines.
-# The editor changes them (PUT /api/site), and what it sets is kept in the
-# database (Site); these apply until it first does, and are read once, as
-# the CMS starts. They are checked then against
-# the rules a change from the editor is held to ($defs/site of
-# schema/block-document.schema.json): a value the editor could not save
-# back stops the CMS, naming it. The example site is the design's own,
-# Slack Water, whose menu's anchors point at sections of the home page
-# (/#swims), so they work from every page.
+# The site's own settings. The header and footer are not here: they are the
+# site's parts, made of blocks in the editor and published as pages are
+# (SiteParts), and a site that has not published its own draws the
+# starters of config/parts.
 #
-# The time zone below is the CMS's own setting: the editor shows it and
-# never changes it.
+# The time zone is the CMS's own setting: the editor shows it and never
+# changes it.
 shared:
-  name: Slack Water
-  menu:
-    - label: Swims
-      href: /#swims
-    - label: Gallery
-      href: /#gallery
-    - label: Meet us
-      href: /#meet
-    - label: Questions
-      href: /#questions
-  action:
-    label: Join
-    href: /#join
-  footer:
-    lead: Slack Water swimming club.
-    text: Tide times are a guide, not a promise.
   # The site's time zone, an IANA name. The editor shows and takes the
   # time of a scheduled publish in it, the same for every visitor, and
   # config.time_zone is set from it (config/application.rb); the API's

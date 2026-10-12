@@ -4,7 +4,17 @@
 # at, the version that is served, the draft revision that version was taken
 # from, and when it was last published. What is being edited lives in its
 # Draft; every frozen copy is a PageVersion.
+#
+# Its kind is "page", or one of the site's parts, "header" or "footer"
+# (SiteParts): a document like a page's, edited, versioned and published
+# the same way, which the layout draws around every page instead of at an
+# address of its own. A part has no address, is never the home page, and
+# there is at most one of each kind (a unique index); the CMS makes it the
+# first time the editor asks for the pages (part!).
 class Page < ApplicationRecord
+  KINDS = %w[page header footer].freeze
+  PARTS = %w[header footer].freeze
+
   has_one :draft, dependent: :delete
   # What visitors sent with the page's forms: a page that has answers is
   # not destroyed with them (nothing in the CMS destroys a page yet).
@@ -17,13 +27,19 @@ class Page < ApplicationRecord
   # at most one (a unique index says so).
   has_one :pending_schedule, -> { pending }, class_name: "ScheduledPublication", inverse_of: :page
 
+  validates :kind, inclusion: { in: KINDS }
   validates :slug, slug: true, allow_nil: true
   validates :slug, uniqueness: { message: "is already the address of another page" }, allow_nil: true
+  validates :slug, absence: { message: "is not for a header or footer, which has no address" }, if: :part?
+  validates :home, exclusion: { in: [ true ], message: "is not for a header or footer, which is drawn on every page" }, if: :part?
   # The draft revision the live version came from, exactly when something
   # is live (here and not in the database: see the migration that added it).
   validates :published_revision, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: :published?
   validates :published_revision, absence: true, unless: :published?
   validate :published_at_never_moves_back
+
+  scope :site_pages, -> { where(kind: "page") }
+  scope :parts, -> { where(kind: PARTS) }
 
   # A new page: an empty document with its title, and the address it will
   # get on its first publish. Nothing is live until then.
@@ -36,6 +52,32 @@ class Page < ApplicationRecord
       page.create_draft!(document: result.document, slug: slug)
       page
     end
+  end
+
+  # The site's header or footer, made the first time it is asked for, with
+  # its starter (SiteParts) as the draft and nothing live: the pages draw
+  # the starter until the part is published. Two first asks at once both
+  # find none; the second one's insert is refused by the unique index on
+  # the parts' kinds, and it reads the part the first one made.
+  def self.part!(kind)
+    raise ArgumentError, "#{kind.inspect} is not a part of the site" unless PARTS.include?(kind)
+
+    find_by(kind: kind) || transaction(requires_new: true) do
+      page = create!(kind: kind)
+      page.create_draft!(document: SiteParts.starter(kind), slug: nil)
+      page
+    end
+  rescue ActiveRecord::RecordNotUnique
+    find_by!(kind: kind)
+  end
+
+  # Both parts, made where they are not yet, header first.
+  def self.parts!
+    PARTS.map { |kind| part!(kind) }
+  end
+
+  def part?
+    PARTS.include?(kind)
   end
 
   def published?
@@ -52,8 +94,10 @@ class Page < ApplicationRecord
   # is unmarked first, so the unique index on home never sees two. Both
   # rows are written whatever this object believes it holds, then read
   # back: an attribute set in memory by a write that failed must not make
-  # the write look unneeded.
+  # the write look unneeded. A part is never home (Part).
   def make_home!(at: Time.current)
+    raise Part, "A header or footer is drawn on every page: it cannot be the home page." if part?
+
     transaction do
       Page.where(home: true).where.not(id: id).update_all(home: false, updated_at: at)
       Page.where(id: id).update_all(home: true, updated_at: at)
@@ -66,10 +110,14 @@ class Page < ApplicationRecord
     reload
   end
 
+  # What a page has and a part has not: an address, the home page's place.
+  class Part < StandardError; end
+
   # Where a visitor finds the live page: / for the home page, /<slug> for
-  # the others, nil before the first publish.
+  # the others, nil before the first publish, and for a part, which has no
+  # address of its own.
   def live_path
-    return nil unless published?
+    return nil unless published? && !part?
 
     home? ? "/" : "/#{slug}"
   end
@@ -149,7 +197,7 @@ class Page < ApplicationRecord
   def publish_scheduled!(schedule, at: Time.current)
     transaction do
       draft = Draft.find_by!(page_id: id)
-      put_live!(Draft.upgrade_and_check(schedule.version.document), revision: schedule.revision, slug: draft.slug, at: at)
+      put_live!(Draft.upgrade_and_check(schedule.version.document, part: part?), revision: schedule.revision, slug: draft.slug, at: at)
     end
   end
 

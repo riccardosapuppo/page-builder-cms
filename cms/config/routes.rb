@@ -40,7 +40,6 @@ Rails.application.routes.draw do
     put "site-style", to: "site_styles#update"
 
     get "site", to: "sites#show"
-    put "site", to: "sites#update"
 
     # Any other address or method under /api/: the API's JSON 404, not the
     # site's HTML 404 page.

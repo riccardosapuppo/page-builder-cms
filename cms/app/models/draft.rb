@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # The one draft of a page: the document as the editor last saved it, and
-# the address the page will have once published.
+# the address the page will have once published; none for the site's
+# header and footer (Page::PARTS), which have no address.
 #
 # The editor saves again and again. Each save names the revision it started
 # from; the save goes through only if the draft is still at that revision,
@@ -29,8 +30,9 @@ class Draft < ApplicationRecord
   belongs_to :page
   has_many :media_usages, dependent: :delete_all
 
-  validates :slug, slug: true
-  validates :slug, uniqueness: { message: "is already the next address of another page" }
+  validates :slug, slug: true, unless: :part?
+  validates :slug, absence: { message: "is not for a header or footer, which has no address" }, if: :part?
+  validates :slug, uniqueness: { message: "is already the next address of another page" }, allow_nil: true
   validate :slug_not_live_elsewhere
 
   # Saves a document sent by the editor over the draft of page page_id.
@@ -54,7 +56,8 @@ class Draft < ApplicationRecord
   # Returns the draft as saved. Raises BlockDocument::Invalid, Conflict, or
   # ActiveRecord::RecordNotFound when there is no such page.
   def self.save_document!(page_id:, revision:, document:, save_id:, at: Time.current)
-    result = BlockDocument.check(document)
+    # A part's draft is held to a part's rule too (SiteParts.check).
+    result = (Page.where(id: page_id).pick(:kind).in?(Page::PARTS) ? SiteParts : BlockDocument).check(document)
     raise BlockDocument::Invalid, result.errors unless result.ok?
 
     json = JSON.generate(result.document)
@@ -82,17 +85,18 @@ class Draft < ApplicationRecord
     last_save_id == save_id && self.revision == revision + 1 && document == JSON.parse(json)
   end
 
-  # The document upgraded to the current schemaVersion and checked again:
-  # what a version made from this draft will hold.
+  # The document upgraded to the current schemaVersion and checked again,
+  # a part's by a part's rule too: what a version made from this draft
+  # will hold.
   def checked_document
-    self.class.upgrade_and_check(document)
+    self.class.upgrade_and_check(document, part: part?)
   end
 
   # Puts a stored document in place of the draft's, as a restore does. The
   # revision goes up like on any save; the last save id is cleared, so a
   # retry of a save made before the restore is a conflict, not a success.
   def replace_document!(stored_document, at: Time.current)
-    document = self.class.upgrade_and_check(stored_document)
+    document = self.class.upgrade_and_check(stored_document, part: part?)
     self.class.where(id: id)
       .update_all([ "document = ?, revision = revision + 1, last_save_id = NULL, updated_at = ?", JSON.generate(document), at ])
     reload
@@ -100,14 +104,17 @@ class Draft < ApplicationRecord
     self
   end
 
-  def self.upgrade_and_check(stored_document)
+  # A stored document upgraded and checked again, as a publish, a
+  # schedule, a version and a restore take it; a part's held to a part's
+  # rule as well (SiteParts.check), as its saves are.
+  def self.upgrade_and_check(stored_document, part: false)
     upgraded =
       begin
         BlockDocument::Upgrade.call(stored_document)
       rescue BlockDocument::Upgrade::Unsupported => e
         raise BlockDocument::Invalid, [ BlockDocument::Error.at("/schemaVersion", "upgrade", e.message) ]
       end
-    result = BlockDocument.check(upgraded)
+    result = (part ? SiteParts : BlockDocument).check(upgraded)
     raise BlockDocument::Invalid, result.errors unless result.ok?
 
     result.document
@@ -115,10 +122,14 @@ class Draft < ApplicationRecord
 
   private
 
+  def part?
+    page&.part? || false
+  end
+
   # The address must not be another page's live address either: that page
   # keeps it until it is published under a new one.
   def slug_not_live_elsewhere
-    return if errors.include?(:slug)
+    return if slug.nil? || errors.include?(:slug)
     return unless Page.where(slug: slug).where.not(id: page_id).exists?
 
     errors.add(:slug, :taken, message: "is already the address of another page")

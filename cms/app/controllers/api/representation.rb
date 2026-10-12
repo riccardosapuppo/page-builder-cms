@@ -8,10 +8,13 @@ module Api
   module Representation
     private
 
+    # kind is page, or header or footer for the site's parts, which have no
+    # address (slug null) and are never home.
     def page_summary_json(page)
       draft = page.draft
       {
         "id" => page.id,
+        "kind" => page.kind,
         "title" => draft.document["title"],
         "slug" => draft.slug,
         "home" => page.home?,
@@ -27,6 +30,7 @@ module Api
       {
         "page" => {
           "id" => page.id,
+          "kind" => page.kind,
           "title" => page.draft.document["title"],
           "slug" => page.draft.slug,
           "home" => page.home?,
@@ -158,16 +162,8 @@ module Api
     # revision a change must name, and the site's time zone: the IANA name,
     # which a browser's Intl reads, so the editor works out from it the
     # offset of any date, summer time included.
-    def site_json(site)
-      {
-        "name" => site.name,
-        "menu" => site.menu,
-        "action" => site.action,
-        "footer" => site.footer,
-        "timeZone" => Time.zone.tzinfo.name,
-        "revision" => site.revision,
-        "updatedAt" => iso(site.updated_at)
-      }
+    def site_json
+      { "timeZone" => Time.zone.tzinfo.name }
     end
 
     def site_style_json(style)

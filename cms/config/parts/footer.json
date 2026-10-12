@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "title": "Footer",
+  "sections": [
+    {
+      "id": "footer",
+      "type": "section",
+      "props": {
+        "label": "Footer",
+        "columnWidths": "fit:1",
+        "stack": "never"
+      },
+      "children": [
+        {
+          "id": "footer-brand",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "footer-logo",
+              "type": "logo",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "footer-words",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "footer-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Slack Water swimming club.",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " Tide times are a guide, not a promise."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "small"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text"
+        }
+      }
+    }
+  ]
+}

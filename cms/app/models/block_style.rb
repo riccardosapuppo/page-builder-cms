@@ -52,6 +52,8 @@ module BlockStyle
 
   # The column-width presets a section may name ("3:2", "2:1:1"...).
   COLUMN_WIDTHS = DEFS.fetch("columnWidthsToken").fetch("enum").freeze
+  # Where a section's columns may stack other than on tablets and phones.
+  STACKS = DEFS.fetch("stackToken").fetch("enum").freeze
 
   module_function
 
@@ -61,6 +63,14 @@ module BlockStyle
   def column_widths(props, count)
     value = props.is_a?(Hash) ? props["columnWidths"] : nil
     COLUMN_WIDTHS.include?(value) && value.split(":").size == count ? value : nil
+  end
+
+  # A section's stack when the schema lists it and the section has columns
+  # to stack, two or more; nil otherwise, and they stack on tablets and
+  # phones.
+  def stack(props, count)
+    value = props.is_a?(Hash) ? props["stack"] : nil
+    STACKS.include?(value) && count >= 2 ? value : nil
   end
 
   # The classes for one key: the base value (or default, when the style has

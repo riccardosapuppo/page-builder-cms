@@ -51,7 +51,7 @@ module PublicPage
 
   included do
     layout "public"
-    helper_method :site_style, :site
+    helper_method :site_style, :site_parts
 
     # Every fragment of these pages belongs to the release that drew it: a
     # deploy that changes how a page is drawn finds none of the old ones.
@@ -78,10 +78,12 @@ module PublicPage
     @site_style ||= SiteStyle.current
   end
 
-  # The site's header and footer (Site), read once per request in the same
-  # way.
-  def site
-    @site ||= Site.current
+  # The site's header and footer as the published pages draw them
+  # (SiteParts.live), read once per request in the same way, without their
+  # versions' documents until a page is drawn. The preview draws their
+  # drafts instead (PreviewsController).
+  def site_parts
+    @site_parts ||= SiteParts.live
   end
 
   # A published page, cached at three levels.
@@ -94,15 +96,17 @@ module PublicPage
   #
   # In Solid Cache: the page's whole HTML, one entry per version, site
   # style and header and footer; inside it, one entry per block
-  # (BlocksHelper#render_blocks), so a new version redraws only the blocks
-  # that changed and those around them, and a new style or header redraws
-  # none. With caching off (perform_caching), every request renders.
+  # (BlocksHelper#render_blocks), the header's and footer's too, so a new
+  # version redraws only the blocks that changed and those around them, a
+  # new style none, and a new header only its own blocks that changed,
+  # once for every page. With caching off (perform_caching), every request
+  # renders.
   def render_published(page)
     expires_in 0, public: true, must_revalidate: true
-    response.weak_etag = PageCache.etag(page, site_style, site)
+    response.weak_etag = PageCache.etag(page, site_style, site_parts)
     return head(:not_modified) if request.fresh?(response)
 
-    key = PageCache.page_fragment(page, site_style, site)
+    key = PageCache.page_fragment(page, site_style, site_parts)
     if (html = read_fragment(key))
       render html: html.html_safe
     else

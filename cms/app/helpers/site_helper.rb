@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # The theme around every page: the site style on the page root, and the
-# links of the header (Site).
+# site's header and footer, its parts (SiteParts).
 module SiteHelper
   # data-<slot>="<tone>" for every palette slot, and data-type-scale, on
   # .site: tokens.css gives each curated tone a rule on that attribute, so
@@ -17,17 +17,17 @@ module SiteHelper
     data
   end
 
-  def site_links(links)
-    Array(links).filter_map { |link| site_link(link) }
-  end
+  # A part of the site around the page, in the element the layout gives it
+  # (header or footer): its sections, drawn as a page's are, each block a
+  # fragment of the cache where the page's are (@cache_blocks), the images
+  # it names looked up apart from the page's. A part with no section draws
+  # nothing, not even its element.
+  def site_part(part, element)
+    document = BlockDocument::Upgrade.call(part.document)
+    return nil if Array(document["sections"]).empty?
 
-  # A link of the header, if RenderPolicy accepts its address, as a link in
-  # a page is drawn: Site refuses such an address when it is written, and
-  # this leaves out one that reached the row another way.
-  def site_link(link, **attributes)
-    return nil unless link.is_a?(Hash)
-
-    href = RenderPolicy.link_href(link["href"])
-    href && content_tag(:a, link["label"].to_s, href: href, **attributes)
+    content_tag(element, class: "sw-#{element}") do
+      render_document(document, media: MediaResolver.for_document(document), cached: @cache_blocks)
+    end
   end
 end

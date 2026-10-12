@@ -61,8 +61,9 @@ module Cms
     # release named the files as they were at the start.
     config.watchable_files.concat(Dir.glob("*.{json,svg}", base: config.x.schema_dir.to_s).sort.map { |name| config.x.schema_dir.join(name).to_s })
 
-    # The header's and footer's defaults, which apply until the editor
-    # changes them (Site), and the site's time zone (config/site.yml).
+    # The site's own settings (config/site.yml): its time zone. The header
+    # and footer are the site's parts, made of blocks (SiteParts), with
+    # their starters in config/parts.
     config.x.site = config_for(:site)
 
     # The site's time zone, written out (config/site.yml) rather than left
