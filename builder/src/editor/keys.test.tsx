@@ -161,6 +161,23 @@ test("in a text field the keys are the field's: no block is deleted, no selectio
   expect(kit.ui.getState().shortcutsOpen).toBe(false);
 });
 
+test("Ctrl+Shift+Enter publishes an empty header or footer, which takes it off every page, as the button does, but not an empty page", () => {
+  const empty = { ...page(), sections: [] };
+  const opened = {
+    page: { id: 1, kind: "page" as const, slug: "winter", home: false, published: null, revision: 3, links: { preview: "/preview/1", live: null } },
+    header: { id: 7, kind: "header" as const, slug: null, home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } },
+  };
+  for (const [kind, current] of Object.entries(opened)) {
+    let publishes = 0;
+    const kit = editorKit({ document: empty, session: { current: current as never, publish: async () => { publishes += 1; } } });
+    kit.render(<div className="app"><Canvas /><EditorKeys /></div>);
+    expect(fireEvent.keyDown(document.body, { key: "Enter", ctrlKey: true, shiftKey: true }), kind).toBe(false);
+    expect(publishes, kind).toBe(kind === "header" ? 1 : 0);
+    expect(kit.ui.getState().notice, kind).toBe(kind === "header" ? null : "Add a section first. An empty page has nothing to publish.");
+    cleanup();
+  }
+});
+
 test("in a text written on the canvas, Delete, Backspace and Ctrl+D are the text's; keeping a version, previewing and publishing still work", () => {
   let previews = 0;
   let publishes = 0;

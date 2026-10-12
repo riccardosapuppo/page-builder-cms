@@ -186,8 +186,9 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     publish: () => {
       const now = session();
       if (!now?.current || !now.capabilities.publish) return false;
-      // The same pause the button shows, said instead of done.
-      const why = publishPaused(now.autosave?.getSnapshot() ?? null, store.getState().document.sections.length);
+      // The same pause the button shows, said instead of done: a header or
+      // footer may be published empty, which takes it off every page.
+      const why = publishPaused(now.autosave?.getSnapshot() ?? null, store.getState().document.sections.length, now.current.kind !== "page");
       if (why) ui.getState().say(why);
       else if (!now.publishing) void now.publish();
       return true;
