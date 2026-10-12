@@ -1,7 +1,11 @@
 # The header and footer are kept as the site style is: one row for the site, live on every page with nothing to publish
 
 Decided on 9 October 2026, when the header and footer moved from a file
-of the CMS into the editor.
+of the CMS into the editor. Replaced on 12 October 2026 by
+[the header and footer as parts of the site](header-and-footer-are-parts.md),
+documents of blocks edited and published as pages are: what follows is
+kept as it was decided, the files and commands it names as they were
+then.
 
 ## The question
 
@@ -19,9 +23,8 @@ page: one row for the site, changed live.
 
 ## The decision
 
-- **One row for the whole site**, `Site`
-  ([cms/app/models/site.rb](../../cms/app/models/site.rb)), id 1, as
-  `SiteStyle` is. Until the first change there is no row, and the values
+- **One row for the whole site**, `Site` (`cms/app/models/site.rb`,
+  since removed), id 1, as `SiteStyle` is. Until the first change there is no row, and the values
   of [cms/config/site.yml](../../cms/config/site.yml) apply, as the
   defaults of `schema/tokens.json` do for the style. That file keeps
   them as the defaults, checked as the CMS starts against the rules a

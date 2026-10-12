@@ -17,21 +17,23 @@ Every copy is named by what makes the page's bytes
 ([cms/app/models/page_cache.rb](../../cms/app/models/page_cache.rb)):
 
 - **The browser** gets `Cache-Control: max-age=0, public, must-revalidate`
-  and an ETag made of the published version, the site style, the header
-  and footer (added on 9 October 2026, when the editor began to change
-  them) and the release, with no `Last-Modified`. Every visit asks again;
-  an unchanged page is a 304 with no body, decided from the page row, the
-  site style and the header and footer before the version's document is
-  read. The version is named by its id
+  and an ETag made of the published version, the site style, the
+  header's and footer's published versions (since 12 October 2026, when
+  they became parts of the site published as pages are; a part that has
+  published nothing is named as its starter) and the release, with no
+  `Last-Modified`. Every visit asks again; an unchanged page is a 304
+  with no body, decided from the page rows and the site style before any
+  version's document is read. The version is named by its id
   and by the moment the page was put live, to the microsecond (both are on
   the page's row): ids start again in a database made anew, and a restored
   backup or a kept cache database would otherwise give the old database's
   page to the new one's.
 - **Solid Cache** keeps the page's whole HTML under the version (named the
-  same way), the site style and the header and footer, and each block's
-  HTML under a digest of its subtree and the
-  fingerprint of `tokens.css`, read one level at a time with Rails'
-  collection caching. Every key starts with the release.
+  same way), the site style and the parts' published versions, and each
+  block's HTML, the header's and footer's blocks as a page's, under a
+  digest of its subtree and the fingerprint of `tokens.css`, read one
+  level at a time with Rails' collection caching. Every key starts with
+  the release.
 - **The release** is a digest of the CMS's `app/`, `config/` and `lib/`,
   its `Gemfile.lock`, the schema folder's own files, the Ruby version and
   a key derived from the secret (which signs library images' addresses).
@@ -40,20 +42,22 @@ Every copy is named by what makes the page's bytes
   reload (`app/`, `lib/`, the routes, the locales, and the schema's files,
   whose readers reload with the code and which the reloader watches) are
   read again when one changes; the rest (`config/site.yml`, the header's
-  and footer's defaults, and the gems) is what the process read as it
-  started, and changes the release only with a restart.
+  and footer's starters in `config/parts`, and the gems) is what the
+  process read as it started, and changes the release only with a
+  restart.
 
 A publish of any kind (now, from a restored version, at a scheduled
 time) makes a new version, so a new ETag and a new page entry, and only
-the blocks that changed are drawn again; a new site style, or a new header
-and footer, redraws every page around blocks all read back, with nothing
-published; a deploy finds nothing of the release before. Nothing calls a
+the blocks that changed are drawn again; a new site style redraws every
+page around blocks all read back, with nothing published, and a publish
+of the header or the footer every page around its blocks and the part's
+own blocks that changed; a deploy finds nothing of the release before. Nothing calls a
 cache to clear it, so no publishing path can forget to.
 
 The other ways, and why not:
 - **Deleting on change**: every path that changes a page (publish,
-  scheduled publish, site style, the header and footer, a deploy, whatever
-  comes later) would
+  scheduled publish, site style, a publish of the header or the footer, a
+  deploy, whatever comes later) would
   have to remember to delete, and a missed one serves an old page with no
   error anywhere. A browser's copy cannot be deleted at all.
 - **A max-age window** (say a minute): cheaper visits, but a publish
@@ -93,15 +97,18 @@ The other ways, and why not:
 From `cms/`, `ruby bin/rails test test/integration/page_cache_test.rb
 test/models/page_cache_test.rb` (after `ruby bin/rails db:test:prepare`):
 the headers, the 304, a new page for the old ETag after a publish, a
-restore published, a new style, a new header and footer (on every page,
-at the next visit) and a new release; the reads and writes of
+restore published, a new style, a publish of the header or the footer (on
+every page, at the next visit, around blocks read back) and a new
+release; the reads and writes of
 Solid Cache on a page of 2 sections, 4 columns and 12 widgets (one widget
 changed: 4 written, 4 found); the same bytes as the partials draw with no
 cache on the 500-block fixture; no cookie in any answer.
 
 From the repository root, `node tools/check-production.ts`: the same from
 outside a production server, with production's Solid Cache rows counted
-(the page and its 45 blocks, then 4 more for one edited widget).
+(the page, its 45 blocks and the 12 of the header and footer, then 4
+more for one edited widget, and 4 more for the header published with a
+new name: the page, the logo, its column and its section).
 
 From `builder/`, `npm run e2e -- published-cache`: in Chromium with its
 cache on, a 200, a 304 over the wire, and after a publish from the

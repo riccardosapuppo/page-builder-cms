@@ -37,12 +37,14 @@ fails. `schema/tools/compare.ts` runs both engines over it and fails on a
 disagreement, on an exception (never taken for a verdict), on a missing or
 repeated result, and on a file the manifest does not list.
 
-Since 9 October 2026 the same file also describes the site's header and
-footer, `$defs/site`, which the CMS keeps apart from any page and the
-editor changes: its texts and links are the page's `line` and `href`, so
-they follow a page's rules. Both engines validate it on its own
-(`compare.ts --def site`), after the same application rules, against a
-corpus of its own, [schema/corpus/site/](../../schema/corpus/site/).
+Since 12 October 2026 the site's header and footer are documents of the
+same schema as a page, parts of the site
+([header-and-footer-are-parts.md](header-and-footer-are-parts.md)): they
+need no definition of their own, and their starters, the documents a
+site draws until it publishes its own, go through the comparison beside
+the example site's pages (`npm run compare:examples`). From 9 to 12
+October they were four values, `$defs/site`, held to one verdict on a
+corpus of their own; both went with them.
 
 ## What it costs
 
@@ -58,8 +60,8 @@ corpus of its own, [schema/corpus/site/](../../schema/corpus/site/).
   the base page with one change, so a new widget in the base page changes
   the generator's output: the form widget's commit rewrote 225 corpus
   files ([Adding a widget](../../README.md#adding-a-widget)).
-- **The Ruby side is the slow one.** Its 249 results took 9.4 s, ajv's 0.8 s,
-  in the run below.
+- **The Ruby side is the slow one.** Its 283 results took 15.0 s, ajv's
+  1.1 s, in the run below.
 
 ## The proof
 
@@ -69,10 +71,10 @@ From `schema/tools/`, with the CMS's gems installed:
 npm run compare
 ```
 
-prints `RESULT: PASS (249 files, 0 disagreements, 0 exceptions)` (8 October
-2026), and `npm run compare:site`, for the header and footer,
-`RESULT: PASS (50 files, 0 disagreements, 0 exceptions)` (9 October
-2026). `npm run corpus:check` fails if
+prints `RESULT: PASS (283 files, 0 disagreements, 0 exceptions)` (12
+October 2026), and `npm run compare:examples`, for the example site's
+pages and the header's and footer's starters, `RESULT: PASS (5 files, 0
+disagreements, 0 exceptions)` (12 October 2026). `npm run corpus:check` fails if
 a file on disk differs from what the generator writes, and `npm run
 lint:plants` shows the schema's lint failing on each of its planted
 faults. The schema README's "It can fail" lists the faults planted in the

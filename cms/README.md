@@ -2,7 +2,8 @@
 
 The Rails 8.1 application of the project: it stores the pages, their draft
 and versions, publishes them, keeps the media library, the site style and
-the header and footer, answers the editor through a JSON API under `/api`,
+the site's header and footer (parts kept and published as pages are),
+answers the editor through a JSON API under `/api`,
 and serves the pages a
 visitor sees, rendered on the server in the approved design's theme
 (`../design/`) and cached in the browser and in Solid Cache (see "How the
@@ -106,22 +107,29 @@ storage service, then `MediaItem.create_from_upload!` and its checks), from
 PNGs that `node tools/seed-images.ts` renders from the design's SVGs; a
 page names each by its id in `site.json`, and the seed puts the library's
 id for that upload in its place before it saves the page. Every file is
-read and checked before anything is uploaded or saved. On 8 October 2026,
-`ruby bin/rails db:prepare` on a fresh development database (the three
-`*_DATABASE_URL` and `CMS_STORAGE_ROOT` pointing at a folder of its own)
-created it and ran the seed, which printed the first five lines below;
-`ruby bin/rails db:seed` right after printed the next five:
+read and checked before anything is uploaded or saved. Last, it
+publishes the site's header and footer as their starters are
+(`config/parts`, the example site's own), a part already published left
+as it is. On 12 October 2026, `ruby bin/rails db:prepare` on a fresh
+development database (the three `*_DATABASE_URL` and `CMS_STORAGE_ROOT`
+pointing at a folder of its own) created it and ran the seed, which
+printed the first seven lines below; `ruby bin/rails db:seed` right after
+printed the next seven:
 
 ```
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home
   Winter series                /winter-series   version 2
   Notices                      /notices         version 2
+  Header                       every page       version 1
+  Footer                       every page       version 1
   9 images in the media library
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home, already there, left as it is
   Winter series                /winter-series   version 2, already there, left as it is
   Notices                      /notices         version 2, already there, left as it is
+  Header                       every page       version 1, already there, left as it is
+  Footer                       every page       version 1, already there, left as it is
   9 images in the media library
 ```
 
@@ -218,18 +226,17 @@ on that PATH, a Ruby process that loaded `config/boot` found
 single form exited 1 without printing anything, after preparing the
 database. The two commands above do not depend on the launcher.
 
-The run of 10 October 2026 (Windows 10, Ruby 3.4.11), with exactly these
-two commands, after the tests of the header and footer's revision, of the
-boot check of `config/site.yml` and of the scripts the header's fold counts
-(the run of 9 October, before them, had 396 runs and 2307 assertions, and
-that of 8 October, before the header and footer the editor sets, 363 runs
-and 2138):
+The run of 12 October 2026 (Windows 10, Ruby 3.4.11), with exactly these
+two commands, run by `npm run check`, after the header and footer became
+parts of the site (the run of 10 October, before them, had 404 runs and
+2462 assertions; that of 9 October, 396 and 2307; and that of 8 October,
+before the header and footer the editor sets, 363 and 2138):
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 116.474509s, 3.4686 runs/s, 21.1377 assertions/s.
-404 runs, 2462 assertions, 0 failures, 0 errors, 0 skips
-openapi: 362 API response(s) checked against cms/openapi.yaml
+Finished in 172.575903s, 2.3700 runs/s, 14.6312 assertions/s.
+409 runs, 2525 assertions, 0 failures, 0 errors, 0 skips
+openapi: 373 API response(s) checked against cms/openapi.yaml
 ```
 
 The run includes seven tests that start Rails in processes of their own,
@@ -240,9 +247,9 @@ in the development, test or e2e environment: `test/lib/tasks/db_drop_test.rb`,
 tables), the one in `test/models/page_cache_test.rb` that asks a
 process of its own for its release's digest before any visit, and
 `test/config/site_boot_test.rb`, which starts the application as
-`bin/rails runner` does, with values of `config/site.yml` changed as the
-file is read, and shows that defaults the editor could not save back stop
-it with a message naming each value, and that a valid change boots.
+`bin/rails runner` does, with a starter of `config/parts` changed as the
+file is read, and shows that a starter the editor could not save back
+stops it with a message naming each value, and that a valid change boots.
 The first five send every database of their environment to a folder of
 their own ([test/support/own_databases.rb](test/support/own_databases.rb),
 which reads them from `config/database.yml`), and the `db:drop`, queue
@@ -417,16 +424,21 @@ no warnings, the same morning).
 - **Icon box icons** are drawn inline from `../schema/icons.svg`, rebuilt
   element by element with tag helpers; loading refuses anything but plain
   shapes.
-- **The header and footer** are drawn as the design draws them, from the
-  values the editor sets (`PUT /api/site`): the site's name, up to 8
-  links, the button (or none) and the footer's two lines, kept in one row
-  for the whole site (`Site`). Until the editor first changes them, the
-  defaults of [config/site.yml](config/site.yml) apply, checked as the
-  CMS starts against the rules a change is held to (a test starts the
-  CMS in a process of its own with a default broken, and it stops,
-  naming the value). A change reaches
-  every published page at its next visit, with nothing to publish (see
-  how the pages are cached, below).
+- **The header and footer** are the site's parts
+  ([app/models/site_parts.rb](app/models/site_parts.rb)): documents made of
+  sections, columns and blocks as a page is, kept as pages of their own
+  kind with a draft, versions and a publish, and drawn around every page
+  in `<header>` and `<footer>` with the page's own partials. A page
+  draws each part's published version, or, until the part publishes, its
+  starter, [config/parts/header.json](config/parts/header.json) and
+  [footer.json](config/parts/footer.json): the design's header (a logo, a
+  menu that folds into Menu, the Join button, on one row on every device)
+  and footer. The starters are checked as the CMS starts against the
+  rules a part's draft is held to (a test starts the CMS in a process of
+  its own with a starter broken, and it stops, naming the value); a
+  part's draft holds no form. A publish of a part reaches every published
+  page at its next visit (see how the pages are cached, below); the
+  preview draws the parts' drafts.
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -454,12 +466,10 @@ differs:
   are the theme's own drawings in CSS, coloured from the site style, for
   any video and any map rather than this one;
 - "Meeting point:" is not bold: a map's label is plain text;
-- narrower than the 359 px the design's header needs in a row, a width
-  the design does not draw, the header wraps, the brand above and Join
-  and Menu below; a longer name or button set in the editor wraps it on
-  wider phones too. Without the wrap, at 320, the width WCAG's reflow
-  criterion tests (a 1280 window at 400%), every page scrolled sideways
-  by 39 px with Menu cut off, in the design's own mock as well.
+- on a phone the header keeps one row, its section never stacking: the
+  logo, Menu as its icon alone, and Join, 64 px tall at 375, where the
+  design's mock, at 320, the width WCAG's reflow criterion tests (a 1280
+  window at 400%), scrolled sideways by 39 px with Menu cut off.
 
 ## Forms a visitor sends
 
@@ -587,8 +597,9 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   back in time. Every visit asks again; a page that has not changed is a
   304 with no body, answered before the version's document is read, and a
   publish shows at the very next request. The ETag is a digest of the
-  published version, the site style, the header and footer and the
-  release; `fresh_when` is not used, because its digest of the action's
+  published version, the site style, the header's and footer's published
+  versions (a part that has published nothing is named as its starter)
+  and the release; `fresh_when` is not used, because its digest of the action's
   template sees neither the layout nor the partials a helper renders.
   The version is named by its id and by the moment the page was put
   live, to the microsecond, both on the page's row: ids start again
@@ -597,7 +608,7 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   must not be told its copy is good for the new database's page 1,
   version 3.
 - **The whole page in Solid Cache,** one entry per version, site style
-  and header and footer, under the same name of the version: a visit
+  and parts' published versions, under the same name of the version: a visit
   after the first is one read, and a cache database that outlives the
   pages database it was filled for holds nothing the new one can find.
 - **Each block in Solid Cache,** keyed on a digest of its subtree (its
@@ -607,7 +618,8 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   a page's sections, then one for the columns of each section it missed,
   then one for the widgets of each column it missed, and one
   `write_multi` per level for what it drew. Blocks are shared by every
-  page that holds the same ones.
+  page that holds the same ones, and the header's and footer's are cached
+  as a page's are, once for every page.
 
 Every fragment key also starts with the release, so a deploy finds none
 of the old fragments. The release is a digest of `app/`, `config/`,
@@ -627,7 +639,8 @@ read them (`SiteIcons`, `SiteTokens`, `BlockStyle`,
 `BlockDocument::Schema`) reload with the code, and a change to one of
 those files reloads it (`config.watchable_files`, in
 [config/application.rb](config/application.rb)). The others
-(`config/site.yml` and the rest of `config/`, `Gemfile.lock`) are read
+(`config/site.yml`, the starters of `config/parts` and the rest of
+`config/`, `Gemfile.lock`) are read
 once, as the process starts, and change the release only with a
 restart, since a running server draws with what it read then.
 
@@ -635,7 +648,7 @@ restart, since a running server draws with what it read then.
 | --- | --- | --- | --- |
 | a publish, a restored version published, a scheduled publish | new ETag | new entry | only the changed blocks and the column and section around each |
 | the site style | new ETag | new entry | all read back |
-| the header and footer, on every page | new ETag | new entry | all read back |
+| a publish of the header or the footer, on every page | new ETag | new entry | the page's read back; the part's changed blocks drawn once for every page |
 | the release | new ETag | new entry | all drawn again |
 
 On the test page of 2 sections, 4 columns and 12 widgets
@@ -643,8 +656,10 @@ On the test page of 2 sections, 4 columns and 12 widgets
 the first visit writes 19 entries in 8 reads; the next is one read that
 finds the page; one widget changed and published reads 8 keys in 4 reads,
 finds 4 and writes 4 (the widget, its column, its section, the page); a
-new site style, or a new header and footer, reads the page and the 2
-sections and writes 1. The bytes
+new site style reads the page and the 2 sections and writes 1; a header
+published with a heading reads the page and its 2 sections, draws the
+header's section, column and heading, and writes those 3 and the page,
+and the next page that holds the same header finds them. The bytes
 are those the partials draw with no cache at all, on the 500-block
 fixture too.
 
@@ -698,8 +713,8 @@ the schema file) each failed it.
 
 | Route | What it does |
 | --- | --- |
-| `GET /api/pages`, `POST /api/pages` | list; create with `{title, slug}` |
-| `GET /api/pages/:id`, `PATCH /api/pages/:id` | the page, its draft, what is live, links; set the next address `{slug}`, make it the home page `{home: true}` |
+| `GET /api/pages`, `POST /api/pages` | the pages, and the site's header and footer apart, as `parts` (made the first time this is asked); create a page with `{title, slug}` |
+| `GET /api/pages/:id`, `PATCH /api/pages/:id` | the page or part, its draft, what is live, links; set a page's next address `{slug}`, make it the home page `{home: true}` (a part takes neither: 422, keyword `part`) |
 | `GET /api/pages/:id/draft`, `PUT /api/pages/:id/draft` | read; save `{revision, document, saveId}` |
 | `POST /api/pages/:id/publish` | publish the draft, optionally only at `{revision}` |
 | `GET /api/pages/:id/schedules`, `POST ...` | the page's scheduled publishes, newest first; schedule the draft at `{revision}` for `{at}` (ISO 8601, UTC) |
@@ -712,7 +727,7 @@ the schema file) each failed it.
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
 | `GET /api/site-style`, `PUT /api/site-style` | the palette and type scale, with their curated values; replace them |
-| `GET /api/site`, `PUT /api/site` | the header and footer (name, menu, button, footer's two lines) with their `revision`, and the site's time zone; replace them with `{revision, name, menu, action, footer}`, 409 with them as they are now from an older revision |
+| `GET /api/site` | the site's settings: its time zone |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the
@@ -842,18 +857,18 @@ the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
 With Gentle's rules renamed away in `tokens.css`, it failed on every
 step and width, Gentle drawing Balanced's sizes.
 
-**Header and footer.** `PUT /api/site` takes the four members whole
-(`action: null` for no button) and the `revision` they were read at;
-each member is `$defs/site` of
-[the page schema](../schema/block-document.schema.json), checked after the
-application rules as a document is, so a link follows a page's rules and
-every fault comes back in one 422 at its pointer. The check of the
-revision and the write are one statement, as a draft's save is. A write
-from an older revision is a 409 holding the header and footer as they are
-now, since writing every member would put back what was changed since;
-unless it asks for exactly what is stored, which loses nothing and is
-answered 200, so a write sent again after its answer was lost is answered
-as saved. The time zone is not a member: only `config/site.yml` sets it.
+**Header and footer.** The site's parts are pages of their own kind
+(`kind`: `header` or `footer`, at most one of each), read, saved,
+versioned, scheduled and published by a page's own routes, by their ids;
+`GET /api/pages` lists them apart, as `parts`, the header then the
+footer, and makes them the first time it is asked, each with its starter
+as its draft. A part has no address and is never the home page: a
+`PATCH` that names either is a 422 at its member, keyword `part`. Its
+draft is held to a page's rules and to one of its own, no form, refused
+at the form's block with the keyword `part`: at each save, and again,
+as a page's rules are, when a publish, a schedule, a version or a
+restore reads a stored document. The site's time zone is not a part's:
+only `config/site.yml` sets it.
 
 **Responses.** What visitors sent with a page's forms (see "Forms a
 visitor sends") is read and deleted under the page, and only there: a
@@ -1117,30 +1132,38 @@ of 2.17:1 and 1:1 on the dark bands, paper text on paper, and a link at
 the missing asset, which came back 404 with the year-long immutable
 header.
 
-Since 9 October 2026 it also changes the header and footer through
-`PUT /api/site`: the old ETag then gets the page under the new header,
-a 200, and Solid Cache gains the page's own entry alone, every block
-read back (54 fragments, then 55). It then sets ten headers in turn (the
-design's; a fifth link; every length at its limit, in words of average
-width and in the widest letter; three links in another script; a short
-header in Hebrew and one in Greek; seven Arabic links whose letters join;
-a link of three bismillah ligatures; no links and no button) and draws
-the home page in Chromium at 23 widths from 320 to 1440 px: nothing leaves
-the page, the links show exactly where `data-fold` says, and there they
-stand on one row with the brand, the bar's right padding whole (it gives
-way only to words drawn wider than the server counted them). Letters
-outside the face are drawn by the visitor's own fonts: their row and
-padding are held where `tools/header-metrics.ts --check` finds this
-machine's fonts to be those the file was measured with, as on the machine
-that measured it, and elsewhere only the first two; the RESULT line says
-what was not held, and why. A file that is not what this machine draws,
-where no script is drawn here with other fonts (stale, edited, or its sum
-narrower than a word), fails the check. The short Hebrew and
-Greek headers must name no fold, the Arabic links fold below 880, and the
-ligatures, a character the file does not measure, drawn about four times
-wider than counted, may take two rows from the width the sum says fits,
-inside the page. On 10 October 2026, on Windows on 3901, it printed
-`RESULT: 62 checks passed`.
+Since 12 October 2026 it also publishes the site's header, a part kept
+as a page is, through the API: the old ETag then gets the page under the
+new header, a 200, and Solid Cache gains the page and, of the header, the
+logo with its new name, its column and its section, every other block
+read back (66 fragments, then 70; after the first visit it holds the
+page, its 45 blocks and the 12 of the starters of the header and
+footer). It then publishes ten headers in turn, each the header's
+starter with other words (the design's; a fifth link; every length at
+its limit, in words of average width and in the widest letter; three
+links in another script; a short menu in Hebrew and one in Greek; seven
+Arabic links whose letters join; a link of three bismillah ligatures; no
+menu and no button) and draws the home page in Chromium at the phones',
+the tablet's and the desktop's widths, and at the windows that put each
+menu's block on both sides of its step: nothing leaves the page, the
+header holds one row, the links show exactly where the block's width and
+its `data-fold` say, and there they stand on one line, just past the
+step too, where a row drawn wider than counted would wrap. Letters
+outside the face are drawn by the visitor's own fonts: their line is held
+where `tools/header-metrics.ts --check` finds this machine's fonts to be
+those the file was measured with, as on the machine that measured it;
+the RESULT line says what was not held, and why. A file that is not what
+this machine draws, where no script is drawn here with other fonts
+(stale, edited, or its sum narrower than a word), fails the check. The
+design's links must fold below 360, the short Hebrew and Greek menus
+below 240 and 360, the Arabic links below 400, and the ligatures, a
+character the file does not measure, drawn about four times wider than
+counted, may take two lines inside their block. With words of average
+width at their limits, Menu's sheet, opened on a phone 375 wide, stays
+inside the window: it hangs from the header's row, at its edge, and the
+first run, with it hanging from the menu's own narrow column, found it
+leaving the window. On 12 October 2026, on Windows on 3902, it printed
+`RESULT: 63 checks passed`.
 
 `npm run test:tools`, from the repository root, tests how the check reads
 who listens from netstat, ss and lsof, on any system, with a sample of

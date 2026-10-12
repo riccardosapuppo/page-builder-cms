@@ -30,6 +30,13 @@ the server writes for them. The editor's half is
     to five columns,
     and blocks out of place (a section in a column, a widget where a section
     goes, an unknown type, a string where a block goes).
+  - `traps-site.json`: the blocks a header is made of: logos with a
+    name, with none, with a name that is a number or empty; menus whose
+    labels hold markup or letters of other scripts, of long links, with a
+    link the renderers refuse, with no link, with items that are no link,
+    with no name; and sections whose columns fit what they hold and stack
+    on phones only or never, with what the renderers ignore (a stacking
+    for one column, a stacking no device knows, a preset for another count).
   - `traps-form.json`: forms with every kind of field, required and not;
     labels, a button's text and a field's name holding markup, a block id
     that closes its attribute, a label of 230 characters with no space;
@@ -112,7 +119,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 15 block types
+fixture, when there are fewer than 6 fixtures or one of the 17 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

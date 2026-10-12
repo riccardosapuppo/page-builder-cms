@@ -14,15 +14,15 @@ The page document's one schema, and the design tokens it names.
   server draws them inline on the published page, and the editor reuses
   the file.
 - [`header-metrics.json`](header-metrics.json): the width of each letter
-  of the header's name, links and button in the site's typeface, what the
-  fallback fonts of the machine that measured draw the letters of Greek,
-  Cyrillic, Hebrew, Arabic and CJK at (a Greek, Cyrillic or Hebrew letter
-  at the most it adds after any letter of its script, an Arabic letter at
-  the widest of its joined forms), with a fingerprint of what those fonts
-  drew and one of that with the widths the file holds, and the spacing
-  around them, written by `npm run header-metrics` from the CMS's
-  stylesheets and fonts; the server and the editor add them up to fold a
-  menu too long for the bar (see the site's header and footer, below).
+  of a menu's links in the site's typeface, what the fallback fonts of the
+  machine that measured draw the letters of Greek, Cyrillic, Hebrew,
+  Arabic and CJK at (a Greek, Cyrillic or Hebrew letter at the most it
+  adds after any letter of its script, an Arabic letter at the widest of
+  its joined forms), with a fingerprint of what those fonts drew and one
+  of that with the widths the file holds, the gap between two links, and
+  the steps a menu folds at, written by `npm run header-metrics` from the
+  CMS's stylesheets and fonts; the server and the editor add them up to
+  fold a menu's links into Menu (see the site's header and footer, below).
 
 ## The document
 
@@ -61,15 +61,24 @@ The page document's one schema, and the design tokens it names.
 - **Every block has the same five keys**, `{id, type, props, children,
   style}`, and no others.
 - **Column widths** are a property of the section, `columnWidths`: a
-  preset of parts in column order, `3:2`, `2:3`, `2:1` or `1:2` for two
-  columns and `2:1:1`, `1:2:1` or `1:1:2` for three. It applies on desktop
-  only; on tablets and phones the columns stack. Absent means equal, and
-  `equal` is never written; one and four columns take no preset. The
-  schema checks the preset against the number of columns, with one
-  if/then branch per count, so adding or removing a column is also the
-  moment the editor resets the widths.
+  preset of parts in column order, `3:2`, `2:3`, `2:1`, `1:2`, `fit:1` or
+  `1:fit` for two columns and `2:1:1`, `1:2:1`, `1:1:2` or `fit:1:fit` for
+  three. A `fit` part is a column as wide as what it holds; the others
+  share what is left. It applies where the columns stand side by side.
+  Absent means equal, and `equal` is never written; one and four columns
+  take no preset. The schema checks the preset against the number of
+  columns, with one if/then branch per count, so adding or removing a
+  column is also the moment the editor resets the widths.
+- **Where the columns stack** is the section's `stack`: absent, on
+  tablets and phones; `phone`, on phones only; `never`, side by side on
+  every device, as the site's header keeps its row. A section of one
+  column names none: the schema refuses it there.
 - **Widgets:** heading, text (rich text), image, button, divider, spacer,
-  gallery, video, map, icon box, quote, accordion, form.
+  gallery, video, map, icon box, quote, accordion, form, logo, menu. The
+  last two are what a header is made of: the logo is the theme's mark
+  with the site's name beside it, at most 40 characters, or the mark
+  alone; a menu is its name for a screen reader, at most 40 characters,
+  and 1 to 12 links, each a label of at most 40 characters and an `href`.
 - **A form's fields live in the form**, in the page's version, and
   nowhere else: a line of text, an email address, a longer text or a
   checkbox, each with its label, whether it must be filled in, and for
@@ -135,44 +144,33 @@ style, so there is one list of slots and tones, not one per program.
 
 ### The site's header and footer
 
-`$defs/site` is not part of a page. It describes the header and footer the
-CMS keeps once for the whole site and draws around every page (`PUT
-/api/site`), and both sides validate it on its own, as `#/$defs/site`:
+The header and footer are documents of this schema, as a page is: the
+site's parts, which the CMS keeps as pages of their own kind and draws
+around every page (see the CMS's README). Nothing in the schema sets them
+apart; one rule of their own lives outside it, in the CMS
+(`SiteParts.check`) and in the editor (`validatePart`), after the
+schema: a part holds no form, since a form's answers are kept with the
+version of the page they were sent from. The starters every page draws
+until a part publishes, `cms/config/parts/header.json` and
+`footer.json`, go through the comparison beside the example site's
+pages (below).
 
-```json
-{
-  "name": "Slack Water",
-  "menu": [{ "label": "Swims", "href": "/#swims" }],
-  "action": { "label": "Join", "href": "/#join" },
-  "footer": { "lead": "Slack Water swimming club.", "text": "Tide times are a guide, not a promise." }
-}
-```
-
-- Every text is a `line` and every address an `href`, the definitions a
-  page's titles, labels and links use, so the header and footer follow a
-  page's rules: one line with a visible character, no control character,
-  no `javascript:` or `data:` address.
-- `action` is the header's button, or `null` for none; the four members
-  are always there. The menu holds 0 to 8 links.
-- The lengths are what a 375 px phone shows in its place on one line, in
-  words of average width: the name, 28 characters, on a row of its own;
-  the button's label, 18, beside Menu; a link's label, 24, in Menu's
-  sheet. Wider letters break inside their place rather than leave the
-  page. The footer's lead (80) and text (160) run on as a paragraph.
-- Whether the links fit the bar of a wider page is not a length: it
-  depends on all of them together and on the width of each letter. The
-  CMS adds up [`header-metrics.json`](header-metrics.json), the widths of
-  the header's letters measured in the site's typeface by
-  `npm run header-metrics` (`tools/header-metrics.ts`), and folds a menu
-  too long for the bar into Menu below the width it needs
-  ([cms/app/models/header_fit.rb](../cms/app/models/header_fit.rb)). In
-  the face's own letters the menu then does not wrap the bar: the sum errs
-  wide, so it may fold a step early, never late. A letter of Greek,
-  Cyrillic, Hebrew, Arabic or CJK counts what the fallback fonts of the
-  machine that measured drew it at, and any other character 1.5 times the
-  font size; a font that draws one wider than that can still put the bar
-  on two rows, which `site.css` lets happen inside the page rather than
-  leave it.
+- Whether a menu's links fit beside each other is not a length: it
+  depends on all of them together, on the width of each letter, and on
+  the width of the column the menu stands in. The CMS adds up
+  [`header-metrics.json`](header-metrics.json), the widths of the links'
+  letters measured in the site's typeface by `npm run header-metrics`
+  (`tools/header-metrics.ts`), and names on the block the narrowest of
+  site.css's steps, one every 40 px from 80 to 1120, that holds the row
+  ([cms/app/models/header_fit.rb](../cms/app/models/header_fit.rb)); in
+  a block narrower than its step the links fold into Menu. In the face's
+  own letters the links then stand on one line: the sum errs wide, so a
+  menu may fold a step early, never late. A letter of Greek, Cyrillic,
+  Hebrew, Arabic or CJK counts what the fallback fonts of the machine
+  that measured drew it at, and any other character 1.5 times the font
+  size; a font that draws one wider than that can still put the links on
+  two lines, which `site.css` lets happen inside the block rather than
+  leave the page.
 
 ## What the schema cannot say, and where it is said
 
@@ -245,14 +243,6 @@ So every pattern here:
   file, also the JSON pointer and the keyword where **both** engines must
   report it, and whether the application rules or the schema refuse it. A
   trap refused for the wrong reason fails the comparison.
-- `site/`: the same, `valid/`, `invalid/` and a manifest of its own, for
-  the site's header and footer (`$defs/site`): the example site's, one
-  with no menu and no button, every length at its limit (in code points
-  too), every form of link, other scripts; and 44 traps, each the example
-  site's with one change, among them the time zone sent as a member, a
-  ninth link, a `javascript:` or `//host` address, a label one character
-  too long, a newline in a name, and a name given twice.
-
 [`tools/gen-corpus.ts`](tools/gen-corpus.ts) writes all of it, and
 `npm run corpus:check` fails if a file on disk differs from what it would
 write.
@@ -285,7 +275,7 @@ bundle, so it uses json_schemer 2.5.0 and the json 3.0.2 parser that
 cd schema/tools
 npm ci
 npm run compare
-npm run compare:site
+npm run compare:examples
 npm run typecheck
 ```
 
@@ -321,58 +311,45 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 5 October 2026, with the form (Windows 10, Node 24.19.0, Ruby 3.4.11):
+The run of 12 October 2026, with the logo, the menu, the columns that fit
+what they hold and the section's stacking (Windows 10, Node 24.19.0, Ruby
+3.4.11):
 
 ```
-corpus:  ../corpus: 249 files (25 valid, 224 invalid, 0 upgrade); the manifest lists 249
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 249 results in 0.8 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 249 results in 9.8 s
+corpus:  ../corpus: 283 files (27 valid, 256 invalid, 0 upgrade); the manifest lists 283
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 283 results in 1.1 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 283 results in 15.0 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 249; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 224/224, json_schemer 224/224
-identical {pointer, keyword} sets: 224/224 invalid files (refused by the rules: 30/30; by the schema: 194/194)
-errors on the invalid files: ajv 785, json_schemer 246; normalised: 538 ajv "if" errors dropped, 23 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 11, json_schemer 10
-normalised documents with the same numbers and values: 219/219
-RESULT: PASS (249 files, 0 disagreements, 0 exceptions)
+verdicts compared: 283; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 256/256, json_schemer 256/256
+identical {pointer, keyword} sets: 256/256 invalid files (refused by the rules: 30/30; by the schema: 226/226)
+errors on the invalid files: ajv 908, json_schemer 283; normalised: 624 ajv "if" errors dropped, 31 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 14, json_schemer 13
+normalised documents with the same numbers and values: 253/253
+RESULT: PASS (283 files, 0 disagreements, 0 exceptions)
 ```
 
 **The example site's pages**, which live once in
 [`../example-site/`](../example-site/) for the CMS's seed and the
-browser demo, go through the same comparison:
-[`compare-examples.ts`](tools/compare-examples.ts) copies them, for the
-run only, into a temporary corpus of `valid/` files with a manifest that
-names each page by its address, and runs `compare.ts` on it, with the
-pages' number as the floor. `npm run compare:examples`, on 8 October 2026:
+browser demo, and **the header's and footer's starters**,
+[`../cms/config/parts/`](../cms/config/parts/), go through the same
+comparison: [`compare-examples.ts`](tools/compare-examples.ts) copies
+them, for the run only, into a temporary corpus of `valid/` files with a
+manifest that names each page by its address and each starter by its
+part, and runs `compare.ts` on it, with their number as the floor.
+`npm run compare:examples`, on 12 October 2026:
 
 ```
-corpus:  <a temporary folder>: 3 files (3 valid, 0 invalid, 0 upgrade); the manifest lists 3
-verdicts compared: 3; disagreements: 0; against the folder: 0; exceptions: 0
-normalised documents with the same numbers and values: 3/3
-RESULT: PASS (3 files, 0 disagreements, 0 exceptions)
-```
-
-**The site's header and footer** go through it too, against `$defs/site`
-instead of the root: `compare.ts --def site` hands both runners the
-definition (`validate.ts` compiles it with the whole schema around it,
-`validate.rb` takes `ref("#/$defs/site")`), and fails if either runner
-says it validated against anything else. `npm run compare:site`, on
-9 October 2026:
-
-```
-schema:  ../block-document.schema.json#/$defs/site
-corpus:  ../corpus/site: 50 files (6 valid, 44 invalid, 0 upgrade); the manifest lists 50
-verdicts compared: 50; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 44/44, json_schemer 44/44
-identical {pointer, keyword} sets: 44/44 invalid files (refused by the rules: 3/3; by the schema: 41/41)
-RESULT: PASS (50 files, 0 disagreements, 0 exceptions)
+verdicts compared: 5; disagreements: 0; against the folder: 0; exceptions: 0
+normalised documents with the same numbers and values: 5/5
+RESULT: PASS (5 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail
 
 Each of these was run, and each exited 1. The flags exist only for this;
 they change nothing on disk, and the shortened corpus is a temporary copy.
-The first six were run on 8 October 2026 on the corpus as it stands, 249
-files; each of the others says its own date and size.
+The first six were run on 8 October 2026 on the corpus as it stood then,
+249 files; each of the others says its own date and size.
 
 | Run | What it plants | What the comparator reported |
 | --- | --- | --- |
@@ -386,8 +363,7 @@ files; each of the others says its own date and size.
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_field_names` (5 October 2026, on 249 files, the file restored afterwards) | the Ruby twin without the rule on a form's field names | six failures, three on each of the two files of repeated names: `verdicts differ on invalid/form-name-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare-examples.ts --plant-invalid` (8 October 2026, on the example site's 3 pages) | the home page's first heading at level 7, in the temporary copy only | `ajv calls valid/home.json invalid, against its folder` and `json_schemer calls valid/home.json invalid, against its folder` |
-| `node compare.ts --corpus ../corpus/site --def site --min-files 50 --rules off` (9 October 2026, on the site's 50 files) | the site's header and footer without the application rules | six failures, three on each of the two files only the rules refuse: `verdicts differ on invalid/dup-key-name.json: ajv valid, json_schemer invalid`, `ajv calls ... valid, against its folder`, `only one side's rules accepted ...`, and the same for `invalid/name-lone-surrogate.json` |
-| `node compare.ts --corpus ../corpus/site --def site --min-files 50 --schema <the schema without the button's 18 characters>` (9 October 2026) | a limit dropped from the definition | `ajv calls invalid/action-label-too-long.json valid, against its folder`, and the same from json_schemer |
+
 
 ## The lint of the schema
 

@@ -2,7 +2,8 @@
 
 Decided on 2 October 2026, with the editor's storage; the browser's
 adapter came on 8 October 2026, and this was written down that day. The
-header and footer joined both adapters on 9 October 2026.
+header and footer joined both adapters on 9 October 2026, and became
+parts of the site, kept as pages are, on 12 October 2026.
 
 ## The question
 
@@ -29,11 +30,12 @@ editor would meet them as bugs.
   and words, because the CMS's checks are copied in TypeScript and a test
   reads the Ruby files to keep them in step.
 - **Capabilities say what an adapter has.** Publishing, scheduling, form
-  responses, changing the header and footer, smaller copies of images and
-  live pages are each declared, and the editor draws no control for one
-  that is missing, so the browser demo shows no Schedule and no Form
-  responses rather than a button that does nothing. Both adapters change
-  the header and footer.
+  responses, smaller copies of images and live pages are each declared,
+  and the editor draws no control for one that is missing, so the browser
+  demo shows no Schedule and no Form responses rather than a button that
+  does nothing. Both adapters keep the site's header and footer, parts
+  listed apart from the pages (`listParts`) and saved, versioned and
+  published as pages are.
 - **One battery**, `STORAGE_CONTRACT`
   ([contract.ts](../../builder/src/storage/contract.ts)): cases written
   against the interface alone, run on each adapter. A case an adapter's
@@ -47,7 +49,7 @@ editor would meet them as bugs.
 - **A rule in two languages again.** The browser's checks are a copy of
   Ruby's. A test reads the Ruby files and fails when they drift, but the
   copy is still work every time the CMS refuses something new.
-- **The browser's adapter is weaker, honestly.** It runs 48 of the 55
+- **The browser's adapter is weaker, honestly.** It runs 47 of the 54
   cases: scheduling and form responses need a server and are not there.
   What it keeps lives in one browser; clearing the site's data deletes it.
 - **Every call is asynchronous and can fail in the same four ways**, even
@@ -65,20 +67,14 @@ npm run e2e:browser
 ```
 
 The first starts a CMS of its own and runs the battery on the CMS's
-adapter: on 10 October 2026, with the header and footer's cases, the file
+adapter: on 12 October 2026, with the cases of the site's parts, the file
 of the battery ran 58 tests, the 56 cases each named once and none
 skipped, with two checks of the battery itself. The second runs it on the
 browser's adapter in Chromium, with real IndexedDB: 50 tests passed (the
 49 cases it can run and its check of the battery) and 7 were skipped, the
 cases that need a server, named in the first test. With the revision check
-removed from the browser's adapter, five tests failed, and two with it
-removed from its change of the header and footer; with a refused open or
-a full quota not mapped to its sentence, the test of each failed
-(`builder/src/storage/README.md` lists the faults planted). With the
-change of the header and footer's revision not required, its maximum
-taken away, or its four members not required, in the browser's adapter,
-the case that sends it a change without them failed; with the revision not
-required in the CMS's controller, so did that case on the CMS's
-adapter; and with the browser's list of faults, for the header and footer's
-values and for a new page's title, left as ajv gives it, which repeats some,
-the case of each failed.
+removed from the browser's adapter, five tests failed; with a refused open
+or a full quota not mapped to its sentence, the test of each failed
+(`builder/src/storage/README.md` lists the faults planted); and with the
+browser's list of faults for a new page's title left as ajv gives it,
+which repeats some, the case of it failed.

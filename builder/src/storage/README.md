@@ -12,9 +12,9 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `adapter.ts` | The storage adapter's interface, whole from stage 2, and the types of what it answers. |
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
 | `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. It refuses what the CMS refuses, including a body with half a surrogate pair in any text (the CMS's JSON parser does: 400, `malformed_json`). |
-| `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the members of a change of the header and footer) as TypeScript, for `browser.ts`. |
-| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, and the home page set; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. |
-| `site-theme-module.d.ts` | The type of `virtual:site-theme`: the header and footer's defaults and the site's time zone, read from `cms/config/site.yml` when the editor is built, where defaults the CMS would not start with stop the build, each value named (`../../build/site-theme.ts`). |
+| `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the address and home mark a part refuses) as TypeScript, for `browser.ts`. |
+| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, the home page set, and the header and footer published as their starters are; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. |
+| `site-theme-module.d.ts` | The type of `virtual:site-theme`: the header's and footer's starters, read from `cms/config/parts` when the editor is built, where a starter the CMS would not start with stops the build, each value named, and the site's time zone, from `cms/config/site.yml` (`../../build/site-theme.ts`). |
 | `contract.ts` | The battery every adapter must pass, written against the interface alone. |
 | `autosave.ts` | Saving on its own: the module the store hands each new document to, and the interface reads. |
 | `clock.ts` | The clock the storage code waits on, passed in so tests move time by hand. |
@@ -25,16 +25,18 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 create, read, set the next address or the home mark), the draft (read,
 save at a revision), publish, schedule, versions (list, read, "Save
 version", restore), the media library (list, upload, alt text, delete),
-the site style, the header and footer (`getSite`, which the canvas draws
-around the page, with the revision a change names; `setSite`, the four
-members whole from that revision, refused at each value's pointer, or a
-conflict holding what is there now), the responses visitors send with a
-page's forms, and `capabilities`, which says which of the optional
-operations (publish, schedule, responses, headerFooter) this adapter has.
-The editor shows no control for one it lacks; the adapter refuses it as
-`unsupported` without asking anyone. The browser's adapter has publish
-and headerFooter (below). The Rails adapter has all four: the header
-and footer, through `PUT /api/site`;
+the site style, the site's header and footer (`listParts`: the header
+then the footer, pages of their own kind with no address, made with
+their starters the first time they are asked for, then read, saved,
+versioned and published by a page's operations, by their ids; a part's
+draft holds no form, and a part takes no address and no home mark, each
+refused at its member with the keyword `part`), the site's settings
+(`getSite`: its time zone), the responses visitors send with a page's
+forms, and `capabilities`, which says which of the optional operations
+(publish, schedule, responses) this adapter has. The editor shows no
+control for one it lacks; the adapter refuses it as `unsupported`
+without asking anyone. The browser's adapter has publish (below). The
+Rails adapter has all three:
 scheduling (schedule a revision of the draft for a time, cancel, list;
 the times in UTC, the site's zone in `getSite`'s `timeZone`), and
 responses: a page's list, newest first and `RESPONSES_PER_PART` (50) at
@@ -102,7 +104,7 @@ id and field (`/props/level`), the way the editor shows them.
 `createBrowserAdapter()`, chosen when the editor is built with
 `VITE_STORAGE=browser` (`../main.tsx`); nothing else in the editor
 changes. Capabilities: `publish` (a publish is a version and the page's
-published state), `headerFooter` (kept as the CMS keeps them, below), no
+published state, a part's as a page's), no
 `schedule` and no `responses` (no server to publish at a time or to take
 a visitor's form: refused as `unsupported`), no `imageVariants`, no
 `livePages`.
@@ -111,8 +113,9 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   origin: `pages` (each record holds its draft, so a save's revision
   check and its write touch one record), `versions` (by page and
   number), `media` (the library's items) and `blobs` (each image's bytes,
-  apart, so the list is read without them), `site` (the site style, and
-  the header and footer once first changed, a record each). Its
+  apart, so the list is read without them), `site` (the site style, once
+  first changed). The header and footer are records of `pages`, of their
+  own kind. Its
   layout is `LAYOUT`, a step per version, as the document upgrades are:
   a later layout is a step added at the end.
 - **Two tabs.** Every write is one readwrite transaction, and IndexedDB
@@ -123,27 +126,26 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   `lastSaveId`), and the editor's conflict screen works unchanged. A
   refusal undoes what its transaction had written, as the CMS's
   transaction rolls back on a refusal raised inside it.
-- **The same refusals.** The document, and the header and footer's
-  values, by the editor's twin of the schema and the application rules
-  (`../shared/validate.ts`); a page's address, a version's name, an
-  image, the site style and each request's members by `browser-rules.ts`,
-  the twin of the CMS's checks, with the same pointers, keywords and
-  words, so the editor shows the same message in either mode. An image
-  named by a document must be in the library (`mediaExists`); an image in
-  use is not deleted (`in-use`, naming the pages and versions).
-- **The header and footer.** None kept until the first change: the
-  defaults of `cms/config/site.yml`, which the build serves as
-  `virtual:site-theme` once they pass the check the CMS makes of them as
-  it starts, at revision 0. A change names the revision it was read at
-  and sends the four values whole; it is refused with every fault at its
-  pointer (the revision's, a member missing, then the values' rules and
-  `$defs/site`), and from another revision it is the conflict the CMS
-  answers with its 409, holding the values as they are now, unless it
-  asks for exactly what is kept, which writes nothing and is answered as
-  saved. The check of the revision and the write are one transaction, so
-  of two tabs changing them at once the second gets the conflict. The
-  time of a change is the adapter's clock's; the time zone stays the
-  file's.
+- **The same refusals.** The document, by the editor's twin of the
+  schema and the application rules (`../shared/validate.ts`), and a
+  part's by its rule too, no form (`validatePart`), at each save and
+  again when a publish, a version or a restore reads what is stored; a
+  page's address, a version's name, an image, the site style and each
+  request's members by `browser-rules.ts`, the twin of the CMS's checks,
+  with the same pointers, keywords and words, so the editor shows the
+  same message in either mode. An image named by a document must be in
+  the library (`mediaExists`); an image in use is not deleted
+  (`in-use`, naming the pages and versions).
+- **The header and footer.** Made the first time the parts are listed,
+  in the transaction that looks for them, so two tabs asking at once make
+  one of each: each with the starter the build serves as
+  `virtual:site-theme` (once it passes the check the CMS makes of the
+  starters as it starts) as its draft, at revision 0, and nothing
+  published. From then on a part is a page of its own kind, saved,
+  versioned and published as one; the time zone stays the file's. A
+  browser that ran a build of 9 October keeps that build's header and
+  footer in a record of the `site` store, which nothing reads now: the
+  parts start there from their starters.
 - **Documents.** Brought up to the current `schemaVersion` when read and
   restored by `../document/upgrade.ts`, the twin of the CMS's upgrades,
   held to the Ruby by the shared fixtures of `schema/corpus/upgrade/`.
@@ -195,44 +197,43 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   method and a bodiless POST without its JSON type, planted, failed it.
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
-  3901), on its own databases and Active Storage root, deleted at the end.
-  It first checks the battery holds its 56 cases (at least 50), each named once, and
-  that the Rails adapter skips none of them (with `publish` planted as
-  absent in its capabilities, that check failed). A visitor's form is
-  sent by the runner as a browser sends it from the live page (form
-  encoded, with the page's `Origin`), each from an address of its own
-  through `X-Forwarded-For`, which only the CMS of this run
-  (`config/environments/e2e.rb`) counts under: the cases send more forms
-  than one address may in ten minutes.
-  With the adapter planted to leave `before` out of the list's query, the
-  case that reads the list to its end failed. It runs in jsdom, whose
-  document is on the CMS's origin
-  (`../../vite.config.ts`), so `DirectUpload`'s requests are same-origin,
-  as the editor's are through its proxy; jsdom fixes a window's origin
-  when the window is made, and an origin changed afterwards sent the
-  upload's first request cross-origin. Three faults planted at once in
-  the adapter (a 409 not read as a conflict, an image address left
-  relative to the API, upload errors left on the API's fields) failed six
-  of its cases.
+  3901), on its own databases and Active Storage root, deleted at the
+  end. It first checks the battery holds its 56 cases (at least 50),
+  each named once, and that the Rails adapter skips none of them (with
+  `publish` planted as absent in its capabilities, that check failed). A
+  visitor's form is sent by the runner as a browser sends it from the
+  live page (form encoded, with the page's `Origin`), each from an
+  address of its own through `X-Forwarded-For`, which only the CMS of
+  this run (`config/environments/e2e.rb`) counts under: the cases send
+  more forms than one address may in ten minutes. With the adapter
+  planted to leave `before` out of the list's query, the case that reads
+  the list to its end failed. It runs in jsdom, whose document is on the
+  CMS's origin (`../../vite.config.ts`), so `DirectUpload`'s requests
+  are same-origin, as the editor's are through its proxy; jsdom fixes a
+  window's origin when the window is made, and an origin changed
+  afterwards sent the upload's first request cross-origin. Three faults
+  planted at once in the adapter (a 409 not read as a conflict, an image
+  address left relative to the API, upload errors left on the API's
+  fields) failed six of its cases.
 - `browser-rules.test.ts` holds the twins of the CMS's checks to the
   Ruby they follow, read out of the CMS's files: the page address's form,
   length and reserved names (with the files of `cms/public/`), the ids,
-  the limits, the image signatures in their order, the members a change
-  of the header and footer sends, and every word the CMS writes itself. A
-  reserved name and a word changed, planted, failed it.
-- `../../build/site-theme.test.ts` holds the defaults the build serves to
-  the CMS's check of them as it starts: a name too long, a link that runs
-  script and a footer of two lines stop the build, each value named in
-  the sentence the CMS stops with; a button the file leaves out is none,
-  and a menu left out stops it.
+  the limits, the image signatures in their order, and every word the
+  CMS writes itself, the part's own among them. A reserved name and a
+  word changed, planted, failed it.
+- `../../build/site-theme.test.ts` holds the starters the build serves to
+  the CMS's check of them as it starts: a link that runs script, a form,
+  a name of half a surrogate pair stop the build, each value named in the
+  sentence the CMS stops with, under its file's name; a file that is no
+  JSON stops it too.
 - `../../e2e/browser/` runs the battery on the browser's adapter in a
   real Chromium, on its real IndexedDB (`npm run e2e:browser`, port
   `E2E_BROWSER_PORT`, 4902, an editor server of the run's own with no
   CMS): the cases run in Node on adapters that live in pages of the
   browser (`remote.ts`), the second tab is a second page of the same
   browser context, and the first test names the cases it skips, the four
-  of scheduling and the three of responses; the header and footer's
-  cases run, the first on the database as the run's new browser context
+  of scheduling and the three of responses; the cases of the header and
+  footer run, the first on the database as the run's new browser context
   has it. `adapter.spec.ts` checks what
   the interface cannot show: a deleted image's bytes gone from the
   database and its address revoked, here and after a delete in another
@@ -243,25 +244,13 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   moves (an automatic version at most every ten minutes, counted from the
   newest of any kind; a publish never dated before the last one), a
   stored draft no check passes, which cannot be published, a call
-  abandoned before it starts, which is not made, the header and footer
-  changed in two tabs at the same moment, one kept and the other the
-  conflict holding it, five times over from the very first change, and a
-  change of them dated by the clock the test moves, the same change again
-  keeping that date. Planted one at a time,
+  abandoned before it starts, which is not made, and the header and
+  footer asked for in two tabs at the same moment in a browser that has
+  none yet, one of each made between them. Planted one at a time,
   each failed it: the revision check removed (five cases), the version
   kept before a restore skipped (the restore case), a schema rule
   skipped (the invalid document case), an image's blob left behind by
-  its delete (`adapter.spec.ts`). And in the change of the header and
-  footer: the revision check removed (the conflict case and the two
-  tabs), the rule that a change of what is kept writes nothing removed
-  (three tests), the step that reads the change as the CMS's JSON parser
-  would left out (the surrogate case), the values' check skipped (the
-  refusal case), the real clock for the adapter's (the date), the
-  capability declared absent (the first test and the capabilities case),
-  the revision not required, its maximum taken away, or the four members
-  not required (each failed the case that leaves them out, as did the
-  revision not required in the CMS's controller, on the CMS's adapter), and
-  ajv's list of faults left with its repeats (the refusal case). A review removed 46 of the adapter's
+  its delete (`adapter.spec.ts`). A review removed 46 of the adapter's
   guards one at a time and ran this whole suite on each: 23 went
   unnoticed, and the cases that now catch them are in the battery where
   Rails keeps the same rule (a later save naming a missing image, a replay
@@ -302,12 +291,13 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 optional operations it needs and a `run(env)`. The runner hands it the
 adapter, a way to open a second tab on the same storage, its `expect`,
 fresh names, a way to read an image's bytes back, a way to send a
-visitor's form from a live page (`sendForm`), and the header and footer
-a new store has (`siteDefaults`, read from `cms/config/site.yml`); it
+visitor's form from a live page (`sendForm`), and the starters a new
+store makes the header and footer from (`starters`, read from
+`cms/config/parts`); it
 runs each case as a test of its own, in its order, on a store of its own,
 and skips (visibly) a case its adapter's capabilities lack. Every case
-makes its own pages; the site style and the header and footer are put
-back as they were found. The cases: pages and drafts, the conflict between two tabs, the
+makes its own pages; the site style is put back as it was found, and a
+part's draft as it was found, none published. The cases: pages and drafts, the conflict between two tabs, the
 same save sent twice being a success counted once, the same `saveId` with
 another document being a conflict, the schema's and the application
 rules' refusals by block and field, a page's address and home mark, a title
@@ -319,25 +309,19 @@ real clock, a few seconds ahead: the page watched until it goes live with
 the revision scheduled, not the draft edited since), the
 media library (upload and bytes read back, refusals at `/file`, alt text,
 deleting, an image in use naming who uses it, an image that does not
-exist), the site style, the header and footer (`config/site.yml`'s at
-revision 0 until first changed; a change kept whole at the next revision,
-the same change again writing nothing; values the schema refuses refused
-at the pointer of each, each once, with nothing stored; a change that
-leaves out a member or the revision, or whose revision is no whole number
-up to 2**53 - 1, refused at that value alone; a change from a revision
-another tab moved past a conflict holding what is there now, which sent
-from the old revision is answered as saved; with the CMS planted to
-write a change of nothing again, the second of these failed; half a
-surrogate pair in any of their texts, or in a member's name, refusing the
-whole change as malformed JSON, as the CMS's parser does), the
+exist), the site style, the header and footer (listed apart from the
+pages, made once, each with its starter as its draft, no address, and
+nothing live but the starter; saved and versioned as a page is; no
+address and no home mark, each refused at its member with the keyword
+`part`; a form in a part's draft refused at its block, where a page's
+draft takes the same document), the
 responses to a page's forms (kept with the
 version and the fields they were sent with across a change of the form,
 newest first, counted by form, a part at a time to the end, deleted for
 good, found only under their own page), every optional operation called
-so that it changes nothing, on a page that does not exist or, for the
-header and footer, from a revision no change can name (refused as
-unsupported when the capabilities declare it absent; not found, or
-refused at `/revision`, when they declare it present),
+so that it changes nothing, on a page that does not exist (refused as
+unsupported when the capabilities declare it absent; not found when
+they declare it present),
 and the autosave on top of the adapter (a run of edits one request at a
 time, a lost answer, a conflict resolved both ways). It runs unchanged
 on the browser's adapter too, in Chromium, with two pages of one browser

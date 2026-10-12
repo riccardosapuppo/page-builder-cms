@@ -10,12 +10,13 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 [The Rails application](cms/README.md) ·
 [The editor](builder/README.md)
 
-The editor builds a page from sections, columns and thirteen kinds of
+The editor builds a page from sections, columns and fifteen kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
-accordion, divider, spacer and form), with rich text written where it
-stands on the canvas, undo and redo, a tablet's and a phone's own values, a
-media library and a form; and it sets the site's header and footer, which
-every page shows. Rails keeps each page as one JSON document that a
+accordion, divider, spacer, form, logo and menu), with rich text written
+where it stands on the canvas, undo and redo, a tablet's and a phone's own
+values, a media library and a form; and it builds the site's header and
+footer the same way, from sections, columns and blocks dragged where they
+go, parts of the site that every page shows once published. Rails keeps each page as one JSON document that a
 single schema describes, with one draft and its versions; publishes it now
 or at a set time; draws it on the server and caches it; and keeps what
 visitors send from its form. The same editor also runs with no server at
@@ -205,6 +206,11 @@ says how, and what holds them to what the script makes.
 The editor with the home page open, its heading selected: the Outline on the
 left, the page in the middle, the heading's settings on the right.
 
+![The site's header open in the editor](docs/images/header.png)
+
+The site's header, opened by a click on it, built as a page is: its menu
+selected, the menu's links on the right, the home page dimmed under it.
+
 ![The home page as Rails serves it](docs/images/published-desktop.png)
 
 The same page as Rails serves it to a 1440 by 900 window.
@@ -236,7 +242,7 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
 
 - **The page document has one schema, and two validators are held to it.**
   The editor and the server read one file and agree on every document of a
-  corpus of 249 files. Cost: every rule a schema cannot say is written
+  corpus of 283 files. Cost: every rule a schema cannot say is written
   twice, and only the corpus keeps the copies in step.
   [The note](docs/decisions/one-schema-two-validators.md).
 - **A page is sections of one to four columns holding widgets, and nothing
@@ -256,21 +262,24 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   them.** Cost: every visit is a request, if only a 304, and a change to
   the release redraws every page once.
   [The note](docs/decisions/published-pages-cached-by-key.md).
-- **The header and footer are kept as the site style is: one row for the
-  site, live on every page with nothing to publish.** They are changed in
-  the editor's Header and footer, beside Site style or from a click on
-  either on the canvas, and every published page shows a change at its
-  next visit, its ETag and cached HTML keyed on them; `cms/config/site.yml`
-  keeps only their defaults and the time zone. Cost: no preview, no
-  version and no undo once saved.
-  [The note](docs/decisions/header-and-footer-kept-as-the-site-style.md).
-- **A menu too long for the bar folds into Menu where the widths of its
-  letters say.** A page runs no script, so the server adds up letter
-  widths measured once in the site's typeface. Cost: a file to measure
-  again when the header's styles or the measuring machine's fonts change, a
-  fold that may come a step early, and, where a visitor's font draws a
-  letter wider than the file counted, a bar that wraps onto two rows
-  inside the page. [The note](docs/decisions/header-folds-by-measured-letters.md).
+- **The header and footer are parts of the site: documents of blocks,
+  edited and published as pages are.** A click on either around a page
+  opens it in the editor, the page dimmed around it; it has a draft that
+  saves itself, versions, a preview, a publish and a schedule, and every
+  published page shows a publish at its next visit, its ETag and cached
+  HTML keyed on the parts' published versions. Until a part publishes,
+  every page draws its starter (`cms/config/parts`). Cost: a change is
+  live only once published, and a part holds no form.
+  [The note](docs/decisions/header-and-footer-are-parts.md), which
+  replaced [the header and footer kept as the site style is](docs/decisions/header-and-footer-kept-as-the-site-style.md).
+- **A menu folds into Menu where the widths of its letters say.** A menu
+  block folds on its own width, and a page runs no script, so the server
+  adds up letter widths measured once in the site's typeface and names the
+  step below which the links fold. Cost: a file to measure again when the
+  menu's styles or the measuring machine's fonts change, a fold that may
+  come a step early, and, where a visitor's font draws a letter wider than
+  the file counted, links that wrap onto two lines inside their block.
+  [The note](docs/decisions/header-folds-by-measured-letters.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
   it runs 49 of the 56 cases.
@@ -355,7 +364,7 @@ Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
 
 The server's and the editor's measurements work on one page,
 `contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns and
-414 widgets of twelve of the thirteen kinds (it has no form), which the
+414 widgets of twelve of the fifteen kinds (no form, logo or menu), which the
 server renders to 211 KB of HTML. Its nine library images are the example
 site's pictures, uploaded to the run's own library as the editor uploads an
 image, with the library's ids in place of the fixture's own; the rest is the
@@ -611,8 +620,8 @@ adapter. Two tabs of one browser share the pages, and the one that saves
 second gets the conflict bar. Preview opens the draft as it would be
 published, and Publish opens the page as published, each drawn by the demo,
 with a line saying what the full system does in its place. The header and
-footer are changed there as on the CMS, and every page published in that
-browser shows the change at once, with nothing to publish again. A form there is
+footer are built and published there as on the CMS, and every page
+published in that browser shows them. A form there is
 not sent: one line says what Rails does with its answers. At the bottom, one
 line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
 8, with publishing, shared versions and caching. Source on GitHub."
@@ -688,32 +697,34 @@ as not run, and the run exits 2, never 0. `npm run check -- --list` names the
 suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.md#npm-run-check)
 says how a floor works and how the Vitest suites hold on a busy machine.
 
-On 10 October 2026, on the virtual machine of [Measurements](#measurements),
-with every server of the run on 3901 (the CMS's) and 4901 (the editor's and
-the demo's) in turn, one run of the whole check, ending at 06:44 UTC, spent
-33 minutes in its suites. It ended
+On 12 October 2026, on the virtual machine of [Measurements](#measurements),
+with the run's servers on ports of their own (3901 and 3902 for the CMS,
+4901 to 4903 for the editor and the demo) and `npm start`'s two checks
+moved to 3910 and 4910 (`CMS_PORT`, `BUILDER_PORT`), since another
+`npm start` held 3900 and 4900, one run of the whole check, ending at
+13:31 UTC, spent 35 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
-| the tools' own tests | 117 passed, 1 skipped (it needs process groups, and runs in CI) |
-| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 441 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 933 passed in 120 files, the count of a later run of that suite alone, ending at 10:25 UTC, after two tests were added; 25 passed |
+| the tools' own tests | 124 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 447 files, 0 warnings |
+| the editor's unit tests, and the render contract's editor half | 933 passed in 118 files; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
-| the schema's two validators | 249 corpus files, the header and footer's 50 and the example site's 3 pages, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
+| the schema's two validators | 283 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
 | the API description | valid, 0 warnings |
-| the Rails tests | 404 runs, 2462 assertions, 0 failures, 0 errors, 0 skips; 362 API answers held to `cms/openapi.yaml` |
-| RuboCop, Brakeman | 153 files, no offenses; 79 checks, 0 warnings |
-| the editor against a CMS of its own | 85 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and their fold against the CMS's, and the API examples of `cms/README.md` run as written (84 where Windows PowerShell is not) |
-| the editor in Chromium against a CMS of its own | 227 passed, among them the three that failed on this machine before (below) |
+| the Rails tests | 409 runs, 2525 assertions, 0 failures, 0 errors, 0 skips; 373 API answers held to `cms/openapi.yaml` |
+| RuboCop, Brakeman | 159 files, no offenses; 79 checks, 0 warnings |
+| the editor against a CMS of its own | 85 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (84 where Windows PowerShell is not) |
+| the editor in Chromium against a CMS of its own | 229 passed, among them the three that failed on this machine before (below) |
 | the editor on the browser's own storage | 77 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 9 passed |
-| accessibility: the keyboard path, focus, axe | 46 passed |
+| accessibility: the keyboard path, focus, axe | 48 passed |
 | how the shell, the demo and the pages are served | 60 checks |
-| the CMS in production, over HTTP and in a browser | 62 checks |
+| the CMS in production, over HTTP and in a browser | 63 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 
 **The three that failed** on 8 October, at 1024 by 768, were about text, and

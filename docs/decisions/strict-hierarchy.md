@@ -55,7 +55,7 @@ one change, and both validators refuse each for the manifest's reason:
 npm run compare
 ```
 
-prints `RESULT: PASS (249 files, 0 disagreements, 0 exceptions)`. In the
-editor, `npx vitest run --project unit
+prints `RESULT: PASS (283 files, 0 disagreements, 0 exceptions)` (12
+October 2026). In the editor, `npx vitest run --project unit
 src/document/drag.test.ts` (from `builder/`) holds the drag to the same
 rule: on 8 October 2026 its 14 tests passed.

@@ -25,20 +25,23 @@ it holds.
 - [The editor reaches storage through one interface, and one battery holds every adapter to it](storage-behind-an-adapter.md)
   (2 October 2026): the CMS's adapter and the browser's run the same cases,
   and what an adapter lacks is not drawn.
-- [The header and footer are kept as the site style is: one row for the site, live on every page with nothing to publish](header-and-footer-kept-as-the-site-style.md)
-  (9 October 2026): changed in the editor and live at every page's next
-  visit, with a revision and a Save the style has not; no preview, no
-  version and no undo once saved, and `config/site.yml` only the defaults.
+- [The header and footer are parts of the site: documents of blocks, edited and published as pages are](header-and-footer-are-parts.md)
+  (12 October 2026): sections, columns and blocks, dragged where they go,
+  with a draft, versions, a preview and a publish; starters every page
+  draws until a part publishes; no form in a part. It replaced
+  [the header and footer kept as the site style is](header-and-footer-kept-as-the-site-style.md)
+  (9 October 2026), four values live with nothing to publish.
 
 **Serving pages**
 - [Published pages are cached by key, and nothing is deleted to refresh them](published-pages-cached-by-key.md)
   (4 October 2026): an ETag and Solid Cache keys made of the version, the
-  site style, the header and footer, the release and each block's subtree;
-  every visit revalidates, so a publish shows at the next request.
-- [A menu too long for the bar folds into Menu where the widths of its letters say](header-folds-by-measured-letters.md)
-  (9 October 2026): lengths for what a phone shows, a header that wraps
-  rather than breaks, and a fold the server adds up from letter widths
-  measured once; a file to measure again when the header's styles change.
+  site style, the header's and footer's published versions, the release
+  and each block's subtree; every visit revalidates, so a publish shows at
+  the next request.
+- [A menu folds into Menu where the widths of its letters say](header-folds-by-measured-letters.md)
+  (9 October 2026, revised on 12 October): a menu block folds on its own
+  width, at a step the server adds up from letter widths measured once; a
+  file to measure again when the menu's styles change.
 - [A visitor's form is counted under the socket's own address](form-count-by-socket-peer.md)
   (5 October 2026): the rate limit cannot be steered by a header, and behind
   a proxy the whole site shares one count.

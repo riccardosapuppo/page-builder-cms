@@ -12,7 +12,7 @@ the code that talks to the server, the test harness; the page as data
 and every change to it as a command with its inverse (`src/document/`),
 the store with undo, redo and drag and drop (`src/store/`); the storage
 adapter for the CMS's API and the autosave (`src/storage/`); the React
-renderer and the thirteen widgets' definitions, held to the server's pages
+renderer and the fifteen widgets' definitions, held to the server's pages
 (`src/render/`, `src/widgets/`). On those, the editor's interface
 (`src/editor/`), in the approved design's identity: the shell, the page
 switch, the blocks to add (the Insert drawer since stage 3 bis), the
@@ -88,19 +88,20 @@ devices), never Ctrl and Alt. `npm run shots:editor` photographs every
 state the layout draws but Schedule (stage 4), named as its shots are,
 to set beside them.
 
-**Stage 6 bis, the header and footer.** Where the storage keeps a change
-of them (`capabilities.headerFooter`: the CMS's does, and so does the
-browser's), Header and footer opens a level below the Page tab, beside
-Site style, or from a click on either on the canvas, on the value clicked
-(`src/editor/HeaderFooterPanel.tsx`): the site's name, the menu's links
-added, moved and removed by named buttons, each address chosen among
-the site's pages and sections, the header's button or none, the
-footer's two lines, each limit the schema's and said. The canvas draws
-them as they are typed; Save sends them whole, after the schema's own
-check, and every published page shows them at its next visit (in the
-browser demo, every page published in that browser, and the panel says
-so). The canvas folds a long menu into Menu where the published page does
+**Stage 6 ter, the header and footer as parts of the site.** The
+header and the footer are documents of blocks, built in the editor as a
+page is (sections, columns, blocks dragged where they go, the Outline,
+History) and published as a page is. A click on either around a page on
+the canvas opens it, and so do the Page tab and the page switch's "On
+every page"; the part open is drawn in its own element, with the page it
+was opened from around it, dimmed and locked, and a click on that page
+goes back to it (`src/editor/Canvas.tsx`, `PartRoot`). A part holds no
+form, so neither Insert nor a "+" offers one there. Two widgets are made
+for them, Logo and Menu, in Insert's Site group; a menu folds its links
+into Menu on its own block's width where the published page does
 (`src/render/header-fit.ts`, held to the CMS's `HeaderFit` to the bit).
+A section's columns may take what they hold (`fit:1`, `1:fit`,
+`fit:1:fit`), and stack on phones only or never.
 
 ## Before you start
 
@@ -149,10 +150,10 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run lint:plants` | Shows the fence firing: `build/lint-fence.test.ts`. |
 | `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, `test/setup-dom.ts`), then the "contract" project. Each test file runs in the one project its name says (`*.rails.test.*`, `*.contract.test.*`, any other `*.test.*` in "unit"); `build/projects.test.ts` asks Vitest and fails on a file in none. |
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
-| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the renderer's twins and the header's fold against the CMS's Ruby; the header and footer against the CMS's; the canvas's layout against the CMS's pages in headless Chromium; the API examples of cms/README.md, run as written in a POSIX shell and in Windows PowerShell. Needs Ruby on the PATH and Playwright's Chromium. |
+| `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the renderer's twins and a menu's fold against the CMS's Ruby; the header and footer against the CMS's, each from what it published or its starter; the canvas's layout against the CMS's pages in headless Chromium; the API examples of cms/README.md, run as written in a POSIX shell and in Windows PowerShell. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
-| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 10 October 2026, with the header and footer kept in this storage and its revision and members held by the battery: 77 passed, 7 skipped (the cases that need a server). |
-| `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move with Space and the arrows, add from the page with the "+" key and its picker and move that block up from its clamp, edit a heading's text and level in its Text group, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space in its Spacing group, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-nine states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, the clamp's block menu, the block picker and the section picker, a seam under the pointer, Insert open over a first column's block, a key of Insert picked up by the keyboard and a dropped Video asking for its address, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the Schedule dialog and on the Publish menu with a publish waiting, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish, a publish set for a time going live, a cancel by the keyboard, Site style, and Header and footer by the keyboard alone (a link added, moved and another removed, saved; the focus after each, and axe on the sidebar twice). |
+| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 12 October 2026, with the header and footer kept in this storage as parts and their cases in the battery: 74 passed, 7 skipped (the cases that need a server). |
+| `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move with Space and the arrows, add from the page with the "+" key and its picker and move that block up from its clamp, edit a heading's text and level in its Text group, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space in its Spacing group, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-nine states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, the clamp's block menu, the block picker and the section picker, a seam under the pointer, Insert open over a first column's block, a key of Insert picked up by the keyboard and a dropped Video asking for its address, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the Schedule dialog and on the Publish menu with a publish waiting, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish, a publish set for a time going live, a cancel by the keyboard, Site style, and the header opened from a page's Page tab by the keyboard alone, with axe on the editor while it is open, and back to the page. |
 | `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; the demo's build served as GitHub Pages serves it (below), its line unregistering a service worker left in its own path and keeping another project's, a 404 for a missing file, no CMS adapter or address in its files and no request outside its path; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports and on `E2E_DEMO_PORT` (4903); prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. On 9 October 2026, with the demo keeping the header and footer, it printed `RESULT: 60 checks passed`, 19 of them on the demo's build. |
 | `npm run shots:editor -- <folder>` | Photographs the editor, headless, in every state of the approved layout's shots but Schedule, whose dialog stage 4 built and this does not photograph yet, named and staged as they are (`../design/layout/shots`: editor, add, structure, style, drag, tablet, publish, history, media, site-style, empty, shortcuts; `shots-extra`: text-editing, small-block, insert-at-seam, insert-drawer, page-tab, block-menu, more, new-section, phone, section, pages, conflict, offline, narrow-gutter, seam-hover, outline-col1, insert-col1), and in a right click's menu, a text's link field, a drag from Insert, a dropped Gallery key with its library open (`drop-asks`), the hero's own space on phones, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900 (the layout's `editor-1280`, `insert-drawer-1280` and `outline-col1` are the 1280 ones), on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. On 4 October 2026 it printed `RESULT: 74 shots`, and, once `drop-asks` was added, `RESULT: 76 shots`. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
@@ -196,21 +197,25 @@ same demo from the source, at `/`.
 **What it does.**
 - On a first visit, with nothing kept in the browser, it puts in the
   example site of `../example-site/`, as the CMS's seed does: the three
-  pages and nine pictures, each page published, the home page open
+  pages and nine pictures, each page published, the header and footer
+  published as their starters are, the home page open
   (`src/storage/example-site.ts`). A site with a page or a picture is
   never added to.
 - It keeps pages, drafts with their revisions, versions, a publish, the
   media library with each image's bytes, the site style, and the header
-  and footer in the browser's IndexedDB (`src/storage/browser.ts`), held
+  and footer, parts kept as pages are, in the browser's IndexedDB
+  (`src/storage/browser.ts`), held
   to the CMS adapter's storage battery. Two tabs of one browser share
   them, and the one that saves second gets the conflict bar.
 - Preview opens the draft as it would be published (`?preview=<id>`), and
   Publish keeps the page as published and opens it in a new tab
-  (`?published=<id>`): the demo draws each with the canvas's renderer, the
-  header and footer and the site style kept in this browser, under one
-  line saying what the full system does (`src/demo/PageView.tsx`). A
-  changed header or footer shows on every page published in this browser
-  at once, with nothing to publish again. A form there says in one line
+  (`?published=<id>`): the demo draws each with the canvas's renderer,
+  inside the header and footer as the CMS draws them (the parts' drafts
+  in a preview, what each published around a page as published) and in
+  the site style kept in this browser, under one line saying what the
+  full system does (`src/demo/PageView.tsx`); a part's own preview is the
+  home page's. A header or footer published shows on every page
+  published in this browser. A form there says in one line
   what becomes of its answers instead of sending them; a link to another
   page of the site opens that page as the demo draws it.
 - At the bottom, under the editor's bottom line and under each page it
@@ -239,10 +244,11 @@ of its own, on the build as Pages serves it: the example site's three
 pages, published, with the demo's line at the bottom; an edit kept after
 a reload; two tabs and the conflict bar; an image added to the library;
 Publish opening the page as published with its line, its form and its
-links; Preview showing the draft; the header and footer changed from their
-panel, opened from the canvas, shown by the published pages and the
-preview with nothing published again, and kept after a reload; the screens
-a person opens (the Page panel, the Header and footer panel,
+links; Preview showing the draft; the header opened from the canvas, the
+page dimmed around it, its logo renamed and a link added to its menu,
+published and shown by the pages published here, the footer's draft shown
+by the preview alone, and kept after a reload; the screens a person opens
+(the Page panel, the header's Page tab and Publish menu,
 the history, the menus and dialogs), none of which speaks of a visitor, a
 live page, a server or a CMS without naming the full system; a large image
 refused in the browser's words; the notice that says how Publish went,

@@ -2,7 +2,10 @@
 
 One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
-`map/`, `iconbox/`, `quote/`, `accordion/`, `form/`. Each holds:
+`map/`, `iconbox/`, `quote/`, `accordion/`, `form/`, `logo/`, `menu/`. The
+last two are the blocks a header and a footer are made of, in Insert's
+Site group, after the approved design's groups, their tiles drawn in the
+design's language; a page may hold them too. Each holds:
 
 - `definition.ts`: the type, its group and label in the Insert drawer and
   the "+"'s picker (the

@@ -397,7 +397,21 @@ overrides the sentence above that nothing in the editor changes the menu.
 The menu stays the site's, not a page's setting, so the page's "Show in
 the site menu" switch, drawn as "Comes later" and priced as new work, is
 not drawn: the menu is changed there, link by link. The mock's shots stay
-as approved (`builder/e2e/header-footer.spec.ts` drives the panel).
+as approved (`builder/e2e/header-footer.spec.ts` drove the panel, until
+12 October).
+
+**The owner's choice of 12 October 2026, over the panel of 9 October.**
+The owner wanted the header and footer edited as the rest of the page
+is, with sections, columns, blocks and drag and drop, not fields that
+keep the theme's layout. They are now parts of the site, opened in the
+editor as pages are (a click on either on the canvas, the Page tab's way
+to each, the page switch's "On every page"), the page they were opened
+from drawn dimmed and locked around them, and published as pages are.
+The mock draws none of it, nor Insert's Site group with Logo and Menu,
+nor a section's Stack columns and its fit presets: each is drawn in the
+language of the layout's own controls. The panel of 9 October is gone,
+and the menu is a Menu block of the header, its links set in its panel;
+`builder/e2e/site-parts.spec.ts` drives the parts.
 
 ## 10. Known weak spots
 
