@@ -5,10 +5,12 @@
 // opens the window that lists the keymap; nothing happens in a text field.
 // Chromium presses every entry for real (e2e/keyboard.spec.ts).
 // @vitest-environment jsdom
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit, type Kit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
+import { clipboardText, copyBlock } from "../document/clipboard.ts";
+import type { SectionBlock } from "../shared/document.ts";
 import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
 import { EditorKeys, waitForText } from "./keys.ts";
@@ -119,6 +121,30 @@ test("copy and paste go through the clipboard's events, and the copy lands after
   });
   expect(kit.ui.getState().notice).toBe("The clipboard holds no block from this editor.");
   expect(kit.doc().sections[0]!.children[0]!.children).toHaveLength(4);
+});
+
+test("a section pasted into a header or footer leaves its anchor behind, which a page would keep", () => {
+  const visit: SectionBlock = { ...(copyBlock(page(), "join") as SectionBlock), props: { label: "Visit", anchor: "visit" } };
+  const clipboardData = { setData: () => undefined, getData: () => clipboardText(visit) };
+  const pasted = (kit: Kit) => kit.doc().sections.find((s) => s.props.label === "Visit");
+
+  const onPage = shell("join");
+  act(() => root("join").focus());
+  act(() => {
+    fireEvent.paste(root("join"), { clipboardData });
+  });
+  expect(pasted(onPage)?.props).toEqual({ label: "Visit", anchor: "visit" });
+  cleanup();
+
+  const header = { id: 7, kind: "header" as const, slug: null, home: false, published: null, revision: 0, links: { preview: "/preview/7", live: null } };
+  const inPart = editorKit({ document: page(), selection: "join", session: { current: header } });
+  inPart.render(<div className="app"><Canvas /><EditorKeys /></div>);
+  act(() => root("join").focus());
+  act(() => {
+    fireEvent.paste(root("join"), { clipboardData });
+  });
+  expect(inPart.lastCommand()?.kind).toBe("paste");
+  expect(pasted(inPart)?.props).toEqual({ label: "Visit" });
 });
 
 test("in a text field the keys are the field's: no block is deleted, no selection moves", () => {

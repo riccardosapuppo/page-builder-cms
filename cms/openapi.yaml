@@ -21,7 +21,9 @@ info:
     of that schema, edited, versioned, scheduled and published as a page is,
     which every published page draws around its sections. A part has no
     address and is never the home page, and its draft holds no form, a
-    form's answers belonging to a page: 422, keyword `part`. Until a part is
+    form's answers belonging to a page, and no section anchor, since it is
+    drawn in every page beside the page's own sections: 422, keyword
+    `part`. Until a part is
     published, the pages draw its starter, the CMS's own, which the part's
     first draft holds.
 
@@ -244,8 +246,8 @@ paths:
         While someone keeps saving, a version of kind `auto` is kept at most
         every ten minutes.
 
-        The draft of a header or footer holds no form: 422 at the form
-        block, keyword `part`.
+        The draft of a header or footer holds no form and no section
+        anchor: 422 at the form block or the anchor, keyword `part`.
       tags: [pages]
       requestBody:
         required: true

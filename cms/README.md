@@ -234,9 +234,9 @@ before the header and footer the editor sets, 363 and 2138):
 
 ```
 [draft concurrency] 10 rounds: requests overlapping in 10, transactions overlapping in 10
-Finished in 172.575903s, 2.3700 runs/s, 14.6312 assertions/s.
-409 runs, 2525 assertions, 0 failures, 0 errors, 0 skips
-openapi: 373 API response(s) checked against cms/openapi.yaml
+Finished in 247.299935s, 1.6619 runs/s, 10.2507 assertions/s.
+411 runs, 2535 assertions, 0 failures, 0 errors, 0 skips
+openapi: 374 API response(s) checked against cms/openapi.yaml
 ```
 
 The run includes seven tests that start Rails in processes of their own,
@@ -436,9 +436,9 @@ no warnings, the same morning).
   and footer. The starters are checked as the CMS starts against the
   rules a part's draft is held to (a test starts the CMS in a process of
   its own with a starter broken, and it stops, naming the value); a
-  part's draft holds no form. A publish of a part reaches every published
-  page at its next visit (see how the pages are cached, below); the
-  preview draws the parts' drafts.
+  part's draft holds no form and no section anchor. A publish of a part
+  reaches every published page at its next visit (see how the pages are
+  cached, below); the preview draws the parts' drafts.
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -864,9 +864,11 @@ versioned, scheduled and published by a page's own routes, by their ids;
 footer, and makes them the first time it is asked, each with its starter
 as its draft. A part has no address and is never the home page: a
 `PATCH` that names either is a 422 at its member, keyword `part`. Its
-draft is held to a page's rules and to one of its own, no form, refused
-at the form's block with the keyword `part`: at each save, and again,
-as a page's rules are, when a publish, a schedule, a version or a
+draft is held to a page's rules and to two of its own, no form and no
+section anchor (it is drawn in every page, beside the page's own
+sections, whose anchors its own are not checked against), refused at the
+form's block or at the anchor with the keyword `part`: at each save, and
+again, as a page's rules are, when a publish, a schedule, a version or a
 restore reads a stored document. The site's time zone is not a part's:
 only `config/site.yml` sets it.
 

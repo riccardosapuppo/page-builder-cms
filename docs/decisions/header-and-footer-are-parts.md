@@ -33,8 +33,10 @@ same way.
   with its starter as its draft and nothing published
   ([cms/app/models/page.rb](../../cms/app/models/page.rb), `Page.part!`).
 - **The same document as a page**, held to the same schema and the same
-  application rules, and to one rule of its own: no form, since a form's
-  answers are kept with the version of the page they were sent from
+  application rules, and to two of its own: no form, since a form's
+  answers are kept with the version of the page they were sent from, and
+  no section anchor, since a part is drawn in every page beside the page's
+  own sections, whose anchors its own are not checked against
   ([cms/app/models/site_parts.rb](../../cms/app/models/site_parts.rb),
   `SiteParts.check`, and its twin in the editor,
   [builder/src/shared/validate.ts](../../builder/src/shared/validate.ts),
@@ -86,6 +88,11 @@ same way.
   and published is served with today's header and footer.
 - **No form in a header or footer**, and a pasted one is refused by the
   CMS at its block, in the part's words.
+- **No anchor on a header's or footer's section**: a part is drawn in
+  every page beside the page's own sections, and an anchor on both would
+  be two elements of one id, a link to it going to the first. The editor
+  offers no Anchor id field in a part but to clear one, and a section
+  pasted into a part leaves its anchor behind.
 - **A part published empty means no header**, or no footer, on every
   page: the layout leaves out a part with no section.
 - **More to cache**: every page's HTML is keyed on the parts' published

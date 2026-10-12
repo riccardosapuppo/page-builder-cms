@@ -147,10 +147,13 @@ style, so there is one list of slots and tones, not one per program.
 The header and footer are documents of this schema, as a page is: the
 site's parts, which the CMS keeps as pages of their own kind and draws
 around every page (see the CMS's README). Nothing in the schema sets them
-apart; one rule of their own lives outside it, in the CMS
+apart; two rules of their own live outside it, in the CMS
 (`SiteParts.check`) and in the editor (`validatePart`), after the
 schema: a part holds no form, since a form's answers are kept with the
-version of the page they were sent from. The starters every page draws
+version of the page they were sent from, and its sections take no
+anchor, since a part is drawn in every page beside the page's own
+sections, whose anchors its own are not checked against. The starters
+every page draws
 until a part publishes, `cms/config/parts/header.json` and
 `footer.json`, go through the comparison beside the example site's
 pages (below).

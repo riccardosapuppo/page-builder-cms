@@ -26,18 +26,23 @@ const Ajv2020 = Ajv2020Module.default;
 export const SITE_THEME_MODULE = "virtual:site-theme";
 const RESOLVED = `\0${SITE_THEME_MODULE}`;
 
-// The words of the part's own rule, the server's (SiteParts.check).
+// The words of the part's own rules, the server's (SiteParts::FORM,
+// SiteParts::ANCHOR).
 const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
+const PART_ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs.";
 
 // Each rule a starter breaks, as the CMS names it when it refuses to start
 // ("/sections/0/children/1/children/0 (part): ..."): the application rules
-// first and, when they pass, the schema, then the part's rule, the order
-// SiteParts.check follows. None when the starter is a part's draft the
+// first and, when they pass, the schema, then the part's rules (its forms,
+// then its anchors), the order SiteParts.check follows. None when the starter is a part's draft the
 // editor could save back.
 export function starterProblems(document: unknown, schema: object = readSchema()): string[] {
   const rules = checkTree(document);
   const errors = rules.length > 0 ? rules : schemaErrors(document, schema);
-  const found = errors.length > 0 ? errors : forms(document).map((pointer) => ({ pointer, keyword: "part", message: PART_FORM }));
+  const found = errors.length > 0 ? errors : [
+    ...forms(document).map((pointer) => ({ pointer, keyword: "part", message: PART_FORM })),
+    ...anchors(document).map((pointer) => ({ pointer, keyword: "part", message: PART_ANCHOR })),
+  ];
   return found.map((e) => `${e.pointer || "the whole"} (${e.keyword}): ${e.message}`);
 }
 
@@ -51,6 +56,12 @@ function schemaErrors(document: unknown, schema: object): Array<{ pointer: strin
     const key = e.keyword === "additionalProperties" ? (e.params as { additionalProperty?: unknown }).additionalProperty : undefined;
     return { pointer: typeof key === "string" ? `${e.instancePath}/${escapePointer(key)}` : e.instancePath, keyword: e.keyword, message: e.message ?? e.keyword };
   });
+}
+
+// The pointer of every section anchor of a valid document.
+function anchors(document: unknown): string[] {
+  const sections = (document as { sections: Array<{ props: { anchor?: string } }> }).sections;
+  return sections.flatMap((section, s) => (section.props.anchor === undefined ? [] : [`/sections/${s}/props/anchor`]));
 }
 
 // The pointer of every form block of a valid document.

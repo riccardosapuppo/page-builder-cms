@@ -1062,6 +1062,29 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a part's section takes no anchor: it is refused at the anchor, keyword part, and a page's draft takes the same document",
+    needs: [],
+    async run(env) {
+      // The header and footer are drawn in every page, beside its own
+      // sections, whose anchors theirs are not checked against.
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      const anchored = section(heading("Join us"));
+      anchored.props = { anchor: env.unique("join") };
+      const withAnchor = documentOf("Footer", anchored);
+      const problem = refusal(await env.adapter.saveDraft(footer.id, { revision: before.revision, document: withAnchor, saveId: "part-anchor" }), "an anchor in the footer");
+      if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+      env.expect(problem.code).toBe("invalid_document");
+      env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword}`)).toEqual(["/document/sections/0/props/anchor part"]);
+      env.expect(problem.errors[0]?.blockPointer).toBe("/document/sections/0");
+      env.expect(errorsByBlock(withAnchor, problem.errors).map((e) => [e.blockId, e.field, e.keyword])).toEqual([[anchored.id, "/props/anchor", "part"]]);
+      env.expect(await env.adapter.getDraft(footer.id), "the footer, untouched").toEqual(before);
+
+      const page = await newPage(env, "anchor-page");
+      await saved(env.adapter, page.id, { revision: page.revision, document: withAnchor, saveId: "page-anchor" }, "the same document on a page");
+    },
+  },
+  {
     name: "an image the footer's draft shows is not deleted: the refusal names the footer, which has no address",
     needs: [],
     async run(env) {

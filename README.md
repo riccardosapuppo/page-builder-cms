@@ -269,8 +269,8 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   published page shows a publish at its next visit, its ETag and cached
   HTML keyed on the parts' published versions. Until a part publishes,
   every page draws its starter (`cms/config/parts`). Cost: a change is
-  live only once published, and a part holds no form.
-  [The note](docs/decisions/header-and-footer-are-parts.md), which
+  live only once published, and a part holds no form and no section
+  anchor. [The note](docs/decisions/header-and-footer-are-parts.md), which
   replaced [the header and footer kept as the site style is](docs/decisions/header-and-footer-kept-as-the-site-style.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
@@ -717,11 +717,11 @@ suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.m
 says how a floor works and how the Vitest suites hold on a busy machine.
 
 On 12 October 2026, on the virtual machine of [Measurements](#measurements),
-with the run's servers on ports of their own (3901 and 3902 for the CMS,
-4901 to 4903 for the editor and the demo) and `npm start`'s two checks
-moved to 3910 and 4910 (`CMS_PORT`, `BUILDER_PORT`), since another
-`npm start` held 3900 and 4900, one run of the whole check, ending at
-13:31 UTC, spent 35 minutes in its suites. It ended
+with the run's servers on ports of their own (3900 and 4900 for `npm
+start`'s checks, 3901 and 3902 for the CMS, 4901 and 4902 for the
+editor, and the demo moved to 4913 by `E2E_DEMO_PORT`, since a demo
+served from another checkout held 4903), one run of the whole check,
+ending at 18:20 UTC, spent 39 minutes in its suites. It ended
 `RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
 for want of its advisory database (CI runs it). Its counts:
 
@@ -730,16 +730,16 @@ for want of its advisory database (CI runs it). Its counts:
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 124 passed, 1 skipped (it needs process groups, and runs in CI) |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 447 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 933 passed in 118 files; 28 passed |
+| the editor's unit tests, and the render contract's editor half | 936 passed in 118 files; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 283 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
 | the API description | valid, 0 warnings |
-| the Rails tests | 409 runs, 2525 assertions, 0 failures, 0 errors, 0 skips; 373 API answers held to `cms/openapi.yaml` |
+| the Rails tests | 411 runs, 2535 assertions, 0 failures, 0 errors, 0 skips; 374 API answers held to `cms/openapi.yaml` |
 | RuboCop, Brakeman | 159 files, no offenses; 79 checks, 0 warnings |
-| the editor against a CMS of its own | 85 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (84 where Windows PowerShell is not) |
+| the editor against a CMS of its own | 86 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (85 where Windows PowerShell is not) |
 | the editor in Chromium against a CMS of its own | 229 passed, among them the three that failed on this machine before (below) |
-| the editor on the browser's own storage | 77 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the editor on the browser's own storage | 78 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 9 passed |
 | accessibility: the keyboard path, focus, axe | 48 passed |
 | how the shell, the demo and the pages are served | 60 checks |

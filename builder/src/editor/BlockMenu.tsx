@@ -29,6 +29,7 @@ import { placeBeside } from "./insert-place.ts";
 import { openInserter } from "./InsertPicker.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, type KeyAction } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
+import { useOpenKind } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 
 const MENU_WIDTH = 252;
@@ -90,6 +91,7 @@ interface Item {
 function BlockMenuAt({ id, x, y, from, kind, opener }: { id: string; x: number; y: number; from: "canvas" | "navigator"; kind: "block" | "more"; opener: "head" | "more" | null }) {
   const env = useEnv();
   const { store, ui, newId } = env;
+  const openKind = useOpenKind();
   const name = useEditor((s) => blockName(s.document, id));
   const type = useEditor((s) => locate(s.document, id)?.block.type);
   const standing = useEditor(useShallow((s) => standingOf(s.document, id)));
@@ -160,7 +162,7 @@ function BlockMenuAt({ id, x, y, from, kind, opener }: { id: string; x: number; 
       label: "Paste after",
       icon: "paste",
       keys: "paste",
-      run: () => void pasteFromMenu(env, region).then((refusal) => {
+      run: () => void pasteFromMenu(env, region, openKind).then((refusal) => {
         if (refusal) back();
       }),
     },

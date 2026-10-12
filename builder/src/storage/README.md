@@ -29,23 +29,23 @@ the site style, the site's header and footer (`listParts`: the header
 then the footer, pages of their own kind with no address, made with
 their starters the first time they are asked for, then read, saved,
 versioned and published by a page's operations, by their ids; a part's
-draft holds no form, and a part takes no address and no home mark, each
-refused at its member with the keyword `part`), the site's settings
-(`getSite`: its time zone), the responses visitors send with a page's
-forms, and `capabilities`, which says which of the optional operations
-(publish, schedule, responses) this adapter has. The editor shows no
-control for one it lacks; the adapter refuses it as `unsupported`
-without asking anyone. The browser's adapter has publish (below). The
-Rails adapter has all three:
-scheduling (schedule a revision of the draft for a time, cancel, list;
-the times in UTC, the site's zone in `getSite`'s `timeZone`), and
-responses: a page's list, newest first and `RESPONSES_PER_PART` (50) at
-a time, with the `next` that continues it, a count per form and an
-excerpt of each (`listResponses(pageId, { form, before })`); one
-response whole, with the published version it came from and its form's
-fields as that version had them (`getResponse`); and deleting one for
-good (`deleteResponse`). What a visitor wrote comes back as strings,
-which the editor's Form responses (`../editor/responses/`) shows as text.
+draft holds no form and no section anchor, and a part takes no address
+and no home mark, each refused at its member with the keyword `part`),
+the site's settings (`getSite`: its time zone), the responses visitors
+send with a page's forms, and `capabilities`, which says which of the
+optional operations (publish, schedule, responses) this adapter has. The
+editor shows no control for one it lacks; the adapter refuses it as
+`unsupported` without asking anyone. The browser's adapter has publish
+(below). The Rails adapter has all three: scheduling (schedule a
+revision of the draft for a time, cancel, list; the times in UTC, the
+site's zone in `getSite`'s `timeZone`), and responses: a page's list,
+newest first and `RESPONSES_PER_PART` (50) at a time, with the `next`
+that continues it, a count per form and an excerpt of each
+(`listResponses(pageId, { form, before })`); one response whole, with
+the published version it came from and its form's fields as that version
+had them (`getResponse`); and deleting one for good (`deleteResponse`).
+What a visitor wrote comes back as strings, which the editor's Form
+responses (`../editor/responses/`) shows as text.
 `capabilities.imageVariants` says one thing more, not an operation:
 whether the storage makes smaller copies of an uploaded image for the
 pages to serve. The CMS does not (it has no image library: no libvips),
@@ -55,10 +55,10 @@ image in the browser before it goes up. `capabilities.livePages` says
 another: whether a publish puts the page in front of visitors, served at
 `links.live` with the cache. The CMS does; the browser's storage keeps a
 publish as a version and the page's published state, for the editor to
-show, but serves nothing, so its `links.live` stays null. `MAX_UPLOAD_BYTES` (10 MB) and
-`MAX_IMAGE_SIDE` (10,000 px) are the CMS's limits, held to
-`openapi.yaml`; the editor uses them to word a refusal, and the CMS
-enforces them.
+show, but serves nothing, so its `links.live` stays null.
+`MAX_UPLOAD_BYTES` (10 MB) and `MAX_IMAGE_SIDE` (10,000 px) are the
+CMS's limits, held to `openapi.yaml`; the editor uses them to word a
+refusal, and the CMS enforces them.
 
 How an operation answers:
 - what it was asked for; or, where the editor has a way forward, an
@@ -128,8 +128,9 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   transaction rolls back on a refusal raised inside it.
 - **The same refusals.** The document, by the editor's twin of the
   schema and the application rules (`../shared/validate.ts`), and a
-  part's by its rule too, no form (`validatePart`), at each save and
-  again when a publish, a version or a restore reads what is stored; a
+  part's by its rules too, no form and no section anchor
+  (`validatePart`), at each save and again when a publish, a version or
+  a restore reads what is stored; a
   page's address, a version's name, an image, the site style and each
   request's members by `browser-rules.ts`, the twin of the CMS's checks,
   with the same pointers, keywords and words, so the editor shows the

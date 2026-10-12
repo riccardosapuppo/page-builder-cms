@@ -26,7 +26,7 @@ import {
   VERSION_NAME_MAX_LENGTH,
   WORDS,
 } from "./browser-rules.ts";
-import { PART_FORM } from "../shared/validate.ts";
+import { PART_ANCHOR, PART_FORM } from "../shared/validate.ts";
 import { PNG_BYTES } from "./contract.ts";
 
 const cms = fileURLToPath(new URL("../../../cms/", import.meta.url));
@@ -85,7 +85,7 @@ describe("held to the CMS's Ruby", () => {
       WORDS.slugFormat, WORDS.reserved, WORDS.nextAddressTaken, WORDS.liveAddressTaken, WORDS.versionName, WORDS.alt,
       WORDS.contentTypes, WORDS.contentMismatch("image/png"), WORDS.paletteObject, WORDS.slotMissing, WORDS.toneOf(["ink", "sea"]),
       WORDS.notASlot, WORDS.typeScale, WORDS.invalidRequest, WORDS.invalidDocument, WORDS.conflict, WORDS.partNoAddress, WORDS.notFound, WORDS.inUse,
-      WORDS.mediaMissing("Shore01"), PART_FORM,
+      WORDS.mediaMissing("Shore01"), PART_FORM, PART_ANCHOR,
     ];
     expect(written.filter((words) => !sources.includes(words))).toEqual([]);
   });

@@ -28,8 +28,8 @@ it holds.
 - [The header and footer are parts of the site: documents of blocks, edited and published as pages are](header-and-footer-are-parts.md)
   (12 October 2026): sections, columns and blocks, dragged where they go,
   with a draft, versions, a preview and a publish; starters every page
-  draws until a part publishes; no form in a part. It replaced
-  [the header and footer kept as the site style is](header-and-footer-kept-as-the-site-style.md)
+  draws until a part publishes; no form and no section anchor in a part.
+  It replaced [the header and footer kept as the site style is](header-and-footer-kept-as-the-site-style.md)
   (9 October 2026), four values live with nothing to publish.
 
 **Serving pages**

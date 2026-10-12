@@ -85,8 +85,12 @@ export function validateBlockSchema(value: unknown): BlockValidation {
 }
 
 // What a header or footer is refused for that a page is not: a form, whose
-// answers belong to the page it is on. The server's words (SiteParts.check).
+// answers belong to the page it is on, and a section anchor, since the
+// header and footer are drawn in every page beside its own sections, whose
+// anchors theirs are not checked against. The server's words
+// (SiteParts::FORM, SiteParts::ANCHOR).
 export const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
+export const PART_ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs.";
 
 // The pointer of every form block of a document, in page order, as the
 // server's SiteParts.forms finds them.
@@ -95,14 +99,30 @@ export function partForms(document: PageDocument): string[] {
     column.children.flatMap((block, w) => (block.type === "form" ? [`/sections/${s}/children/${c}/children/${w}`] : []))));
 }
 
+// The pointer of every section anchor of a document, as the server's
+// SiteParts.anchors finds them.
+export function partAnchors(document: PageDocument): string[] {
+  return document.sections.flatMap((section, s) => (section.props.anchor === undefined ? [] : [`/sections/${s}/props/anchor`]));
+}
+
+// Every fault of a part's own rules, in the server's order (SiteParts.check):
+// its forms, then its anchors.
+export function partFaults(document: PageDocument): Array<{ pointer: string; keyword: "part"; message: string }> {
+  return [
+    ...partForms(document).map((pointer) => ({ pointer, keyword: "part" as const, message: PART_FORM })),
+    ...partAnchors(document).map((pointer) => ({ pointer, keyword: "part" as const, message: PART_ANCHOR })),
+  ];
+}
+
 // A part's document (the site's header or footer), checked as the server
-// checks a part's draft (SiteParts.check): a page's checks, then no form.
+// checks a part's draft (SiteParts.check): a page's checks, then the
+// part's own rules.
 export function validatePart(value: unknown): Validation {
   const result = validateDocument(value);
   if (!result.valid) return result;
-  const forms = partForms(result.document);
-  if (forms.length === 0) return result;
-  return { valid: false, errors: forms.map((pointer) => ({ pointer, keyword: "part", message: PART_FORM, layer: "rules" })) };
+  const faults = partFaults(result.document);
+  if (faults.length === 0) return result;
+  return { valid: false, errors: faults.map((fault) => ({ ...fault, layer: "rules" })) };
 }
 
 function finish(result: ParseResult): Validation {

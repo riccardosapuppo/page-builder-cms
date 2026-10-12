@@ -275,7 +275,7 @@ export function useEditorKeys(): void {
         env.ui.getState().say("Nothing has been copied yet: copy a block first.");
         return;
       }
-      pasteText(env, text, regionOf(document.activeElement));
+      pasteText(env, text, regionOf(document.activeElement), latest.current?.current?.kind ?? "page");
     };
     document.addEventListener("keydown", onTypingKeyDown, true);
     document.addEventListener("keydown", onKeyDown);

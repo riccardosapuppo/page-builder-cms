@@ -9,7 +9,7 @@ import { CHILD_TYPES } from "virtual:block-document-nesting";
 import compiled, { validateBlock } from "virtual:block-document-validator";
 import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
 import { parseDocument } from "../../schema/tools/rules.ts";
-import { partForms, validateDocument, validatePart } from "../src/shared/validate.ts";
+import { partAnchors, partFaults, partForms, validateDocument, validatePart } from "../src/shared/validate.ts";
 import { schemaDir } from "./paths.ts";
 import { ajvStandalone, readSchema, replaceRequires, validatorSource } from "./validator.ts";
 
@@ -133,29 +133,34 @@ describe("the compiled validator", () => {
 
   // A part's draft, the site's header or footer (src/shared/validate.ts,
   // validatePart), is checked as a page's, by the compiled validator, then
-  // held to the part's own rule, as the server checks it (SiteParts.check):
-  // every valid page of the corpus is a valid part but for its forms, each
-  // refused where it is and nothing else.
-  test("validatePart takes every valid page of the corpus but for its forms, each refused at its block, keyword part", () => {
+  // held to the part's own rules, as the server checks it (SiteParts.check):
+  // every valid page of the corpus is a valid part but for its forms and
+  // its sections' anchors, each refused where it is and nothing else.
+  test("validatePart takes every valid page of the corpus but for its forms and its anchors, each refused where it is, keyword part", () => {
     const valid = join(schemaDir, "corpus", "valid");
     let parts = 0;
     let withForms = 0;
+    let withAnchors = 0;
     for (const name of readdirSync(valid).filter((f) => f.endsWith(".json"))) {
       const page = validateDocument(JSON.parse(readFileSync(join(valid, name), "utf8")));
       if (!page.valid) throw new Error(`${name} is in the valid corpus and refused`);
-      const forms = partForms(page.document);
+      const faults = [...partForms(page.document), ...partAnchors(page.document)];
       const part = validatePart(page.document);
-      if (forms.length === 0) {
+      if (faults.length === 0) {
         expect(part.valid, name).toBe(true);
         parts += 1;
       } else {
-        expect(part.valid ? [] : part.errors.map((e) => `${e.pointer} ${e.keyword}`), name).toEqual(forms.map((pointer) => `${pointer} part`));
-        withForms += 1;
+        expect(part.valid ? [] : part.errors.map((e) => `${e.pointer} ${e.keyword}`), name).toEqual(faults.map((pointer) => `${pointer} part`));
+        expect(partFaults(page.document).map((f) => f.pointer), name).toEqual(faults);
+        if (partForms(page.document).length > 0) withForms += 1;
+        if (partAnchors(page.document).length > 0) withAnchors += 1;
       }
     }
-    // On 12 October 2026: 24 valid parts, 3 pages with a form; a
-    // corpus that shrank must not pass by looking at less.
-    expect(parts).toBeGreaterThanOrEqual(24);
+    // On 12 October 2026, with the anchors refused too: 23 valid parts, 3
+    // pages with a form, 2 with an anchor (one has both); a corpus that
+    // shrank must not pass by looking at less.
+    expect(parts).toBeGreaterThanOrEqual(23);
     expect(withForms).toBeGreaterThanOrEqual(3);
+    expect(withAnchors).toBeGreaterThanOrEqual(2);
   });
 });

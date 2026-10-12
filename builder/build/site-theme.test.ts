@@ -82,6 +82,13 @@ test("a form in a starter stops the build at the form, by the part's own rule, o
   expect(stopped({ footer })).toContain(`footer.json: ${at} (part)`);
 });
 
+test("an anchor on a starter's section stops the build at the anchor, by the part's own rule", () => {
+  const header = starter("header");
+  header.sections[0]!.props = { ...header.sections[0]!.props, anchor: "top" };
+  expect(starterProblems(header)).toEqual(["/sections/0/props/anchor (part): A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs."]);
+  expect(stopped({ header })).toContain("header.json: /sections/0/props/anchor (part)");
+});
+
 test("the application rules come before the schema, as the CMS runs them", () => {
   const header = starter("header");
   const logo = header.sections[0]!.children[0]!.children[0]!;

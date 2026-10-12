@@ -94,7 +94,7 @@ import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
-import { isLine, PART_FORM, partForms, validateDocument } from "../shared/validate.ts";
+import { isLine, partFaults, validateDocument } from "../shared/validate.ts";
 
 export const BROWSER_CAPABILITIES: Capabilities = {
   // A publish is kept as a version, with the page's published state, for
@@ -550,10 +550,11 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
     return partRefusal(record, opened.document) ?? { ok: true, value: opened.document };
   }
 
-  // A part holds no form (SiteParts.check): refused at each form block.
+  // A part's own rules (SiteParts.check): no form, refused at each form
+  // block, and no section anchor, refused at each anchor.
   function partRefusal(record: PageRecord, document: PageDocument): { ok: false; problem: Invalid } | null {
-    const forms = kindOf(record) === "page" ? [] : partForms(document);
-    return forms.length > 0 ? invalid("invalid_document", forms.map((pointer) => underDocument({ pointer, keyword: "part", message: PART_FORM }))) : null;
+    const faults = kindOf(record) === "page" ? [] : partFaults(document);
+    return faults.length > 0 ? invalid("invalid_document", faults.map(underDocument)) : null;
   }
 
   const draftOf = (record: PageRecord): Draft => ({ revision: record.draft.revision, lastSaveId: record.draft.lastSaveId, updatedAt: record.draft.updatedAt, document: upgraded(record.draft.document) });

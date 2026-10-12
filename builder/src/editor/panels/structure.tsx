@@ -7,8 +7,10 @@
 import { makeSetColumnCount, makeSetColumnWidths, makeSetStack, REMOVE } from "../../document/commands.ts";
 import { plural } from "../../document/labels.ts";
 import { COLUMN_WIDTHS_BY_COUNT, type ColumnWidthsToken, type SectionBlock, type StackToken } from "../../shared/document.ts";
+import { PART_ANCHOR } from "../../shared/validate.ts";
 import { RadioField, TextField } from "../controls.tsx";
 import { useEnv, useRun } from "../context.tsx";
+import { useOpenKind } from "../session.tsx";
 import { useBlockCommands } from "./hooks.ts";
 
 // A preset drawn as its columns side by side, each as wide as its share; a
@@ -95,6 +97,9 @@ export function nameWords(block: SectionBlock): string {
 
 export function SectionName({ block }: { block: SectionBlock }) {
   const commands = useBlockCommands(block.id);
+  // A header's or footer's section takes no anchor (PART_ANCHOR): the
+  // field is there only to clear one a part was given elsewhere.
+  const part = useOpenKind() !== "page";
   return (
     <>
       <TextField
@@ -106,19 +111,21 @@ export function SectionName({ block }: { block: SectionBlock }) {
         hint="Only you see it, in the outline, the bottom line and history."
         onCommit={(label) => commands.setProps({ label: label.trim() === "" ? REMOVE : label })}
       />
-      <TextField
-        label="Anchor id"
-        icon="anchor"
-        value={block.props.anchor ?? ""}
-        blockId={block.id}
-        field="/props/anchor"
-        rules={{ kind: "anchor" }}
-        hint={block.props.anchor ? `Links to #${block.props.anchor} scroll to this section.` : "A name for links to this section, such as #join."}
-        onCommit={(anchor) => {
-          const name = anchor.trim().replace(/^#/, "");
-          return commands.setProps({ anchor: name === "" ? REMOVE : name });
-        }}
-      />
+      {(!part || block.props.anchor !== undefined) && (
+        <TextField
+          label="Anchor id"
+          icon="anchor"
+          value={block.props.anchor ?? ""}
+          blockId={block.id}
+          field="/props/anchor"
+          rules={{ kind: "anchor" }}
+          hint={part ? `${PART_ANCHOR} Clear it.` : block.props.anchor ? `Links to #${block.props.anchor} scroll to this section.` : "A name for links to this section, such as #join."}
+          onCommit={(anchor) => {
+            const name = anchor.trim().replace(/^#/, "");
+            return commands.setProps({ anchor: name === "" ? REMOVE : name });
+          }}
+        />
+      )}
     </>
   );
 }

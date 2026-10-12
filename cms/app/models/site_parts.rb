@@ -60,16 +60,28 @@ module SiteParts
     KINDS.to_h { |kind| [ kind, check(starters.fetch(kind)).errors ] }.reject { |_, errors| errors.empty? }
   end
 
+  # The words of the part's own rules.
+  FORM = "A header or footer holds no form: a form's answers belong to the page it is on."
+  ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs."
+
   # The checks of a part's document: a page's (BlockDocument.check), then
-  # the part's own rule, no form.
+  # the part's own rules: no form, and no section anchor, since the header
+  # and footer are drawn in every page beside its own sections, whose
+  # anchors their own are not checked against.
   def check(document)
     result = BlockDocument.check(document)
     return result unless result.ok?
 
-    errors = forms(result.document).map do |pointer|
-      BlockDocument::Error.at(pointer, "part", "A header or footer holds no form: a form's answers belong to the page it is on.")
-    end
+    errors = forms(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", FORM) } +
+      anchors(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", ANCHOR) }
     errors.empty? ? result : BlockDocument::Result.new(document: nil, errors: errors)
+  end
+
+  # The pointer of every section anchor of a document.
+  def anchors(document)
+    Array(document["sections"]).each_with_index.filter_map do |section, s|
+      "/sections/#{s}/props/anchor" if section.is_a?(Hash) && section["props"].is_a?(Hash) && section["props"].key?("anchor")
+    end
   end
 
   # The pointer of every form block of a document.

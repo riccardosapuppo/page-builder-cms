@@ -9,6 +9,7 @@ import { expect, test } from "vitest";
 import { describedText, editorKit, groupNames, openGroups, widgetPage } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import type { SectionBlock } from "../../shared/document.ts";
+import { PART_ANCHOR } from "../../shared/validate.ts";
 import { BlockPanel } from "./EditPanel.tsx";
 
 test("a section's columns and their widths change by the column commands", () => {
@@ -65,6 +66,28 @@ test("a section's label and anchor change by its props command, in Name and link
   expect(kit.block("widgets")?.props).toEqual({ label: "Join", anchor: "join" });
   fireEvent.click(screen.getByRole("button", { name: "Name and link" }));
   expect(describedText(screen.getByRole("button", { name: "Name and link" }))).toBe("Join, #join");
+});
+
+test("in a header or footer, Name and link has no Anchor id, but for an anchor the section was given elsewhere, there to be cleared", () => {
+  const header = { id: 7, kind: "header" as const, slug: null, home: false, published: null, revision: 0, links: { preview: "/preview/7", live: null } };
+  const plain = editorKit({ document: widgetPage(), selection: "widgets", session: { current: header } });
+  const first = plain.render(<BlockPanel id="widgets" />);
+  openGroups("Name and link");
+  expect(screen.getByLabelText("Section label")).toBeTruthy();
+  expect(screen.queryByLabelText("Anchor id")).toBeNull();
+  first.unmount();
+
+  const document = widgetPage();
+  document.sections[0]!.props = { label: "Widgets", anchor: "join" };
+  const given = editorKit({ document, selection: "widgets", session: { current: header } });
+  given.render(<BlockPanel id="widgets" />);
+  openGroups("Name and link");
+  const anchor = screen.getByLabelText("Anchor id");
+  expect(describedText(anchor)).toContain(PART_ANCHOR);
+  fireEvent.change(anchor, { target: { value: "" } });
+  fireEvent.blur(anchor);
+  expect(given.block("widgets")?.props).toEqual({ label: "Widgets" });
+  expect(screen.queryByLabelText("Anchor id")).toBeNull();
 });
 
 test("a column's panel opens on its Spacing, whose ruler sets its space", () => {

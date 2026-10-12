@@ -14,6 +14,8 @@ import { clipboardText, copyBlock, readClipboard } from "../document/clipboard.t
 import type { CommandError } from "../document/check.ts";
 import { makePaste } from "../document/commands.ts";
 import { blockName } from "../document/labels.ts";
+import type { Block } from "../shared/document.ts";
+import type { PageKind } from "../storage/adapter.ts";
 import { runCommand, type Region } from "./act.ts";
 import type { EditorEnv } from "./context.tsx";
 
@@ -35,15 +37,26 @@ export function copySelection(env: Env): string | null {
 }
 
 // Pastes clipboard text after the selection (or inside it, or at the end
-// of the page: pasteTarget). Null when the block was put on the page.
-export function pasteText(env: Env, text: string, region: Region): CommandError | null {
+// of the page: pasteTarget) of the document open, a page or a part. Null
+// when the block was put on the page.
+export function pasteText(env: Env, text: string, region: Region, kind: PageKind = "page"): CommandError | null {
   const read = readClipboard(text);
   if (!read.ok) {
     env.ui.getState().say(read.error.message);
     return read.error;
   }
   const selection = env.store.getState().selection;
-  return runCommand(env, (doc) => makePaste(doc, read.block, selection, env.newId), region);
+  const block = kind === "page" ? read.block : withoutAnchor(read.block);
+  return runCommand(env, (doc) => makePaste(doc, block, selection, env.newId), region);
+}
+
+// A header's or footer's section takes no anchor (PART_ANCHOR,
+// ../shared/validate.ts): a section pasted into one leaves its anchor
+// behind, as a section pasted into a page leaves one the page uses.
+function withoutAnchor(block: Block): Block {
+  if (block.type !== "section" || block.props.anchor === undefined) return block;
+  const { anchor: _anchor, ...props } = block.props;
+  return { ...block, props };
 }
 
 // The menu's copy: the browser's clipboard as well as this tab's.
@@ -59,7 +72,7 @@ export async function copyFromMenu(env: Env): Promise<void> {
 
 // The menu's paste: the browser's clipboard when it may be read, else
 // the block this tab copied last.
-export async function pasteFromMenu(env: Env, region: Region): Promise<CommandError | null> {
+export async function pasteFromMenu(env: Env, region: Region, kind: PageKind = "page"): Promise<CommandError | null> {
   let text: string | null = null;
   try {
     text = (await navigator.clipboard?.readText()) ?? null;
@@ -73,5 +86,5 @@ export async function pasteFromMenu(env: Env, region: Region): Promise<CommandEr
     env.ui.getState().say(message);
     return { reason: "nothing", message };
   }
-  return pasteText(env, text, region);
+  return pasteText(env, text, region, kind);
 }

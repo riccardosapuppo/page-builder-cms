@@ -64,6 +64,21 @@ class Api::PartsTest < ActionDispatch::IntegrationTest
     assert_equal %w[restore before-restore manual], json["versions"].first(3).map { |version| version["reason"] }
   end
 
+  # The header is drawn in every page, beside the page's own sections,
+  # whose anchors its own are not checked against: its sections take none.
+  test "a part's section anchor is refused at the anchor, keyword part, and the draft stays as it was" do
+    with_anchor = header_document("Tide club")
+    with_anchor["sections"][0]["props"]["anchor"] = "join"
+
+    save_draft @header, revision: 0, document: with_anchor
+
+    assert_response :unprocessable_content
+    assert_equal [ [ "/document/sections/0/props/anchor", "part" ] ], error_pointers
+    assert_equal "/document/sections/0", json.dig("errors", 0, "blockPointer")
+    assert_equal SiteParts::ANCHOR, json.dig("errors", 0, "message")
+    assert_equal 0, @header.draft.reload.revision
+  end
+
   # A form in the header, as only a row written past the API could hold
   # one: a publish, a schedule, a version and a restore check the stored
   # document again, and a part's by a part's rule too.

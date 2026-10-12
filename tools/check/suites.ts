@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 933);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 936);
     },
   },
   {
@@ -360,7 +360,7 @@ export const SUITES: Suite[] = [
         const prepare = await ctx.step("ruby", ["bin/rails", "db:test:prepare"], { cwd: cmsRoot });
         if (prepare.code !== 0) return failed("", `db:test:prepare failed (exit ${prepare.code})`);
         const tests = await ctx.step("ruby", ["bin/rails", "test"], { cwd: cmsRoot });
-        return readMinitest(tests.output, tests.code, 409, 373);
+        return readMinitest(tests.output, tests.code, 411, 374);
       });
     },
   },
@@ -406,7 +406,7 @@ export const SUITES: Suite[] = [
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)]]));
       // 84 on every platform; the test of cms/README.md's PowerShell example
       // runs only where Windows PowerShell is, and makes 85 there.
-      return why ? notRun(why) : vitestProject(ctx, "rails", 84);
+      return why ? notRun(why) : vitestProject(ctx, "rails", 85);
     },
   },
   {
@@ -425,7 +425,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:browser")) return failed("", "builder/package.json has no e2e:browser script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the editor on the browser's storage", portNumber("E2E_BROWSER_PORT", 4902)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:browser", 77);
+      return why ? notRun(why) : playwright(ctx, "e2e:browser", 78);
     },
   },
   {
