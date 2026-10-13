@@ -9,10 +9,10 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     api :get, "/api/site-style"
 
     assert_response :ok
-    assert_equal "site-sea", json.dig("palette", "primary")
+    assert_equal "site-signal", json.dig("palette", "primary")
     assert_equal "balanced", json["typeScale"]
     assert_nil json["updatedAt"]
-    assert_equal [ [ "site-sea", "Sea", "#1E5B4C" ], [ "site-harbour", "Harbour", "#1D4E6F" ], [ "site-kelp", "Kelp", "#3B5A23" ], [ "site-basalt", "Basalt", "#4A4F57" ] ],
+    assert_equal [ [ "site-signal", "Signal", "#C2352B" ], [ "site-sea", "Sea", "#1E5B4C" ], [ "site-harbour", "Harbour", "#1D4E6F" ], [ "site-kelp", "Kelp", "#3B5A23" ], [ "site-basalt", "Basalt", "#4A4F57" ] ],
                  json.dig("choices", "palette", "primary").map { |t| t.values_at("color", "label", "hex") }
     assert_equal %w[gentle balanced strong], json.dig("choices", "typeScales").map { |c| c["name"] }
   end
@@ -32,7 +32,7 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "/palette/primary", "inclusion" ], [ "/palette/muted", "blank" ], [ "/palette/brand", "unknown" ], [ "/typeScale", "inclusion" ] ],
                  error_pointers
     api :get, "/api/site-style"
-    assert_equal "site-sea", json.dig("palette", "primary")
+    assert_equal "site-signal", json.dig("palette", "primary")
   end
 
   test "a tone of another slot is refused" do

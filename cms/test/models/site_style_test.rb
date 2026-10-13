@@ -5,7 +5,7 @@ class SiteStyleTest < ActiveSupport::TestCase
     style = SiteStyle.current
 
     assert_not style.persisted?
-    assert_equal "site-sea", style.palette["primary"]
+    assert_equal "site-signal", style.palette["primary"]
     assert_equal "balanced", style.type_scale
     assert style.valid?
   end

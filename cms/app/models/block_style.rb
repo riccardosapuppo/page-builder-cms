@@ -26,6 +26,7 @@ module BlockStyle
     "background" => "bg",
     "color" => "fg",
     "textSize" => "size",
+    "typeface" => "face",
     "align" => "align",
     "verticalAlign" => "valign",
     "aspect" => "aspect"
@@ -40,6 +41,7 @@ module BlockStyle
     "background" => "backgroundToken",
     "color" => "paletteSlot",
     "textSize" => "typeStep",
+    "typeface" => "typefaceToken",
     "align" => "alignToken",
     "verticalAlign" => "verticalAlignToken",
     "visibility" => "visibilityToken",

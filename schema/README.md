@@ -119,6 +119,7 @@ The page document's one schema, and the design tokens it names.
 | `spaceAbove`, `spaceBelow` (sections only) | a spacing step, `none` to `xxl`, or `section-s` `section-l`; absent, the theme's rhythm for the device (96, 64 and 48 px on desktop, tablet and phone) | `space.site` and `space.site-section` |
 | `aspect` (images only) | `original` `16:9` `3:2` `4:3` `5:4` `1:1`: the crop, width to height; `original` keeps the image's shape, and as a tablet or phone override undoes a crop | `aspect.site`, which gives each its CSS `aspect-ratio` |
 | `textSize` | `display` `heading-1` `heading-2` `heading-3` `large` `body` `small` | `type.site` |
+| `typeface` (headings, texts and quotes) | `body` `heading`: the face the words are set in, the body's or the headings'; absent, a heading's own is the headings', a text's and a quote's the body's | the theme's two faces, in `site.css` |
 | `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots, `site-tones` in `tokens.json` (see below) |
 | `background` | `none` or a palette slot | as above |
 | `align` | `left` `center` `right` | |
@@ -126,7 +127,7 @@ The page document's one schema, and the design tokens it names.
 | `visibility` | `visible` `hidden` | |
 
 A block names a palette **slot**, never a tone: the site owner chooses the
-tone of each slot (Sea, Harbour, Kelp...), and every block that uses the
+tone of each slot (Signal, Sea, Harbour...), and every block that uses the
 slot follows. `site-tones` in `tokens.json` lists the six slots of the
 approved mock, each with the tones the site owner may choose from (curated,
 never a free colour) and the tone a new site starts with; `site-type-scale`

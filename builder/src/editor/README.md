@@ -139,7 +139,11 @@ owner to undo:
   column's text sizes are the design's three, Small, Body and Large (a
   step it already holds is listed too, so it shows), where the layout
   draws the seven; a heading, a text or
-  a quote offers the type scale's seven. A setting the block leaves unset
+  a quote offers the type scale's seven, and beside them Typeface, Body
+  or Headings, the theme's two faces, each drawn in its face: the one
+  its type takes is checked until another is chosen, and a closed Size
+  and color names the typeface only where the block sets one ("Display,
+  Headings typeface, Signal"). A setting the block leaves unset
   shows the value in use checked, as the design draws None and Body: a
   section's or a column's None, a button's Accent, the level's size for a
   heading, a quote's Heading 3, a column's Body, Top and Left, and for a
@@ -170,7 +174,7 @@ owner to undo:
   window has no "Manage all pages": there is no such screen yet.
 - **Site style:** a "Saved for every page" line under the panel's title,
   where the style's own save shows (the top bar's word is the page's);
-  a chevron on Primary and Accent, which open to their tones; contrast
+  a chevron on Text, Primary and Accent, which open to their tones; contrast
   ratios cut to one decimal, not rounded ("8.8 to 1" for 8.86), so a
   ratio never reads above a threshold it misses.
 - **The header and footer**, which the layout draws as fixed parts of the

@@ -77,6 +77,10 @@ export type VerticalAlignToken = (typeof VERTICAL_ALIGN_TOKENS)[number];
 export const VISIBILITY_TOKENS = ["visible", "hidden"] as const;
 export type VisibilityToken = (typeof VISIBILITY_TOKENS)[number];
 
+// The face of a heading, a text or a quote: the body's or the headings'.
+export const TYPEFACE_TOKENS = ["body", "heading"] as const;
+export type TypefaceToken = (typeof TYPEFACE_TOKENS)[number];
+
 export const ICON_NAMES = ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 
@@ -110,13 +114,14 @@ export interface StyleTokens {
   background?: BackgroundToken;
   color?: PaletteSlot;
   textSize?: TypeStep;
+  typeface?: TypefaceToken;
   align?: AlignToken;
   verticalAlign?: VerticalAlignToken;
   visibility?: VisibilityToken;
 }
 export const STYLE_TOKEN_KEYS = [
   "spaceInside", "spaceBetween", "spaceAbove", "spaceBelow", "aspect", "background",
-  "color", "textSize", "align", "verticalAlign", "visibility",
+  "color", "textSize", "typeface", "align", "verticalAlign", "visibility",
 ] as const satisfies readonly (keyof StyleTokens)[];
 
 // The tokens each style setting takes: the enum its key refers to in the
@@ -131,12 +136,13 @@ export const STYLE_TOKENS = {
   background: BACKGROUND_TOKENS,
   color: PALETTE_SLOTS,
   textSize: TYPE_STEPS,
+  typeface: TYPEFACE_TOKENS,
   align: ALIGN_TOKENS,
   verticalAlign: VERTICAL_ALIGN_TOKENS,
   visibility: VISIBILITY_TOKENS,
 } as const satisfies { readonly [K in keyof StyleTokens]-?: readonly NonNullable<StyleTokens[K]>[] };
 
-const TEXT_STYLE = ["textSize", "color", "align", "visibility"] as const;
+const TEXT_STYLE = ["textSize", "typeface", "color", "align", "visibility"] as const;
 const LINE_STYLE = ["color", "visibility"] as const;
 const PLAIN_STYLE = ["visibility"] as const;
 const NAV_STYLE = ["color", "align", "visibility"] as const;

@@ -18,7 +18,7 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { REMOVE } from "../../document/commands.ts";
 import { STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
-  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, VERTICAL_ALIGN_TOKENS,
+  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS,
   type Block, type BlockType, type Device, type PaletteSlot, type StyleTokens,
 } from "../../shared/document.ts";
 import { locate } from "../../document/tree.ts";
@@ -58,8 +58,9 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
 // #style state: Space inside, Space between, Background, Text size,
 // Alignment): space first, then colour, then type, then placement.
 // Alignment, a column's two in one field, vertical first; then the text
-// colour, which the design does not draw.
-const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "verticalAlign", "align", "color", "aspect"];
+// colour, which the design does not draw. The typeface, which the design
+// does not draw either, goes with the text size.
+const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "typeface", "verticalAlign", "align", "color", "aspect"];
 
 // The keys of `keys` the block's type accepts, in that order.
 export function acceptedKeys(type: BlockType, keys: readonly StyleKey[]): StyleKey[] {
@@ -132,7 +133,8 @@ function focusFieldOf(event: MouseEvent<HTMLElement>): void {
 // its field, as the design draws None and Body. A background is a
 // section's or a column's none, a button's accent; a text size the level's
 // for a heading, the quote's own, a column's body, and for a text the one
-// its column shows; an alignment its column's, else left; a column's
+// its column shows; a typeface the headings' for a heading, the body's for
+// a text and a quote; an alignment its column's, else left; a column's
 // content at its top; an image its own shape. A colour depends on the
 // band around the block, so none is checked for it.
 export function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle: unknown): string | null {
@@ -145,6 +147,8 @@ export function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle
       if (block.type === "column") return "body";
       if (block.type === "text") return shownValue(columnStyle, device, "textSize") ?? "body";
       return null;
+    case "typeface":
+      return block.type === "heading" ? "heading" : block.type === "text" || block.type === "quote" ? "body" : null;
     case "align":
       return block.type === "column" ? "left" : (shownValue(columnStyle, device, "align") ?? "left");
     case "verticalAlign":
@@ -330,6 +334,22 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                     content: <><span className={sample.sans ? "sans" : undefined} style={{ fontSize: `${sample.size}px` } as CSSProperties}>Aa</span>{sample.label}</>,
                   };
                 })}
+                value={value}
+                inUse={inUse}
+                onChange={set}
+              />
+            );
+          case "typeface":
+            return (
+              <RadioField
+                key={key}
+                {...common}
+                look="steps"
+                choices={TYPEFACE_TOKENS.map((face) => ({
+                  value: face,
+                  label: tokenName(face),
+                  content: <><span className={face === "heading" ? "sans" : undefined} style={{ fontSize: "18px" } as CSSProperties}>Aa</span>{tokenName(face)}</>,
+                }))}
                 value={value}
                 inUse={inUse}
                 onChange={set}

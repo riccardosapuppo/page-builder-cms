@@ -14,7 +14,7 @@
             {
               "id": "s-heading-styled", "type": "heading", "children": [],
               "props": { "level": 1, "text": "Every style key" },
-              "style": { "base": { "textSize": "display", "color": "primary", "align": "left", "visibility": "visible" }, "phone": { "textSize": "heading-1" } }
+              "style": { "base": { "textSize": "display", "typeface": "body", "color": "primary", "align": "left", "visibility": "visible" }, "phone": { "textSize": "heading-1", "typeface": "heading" } }
             },
             {
               "id": "s-button-styled", "type": "button", "children": [],
@@ -43,7 +43,7 @@
             {
               "id": "s-quote-styled", "type": "quote", "children": [],
               "props": { "text": "Smaller than a quote's usual step.", "attribution": "Style" },
-              "style": { "base": { "textSize": "body" } }
+              "style": { "base": { "textSize": "body", "typeface": "heading" } }
             },
             {
               "id": "s-spacers", "type": "spacer", "children": [], "props": { "size": "xxl" },
@@ -52,7 +52,7 @@
             {
               "id": "s-bad-style-values", "type": "heading", "children": [],
               "props": { "level": 2, "text": "Values the schema does not list" },
-              "style": { "base": { "textSize": "huge onclick=alert(1)", "color": "#ff0000", "align": "justify", "visibility": "maybe" }, "desktop": { "textSize": "display" }, "tablet": "not an object" }
+              "style": { "base": { "textSize": "huge onclick=alert(1)", "typeface": "heading\" onclick=\"alert(1)", "color": "#ff0000", "align": "justify", "visibility": "maybe" }, "desktop": { "textSize": "display" }, "tablet": "not an object" }
             },
             {
               "id": "s-image-hidden", "type": "image", "children": [],

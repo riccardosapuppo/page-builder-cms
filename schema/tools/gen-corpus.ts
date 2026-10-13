@@ -374,9 +374,9 @@ valid("styles-every-token", "every style key and token value, with tablet and ph
     column("st-1", [
       heading("st-h-display", 1, "Display", { base: { textSize: "display", color: "primary", align: "left" } }),
       heading("st-h-1", 2, "Heading 1", { base: { textSize: "heading-1", color: "text" }, tablet: { align: "center" }, phone: { align: "right" } }),
-      heading("st-h-2", 2, "Heading 2", { base: { textSize: "heading-2", color: "accent" } }),
+      heading("st-h-2", 2, "Heading 2", { base: { textSize: "heading-2", typeface: "body", color: "accent" } }),
       heading("st-h-3", 3, "Heading 3", { base: { textSize: "heading-3", color: "muted" } }),
-      text("st-t-large", rich(p(t("Large"))), { base: { textSize: "large", color: "background" } }),
+      text("st-t-large", rich(p(t("Large"))), { base: { textSize: "large", typeface: "heading", color: "background" }, phone: { typeface: "body" } }),
       text("st-t-body", rich(p(t("Body"))), { base: { textSize: "body", color: "soft" } }),
       text("st-t-small", rich(p(t("Small"))), { base: { textSize: "small" }, phone: { visibility: "hidden" } }),
       button("st-b", "Primary", "/go", { base: { background: "primary", color: "background" }, phone: { background: "none" } }),
@@ -610,6 +610,7 @@ invalid("style-unknown-token", "values are token names", `${COL}/style/base/spac
 invalid("style-pixel-value", "block settings never use pixels", `${COL}/style/base/spaceInside`, "enum", (d) => { at(d, COL).style.base.spaceInside = 24; });
 invalid("style-tone-not-slot", "blocks name palette slots, not tones", `${H}/style/base/color`, "enum", (d) => { at(d, H).style.base.color = "site-sea"; });
 invalid("style-key-not-for-type", "a divider has no text size", `${DIV}/style/base/textSize`, "additionalProperties", (d) => { at(d, DIV).style.base.textSize = "large"; });
+invalid("style-typeface-unknown", "a typeface is the body's or the headings', never a font's name", `${H}/style/base/typeface`, "enum", (d) => { at(d, H).style.base.typeface = "Archivo"; });
 invalid("style-unknown-key", "no free CSS: only the listed settings", `${H}/style/base/fontFamily`, "additionalProperties", (d) => { at(d, H).style.base.fontFamily = "Archivo"; });
 invalid("style-empty-override", "an override with nothing in it is not stored", `${COL}/style/phone`, "minProperties", (d) => { at(d, COL).style.phone = {}; });
 invalid("style-desktop-key", "desktop is base: there is no desktop key", `${H}/style/desktop`, "additionalProperties", (d) => { at(d, H).style.desktop = { textSize: "body" }; });

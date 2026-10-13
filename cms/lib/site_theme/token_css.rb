@@ -201,6 +201,7 @@ module SiteTheme
       sections = defs.fetch("sectionSpaceToken").fetch("enum")
       slots = defs.fetch("paletteSlot").fetch("enum")
       steps = defs.fetch("typeStep").fetch("enum")
+      faces = defs.fetch("typefaceToken").fetch("enum")
       aligns = defs.fetch("alignToken").fetch("enum")
       valigns = defs.fetch("verticalAlignToken").fetch("enum")
       aspects = defs.fetch("aspectToken").fetch("enum")
@@ -232,17 +233,21 @@ module SiteTheme
       # takes its colours back (inherit). The site's mark (a logo) draws
       # itself the other way round on the dark slots, as the design's footer
       # has it: a paper disc, its waterline in the band's own colour
-      # (--mark-disc, --mark-line); elsewhere the theme's (site.css).
-      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }\n"
+      # (--mark-disc, --mark-line); elsewhere the theme's (site.css). Small
+      # secondary text (a quote's who, a field's "required") is in the Muted
+      # slot on the light bands, and in the band's own text colour on the
+      # dark ones and on Accent, where the Muted slot does not read
+      # (--caption-color).
+      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }\n"
       slots.each do |slot|
         paired =
           if DARK_SLOTS.include?(slot)
             "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
-              "--mark-disc: var(--sw-background); --mark-line: var(--sw-#{slot});"
+              "--mark-disc: var(--sw-background); --mark-line: var(--sw-#{slot}); --caption-color: currentColor;"
           elsif INK_SLOTS.include?(slot)
-            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial;"
+            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor;"
           else
-            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial;"
+            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial;"
           end
         rules << ".#{prefix}bg-#{slot} { background-color: var(--sw-#{slot}); #{paired} }\n"
       end
@@ -264,7 +269,13 @@ module SiteTheme
       slots.each { |slot| rules << ".#{prefix}line-#{slot} { --line-color: var(--sw-#{slot}); }\n" }
       # textSize: a step of the type scale.
       steps.each { |step| rules << ".#{prefix}size-#{step} { font-size: var(--fs-#{step}); line-height: var(--lh-#{step}); }\n" }
-      aligns.each { |a| rules << ".#{prefix}align-#{a} { text-align: #{a}; }\n" }
+      # typeface: a heading, a text or a quote in the body's face or the
+      # headings', over the one its type takes in site.css (FACES).
+      faces.each { |f| rules << ".w.#{prefix}face-#{f} { #{FACES.fetch(f)} }\n" }
+      # align: the words, and where a box the theme caps (a paragraph, a
+      # display heading's lines, a quote) stands in its column: at the
+      # start, in the middle, at the end (--cap-margin, site.css).
+      aligns.each { |a| rules << ".#{prefix}align-#{a} { text-align: #{a}; --cap-margin: #{CAP_MARGIN.fetch(a)}; }\n" }
       valigns.each { |v| rules << ".#{prefix}valign-#{v} { justify-content: #{VALIGN.fetch(v)}; }\n" }
       # aspect: the crop of an image, on the img inside the block. Cropped,
       # the picture covers its box. original needs no rule on every device:
@@ -297,6 +308,20 @@ module SiteTheme
         @container site (width < #{phone_below}px) { .hide-phone { display: none; } }
       CSS
     end
+
+    # The two faces as site.css sets them, the body's on .sw and the
+    # headings' on .w-heading (its tracking, --face-tracking, a little
+    # tighter at the display step). The body's takes the weight of what is
+    # around it, so a heading set in it reads as running text does. The
+    # headings' face ships upright only: in it, words in italic stand
+    # upright rather than in a slanted copy of the face (font-synthesis).
+    FACES = {
+      "body" => 'font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial;',
+      "heading" => 'font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none;'
+    }.freeze
+
+    # The inline margins that put a capped box where its words are aligned.
+    CAP_MARGIN = { "left" => "0 auto", "center" => "auto", "right" => "auto 0" }.freeze
 
     # Slots dark enough that text in the Text slot does not read on them.
     DARK_SLOTS = %w[text primary muted].freeze

@@ -17,7 +17,7 @@ export function TextRender({ block, decoration }: BlockRenderProps) {
   return (
     <BlockRoot
       block={block}
-      classes={["w", "w-text", styleClasses(style, "textSize"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      classes={["w", "w-text", styleClasses(style, "textSize"), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
       decoration={decoration}
     >
       {decoration?.editing ? decoration.editing(text) : text}

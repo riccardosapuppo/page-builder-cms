@@ -42,19 +42,19 @@ function draw(style: SiteStyle = siteStyle()) {
 test("the slots with one tone are rows, the others open on their curated tones, and a choice goes whole to the session", () => {
   const { changes } = draw();
   expect(screen.getByRole("heading", { name: "Site style" })).toBeTruthy();
-  // Text, Background, Soft and Muted have one tone each: nothing to press.
-  expect(screen.getAllByRole("button", { expanded: false }).map((b) => b.querySelector(".slot-name")?.firstChild?.textContent)).toEqual(["Primary", "Accent"]);
+  // Background, Soft and Muted have one tone each: nothing to press.
+  expect(screen.getAllByRole("button", { expanded: false }).map((b) => b.querySelector(".slot-name")?.firstChild?.textContent)).toEqual(["Text", "Primary", "Accent"]);
   fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));
   const tones = screen.getByRole("radiogroup", { name: "Primary color" });
-  expect(within(tones).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([["Sea", "true"], ["Harbour", "false"], ["Kelp", "false"], ["Basalt", "false"]]);
+  expect(within(tones).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([["Signal", "true"], ["Sea", "false"], ["Harbour", "false"], ["Kelp", "false"], ["Basalt", "false"]]);
   fireEvent.click(within(tones).getByRole("radio", { name: "Harbour" }));
-  expect(changes).toEqual([{ palette: { text: "site-ink", background: "site-paper", primary: "site-harbour", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced" }]);
+  expect(changes).toEqual([{ palette: { text: "site-deep-water", background: "site-paper", primary: "site-harbour", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced" }]);
 });
 
 test("an edited slot says what it was, reads its contrast in words, and resets to a new site's tone", () => {
   const { changes } = draw(siteStyle({ primary: "site-harbour" }));
   const slot = screen.getByRole("button", { name: /^Primary/ });
-  expect(slot.textContent).toBe("PrimaryHarbourEdited, was Sea");
+  expect(slot.textContent).toBe("PrimaryHarbourEdited, was Signal");
   fireEvent.click(slot);
   // Harbour on white is 8.86 to 1: cut to 8.8, where the design rounded to 8.9.
   const checks = screen.getByRole("list", { name: "Contrast checks" });
@@ -62,8 +62,8 @@ test("an edited slot says what it was, reads its contrast in words, and resets t
     "Button text on it: 8.8 to 1, easy to read",
     "Links on the background: 8.8 to 1, easy to read",
   ]);
-  fireEvent.click(screen.getByRole("button", { name: "Reset to Sea" }));
-  expect(changes.at(-1)!.palette.primary).toBe("site-sea");
+  fireEvent.click(screen.getByRole("button", { name: "Reset to Signal" }));
+  expect(changes.at(-1)!.palette.primary).toBe("site-signal");
 });
 
 test("every curated tone reads at least 4.5 to 1 where the site puts it", () => {
@@ -71,8 +71,10 @@ test("every curated tone reads at least 4.5 to 1 where the site puts it", () => 
   for (const tone of tokens["site-tones"].primary.tones) {
     expect(contrastWords(contrastRatio(colors[tone.color]!, colors["site-paper"]!)).passes, tone.label).toBe(true);
   }
-  for (const tone of tokens["site-tones"].accent.tones) {
-    expect(contrastWords(contrastRatio(colors["site-ink"]!, colors[tone.color]!)).passes, tone.label).toBe(true);
+  for (const text of tokens["site-tones"].text.tones) {
+    for (const tone of tokens["site-tones"].accent.tones) {
+      expect(contrastWords(contrastRatio(colors[text.color]!, colors[tone.color]!)).passes, `${text.label} on ${tone.label}`).toBe(true);
+    }
   }
   // Cut, never rounded up: 4.48 is not readable text.
   expect(contrastWords(4.48)).toEqual({ words: "4.4 to 1, for large text only", passes: false });

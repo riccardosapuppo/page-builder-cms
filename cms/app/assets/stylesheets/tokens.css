@@ -4,13 +4,15 @@
 
 /* ---------- Palette slots, with the tone a new site starts with ---------- */
 .site {
-  --sw-text: #14302A;
+  --sw-text: #0E2A35;
   --sw-background: #FFFFFF;
-  --sw-primary: #1E5B4C;
+  --sw-primary: #C2352B;
   --sw-accent: #F2A541;
   --sw-soft: #E6EFEA;
   --sw-muted: #4E625B;
 }
+.site[data-text="site-ink"] { --sw-text: #14302A; }
+.site[data-primary="site-sea"] { --sw-primary: #1E5B4C; }
 .site[data-primary="site-harbour"] { --sw-primary: #1D4E6F; }
 .site[data-primary="site-kelp"] { --sw-primary: #3B5A23; }
 .site[data-primary="site-basalt"] { --sw-primary: #4A4F57; }
@@ -192,13 +194,13 @@
 .space-below-xxl { padding-bottom: var(--space-xxl); }
 .space-below-section-s { padding-bottom: var(--section-s); }
 .space-below-section-l { padding-bottom: var(--section-l); }
-.bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
-.bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
-.bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-.bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
-.bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
-.bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-.bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
+.bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+.bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+.bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+.bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
+.bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+.bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+.bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
 .bg-none > * { --ring-color: inherit; }
 .bg-text > * { --ring-color: var(--sw-background); }
 .bg-background > * { --ring-color: var(--sw-text); }
@@ -225,9 +227,11 @@
 .size-large { font-size: var(--fs-large); line-height: var(--lh-large); }
 .size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
-.align-left { text-align: left; }
-.align-center { text-align: center; }
-.align-right { text-align: right; }
+.w.face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
+.w.face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+.align-left { text-align: left; --cap-margin: 0 auto; }
+.align-center { text-align: center; --cap-margin: auto; }
+.align-right { text-align: right; --cap-margin: auto 0; }
 .valign-top { justify-content: flex-start; }
 .valign-middle { justify-content: center; }
 .valign-bottom { justify-content: flex-end; }
@@ -278,13 +282,13 @@
   .tablet-space-below-xxl { padding-bottom: var(--space-xxl); }
   .tablet-space-below-section-s { padding-bottom: var(--section-s); }
   .tablet-space-below-section-l { padding-bottom: var(--section-l); }
-  .tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
-  .tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
-  .tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-  .tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
-  .tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
-  .tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-  .tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
+  .tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  .tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  .tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  .tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
+  .tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  .tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  .tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
   .tablet-bg-none > * { --ring-color: inherit; }
   .tablet-bg-text > * { --ring-color: var(--sw-background); }
   .tablet-bg-background > * { --ring-color: var(--sw-text); }
@@ -311,9 +315,11 @@
   .tablet-size-large { font-size: var(--fs-large); line-height: var(--lh-large); }
   .tablet-size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
   .tablet-size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
-  .tablet-align-left { text-align: left; }
-  .tablet-align-center { text-align: center; }
-  .tablet-align-right { text-align: right; }
+  .w.tablet-face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
+  .w.tablet-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+  .tablet-align-left { text-align: left; --cap-margin: 0 auto; }
+  .tablet-align-center { text-align: center; --cap-margin: auto; }
+  .tablet-align-right { text-align: right; --cap-margin: auto 0; }
   .tablet-valign-top { justify-content: flex-start; }
   .tablet-valign-middle { justify-content: center; }
   .tablet-valign-bottom { justify-content: flex-end; }
@@ -366,13 +372,13 @@
   .phone-space-below-xxl { padding-bottom: var(--space-xxl); }
   .phone-space-below-section-s { padding-bottom: var(--section-s); }
   .phone-space-below-section-l { padding-bottom: var(--section-l); }
-  .phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; }
-  .phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); }
-  .phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-  .phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); }
-  .phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; }
-  .phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; }
-  .phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); }
+  .phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  .phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  .phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  .phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
+  .phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  .phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  .phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
   .phone-bg-none > * { --ring-color: inherit; }
   .phone-bg-text > * { --ring-color: var(--sw-background); }
   .phone-bg-background > * { --ring-color: var(--sw-text); }
@@ -399,9 +405,11 @@
   .phone-size-large { font-size: var(--fs-large); line-height: var(--lh-large); }
   .phone-size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
   .phone-size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
-  .phone-align-left { text-align: left; }
-  .phone-align-center { text-align: center; }
-  .phone-align-right { text-align: right; }
+  .w.phone-face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
+  .w.phone-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+  .phone-align-left { text-align: left; --cap-margin: 0 auto; }
+  .phone-align-center { text-align: center; --cap-margin: auto; }
+  .phone-align-right { text-align: right; --cap-margin: auto 0; }
   .phone-valign-top { justify-content: flex-start; }
   .phone-valign-middle { justify-content: center; }
   .phone-valign-bottom { justify-content: flex-end; }

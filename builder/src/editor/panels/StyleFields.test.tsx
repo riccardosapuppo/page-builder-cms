@@ -44,8 +44,8 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
   kit.render(<BlockPanel id="button" />);
   openGroups("Colors");
   const background = () => within(screen.getByRole("radiogroup", { name: "Background" }));
-  const primary = background().getByRole("radio", { name: "Primary, Sea" });
-  expect(primary.getAttribute("style")).toContain("#1E5B4C");
+  const primary = background().getByRole("radio", { name: "Primary, Signal" });
+  expect(primary.getAttribute("style")).toContain("#C2352B");
   fireEvent.click(primary);
   expect(kit.block("button")?.style).toEqual({ base: { background: "primary" } });
   expect(kit.lastCommand()?.label).toBe("Set Background to Primary, Button in Widgets");
@@ -106,7 +106,7 @@ test("previewing a tablet, the settings edit the tablet's values, each said as t
   expect(describedText(background)).toBe("A change here applies to tablets only.");
 
   // A change writes the tablet's value; the base stays.
-  fireEvent.click(within(background).getByRole("radio", { name: "Primary, Sea" }));
+  fireEvent.click(within(background).getByRole("radio", { name: "Primary, Signal" }));
   expect(kit.block("c1")?.style).toEqual({ base: { spaceInside: "m" }, tablet: { spaceInside: "l", align: "center", background: "primary" } });
   expect(kit.lastCommand()?.label).toBe("Set Background to Primary on tablet, Column 1 in Hero");
   expect(scopeOf("Background")).toBe("Tablet only");
@@ -186,4 +186,31 @@ test("a setting the block leaves unset checks the value in use, as the design do
   rerender(<BlockPanel id="q1" />);
   openGroups("Size and color");
   expect(checked("Text size")).toEqual(["Heading 3"]);
+});
+
+test("a heading, a text or a quote may be set in the other face, its type's own checked until one is chosen", () => {
+  const kit = editorKit({ document: page(), selection: "t1" });
+  const { container, rerender } = kit.render(<BlockPanel id="t1" />);
+  openGroups("Size and color");
+  const checked = () => within(fieldOf("Typeface")).getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true").map((r) => r.getAttribute("aria-label"));
+  // Beside the text size, before the colour.
+  expect(NAMES(container)).toEqual(["Text size", "Typeface", "Text color"]);
+  expect(within(fieldOf("Typeface")).getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Body", "Headings"]);
+  expect(checked()).toEqual(["Body"]);
+  // Choosing the face in use sets nothing; the other one sets it.
+  fireEvent.click(within(fieldOf("Typeface")).getByRole("radio", { name: "Body" }));
+  expect(kit.block("t1")?.style).toEqual({ base: {} });
+  fireEvent.click(within(fieldOf("Typeface")).getByRole("radio", { name: "Headings" }));
+  expect(kit.block("t1")?.style).toEqual({ base: { typeface: "heading" } });
+  expect(checked()).toEqual(["Headings"]);
+
+  // A heading is in the headings' face, a quote in the body's.
+  act(() => kit.store.getState().select("h1"));
+  rerender(<BlockPanel id="h1" />);
+  openGroups("Size and color");
+  expect(checked()).toEqual(["Headings"]);
+  act(() => kit.store.getState().select("q1"));
+  rerender(<BlockPanel id="q1" />);
+  openGroups("Size and color");
+  expect(checked()).toEqual(["Body"]);
 });

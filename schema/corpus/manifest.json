@@ -1247,6 +1247,12 @@
     "keyword": "enum",
     "layer": "schema"
   },
+  "invalid/style-typeface-unknown.json": {
+    "rule": "a typeface is the body's or the headings', never a font's name",
+    "pointer": "/sections/0/children/0/children/0/style/base/typeface",
+    "keyword": "enum",
+    "layer": "schema"
+  },
   "invalid/style-unknown-key.json": {
     "rule": "no free CSS: only the listed settings",
     "pointer": "/sections/0/children/0/children/0/style/base/fontFamily",

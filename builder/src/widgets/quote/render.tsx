@@ -12,7 +12,7 @@ export function QuoteRender({ block, decoration }: BlockRenderProps) {
   return (
     <BlockRoot
       block={block}
-      classes={["w", "w-quote", styleClasses(style, "textSize", { fallback: "heading-3" }), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      classes={["w", "w-quote", styleClasses(style, "textSize", { fallback: "heading-3" }), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
       decoration={decoration}
     >
       <figure className="sw-quote">

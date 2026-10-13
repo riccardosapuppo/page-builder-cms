@@ -253,7 +253,7 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
 
 - **The page document has one schema, and two validators are held to it.**
   The editor and the server read one file and agree on every document of a
-  corpus of 283 files. Cost: every rule a schema cannot say is written
+  corpus of 284 files. Cost: every rule a schema cannot say is written
   twice, and only the corpus keeps the copies in step.
   [The note](docs/decisions/one-schema-two-validators.md).
 - **A page is sections of one to four columns holding widgets, and nothing

@@ -9,7 +9,7 @@ import { cms, column, expect, heading, makePage, open, section, test } from "./h
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const HARBOUR = "rgb(29, 78, 111)";
-const SEA = "rgb(30, 91, 76)";
+const SIGNAL = "rgb(194, 53, 43)";
 
 async function siteStyle(request: APIRequestContext): Promise<{ palette: Record<string, string>; typeScale: string }> {
   return (await (await request.get(`${cms()}/api/site-style`)).json()) as never;
@@ -22,7 +22,7 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
     await open(page, id);
     const canvasHeading = page.locator('.canvas [data-block-id="h"] h2');
-    await expect(canvasHeading).toHaveCSS("color", SEA);
+    await expect(canvasHeading).toHaveCSS("color", SIGNAL);
 
     // Nothing selected: the sidebar's Page tab, and the way to the site
     // style at its foot, one click.
@@ -62,10 +62,10 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
 
     // Back to a new site's tone; the panel goes back to the Page tab, the
     // focus on the way in.
-    await panel.getByRole("button", { name: "Reset to Sea" }).click();
-    await expect(canvasHeading).toHaveCSS("color", SEA);
+    await panel.getByRole("button", { name: "Reset to Signal" }).click();
+    await expect(canvasHeading).toHaveCSS("color", SIGNAL);
     await expect(panel.getByRole("status")).toHaveText("Saved for every page");
-    expect((await siteStyle(request)).palette.primary).toBe("site-sea");
+    expect((await siteStyle(request)).palette.primary).toBe("site-signal");
     await panel.getByRole("button", { name: "Back to Page" }).click();
     await expect(panel).toHaveCount(0);
     await expect(button).toBeFocused();

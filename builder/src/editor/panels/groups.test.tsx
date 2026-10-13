@@ -83,6 +83,13 @@ test("closed, a group says its value in words: the theme's in use where the bloc
   expect(says("Shape")).toBe("4:3");
   rerender(<BlockPanel id="q1" />);
   expect(says("Size and color")).toBe("Heading 3, theme color");
+  // A typeface is said where the block sets one, never the type's own.
+  rerender(<BlockPanel id="t1" />);
+  expect(says("Size and color")).toBe("Body, theme color");
+  fireEvent.click(head("Size and color"));
+  fireEvent.click(screen.getByRole("radio", { name: "Headings" }));
+  fireEvent.click(head("Size and color"));
+  expect(says("Size and color")).toBe("Body, Headings typeface, theme color");
   rerender(<BlockPanel id="g1" />);
   fireEvent.click(head("Images"));
   expect(says("Images")).toBe("2 images");
@@ -91,10 +98,10 @@ test("closed, a group says its value in words: the theme's in use where the bloc
   // A colour the block sets is said by the site's name for its tone, with
   // a dot of it.
   rerender(<BlockPanel id="d1" />);
-  fireEvent.click(screen.getByRole("radio", { name: "Primary, Sea" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Primary, Signal" }));
   fireEvent.click(head("Line color"));
-  expect(says("Line color")).toBe("Sea");
-  expect(head("Line color").querySelector<HTMLElement>(".sum-dot")?.style.getPropertyValue("--c")).toBe("#1E5B4C");
+  expect(says("Line color")).toBe("Signal");
+  expect(head("Line color").querySelector<HTMLElement>(".sum-dot")?.style.getPropertyValue("--c")).toBe("#C2352B");
 });
 
 test("on a tablet, a closed group says the tablet's values, or that they are the desktop's", () => {

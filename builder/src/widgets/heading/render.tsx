@@ -27,7 +27,7 @@ export function HeadingRender({ block, decoration }: BlockRenderProps) {
   return (
     <BlockRoot
       block={block}
-      classes={["w", "w-heading", styleClasses(style, "textSize", { fallback: LEVEL_SIZES[level] }), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      classes={["w", "w-heading", styleClasses(style, "textSize", { fallback: LEVEL_SIZES[level] }), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
       decoration={decoration}
     >
       {decoration?.editing ? decoration.editing(drawn) : drawn}

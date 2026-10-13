@@ -616,6 +616,10 @@
     "alignToken": { "enum": ["left", "center", "right"] },
     "verticalAlignToken": { "enum": ["top", "middle", "bottom"] },
     "visibilityToken": { "enum": ["visible", "hidden"] },
+    "typefaceToken": {
+      "description": "The face a heading, a text or a quote is set in: the body's or the headings'. Unset, a heading takes the headings' face, a text and a quote the body's.",
+      "enum": ["body", "heading"]
+    },
 
     "styleTokens": {
       "description": "Every style setting, by token name. In tablet and phone an absent key means 'as on desktop' (base); there is no null.",
@@ -630,6 +634,7 @@
         "background": { "$ref": "#/$defs/backgroundToken" },
         "color": { "$ref": "#/$defs/paletteSlot" },
         "textSize": { "$ref": "#/$defs/typeStep" },
+        "typeface": { "$ref": "#/$defs/typefaceToken" },
         "align": { "$ref": "#/$defs/alignToken" },
         "verticalAlign": { "$ref": "#/$defs/verticalAlignToken" },
         "visibility": { "$ref": "#/$defs/visibilityToken" }
@@ -688,7 +693,7 @@
     "textStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "textSize": true, "color": true, "align": true, "visibility": true }
+      "properties": { "textSize": true, "typeface": true, "color": true, "align": true, "visibility": true }
     },
     "buttonStyle": {
       "type": "object",

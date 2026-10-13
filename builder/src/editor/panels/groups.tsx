@@ -51,7 +51,7 @@ export interface GroupSpec {
 // accepts is in exactly one of its groups (groups.test.tsx holds it).
 type StyleGroupId = "size" | "type" | "colors" | "text-color" | "line-color" | "shape" | "spacing" | "background" | "alignment";
 const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly StyleKey[] }>> = {
-  size: { name: "Size and color", keys: ["textSize", "color"] },
+  size: { name: "Size and color", keys: ["textSize", "typeface", "color"] },
   type: { name: "Text size and color", keys: ["textSize", "color"] },
   colors: { name: "Colors", keys: ["background", "color"] },
   "text-color": { name: "Text color", keys: ["color"] },
@@ -132,7 +132,10 @@ function styleWords(id: StyleGroupId, keys: readonly StyleKey[], { block, device
     case "size":
     case "type": {
       const step = inUse("textSize");
-      words = `${step === null ? "Theme default" : tokenName(step)}, ${colorWord("theme color")}`;
+      // The typeface only where the block sets one: the type's own is
+      // what a heading, a text or a quote is expected in.
+      const face = shown("typeface");
+      words = [step === null ? "Theme default" : tokenName(step), ...(face === null ? [] : [`${tokenName(face)} typeface`]), colorWord("theme color")].join(", ");
       break;
     }
     case "colors": {

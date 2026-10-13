@@ -23,6 +23,7 @@ const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility">, string>> = {
   background: "bg",
   color: "fg",
   textSize: "size",
+  typeface: "face",
   align: "align",
   verticalAlign: "valign",
   aspect: "aspect",

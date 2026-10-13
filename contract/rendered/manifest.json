@@ -8,7 +8,7 @@
     "traps-form.json": "07d2f4539895538d511faea86f89ed09b1005d93b6dab1c8b7940fedc9613b19",
     "traps-media.json": "a0689b8131c7ecaba894de4d9f2f4b15667decdacfa3b74654985d7ac044050a",
     "traps-site.json": "ee756d81b212800bc7a209c693c4f3aae4ecc60a9791f17b9322cd172cfd74dd",
-    "traps-structure.json": "1ee4de69eb020618dc4d20574296022156709e6456b2c5b7e4f6b89fa16319a4",
+    "traps-structure.json": "f0187b8150666e43bde9692de1bf3ab7d176a6487443ea92a07d7a1d9f83661b",
     "traps-text.json": "b8b5471b574ea86a163aa865a8079654886a529cc539caf79d7cec161d221a56"
   },
   "rendered": {
@@ -18,13 +18,13 @@
     "traps-form.html": "9db7e3b9223c5d7607708497e1b9433a43479861a8babb1a7070627f729bd13d",
     "traps-media.html": "6db9387e1bb472e41fc3752eccda601a5c4cfbcdd9ec2c7f00aa688acf283dd4",
     "traps-site.html": "4d0bd36798833d1d70653026ccad510ecd607bfea1d64a347db693c025806be3",
-    "traps-structure.html": "303e92413747c3ab5c75c4447235edaaaea7cba0860b06ae5fd23d0c02973599",
+    "traps-structure.html": "3923d6ec17682b61eca18ff08b26d54d2ccb693e910a27aac38e6d8255f615a1",
     "traps-text.html": "e3ba952de547c0b3be38efe47980b33e9639f04e74ea82ff8b3c16ebc36224b6"
   },
   "renderer": {
     "cms/app/helpers/blocks_helper.rb": "31bca745d4f0133cc51f35ab401c033bcc559a908fd9e7be06dc91a3cde7d575",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
-    "cms/app/models/block_style.rb": "c60f95eb0215fa8c4b6aa9dda98dadd72f12be53ee7270d6cb59a032b5622356",
+    "cms/app/models/block_style.rb": "ee3e428d3b92b646f4cf0c6be410c1db90ca8fc460b788be03460e513a2d2ab0",
     "cms/app/models/form_block.rb": "a66401ff4783c7a20ba28822fb9615ae6b3810e6fbc4d21adbec9e183bdeab91",
     "cms/app/models/render_policy.rb": "7f97f23b2d7176ba9bd8ae150d1eea8b82d408cf62b6ef8d26504c3157b60f22",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
@@ -35,20 +35,20 @@
     "cms/app/views/blocks/_divider.html.erb": "df29a977d94fb36e932c08754dca7e49262c97b887cf68fbd82de355d778834c",
     "cms/app/views/blocks/_form.html.erb": "15af58fc5fd2329538839b06c1233e6fc5499efbfad74a1313b6b4a0c09c65f1",
     "cms/app/views/blocks/_gallery.html.erb": "dc62b0b9c4751b732077ea6137a11a32001599cd7d2be8b186c0ad63b6d26341",
-    "cms/app/views/blocks/_heading.html.erb": "e715180797efbfcd96eac2643a3ae44292b36a96c3478861f0df3170ad480f2d",
+    "cms/app/views/blocks/_heading.html.erb": "08e13c34e61bf9e831a5319af8d332e6db01d7e561ba954a42c3ae8c8c79e37f",
     "cms/app/views/blocks/_iconbox.html.erb": "06f7b825918453914a1bcd3dc04b83952b3f5161cbcdd3ce3c1dc0b8a3a65f6f",
     "cms/app/views/blocks/_image.html.erb": "a0a2b1316f279bfdac4e8dba767491730fd45b9204013b1049a70332b693b374",
     "cms/app/views/blocks/_logo.html.erb": "4d29278be7129810c5aaf9ede218599ca9713c26baf3bfd488f4d1e80a981365",
     "cms/app/views/blocks/_map.html.erb": "98723942344b3b8b256b8608cfa7c5bf5c138ca2a8181a631b9713403eb3a444",
     "cms/app/views/blocks/_menu.html.erb": "be0191b34fa81065fd41e9e6b298d66237013159afbff00508dba1715ae16a6c",
-    "cms/app/views/blocks/_quote.html.erb": "276b71a553186e663680fc363c0a12de3492b97d790b6e42d42ba412117f8ab4",
+    "cms/app/views/blocks/_quote.html.erb": "b00a22e0f1a3b96c19ada46263d0ca2da61062543903d48ad2749d87520bce29",
     "cms/app/views/blocks/_section.html.erb": "bd8b62a619f5172d9c110d2d6eef900f5d16d503bdeeb721dc3836950396da8b",
     "cms/app/views/blocks/_spacer.html.erb": "90496c09e14e5331c4f1b1ae848cdfdbee5df1a7d75832fbbae5c76fbdbee249",
-    "cms/app/views/blocks/_text.html.erb": "49288e752a9ba939b661315fa3aee7192d058ab634a1aefa29c98c9b17d2f56c",
+    "cms/app/views/blocks/_text.html.erb": "5a39c3422eff8b7409f92182b2ef897052f2aa8ea51dc2ba846c37b7c2ca1433",
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
-    "cms/lib/site_theme/token_css.rb": "0d031b835a7c8b43f45f74f9ae6b5c8e0354392b9115a2b23e68738c33b683de",
+    "cms/lib/site_theme/token_css.rb": "64db702e2c57439273cb81b1721e7cf4da0b744e63a865f4f1bb5d2becd0bdbd",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
-    "schema/block-document.schema.json": "73864b023ab5e20af3be7afa80dde9306cddfc6f0dd13bd4f34e7a184be5f623",
+    "schema/block-document.schema.json": "152740a7d9dce138dd169ca7063a16b65f4054cca45bbad873e96e67e3880777",
     "schema/icons.svg": "86273c3534a9d322caa64654f5dbc2034b237e8edb5f786491261a0468796562"
   }
 }

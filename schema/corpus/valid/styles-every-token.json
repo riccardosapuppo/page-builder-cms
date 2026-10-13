@@ -60,6 +60,7 @@
               "style": {
                 "base": {
                   "textSize": "heading-2",
+                  "typeface": "body",
                   "color": "accent"
                 }
               }
@@ -102,7 +103,11 @@
               "style": {
                 "base": {
                   "textSize": "large",
+                  "typeface": "heading",
                   "color": "background"
+                },
+                "phone": {
+                  "typeface": "body"
                 }
               }
             },
