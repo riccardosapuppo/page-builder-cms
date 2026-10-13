@@ -32,6 +32,41 @@ test("title and description change the page by the page command", () => {
   expect(kit.lastCommand()?.label).toBe("Removed the page description");
 });
 
+test("a title the page refuses stays in its field, held: what asks for it waits and is told why, until the field gives the page one it takes; a field that goes lets it go", () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  const view = kit.render(<PagePanel />);
+  const title = screen.getByLabelText("Title");
+  const before = kit.doc().title;
+  fireEvent.change(title, { target: { value: "W".repeat(121) } });
+  fireEvent.blur(title);
+  // Refused: said under the field, the page's title as it was.
+  expect(title.getAttribute("aria-invalid")).toBe("true");
+  expect(kit.doc().title).toBe(before);
+  // Asked for by something else, it is still held, and the reason said.
+  let given = true;
+  act(() => {
+    given = kit.ui.getState().pending.deliver();
+  });
+  expect(given).toBe(false);
+  expect(kit.ui.getState().notice).toMatch(/^Title cannot be kept yet: .+\. It stays in its field until the page can take it\.$/);
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+
+  // A title the page takes: handed over, nothing held.
+  fireEvent.focus(title);
+  fireEvent.change(title, { target: { value: "Winter swims" } });
+  fireEvent.blur(title);
+  expect(kit.doc().title).toBe("Winter swims");
+  expect(kit.ui.getState().pending.waiting).toBe(0);
+
+  // Refused again, then the panel goes: the field lets go of it.
+  fireEvent.focus(title);
+  fireEvent.change(title, { target: { value: "W".repeat(121) } });
+  fireEvent.blur(title);
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+  view.unmount();
+  expect(kit.ui.getState().pending.waiting).toBe(0);
+});
+
 test("the page's settings come in two groups, both open; closed, each says its value; the person's choice is kept for the page", () => {
   const kit = editorKit({ document: page(), session: { current } });
   kit.render(<PagePanel />);

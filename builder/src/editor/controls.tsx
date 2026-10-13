@@ -181,44 +181,58 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
   const sent = useRef(value);
   // What a commit hands over when it runs later (a timer, a blur, the panel
   // going away): this render's text and handler, not the first one's.
-  const latest = useRef({ draft, onCommit, rules, field });
+  const latest = useRef({ draft, onCommit, rules, field, label });
   useLayoutEffect(() => {
-    latest.current = { draft, onCommit, rules, field };
+    latest.current = { draft, onCommit, rules, field, label };
   });
   useClaim(field);
   const server = useServerErrors(blockId, field, rules);
 
-  const commit = useCallback(() => {
+  // Hands the text over: true once the page has it (or nothing waits),
+  // false when the page refused it. A refused text stays in the field,
+  // which holds it again (./pending.ts), so what asks for it waits; asked
+  // by something else (a command, Publish, another page), the field says
+  // why in the notice too, since it may be out of sight.
+  const commit = useCallback(function commit(asked = false): boolean {
     if (timer.current !== null) {
       clock.clearTimeout(timer.current);
       timer.current = null;
     }
     release.current?.();
     release.current = null;
-    const { draft: text, onCommit: hand, rules: r, field: f } = latest.current;
-    if (text === sent.current) return;
+    const { draft: text, onCommit: hand, rules: r, field: f, label: name } = latest.current;
+    if (text === sent.current) return true;
     const error = hand(text);
-    if (error) {
-      setRefusal(refusalAt(error, f, r));
-    } else {
+    if (!error) {
       sent.current = text;
       setRefusal(null);
+      return true;
     }
-  }, [clock]);
+    const why = refusalAt(error, f, r);
+    setRefusal(why);
+    release.current = ui.getState().pending.hold(() => commit(true));
+    if (asked) ui.getState().say(`${name} cannot be kept yet: ${why.replace(/\.$/, "")}. It stays in its field until the page can take it.`);
+    return false;
+  }, [clock, ui]);
 
   // The page changed under the field (another field, a reload): show it,
-  // unless the person is typing here.
+  // unless the person is typing here. A refused text it replaces is let go.
   useEffect(() => {
     if (focused.current || timer.current !== null) return;
     setDraft(value);
     sent.current = value;
     setRefusal(null);
+    release.current?.();
+    release.current = null;
   }, [value]);
 
   // Text still waiting when the panel goes (another block selected) is
-  // handed over, not lost.
+  // handed over, not lost; a refused one goes with the field, so nothing
+  // is left holding the page's commands.
   useEffect(() => () => {
     if (timer.current !== null) commit();
+    release.current?.();
+    release.current = null;
   }, [commit]);
 
   const errors = refusal ? [refusal, ...server.filter((m) => m !== refusal)] : server;
@@ -243,7 +257,7 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       latest.current = { ...latest.current, draft: event.target.value };
       setDraft(event.target.value);
       if (timer.current !== null) clock.clearTimeout(timer.current);
-      release.current ??= ui.getState().pending.hold(commit);
+      release.current ??= ui.getState().pending.hold(() => commit(true));
       timer.current = clock.setTimeout(() => {
         timer.current = null;
         commit();
