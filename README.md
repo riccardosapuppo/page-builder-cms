@@ -24,11 +24,10 @@ all, keeping its pages in the browser: that is the demo, [below](#the-two-modes)
 
 ## Why Rails
 
-I wrote this for a job posting I am applying to: a CMS builder role, on
-Rails and React. Rails is the stack the posting asks for, and building the
-thing the role builds is how I learn a stack, where listing it would only
-claim it. The editor is the part that would stand without the posting. It
-speaks to the server through an API that [`cms/openapi.yaml`](cms/openapi.yaml)
+Rails and React are the stack of the CMS work I want to do, and building
+the thing is how I learn a stack, where listing it would only claim it.
+The editor is the part that would stand on any back end. It speaks to the
+server through an API that [`cms/openapi.yaml`](cms/openapi.yaml)
 describes, not through Rails' code, and it can speak to the browser's own
 storage instead.
 
