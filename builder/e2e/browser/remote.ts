@@ -29,10 +29,10 @@ function wireOptions(options: CallOptions | UploadOptions | undefined): WireOpti
 let made = 0;
 
 // An adapter of its own on the page, under a key no other remote has.
-export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAdapter {
+export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAdapter & { clearSite(): Promise<void> } {
   const key = `tab-${++made}`;
 
-  async function call<T>(method: keyof StorageAdapter, args: unknown[], options?: CallOptions | UploadOptions): Promise<T> {
+  async function call<T>(method: keyof StorageAdapter | "clearSite", args: unknown[], options?: CallOptions | UploadOptions): Promise<T> {
     const given: unknown[] = [...args, wireOptions(options)];
     const answer: WireAnswer = await page.evaluate(([k, m, a]) => window.storagePage!.call(k, m, a), [key, method, given] as const);
     if ("failure" in answer) throw new StorageError(answer.failure);
@@ -70,5 +70,6 @@ export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAd
     listResponses: (pageId, query, options) => call("listResponses", [pageId, query], options),
     getResponse: (pageId, responseId, options) => call("getResponse", [pageId, responseId], options),
     deleteResponse: (pageId, responseId, options) => call("deleteResponse", [pageId, responseId], options),
+    clearSite: () => call("clearSite", []),
   };
 }

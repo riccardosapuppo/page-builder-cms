@@ -4,7 +4,10 @@
 // ../main.tsx (../../build/storage-entry.ts).
 //
 // - On a first visit the browser gets the example site, the CMS's seed
-//   (../storage/example-site.ts), before the editor lists the pages.
+//   (../storage/example-site.ts), before the editor lists the pages; on a
+//   visit to a build of a newer edition, the new one, unless the visitor
+//   worked on the site, which is kept and offered the new one in the
+//   demo's line.
 // - The editor's address with ?preview=<id> or ?published=<id> is a page
 //   the demo draws itself (./PageView.tsx), where the full system's CMS
 //   would serve it: Preview opens the first, Publish the second.
@@ -22,14 +25,22 @@ import { keepOpenGroups, readOpenGroups } from "../editor/open-groups.ts";
 import { createUiStore } from "../editor/ui-store.ts";
 import { createBrowserAdapter } from "../storage/browser.ts";
 import { systemClock } from "../storage/clock.ts";
-import { builtSource, seedExampleSite, withExampleSite } from "../storage/example-site.ts";
+import { builtSource, seedExampleEdition, startOver, withExampleSite } from "../storage/example-site.ts";
 import { createEditorStore } from "../store/editor-store.ts";
-import { DemoLine } from "./DemoLine.tsx";
+import { DemoLine, seedNews } from "./DemoLine.tsx";
 import { PageView } from "./PageView.tsx";
 import { previewAddress, publishedAddress, readView } from "./views.ts";
 
 const browser = createBrowserAdapter({ clock: systemClock, previewAddress });
-const adapter = withExampleSite(browser, () => seedExampleSite(browser, builtSource()));
+// What the seed found, for the demo's line.
+const news = seedNews();
+const adapter = withExampleSite(browser, () => seedExampleEdition(browser, builtSource()).then((outcome) => {
+  news.set(outcome);
+  return outcome;
+}));
+// The visitor chose the new edition: the site this browser kept goes, and
+// the page loads again to be given the new one.
+const startingOver = () => startOver(browser).then(() => window.location.reload());
 const view = readView(window.location.search);
 
 const root = document.getElementById("editor_root");
@@ -51,7 +62,7 @@ if (view) {
   keepOpenGroups(env.ui);
   createRoot(root).render(
     <StrictMode>
-      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} foot={<DemoLine />} />
+      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} foot={<DemoLine news={news} startOver={startingOver} />} />
     </StrictMode>,
   );
 }

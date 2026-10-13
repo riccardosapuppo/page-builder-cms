@@ -343,7 +343,15 @@ function placeInLine(name: string, heldUpAhead: () => void): PlaceInLine {
   };
 }
 
-export function createBrowserAdapter(config: BrowserAdapterConfig = {}): StorageAdapter {
+// The browser's storage, and what only it can do: let go of everything it
+// keeps of the site, for the demo to start over with a newer example site
+// (./example-site.ts). The CMS keeps its own pages; nothing in the editor
+// asks for this.
+export interface BrowserAdapter extends StorageAdapter {
+  clearSite(): Promise<void>;
+}
+
+export function createBrowserAdapter(config: BrowserAdapterConfig = {}): BrowserAdapter {
   const name = config.databaseName ?? DATABASE_NAME;
   const clock = config.clock ?? systemClock;
   const layout = config.layout ?? LAYOUT;
@@ -682,7 +690,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
 
   // --------------------------------------------------------- the adapter
 
-  const adapter: StorageAdapter = {
+  const adapter: BrowserAdapter = {
     name: "browser",
     capabilities: BROWSER_CAPABILITIES,
 
@@ -1118,6 +1126,14 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Storage
     },
     async deleteResponse() {
       throw unsupported("responses", "browser");
+    },
+    // Every page, version, picture and setting of the site, gone in one
+    // transaction, and the pictures' addresses with them.
+    async clearSite() {
+      await write(STORES, async (tx) => {
+        for (const store of STORES) await request(tx.objectStore(store).clear());
+      });
+      for (const id of addresses.keys()) forget(id);
     },
   };
 

@@ -10,7 +10,8 @@
 // it starts, which is not made; the site's header and footer asked for in
 // two tabs at the same moment, in a browser that has none yet; and a form a
 // broken build left in the footer, which no publish, version or restore
-// lets through.
+// lets through; and the demo's starting over, which lets go of every
+// record and every picture's address.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
@@ -307,5 +308,29 @@ test("a form a broken build left in a part's draft or version is not published, 
     expect((await adapter.listVersions(footer.id)).map((version) => version.number), "nothing kept by the refusals").toEqual([1]);
   } finally {
     await fresh.close();
+  }
+});
+
+test("the site let go of, for the demo to start over: every page, version, picture and setting, and the pictures' addresses", async ({ browser }) => {
+  // A browser of its own: the other tests' records stay.
+  const own = await browser.newContext();
+  try {
+    const tab = await storagePage(await own.newPage());
+    const adapter = remoteAdapter(tab, capabilities);
+    const made = await page(adapter);
+    expect((await adapter.saveVersion(made.id, { name: "Kept" })).ok).toBe(true);
+    const item = await adapter.uploadMedia({ file: png(`${unique("start-over")}.png`), width: 3, height: 2 });
+    if (!item.ok) throw new Error(JSON.stringify(item.problem));
+    const style = await adapter.getSiteStyle();
+    expect((await adapter.setSiteStyle({ palette: { ...style.palette, primary: "site-harbour" }, typeScale: style.typeScale })).ok).toBe(true);
+    for (const store of ["pages", "versions", "media", "blobs", "site"]) expect(await tab.evaluate((name) => window.storagePage!.keys(name), store), store).not.toEqual([]);
+
+    await adapter.clearSite();
+    for (const store of ["pages", "versions", "media", "blobs", "site"]) expect(await tab.evaluate((name) => window.storagePage!.keys(name), store), store).toEqual([]);
+    expect(await fetches(tab, item.value.url), "the object URL is revoked").toBe(false);
+    expect(await adapter.listPages()).toEqual([]);
+    expect(await adapter.listMedia()).toEqual([]);
+  } finally {
+    await own.close();
   }
 });

@@ -160,7 +160,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 | `npm run build:demo` | The browser demo in `dist-demo/`, then the bundle check (below): for GitHub Pages, under `/page-builder-cms/`, or with `DEMO_BASE=/` for a host of its own, at the root. |
 | `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/`, or at `http://127.0.0.1:4903/` with `DEMO_BASE=/` (`E2E_DEMO_PORT` moves the port), until Ctrl+C. |
-| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base, and that evening, with the test of the example site's editions, 10. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -207,7 +207,11 @@ same demo from the source, at `/`.
   pages and fifteen pictures, each page published, the header and footer
   published as their starters are, the home page open
   (`src/storage/example-site.ts`). A site with a page or a picture is
-  never added to.
+  never added to. Each build's example site has an edition, a digest of
+  its files: on a visit to a build of another edition, a site nobody has
+  changed since its seed is let go of and the new edition put in at once;
+  a site somebody has changed is kept, and the demo's line offers to start
+  over with the new one, asking twice.
 - It keeps pages, drafts with their revisions, versions, a publish, the
   media library with each image's bytes, the site style, and the header
   and footer, parts kept as pages are, in the browser's IndexedDB

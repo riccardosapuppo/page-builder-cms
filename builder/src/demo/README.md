@@ -9,10 +9,10 @@ and nothing of the CMS adapter is in the demo's.
 
 | File | What it is |
 | --- | --- |
-| `main.tsx` | The entry point: the browser's adapter, which puts the example site into an empty browser before the editor lists the pages (`../storage/example-site.ts`); the editor with no CMS origin, the page as published opening from the demo, and the demo's line at its foot; or, for `?preview=<id>` and `?published=<id>`, the page view. |
+| `main.tsx` | The entry point: the browser's adapter, which puts the example site into an empty browser before the editor lists the pages, or this build's edition of it in place of an older one nobody changed (`../storage/example-site.ts`); the editor with no CMS origin, the page as published opening from the demo, and the demo's line at its foot; or, for `?preview=<id>` and `?published=<id>`, the page view. |
 | `views.ts` | The demo's own addresses: a page's draft as it would be published, and the page as published in this browser. Anything else is the editor. |
 | `PageView.tsx` | A page where the full system's CMS would serve it: the same renderer as the canvas, inside the header and footer as the CMS draws them (their drafts in a preview, what each published here, or its starter, around a page as published; a part's own preview is the home page's), the site style as this browser keeps it, and the library's images, under one line saying what the full system does. A form is not sent (a line under it says what Rails does with its answers); a link to another page of the site opens it as the demo draws it. |
-| `DemoLine.tsx` | The line at the bottom, word for word, with the link to the source. |
+| `DemoLine.tsx` | The demo's line, word for word as the project gives it, under the editor's bottom line and under each page the demo draws; under the editor, when a newer edition of the example site is out and this browser kept the pages its visitor changed, the offer to start over with it, asked twice. |
 | `demo.css` | The demo's lines, in the editor's identity, and the editor's frame given a fifth row for its line. |
 
 The editor itself is unchanged by the demo but for what any storage

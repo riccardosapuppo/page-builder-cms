@@ -6,7 +6,7 @@
 import { describe, expect, test } from "vitest";
 import site from "../../../example-site/site.json";
 import type { Invalid, MediaItem, StorageAdapter } from "./adapter.ts";
-import { builtFiles, seedExampleSite, withExampleSite, withLibraryIds, type ExampleSource, type SeedMarks } from "./example-site.ts";
+import { builtFiles, editionOf, seedExampleEdition, seedExampleSite, siteFingerprint, startOver, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
 
 const pages: Record<string, unknown> = {
   "pages/a.json": { schemaVersion: 1, title: "Home", sections: [{ type: "section", children: [{ type: "image", props: { mediaId: "pic-1" } }] }] },
@@ -261,5 +261,115 @@ describe("the adapter that waits for the seed", () => {
     await adapter.listPages();
     expect(said).toEqual(["seed", "seed", "listed", "listed"]);
     expect(adapter.name).toBe("base");
+  });
+});
+
+// The example site by editions, on a storage that keeps what it is given:
+// a first visit keeps its edition and how the site stood; the same edition
+// again changes nothing; a newer one replaces a site nobody worked on, and
+// is only offered to one somebody did, or one put in before editions were
+// kept; starting over lets the site go for the next visit to put in anew.
+describe("editions", () => {
+  type Row = { id: number; kind: string; title: string; slug: string | null; home: boolean; revision: number; updatedAt: string; published: { revision: number } | null };
+  function store() {
+    const parts = (): Row[] => [
+      { id: 901, kind: "header", title: "Header", slug: null, home: false, revision: 0, updatedAt: "t0", published: null },
+      { id: 902, kind: "footer", title: "Footer", slug: null, home: false, revision: 0, updatedAt: "t0", published: null },
+    ];
+    const state = { pages: [] as Row[], parts: parts(), media: [] as Array<{ id: string; alt: string; byteSize: number; width: number; height: number; filename: string }>, cleared: 0 };
+    let next = 0;
+    const row = (id: number) => [...state.pages, ...state.parts].find((one) => one.id === id)!;
+    const adapter = {
+      name: "kept",
+      listPages: async () => state.pages.map((one) => ({ ...one })),
+      listParts: async () => state.parts.map((one) => ({ ...one })),
+      listMedia: async () => state.media.map((one) => ({ ...one })),
+      getSiteStyle: async () => ({ palette: { primary: "site-signal" }, typeScale: "balanced", updatedAt: null }),
+      uploadMedia: async (upload: { file: File; width: number; height: number; alt?: string }) => {
+        const item = { id: `lib${++next}`, alt: upload.alt ?? "", byteSize: upload.file.size, width: upload.width, height: upload.height, filename: upload.file.name };
+        state.media.push(item);
+        return { ok: true, value: item };
+      },
+      createPage: async (page: { title: string; slug: string }) => {
+        const made: Row = { id: ++next, kind: "page", title: page.title, slug: page.slug, home: false, revision: 0, updatedAt: "t0", published: null };
+        state.pages.push(made);
+        return { ok: true, value: { page: { id: made.id }, draft: { revision: 0 } } };
+      },
+      saveDraft: async (id: number, save: { revision: number }) => {
+        row(id).revision = save.revision + 1;
+        return { ok: true, value: { revision: row(id).revision } };
+      },
+      publish: async (id: number, request: { revision: number }) => {
+        row(id).published = { revision: request.revision };
+        return { ok: true, value: {} };
+      },
+      updatePage: async (id: number, changes: { home?: boolean }) => {
+        Object.assign(row(id), changes);
+        return { ok: true, value: {} };
+      },
+      clearSite: async () => {
+        state.pages = [];
+        state.parts = parts();
+        state.media = [];
+        state.cleared += 1;
+      },
+    } as unknown as StorageAdapter & { clearSite(): Promise<void> };
+    return { adapter, state };
+  }
+  function editions(start: EditionRecord | null = null): EditionMarks & { record: EditionRecord | null } {
+    const held = { record: start, read: () => held.record, write: (record: EditionRecord) => { held.record = record; }, clear: () => { held.record = null; } };
+    return held;
+  }
+
+  test("a first visit keeps the edition it put in and how the site stood right after; the same edition again changes nothing", async () => {
+    const { adapter, state } = store();
+    const m = marks();
+    const e = editions();
+    expect(await seedExampleEdition(adapter, source({ edition: "one" }), m, e)).toBe("seeded");
+    expect(e.record).toEqual({ edition: "one", fingerprint: await siteFingerprint(adapter) });
+    expect(await seedExampleEdition(adapter, source({ edition: "one" }), m, e)).toBe("not empty");
+    expect(state.cleared).toBe(0);
+    expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
+  });
+
+  test("a newer edition replaces a site nobody worked on: let go of, and put in anew", async () => {
+    const { adapter, state } = store();
+    const m = marks();
+    const e = editions();
+    await seedExampleEdition(adapter, source({ edition: "one" }), m, e);
+    const before = state.pages.map((page) => page.id);
+    expect(await seedExampleEdition(adapter, source({ edition: "two" }), m, e)).toBe("renewed");
+    expect(state.cleared).toBe(1);
+    expect(m.state).toBe("seeded");
+    expect(e.record?.edition).toBe("two");
+    expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
+    expect(state.pages.map((page) => page.id).some((id) => before.includes(id))).toBe(false);
+  });
+
+  test("a newer edition is only offered to a site somebody worked on, or one put in before editions were kept; starting over puts it in on the next visit", async () => {
+    const { adapter, state } = store();
+    const m = marks();
+    const e = editions();
+    await seedExampleEdition(adapter, source({ edition: "one" }), m, e);
+    await adapter.saveDraft(state.pages[0]!.id, { revision: state.pages[0]!.revision, saveId: "mine", document: {} } as never);
+    expect(await seedExampleEdition(adapter, source({ edition: "two" }), m, e)).toBe("newer kept");
+    expect(state.cleared).toBe(0);
+    expect(e.record?.edition).toBe("one");
+    // Put in before editions were kept: nothing says nobody worked on it.
+    expect(await seedExampleEdition(adapter, source({ edition: "two" }), marks("seeded"), editions())).toBe("newer kept");
+    expect(state.cleared).toBe(0);
+    // The visitor chose to start over.
+    await startOver(adapter, m, e);
+    expect([state.cleared, m.state, e.record]).toEqual([1, "seeding", null]);
+    expect(await seedExampleEdition(adapter, source({ edition: "two" }), m, e)).toBe("seeded");
+    expect(e.record?.edition).toBe("two");
+  });
+
+  test("an edition is its files': the same files give the same one, a page or a picture changed another", () => {
+    const one = editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" });
+    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" })).toBe(one);
+    expect(editionOf(site, { "pages/home.json": { title: "B" } }, { "images/a.png": "/assets/a-1.png" })).not.toBe(one);
+    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-2.png" })).not.toBe(one);
+    expect(one).toMatch(/^[0-9a-f]{8}$/);
   });
 });

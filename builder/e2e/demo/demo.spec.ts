@@ -18,6 +18,9 @@
 //   live page, a server), and the notice that says how Publish went can be
 //   closed from the keyboard without losing the place;
 // - axe on each screen, with no serious finding;
+// - a visitor back after a newer edition of the example site is given it
+//   at once if nothing was changed here, and offered it otherwise, the
+//   changes kept until they choose;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
@@ -130,6 +133,62 @@ test("a first visit opens the example site: three pages and the header and foote
 
   await shoot(page, "demo-editor");
   await noSeriousFinding(page, "the editor on the example site");
+});
+
+// The edition this browser was given, as the demo keeps it.
+const EDITION = "page-builder-cms:example-site-edition";
+const pageIds = (page: Page) => page.evaluate(() => new Promise<number[]>((done, fail) => {
+  const asked = indexedDB.open("page-builder-cms");
+  asked.onerror = () => fail(asked.error);
+  asked.onsuccess = () => {
+    const keys = asked.result.transaction("pages").objectStore("pages").getAllKeys();
+    keys.onerror = () => fail(keys.error);
+    keys.onsuccess = () => {
+      done((keys.result as number[]).slice().sort((a, b) => a - b));
+      asked.result.close();
+    };
+  };
+}));
+// As if this browser had been given an older edition of the example site.
+const olderEdition = (page: Page) => page.evaluate((key) => {
+  const record = JSON.parse(localStorage.getItem(key)!) as { edition: string; fingerprint: string };
+  localStorage.setItem(key, JSON.stringify({ ...record, edition: "00000000" }));
+}, EDITION);
+
+test("a visitor back after a newer edition of the example site gets it at once if nothing was changed here; with something changed, it is offered, and the changes kept until they choose", async ({ page }) => {
+  await openDemo(page);
+  const given = (await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), EDITION)) as { edition: string } | null;
+  expect(given?.edition).toMatch(/^[0-9a-f]{8}$/);
+  const before = await pageIds(page);
+
+  // Nothing changed here: the new edition at once, put in anew.
+  await olderEdition(page);
+  await page.reload();
+  await openDemo(page);
+  await expect.poll(() => page.evaluate((key) => (JSON.parse(localStorage.getItem(key)!) as { edition: string }).edition, EDITION)).toBe(given!.edition);
+  expect((await pageIds(page)).some((id) => before.includes(id))).toBe(false);
+  const line = page.getByRole("complementary", { name: "About this demo" });
+  await expect(line).toHaveText(LINE);
+
+  // Something changed here: kept, and the new edition offered.
+  await retitleHero(page, "Swim when the bay is still");
+  await saved(page);
+  await olderEdition(page);
+  await page.reload();
+  await openDemo(page);
+  await expect(heroWords(page)).toHaveText("Swim when the bay is still");
+  await expect(line).toContainText("A newer example site is out; this browser kept the pages you changed.");
+  await noSeriousFinding(page, "the offer of a newer example site");
+  await line.getByRole("button", { name: "Start over with it" }).click();
+  await expect(line).toContainText("Start over with the new example site? The pages you changed in this browser are replaced.");
+  // Asked twice: Keep my pages goes back, and nothing is lost.
+  await line.getByRole("button", { name: "Keep my pages" }).click();
+  await expect(heroWords(page)).toHaveText("Swim when the bay is still");
+  await line.getByRole("button", { name: "Start over with it" }).click();
+  await line.getByRole("button", { name: "Start over", exact: true }).click();
+  // The page loads again, given the example site as this build has it.
+  await expect(heroWords(page)).toHaveText("Swim at slack water", { timeout: 30_000 });
+  await expect(line).toHaveText(LINE);
 });
 
 test("an edit is kept in this browser, and is there after a reload", async ({ page }) => {

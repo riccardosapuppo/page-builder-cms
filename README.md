@@ -646,7 +646,10 @@ place of Rails: [Try the editor in your browser](https://builder.riccardosapuppo
 On a first visit it puts in the example site, three pages and fifteen pictures,
 as the CMS's seed does from the same files, and everything after is kept in
 that browser's IndexedDB, held to the same battery of cases as the CMS's
-adapter. Two tabs of one browser share the pages, and the one that saves
+adapter. A visitor back after the demo is built with a newer example site
+is given it at once if nothing was changed in that browser; one who changed
+something keeps it, and the demo's line offers to start over with the new
+one. Two tabs of one browser share the pages, and the one that saves
 second gets the conflict bar. Preview opens the draft as it would be
 published, and Publish opens the page as published, each drawn by the demo,
 with a line saying what the full system does in its place. The header and

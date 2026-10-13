@@ -15,6 +15,12 @@
 .demo-line { font: 400 12px/16px var(--font-ui); color: var(--steel); }
 .demo-line a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
 .demo-line a:hover { text-decoration-thickness: 2px; }
+/* A newer example site, offered: its words in graphite, its two buttons
+   as links of the line. */
+.demo-newer { margin-top: 2px; color: var(--graphite); }
+.demo-line-button { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.demo-line-button:hover { text-decoration-thickness: 2px; }
+.demo-line-button:disabled { color: var(--steel); cursor: default; }
 
 /* A page the demo draws in a tab of its own: white, as the published page
    is, with the demo's line above it and its own line below. */
