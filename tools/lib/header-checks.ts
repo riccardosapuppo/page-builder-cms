@@ -27,9 +27,9 @@
 // only. What the verdict holds back is said in the check's RESULT line,
 // not only in each header's; and a file that is not what a machine with
 // the fonts it was measured with draws (stale, edited, or its sum narrower
-// than a word) fails here. The design's four links must fold below 360 and
-// the header hold one 64 px row at 375, and a fifth link must move the
-// step to 440, so the server's sum is held to the steps; at the limits, in
+// than a word) fails here. The design's five links must fold below 480 and
+// the header hold one 64 px row at 375, and a sixth link must move the
+// step to 560, so the server's sum is held to the steps; at the limits, in
 // words of average width, Menu's sheet must stay inside the window at 375.
 import { chromium, type Browser, type Page } from "playwright";
 import { spawn } from "node:child_process";
@@ -72,9 +72,10 @@ export function headerDocument(words: HeaderWords, from: HeaderDocument = starte
 }
 
 const links = (...labels: string[]) => labels.map((label, k) => ({ label, href: `/#part-${k + 1}` }));
-const DESIGN: HeaderWords = {
+// The starter's own words (tools/lib/header-checks.test.ts holds them so).
+export const DESIGN: HeaderWords = {
   name: "Slack Water",
-  links: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
+  links: [{ label: "Swims", href: "/#swims" }, { label: "Winter series", href: "/winter-series" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
   button: { label: "Join", href: "/#join" },
 };
 
@@ -88,8 +89,8 @@ export interface HeaderCase {
 }
 
 export const HEADER_CASES: HeaderCase[] = [
-  { label: "the design's header", words: DESIGN, fold: "360" },
-  { label: "a fifth link", words: { ...DESIGN, links: [...DESIGN.links, { label: "Contact", href: "/#contact" }] }, fold: "440" },
+  { label: "the design's header", words: DESIGN, fold: "480" },
+  { label: "a sixth link", words: { ...DESIGN, links: [...DESIGN.links, { label: "Contact", href: "/#contact" }] }, fold: "560" },
   {
     label: "every length at its limit, in words of average width",
     words: {
@@ -112,7 +113,7 @@ export const HEADER_CASES: HeaderCase[] = [
   },
   { label: "three links in another script", words: { ...DESIGN, name: "潮の会", links: links("日本語の案内", "مرحبا بكم", "Ελληνικά") }, fold: "320" },
   // Short menus as a person writes them in Hebrew and in Greek: they fold
-  // where the design's four links do or sooner, where they folded at every
+  // where the design's links do or sooner, where they folded at every
   // width when every letter outside the face counted 1.5 em.
   {
     label: "a short menu in Hebrew",
@@ -131,7 +132,7 @@ export const HEADER_CASES: HeaderCase[] = [
   // Arabic bismillah ligature, about 90 px wide where 22.5 is counted): the
   // links may wrap where the sum says they fit, but they stay inside the
   // page.
-  { label: "a link of a letter drawn wider than counted", words: { ...DESIGN, links: [...DESIGN.links, { label: "\u{FDFD}\u{FDFD}\u{FDFD}", href: "/#contact" }] }, fold: "440" },
+  { label: "a link of a letter drawn wider than counted", words: { ...DESIGN, links: [...DESIGN.links, { label: "\u{FDFD}\u{FDFD}\u{FDFD}", href: "/#contact" }] }, fold: "560" },
   { label: "no menu and no button", words: { ...DESIGN, links: [], button: null }, fold: null },
 ];
 

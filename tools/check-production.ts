@@ -61,7 +61,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
-import { headerChecks, headerDocument, type HeaderWords } from "./lib/header-checks.ts";
+import { DESIGN, headerChecks, headerDocument, type HeaderWords } from "./lib/header-checks.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -220,11 +220,8 @@ async function headerCacheChecks(): Promise<void> {
   await before.text();
   const etag = before.headers.get("etag") ?? "";
   const entries = cacheEntries();
-  await publishHeader({
-    name: "Tide club",
-    links: [{ label: "Swims", href: "/#swims" }, { label: "Gallery", href: "/#gallery" }, { label: "Meet us", href: "/#meet" }, { label: "Questions", href: "/#questions" }],
-    button: { label: "Join", href: "/#join" },
-  });
+  // The starter's words, the logo's name the only one changed.
+  await publishHeader({ ...DESIGN, name: "Tide club" });
   const next = await get("/", { headers: { "if-none-match": etag } });
   const html = await next.text();
   check(next.status === 200 && html.includes("<span>Tide club</span>") && next.headers.get("etag") !== etag,

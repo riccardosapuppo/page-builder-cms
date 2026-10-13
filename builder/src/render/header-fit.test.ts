@@ -13,12 +13,15 @@ import { advanceOf, menuFold, METRICS as metrics, rubySum, runWidth, widthNeeded
 const DESIGN = ["Swims", "Gallery", "Meet us", "Questions"];
 const times = (n: number, label: string) => Array.from({ length: n }, () => label);
 
-test("the design's four links need 327 px, so they fold in a block narrower than 360; the starter's menu is those links", () => {
+test("the design's four links need 327 px, so they fold in a block narrower than 360; the starter's menu, those and the Winter series page, needs 454 and folds below 480", () => {
   expect(Math.abs(widthNeeded(DESIGN) - 327)).toBeLessThanOrEqual(1);
   expect(menuFold(DESIGN)).toBe("360");
   const header = JSON.parse(readFileSync(join(repoRoot, "cms", "config", "parts", "header.json"), "utf8")) as { sections: Array<{ children: Array<{ children: Array<{ type: string; props: { items?: Array<{ label: string }> } }> }> }> };
   const menus = header.sections.flatMap((s) => s.children.flatMap((c) => c.children.filter((b) => b.type === "menu")));
-  expect(menus.map((menu) => menu.props.items?.map((item) => item.label))).toEqual([DESIGN]);
+  const starter = [DESIGN[0]!, "Winter series", ...DESIGN.slice(1)];
+  expect(menus.map((menu) => menu.props.items?.map((item) => item.label))).toEqual([starter]);
+  expect(Math.abs(widthNeeded(starter) - 454)).toBeLessThanOrEqual(1);
+  expect(menuFold(starter)).toBe("480");
 });
 
 test("the row is every label and a gap between two: one link more is its word and a gap more", () => {

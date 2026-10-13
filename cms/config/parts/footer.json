@@ -71,11 +71,33 @@
                   "textSize": "small"
                 }
               }
+            },
+            {
+              "id": "footer-menu",
+              "type": "menu",
+              "props": {
+                "label": "More pages",
+                "items": [
+                  {
+                    "label": "Winter series",
+                    "href": "/winter-series"
+                  },
+                  {
+                    "label": "Notices",
+                    "href": "/notices"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {
             "base": {
-              "verticalAlign": "middle"
+              "verticalAlign": "middle",
+              "spaceBetween": "s"
             }
           }
         }

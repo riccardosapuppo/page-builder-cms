@@ -42,7 +42,7 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_select "header.sw-header [data-block-type=logo] a.w-logo-link[href='/'] span", text: "Slack Water"
     assert_select "header.sw-header [data-block-type=menu] nav[aria-label=Main] .w-menu-links a[href='/#swims']", text: "Swims"
-    assert_select "header.sw-header [data-block-type=menu][data-fold='360']"
+    assert_select "header.sw-header [data-block-type=menu][data-fold='480']"
     assert_select "header.sw-header [data-block-type=button] a.sw-btn[href='/#join']", text: "Join"
     assert_select "main [data-block-type=heading] h1", text: "Winter series"
     assert_select "main [data-block-type=text] p", text: "Short, cold swims."

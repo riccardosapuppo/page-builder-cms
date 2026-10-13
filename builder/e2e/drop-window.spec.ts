@@ -22,7 +22,7 @@
 //   moves with the line.
 import type { Locator, Page } from "@playwright/test";
 import { MARGIN } from "../src/editor/place-dialog.ts";
-import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
+import { block, moveOnto, pickUp, spot } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
 import { column, drawer, expect, heading, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
 
@@ -453,8 +453,18 @@ test.describe("while the window is open", () => {
       const { id } = await makePage(request, "Video window grows", fixture());
       await open(page, id);
       await drawer(page, "Insert");
+      // Onto the column where the page puts it, the canvas at its top: the
+      // line stands as low as the header and the first section over it say,
+      // with room over it for the window and more. moveOnto would bring it
+      // to the middle as far as the page scrolls, and the page ends with the
+      // site's footer: the taller the footer, the higher the line.
+      await page.locator(".canvas").evaluate((canvas) => {
+        canvas.scrollTop = 0;
+      });
       await pickUp(page, await insertKey(page, "Media", "Video"));
-      await moveOnto(page, block(page, "c4"));
+      const onto = await spot(block(page, "c4"));
+      await page.mouse.move(onto.x, onto.y, { steps: 12 });
+      await page.mouse.move(onto.x + 1, onto.y + 1, { steps: 2 });
       await page.mouse.up();
       const shown = videoWindow(page);
       await expect(shown).toBeVisible();

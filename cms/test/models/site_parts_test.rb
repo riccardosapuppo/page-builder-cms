@@ -21,7 +21,7 @@ class SitePartsTest < ActiveSupport::TestCase
     logo = header.dig("sections", 0, "children", 0, "children", 0)
     menu = header.dig("sections", 0, "children", 1, "children", 0)
     assert_equal [ "logo", { "name" => "Slack Water" } ], logo.values_at("type", "props")
-    assert_equal [ "Swims", "Gallery", "Meet us", "Questions" ], menu.dig("props", "items").map { |link| link["label"] }
+    assert_equal [ "Swims", "Winter series", "Gallery", "Meet us", "Questions" ], menu.dig("props", "items").map { |link| link["label"] }
     assert_equal({ "label" => "Header", "columnWidths" => "fit:1:fit", "stack" => "never" }, header.dig("sections", 0, "props"))
   end
 

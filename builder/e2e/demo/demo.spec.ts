@@ -277,8 +277,8 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   await openDemo(page);
   const before = await partsOf(page, CANVAS);
   expect(before.name).toBe("Slack Water");
-  expect(before.links.map(([label]) => label)).toEqual(["Swims", "Gallery", "Meet us", "Questions"]);
-  const changed = { ...before, name: "Eelgrass Bay", links: [...before.links, ["Winter", "/winter-series"]] };
+  expect(before.links.map(([label]) => label)).toEqual(["Swims", "Winter series", "Gallery", "Meet us", "Questions"]);
+  const changed = { ...before, name: "Eelgrass Bay", links: [...before.links, ["Notices", "/notices"]] };
 
   // A click on the header around the page opens it, the page dimmed and
   // locked around it, and the footer locked under that.
@@ -297,11 +297,11 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   await block(page, "header-menu").click();
   await page.getByRole("button", { name: "Add a link" }).click();
   const added = before.links.length + 1;
-  await page.getByLabel(`Text ${added}`, { exact: true }).fill("Winter");
+  await page.getByLabel(`Text ${added}`, { exact: true }).fill("Notices");
   await page.getByLabel(`Text ${added}`, { exact: true }).blur();
-  await page.getByLabel(`Link ${added}`, { exact: true }).fill("/winter-series");
+  await page.getByLabel(`Link ${added}`, { exact: true }).fill("/notices");
   await page.getByLabel(`Link ${added}`, { exact: true }).blur();
-  await expect(page.locator(`${EDITING.header} .w-menu-links a`).last()).toHaveText("Winter");
+  await expect(page.locator(`${EDITING.header} .w-menu-links a`).last()).toHaveText("Notices");
   await saved(page);
   await shoot(page, "demo-header");
   await noSeriousFinding(page, "the header open in the editor");
@@ -314,11 +314,11 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText(PUBLISHED_LINE);
   await expect(view.locator("header.sw-header .w-logo-link span")).toHaveText(changed.name);
   expect(await partsOf(view)).toEqual(changed);
-  // The new link opens the winter series as published, under the same
-  // header and footer.
-  await view.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Winter", exact: true }).first().click();
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=2`);
-  await expect(view.getByRole("heading", { level: 1, name: "Winter series" })).toBeVisible();
+  // The new link opens the notices as published, under the same header
+  // and footer.
+  await view.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Notices", exact: true }).first().click();
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=3`);
+  await expect(view.getByRole("heading", { level: 1, name: "Notices" })).toBeVisible();
   expect(await partsOf(view)).toEqual(changed);
   await shoot(view, "demo-header-published");
 

@@ -1155,7 +1155,7 @@ logo with its new name, its column and its section, every other block
 read back (66 fragments, then 70; after the first visit it holds the
 page, its 45 blocks and the 12 of the starters of the header and
 footer). It then publishes ten headers in turn, each the header's
-starter with other words (the design's; a fifth link; every length at
+starter with other words (the design's; a sixth link; every length at
 its limit, in words of average width and in the widest letter; three
 links in another script; a short menu in Hebrew and one in Greek; seven
 Arabic links whose letters join; a link of three bismillah ligatures; no
@@ -1171,7 +1171,7 @@ those the file was measured with, as on the machine that measured it;
 the RESULT line says what was not held, and why. A file that is not what
 this machine draws, where no script is drawn here with other fonts
 (stale, edited, or its sum narrower than a word), fails the check. The
-design's links must fold below 360, the short Hebrew and Greek menus
+design's links must fold below 480, the short Hebrew and Greek menus
 below 240 and 360, the Arabic links below 400, and the ligatures, a
 character the file does not measure, drawn about four times wider than
 counted, may take two lines inside their block. With words of average

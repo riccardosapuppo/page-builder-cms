@@ -33,10 +33,10 @@ const widgets = (document: { sections: Block[] }) => document.sections.flatMap((
 
 test("a case's header is the starter with its words in the logo, the menu and the button, and the starter's own words are the design's", () => {
   assert.deepEqual(headerDocument(words("the design's header")), starter);
-  const fifth = widgets(headerDocument(words("a fifth link")));
-  assert.deepEqual(fifth.map((b) => b.type), ["logo", "menu", "button"]);
-  assert.equal((fifth[1]!.props.items as unknown[]).length, 5);
-  assert.equal(fifth[1]!.props.label, "Main");
+  const sixth = widgets(headerDocument(words("a sixth link")));
+  assert.deepEqual(sixth.map((b) => b.type), ["logo", "menu", "button"]);
+  assert.equal((sixth[1]!.props.items as unknown[]).length, 6);
+  assert.equal(sixth[1]!.props.label, "Main");
   // No menu and no button: the logo alone, in the same three columns.
   const bare = headerDocument(words("no menu and no button"));
   assert.deepEqual(bare.sections[0]!.children.map((c) => c.children.map((b) => b.type)), [["logo"], [], []]);
