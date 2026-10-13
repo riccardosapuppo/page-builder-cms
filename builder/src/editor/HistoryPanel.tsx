@@ -51,10 +51,12 @@ export function sessionSteps(past: readonly HistoryEntry[], future: readonly His
 // Undoes or redoes every step up to `target`, so the page is as it was
 // right after it. The text still waiting in a field is handed over first,
 // which, as a new command, ends what could be redone: a step undone then is
-// gone, and nothing moves. Says what was done, or why not.
+// gone, and nothing moves; a text the page refused stays where it is
+// written, its holder saying why, and nothing moves either. Says what was
+// done, or why not.
 export function goToStep(env: Pick<EditorEnv, "store" | "ui">, target: Command): StoreOutcome | null {
   const { store, ui } = env;
-  ui.getState().pending.deliver();
+  if (!ui.getState().pending.deliver()) return null;
   const where = () => {
     const { past, future } = store.getState();
     if (past.at(-1)?.command === target) return "here";

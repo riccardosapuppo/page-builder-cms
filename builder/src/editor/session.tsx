@@ -69,8 +69,12 @@ export interface Session {
   // A publish is on its way.
   publishing: boolean;
   styleSave: StyleSave;
-  // Opens a page; resolves with why it did not, or null.
+  // Opens a page; resolves with why it did not, or null: null too when a
+  // later open took its place, so isOpen says which page is open.
   openPage(id: number): Promise<string | null>;
+  // Whether the page of `id` is the one open now, read when asked, not at
+  // the session's last render.
+  isOpen(id: number): boolean;
   // Makes a page and opens it; resolves with the server's findings, or null.
   createPage(page: NewPage): Promise<FieldError[] | null>;
   // Changes the open page's address; resolves with the server's findings,
@@ -161,6 +165,7 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     publishing: false,
     styleSave: { phase: "idle" },
     openPage: async () => null,
+    isOpen: (id) => changes.current?.id === id,
     createPage: async () => null,
     setSlug: async () => null,
     preview: () => {},

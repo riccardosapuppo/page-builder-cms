@@ -11,6 +11,7 @@ import type { NewId } from "../document/ids.ts";
 import type { EditorState, EditorStore, StoreOutcome } from "../store/editor-store.ts";
 import type { Clock } from "../storage/clock.ts";
 import type { UiState, UiStore } from "./ui-store.ts";
+import { STILL_HELD } from "./pending.ts";
 
 export interface EditorEnv {
   store: EditorStore;
@@ -48,7 +49,7 @@ export function runMade(env: { store: EditorStore; ui: UiStore }, made: Made): {
   if (!made.ok) return { ok: false, error: made.error };
   // A text the page refused stays where it is written, and the command
   // waits (./act.ts, handOver).
-  if (!env.ui.getState().pending.deliver()) return { ok: false, error: refusal("invalid", env.ui.getState().notice ?? "A text the page cannot keep is still being written.") };
+  if (!env.ui.getState().pending.deliver()) return { ok: false, error: refusal("invalid", env.ui.getState().notice ?? STILL_HELD) };
   const outcome = env.store.getState().dispatch(made.command);
   return outcome.ok ? { ok: true, outcome } : { ok: false, error: outcome.error };
 }

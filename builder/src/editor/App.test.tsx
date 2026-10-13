@@ -393,6 +393,33 @@ test("Publish sends the edit still waiting, then publishes at the revision it ma
   expect(env.ui.getState().notice).toBe("Not published: the page was saved somewhere else after this tab's last save. Nothing went live.");
 });
 
+test("a text the page refused, still held where it is written, keeps the page open and unpublished, and the tab asks before it closes; once the page takes it, Publish goes", async () => {
+  const { site, env, written } = start(1);
+  await opened();
+  const why = "This heading cannot be kept yet: it is empty. It stays open here until the page can take it.";
+  // Held as a heading's line holds words the page refused.
+  const release = env.ui.getState().pending.hold(() => {
+    env.ui.getState().say(why);
+    return false;
+  });
+
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toEqual([]);
+  expect(env.ui.getState().notice).toBe(`Not published. ${why}`);
+  // The header, from the Page tab: the page stays, with the reason.
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Header" })));
+  await waitFor(() => expect(env.ui.getState().notice).toBe(why));
+  expect(written).toEqual([1]);
+  expect(screen.getByRole("button", { name: "Switch page. Open: Winter series" })).toBeTruthy();
+  const closing = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(closing);
+  expect(closing.defaultPrevented).toBe(true);
+
+  release();
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toHaveLength(1);
+});
+
 test("in the browser demo, Publish opens a tab at once, sends it to the page as published once it is kept, and says what the full system does", async () => {
   const { site, env, tabs } = start(1, { demo: true });
   await opened();

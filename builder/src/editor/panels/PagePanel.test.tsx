@@ -174,6 +174,7 @@ test("Add it to the header's menu opens the header and adds the page at the end 
         kit.store.getState().load(withLinks(header, ["/#swims", "/winter-series"]));
         return null;
       },
+      isOpen: (id: number) => opened.at(-1) === id,
     },
   });
   kit.ui.getState().setParts({ header: withLinks(header, ["/#swims", "/winter-series"]), footer: withLinks(footer, ["/notices"]) });
@@ -188,4 +189,25 @@ test("Add it to the header's menu opens the header and adds the page at the end 
     { label: "Winter series", href: "/prices" },
   ]);
   expect(kit.ui.getState().notice).toBe("Winter series is the last link of the header’s menu now. Publish the header to put it on every page.");
+});
+
+test("Add it to the header's menu adds nothing when another page opened while the header was on its way", async () => {
+  const kit = editorKit({
+    document: page(),
+    session: {
+      current: prices,
+      parts: [headerPart],
+      // The header's open, overtaken by another the person chose: it
+      // resolves with null, and the header is not the page open.
+      openPage: async () => null,
+      isOpen: () => false,
+    },
+  });
+  kit.ui.getState().setParts({ header: withLinks(header, ["/#swims"]), footer: withLinks(footer, ["/notices"]) });
+  const before = kit.store.getState().document;
+  kit.render(<PagePanel />);
+  fireEvent.click(screen.getByRole("button", { name: "Add it to the header’s menu" }));
+  await act(async () => {});
+  expect(kit.store.getState().document).toBe(before);
+  expect(kit.store.getState().selection).not.toBe("header-menu");
 });

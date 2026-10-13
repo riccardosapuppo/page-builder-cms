@@ -10,6 +10,10 @@
 // A text the page refuses is not let go: its holder keeps the hold, and
 // says why. deliver() then answers false, and the command or drag that
 // asked waits (./act.ts), so nothing typed is dropped behind its back.
+// Said when a text the page refused is still held and its holder has not
+// said why (./context.tsx, ./App.tsx).
+export const STILL_HELD = "A text the page cannot keep is still being written.";
+
 export class PendingText {
   readonly #commits = new Set<() => boolean | void>();
 

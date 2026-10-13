@@ -80,6 +80,18 @@ test("choosing a step undoes or redoes up to it, to the page as it was right aft
   expect(kit.doc()).toBe(before);
 });
 
+test("a text the page refused, still held where it is written, stops a step taken from the history: nothing moves", () => {
+  const kit = editorKit({ document: page(), session: { current: open } });
+  threeSteps(kit);
+  const release = kit.ui.getState().pending.hold(() => false);
+  kit.render(<HistoryPanel />);
+  const before = kit.store.getState().past.length;
+  fireEvent.click(steps().at(-1)!);
+  expect(kit.store.getState().past).toHaveLength(before);
+  expect(kit.store.getState().future).toHaveLength(0);
+  release();
+});
+
 test("text waiting in a field goes first; a step it ends is gone, which is said, and nothing moves", () => {
   const kit = editorKit({ document: page(), session: { current: open } });
   threeSteps(kit);

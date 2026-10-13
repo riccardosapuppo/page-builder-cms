@@ -189,6 +189,30 @@ test("an edit made while the restore travels is not dropped: its save meets the 
   expect(env.store.getState().past.map((e) => e.command.label)).toEqual(["Renamed section to Typed meanwhile", "Reloaded the page saved in another tab"]);
 });
 
+test("a text the page refused while the restore travels keeps this tab's page: the restored one does not take its place, and the restore is said", async () => {
+  const site = new VersionSite();
+  let release = () => {};
+  site.gate = new Promise<void>((done) => {
+    release = done;
+  });
+  const { env } = await start(site);
+  act(() => {
+    fireEvent.click(restoreButton(/^Restore: Saved, First draft/));
+  });
+  await waitFor(() => expect(site.restores).toEqual([1]));
+  const before = env.store.getState().document;
+  // A heading emptied meanwhile: held where it is written, refused.
+  const letGo = env.ui.getState().pending.hold(() => {
+    env.ui.getState().say("This heading cannot be kept yet: it is empty. It stays open here until the page can take it.");
+    return false;
+  });
+  await act(async () => release());
+
+  await waitFor(() => expect(env.ui.getState().notice).toBe("Restored on the server, but this tab changed the page while the restore was on its way, and has not saved that change yet. Saving it will ask you to choose between the two."));
+  expect(env.store.getState().document).toBe(before);
+  letGo();
+});
+
 test("nothing is restored while this tab's save cannot be confirmed: a conflict is settled first", async () => {
   const { env, site } = await start();
   // Another tab saves; this tab's edit then meets the conflict.

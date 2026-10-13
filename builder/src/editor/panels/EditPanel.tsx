@@ -205,6 +205,9 @@ export async function addToHeaderMenu(env: EditorEnv, session: Session, title: s
     say(why);
     return;
   }
+  // Another page opened meanwhile, chosen while the header was on its way:
+  // its menus are not the header's.
+  if (!session.isOpen(header.id)) return;
   const menu = firstOfType(env.store.getState().document, "menu");
   if (!menu || menu.type !== "menu") {
     say(`The header has no menu yet: add one from Insert, with a link to ${path}.`);

@@ -61,6 +61,7 @@ import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
 import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
 import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
+import { STILL_HELD } from "./pending.ts";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
@@ -180,6 +181,17 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   useLayoutEffect(() => {
     opened.current = current;
   }, [current]);
+  // The page whose document the editor holds, set as it is loaded: an open
+  // a later one took the place of never sets it (Session.isOpen).
+  const loaded = useRef<number | null>(null);
+
+  // Hands over the text still being written; its holder's words when the
+  // page refused one, which stays held where it is written (./pending.ts):
+  // what asked waits, as a command does.
+  const held = useCallback((): string | null => {
+    if (ui.getState().pending.deliver()) return null;
+    return ui.getState().notice ?? STILL_HELD;
+  }, [ui]);
 
   const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
@@ -253,6 +265,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (!(await save())) return opening.current === ticket ? kept : null;
       if (opening.current !== ticket) return null;
     }
+    // A text the page refused stays where it is written, and the page with
+    // it, as its holder says.
+    const refused = held();
+    if (refused) return opening.current === ticket ? refused : null;
 
     // A page left for a part is the page drawn around it, as it was left.
     const leaving = opened.current;
@@ -262,6 +278,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     live.current.unsubscribe();
     previous?.dispose();
     store.getState().load(taken.document);
+    loaded.current = page.page.id;
     ui.setState({ serverErrors: [], hover: null, notice: null, tray: "edit", sideTab: null });
     // The page left's versions, and any read of them still on its way, go.
     versionReads.current += 1;
@@ -314,7 +331,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     // around the home page's draft, read now.
     if (kind !== "page" && ui.getState().aroundPart === null) void aroundHome(ticket);
     return null;
-  }, [adapter, address, aroundHome, clock, store, ui, words]);
+  }, [adapter, address, aroundHome, clock, held, store, ui, words]);
 
   // The site as the editor starts on it: its pages and parts, the parts'
   // drafts the canvas draws around a page, its library, style and
@@ -412,13 +429,14 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     if (!page) return;
     const href = cmsAddress(page.links.preview, cmsOrigin);
     const ready = (async () => {
-      ui.getState().pending.deliver();
+      const refused = held();
+      if (refused) ui.getState().say(`The preview shows the last saved draft. ${refused}`);
       const settled = saving ? await saving.flush() : null;
       if (settled && settled.phase !== "saved") ui.getState().say(`The preview shows the last saved draft: ${unsavedWhy(settled.phase, words.server)}`);
       return href;
     })();
     if (!tabs.open(ready)) ui.getState().say(`The browser did not open a new tab for the preview. It is at ${href}.`);
-  }, [cmsOrigin, tabs, ui, words.server]);
+  }, [cmsOrigin, held, tabs, ui, words.server]);
 
   // Saves what waits, then puts the draft live at the revision just saved:
   // a save from elsewhere in between is refused by the CMS, not published
@@ -434,7 +452,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     if (shown) tabs.open(shown.promise);
     setPublishing(true);
     try {
-      ui.getState().pending.deliver();
+      const refused = held();
+      if (refused) {
+        ui.getState().say(`Not published. ${refused}`);
+        return;
+      }
       const settled = await saving.flush();
       if (settled.phase !== "saved") {
         ui.getState().say(`Not published: ${unsavedWhy(settled.phase, words.server)}`);
@@ -499,7 +521,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       // Not published: the tab opened for it goes.
       shown?.reject(new Error("not published"));
     }
-  }, [adapter, cmsOrigin, loadVersions, publishedView, refreshPages, store, tabs, ui, words, publishedWords.maybe, publishedWords.nothingWent]);
+  }, [adapter, cmsOrigin, held, loadVersions, publishedView, refreshPages, store, tabs, ui, words, publishedWords.maybe, publishedWords.nothingWent]);
 
   // What is live and what waits to go live, read again from the CMS, for a
   // page still open: the draft on the canvas and its autosave stay as
@@ -520,7 +542,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const problem = (keyword: string, message: string): FieldError[] => [{ pointer: "", keyword, blockPointer: null, message }];
     setScheduling(true);
     try {
-      ui.getState().pending.deliver();
+      const refused = held();
+      if (refused) return problem("refused", `Not scheduled. ${refused}`);
       const settled = await saving.flush();
       if (settled.phase !== "saved") return problem("unsaved", `Not scheduled: ${unsavedWhy(settled.phase, words.server)}`);
       if (page.kind === "page" && store.getState().document.sections.length === 0) return problem("empty", "Not scheduled: an empty page has nothing to publish. Add a section first.");
@@ -549,7 +572,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     } finally {
       setScheduling(false);
     }
-  }, [adapter, loadVersions, refreshLive, refreshPages, store, ui, words.server]);
+  }, [adapter, held, loadVersions, refreshLive, refreshPages, store, ui, words.server]);
 
   // Cancels the open page's pending schedule. Too late (its job ran, or
   // another tab replaced or cancelled it), the CMS says what became of it,
@@ -733,7 +756,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const saving = live.current.autosave;
     if (!page || !saving) return null;
     const problem = (keyword: string, message: string): FieldError[] => [{ pointer: "", keyword, blockPointer: null, message }];
-    ui.getState().pending.deliver();
+    const refused = held();
+    if (refused) return problem("refused", `Not kept. ${refused}`);
     const settled = await saving.flush();
     if (settled.phase !== "saved") return problem("unsaved", `Not kept: ${unsavedWhy(settled.phase, words.server)}`);
     const named = name.trim();
@@ -751,7 +775,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     if (opened.current?.id === page.id) loadVersions();
     ui.getState().say(named === "" ? "Kept as a version." : `Kept as a version: “${named}”.`);
     return null;
-  }, [adapter, loadVersions, ui, words]);
+  }, [adapter, held, loadVersions, ui, words]);
 
   // Copies a version back into the draft. The edits waiting are saved
   // first, so the version the CMS keeps of the draft before the restore
@@ -773,7 +797,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     restoringNow.current = true;
     setRestoring(number);
     try {
-      ui.getState().pending.deliver();
+      const refused = held();
+      if (refused) {
+        say(`Not restored. ${refused}`);
+        return;
+      }
       const settled = await saving.flush();
       if (settled.phase !== "saved") {
         say(`Not restored: ${unsavedWhy(settled.phase, words.server)}`);
@@ -798,12 +826,16 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       }
       const result = outcome.value;
       const shown = versionsShown.current;
-      // What the person did while the restore travelled is settled first.
+      // What the person did while the restore travelled is settled first:
+      // handed over, then saved. A text the page refused meanwhile stays
+      // held where it is written, a change this tab has not saved, so the
+      // restored page does not take its place.
+      const late = held();
       const after = await saving.flush();
       if (live.current.autosave !== saving) return;
       loadVersions();
       const taken = openDocument(result.draft.document);
-      if (after.phase === "saved" && after.revision < result.draft.revision && taken.ok && adopt(saving, result.draft)) {
+      if (late === null && after.phase === "saved" && after.revision < result.draft.revision && taken.ok && adopt(saving, result.draft)) {
         putDraft(taken.document);
         say(restoredSentence(result, shown, clock.now()));
       } else if (after.phase === "conflict") {
@@ -815,7 +847,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       restoringNow.current = false;
       setRestoring(null);
     }
-  }, [adapter, clock, loadVersions, putDraft, ui, words]);
+  }, [adapter, clock, held, loadVersions, putDraft, ui, words]);
 
   // The site style: the canvas takes a change at once; the CMS gets one
   // request at a time, and the latest change goes when the one on its way
@@ -867,20 +899,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // way to the CMS or waiting behind the one that is.
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      ui.getState().pending.deliver();
+      // A text the page refused, still held where it is written, is an
+      // edit the server does not have either.
+      const refused = !ui.getState().pending.deliver();
       const style = styleQueue.current;
-      const unsaved = live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
+      const unsaved = refused || live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
       if (unsaved) event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [ui]);
 
+  const isOpen = useCallback((id: number) => loaded.current === id, []);
   const session = useMemo<Session>(() => ({
     pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
-    openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
+    openPage, isOpen, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, isOpen, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);
