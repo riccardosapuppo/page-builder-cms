@@ -195,6 +195,33 @@ class SeedTest < ActionDispatch::IntegrationTest
     assert_includes visible_text(response.body), "Loads a video from the provider when you click."
   end
 
+  # `npm start -- --empty`: the seed with EMPTY_SITE=1, on the test's empty
+  # database and again on its own result.
+  test "with EMPTY_SITE=1, db:seed makes a site with nothing in it: no page or image, the header and footer published with no section, drawn on no page" do
+    ENV["EMPTY_SITE"] = "1"
+    said = seed
+    first = [ Page.count, PageVersion.count, MediaItem.count, ActiveStorage::Blob.count ]
+    said_again = seed
+
+    assert_equal [ 2, 4, 0, 0 ], first, "the header and footer, each with the automatic version of its emptied draft and its publish, and nothing else"
+    assert_equal first, [ Page.count, PageVersion.count, MediaItem.count, ActiveStorage::Blob.count ]
+    Page.parts!.each do |part|
+      assert_predicate part, :published?, part.kind
+      assert_equal [], part.published_version.document["sections"], part.kind
+      assert_equal [], part.draft.document["sections"], part.kind
+    end
+    assert_match "Seeding an empty site, with no page:", said
+    assert_equal 2, said.scan(/published with no section/).size, said
+    assert_equal 2, said_again.scan(/already published, left as it is/).size, said_again
+
+    get "/"
+    assert_response :not_found
+    assert_select "header.sw-header", 0
+    assert_select "footer.sw-footer", 0
+  ensure
+    ENV.delete("EMPTY_SITE")
+  end
+
   test "every seed image went through the library's checks as an upload, as a PNG of the size it declares" do
     capture_io { ExampleSite.run }
 

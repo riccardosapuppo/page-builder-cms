@@ -9,6 +9,10 @@
 //   npm start -- --smoke        starts, checks that both answer, stops, and
 //                               says what changed outside the repository:
 //                               the run CI makes on Linux and Windows
+//   npm start -- --empty        on a database not made yet, a site with
+//                               nothing in it in place of the example site
+//                               (with --smoke or --setup too); on one that
+//                               exists, stops before anything and says why
 //   npm run setup               only installs and prepares the database
 //
 // The CMS listens on 127.0.0.1:3900 and the editor on 127.0.0.1:4900, the
@@ -26,8 +30,8 @@ import { install } from "./install.ts";
 import { preflight, type Port } from "./preflight.ts";
 import { cmsReady, editorReady, ownership, pageList, startCms, startEditor, stop, waitReady, type Server } from "./servers.ts";
 
-const USAGE = "usage: npm start [-- --no-open | --smoke]   or   npm run setup";
-const FLAGS = new Set(["--no-open", "--smoke", "--setup", "--help"]);
+const USAGE = "usage: npm start [-- --no-open | --smoke] [--empty]   or   npm run setup [-- --empty]";
+const FLAGS = new Set(["--no-open", "--smoke", "--setup", "--empty", "--help"]);
 
 const say = (line: string) => console.log(`[start] ${line}`);
 const print = (line: string) => console.log(line);
@@ -76,6 +80,7 @@ async function main(): Promise<number> {
   }
   const smoke = argv.includes("--smoke");
   const setupOnly = argv.includes("--setup");
+  const empty = argv.includes("--empty");
   const cmsPort = numberFrom("CMS_PORT", 3900, 65535);
   const editorPort = numberFrom("BUILDER_PORT", 4900, 65535);
   const readyWithin = numberFrom("START_READY_SECONDS", 180, 3600) * 1000;
@@ -84,12 +89,12 @@ async function main(): Promise<number> {
   const watched = smoke ? placesToWatch() : [];
   const before: Snapshot | null = smoke ? snapshot(watched) : null;
 
-  say(`${setupOnly ? "setup" : smoke ? "smoke run" : "start"} of Page Builder CMS, on Node ${process.versions.node}`);
+  say(`${setupOnly ? "setup" : smoke ? "smoke run" : "start"} of Page Builder CMS${empty ? ", from a site with nothing in it" : ""}, on Node ${process.versions.node}`);
   const ports: Port[] = setupOnly ? [] : [
     { port: cmsPort, what: "the CMS", variable: "CMS_PORT" },
     { port: editorPort, what: "the editor", variable: "BUILDER_PORT" },
   ];
-  const found = preflight(ports);
+  const found = preflight(ports, { empty });
   if (found.ruby) say(`Ruby ${found.ruby}, Bundler ${found.bundler ?? "missing"}`);
   for (const note of found.notes) say(note);
   if (found.problems.length) {
@@ -107,12 +112,14 @@ async function main(): Promise<number> {
   }
 
   // db:prepare creates the development database, loads the schema and, on
-  // a database it has just created, runs the seed (the example site); on
-  // one that exists it only runs pending migrations. SKIP_TEST_DATABASE:
-  // in development Rails would prepare the test database as well, which
-  // npm start has no use for and the test runs own.
-  say("database: ruby bin/rails db:prepare (development)");
-  const prepared = await runRelayed("cms", "ruby", ["bin/rails", "db:prepare"], cmsRoot, { ...rubyEnv, RAILS_ENV: "development", SKIP_TEST_DATABASE: "1" });
+  // a database it has just created, runs the seed (the example site, or
+  // with --empty, EMPTY_SITE=1, a site with nothing in it); on one that
+  // exists it only runs pending migrations, which is why the preflight
+  // stops --empty there. SKIP_TEST_DATABASE: in development Rails would
+  // prepare the test database as well, which npm start has no use for and
+  // the test runs own.
+  say(`database: ruby bin/rails db:prepare (development${empty ? ", EMPTY_SITE=1" : ""})`);
+  const prepared = await runRelayed("cms", "ruby", ["bin/rails", "db:prepare"], cmsRoot, { ...rubyEnv, RAILS_ENV: "development", SKIP_TEST_DATABASE: "1", ...(empty ? { EMPTY_SITE: "1" } : {}) });
   if (prepared !== 0) {
     say(`ruby bin/rails db:prepare failed (exit ${prepared}): its output is above. Nothing was started.`);
     return 1;
@@ -162,7 +169,7 @@ async function main(): Promise<number> {
   }
 
   try {
-    return await serve(cms, editor, { argv, smoke, readyWithin, before, watched, requestStop, done, isStopping: () => stopping !== null });
+    return await serve(cms, editor, { argv, smoke, empty, readyWithin, before, watched, requestStop, done, isStopping: () => stopping !== null });
   } catch (error) {
     return requestStop(`an unexpected error: ${(error as Error).stack ?? String(error)}`, 1);
   }
@@ -171,6 +178,8 @@ async function main(): Promise<number> {
 interface Serving {
   argv: string[];
   smoke: boolean;
+  // A site made with nothing in it (--empty).
+  empty: boolean;
   readyWithin: number;
   before: Snapshot | null;
   watched: ReturnType<typeof placesToWatch>;
@@ -181,7 +190,7 @@ interface Serving {
 
 // From two children started to two children answering, then either the
 // smoke run's looks or the wait for Ctrl+C.
-async function serve(cms: Server, editor: Server, { argv, smoke, readyWithin, before, watched, requestStop, done, isStopping }: Serving): Promise<number> {
+async function serve(cms: Server, editor: Server, { argv, smoke, empty, readyWithin, before, watched, requestStop, done, isStopping }: Serving): Promise<number> {
   const [cmsProblem, editorProblem] = await Promise.all([
     waitReady(cms, readyWithin, () => cmsReady(cms)),
     waitReady(editor, readyWithin, () => editorReady(editor, cms)),
@@ -210,9 +219,13 @@ async function serve(cms: Server, editor: Server, { argv, smoke, readyWithin, be
   look(true, `ports ${cms.port} and ${editor.port} are held by the processes started here, on 127.0.0.1 alone`);
   const list = await pageList(cms.url).catch(() => null);
   const pages = list ? (JSON.parse(list) as { pages: unknown[] }).pages.length : 0;
-  look(pages > 0, `the CMS lists ${pages} page(s): the database is prepared and seeded`);
+  // An empty site has no page, so no home page: its address is the CMS's
+  // 404, a page of its own still.
+  if (empty) look(pages === 0, `the CMS lists ${pages} page(s): the database is prepared, with nothing in it`);
+  else look(pages > 0, `the CMS lists ${pages} page(s): the database is prepared and seeded`);
   const home = await fetch(`${cms.url}/`, { signal: AbortSignal.timeout(30_000) }).then(async (r) => ({ status: r.status, html: await r.text() }), () => ({ status: 0, html: "" }));
-  look(home.status === 200 && home.html.includes("<html"), `the CMS serves its home page (${home.status})`);
+  if (empty) look(home.status === 404 && home.html.includes("<html"), `the CMS answers its home page with its 404 page, there being no page (${home.status})`);
+  else look(home.status === 200 && home.html.includes("<html"), `the CMS serves its home page (${home.status})`);
   // The module the editor's page loads, as Vite compiles it for the
   // browser: a syntax error there is a 500. Vite puts its own client
   // (/@vite/client) first in the page; the editor's is the other one.

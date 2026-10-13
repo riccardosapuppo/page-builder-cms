@@ -216,7 +216,7 @@ export const SUITES: Suite[] = [
       const why = first(packages(repoRoot, "the repository root"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(node, ["--test", "--test-reporter=tap", "tools/**/*.test.ts"], { cwd: repoRoot });
-      return readNodeTap(step.output, step.code, 124);
+      return readNodeTap(step.output, step.code, 125);
     },
   },
   {
@@ -360,7 +360,7 @@ export const SUITES: Suite[] = [
         const prepare = await ctx.step("ruby", ["bin/rails", "db:test:prepare"], { cwd: cmsRoot });
         if (prepare.code !== 0) return failed("", `db:test:prepare failed (exit ${prepare.code})`);
         const tests = await ctx.step("ruby", ["bin/rails", "test"], { cwd: cmsRoot });
-        return readMinitest(tests.output, tests.code, 411, 374);
+        return readMinitest(tests.output, tests.code, 412, 374);
       });
     },
   },
@@ -371,7 +371,7 @@ export const SUITES: Suite[] = [
       const why = ruby();
       if (why) return notRun(why);
       const step = await ctx.step("ruby", ["bin/rubocop"], { cwd: cmsRoot });
-      return readRubocop(step.output, step.code, 159);
+      return readRubocop(step.output, step.code, 160);
     },
   },
   {

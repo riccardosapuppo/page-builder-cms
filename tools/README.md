@@ -51,6 +51,12 @@ Ctrl+C stops both, and so does either one stopping by itself.
 - The browser stays closed with `npm start -- --no-open`, with `NO_OPEN=1`,
   in CI, and when the output is not a terminal.
 - `npm run setup` installs and prepares the database, and starts nothing.
+- `npm start -- --empty`, and `npm run setup -- --empty`, make a site with
+  nothing in it in place of the example site as the database is made (the
+  CMS's seed with `EMPTY_SITE=1`, [cms/README.md](../cms/README.md)). On a
+  database that exists the preflight stops before anything, says how to
+  begin again, and deletes nothing. With `--smoke`, the looks expect no
+  page, and the CMS's 404 page at `/`.
 - `npm start -- --smoke` starts, checks that both answer, stops, and says
   what changed outside the repository. It reads, among its seven looks,
   the editor's entry module as Vite compiles it: a module with a syntax

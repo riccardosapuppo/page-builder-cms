@@ -5,11 +5,12 @@
 // minimum is the lowest Ruby CI tests on; versions compare as numbers.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { repoRoot } from "../lib/commands.ts";
-import { checkNode, checkPorts, checkRuby, olderThan, RUBY_MINIMUM } from "./preflight.ts";
+import { checkEmpty, checkNode, checkPorts, checkRuby, olderThan, RUBY_MINIMUM } from "./preflight.ts";
 
 test("a port held by a listener is a problem that names the program and the process; once closed it is not", async () => {
   const server = createServer();
@@ -48,4 +49,21 @@ test("on this machine: this Node and this Ruby pass, a Node outside the editor's
   const ruby = checkRuby();
   assert.deepEqual(ruby.problems, []);
   assert.ok(ruby.ruby && ruby.bundler, JSON.stringify(ruby));
+});
+
+test("--empty on a database that exists stops the start, saying how to begin from nothing; on a new one, or without --empty, nothing is said", () => {
+  const folder = mkdtempSync(join(tmpdir(), "pbc-empty-"));
+  try {
+    const database = join(folder, "development.sqlite3");
+    assert.deepEqual(checkEmpty(true, database, {}), []);
+    writeFileSync(database, "");
+    assert.deepEqual(checkEmpty(false, database, {}), []);
+    const [problem, ...rest] = checkEmpty(true, database, {});
+    assert.deepEqual(rest, []);
+    assert.match(problem ?? "", /^--empty makes a site with nothing in it as it makes the database, and the database exists/);
+    assert.match(problem ?? "", /then run npm start -- --empty again.$/);
+    assert.match(checkEmpty(true, join(folder, "none.sqlite3"), { DATABASE_URL: "sqlite3:elsewhere.sqlite3" })[0] ?? "", /DATABASE_URL puts the database elsewhere/);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });

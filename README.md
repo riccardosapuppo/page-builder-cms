@@ -187,6 +187,12 @@ both.
   page, `/winter-series` and `/notices` the other two.
 - The browser stays closed with `npm start -- --no-open`, with `NO_OPEN=1`,
   in CI, and when the output is not a terminal.
+- `npm start -- --empty` starts from a site with nothing in it, in place of
+  the example site: no page, and the header and footer published empty, to
+  be built in the editor. It works as the database is made, so on a first
+  start; on a database that exists it stops before anything and says how
+  to begin again (move `cms/storage/development*.sqlite3*` away), deleting
+  nothing. `npm run setup -- --empty` does the same and starts nothing.
 - `npm run setup` installs and prepares, and starts nothing.
   `npm start -- --smoke` starts, checks that both answer, stops, and says what
   changed outside the repository.
@@ -728,7 +734,7 @@ for want of its advisory database (CI runs it). Its counts:
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
-| the tools' own tests | 124 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI), the count of a later run of that suite alone, ending at 09:26 UTC on 13 October, after a test was added |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 447 files, 0 warnings |
 | the editor's unit tests, and the render contract's editor half | 938 passed in 118 files, the count of a later run of that suite alone, ending at 08:45 UTC on 13 October, after two tests were added; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
@@ -736,7 +742,7 @@ for want of its advisory database (CI runs it). Its counts:
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
 | the API description | valid, 0 warnings |
 | the Rails tests | 411 runs, 2535 assertions, 0 failures, 0 errors, 0 skips; 374 API answers held to `cms/openapi.yaml` |
-| RuboCop, Brakeman | 159 files, no offenses; 79 checks, 0 warnings |
+| RuboCop, Brakeman | 160 files, no offenses, the count of a later run of RuboCop alone, ending at 09:29 UTC on 13 October, after a file was added; 79 checks, 0 warnings |
 | the editor against a CMS of its own | 86 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (85 where Windows PowerShell is not) |
 | the editor in Chromium against a CMS of its own | 229 passed, among them the three that failed on this machine before (below) |
 | the editor on the browser's own storage | 78 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |

@@ -1,7 +1,7 @@
 // What npm start checks before it installs or starts anything, with one
 // sentence per problem, all of them at once: a reader who clones the
 // repository on a machine that lacks two things learns both in one run.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { builderRoot, cmsRoot, repoRoot, run, windows } from "../lib/commands.ts";
@@ -104,10 +104,25 @@ export function checkPackages(): string[] {
   return notes;
 }
 
-export function preflight(ports: Port[]): Findings {
+// The site's database in development (cms/config/database.yml), which the
+// seed fills only as db:prepare makes it.
+export const DEVELOPMENT_DATABASE = join(cmsRoot, "storage", "development.sqlite3");
+
+// --empty asks for a site with nothing in it, which only a new database can
+// be: on one that exists the seed does not run again, and its pages stay.
+// So the start stops there and says how to begin from nothing, deleting
+// nothing; and where DATABASE_URL puts the database it cannot tell.
+export function checkEmpty(empty: boolean, database = DEVELOPMENT_DATABASE, env: NodeJS.ProcessEnv = process.env): string[] {
+  if (!empty) return [];
+  if (env.DATABASE_URL) return ["--empty makes a site with nothing in it as it makes the database in cms/storage, and DATABASE_URL puts the database elsewhere: unset it to start from an empty site."];
+  if (!existsSync(database)) return [];
+  return ["--empty makes a site with nothing in it as it makes the database, and the database exists (cms/storage/development.sqlite3): its pages stay. To start from nothing, move the site's databases, cms/storage/development*.sqlite3*, somewhere else (keep them to go back to that site), then run npm start -- --empty again."];
+}
+
+export function preflight(ports: Port[], { empty = false }: { empty?: boolean } = {}): Findings {
   const ruby = checkRuby();
   const findings: Findings = {
-    problems: [...checkNode(), ...ruby.problems, ...checkPorts(ports)],
+    problems: [...checkNode(), ...ruby.problems, ...checkPorts(ports), ...checkEmpty(empty)],
     notes: checkPackages(),
   };
   if (ruby.ruby) findings.ruby = ruby.ruby;
