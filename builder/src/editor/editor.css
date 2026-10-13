@@ -622,6 +622,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    that ends one, with a break of its own: the page's empty character after
    each paragraph (site.css) would make a second. */
 .canvas .rte p::after { content: none; }
+/* A heading's line (./HeadingEditor.tsx): the heading's words, written
+   inside its own element, as wide as the heading, so a click anywhere on
+   it lands in the line. */
+.canvas .rte-line { display: block; min-width: 1ch; }
 /* The link's field, under the block, at the editor's own size. */
 .ov-link {
   position: absolute; left: -8px; top: calc(100% + 10px); z-index: 9; width: 320px; padding: 12px;

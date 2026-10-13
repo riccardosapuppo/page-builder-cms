@@ -535,7 +535,10 @@ test.describe("drawn smaller, in a 1024 by 768 window", () => {
         expect(near(name.y + name.height, outline.y - 1.5 * scale), device).toBe(true);
       }
 
-      await page.locator(at('[data-block-id="h1"]')).click();
+      // Selected by the focus: from the second device on the heading is
+      // selected already, and a click on a selected heading opens it for
+      // writing.
+      await page.locator(at('[data-block-id="h1"]')).focus();
       await page.mouse.move(1014, 758);
       await expect(page.locator(at('[data-block-id="h1"] > .ov-sel'))).toHaveCount(1);
 

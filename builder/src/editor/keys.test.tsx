@@ -436,3 +436,46 @@ test("with a modal dialog open, the editor behind it takes no key even with the 
   press("Escape");
   expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
 });
+
+test("a heading is written where it stands, as a text: Enter opens its line, and a character typed on a selected heading or text starts the writing with it; an arrow or a key of the keymap stays its own", async () => {
+  const kit = shell("h1");
+  act(() => root("h1").focus());
+  press("Enter");
+  expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end" });
+  const line = await screen.findByRole("textbox", { name: /^Heading/ });
+  expect(line.textContent).toBe("Winter series");
+  act(() => {
+    fireEvent.keyDown(line, { key: "Escape" });
+  });
+  expect(kit.ui.getState().editingText).toBeNull();
+  await waitFor(() => expect(focused()).toBe("h1"));
+
+  // A character on the heading itself: its line opens with the character in.
+  press("W", { shiftKey: true });
+  const typed = await screen.findByRole("textbox", { name: /^Heading/ });
+  expect(typed.textContent).toBe("Winter seriesW");
+  act(() => {
+    fireEvent.keyDown(typed, { key: "Escape" });
+  });
+  await waitFor(() => expect(focused()).toBe("h1"));
+
+  // On a text, the editor is asked for, the character waiting for it.
+  press("ArrowDown");
+  await waitFor(() => expect(focused()).toBe("t1"));
+  press("x");
+  expect(kit.ui.getState().editingText?.id).toBe("t1");
+  const text = await screen.findByRole("textbox", { name: /^Text/ });
+  await waitFor(() => expect(text.textContent).toBe("Meet at the slipway.x"));
+  act(() => {
+    fireEvent.keyDown(text, { key: "Escape" });
+  });
+  await waitFor(() => expect(focused()).toBe("t1"));
+
+  // An arrow moves the selection, and ? opens the shortcuts: no writing.
+  press("ArrowUp");
+  expect(kit.store.getState().selection).toBe("h1");
+  await waitFor(() => expect(focused()).toBe("h1"));
+  press("?", { shiftKey: true });
+  expect(kit.ui.getState().editingText).toBeNull();
+  expect(kit.ui.getState().shortcutsOpen).toBe(true);
+});

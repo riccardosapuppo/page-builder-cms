@@ -40,8 +40,10 @@ const focusedId = (page: Page) => page.evaluate(() => (document.activeElement as
 // Each action, its chords pressed (the keys Playwright names), and what
 // they must have done. Runs in this order, on one page.
 const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise<void>> = {
+  // The heading is chosen by the focus, the keyboard's way, here and below:
+  // a click on a heading already selected opens it for writing.
   async selectNext(page, pressed) {
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "ArrowDown");
     expect(await selected(page)).toBe("b");
     await expect.poll(() => focusedId(page)).toBe("b");
@@ -66,7 +68,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   async blockTools(page, pressed) {
     // From the block, Tab goes to its clamp, one stop: the arrows go along
     // it and Esc comes back; Tab from the clamp goes on to the sidebar.
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "Tab");
     const clamp = page.getByRole("toolbar", { name: "Heading tools" });
     await expect(clamp.getByRole("button", { name: "Heading: block menu" })).toBeFocused();
@@ -80,7 +82,9 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect.poll(() => page.evaluate(() => document.activeElement?.closest(".sidebar") !== null)).toBe(true);
   },
   async pickUp(page, pressed) {
-    await block(page, "a").click();
+    // The focus on the heading from the keyboard: the block was selected
+    // already, and a click on a selected heading opens it for writing.
+    await block(page, "a").focus();
     await press(page, pressed, "Space");
     await expect(caption(page).locator("strong")).toHaveText("Heading is where it was.");
   },
@@ -168,24 +172,31 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect(text(page)).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(block(page, "t")).toBeFocused();
+    // A heading's words are written where they stand too: its line, the
+    // caret at the end.
+    await block(page, "a").focus();
+    await page.keyboard.press("Enter");
+    await expect(block(page, "a").getByRole("textbox", { name: /^Heading/ })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(block(page, "a")).toBeFocused();
     // Another widget's words are in its panel: Enter goes to its first field,
     // on the Block tab though the Page tab was chosen, its group opened
     // though it was closed.
-    await block(page, "a").click();
+    await block(page, "b").click();
     const sidebar = page.getByRole("complementary", { name: "Settings" });
-    await sidebar.getByRole("button", { name: "Text", exact: true }).click();
-    await expect(sidebar.getByRole("button", { name: "Text", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await sidebar.getByRole("button", { name: "Quote", exact: true }).click();
+    await expect(sidebar.getByRole("button", { name: "Quote", exact: true })).toHaveAttribute("aria-expanded", "false");
     await sidebar.getByRole("tab", { name: "Page" }).click();
-    await block(page, "a").click();
+    await block(page, "b").click();
     await expect(sidebar.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
     await expect(sidebar.getByRole("tab", { name: "Block" })).toHaveAttribute("aria-selected", "true");
-    await expect(sidebar.getByRole("button", { name: "Text", exact: true })).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("textbox", { name: "Text" })).toBeFocused();
+    await expect(sidebar.getByRole("button", { name: "Quote", exact: true })).toHaveAttribute("aria-expanded", "true");
+    await expect(sidebar.getByRole("textbox", { name: "Quote" })).toBeFocused();
   },
   async blockMenu(page, pressed) {
     // The browser's context menu key, on the block with the focus.
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "Shift+F10");
     // The block menu: the moves first, the first that can be made focused.
     const menu = page.getByRole("menu", { name: "Heading: block menu" });
@@ -263,7 +274,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   },
   async saveVersion(page, pressed) {
     // The history opens on "Save version", its name field taking the keys.
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "Control+s");
     const history = page.getByRole("complementary", { name: "History" });
     const name = history.getByRole("textbox", { name: /^Name/ });
@@ -288,7 +299,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await tab.close();
   },
   async publish(page, pressed) {
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "Control+Shift+Enter");
     await expect(page.locator(".tb-status")).toHaveText("Published");
     await expect(page.locator(".notice")).toContainText(`Published: visitors see this page at ${new URL(cms()).host}/${opened.slug}.`);
@@ -299,7 +310,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
   async openInsert(page, pressed) {
     // From the selected block: Insert opens on its search; Esc closes it,
     // the focus back on the block; the chord again, from the page, too.
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "Alt+Shift+N");
     const insert = page.getByRole("complementary", { name: "Insert" });
     await expect(insert.getByRole("searchbox", { name: "Search blocks and sections" })).toBeFocused();
@@ -339,7 +350,7 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await page.keyboard.press("Alt+Shift+1");
   },
   async showShortcuts(page, pressed) {
-    await block(page, "a").click();
+    await block(page, "a").focus();
     await press(page, pressed, "?");
     const dialog = page.getByRole("dialog", { name: "Keyboard shortcuts" });
     await expect(dialog).toBeVisible();

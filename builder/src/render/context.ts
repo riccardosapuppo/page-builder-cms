@@ -38,10 +38,10 @@ export interface Decoration {
   // Drawn inside the root after the block's own content: the selection's
   // clamp, an empty container's "+".
   after?: ReactNode;
-  // The block's content while the person edits it on the canvas, in place
-  // of what the page draws: a text block's editor. Given what the page
-  // draws, to show until the editor is there. Only a widget whose content
-  // is rich text calls it; every other block's content is the page's.
+  // The block's content while the person writes in it on the canvas, in
+  // place of what the page draws: a text block's editor, a heading's line.
+  // Given what the page draws, to show until the editor is there. Only a
+  // text and a heading call it; every other block's content is the page's.
   editing?: (drawn: ReactNode) => ReactNode;
 }
 

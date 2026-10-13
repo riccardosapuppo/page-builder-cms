@@ -92,6 +92,27 @@ export function waitForText(env: Pick<EditorEnv, "ui">, event: KeyboardEvent): b
   return true;
 }
 
+// A character typed on a selected text or heading, the focus on the block
+// itself, starts the writing there, the caret at the end and the character
+// first in: rather than the key doing nothing, and a Space after it picking
+// the block up, which looks as if the page had locked. A Space alone still
+// picks the block up, and the keymap's own keys (?, + and the rest) stay
+// the keymap's. True when the key was taken here.
+export function writeInto(env: Pick<EditorEnv, "store" | "ui">, event: KeyboardEvent): boolean {
+  if (event.defaultPrevented || event.isComposing || env.store.getState().drag !== null) return false;
+  const id = env.store.getState().selection;
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (id === null || target === null || target.dataset.blockId !== id) return false;
+  if (target.dataset.blockType !== "text" && target.dataset.blockType !== "heading") return false;
+  if (event.key === " " || [...event.key].length !== 1 || !writes(event)) return false;
+  const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
+  if (entriesFor(press).length > 0) return false;
+  startEditing(env, id, "end");
+  env.ui.setState({ editingText: { id, at: "end", keys: [{ key: event.key, shift: event.shiftKey }] } });
+  event.preventDefault();
+  return true;
+}
+
 type Handler = (region: Region) => boolean;
 
 // The page session as it is when the key is pressed: it changes as pages
@@ -139,16 +160,16 @@ function handlers(env: EditorEnv, session: () => Session | null): Partial<Record
     },
     duplicate: (region) => command((id) => (doc) => makeDuplicate(doc, id, newId), region),
     delete: (region) => command((id) => (doc) => makeDelete(doc, id), region),
-    // A text block's text is written on the canvas: its editor opens, the
-    // caret at the end. Another widget's words are in its panel: the
-    // sidebar's Block tab, its own group opened, and that group's first
-    // field. A divider, a spacer, a section or a column has no words to
-    // edit.
+    // A text's and a heading's words are written on the canvas: the
+    // editor opens, the caret at the end. Another widget's words are in its
+    // panel: the sidebar's Block tab, its own group opened, and that group's
+    // first field. A divider, a spacer, a section or a column has no words
+    // to edit.
     editText: () => {
       const id = selected();
       const block = id === null ? undefined : locate(store.getState().document, id)?.block;
       if (!block || id === null) return false;
-      if (block.type === "text") {
+      if (block.type === "text" || block.type === "heading") {
         startEditing(env, id, "end");
         return true;
       }
@@ -259,7 +280,8 @@ export function useEditorKeys(): void {
       if (isTyping(event.target)) handle(event, true);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!isTyping(event.target)) handle(event, false);
+      if (isTyping(event.target) || writeInto(env, event)) return;
+      handle(event, false);
     };
     const onCopy = (event: ClipboardEvent) => {
       if (!inScope("selection", document.activeElement) || env.store.getState().selection === null) return;

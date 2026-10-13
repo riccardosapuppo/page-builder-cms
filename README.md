@@ -740,8 +740,8 @@ for want of its advisory database (CI runs it). Its counts:
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI), the count of a later run of that suite alone, ending at 09:26 UTC on 13 October, after a test was added |
-| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 452 files, 0 warnings, the count of a later run alone, ending at 09:29 UTC on 13 October, after five files were added |
-| the editor's unit tests, and the render contract's editor half | 942 passed in 119 files, the count of a later run of that suite alone, ending at 09:28 UTC on 13 October, after six tests were added; 28 passed |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 456 files, 0 warnings, the count of a later run alone, ending at 12:12 UTC on 13 October, after nine files were added |
+| the editor's unit tests, and the render contract's editor half | 950 passed in 120 files, the count of a later run of that suite alone, ending at 12:12 UTC on 13 October, after fourteen tests were added; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 283 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |

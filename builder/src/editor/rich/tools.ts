@@ -86,9 +86,10 @@ export function TextEditorHost(props: { blockId: string; label: string }) {
   return createElement(module.default, props);
 }
 
-// Edits a text block on the canvas: it is selected, and the editor opens
-// in it with the caret where it is asked. A block already being edited
-// keeps its editor and its caret.
+// Writes in a text block or a heading on the canvas: it is selected, and
+// its editor (a heading's line, ../HeadingEditor.tsx) opens in it with the
+// caret where it is asked. A block already being edited keeps its editor
+// and its caret.
 export function startEditing(env: Pick<EditorEnv, "store" | "ui">, id: string, at: CaretAt): void {
   const { store, ui } = env;
   if (store.getState().drag !== null) return;

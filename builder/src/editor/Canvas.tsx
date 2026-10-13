@@ -80,6 +80,8 @@ import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
 import { LinkField } from "./rich/FormatBar.tsx";
 import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type TextTools } from "./rich/tools.ts";
+import { HeadingEditor } from "./HeadingEditor.tsx";
+import { headingLevel } from "../widgets/heading/render.tsx";
 import { placeSeamTip } from "./seam-tip.ts";
 import { PART_NAMES, partOf, useOptionalSession } from "./session.tsx";
 import { pushes, type PartsShown, type Preview } from "./ui-store.ts";
@@ -203,11 +205,13 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     if (isSource) sourceRef?.(element);
   }, [dropRef, isSource, sourceRef]);
   // A text block: its editor while it is edited, and the editor's chunk
-  // fetched as soon as it is selected.
+  // fetched as soon as it is selected. A heading: its line, written where
+  // it stands, while it is edited.
   const isText = block.type === "text";
-  const editing = useStore(ui, (u) => isText && id !== null && u.editingText?.id === id);
+  const isHeading = block.type === "heading";
+  const editing = useStore(ui, (u) => (isText || isHeading) && id !== null && u.editingText?.id === id);
   const tools = useStore(ui, (u) => (id !== null && u.textTools?.id === id ? u.textTools : null));
-  const textLabel = useStore(store, (s) => (isText && id !== null ? blockWithPlace(s.document, id) : ""));
+  const textLabel = useStore(store, (s) => ((isText || isHeading) && id !== null ? blockWithPlace(s.document, id) : ""));
   useEffect(() => {
     if (isText && relation === "selected") preloadTextEditor();
   }, [isText, relation]);
@@ -235,7 +239,9 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     // While a drag lasts nothing is selected (relation null), so the
     // editor gives way to the page's drawing of the text.
     ...(editing && relation === "selected"
-      ? { editing: (drawn: ReactNode) => <Suspense fallback={drawn}><TextEditorHost blockId={id} label={textLabel} /></Suspense> }
+      ? isHeading
+        ? { editing: () => <HeadingEditor blockId={id} level={headingLevel(block.props && typeof block.props === "object" ? (block.props as Record<string, unknown>) : {})} label={textLabel} /> }
+        : { editing: (drawn: ReactNode) => <Suspense fallback={drawn}><TextEditorHost blockId={id} label={textLabel} /></Suspense> }
       : {}),
   };
 }
@@ -1009,7 +1015,9 @@ export function Canvas() {
               pick(event.target);
               const root = element?.closest<HTMLElement>("[data-block-id]");
               const id = root?.dataset.blockId;
-              if (id && root.dataset.blockType === "text" && selectedAtPress.current === id) startEditing(env, id, { x: event.clientX, y: event.clientY });
+              // A text or a heading clicked once more opens for writing, the
+              // caret where the click was.
+              if (id && (root.dataset.blockType === "text" || root.dataset.blockType === "heading") && selectedAtPress.current === id) startEditing(env, id, { x: event.clientX, y: event.clientY });
             }}
             onContextMenu={(event) => {
               // In the text being edited, the browser's own menu (spelling,
