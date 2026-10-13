@@ -14,14 +14,17 @@
 //   and no 404.html in the build;
 // - the build's hashed files are kept a year, and a missing one is a 404
 //   that is not.
-// The browser demo's shell, built with GitHub Pages' path and served as
-// Pages serves it (../harness/pages-server.ts), beside another project's
-// site on the same origin, as projects share <user>.github.io. Pages sets
-// its own headers, so no-store cannot be set there; what stands is checked:
-// - the page at /page-builder-cms/ (and with ?preview=1) is the demo's,
-//   loading its hashed script, icon and manifest from that path;
-// - its line unregisters a service worker left in the demo's own path, and
-//   leaves the other project's, in Chromium;
+// The browser demo's shell, built twice and served as a static host serves
+// it (../harness/pages-server.ts): with GitHub Pages' path, beside another
+// project's site on the same origin, as projects share <user>.github.io;
+// and at the root of a host of its own (DEMO_BASE=/), where it is the only
+// site. Such a host sets its own headers, so no-store cannot be set there;
+// what stands is checked, for each base:
+// - the page at its base (and with ?preview=1) is the demo's, loading its
+//   hashed script, icon and manifest from that path, and asking search
+//   engines to leave it out of their indexes;
+// - its line unregisters a service worker left in the demo's own path,
+//   and, on Pages, leaves the other project's, in Chromium;
 // - a missing file, or an address of the site the demo draws but does not
 //   serve, is a 404, never the demo's page, and the build has no 404.html;
 // - the demo's files hold no CMS adapter and no CMS address, and in
@@ -46,7 +49,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import { MARKS } from "../../build/bundle-check.ts";
-import { DEMO_BASE } from "../../build/demo.ts";
+import { DEMO_PAGES_BASE } from "../../build/demo.ts";
 import { builderRoot } from "../../build/paths.ts";
 import { ASSET_CACHE, PAGE_CACHE } from "../../build/serving.ts";
 import { builderPort, cmsPort, demoPort } from "../harness/ports.ts";
@@ -100,39 +103,45 @@ async function shellChecks(base: string, label: string, built: boolean): Promise
   }
 }
 
-// The demo's build, in `root`/page-builder-cms, served as Pages serves it
-// beside `root`/other-project; the server, once started, is handed to
-// `started`, for the caller to stop whatever happens.
+// The demo's build for `base`, in a folder of `root`, served as a static
+// host serves it: with GitHub Pages' path, beside `root`/other-project, a
+// site of another project on the same origin; at "/", alone. The server,
+// once started, is handed to `started`, for the caller to stop whatever
+// happens.
 const SW_SCRIPT = "self.addEventListener(\"fetch\", () => {});\n";
-async function demoChecks(root: string, vite: string, started: (server: PagesServer) => void): Promise<void> {
-  const built = join(root, DEMO_BASE.slice(1, -1));
+async function demoChecks(root: string, vite: string, base: string, started: (server: PagesServer) => void): Promise<void> {
+  const onPages = base !== "/";
+  const built = join(root, onPages ? base.slice(1, -1) : "own-host");
   const other = join(root, "other-project");
-  const made = spawnSync(process.execPath, [vite, "build", "--mode", "demo", "--outDir", built, "--emptyOutDir"], { cwd: builderRoot, encoding: "utf8" });
-  check(made.status === 0, "vite build --mode demo wrote the demo with GitHub Pages' path", `exit ${made.status}: ${(made.stdout + made.stderr).trim().split(/\r?\n/).slice(-3).join(" | ")}`);
+  const made = spawnSync(process.execPath, [vite, "build", "--mode", "demo", "--outDir", built, "--emptyOutDir"], { cwd: builderRoot, encoding: "utf8", env: { ...process.env, DEMO_BASE: base } });
+  check(made.status === 0, `vite build --mode demo wrote the demo with the base ${base}, ${onPages ? "GitHub Pages' path" : "a host of its own"}`, `exit ${made.status}: ${(made.stdout + made.stderr).trim().split(/\r?\n/).slice(-3).join(" | ")}`);
   if (made.status !== 0) return;
-  check(!readdirSync(built).includes("404.html"), "demo: the build has no 404.html fallback page", readdirSync(built).join(", "));
+  const label = onPages ? "demo on Pages" : "demo on its own host";
+  check(!readdirSync(built).includes("404.html"), `${label}: the build has no 404.html fallback page`, readdirSync(built).join(", "));
   const scripts = readdirSync(join(built, "assets")).filter((name) => name.endsWith(".js"));
   const holding = scripts.filter((name) => { const text = readFileSync(join(built, "assets", name), "utf8"); return text.includes(MARKS.cmsAddress) || text.includes(MARKS.rails); });
-  check(scripts.length > 0 && holding.length === 0, `demo: its ${scripts.length} script files hold no CMS adapter and no CMS address`, holding.join(", ") || "no script file");
-  // A service worker another program left in the demo's own path, and
-  // another project's site with its own.
+  check(scripts.length > 0 && holding.length === 0, `${label}: its ${scripts.length} script files hold no CMS adapter and no CMS address`, holding.join(", ") || "no script file");
+  // A service worker another program left in the demo's own path, and, on
+  // Pages, another project's site with its own.
   writeFileSync(join(built, "left-behind-sw.js"), SW_SCRIPT);
-  mkdirSync(other, { recursive: true });
-  writeFileSync(join(other, "index.html"), "<!doctype html><html lang=\"en\"><title>Another project</title><p>Another project's site.</p></html>\n");
-  writeFileSync(join(other, "sw.js"), SW_SCRIPT);
+  if (onPages) {
+    mkdirSync(other, { recursive: true });
+    writeFileSync(join(other, "index.html"), "<!doctype html><html lang=\"en\"><title>Another project</title><p>Another project's site.</p></html>\n");
+    writeFileSync(join(other, "sw.js"), SW_SCRIPT);
+  }
 
-  const server = await startPagesServer(demoPort(), { [DEMO_BASE]: built, "/other-project/": other });
+  const server = await startPagesServer(demoPort(), onPages ? { [base]: built, "/other-project/": other } : { [base]: built });
   started(server);
-  const base = `${server.url}${DEMO_BASE}`;
-  const label = "demo on Pages";
-  const page = await get(server.url, DEMO_BASE);
+  const url = `${server.url}${base}`;
+  const page = await get(server.url, base);
   const html = await page.text();
-  check(page.status === 200 && html.includes('<div id="editor_root">'), `${label}: ${DEMO_BASE} is the demo's page`, `status ${page.status}`);
-  console.log(`info ${label}: the page's Cache-Control is Pages' own, "${page.headers.get("cache-control")}", which a site cannot set`);
+  check(page.status === 200 && html.includes('<div id="editor_root">'), `${label}: ${base} is the demo's page`, `status ${page.status}`);
+  console.log(`info ${label}: the page's Cache-Control is the host's own, "${page.headers.get("cache-control")}", which a site cannot set`);
+  check(html.includes('<meta name="robots" content="noindex, nofollow">'), `${label}: the page asks search engines to leave it out of their indexes`);
   check(/navigator\.serviceWorker\?\.getRegistrations\(\)[\s\S]*unregister\(\)/.test(html) && html.includes('new URL("./", location.href)'), `${label}: the page unregisters service workers in its own path`);
   const script = /<script type="module" crossorigin src="([^"]+)"/.exec(html)?.[1];
-  check(script !== undefined && script.startsWith(`${DEMO_BASE}assets/`) && !html.includes("/src/"), `${label}: the page loads its hashed script from ${DEMO_BASE}assets/, not the source`, script ?? "no module script");
-  for (const [rel, path] of [["icon", `${DEMO_BASE}favicon.svg`], ["manifest", `${DEMO_BASE}manifest.webmanifest`]] as const) {
+  check(script !== undefined && script.startsWith(`${base}assets/`) && !html.includes("/src/"), `${label}: the page loads its hashed script from ${base}assets/, not the source`, script ?? "no module script");
+  for (const [rel, path] of [["icon", `${base}favicon.svg`], ["manifest", `${base}manifest.webmanifest`]] as const) {
     const linked = html.includes(`rel="${rel}" href="${path}"`);
     const answer = await get(server.url, path);
     await answer.arrayBuffer();
@@ -143,41 +152,48 @@ async function demoChecks(root: string, vite: string, started: (server: PagesSer
     await asset.arrayBuffer();
     check(asset.status === 200, `${label}: ${script} is there`, `status ${asset.status}`);
   }
-  const bare = await get(server.url, DEMO_BASE.slice(0, -1));
-  await bare.arrayBuffer();
-  check(bare.status === 301 && bare.headers.get("location") === DEMO_BASE, `${label}: ${DEMO_BASE.slice(0, -1)} moves to ${DEMO_BASE}`, `${bare.status} ${bare.headers.get("location")}`);
-  const viewed = await get(server.url, `${DEMO_BASE}?preview=1`);
-  check(viewed.status === 200 && (await viewed.text()).includes('<div id="editor_root">'), `${label}: ${DEMO_BASE}?preview=1, a page the demo draws, is the demo's page`, `status ${viewed.status}`);
+  if (onPages) {
+    const bare = await get(server.url, base.slice(0, -1));
+    await bare.arrayBuffer();
+    check(bare.status === 301 && bare.headers.get("location") === base, `${label}: ${base.slice(0, -1)} moves to ${base}`, `${bare.status} ${bare.headers.get("location")}`);
+  }
+  const viewed = await get(server.url, `${base}?preview=1`);
+  check(viewed.status === 200 && (await viewed.text()).includes('<div id="editor_root">'), `${label}: ${base}?preview=1, a page the demo draws, is the demo's page`, `status ${viewed.status}`);
   for (const path of ["no-such-file.js", "no-such-page", "assets/no-such-file.js", "404.html", "winter-series"]) {
-    const missing = await get(server.url, DEMO_BASE + path);
+    const missing = await get(server.url, base + path);
     const body = await missing.text();
-    check(missing.status === 404 && !body.includes('<div id="editor_root">'), `${label}: ${DEMO_BASE}${path} is a 404, not the demo's page`, `status ${missing.status}`);
+    check(missing.status === 404 && !body.includes('<div id="editor_root">'), `${label}: ${base}${path} is a 404, not the demo's page`, `status ${missing.status}`);
   }
 
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext();
     const tab = await context.newPage();
-    await tab.goto(`${server.url}/other-project/`);
-    const scopes = await tab.evaluate(async (paths) => {
-      await navigator.serviceWorker.register(`/other-project/sw.js`, { scope: "/other-project/" });
+    // The service workers are registered from a page of the same origin:
+    // the other project's on Pages, a missing page of the demo's host
+    // alone, whose 404 is still of its origin.
+    await tab.goto(onPages ? `${server.url}/other-project/` : `${url}no-such-page`);
+    const registered = await tab.evaluate(async (paths) => {
+      if (paths.onPages) await navigator.serviceWorker.register(`/other-project/sw.js`, { scope: "/other-project/" });
       await navigator.serviceWorker.register(`${paths.base}left-behind-sw.js`, { scope: paths.base });
       return (await navigator.serviceWorker.getRegistrations()).map((r) => new URL(r.scope).pathname).sort();
-    }, { base: DEMO_BASE });
-    check(scopes.join(" ") === [DEMO_BASE, "/other-project/"].sort().join(" "), `${label}: two service workers registered for the test, the demo's path's and another project's`, scopes.join(" "));
+    }, { base, onPages });
+    const expected = onPages ? [base, "/other-project/"].sort() : [base];
+    check(registered.join(" ") === expected.join(" "), `${label}: ${expected.length === 2 ? "two service workers registered for the test, the demo's path's and another project's" : "a service worker registered for the test in the demo's path"}`, registered.join(" "));
     const asked: string[] = [];
     context.on("request", (request) => asked.push(request.url()));
-    await tab.goto(base);
+    await tab.goto(url);
     await tab.getByRole("button", { name: /^Switch page\. Open:/ }).waitFor({ timeout: 30_000 });
     let left: string[] = [];
     for (let tries = 0; tries < 20; tries += 1) {
       left = await tab.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => new URL(r.scope).pathname).sort());
-      if (left.length < 2) break;
+      if (left.length < expected.length) break;
       await new Promise((done) => setTimeout(done, 250));
     }
-    check(left.join(" ") === "/other-project/", `${label}: in Chromium, the page unregistered the service worker in its own path and kept the other project's`, left.join(" ") || "none left");
-    const off = asked.filter((url) => !url.startsWith(base) && !url.startsWith("blob:") && !url.startsWith("data:"));
-    check(asked.length > 0 && off.length === 0, `${label}: in Chromium, the demo opened on its example site asking nothing outside ${DEMO_BASE} (${asked.length} requests)`, off.slice(0, 5).join(", "));
+    const kept = onPages ? "/other-project/" : "";
+    check(left.join(" ") === kept, `${label}: in Chromium, the page unregistered the service worker in its own path${onPages ? " and kept the other project's" : ""}`, left.join(" ") || "none left");
+    const off = asked.filter((one) => !one.startsWith(url) && !one.startsWith("blob:") && !one.startsWith("data:"));
+    check(asked.length > 0 && off.length === 0, `${label}: in Chromium, the demo opened on its example site asking nothing outside ${base} (${asked.length} requests)`, off.slice(0, 5).join(", "));
     await context.close();
   } finally {
     await browser.close();
@@ -279,16 +295,18 @@ try {
   }
 
   demoRoot = mkdtempSync(join(tmpdir(), "pbc-serving-demo-"));
-  try {
-    await demoChecks(demoRoot, vite, (server) => {
-      demo.server = server;
-    });
-  } catch (error) {
-    noteStart("the Pages-like server", error);
-    throw error;
+  for (const base of [DEMO_PAGES_BASE, "/"]) {
+    try {
+      await demoChecks(join(demoRoot, base === "/" ? "root" : "pages"), vite, base, (server) => {
+        demo.server = server;
+      });
+    } catch (error) {
+      noteStart("the Pages-like server", error);
+      throw error;
+    }
+    if (demo.server) for (const line of await demo.server.stop()) console.log(line);
+    demo.server = null;
   }
-  if (demo.server) for (const line of await demo.server.stop()) console.log(line);
-  demo.server = null;
 
   await publishedChecks(cms.url);
 } catch (error) {

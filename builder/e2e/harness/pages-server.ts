@@ -79,7 +79,9 @@ function send(req: IncomingMessage, res: ServerResponse, status: number, file: s
 export async function startPagesServer(port: number, sites: Readonly<Record<string, string>>): Promise<PagesServer> {
   const taken = listeners(port);
   if (taken.length > 0) throw new CouldNotRun(`port ${port}, for the Pages-like server, is already taken by ${taken.map((l) => `${l.address} (process ${l.pid})`).join(", ")}: nothing was started`);
-  const mounts = Object.entries(sites).map(([base, folder]) => ({ base, folder: normalize(folder) }));
+  // The longest path first, as a server does: a site at "/" leaves
+  // "/other-project/" to its own.
+  const mounts = Object.entries(sites).map(([base, folder]) => ({ base, folder: normalize(folder) })).sort((a, b) => b.base.length - a.base.length);
 
   const server = createServer((req, res) => {
     const path = (req.url ?? "/").split(/[?#]/, 1)[0] ?? "/";

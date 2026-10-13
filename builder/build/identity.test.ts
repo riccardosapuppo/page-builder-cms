@@ -52,6 +52,14 @@ test("the page is in English and asks browsers not to offer to translate it", ()
   expect(index).toContain('<meta name="google" content="notranslate">');
 });
 
+// The editor is a tool and the demo an invented club: neither belongs in a
+// search engine's index, and GitHub Pages lets a site set no header, so
+// the page says it itself.
+test("the page asks search engines to leave it out of their indexes", () => {
+  const index = readFileSync(join(builderRoot, "index.html"), "utf8");
+  expect(index).toContain('<meta name="robots" content="noindex, nofollow">');
+});
+
 test("no default icon of the editor's tools is left in builder/", () => {
   const files = filesUnder(builderRoot);
   // The walk saw the folders that matter, so finding nothing means something.

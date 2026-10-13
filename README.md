@@ -741,7 +741,7 @@ for want of its advisory database (CI runs it). Its counts:
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI), the count of a later run of that suite alone, ending at 09:26 UTC on 13 October, after a test was added |
 | the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 456 files, 0 warnings, the count of a later run alone, ending at 12:12 UTC on 13 October, after nine files were added |
-| the editor's unit tests, and the render contract's editor half | 950 passed in 120 files, the count of a later run of that suite alone, ending at 12:12 UTC on 13 October, after fourteen tests were added; 28 passed |
+| the editor's unit tests, and the render contract's editor half | 952 passed in 121 files, the count of a later run of that suite alone, ending at 12:23 UTC on 13 October, after sixteen tests were added; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 283 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
@@ -753,7 +753,7 @@ for want of its advisory database (CI runs it). Its counts:
 | the editor on the browser's own storage | 78 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 9 passed |
 | accessibility: the keyboard path, focus, axe | 48 passed |
-| how the shell, the demo and the pages are served | 60 checks |
+| how the shell, the demo and the pages are served | 80 checks, the count of a later run alone, ending at 12:18 UTC on 13 October, once it served the demo at both of its bases |
 | the CMS in production, over HTTP and in a browser | 63 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 

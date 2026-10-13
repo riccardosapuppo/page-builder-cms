@@ -158,9 +158,9 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run shots:editor -- <folder>` | Photographs the editor, headless, in every state of the approved layout's shots but Schedule, whose dialog stage 4 built and this does not photograph yet, named and staged as they are (`../design/layout/shots`: editor, add, structure, style, drag, tablet, publish, history, media, site-style, empty, shortcuts; `shots-extra`: text-editing, small-block, insert-at-seam, insert-drawer, page-tab, block-menu, more, new-section, phone, section, pages, conflict, offline, narrow-gutter, seam-hover, outline-col1, insert-col1), and in a right click's menu, a text's link field, a drag from Insert, a dropped Gallery key with its library open (`drop-asks`), the hero's own space on phones, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900 (the layout's `editor-1280`, `insert-drawer-1280` and `outline-col1` are the 1280 ones), on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. On 4 October 2026 it printed `RESULT: 74 shots`, and, once `drop-asks` was added, `RESULT: 76 shots`. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
-| `npm run build:demo` | The browser demo for GitHub Pages in `dist-demo/`, then the bundle check (below). |
-| `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/` (`E2E_DEMO_PORT` moves it), until Ctrl+C. |
-| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below). Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed. |
+| `npm run build:demo` | The browser demo in `dist-demo/`, then the bundle check (below): for GitHub Pages, under `/page-builder-cms/`, or with `DEMO_BASE=/` for a host of its own, at the root. |
+| `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/`, or at `http://127.0.0.1:4903/` with `DEMO_BASE=/` (`E2E_DEMO_PORT` moves the port), until Ctrl+C. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -183,15 +183,22 @@ the first, the full system, is the CMS and this editor together.
 **Building and serving it.** `npm run build:demo` runs `vite build --mode
 demo`: the storage is the browser's (`VITE_STORAGE=browser`; asked for the
 CMS's, the build stops), the base is `/page-builder-cms/`, the path GitHub
-Pages gives this repository's project site, and the output is
-`dist-demo/`, so `dist/` is never replaced by it. The page loads
+Pages gives this repository's project site, or the one `DEMO_BASE` names
+(`build/demo.ts`): `/` for a host of its own, which serves the demo at
+its root; any other path that starts and ends with a slash; anything else
+stops the build, saying why. (In Git Bash, `DEMO_BASE=/` reaches Node as
+Git's own folder: set it in PowerShell or cmd, or with
+`MSYS2_ENV_CONV_EXCL=DEMO_BASE`.) The output is `dist-demo/`, so `dist/`
+is never replaced by it. Every page of the editor, the demo's included,
+asks search engines to leave it out of their indexes (`noindex,
+nofollow` in `index.html`), since Pages lets a site set no header. The page loads
 `src/demo/main.tsx` in place of `src/main.tsx` (`build/storage-entry.ts`),
 so the demo's bundle holds no CMS adapter and no CMS address, and the
 editor's holds no browser storage and no demo: `build/bundle-check.ts`
 fails either build otherwise, each by marks only that code carries.
 `npm run serve:demo` then serves the build as Pages serves it
-(`e2e/harness/pages-server.ts`): under its path, a missing file a 404,
-and Pages' own headers. `VITE_STORAGE=browser npm run dev` serves the
+(`e2e/harness/pages-server.ts`): under its base, a missing file a 404,
+and the host's own headers. `VITE_STORAGE=browser npm run dev` serves the
 same demo from the source, at `/`.
 
 **What it does.**

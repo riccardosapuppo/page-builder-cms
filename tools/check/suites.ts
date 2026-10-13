@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 950);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 952);
     },
   },
   {
@@ -450,7 +450,7 @@ export const SUITES: Suite[] = [
   },
   {
     name: "serving",
-    what: "how the editor's shell, the demo's on GitHub Pages and the published pages are served (npm run check:serving)",
+    what: "how the editor's shell, the demo's on GitHub Pages and on a host of its own, and the published pages are served (npm run check:serving)",
     async run(ctx) {
       // builder/'s e2e/serving/check-serving.ts, written with the editor's
       // publishing (the root is looked at too); it ends with "RESULT: <n>
@@ -461,7 +461,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("check:serving"), { cwd: folder });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 60);
+      return readChecks(step.output, step.code, 80);
     },
   },
   {
