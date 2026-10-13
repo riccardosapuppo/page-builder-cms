@@ -22,6 +22,22 @@ test("text and link change the button", () => {
   expect(kit.lastCommand()?.label).toBe("Changed Button link in Widgets");
 });
 
+test("a link that is the button's own once trimmed changes nothing and holds nothing: the page's other commands go on", () => {
+  const kit = editorKit({ document: widgetPage(), selection: "button" });
+  kit.render(<BlockPanel id="button" />);
+  const link = screen.getByLabelText("Link");
+  fireEvent.change(link, { target: { value: " # " } });
+  fireEvent.blur(link);
+  expect(kit.block("button")?.props).toMatchObject({ href: "#" });
+  expect(link.getAttribute("aria-invalid")).toBeNull();
+  expect(kit.ui.getState().pending.waiting).toBe(0);
+  let given = false;
+  act(() => {
+    given = kit.ui.getState().pending.deliver();
+  });
+  expect(given).toBe(true);
+});
+
 test("a button needs its text: an empty one is refused on the field", () => {
   const kit = editorKit({ document: widgetPage(), selection: "button" });
   kit.render(<BlockPanel id="button" />);

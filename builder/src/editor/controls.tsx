@@ -203,7 +203,10 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
     const { draft: text, onCommit: hand, rules: r, field: f, label: name } = latest.current;
     if (text === sent.current) return true;
     const error = hand(text);
-    if (!error) {
+    // A text that is the page's own once its caller has made it so (a link
+    // trimmed to the one kept: "That would change nothing") is handed over
+    // as much as one the page took.
+    if (!error || error.reason === "nothing") {
       sent.current = text;
       setRefusal(null);
       return true;
