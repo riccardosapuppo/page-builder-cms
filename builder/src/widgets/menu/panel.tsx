@@ -11,7 +11,7 @@ import { usePageLinks } from "../../editor/session.tsx";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 
 // The schema's most links in one menu.
-const MAX_ITEMS = 12;
+export const MAX_ITEMS = 12;
 
 function MenuContent({ block }: ContentProps<"menu">) {
   const commands = useBlockCommands(block.id);

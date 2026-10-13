@@ -399,7 +399,7 @@ test("the screens promise nothing the browser cannot do: no visitor, live page o
   await expect(page.locator(".ed-title")).toContainText("The home page of the site");
   await promisesNothing(page, "the Page tab of the home page", found);
   // The header, open as a page is, from the Page tab, and back.
-  await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Header" }).click();
+  await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Header", exact: true }).click();
   await expect(page.getByRole("button", { name: "Switch page. Open: Header" })).toBeVisible();
   await expect(page.locator(".part-panel")).toContainText(PART_LINE);
   await promisesNothing(page, "the header's Page tab", found);

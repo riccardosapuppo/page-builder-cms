@@ -218,7 +218,11 @@ owner to undo:
 - **The Page tab** has no "Show in the site menu" toggle, which the layout
   draws as "Comes later": the site's menu is not a page's setting but a
   Menu block of the site's header, its links set in its panel, and the
-  header is reached from the Page tab's way to it, beside Site style. The
+  header is reached from the Page tab's way to it, beside Site style. A
+  page that neither the header nor the footer links to says so under its
+  address, with Add it to the header’s menu: the header opens, the page
+  the last link of its menu, which is then selected, for the header to
+  be published. The
   home page's address stays a field, as the editor has it, where the
   layout draws it locked; its hint says visitors find it at the root.
   The panel's line under the title says where the page lives ("The home

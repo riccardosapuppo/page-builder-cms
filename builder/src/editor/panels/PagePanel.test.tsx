@@ -9,6 +9,9 @@ import { expect, test } from "vitest";
 import { describedText, editorKit, groupNames } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
 import { errorsByBlock } from "../../storage/adapter.ts";
+import footerStarter from "../../../../cms/config/parts/footer.json";
+import headerStarter from "../../../../cms/config/parts/header.json";
+import type { PageDocument } from "../../shared/document.ts";
 import { PagePanel } from "./EditPanel.tsx";
 
 const current = { id: 7, kind: "page" as const, slug: "winter-series", home: false, published: null, revision: 3, links: { preview: "/preview/7", live: null } };
@@ -123,4 +126,66 @@ test("where the storage serves no page (the browser demo), the Page panel promis
   expect(document.querySelector(".ed-title")?.textContent).toBe("Winter seriesThe home page of the site");
   expect(describedText(screen.getByLabelText("Title"))).toBe("Shown in the browser tab and, in the full system, in search results.");
   expect(describedText(screen.getByLabelText("Description"))).toBe("In the full system, search engines show it under the title. Up to 160 characters.");
+});
+
+// A page neither the header nor the footer links to says so under its
+// address, with the way to add it to the header's menu.
+const prices = { ...current, id: 8, slug: "prices" };
+const headerPart = { id: 50, kind: "header", title: "Header", slug: null, home: false, revision: 4, updatedAt: "2026-10-13T08:00:00.000Z", published: null, scheduled: null, links: { preview: "/preview/50", live: null } } as never;
+const withLinks = (doc: PageDocument, hrefs: string[]): PageDocument => {
+  const copy = structuredClone(doc);
+  const walk = (blocks: Array<{ type: string; props: Record<string, unknown>; children: unknown[] }>) => blocks.forEach((block) => {
+    if (block.type === "menu") block.props.items = hrefs.map((href, at) => ({ label: `Link ${at + 1}`, href }));
+    walk(block.children as never);
+  });
+  walk(copy.sections as never);
+  return copy;
+};
+const header = headerStarter as unknown as PageDocument;
+const footer = footerStarter as unknown as PageDocument;
+
+test("a page neither the header nor the footer links to says so under its address; a link to it, or to one of its sections, and the home page say nothing", () => {
+  const kit = editorKit({ document: page(), session: { current: prices, parts: [headerPart] } });
+  kit.render(<PagePanel />);
+  const note = () => document.querySelector(".not-linked");
+  // The header and footer not read yet: nothing is known of their links.
+  expect(note()).toBeNull();
+  act(() => kit.ui.getState().setParts({ header: withLinks(header, ["/#swims", "/winter-series"]), footer: withLinks(footer, ["/notices"]) }));
+  expect(note()?.textContent).toBe("Neither the header nor the footer links to this page: visitors reach it only from a link on another page, or by its address.Add it to the header’s menu");
+  act(() => kit.ui.getState().setParts({ footer: withLinks(footer, ["/notices", "/prices#rates"]) }));
+  expect(note()).toBeNull();
+  cleanup();
+
+  const home = editorKit({ document: page(), session: { current: { ...current, home: true }, parts: [headerPart] } });
+  home.ui.getState().setParts({ header: withLinks(header, ["/#swims"]), footer: withLinks(footer, []) });
+  home.render(<PagePanel />);
+  expect(note()).toBeNull();
+});
+
+test("Add it to the header's menu opens the header and adds the page at the end of its menu, the menu selected, and says the header waits to be published", async () => {
+  const opened: number[] = [];
+  const kit: ReturnType<typeof editorKit> = editorKit({
+    document: page(),
+    session: {
+      current: prices,
+      parts: [headerPart],
+      openPage: async (id: number) => {
+        opened.push(id);
+        kit.store.getState().load(withLinks(header, ["/#swims", "/winter-series"]));
+        return null;
+      },
+    },
+  });
+  kit.ui.getState().setParts({ header: withLinks(header, ["/#swims", "/winter-series"]), footer: withLinks(footer, ["/notices"]) });
+  kit.render(<PagePanel />);
+  fireEvent.click(screen.getByRole("button", { name: "Add it to the header’s menu" }));
+  await waitFor(() => expect(kit.store.getState().selection).toBe("header-menu"));
+  expect(opened).toEqual([50]);
+  const menu = kit.block("header-menu") as { props: { items: Array<{ label: string; href: string }> } };
+  expect(menu.props.items).toEqual([
+    { label: "Link 1", href: "/#swims" },
+    { label: "Link 2", href: "/winter-series" },
+    { label: "Winter series", href: "/prices" },
+  ]);
+  expect(kit.ui.getState().notice).toBe("Winter series is the last link of the header’s menu now. Publish the header to put it on every page.");
 });

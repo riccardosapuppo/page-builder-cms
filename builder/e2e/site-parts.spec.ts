@@ -308,7 +308,7 @@ test("from a page's Page tab the header opens by the keyboard, says it is on eve
   await open(page, id);
   const sidebar = page.getByRole("complementary", { name: "Settings" });
   await sidebar.getByRole("tab", { name: "Page" }).click();
-  const entry = sidebar.getByRole("button", { name: "Header" });
+  const entry = sidebar.getByRole("button", { name: "Header", exact: true });
   await entry.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Switch page. Open: Header" })).toBeVisible();
@@ -322,6 +322,26 @@ test("from a page's Page tab the header opens by the keyboard, says it is on eve
   await back.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Switch page. Open: Tide table" })).toBeVisible();
+});
+
+test("a page neither the header nor the footer links to says so in its Page tab; one click opens the header with the page at the end of its menu, its draft saved", async ({ page, request }) => {
+  const header = await found(request, "header");
+  try {
+    const { id, slug } = await makePage(request, "Prices", [section("s", "Prices", [column("c", [heading("h", "What a season costs")])])]);
+    await open(page, id);
+    const note = page.locator(".not-linked");
+    await expect(note).toContainText("Neither the header nor the footer links to this page: visitors reach it only from a link on another page, or by its address.");
+    await note.getByRole("button", { name: "Add it to the header’s menu" }).click();
+    // The header open, its menu selected, the page its last link.
+    await expect(page.locator('.canvas [data-editing-part="header"] [data-block-id="header-menu"]')).toHaveAttribute("data-editor-selected", "true");
+    await expect(page.locator(".notice")).toContainText("Prices is the last link of the header’s menu now. Publish the header to put it on every page.");
+    await saved(page);
+    const menu = (await draftOf(request, header.part.id)).document.sections.flatMap(function all(block: DraftBlock): DraftBlock[] { return [block, ...block.children.flatMap(all)]; }).find((block) => block.id === "header-menu");
+    expect(menu, "the header's menu").toBeDefined();
+    expect((menu!.props as { items: Array<{ label: string; href: string }> }).items.at(-1)).toEqual({ label: "Prices", href: `/${slug}` });
+  } finally {
+    await putBack(request, header);
+  }
 });
 
 test.describe("a form in a part", () => {

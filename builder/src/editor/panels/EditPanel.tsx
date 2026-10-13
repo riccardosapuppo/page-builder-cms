@@ -3,20 +3,23 @@
 // collapsible groups (./groups.tsx; design/layout/, the editor and
 // page-tab states).
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { makeSetPage, REMOVE } from "../../document/commands.ts";
+import { makeInsertItems, makeSetPage, REMOVE } from "../../document/commands.ts";
+import { leadsTo, linkTargets } from "../../document/links.ts";
 import { TYPE_NAMES } from "../../document/labels.ts";
-import type { Block } from "../../shared/document.ts";
+import type { Block, PageDocument } from "../../shared/document.ts";
 import type { BlockFieldError, FieldError, PartKind } from "../../storage/adapter.ts";
+import { MAX_ITEMS } from "../../widgets/menu/panel.tsx";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
 import { describedBy, ErrorList, TextField, useFieldClaims } from "../controls.tsx";
-import { useEditor, useEnv, useRun, useUi } from "../context.tsx";
+import { runCommand } from "../act.ts";
+import { useEditor, useEnv, useRun, useUi, type EditorEnv } from "../context.tsx";
 import { deviceOf } from "../device-style.ts";
 import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, fromLine, placeLine } from "../names.ts";
 import { siteAddress } from "../Publish.tsx";
-import { PART_NAMES, publishWords, useKeptWords, useSession } from "../session.tsx";
+import { PART_NAMES, partOf, publishWords, useKeptWords, useSession, type Session } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
 import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
@@ -106,6 +109,7 @@ export function PagePanel({ after }: { after?: ReactNode }) {
             onCommit={(next) => run(makeSetPage(store.getState().document, { title: next }))}
           />
           <AddressField />
+          <NotLinked />
         </>
       ),
     },
@@ -143,6 +147,78 @@ export function PagePanel({ after }: { after?: ReactNode }) {
       </div>
     </>
   );
+}
+
+// A page, not the home page, that neither the header nor the footer links
+// to: visitors reach it only from a link on another page, or by its
+// address, which is easy to miss once the page is made. Said under the
+// address, with one click that opens the header and adds the page at the
+// end of its menu, for the person to publish the header.
+function NotLinked() {
+  const env = useEnv();
+  const session = useSession();
+  const title = useEditor((s) => s.document.title);
+  const parts = useUi((u) => u.parts);
+  const current = session.current;
+  if (!current || current.kind !== "page" || current.home || current.slug === null) return null;
+  // Until the header and footer are read, nothing is known of their links.
+  if (parts.header === null && parts.footer === null) return null;
+  const paths = [`/${current.slug}`, ...(current.published && current.published.slug !== current.slug ? [`/${current.published.slug}`] : [])];
+  const linked = [parts.header, parts.footer].some((doc) => doc !== null && linkTargets(doc).some((href) => paths.some((path) => leadsTo(href, path))));
+  if (linked) return null;
+  const header = partOf(session, "header");
+  return (
+    <div className="override not-linked">
+      <Icon name="link" />
+      <p>Neither the header nor the footer links to this page: visitors reach it only from a link on another page, or by its address.</p>
+      {header && (
+        <button className="btn btn-small btn-secondary" type="button" onClick={() => void addToHeaderMenu(env, session, title, `/${current.slug}`)}>
+          Add it to the header’s menu
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The block of a type that comes first in a document, if any.
+function firstOfType(doc: PageDocument, type: Block["type"]): Block | null {
+  const walk = (blocks: readonly Block[]): Block | null => {
+    for (const block of blocks) {
+      if (block.type === type) return block;
+      const inside = walk(block.children as readonly Block[]);
+      if (inside) return inside;
+    }
+    return null;
+  };
+  return walk(doc.sections as readonly Block[]);
+}
+
+// Opens the header, as its link in the Page tab does, and adds the page
+// at the end of its menu, the menu then selected and its links in the
+// sidebar; the sentence says the header waits to be published.
+export async function addToHeaderMenu(env: EditorEnv, session: Session, title: string, path: string): Promise<void> {
+  const header = partOf(session, "header");
+  if (!header) return;
+  const why = await session.openPage(header.id);
+  const say = (words: string) => env.ui.getState().say(words);
+  if (why) {
+    say(why);
+    return;
+  }
+  const menu = firstOfType(env.store.getState().document, "menu");
+  if (!menu || menu.type !== "menu") {
+    say(`The header has no menu yet: add one from Insert, with a link to ${path}.`);
+    return;
+  }
+  env.store.getState().select(menu.id);
+  env.ui.setState({ tray: "edit", sideTab: null });
+  if (menu.props.items.length >= MAX_ITEMS) {
+    say(`The header’s menu holds ${MAX_ITEMS} links, the most it takes: remove one, then add ${path}.`);
+    return;
+  }
+  const label = [...title.trim()].slice(0, 40).join("").trim() || path;
+  if (runCommand(env, (doc) => makeInsertItems(doc, menu.id, menu.props.items.length, [{ label, href: path }]), "panel") !== null) return;
+  say(`${label} is the last link of the header’s menu now. Publish the header to put it on every page.`);
 }
 
 // The page's address is the page's, not the document's: it changes
