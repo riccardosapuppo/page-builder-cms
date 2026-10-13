@@ -11,11 +11,20 @@ module SiteHelper
   def site_style_data(style = SiteStyle.current)
     palette = style.palette.is_a?(Hash) ? style.palette : {}
     data = SiteTokens.slots.each_with_object({}) do |(name, slot), out|
-      out[name] = palette[name] if slot.tones.include?(palette[name])
+      out[name] = palette[name] if slot.tones.include?(palette[name]) || FreeColors.color?(palette[name])
     end
     data[:type_scale] = style.type_scale if SiteTokens.type_scales.include?(style.type_scale)
     data[:letter_width] = style.letter_width if SiteTokens.letter_widths.include?(style.letter_width)
     data
+  end
+
+  # The stylesheet of the free colours the page draws (FreeColors), after
+  # tokens.css, or nothing when it has none: the site style's own tones, and
+  # those the page's blocks and its header's and footer's name.
+  def free_colors_link(style = site_style)
+    documents = [ @document, *%w[header footer].map { |kind| site_parts.fetch(kind)&.document } ]
+    path = FreeColors.path(style, documents)
+    tag.link(rel: "stylesheet", href: path) if path
   end
 
   # A part of the site around the page, in the element the layout gives it

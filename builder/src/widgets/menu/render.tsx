@@ -13,7 +13,7 @@ import type { BlockRenderProps } from "../../render/context.ts";
 import { ThemeSvg } from "../../render/drawings.tsx";
 import { menuFold } from "../../render/header-fit.ts";
 import { linkHref } from "../../render/policy.ts";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 // A menu's links as [label, href], in order: those whose address the URL
 // policy accepts, of the items that are objects. BlocksHelper#menu_links.
@@ -36,7 +36,7 @@ export function MenuRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-menu", (["color", "align"] as const).map((key) => styleClasses(style, key)).flat(), visibilityClasses(style)]}
-      data={{ fold: menuFold(links.map(([text]) => text)) }}
+      data={{ fold: menuFold(links.map(([text]) => text)), ...freeColorData(style, "color") }}
       decoration={decoration}
     >
       <nav aria-label={label === "" ? "Menu" : label}>

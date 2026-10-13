@@ -3,6 +3,7 @@
 // holds the same tables to the schema. A token, a key or a required key
 // added to, removed from or renamed in the schema fails here until the
 // types follow.
+import { FREE_COLOR_PATTERN } from "./free-colors.ts";
 import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
@@ -87,10 +88,18 @@ describe("the document's types match the schema", () => {
 
   test("the style settings, and which ones each block type takes", () => {
     expect([...STYLE_TOKEN_KEYS].sort()).toEqual(Object.keys(properties(def("styleTokens"))).sort());
-    // Each setting's tokens are the enum its key refers to.
+    // Each setting's tokens are the enum its key refers to; a background and
+    // a colour may name a free colour instead (freeColor).
     const settings = properties(def("styleTokens"));
     expect(Object.keys(STYLE_TOKENS).sort()).toEqual([...STYLE_TOKEN_KEYS].sort());
-    for (const key of STYLE_TOKEN_KEYS) expect([...STYLE_TOKENS[key]], key).toEqual(enumOf(settings[key] as Node));
+    for (const key of STYLE_TOKEN_KEYS) {
+      const setting = settings[key] as Node;
+      const either = setting.anyOf as Node[] | undefined;
+      const tokens = either ? either.find((branch) => branch.$ref !== "#/$defs/freeColor")! : setting;
+      expect([...STYLE_TOKENS[key]], key).toEqual(enumOf(tokens));
+      expect(either?.some((branch) => branch.$ref === "#/$defs/freeColor") ?? false, key).toBe(key === "background" || key === "color");
+    }
+    expect(def("freeColor").pattern).toBe(FREE_COLOR_PATTERN);
     for (const type of BLOCK_TYPES) {
       const style = branch(type).style;
       // Each device of a type's style refers to the same list of keys.

@@ -602,12 +602,17 @@
       "enum": ["original", "16:9", "3:2", "4:3", "5:4", "1:1"]
     },
     "paletteSlot": {
-      "description": "The six palette slots of the site style. A block names a slot, never a tone: the site owner picks the tone of each slot, and every block follows.",
+      "description": "The six palette slots of the site style. A block names a slot, or a free colour of its own (freeColor): the site owner picks the tone of each slot, and every block that names it follows.",
       "enum": ["text", "background", "primary", "accent", "soft", "muted"]
     },
     "backgroundToken": {
       "description": "A palette slot, or none for no background.",
       "enum": ["none", "text", "background", "primary", "accent", "soft", "muted"]
+    },
+    "freeColor": {
+      "description": "A colour of the site's own choosing, where a block's colour or background names one instead of a slot: six lowercase hex digits after #, the one way it is written.",
+      "type": "string",
+      "pattern": "^#[0-9a-f]{6}$"
     },
     "typeStep": {
       "description": "Steps of the site type scale, from type.site in tokens.json.",
@@ -631,8 +636,8 @@
         "spaceAbove": { "$ref": "#/$defs/sectionSpaceToken" },
         "spaceBelow": { "$ref": "#/$defs/sectionSpaceToken" },
         "aspect": { "$ref": "#/$defs/aspectToken" },
-        "background": { "$ref": "#/$defs/backgroundToken" },
-        "color": { "$ref": "#/$defs/paletteSlot" },
+        "background": { "anyOf": [{ "$ref": "#/$defs/backgroundToken" }, { "$ref": "#/$defs/freeColor" }] },
+        "color": { "anyOf": [{ "$ref": "#/$defs/paletteSlot" }, { "$ref": "#/$defs/freeColor" }] },
         "textSize": { "$ref": "#/$defs/typeStep" },
         "typeface": { "$ref": "#/$defs/typefaceToken" },
         "align": { "$ref": "#/$defs/alignToken" },

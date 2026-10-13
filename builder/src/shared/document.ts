@@ -1,3 +1,4 @@
+import type { FreeColor } from "./free-colors.ts";
 // The page document as TypeScript types, written from
 // schema/block-document.schema.json, the one schema the editor and the
 // server validate with. The schema decides; these types follow it, and
@@ -111,8 +112,9 @@ export interface StyleTokens {
   spaceAbove?: SectionSpaceToken;
   spaceBelow?: SectionSpaceToken;
   aspect?: AspectToken;
-  background?: BackgroundToken;
-  color?: PaletteSlot;
+  // A slot, or a free colour of the block's own (./free-colors.ts).
+  background?: BackgroundToken | FreeColor;
+  color?: PaletteSlot | FreeColor;
   textSize?: TypeStep;
   typeface?: TypefaceToken;
   align?: AlignToken;

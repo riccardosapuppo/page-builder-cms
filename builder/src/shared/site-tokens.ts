@@ -5,6 +5,7 @@
 // site's colours; and each type scale's steps, which Site style lists.
 import tokens from "../../../schema/tokens.json";
 import { PALETTE_SLOTS, type PaletteSlot } from "./document.ts";
+import { contrastRatio, isFreeColor } from "./free-colors.ts";
 
 // The page root's width below which it lays out as a tablet, and as a
 // phone: the container queries of the published page's stylesheets.
@@ -28,9 +29,14 @@ export function slotLabel(slot: PaletteSlot): string {
 
 // A slot's tone in the given palette (slot to colour name, as the site
 // style gives it), or the tone a new site starts with: its name, its
-// label and its colour.
+// label and its colour. A free colour (./free-colors.ts) is its own name,
+// labelled Custom.
 export function slotTone(slot: PaletteSlot, palette?: Readonly<Record<string, string>> | null): { color: string; label: string; hex: string } {
   const chosen = palette?.[slot];
+  if (isFreeColor(chosen)) return { color: chosen, label: "Custom", hex: chosen };
+  // A name no slot has (a free colour taken for a slot by mistake): no tone
+  // to give, rather than a page that cannot be drawn.
+  if (!Object.hasOwn(TONES, slot)) return { color: String(slot), label: String(slot), hex: isFreeColor(slot) ? slot : "#000000" };
   const tone = TONES[slot].tones.find((t) => t.color === chosen) ?? TONES[slot].tones.find((t) => t.color === TONES[slot].default) ?? TONES[slot].tones[0]!;
   return { color: tone.color, label: tone.label, hex: COLORS[tone.color] ?? "#000000" };
 }
@@ -116,17 +122,5 @@ export function typeScale(name: string): { ratio: number; steps: Array<{ key: Ty
   };
 }
 
-// WCAG 2's contrast ratio of two #RRGGBB colours, from 1 to 21.
-export function contrastRatio(a: string, b: string): number {
-  const luminance = (hex: string) => {
-    const [r, g, bl] = [1, 3, 5].map((i) => {
-      const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    }) as [number, number, number];
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-  };
-  const [x, y] = [luminance(a), luminance(b)];
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-}
 
-export { PALETTE_SLOTS };
+export { contrastRatio, PALETTE_SLOTS };

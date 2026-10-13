@@ -274,19 +274,7 @@ module SiteTheme
       # slot on the light bands, and in the band's own text colour on the
       # dark ones and on Accent, where the Muted slot does not read
       # (--caption-color).
-      rules << ".#{prefix}bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }\n"
-      slots.each do |slot|
-        paired =
-          if DARK_SLOTS.include?(slot)
-            "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
-              "--mark-disc: var(--sw-background); --mark-line: var(--sw-#{slot}); --caption-color: currentColor;"
-          elsif INK_SLOTS.include?(slot)
-            "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor;"
-          else
-            "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial;"
-          end
-        rules << ".#{prefix}bg-#{slot} { background-color: var(--sw-#{slot}); #{paired} }\n"
-      end
+      [ "none", *slots ].each { |slot| rules << ".#{prefix}bg-#{slot} { #{background(slot).first} }\n" }
       # The focus ring (site.css) of what sits on a background, in the
       # colour that reads on it: the Background slot on the three dark
       # slots, the Text slot on the others, which undoes a dark band's for
@@ -295,11 +283,7 @@ module SiteTheme
       # with a background of its own draws its ring outside itself, on the
       # band around it, so its ring follows the band. none hands on the
       # ring of the band behind, as it does the colours.
-      rules << ".#{prefix}bg-none > * { --ring-color: inherit; }\n"
-      slots.each do |slot|
-        ring = DARK_SLOTS.include?(slot) ? "background" : "text"
-        rules << ".#{prefix}bg-#{slot} > * { --ring-color: var(--sw-#{ring}); }\n"
-      end
+      [ "none", *slots ].each { |slot| rules << ".#{prefix}bg-#{slot} > * { --ring-color: #{background(slot).last}; }\n" }
       # color: of the text, or of the lines for a divider and an accordion.
       slots.each { |slot| rules << ".#{prefix}fg-#{slot} { color: var(--sw-#{slot}); }\n" }
       slots.each { |slot| rules << ".#{prefix}line-#{slot} { --line-color: var(--sw-#{slot}); }\n" }
@@ -325,6 +309,28 @@ module SiteTheme
         rules << ".#{prefix}aspect-#{class_value(a)} img { aspect-ratio: #{ratios.fetch(a)}; object-fit: #{fit}; }\n"
       end
       rules
+    end
+
+    # What a background in a slot's tone sets, and the colour of the focus
+    # ring of what sits on it (setting_rules says why); none, the band
+    # behind's, inherited. tokens.css's bg-<slot>, and the free colours'
+    # stylesheet, which draws a slot's again over a free colour (FreeColors).
+    def background(slot)
+      if slot == "none"
+        return [ "background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; " \
+                 "--mark-disc: inherit; --mark-line: inherit; --caption-color: inherit;", "inherit" ]
+      end
+
+      paired =
+        if DARK_SLOTS.include?(slot)
+          "color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
+            "--mark-disc: var(--sw-background); --mark-line: var(--sw-#{slot}); --caption-color: currentColor;"
+        elsif INK_SLOTS.include?(slot)
+          "color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor;"
+        else
+          "color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial;"
+        end
+      [ "background-color: var(--sw-#{slot}); #{paired}", DARK_SLOTS.include?(slot) ? "var(--sw-background)" : "var(--sw-text)" ]
     end
 
     # A token as a class name: "16:9" is aspect-16-9.

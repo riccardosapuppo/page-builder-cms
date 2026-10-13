@@ -45,12 +45,21 @@ the server writes for them. The editor's half is
     no object); and limits the schema refuses (zero, negative, past the
     kind's most, a string, 100.5), with 100.0 and 1e2, which both read as
     the whole number 100.
+  - `free-colors.json`: colours of the site's own (`#rrggbb`) on every
+    block that takes a background or a colour, on every device, beside
+    slots, and the values the renderers refuse (upper case, three digits, a
+    colour's name, markup): a refused one draws nothing.
   - `edge.json`: the smallest values, every icon, an empty section, a block
     with no props and no style, spaces at both ends of a text.
   - `empty.json`: a page with no sections.
   - `large-500.json`: a page of exactly 500 blocks, written by
     `node tools/gen-contract-500.ts` from the repository root (seeded, so
     every run writes the same bytes; `--check` compares).
+- [`free-colors/`](free-colors): the stylesheet of a page's free colours
+  (`/colors.css` on the CMS, a style element on the canvas), for each case
+  of `cases.json`: `<case>.css`, written by
+  `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_colors_test.rb`,
+  the bytes the editor's `free-colors-css.ts` must give too.
 - [`rendered/`](rendered): for each fixture, the HTML the server renders
   for it (`<name>.html`, the page's sections, without the layout), and
   `manifest.json`, with the sha256 of every fixture, every golden and every

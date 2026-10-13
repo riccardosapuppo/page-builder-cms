@@ -51,6 +51,9 @@ Rails.application.routes.draw do
   # by single hyphens (Slug::FORMAT), so it never takes a format suffix and
   # never shadows /up, /api, /assets or /rails, which Slug reserves.
   get "preview/:page_id", to: "previews#show", constraints: { page_id: /[0-9]+/ }, format: false
+  # The stylesheet of a page's free colours: a page's address never has a
+  # dot, so it is no page.
+  get "colors.css", to: "free_colors#show", format: false
   root "pages#home"
   get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page
 

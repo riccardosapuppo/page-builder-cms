@@ -1,0 +1,35 @@
+{
+  "about": "Inputs of the free colours' stylesheet (cms/app/models/free_colors.rb, builder/src/render/free-colors-css.ts). `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_colors_test.rb` from cms/ writes <name>.css beside this file; both sides must give those bytes. See contract/README.md.",
+  "cases": {
+    "none": {
+      "text": "#0e2a35",
+      "background": "#ffffff",
+      "slots": {},
+      "colors": []
+    },
+    "slots": {
+      "text": "#0e2a35",
+      "background": "#ffffff",
+      "slots": { "primary": "#1d4e6f", "muted": "#5a5f63", "soft": "#e9f2ef" },
+      "colors": []
+    },
+    "blocks": {
+      "text": "#0e2a35",
+      "background": "#ffffff",
+      "slots": {},
+      "colors": ["#e9dcc3", "#3b2f5c", "#f2c94c", "#3b2f5c", "#00796b"]
+    },
+    "dark-site": {
+      "text": "#f4f1ea",
+      "background": "#101418",
+      "slots": { "text": "#f4f1ea", "background": "#101418" },
+      "colors": ["#ffffff", "#000000", "#777777", "#767676"]
+    },
+    "traps": {
+      "text": "#0e2a35",
+      "background": "#ffffff",
+      "slots": { "primary": "#FFF", "accent": "red", "soft": "#e6efea", "bogus": "#123456", "text": 42 },
+      "colors": ["#FFFFFF", "#12345g", "\"] { color: red } [x=\"", "#abcdef", "#abcdef", "#000", 42, null, "#c2352b"]
+    }
+  }
+}

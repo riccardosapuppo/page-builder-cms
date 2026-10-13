@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "title": "Free colours",
+  "description": "Colours of the site's own (#rrggbb) on every block that takes a background or a colour, on the desktop, the tablet and the phone, beside the palette's slots; and the values the renderers refuse: upper case, three digits, a colour's name, markup.",
+  "sections": [
+    {
+      "id": "band",
+      "type": "section",
+      "props": {
+        "label": "Band"
+      },
+      "style": {
+        "base": {
+          "background": "#3b2f5c",
+          "spaceAbove": "section-s"
+        },
+        "tablet": {
+          "background": "soft"
+        },
+        "phone": {
+          "background": "#e9dcc3"
+        }
+      },
+      "children": [
+        {
+          "id": "band-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "background": "#e9dcc3",
+              "color": "#0e2a35"
+            },
+            "phone": {
+              "color": "primary"
+            }
+          },
+          "children": [
+            {
+              "id": "h-free",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Swim at slack water"
+              },
+              "style": {
+                "base": {
+                  "color": "#c2352b"
+                },
+                "tablet": {
+                  "color": "#1d4e6f"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "t-free",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims, twice a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {
+                  "color": "#4e625b"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "q-free",
+              "type": "quote",
+              "props": {
+                "text": "Bring a bright cap."
+              },
+              "style": {
+                "base": {
+                  "color": "#00796b"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "d-free",
+              "type": "divider",
+              "props": {},
+              "style": {
+                "base": {
+                  "color": "#f2a541"
+                },
+                "phone": {
+                  "color": "muted"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "a-free",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "Is it cold?",
+                    "answer": "Bring a hat."
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "color": "#7b1fa2"
+                }
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "band-2",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "background": "primary"
+            },
+            "tablet": {
+              "background": "#101418"
+            }
+          },
+          "children": [
+            {
+              "id": "b-free",
+              "type": "button",
+              "props": {
+                "label": "Join a trial swim",
+                "href": "/join"
+              },
+              "style": {
+                "base": {
+                  "background": "#ffc107",
+                  "color": "#101418"
+                },
+                "phone": {
+                  "background": "accent"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "i-free",
+              "type": "iconbox",
+              "props": {
+                "icon": "sunrise",
+                "title": "Dawn swims",
+                "text": "At first light."
+              },
+              "style": {
+                "base": {
+                  "color": "#ff5722"
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "site",
+      "type": "section",
+      "props": {
+        "label": "Site",
+        "stack": "never"
+      },
+      "style": {
+        "base": {
+          "background": "#0e2a35"
+        }
+      },
+      "children": [
+        {
+          "id": "site-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "l-free",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "style": {
+                "base": {
+                  "color": "#ffd600"
+                }
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "site-2",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "m-free",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "color": "#e9dcc3"
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "traps",
+      "type": "section",
+      "props": {
+        "label": "Traps"
+      },
+      "style": {
+        "base": {
+          "background": "#E9DCC3"
+        },
+        "tablet": {
+          "background": "#abc"
+        },
+        "phone": {
+          "background": "red"
+        }
+      },
+      "children": [
+        {
+          "id": "traps-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "color": "#12345g"
+            }
+          },
+          "children": [
+            {
+              "id": "h-trap",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Refused colours"
+              },
+              "style": {
+                "base": {
+                  "color": "\"><script>"
+                },
+                "tablet": {
+                  "color": "#1D4E6F"
+                },
+                "phone": {
+                  "color": 42
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "b-trap",
+              "type": "button",
+              "props": {
+                "label": "Still a button",
+                "href": "/"
+              },
+              "style": {
+                "base": {
+                  "background": "#ffc10",
+                  "color": "#101418;"
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

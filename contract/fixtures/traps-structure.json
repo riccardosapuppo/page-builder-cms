@@ -52,7 +52,7 @@
             {
               "id": "s-bad-style-values", "type": "heading", "children": [],
               "props": { "level": 2, "text": "Values the schema does not list" },
-              "style": { "base": { "textSize": "huge onclick=alert(1)", "typeface": "heading\" onclick=\"alert(1)", "color": "#ff0000", "align": "justify", "visibility": "maybe" }, "desktop": { "textSize": "display" }, "tablet": "not an object" }
+              "style": { "base": { "textSize": "huge onclick=alert(1)", "typeface": "heading\" onclick=\"alert(1)", "color": "#FF0000", "align": "justify", "visibility": "maybe" }, "desktop": { "textSize": "display" }, "tablet": "not an object" }
             },
             {
               "id": "s-image-hidden", "type": "image", "children": [],

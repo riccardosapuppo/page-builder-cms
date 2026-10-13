@@ -38,8 +38,16 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     assert_equal [ "site-harbour", "site-lemon", "strong" ], [ json.dig("palette", "primary"), json.dig("palette", "accent"), json["typeScale"] ]
   end
 
-  test "anything that is not a curated value is refused, each at its place" do
-    api :put, "/api/site-style", { "palette" => palette(primary: "#ff0000").except("muted").merge("brand" => "site-sea"), "typeScale" => "huge", "letterWidth" => "95%" }
+  test "a colour of the site's own is accepted in a slot, and stays" do
+    api :put, "/api/site-style", { "palette" => palette(primary: "#2f6f5e", soft: "#e9f2ef"), "typeScale" => "balanced" }
+
+    assert_response :ok
+    api :get, "/api/site-style"
+    assert_equal [ "#2f6f5e", "#e9f2ef" ], [ json.dig("palette", "primary"), json.dig("palette", "soft") ]
+  end
+
+  test "anything that is not a curated value or a colour as #rrggbb is refused, each at its place" do
+    api :put, "/api/site-style", { "palette" => palette(primary: "#FF0000").except("muted").merge("brand" => "site-sea"), "typeScale" => "huge", "letterWidth" => "95%" }
 
     assert_response :unprocessable_content
     assert_equal [ [ "/palette/primary", "inclusion" ], [ "/palette/muted", "blank" ], [ "/palette/brand", "unknown" ], [ "/typeScale", "inclusion" ], [ "/letterWidth", "inclusion" ] ],

@@ -1,4 +1,4 @@
 <%# Questions that open to their answers: details and summary, no script. The first one starts open, as the design draws it. The colour is the colour of the lines between them. -%>
 <%- style = block_style(block) -%>
 <%- items = Array(block_props(block)["items"]).select { |item| item.is_a?(Hash) } -%>
-<%= tag.div(**block_root(block, [ "w", "w-accordion", "sw-accordion", BlockStyle.classes(style, "color", family: "line"), BlockStyle.visibility_classes(style) ])) do %><%= safe_join(items.each_with_index.map { |item, index| tag.details(safe_join([ tag.summary(prop_text(item, "question")), tag.p(text_with_breaks(prop_text(item, "answer"))) ]), open: index.zero?) }) %><% end %>
+<%= tag.div(**block_root(block, [ "w", "w-accordion", "sw-accordion", BlockStyle.classes(style, "color", family: "line"), BlockStyle.visibility_classes(style) ], data: BlockStyle.free_color_data(style, "color", family: "line"))) do %><%= safe_join(items.each_with_index.map { |item, index| tag.details(safe_join([ tag.summary(prop_text(item, "question")), tag.p(text_with_breaks(prop_text(item, "answer"))) ]), open: index.zero?) }) %><% end %>

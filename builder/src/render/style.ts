@@ -8,9 +8,13 @@
 // list ever become a class or reach data-style, whatever a document holds,
 // so a document that reached the renderer without the schema's check cannot
 // write a class of its own choosing. The lists come from
-// ../shared/document.ts, which document.test.ts holds to the schema.
+// ../shared/document.ts, which document.test.ts holds to the schema. A free
+// colour a background or a colour names (../shared/free-colors.ts) is no
+// class: it is a data attribute (freeColorData), which the stylesheet of
+// the page's free colours reads.
 import { isObject } from "../document/json.ts";
 import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STACK_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
+import { isFreeColor, type FreeColor } from "../shared/free-colors.ts";
 
 export type StyleKey = keyof StyleTokens;
 
@@ -52,6 +56,36 @@ export function styleValue(style: unknown, device: string, key: string): string 
   return typeof value === "string" && (ALLOWED.get(key) ?? []).includes(value) ? value : null;
 }
 
+// The free colour a background or a colour holds on a device, or null.
+export function freeColorOf(style: unknown, device: string, key: "background" | "color"): FreeColor | null {
+  if (!isObject(style)) return null;
+  const part = Object.hasOwn(style, device) ? style[device] : undefined;
+  if (!isObject(part) || !Object.hasOwn(part, key)) return null;
+  const value = part[key];
+  return isFreeColor(value) ? value : null;
+}
+
+// What a setting holds that the schema allows: a token, or for a
+// background or a colour a free colour too; null otherwise.
+export function settingValue(style: unknown, device: string, key: string): string | null {
+  if (key === "background" || key === "color") return styleValue(style, device, key) ?? freeColorOf(style, device, key);
+  return styleValue(style, device, key);
+}
+
+// The free colours of a background or a colour as data attributes for
+// BlockRoot's data, named by the key's family and the device's prefix as a
+// class is ({ bg: "#1d4e6f", "tablet-bg": "#c2352b" }): a divider's colour
+// is the colour of its line (line).
+export function freeColorData(style: unknown, key: "background" | "color", options: { family?: string } = {}): Record<string, string> {
+  const family = options.family ?? FAMILY[key];
+  const data: Record<string, string> = {};
+  for (const device of DEVICES) {
+    const value = freeColorOf(style, device, key);
+    if (value !== null) data[device === "base" ? family : `${device}-${family}`] = value;
+  }
+  return data;
+}
+
 interface ClassOptions {
   // Replaces the key's own family where a block means it differently: a
   // section's spaceBetween is the gap between its columns (cols-gap), a
@@ -89,7 +123,7 @@ export function visibilityClasses(style: unknown): string[] {
 }
 
 // "base.textSize=display;phone.textSize=heading-1": every stored setting the
-// schema allows, devices in this order and keys sorted, or null when there
+// schema allows (a free colour too), devices in this order and keys sorted, or null when there
 // is none. Keys are sorted by code unit, Ruby by byte; every key that can
 // be written is ASCII, where the two orders are the same.
 export function dataStyle(style: unknown): string | null {
@@ -98,7 +132,7 @@ export function dataStyle(style: unknown): string | null {
     const part = isObject(style) && Object.hasOwn(style, device) ? style[device] : undefined;
     if (!isObject(part)) continue;
     for (const key of Object.keys(part).sort()) {
-      const value = styleValue(style, device, key);
+      const value = settingValue(style, device, key);
       if (value !== null) pairs.push(`${device}.${key}=${value}`);
     }
   }

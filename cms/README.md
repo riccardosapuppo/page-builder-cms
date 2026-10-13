@@ -853,7 +853,27 @@ too: a path on this site, answered with the bytes, cacheable for good.
 
 **Site style.** The tone of each palette slot and the type-scale choice,
 only from `site-tones` and `site-type-scale` in
-[`../schema/tokens.json`](../schema/tokens.json). The choice reaches the
+[`../schema/tokens.json`](../schema/tokens.json), or, for a slot, a
+colour of the site's own written `#rrggbb` (anything else is refused at
+`/palette/<slot>`, "must be one of …, or a colour as #rrggbb").
+
+**Free colours** (`app/models/free_colors.rb`). A slot or a block's
+background or colour may name a colour of its own (the schema's
+`freeColor`). The page carries it as a data attribute, never an inline
+style, which the pages' `style-src 'self'` would block: `data-primary`
+on `.site` for a slot, `data-bg`, `data-fg` or `data-line` (and
+their `tablet-` and `phone-` forms) on a block. The layout links
+`/colors.css?t=…&b=…&s=…&c=…&v=…` after `tokens.css` when the page, its
+header or its footer names one: the site's Text and Background tones, its
+free tones by slot, the free colours its blocks name, sorted, and the
+release, whose code writes the rules. `FreeColorsController` writes the
+rules from the address alone (a free background takes the site tone that
+reads better on it, as a slot's band does), with `Cache-Control: public,
+max-age=31536000, immutable`; an address no page writes (a bad hex, an
+unknown or repeated slot, more than 256 colours) is a 404. The editor
+writes the same bytes for its canvas (`builder/src/render/free-colors-css.ts`):
+`test/models/free_colors_test.rb` and the editor's
+`free-colors.contract.test.ts` hold both to `../contract/free-colors/`. The choice reaches the
 page as `data-type-scale` on `.site`, and `tokens.css` sizes every step of
 Gentle and Strong under that attribute (Balanced, the default, is the
 plain `.sw`). From the repository root, with the server running,

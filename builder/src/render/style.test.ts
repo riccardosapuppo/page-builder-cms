@@ -2,7 +2,7 @@
 // cms/app/models/block_style.rb, on the cases its rules are about.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { classValue, columnWidths, dataStyle, styleClasses, styleValue, visibilityClasses } from "./style.ts";
+import { classValue, columnWidths, dataStyle, freeColorData, styleClasses, styleValue, visibilityClasses } from "./style.ts";
 
 const style = {
   base: { background: "soft", spaceAbove: "section-s", spaceBelow: "l", spaceBetween: "xl" },
@@ -40,7 +40,7 @@ test("data-style lists every stored setting the schema allows: devices in order,
 
 test("a value or a key the schema does not list never becomes a class or reaches data-style", () => {
   const hostile = {
-    base: { textSize: "huge onclick=alert(1)", color: "#ff0000", align: "justify", visibility: "maybe", spaceBelow: 24, sectionSpace: "section-l", constructor: "x" },
+    base: { textSize: "huge onclick=alert(1)", color: "#FF0000", background: "#f00", align: "justify", visibility: "maybe", spaceBelow: 24, sectionSpace: "section-l", constructor: "x" },
     desktop: { textSize: "display" },
     tablet: "not an object",
     phone: ["textSize", "display"],
@@ -51,6 +51,18 @@ test("a value or a key the schema does not list never becomes a class or reaches
   expect(styleValue(hostile, "base", "constructor")).toBeNull();
   expect(styleValue({ base: Object.create({ textSize: "display" }) }, "base", "textSize")).toBeNull();
   expect(styleClasses("not a style", "color")).toEqual([]);
+});
+
+test("a free colour is no class: it is a data attribute named by the key's family and the device, and data-style holds it", () => {
+  const style = { base: { background: "#1d4e6f", color: "primary" }, tablet: { background: "soft", color: "#c2352b" } };
+  expect(styleClasses(style, "background")).toEqual(["tablet-bg-soft"]);
+  expect(styleClasses(style, "color")).toEqual(["fg-primary"]);
+  expect(freeColorData(style, "background")).toEqual({ bg: "#1d4e6f" });
+  expect(freeColorData(style, "color")).toEqual({ "tablet-fg": "#c2352b" });
+  expect(freeColorData(style, "color", { family: "line" })).toEqual({ "tablet-line": "#c2352b" });
+  expect(dataStyle(style)).toBe("base.background=#1d4e6f;base.color=primary;tablet.background=soft;tablet.color=#c2352b");
+  // Written another way, it is no colour the schema allows.
+  expect(freeColorData({ base: { background: "#1D4E6F" } }, "background")).toEqual({});
 });
 
 test("column widths apply only with one part per column", () => {

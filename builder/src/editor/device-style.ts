@@ -10,7 +10,7 @@
 // these, the canvas measures the step the page shows, and the Outline
 // flags the blocks with values of their own on a tablet or a phone.
 import { REMOVE, type StyleUpdates } from "../document/commands.ts";
-import { styleValue } from "../render/style.ts";
+import { settingValue } from "../render/style.ts";
 import type { Device, StyleTokens } from "../shared/document.ts";
 import type { Preview } from "./ui-store.ts";
 
@@ -27,23 +27,23 @@ export function deviceOf(preview: Preview): Device {
 // schema allows count, as only those reach the page.
 export function shownValue(style: unknown, device: Device, key: keyof StyleTokens): string | null {
   if (device !== "base") {
-    const own = styleValue(style, device, key);
+    const own = settingValue(style, device, key);
     if (own !== null) return own;
   }
-  return styleValue(style, "base", key);
+  return settingValue(style, "base", key);
 }
 
 // The device's own value of a key, the override, or null when the device
 // shows the base's.
 export function ownValue(style: unknown, device: OverrideDevice, key: keyof StyleTokens): string | null {
-  return styleValue(style, device, key);
+  return settingValue(style, device, key);
 }
 
 // The devices on which a block has values of its own, in this order.
 export function overriddenOn(style: unknown): OverrideDevice[] {
   return OVERRIDE_DEVICES.filter((device) => {
     const part = typeof style === "object" && style !== null && Object.hasOwn(style, device) ? (style as Record<string, unknown>)[device] : undefined;
-    return typeof part === "object" && part !== null && Object.keys(part).some((key) => styleValue(style, device, key) !== null);
+    return typeof part === "object" && part !== null && Object.keys(part).some((key) => settingValue(style, device, key) !== null);
   });
 }
 

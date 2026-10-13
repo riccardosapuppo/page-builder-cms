@@ -10,9 +10,11 @@
 // (./theme.tsx); the canvas draws them locked, with nothing of the
 // editor's on their blocks. Without them it draws the sections alone, as
 // the render contract compares them.
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { RenderContext } from "./context.ts";
+import { isFreeColor } from "../shared/free-colors.ts";
 import { PageSections } from "./blocks.tsx";
+import { freeColorsCss, freeColorsFor } from "./free-colors-css.ts";
 import { SitePart, type SiteParts } from "./theme.tsx";
 
 // The parts of the site style the page root carries, as the API gives them
@@ -39,12 +41,24 @@ export function siteStyleAttributes(style: SiteStyleChoice | null | undefined): 
   if (!style) return out;
   for (const [slot, tones] of Object.entries(style.choices.palette)) {
     const tone = Object.hasOwn(style.palette, slot) ? style.palette[slot] : undefined;
-    if (tone !== undefined && tones.some((t) => t.color === tone)) out[`data-${slot}`] = tone;
+    if (tone !== undefined && (tones.some((t) => t.color === tone) || isFreeColor(tone))) out[`data-${slot}`] = tone;
   }
   if (style.choices.typeScales.some((t) => t.name === style.typeScale)) out["data-type-scale"] = style.typeScale;
   if (style.choices.letterWidths.some((w) => w.name === style.letterWidth)) out["data-letter-width"] = style.letterWidth;
   return out;
 }
+
+// The rules of the free colours the documents of a page root draw
+// (./free-colors-css.ts), in a style element before them; nothing when they
+// draw none. The published page links the CMS's stylesheet of them instead
+// (FreeColors). Drawn again only when the palette or a document changes.
+export const FreeColorsStyle = memo(
+  function FreeColorsStyle({ palette, documents }: { palette: SiteStyleChoice["palette"] | undefined; documents: readonly unknown[] }) {
+    const css = freeColorsCss(freeColorsFor(palette, documents));
+    return css === "" ? null : <style data-free-colors="">{css}</style>;
+  },
+  (a, b) => a.palette === b.palette && a.documents.length === b.documents.length && a.documents.every((document, at) => document === b.documents[at]),
+);
 
 interface PageRootProps {
   document: unknown;
@@ -68,6 +82,7 @@ export function PageRoot({ document, ctx, siteStyle, width, landmark = true, par
   const partCtx = lockedParts ? quiet : ctx;
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={width === undefined ? undefined : { width: `${width}px` }}>
+      <FreeColorsStyle palette={siteStyle?.palette} documents={[document, parts?.header, parts?.footer]} />
       <div className="sw">
         {parts && <SitePart kind="header" document={parts.header} ctx={partCtx} locked={lockedParts} />}
         {landmark ? <main>{sections}</main> : <div className="sw-main">{sections}</div>}

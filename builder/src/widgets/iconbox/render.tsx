@@ -5,7 +5,7 @@
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { isSiteIcon, SiteIcon, TextWithBreaks } from "../../render/drawings.tsx";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export function IconboxRender({ block, decoration }: BlockRenderProps) {
   const props = blockProps(block);
@@ -15,7 +15,7 @@ export function IconboxRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-iconbox", "sw-iconbox", styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
-      data={{ icon }}
+      data={{ icon, ...freeColorData(style, "color") }}
       decoration={decoration}
     >
       {icon !== null && <SiteIcon name={icon} className="sw-icon" />}

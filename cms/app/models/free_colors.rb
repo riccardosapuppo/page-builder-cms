@@ -1,0 +1,166 @@
+# frozen_string_literal: true
+
+# Free colours: a colour of the site's own choosing, "#1d4e6f", where a
+# palette slot of Site style or a block's colour setting names one instead
+# of a curated name (the schema's freeColor). A page carries it as a data
+# attribute (BlockStyle.free_color_data, SiteHelper#site_style_data), never
+# as an inline style, which the pages' Content-Security-Policy would block;
+# the rules that colour it are a stylesheet made for the colours the page
+# uses, at an address that holds them all (FreeColorsController, /colors.css),
+# written here exactly as the editor writes them for its canvas
+# (builder/src/render/free-colors-css.ts): the same input, the same bytes.
+#
+# A free background brings the colours that read on it, as a slot's does
+# (tokens.css, bg-<slot>): of the site's Text and Background tones, the one
+# that reads better on it is its text, and headings, links, icons and
+# captions follow it. A tablet or phone override in a slot's tone on a
+# block whose own colour is free is drawn again here, after the base rule
+# for the free colour, which would otherwise win on that device too.
+module FreeColors
+  PATTERN = /\A#[0-9a-f]{6}\z/
+
+  module_function
+
+  def color?(value)
+    value.is_a?(String) && PATTERN.match?(value)
+  end
+
+  # WCAG 2's contrast ratio of two #RRGGBB colours, from 1 to 21.
+  def contrast(a, b)
+    x = luminance(a)
+    y = luminance(b)
+    ([ x, y ].max + 0.05) / ([ x, y ].min + 0.05)
+  end
+
+  def luminance(hex)
+    r, g, b = [ 1, 3, 5 ].map do |at|
+      c = hex[at, 2].to_i(16) / 255.0
+      c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055)**2.4
+    end
+    (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+  end
+
+  # "dark" when the site's Background tone reads better on the colour than
+  # its Text tone, "ink" otherwise.
+  def pairing(color, text:, background:)
+    contrast(color, background) > contrast(color, text) ? "dark" : "ink"
+  end
+
+  # The site style's Text and Background tones as colours, and its free
+  # tones by slot.
+  def site_colors(style)
+    palette = style.palette.is_a?(Hash) ? style.palette : {}
+    colors = SiteTokens.read.fetch("color")
+    hex = lambda do |slot|
+      value = palette[slot]
+      next value if color?(value)
+
+      tone = SiteTokens.slots.fetch(slot).tones.include?(value) ? value : SiteTokens.slots.fetch(slot).default
+      colors.fetch(tone)
+    end
+    slots = SiteTokens.slots.keys.each_with_object({}) { |slot, free| free[slot] = palette[slot] if color?(palette[slot]) }
+    { text: hex.call("text"), background: hex.call("background"), slots: slots }
+  end
+
+  # Every free colour a document's blocks name, as a background or a
+  # colour, on any device.
+  def of_document(document)
+    found = []
+    walk = lambda do |blocks|
+      Array(blocks).each do |block|
+        next unless block.is_a?(Hash)
+
+        (block["style"].is_a?(Hash) ? block["style"].values : []).each do |part|
+          next unless part.is_a?(Hash)
+
+          %w[background color].each { |key| found << part[key] if color?(part[key]) }
+        end
+        walk.call(block["children"])
+      end
+    end
+    walk.call(document.is_a?(Hash) ? document["sections"] : nil)
+    found
+  end
+
+  SLOTS = BlockStyle::ALLOWED.fetch("color")
+
+  # The stylesheet, from the site's Text and Background tones, its free
+  # tones by slot and the free colours a page's blocks name: empty when
+  # there are none.
+  def css(text:, background:, slots:, colors:)
+    colors = colors.select { |c| color?(c) }.uniq.sort
+    free_slots = SLOTS.select { |slot| color?(slots[slot]) }
+    return "" if colors.empty? && free_slots.empty?
+
+    out = [ "/* Free colours of this page: Site style's own tones, then the colours its blocks name. */" ]
+    free_slots.each { |slot| out << %(.site[data-#{slot}="#{slots[slot]}"] { --sw-#{slot}: #{slots[slot]}; }) }
+    unless colors.empty?
+      site = { text: text, background: background }
+      out.concat(device_rules("", colors, site))
+      queries.each do |device, query|
+        out << "@container site (#{query}) {"
+        out.concat(device_rules("#{device}-", colors, site).map { |rule| "  #{rule}" })
+        out.concat(overrides_over_free("#{device}-").map { |rule| "  #{rule}" })
+        out << "}"
+      end
+    end
+    "#{out.join("\n")}\n"
+  end
+
+  def queries
+    breakpoints = SiteTokens.read.fetch("breakpoints").fetch("container")
+    {
+      "tablet" => "#{breakpoints.fetch('phone-below')}px <= width < #{breakpoints.fetch('tablet-below')}px",
+      "phone" => "width < #{breakpoints.fetch('phone-below')}px"
+    }
+  end
+
+  def device_rules(prefix, colors, site)
+    colors.flat_map do |color|
+      declarations, ring = free_background(color, site)
+      [
+        %([data-#{prefix}bg="#{color}"] { #{declarations} }),
+        %([data-#{prefix}bg="#{color}"] > * { --ring-color: #{ring}; }),
+        %([data-#{prefix}fg="#{color}"] { color: #{color}; }),
+        %([data-#{prefix}line="#{color}"] { --line-color: #{color}; })
+      ]
+    end
+  end
+
+  def free_background(color, site)
+    if pairing(color, **site) == "dark"
+      [ "background-color: #{color}; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
+        "--mark-disc: var(--sw-background); --mark-line: #{color}; --caption-color: currentColor;", "var(--sw-background)" ]
+    else
+      [ "background-color: #{color}; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
+        "--mark-disc: initial; --mark-line: initial; --caption-color: currentColor;", "var(--sw-text)" ]
+    end
+  end
+
+  def overrides_over_free(prefix)
+    rules = []
+    [ "none", *SLOTS ].each do |slot|
+      declarations, ring = SiteTheme::TokenCss.background(slot)
+      rules << "[data-bg].#{prefix}bg-#{slot} { #{declarations} }"
+      rules << "[data-bg].#{prefix}bg-#{slot} > * { --ring-color: #{ring}; }"
+    end
+    SLOTS.each { |slot| rules << "[data-fg].#{prefix}fg-#{slot} { color: var(--sw-#{slot}); }" }
+    SLOTS.each { |slot| rules << "[data-line].#{prefix}line-#{slot} { --line-color: var(--sw-#{slot}); }" }
+    rules
+  end
+
+  # The address of a page's stylesheet, or nil when it needs none: the
+  # site's tones, its free tones and the colours, and the release, whose
+  # code writes the rules, so the address can be kept for good.
+  def path(style, documents)
+    site = site_colors(style)
+    colors = documents.flat_map { |document| of_document(document) }.uniq.sort
+    return nil if colors.empty? && site[:slots].empty?
+
+    query = { "t" => site[:text].delete("#").downcase, "b" => site[:background].delete("#").downcase }
+    query["s"] = site[:slots].map { |slot, color| "#{slot}-#{color.delete('#')}" }.join(",") unless site[:slots].empty?
+    query["c"] = colors.map { |color| color.delete("#") }.join(",") unless colors.empty?
+    query["v"] = PageCache.revision.to_s[0, 12]
+    "/colors.css?#{query.map { |key, value| "#{key}=#{value}" }.join('&')}"
+  end
+end

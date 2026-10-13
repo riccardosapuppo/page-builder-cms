@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import { BlockRoot, blockProps, blockStyle } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { renderRichText } from "../../render/rich-text.tsx";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export function TextRender({ block, decoration }: BlockRenderProps) {
   const style = blockStyle(block);
@@ -18,6 +18,7 @@ export function TextRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-text", styleClasses(style, "textSize"), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      data={freeColorData(style, "color")}
       decoration={decoration}
     >
       {decoration?.editing ? decoration.editing(text) : text}

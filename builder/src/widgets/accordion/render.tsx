@@ -7,7 +7,7 @@ import { isObject } from "../../document/json.ts";
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { TextWithBreaks } from "../../render/drawings.tsx";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export function AccordionRender({ block, decoration }: BlockRenderProps) {
   const style = blockStyle(block);
@@ -17,6 +17,7 @@ export function AccordionRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-accordion", "sw-accordion", styleClasses(style, "color", { family: "line" }), visibilityClasses(style)]}
+      data={freeColorData(style, "color", { family: "line" })}
       decoration={decoration}
     >
       {items.map((item, index) => (

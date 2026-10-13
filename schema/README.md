@@ -120,15 +120,18 @@ The page document's one schema, and the design tokens it names.
 | `aspect` (images only) | `original` `16:9` `3:2` `4:3` `5:4` `1:1`: the crop, width to height; `original` keeps the image's shape, and as a tablet or phone override undoes a crop | `aspect.site`, which gives each its CSS `aspect-ratio` |
 | `textSize` | `display` `heading-1` `heading-2` `heading-3` `large` `body` `small` | `type.site` |
 | `typeface` (headings, texts and quotes) | `body` `heading`: the face the words are set in, the body's or the headings'; absent, a heading's own is the headings', a text's and a quote's the body's | the theme's two faces, in `site.css` |
-| `color` | `text` `background` `primary` `accent` `soft` `muted` | the six palette slots, `site-tones` in `tokens.json` (see below) |
-| `background` | `none` or a palette slot | as above |
+| `color` | `text` `background` `primary` `accent` `soft` `muted`, or a colour of the site's own (`freeColor`, `#rrggbb` in lower case) | the six palette slots, `site-tones` in `tokens.json` (see below) |
+| `background` | `none`, a palette slot or a `freeColor` | as above |
 | `align` | `left` `center` `right` | |
 | `verticalAlign` | `top` `middle` `bottom` | |
 | `visibility` | `visible` `hidden` | |
 
 A block names a palette **slot**, never a tone: the site owner chooses the
 tone of each slot (Signal, Sea, Harbour...), and every block that uses the
-slot follows. `site-tones` in `tokens.json` lists the six slots of the
+slot follows. Since 14 October 2026 a block may also name a colour of the
+site's own (`freeColor`, `#rrggbb`), which follows nothing, and a slot
+may take one in Site style; the renderers draw it by data attribute and a
+stylesheet written for it (`cms/README.md`, "Free colours"). `site-tones` in `tokens.json` lists the six slots of the
 approved mock, each with the tones the site owner may choose from (curated,
 never a free colour) and the tone a new site starts with; `site-type-scale`
 lists a choice of the site style, Gentle, Balanced or Strong, each naming

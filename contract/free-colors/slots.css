@@ -1,0 +1,4 @@
+/* Free colours of this page: Site style's own tones, then the colours its blocks name. */
+.site[data-primary="#1d4e6f"] { --sw-primary: #1d4e6f; }
+.site[data-soft="#e9f2ef"] { --sw-soft: #e9f2ef; }
+.site[data-muted="#5a5f63"] { --sw-muted: #5a5f63; }

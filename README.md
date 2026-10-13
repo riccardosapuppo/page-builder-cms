@@ -701,7 +701,10 @@ Each of these is a choice, and the reason is given with it.
   ([the decision](docs/decisions/no-authentication-one-address.md)).
 - **No themes to swap and no free CSS.** A page's look is values from the
   design's tokens (a palette, a type scale and a letter width, set once in
-  Site style), never a stylesheet a person writes.
+  Site style), never a stylesheet a person writes. A colour of the site's
+  own, `#rrggbb`, is one such value: a palette slot or a block may name
+  one, and the page draws it from a stylesheet the CMS writes for the
+  colours it names (`/colors.css`), never from an inline style.
 - **No plugins, no translation of the interface, no live co-editing.** The
   interface is in one language, en-US. Two tabs get a conflict to settle, not
   a merge ([the decision](docs/decisions/one-draft-saved-at-a-revision.md)).

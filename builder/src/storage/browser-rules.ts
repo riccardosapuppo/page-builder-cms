@@ -14,6 +14,7 @@
 //
 // browser-rules.test.ts holds the lists, the limits and the words to the
 // Ruby they follow.
+import { isFreeColor } from "../shared/free-colors.ts";
 import type { FieldError, ImageType } from "./adapter.ts";
 import { escapePointer } from "../shared/validate.ts";
 import { isObject } from "../document/json.ts";
@@ -237,7 +238,8 @@ export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unk
   const errors: FieldError[] = [];
   for (const [slot, tones] of Object.entries(slots)) {
     if (!Object.hasOwn(palette, slot)) errors.push(fieldError(`/palette/${escapePointer(slot)}`, "blank", WORDS.slotMissing));
-    else if (!tones.includes(palette[slot] as string)) errors.push(fieldError(`/palette/${escapePointer(slot)}`, "inclusion", WORDS.toneOf(tones)));
+    // A curated tone, or a colour of the site's own (../shared/free-colors.ts).
+    else if (!tones.includes(palette[slot] as string) && !isFreeColor(palette[slot])) errors.push(fieldError(`/palette/${escapePointer(slot)}`, "inclusion", WORDS.toneOf(tones)));
   }
   for (const name of Object.keys(palette)) {
     if (!Object.hasOwn(slots, name)) errors.push(fieldError(`/palette/${escapePointer(name)}`, "unknown", WORDS.notASlot));

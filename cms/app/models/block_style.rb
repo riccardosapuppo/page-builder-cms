@@ -11,7 +11,10 @@
 #
 # Only the keys and values the schema's enums name ever become a class, so
 # a document that reached the renderer without the schema's check cannot
-# write a class of its own choosing. data-style repeats the stored style,
+# write a class of its own choosing. A free colour a background or a colour
+# names (the schema's freeColor, "#1d4e6f") is no class: it is a data
+# attribute (free_color_data), which the stylesheet of the page's free
+# colours reads (FreeColors). data-style repeats the stored style,
 # canonically, for the contract between this renderer and the editor's: it
 # compares settings that would otherwise exist only as classes and CSS.
 module BlockStyle
@@ -91,6 +94,25 @@ module BlockStyle
     end
   end
 
+  # The free colour a background or a colour holds on a device, or nil.
+  def free_color(style, device, key)
+    return nil unless %w[background color].include?(key) && style.is_a?(Hash) && style[device].is_a?(Hash)
+
+    value = style[device][key]
+    FreeColors.color?(value) ? value : nil
+  end
+
+  # The free colours of a background or a colour as data attributes, named
+  # by the key's family and the device's prefix as a class is
+  # ({ "bg" => "#1d4e6f", "tablet-bg" => "#c2352b" }): a divider's colour
+  # is the colour of its line (line).
+  def free_color_data(style, key, family: FAMILY.fetch(key))
+    DEVICES.each_with_object({}) do |device, data|
+      color = free_color(style, device, key)
+      data[device == "base" ? family : "#{device}-#{family}"] = color if color
+    end
+  end
+
   # hide-desktop, hide-tablet and hide-phone where the block is hidden. A
   # device without an override shows what base says.
   def visibility_classes(style)
@@ -102,15 +124,16 @@ module BlockStyle
     }.filter_map { |device, shown| "hide-#{device}" if shown == "hidden" }
   end
 
-  # "base.textSize=display;phone.textSize=heading-1": every stored setting,
-  # devices in this order and keys sorted, or nil when there is none.
+  # "base.textSize=display;phone.textSize=heading-1": every stored setting
+  # (a free colour too), devices in this order and keys sorted, or nil when
+  # there is none.
   def data_attribute(style)
     pairs = DEVICES.flat_map do |device|
       part = style.is_a?(Hash) ? style[device] : nil
       next [] unless part.is_a?(Hash)
 
       part.keys.sort.filter_map do |key|
-        value = value(style, device, key)
+        value = value(style, device, key) || free_color(style, device, key)
         "#{device}.#{key}=#{value}" unless value.nil?
       end
     end

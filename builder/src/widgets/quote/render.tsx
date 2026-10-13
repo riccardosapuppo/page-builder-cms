@@ -4,7 +4,7 @@
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { TextWithBreaks, ThemeSvg } from "../../render/drawings.tsx";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export function QuoteRender({ block, decoration }: BlockRenderProps) {
   const props = blockProps(block);
@@ -13,6 +13,7 @@ export function QuoteRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-quote", styleClasses(style, "textSize", { fallback: "heading-3" }), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      data={freeColorData(style, "color")}
       decoration={decoration}
     >
       <figure className="sw-quote">

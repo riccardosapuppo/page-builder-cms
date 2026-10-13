@@ -2,4 +2,4 @@
 <%- props = block_props(block) -%>
 <%- style = block_style(block) -%>
 <%- name = prop_text(props, "name") -%>
-<%= tag.div(**block_root(block, [ "w", "w-logo", %w[color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], aria: ({ hidden: true } if name.empty?))) do %><% if name.empty? %><%= theme_svg("mark", css_class: "sw-brand-mark") %><% else %><%= tag.a(safe_join([ theme_svg("mark", css_class: "sw-brand-mark"), tag.span(name) ]), class: "w-logo-link", href: "/") %><% end %><% end %>
+<%= tag.div(**block_root(block, [ "w", "w-logo", %w[color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: BlockStyle.free_color_data(style, "color"), aria: ({ hidden: true } if name.empty?))) do %><% if name.empty? %><%= theme_svg("mark", css_class: "sw-brand-mark") %><% else %><%= tag.a(safe_join([ theme_svg("mark", css_class: "sw-brand-mark"), tag.span(name) ]), class: "w-logo-link", href: "/") %><% end %><% end %>

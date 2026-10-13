@@ -2,8 +2,8 @@
 
 # The site style: which tone each palette slot has, how strongly the type
 # scale steps up, and how wide the Headings typeface is drawn. Every published page takes its colours and sizes
-# from it. Only the values of schema/tokens.json are accepted (SiteTokens):
-# there is no free colour and no free size.
+# from it. A slot takes one of its curated tones (SiteTokens) or a colour of
+# the site's own, "#1d4e6f" (FreeColors); there is no free size.
 #
 # One row for the whole site, id 1. Until someone changes the style there
 # is no row, and the defaults of tokens.json apply.
@@ -41,8 +41,8 @@ class SiteStyle < ApplicationRecord
     slots.each do |name, slot|
       if !palette.key?(name)
         errors.add(:"palette/#{name}", :blank, message: "is missing")
-      elsif !slot.tones.include?(palette[name])
-        errors.add(:"palette/#{name}", :inclusion, message: "must be one of #{slot.tones.join(', ')}")
+      elsif !slot.tones.include?(palette[name]) && !FreeColors.color?(palette[name])
+        errors.add(:"palette/#{name}", :inclusion, message: "must be one of #{slot.tones.join(', ')}, or a colour as #rrggbb")
       end
     end
     (palette.keys - slots.keys).each do |name|

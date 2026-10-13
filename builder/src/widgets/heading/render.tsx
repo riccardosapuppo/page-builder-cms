@@ -8,7 +8,7 @@ import { createElement } from "react";
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { linkHref } from "../../render/policy.ts";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export const LEVEL_SIZES = { 1: "heading-1", 2: "heading-2", 3: "heading-3", 4: "large" } as const;
 
@@ -28,6 +28,7 @@ export function HeadingRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-heading", styleClasses(style, "textSize", { fallback: LEVEL_SIZES[level] }), styleClasses(style, "typeface"), styleClasses(style, "color"), styleClasses(style, "align"), visibilityClasses(style)]}
+      data={freeColorData(style, "color")}
       decoration={decoration}
     >
       {decoration?.editing ? decoration.editing(drawn) : drawn}

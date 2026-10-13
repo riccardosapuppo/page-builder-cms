@@ -6,7 +6,7 @@
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
 import type { BlockRenderProps } from "../../render/context.ts";
 import { ThemeSvg } from "../../render/drawings.tsx";
-import { styleClasses, visibilityClasses } from "../../render/style.ts";
+import { freeColorData, styleClasses, visibilityClasses } from "../../render/style.ts";
 
 export function LogoRender({ block, decoration }: BlockRenderProps) {
   const name = propText(blockProps(block), "name");
@@ -15,6 +15,7 @@ export function LogoRender({ block, decoration }: BlockRenderProps) {
     <BlockRoot
       block={block}
       classes={["w", "w-logo", (["color", "align"] as const).map((key) => styleClasses(style, key)).flat(), visibilityClasses(style)]}
+      data={freeColorData(style, "color")}
       attributes={{ "aria-hidden": name === "" ? "true" : null }}
       decoration={decoration}
     >

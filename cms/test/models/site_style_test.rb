@@ -29,12 +29,20 @@ class SiteStyleTest < ActiveSupport::TestCase
     assert_equal "site-harbour", SiteStyle.current.palette["primary"]
   end
 
-  test "a tone of another slot, a free colour, a missing slot or an unknown one is refused" do
+  test "a colour of the site's own, #rrggbb, is accepted in any slot" do
     style = SiteStyle.current
-    style.palette = style.palette.merge("primary" => "site-lemon", "accent" => "#ff0000").except("muted").merge("brand" => "site-sea")
+    style.palette = style.palette.merge("primary" => "#1d4e6f", "text" => "#f4f1ea", "background" => "#101418")
+
+    assert style.save
+    assert_equal [ "#1d4e6f", "#f4f1ea" ], SiteStyle.current.palette.values_at("primary", "text")
+  end
+
+  test "a tone of another slot, a colour not written #rrggbb, a missing slot or an unknown one is refused" do
+    style = SiteStyle.current
+    style.palette = style.palette.merge("primary" => "site-lemon", "accent" => "#FF0000", "soft" => "red").except("muted").merge("brand" => "site-sea")
 
     assert_not style.valid?
-    assert_equal({ "palette/primary" => [ :inclusion ], "palette/accent" => [ :inclusion ], "palette/muted" => [ :blank ], "palette/brand" => [ :unknown ] },
+    assert_equal({ "palette/primary" => [ :inclusion ], "palette/accent" => [ :inclusion ], "palette/soft" => [ :inclusion ], "palette/muted" => [ :blank ], "palette/brand" => [ :unknown ] },
                  style.errors.details.transform_keys(&:to_s).transform_values { |list| list.map { |d| d[:error] } })
   end
 

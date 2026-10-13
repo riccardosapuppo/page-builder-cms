@@ -1381,7 +1381,7 @@ components:
         createdAt:
           $ref: '#/components/schemas/Time'
     Palette:
-      description: A tone for every palette slot, by colour name of schema/tokens.json.
+      description: For every palette slot, one of its curated tones, by colour name of schema/tokens.json, or a colour of the site's own written #rrggbb in lower case (the schema's freeColor).
       type: object
       additionalProperties:
         type: string

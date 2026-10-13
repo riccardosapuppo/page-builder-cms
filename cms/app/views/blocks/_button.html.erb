@@ -1,4 +1,4 @@
 <%# A link drawn as a button. Its background and text colour go on the button itself; an address RenderPolicy refuses leaves a label that links nowhere. -%>
 <%- props = block_props(block) -%>
 <%- style = block_style(block) -%>
-<%= tag.div(**block_root(block, [ "w", "w-button", BlockStyle.classes(style, "align"), BlockStyle.visibility_classes(style) ])) do %><%= content_tag(:a, prop_text(props, "label"), class: [ "sw-btn", BlockStyle.classes(style, "background"), BlockStyle.classes(style, "color") ].flatten, href: RenderPolicy.link_href(props["href"])) %><% end %>
+<%= tag.div(**block_root(block, [ "w", "w-button", BlockStyle.classes(style, "align"), BlockStyle.visibility_classes(style) ])) do %><%= content_tag(:a, prop_text(props, "label"), class: [ "sw-btn", BlockStyle.classes(style, "background"), BlockStyle.classes(style, "color") ].flatten, href: RenderPolicy.link_href(props["href"]), data: { **BlockStyle.free_color_data(style, "background"), **BlockStyle.free_color_data(style, "color") }) %><% end %>

@@ -15,7 +15,7 @@ import { WIDGET_RENDERERS } from "../widgets/registry.ts";
 import { BlockRoot, blockProps, blockStyle, classNames } from "./block-root.tsx";
 import type { BlockRenderProps, Decoration, RawBlock, RenderContext } from "./context.ts";
 import { anchor } from "./policy.ts";
-import { classValue, columnWidths, stack, styleClasses, visibilityClasses } from "./style.ts";
+import { classValue, columnWidths, freeColorData, stack, styleClasses, visibilityClasses } from "./style.ts";
 
 const SECTIONS: readonly string[] = ["section"];
 const COLUMNS: readonly string[] = ["column"];
@@ -76,7 +76,7 @@ function Section({ block, ctx, decoration }: BlockRenderProps) {
       block={block}
       classes={["sec", styleClasses(style, "background"), styleClasses(style, "spaceAbove"), styleClasses(style, "spaceBelow"), visibilityClasses(style)]}
       attributes={{ id: anchor(props.anchor) }}
-      data={{ columns: columns.length, "column-widths": widths, stack: stacks }}
+      data={{ columns: columns.length, "column-widths": widths, stack: stacks, ...freeColorData(style, "background") }}
       decoration={decoration}
     >
       <div className={classNames("sw-inner", "cols", `cols-${Math.min(Math.max(columns.length, 1), 4)}`, widths && `widths-${classValue(widths)}`, stacks && `stack-${stacks}`, styleClasses(style, "spaceBetween", { family: "cols-gap" }))}>
@@ -97,6 +97,7 @@ function Column({ block, ctx, decoration }: BlockRenderProps) {
         (["background", "spaceInside", "spaceBetween", "textSize", "color", "align", "verticalAlign"] as const).map((key) => styleClasses(style, key)).flat(),
         visibilityClasses(style),
       ]}
+      data={{ ...freeColorData(style, "background"), ...freeColorData(style, "color") }}
       decoration={decoration}
     >
       {renderBlocks(block.children, WIDGETS, ctx)}
