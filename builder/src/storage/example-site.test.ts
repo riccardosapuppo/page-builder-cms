@@ -6,7 +6,10 @@
 import { describe, expect, test } from "vitest";
 import site from "../../../example-site/site.json";
 import type { Invalid, MediaItem, StorageAdapter } from "./adapter.ts";
-import { builtFiles, editionOf, seedExampleEdition, seedExampleSite, siteFingerprint, startOver, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
+import { builtFiles, builtSource, editionOf, seedExampleEdition, seedExampleSite, startOver, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
+import type { BrowserAdapter } from "./browser.ts";
+import { digest } from "./digest.ts";
+import { SITE_THEME } from "virtual:site-theme";
 
 const pages: Record<string, unknown> = {
   "pages/a.json": { schemaVersion: 1, title: "Home", sections: [{ type: "section", children: [{ type: "image", props: { mediaId: "pic-1" } }] }] },
@@ -276,7 +279,9 @@ describe("editions", () => {
       { id: 901, kind: "header", title: "Header", slug: null, home: false, revision: 0, updatedAt: "t0", published: null },
       { id: 902, kind: "footer", title: "Footer", slug: null, home: false, revision: 0, updatedAt: "t0", published: null },
     ];
-    const state = { pages: [] as Row[], parts: parts(), media: [] as Array<{ id: string; alt: string; byteSize: number; width: number; height: number; filename: string }>, cleared: 0 };
+    // `cleared` counts every letting go; `unasked`, those that did not
+    // check first how the site stood (start over's, the visitor's choice).
+    const state = { pages: [] as Row[], parts: parts(), media: [] as Array<{ id: string; alt: string; byteSize: number; width: number; height: number; filename: string }>, cleared: 0, unasked: 0 };
     let next = 0;
     const row = (id: number) => [...state.pages, ...state.parts].find((one) => one.id === id)!;
     const adapter = {
@@ -307,13 +312,25 @@ describe("editions", () => {
         Object.assign(row(id), changes);
         return { ok: true, value: {} };
       },
-      clearSite: async () => {
-        state.pages = [];
-        state.parts = parts();
-        state.media = [];
-        state.cleared += 1;
-      },
-    } as unknown as StorageAdapter & { clearSite(): Promise<void> };
+    } as unknown as StorageAdapter & Pick<BrowserAdapter, "siteFingerprint" | "clearSite" | "clearSiteIf">;
+    // As the browser's storage says how the site stands: every record.
+    const fingerprint = () => digest(JSON.stringify([state.pages, state.parts, state.media]));
+    const empty = () => {
+      state.pages = [];
+      state.parts = parts();
+      state.media = [];
+      state.cleared += 1;
+    };
+    adapter.siteFingerprint = async () => fingerprint();
+    adapter.clearSite = async () => {
+      state.unasked += 1;
+      empty();
+    };
+    adapter.clearSiteIf = async (expected: string) => {
+      if (fingerprint() !== expected) return false;
+      empty();
+      return true;
+    };
     return { adapter, state };
   }
   function editions(start: EditionRecord | null = null): EditionMarks & { record: EditionRecord | null } {
@@ -326,7 +343,7 @@ describe("editions", () => {
     const m = marks();
     const e = editions();
     expect(await seedExampleEdition(adapter, source({ edition: "one" }), m, e)).toBe("seeded");
-    expect(e.record).toEqual({ edition: "one", fingerprint: await siteFingerprint(adapter) });
+    expect(e.record).toEqual({ edition: "one", fingerprint: await adapter.siteFingerprint() });
     expect(await seedExampleEdition(adapter, source({ edition: "one" }), m, e)).toBe("not empty");
     expect(state.cleared).toBe(0);
     expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
@@ -339,7 +356,9 @@ describe("editions", () => {
     await seedExampleEdition(adapter, source({ edition: "one" }), m, e);
     const before = state.pages.map((page) => page.id);
     expect(await seedExampleEdition(adapter, source({ edition: "two" }), m, e)).toBe("renewed");
-    expect(state.cleared).toBe(1);
+    // Let go of only as the site stood right after its seed, checked as it
+    // was let go of.
+    expect([state.cleared, state.unasked]).toEqual([1, 0]);
     expect(m.state).toBe("seeded");
     expect(e.record?.edition).toBe("two");
     expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
@@ -358,18 +377,29 @@ describe("editions", () => {
     // Put in before editions were kept: nothing says nobody worked on it.
     expect(await seedExampleEdition(adapter, source({ edition: "two" }), marks("seeded"), editions())).toBe("newer kept");
     expect(state.cleared).toBe(0);
-    // The visitor chose to start over.
+    // The visitor chose to start over: let go of as it stands.
     await startOver(adapter, m, e);
-    expect([state.cleared, m.state, e.record]).toEqual([1, "seeding", null]);
+    expect([state.cleared, state.unasked, m.state, e.record]).toEqual([1, 1, "seeding", null]);
     expect(await seedExampleEdition(adapter, source({ edition: "two" }), m, e)).toBe("seeded");
     expect(e.record?.edition).toBe("two");
   });
 
-  test("an edition is its files': the same files give the same one, a page or a picture changed another", () => {
-    const one = editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" });
-    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" })).toBe(one);
-    expect(editionOf(site, { "pages/home.json": { title: "B" } }, { "images/a.png": "/assets/a-1.png" })).not.toBe(one);
-    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-2.png" })).not.toBe(one);
+  test("an edition is its files': the same files give the same one, a page, a picture or a part's starter changed another", () => {
+    const parts = { header: { title: "Header" }, footer: { title: "Footer" } };
+    const one = editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, parts);
+    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, { footer: parts.footer, header: parts.header })).toBe(one);
+    expect(editionOf(site, { "pages/home.json": { title: "B" } }, { "images/a.png": "/assets/a-1.png" }, parts)).not.toBe(one);
+    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-2.png" }, parts)).not.toBe(one);
+    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, { ...parts, footer: { title: "Footer", sections: [] } })).not.toBe(one);
     expect(one).toMatch(/^[0-9a-f]{8}$/);
+  });
+
+  test("the build's edition holds the header's and footer's starters it serves", () => {
+    // The pictures by their name in site.json, as the build gives them.
+    const found = import.meta.glob<string>("../../../example-site/images/*.png", { eager: true, query: "?url", import: "default" });
+    const images = Object.fromEntries(Object.entries(found).map(([path, url]) => [path.slice(path.indexOf("images/")), url]));
+    const built = builtSource();
+    expect(built.edition).toBe(editionOf(built.site, built.pages, images, SITE_THEME.parts));
+    expect(built.edition).not.toBe(editionOf(built.site, built.pages, images, { ...SITE_THEME.parts, footer: { ...SITE_THEME.parts.footer, title: "Another footer" } }));
   });
 });

@@ -311,6 +311,42 @@ test("a form a broken build left in a part's draft or version is not published, 
   }
 });
 
+test("how the site stands: a read leaves it, a version saved by name moves it; the site is let go of only as it stood, read in the same transaction, so a save from another tab in between keeps it", async ({ browser }) => {
+  // A browser of its own, with two tabs: the other tests' records stay.
+  const own = await browser.newContext();
+  try {
+    const here = await storagePage(await own.newPage());
+    const tab = remoteAdapter(here, capabilities);
+    const other = remoteAdapter(await storagePage(await own.newPage()), capabilities);
+    const made = await page(tab);
+    const seen = await tab.siteFingerprint();
+    expect(seen).toMatch(/^[0-9a-f]{8}$/);
+    // Reading, here or in the other tab, changes nothing.
+    await tab.listPages();
+    await other.getPage(made.id);
+    await other.listVersions(made.id);
+    expect(await tab.siteFingerprint()).toBe(seen);
+
+    // A version saved by name in the other tab, after this one read how the
+    // site stood: the page's draft as it was, the site's standing not.
+    const before = await tab.getPage(made.id);
+    expect((await other.saveVersion(made.id, { name: "Mine" })).ok).toBe(true);
+    expect((await tab.getPage(made.id)).draft).toEqual(before.draft);
+    const now = await tab.siteFingerprint();
+    expect(now).not.toBe(seen);
+    // Asked to let go of the site as it was read: kept, the version too.
+    expect(await tab.clearSiteIf(seen)).toBe(false);
+    expect((await tab.listVersions(made.id)).map((version) => version.name)).toContain("Mine");
+
+    // As it stands: let go of, every store.
+    expect(await tab.clearSiteIf(now)).toBe(true);
+    for (const store of ["pages", "versions", "media", "blobs", "site"]) expect(await here.evaluate((name) => window.storagePage!.keys(name), store), store).toEqual([]);
+    expect(await other.listPages()).toEqual([]);
+  } finally {
+    await own.close();
+  }
+});
+
 test("the site let go of, for the demo to start over: every page, version, picture and setting, and the pictures' addresses", async ({ browser }) => {
   // A browser of its own: the other tests' records stay.
   const own = await browser.newContext();

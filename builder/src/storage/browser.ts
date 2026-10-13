@@ -89,6 +89,7 @@ import {
   WORDS,
 } from "./browser-rules.ts";
 import { systemClock, type Clock } from "./clock.ts";
+import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
@@ -257,6 +258,22 @@ function wire<T>(value: T): T {
 
 // One IndexedDB request, as a promise. Awaited inside a transaction's
 // body, the next request is made before the transaction can commit.
+// How the site stands, read in `tx`, which spans every store: every record
+// of each, a picture's bytes by their size and type (BrowserAdapter).
+async function standing(tx: IDBTransaction): Promise<string> {
+  const held: unknown[] = [];
+  for (const store of STORES) {
+    const records = (await request(tx.objectStore(store).getAll())) as unknown[];
+    held.push(store === "blobs" ? (records as BlobRecord[]).map((record) => [record.id, record.blob.size, record.blob.type]) : records);
+  }
+  return digest(JSON.stringify(held));
+}
+
+// Every store emptied, in `tx`, which spans them all.
+async function emptied(tx: IDBTransaction): Promise<void> {
+  for (const store of STORES) await request(tx.objectStore(store).clear());
+}
+
 function request<T>(asked: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     asked.onsuccess = () => resolve(asked.result);
@@ -343,12 +360,22 @@ function placeInLine(name: string, heldUpAhead: () => void): PlaceInLine {
   };
 }
 
-// The browser's storage, and what only it can do: let go of everything it
-// keeps of the site, for the demo to start over with a newer example site
-// (./example-site.ts). The CMS keeps its own pages; nothing in the editor
-// asks for this.
+// The browser's storage, and what only it can do, for the demo to give a
+// visitor a newer example site (./example-site.ts): say how the site
+// stands, and let go of everything it keeps of it. The CMS keeps its own
+// pages; nothing in the editor asks for this.
 export interface BrowserAdapter extends StorageAdapter {
+  // A digest of every record of every store, the pictures' bytes by their
+  // size and type: any write through the storage changes it, a version
+  // saved by name too; a read does not.
+  siteFingerprint(): Promise<string>;
+  // Every page, version, picture and setting of the site, gone in one
+  // transaction, and the pictures' addresses with them.
   clearSite(): Promise<void>;
+  // The same, only while the site stands as `fingerprint` says, read in
+  // the transaction that lets go of it: a write that comes in between,
+  // from another tab too, keeps the site. Says whether it let go.
+  clearSiteIf(fingerprint: string): Promise<boolean>;
 }
 
 export function createBrowserAdapter(config: BrowserAdapterConfig = {}): BrowserAdapter {
@@ -1127,13 +1154,21 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
     async deleteResponse() {
       throw unsupported("responses", "browser");
     },
-    // Every page, version, picture and setting of the site, gone in one
-    // transaction, and the pictures' addresses with them.
+    async siteFingerprint() {
+      return read(STORES, standing);
+    },
     async clearSite() {
-      await write(STORES, async (tx) => {
-        for (const store of STORES) await request(tx.objectStore(store).clear());
-      });
+      await write(STORES, emptied);
       for (const id of addresses.keys()) forget(id);
+    },
+    async clearSiteIf(fingerprint) {
+      const cleared = await write(STORES, async (tx) => {
+        if ((await standing(tx)) !== fingerprint) return false;
+        await emptied(tx);
+        return true;
+      });
+      if (cleared) for (const id of addresses.keys()) forget(id);
+      return cleared;
     },
   };
 

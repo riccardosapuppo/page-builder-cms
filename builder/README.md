@@ -208,10 +208,12 @@ same demo from the source, at `/`.
   published as their starters are, the home page open
   (`src/storage/example-site.ts`). A site with a page or a picture is
   never added to. Each build's example site has an edition, a digest of
-  its files: on a visit to a build of another edition, a site nobody has
-  changed since its seed is let go of and the new edition put in at once;
-  a site somebody has changed is kept, and the demo's line offers to start
-  over with the new one, asking twice.
+  its files and of the header's and footer's starters: on a visit to a
+  build of another edition, a site nobody has changed since its seed
+  (every record the browser keeps of it as the seed left it, checked in
+  the transaction that lets go of it) is let go of and the new edition
+  put in at once; a site somebody has changed is kept, and the demo's
+  line offers to start over with the new one, asking twice.
 - It keeps pages, drafts with their revisions, versions, a publish, the
   media library with each image's bytes, the site style, and the header
   and footer, parts kept as pages are, in the browser's IndexedDB

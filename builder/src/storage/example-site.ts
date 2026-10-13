@@ -19,13 +19,17 @@
 //
 // Editions: the demo is built again as the example site changes, and a
 // browser keeps the site it was given. Each build's example site has an
-// edition (a digest of its files), and the seed keeps, beside its mark,
-// the edition it put in and how the site stood right after. On a later
-// visit to a build of another edition, a site that stands as it did then,
-// nobody having worked on it, is let go of and the new edition put in;
-// a site somebody has worked on is kept, and the demo offers to start
-// over with the new edition (seedExampleEdition). A site put in before
-// editions were kept counts as worked on: nothing says otherwise.
+// edition (a digest of its files and of the header's and footer's
+// starters, which the seed publishes as they are), and the seed keeps,
+// beside its mark, the edition it put in and how the site stood right
+// after (the storage's own fingerprint, over every record it keeps). On a
+// later visit to a build of another edition, a site that stands as it did
+// then, nobody having worked on it, is let go of and the new edition put
+// in: the storage reads how the site stands in the transaction that lets
+// go of it, so a save from another tab that comes in between keeps it. A
+// site somebody has worked on is kept, and the demo offers to start over
+// with the new edition (seedExampleEdition). A site put in before editions
+// were kept counts as worked on: nothing says otherwise.
 //
 // It lives with the storage because it reads the pictures' bytes from the
 // demo's own files: only src/storage/ sends requests.
@@ -33,6 +37,8 @@ import siteFile from "../../../example-site/site.json";
 import type { PageDocument } from "../shared/document.ts";
 import type { Invalid, StorageAdapter } from "./adapter.ts";
 import type { BrowserAdapter } from "./browser.ts";
+import { digest } from "./digest.ts";
+import { SITE_THEME } from "virtual:site-theme";
 
 export interface ExampleSiteFile {
   name: string;
@@ -241,38 +247,12 @@ export function browserEditions(): EditionMarks {
   };
 }
 
-// A short digest of a text (FNV-1a, 32 bits): enough to tell one edition,
-// or one state of a site, from another.
-export function digest(text: string): string {
-  let hash = 0x811c9dc5;
-  for (let at = 0; at < text.length; at += 1) {
-    hash ^= text.charCodeAt(at);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return hash.toString(16).padStart(8, "0");
-}
-
-// The edition of an example site: its site.json, its pages, and its
-// pictures by the addresses a build gives them, which change with their
-// bytes.
-export function editionOf(site: ExampleSiteFile, pages: Readonly<Record<string, unknown>>, images: Readonly<Record<string, string>>): string {
+// The edition of an example site: its site.json, its pages, its pictures
+// by the addresses a build gives them, which change with their bytes, and
+// the header's and footer's starters, which the seed publishes as they are.
+export function editionOf(site: ExampleSiteFile, pages: Readonly<Record<string, unknown>>, images: Readonly<Record<string, string>>, parts: Readonly<Record<string, unknown>>): string {
   const sorted = (record: Readonly<Record<string, unknown>>) => Object.keys(record).sort().map((key) => [key, record[key]]);
-  return digest(JSON.stringify([site, sorted(pages), sorted(images)]));
-}
-
-// How the site stands: every page and part with its revision and its
-// published version, every picture, the site style. Any change made
-// through the storage changes it; reading changes nothing.
-type Standing = Pick<StorageAdapter, "listPages" | "listParts" | "listMedia" | "getSiteStyle">;
-export async function siteFingerprint(adapter: Standing): Promise<string> {
-  const [pages, parts, media, style] = await Promise.all([adapter.listPages(), adapter.listParts(), adapter.listMedia(), adapter.getSiteStyle()]);
-  const page = (one: (typeof pages)[number]) => [one.id, one.kind, one.title, one.slug, one.home, one.revision, one.updatedAt, one.published];
-  return digest(JSON.stringify({
-    pages: pages.map(page),
-    parts: parts.map(page),
-    media: media.map((item) => [item.id, item.alt, item.byteSize, item.width, item.height]),
-    style: [style.palette, style.typeScale, style.updatedAt],
-  }));
+  return digest(JSON.stringify([site, sorted(pages), sorted(images), sorted(parts)]));
 }
 
 // What the demo found of the example site on this visit: put in for the
@@ -283,7 +263,7 @@ export type ExampleOutcome = "seeded" | "not empty" | "renewed" | "newer kept";
 
 // The seed, by editions: see the head of this file.
 export async function seedExampleEdition(
-  adapter: Pick<BrowserAdapter, "clearSite"> & StorageAdapter,
+  adapter: Pick<BrowserAdapter, "siteFingerprint" | "clearSiteIf"> & StorageAdapter,
   source: ExampleSource,
   marks: SeedMarks = browserMarks(),
   editions: EditionMarks = browserEditions(),
@@ -294,15 +274,14 @@ export async function seedExampleEdition(
     if (edition !== undefined && marks.read() === "seeded") {
       const record = editions.read();
       if (record?.edition === edition) return "not empty";
-      if (record === null || record.fingerprint !== (await siteFingerprint(adapter))) return "newer kept";
-      await adapter.clearSite();
+      if (record === null || !(await adapter.clearSiteIf(record.fingerprint))) return "newer kept";
       editions.clear();
       // As a seed cut short: it finds nothing put in, and puts it all in.
       marks.write("seeding");
       renewed = true;
     }
     const outcome = await putIn(adapter, source, marks);
-    if (outcome === "seeded" && edition !== undefined) editions.write({ edition, fingerprint: await siteFingerprint(adapter) });
+    if (outcome === "seeded" && edition !== undefined) editions.write({ edition, fingerprint: await adapter.siteFingerprint() });
     return renewed ? "renewed" : outcome;
   });
 }
@@ -366,7 +345,7 @@ export function builtSource(site: ExampleSiteFile = siteFile): ExampleSource {
   return {
     site,
     pages,
-    edition: editionOf(site, pages, images),
+    edition: editionOf(site, pages, images, SITE_THEME.parts),
     async image(file) {
       const address = images[file];
       if (address === undefined) throw new Error(`The example site's picture ${file} is not in this build.`);
