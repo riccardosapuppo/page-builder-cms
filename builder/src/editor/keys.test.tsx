@@ -457,6 +457,40 @@ test("with a heading's line open, the keys on its clamp are the clamp's: none is
   expect(kit.ui.getState().editingText?.keys).toBeUndefined();
 });
 
+test("with a heading's line open, Esc from its clamp goes back into the line, and a character typed on the block itself goes into the line at its end", () => {
+  const kit = shell("h1");
+  act(() => root("h1").focus());
+  press("Enter");
+  const line = within(root("h1")).getByRole("textbox", { name: /^Heading/ });
+  // jsdom does not make an editable element focusable, as a browser does.
+  line.tabIndex = -1;
+  const head = within(root("h1")).getByRole("button", { name: "Heading: block menu" });
+  act(() => head.focus());
+  press("Escape");
+  expect(document.activeElement).toBe(line);
+  expect(kit.store.getState().selection).toBe("h1");
+  expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end", open: true });
+  // The focus on the block itself: the character goes into the line, at
+  // its end, by the document's own insertion.
+  const typed: Array<{ text: string; into: Element | null }> = [];
+  const own = Object.getOwnPropertyDescriptor(document, "execCommand");
+  document.execCommand = ((command: string, _ui?: boolean, value?: string) => {
+    if (command !== "insertText") return false;
+    typed.push({ text: value ?? "", into: document.activeElement });
+    return true;
+  }) as typeof document.execCommand;
+  try {
+    act(() => root("h1").focus());
+    press("x");
+    expect(typed).toEqual([{ text: "x", into: line }]);
+    expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end", open: true });
+    expect(document.getSelection()?.focusNode === line || line.contains(document.getSelection()?.focusNode ?? null)).toBe(true);
+  } finally {
+    if (own) Object.defineProperty(document, "execCommand", own);
+    else delete (document as unknown as { execCommand?: unknown }).execCommand;
+  }
+});
+
 test("a heading is written where it stands, as a text: Enter opens its line, and a character typed on a selected heading or text starts the writing with it; an arrow or a key of the keymap stays its own", async () => {
   const kit = shell("h1");
   act(() => root("h1").focus());

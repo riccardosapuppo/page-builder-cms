@@ -52,6 +52,29 @@ test("a heading clicked once more is written where it stands, the caret where th
   await expect.poll(async () => find((await draftOf(request, id)).document.sections, "h")?.props.text).toBe("Swim at dawn");
 });
 
+test("with a heading's line open, Tab reaches its clamp and Esc comes back into the line; a character typed on the block itself goes into the line at its end", async ({ page, request }) => {
+  const { id } = await makePage(request, "Heading clamp", fixture());
+  await open(page, id);
+  await block(page, "g").click();
+  await page.keyboard.press("Enter");
+  const line = block(page, "g").getByRole("textbox", { name: /^Heading/ });
+  await expect(line).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(block(page, "g").getByRole("button", { name: "Heading: block menu" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(line).toBeFocused();
+  await page.keyboard.type(" now");
+  await expect(line).toHaveText("Tea after now");
+  // The focus on the block itself, the line still open: a character goes
+  // into the line, at its end, and the next ones follow it there.
+  await block(page, "g").focus();
+  await page.keyboard.type("!!");
+  await expect(line).toHaveText("Tea after now!!");
+  await page.keyboard.press("Escape");
+  await saved(page);
+  await expect.poll(async () => find((await draftOf(request, id)).document.sections, "g")?.props.text).toBe("Tea after now!!");
+});
+
 test("a character typed on a selected heading writes into it, and the Space after it is a space; Enter leaves; a pasted paragraph comes in as one line", async ({ page, request, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const { id } = await makePage(request, "Heading typed", fixture());

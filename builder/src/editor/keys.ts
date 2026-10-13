@@ -23,6 +23,7 @@ import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
 import { useOptionalSession, type Session } from "./session.tsx";
 import { publishPaused } from "./Publish.tsx";
+import { caretAtEnd, editableIn } from "./caret.ts";
 import { startEditing, textEditorOpen } from "./rich/tools.ts";
 import type { Preview } from "./ui-store.ts";
 
@@ -107,6 +108,25 @@ export function writeInto(env: Pick<EditorEnv, "store" | "ui">, event: KeyboardE
   if (event.key === " " || [...event.key].length !== 1 || !writes(event)) return false;
   const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
   if (entriesFor(press).length > 0) return false;
+  // Its editor already open, the focus back on the block itself: the
+  // character goes into that editor, at its end, as typed there. Queued
+  // on a request already answered, it would wait for an editor that is
+  // not coming, and the keys after it with it.
+  if (env.ui.getState().editingText?.id === id && textEditorOpen(env.ui.getState())) {
+    const editable = editableIn(target);
+    if (!editable) return false;
+    caretAtEnd(editable);
+    let typed = false;
+    try {
+      typed = typeof document.execCommand === "function" && document.execCommand("insertText", false, event.key);
+    } catch {
+      typed = false;
+    }
+    // Where the document cannot insert it, the browser types it into the
+    // editor, which has the focus once this key's handlers are done.
+    if (typed) event.preventDefault();
+    return true;
+  }
   startEditing(env, id, "end");
   env.ui.setState({ editingText: { id, at: "end", keys: [{ key: event.key, shift: event.shiftKey }] } });
   event.preventDefault();

@@ -24,6 +24,7 @@ import { blockName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import type { BlockType } from "../shared/document.ts";
 import { afterRender, runCommand } from "./act.ts";
+import { caretAtEnd, editableIn } from "./caret.ts";
 import { BlockIcon } from "./block-icon.tsx";
 import { canvasUi } from "./canvas-ui.ts";
 import { CLAMP_WIDTH, placeClamp, plusShift, type Box, type ClampRoom } from "./clamp-place.ts";
@@ -318,9 +319,13 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
     else if (event.key === "End") next = all.length - 1;
     else if (event.key === "Escape") {
       event.preventDefault();
-      // Back to the text being written, or to the block.
+      // Back to the text being written, to the line of a heading being
+      // written, or to the block.
+      const block = ref.current?.parentElement ?? null;
+      const line = !tools && block ? editableIn(block) : null;
       if (tools) tools.run.closeLink(true);
-      else (ref.current?.parentElement as HTMLElement | null)?.focus({ preventScroll: true });
+      else if (line) caretAtEnd(line);
+      else (block as HTMLElement | null)?.focus({ preventScroll: true });
       return;
     }
     if (next === null) return;
