@@ -91,18 +91,18 @@ Puma's launcher does. On 2 October 2026, `ruby bin/rails server` with no
 option printed `Listening on http://127.0.0.1:3900`, and netstat showed
 that one listener.
 
-`db:seed` loads the example site of the design, Slack Water, an invented
+`db:seed` loads the example site, Slack Water, an invented open-water
 swimming club, from [`../example-site/`](../example-site/), the one copy
 of its pages and pictures, which the editor's browser demo reads too
 ([db/seeds/example_site.rb](db/seeds/example_site.rb)):
-- the home page as `design/index.html#page` draws it, at
+- the home page, the course a beginner swims out to the buoy line, at
   `http://127.0.0.1:3900/`;
 - a content page, `/winter-series`;
 - a page that breaks assumptions on purpose, `/notices`: four columns, a
   word too long for any line, emoji and right-to-left text, nested lists, a
   long alt text, a dark band, a heading hidden on phones.
 
-The nine images go into the media library as an upload does (a blob on the
+The fifteen images go into the media library as an upload does (a blob on the
 storage service, then `MediaItem.create_from_upload!` and its checks), from
 PNGs that `node tools/seed-images.ts` renders from the design's SVGs; a
 page names each by its id in `site.json`, and the seed puts the library's
@@ -171,8 +171,8 @@ production), loads their schemas and, on a primary database it has just
 created, runs the seed, the example site's or, with `EMPTY_SITE=1`, the
 empty one (`ruby bin/rails db:reset` does both in one).
 The images the old database pointed at stay in `storage/`, in its
-two-character folders, as files no row names any more (the nine seed
-images, 182 KB, per seed run); delete those folders too for a clean disk.
+two-character folders, as files no row names any more (the fifteen seed
+images, 248 KB, per seed run); delete those folders too for a clean disk.
 
 On Windows `db:drop` used to fail with `Permission denied @ apply2files -
 .../storage/development.sqlite3` even with nothing else running: its
@@ -469,27 +469,20 @@ inside the browser), and that no page it photographs scrolls sideways at
 320 wide. On the seeded development site on 2 October 2026 it printed
 `reflow: 5 pages measured at 320 wide` and passed.
 
-Laid beside `design/shots/page.png` and `page-phone.png` on 1 October
-2026, the seeded home page has the design's bands at the design's
-heights: at 390 wide every band edge falls on the same row down to the
-end of the quote band; at 1280 wide every edge from the hero down is
-9 px higher, because the hero's columns are 3:2, the preset nearest the
-design's 1.45 to 1, so its square image is 434 px instead of 444. Since
-stage 5 the join band holds the design's form, in the right column beside
-the heading and its text: Name, Email, "Anything we should know?", the
-box that must be ticked and "Send request" (a button that wrote an email
-stood there before); that comparison was made without it, and
-`test/integration/seed_test.rb` reads the band's fields. What still
-differs:
-- the video card's still frame has no swimmers, and the map card is a
-  plain shore with the pin in the middle, not the design's slipway: both
-  are the theme's own drawings in CSS, coloured from the site style, for
-  any video and any map rather than this one;
-- "Meeting point:" is not bold: a map's label is plain text;
-- on a phone the header keeps one row, its section never stacking: the
-  logo, Menu as its icon alone, and Join, 64 px tall at 375, where the
-  design's mock, at 320, the width WCAG's reflow criterion tests (a 1280
-  window at 400%), scrolled sideways by 39 px with Menu cut off.
+Until 13 October 2026 the example site was the design's own page, laid
+beside `design/shots/page.png` band by band. That day the owner had it
+drawn again as the course a beginner swims, from the shallows out to the
+buoy line: the trial swim's form in the first band, the course on one
+waterline with its four marks, the tide, the winter series beside the tea,
+the pictures, the bay, the questions and a close in deep water. The Site style's defaults moved with it, to Deep
+water and Signal. It is still made of blocks only: every colour on it is a
+slot of the Site style or a block's own setting, every picture an image of
+the media library, every word a block's.
+`test/integration/seed_test.rb` reads the home page's bands, their colours
+and space, its widths and crops, and the form's band; the editor's
+example-site test holds the pages to axe at 1440 and 390 and to no
+sideways scroll at 320. On a phone the header keeps one row, its section
+never stacking: the logo, Menu as its icon alone, and Join.
 
 ## Forms a visitor sends
 

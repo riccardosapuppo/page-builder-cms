@@ -1,18 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
   <title>Three swim caps, orange, pink and white, at the waterline</title>
-  <rect width="800" height="600" fill="#3F7A68"/>
-  <g stroke="#5E8E7D" stroke-width="6" fill="none">
-    <path d="M40 90h180M300 70h120M520 110h220M80 180h140M420 200h260M30 520h200M360 560h300M600 480h170"/>
+  <rect width="800" height="600" fill="#1D4A58"/>
+  <g fill="#3D6F7C">
+    <rect x="40" y="90" width="180" height="6" rx="3"/>
+    <rect x="320" y="70" width="140" height="6" rx="3"/>
+    <rect x="560" y="120" width="200" height="6" rx="3"/>
+    <rect x="80" y="520" width="220" height="7" rx="3.5"/>
+    <rect x="420" y="560" width="300" height="7" rx="3.5"/>
   </g>
-  <g fill="none" stroke="#B7CFC5">
-    <ellipse cx="250" cy="430" rx="150" ry="26" stroke-width="6"/>
-    <ellipse cx="520" cy="352" rx="108" ry="18" stroke-width="5"/>
-    <ellipse cx="690" cy="300" rx="70" ry="12" stroke-width="4"/>
+  <!-- Three heads in the water: cap, goggle strap, the ring of water round each -->
+  <g>
+    <ellipse cx="190" cy="352" rx="118" ry="26" fill="#3D6F7C"/>
+    <path d="M100 340 a90 82 0 0 1 180 0 z" fill="#F2A541"/>
+    <rect x="100" y="314" width="180" height="12" fill="#0E2A35"/>
+    <ellipse cx="410" cy="300" rx="118" ry="26" fill="#3D6F7C"/>
+    <path d="M320 288 a90 82 0 0 1 180 0 z" fill="#F4A0B5"/>
+    <rect x="320" y="262" width="180" height="12" fill="#0E2A35"/>
+    <ellipse cx="626" cy="376" rx="118" ry="26" fill="#3D6F7C"/>
+    <path d="M536 364 a90 82 0 0 1 180 0 z" fill="#FFFFFF"/>
+    <rect x="536" y="338" width="180" height="12" fill="#0E2A35"/>
   </g>
-  <path d="M140 430a110 100 0 0 1 220 0z" fill="#F2A541"/>
-  <path d="M146 404c60-18 150-18 208 0" fill="none" stroke="#14302A" stroke-width="10"/>
-  <path d="M440 352a80 72 0 0 1 160 0z" fill="#F4A0B5"/>
-  <path d="M445 334c44-12 106-12 150 0" fill="none" stroke="#14302A" stroke-width="8"/>
-  <path d="M640 300a50 44 0 0 1 100 0z" fill="#FFFFFF"/>
-  <path d="M643 289c28-8 66-8 94 0" fill="none" stroke="#14302A" stroke-width="6"/>
+  <g fill="none" stroke="#DCEBEA" stroke-width="4" opacity=".55" stroke-linecap="round">
+    <path d="M72 352 h-40 M308 352 h40"/>
+    <path d="M292 300 h-40 M528 300 h40"/>
+    <path d="M508 376 h-40 M744 376 h40"/>
+  </g>
 </svg>

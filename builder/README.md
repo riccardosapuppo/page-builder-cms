@@ -204,7 +204,7 @@ same demo from the source, at `/`.
 **What it does.**
 - On a first visit, with nothing kept in the browser, it puts in the
   example site of `../example-site/`, as the CMS's seed does: the three
-  pages and nine pictures, each page published, the header and footer
+  pages and fifteen pictures, each page published, the header and footer
   published as their starters are, the home page open
   (`src/storage/example-site.ts`). A site with a page or a picture is
   never added to.

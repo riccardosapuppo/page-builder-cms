@@ -26,7 +26,7 @@ class SeedTest < ActionDispatch::IntegrationTest
 
     # Three pages and the header and footer, each published once, besides
     # the automatic version of each page's save.
-    assert_equal [ 5, 8, 9, 9 ], first[0]
+    assert_equal [ 5, 8, 15, 15 ], first[0]
     assert_equal first, [ counts.call, stored_pages ]
     assert_equal %w[home winter-series notices header footer], first[1].keys
     assert_equal SiteParts.starter("header"), first[1]["header"][2], "the header published is its starter, the example site's own"
@@ -125,42 +125,58 @@ class SeedTest < ActionDispatch::IntegrationTest
   # type size, reflow, focus rings) is measured in a browser by
   # tools/check-production.ts, since a theme rule that outweighs a token
   # class would leave these classes in place and the layout wrong.
-  test "the home page carries the classes of design/shots/page.png's layout: widths, crops and the space of each band" do
+  test "the home page carries the classes of its layout: the bands in order, their colours and space, the widths and the crops" do
     capture_io { ExampleSite.run }
 
     get "/"
 
     classes = ->(selector) { css_select(selector).first["class"].split }
-    assert_includes classes.call("[data-block-id=hero] > .cols"), "widths-3-2"
-    assert_equal %w[aspect-1-1 tablet-aspect-16-9 phone-aspect-5-4], classes.call("[data-block-id=hero-image]").grep(/aspect/)
-    assert_equal %w[aspect-4-3], classes.call("[data-block-id=quote-image]").grep(/aspect/)
-    spaces = %w[hero swims gallery meet quote questions join].to_h { |id| [ id, classes.call("[data-block-id=#{id}]").grep(/space-/) ] }
+    bands = %w[hero course marks swims winter gallery meet questions close]
+    assert_equal bands, css_select("main > section[data-block-id]").map { |band| band["data-block-id"] }
     assert_equal({
-      "hero" => %w[space-above-section-s phone-space-above-l space-below-section-s phone-space-below-xxl],
-      "swims" => %w[space-above-section-s space-below-section-s],
-      "gallery" => %w[space-below-section-s],
-      "meet" => %w[space-above-section-s],
-      "quote" => [], "questions" => [],
-      "join" => %w[space-below-section-l]
-    }, spaces)
+      "hero" => %w[bg-text space-above-l phone-space-above-m space-below-section-s phone-space-below-xxl],
+      "course" => %w[space-above-section-s space-below-m],
+      "marks" => %w[space-above-none space-below-section-s],
+      "swims" => %w[bg-soft space-above-section-s space-below-section-s],
+      "winter" => %w[space-above-section-s space-below-section-s],
+      "gallery" => %w[bg-soft space-above-section-s space-below-section-s],
+      "meet" => %w[bg-text space-above-section-s space-below-section-s],
+      "questions" => %w[space-above-section-s space-below-section-s],
+      "close" => %w[bg-text space-above-section-l space-below-section-l]
+    }, bands.to_h { |id| [ id, classes.call("[data-block-id=#{id}]").grep(/\A(?:phone-)?(?:bg|space-above|space-below)-/) ] })
+    assert_includes classes.call("[data-block-id=hero] > .cols"), "widths-2-1"
+    assert_includes classes.call("[data-block-id=swims] > .cols"), "widths-2-3"
+    assert_includes classes.call("[data-block-id=winter] > .cols"), "widths-3-2"
+    assert_includes classes.call("[data-block-id=marks] > .cols"), "cols-4"
+    assert_equal %w[aspect-original], classes.call("[data-block-id=hero-image]").grep(/aspect/)
+    # The course on one waterline: the panorama on desktops and tablets,
+    # each mark's own picture on phones, its number in the headings' face.
+    assert_equal %w[aspect-original hide-phone], classes.call("[data-block-id=course-image]").grep(/\A(?:aspect|hide)-/)
+    %w[shallows red-can green-cone buoy-line].each do |mark|
+      assert_equal %w[aspect-3-2 hide-desktop hide-tablet], classes.call("[data-block-id=mark-#{mark}-image]").grep(/\A(?:aspect|hide)-/), mark
+      assert_equal %w[size-display face-heading fg-primary], classes.call("[data-block-id=mark-#{mark}-number]").grep(/\A(?:size|face|fg)-/), mark
+    end
   end
 
-  # design/index.html#page: the join band is two columns, the heading and
-  # its text on the left and the form on the right, with the design's four
-  # fields, the box that must be ticked, and "Send request". It was a
-  # mailto button here until forms arrived.
-  test "the home page's join band is the design's: the heading and text beside a form, and no mailto link" do
+  # The trial swim's form works in the first band: the title, its words and
+  # the waterline on the left, and on the right a paper card holding the
+  # form's heading, its words, the four fields, the box that must be ticked
+  # and "Send request". It was a mailto button here until forms arrived,
+  # and a band at the foot of the page until the buoy line's world.
+  test "the home page's first band holds the trial swim's form beside the title, in a paper card, and no mailto link" do
     capture_io { ExampleSite.run }
     SubmissionsController::LIMIT_STORE.clear
 
     get "/"
-    band = Nokogiri::HTML5(response.body).at_css("[data-block-id=join]")
+    band = Nokogiri::HTML5(response.body).at_css("[data-block-id=hero]")
     columns = band.css(".cols > .col")
 
     assert_equal 2, columns.size
-    assert_equal [ "Join a trial swim" ], columns[0].css("h2").map(&:text)
-    assert_match(/\ATell us a little about your swimming\./, columns[0].at_css("p").text)
+    assert_equal [ "Swim at slack water" ], columns[0].css("h1").map(&:text)
     assert_empty columns[0].css("form")
+    assert_includes columns[1]["class"].split, "bg-background"
+    assert_equal [ "Join a trial swim" ], columns[1].css("h2").map(&:text)
+    assert_match(/\ATell us a little about your swimming\./, columns[1].at_css("p").text)
     form = columns[1].at_css("form.sw-form")
     fields = form.css("input:not([type=hidden]):not([name=website]), textarea").map { |control| [ control["name"], control["type"] || control.name, band.at_css("label[for='#{control['id']}']").text, control.key?("required") ] }
     assert_equal [

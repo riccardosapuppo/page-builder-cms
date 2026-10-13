@@ -1,20 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-  <title>A swimmer's wake on still water, seen from above</title>
-  <rect width="800" height="600" fill="#1E5B4C"/>
-  <g fill="none" stroke="#3F7A68" stroke-width="6">
-    <ellipse cx="480" cy="250" rx="80" ry="54"/>
-    <ellipse cx="480" cy="250" rx="150" ry="104"/>
-    <ellipse cx="480" cy="250" rx="230" ry="160"/>
-    <ellipse cx="480" cy="250" rx="320" ry="224"/>
+  <title>A swimmer's wake on still water, an orange cap at its point</title>
+  <rect width="800" height="600" fill="#0E2A35"/>
+  <g fill="#163B48">
+    <rect x="40" y="80" width="220" height="6" rx="3"/>
+    <rect x="520" y="60" width="200" height="6" rx="3"/>
+    <rect x="600" y="520" width="160" height="6" rx="3"/>
   </g>
-  <g fill="none" stroke="#8FB3A4" stroke-width="8" stroke-linecap="round">
-    <path d="M458 272L150 560"/>
-    <path d="M476 280L330 600"/>
+  <!-- The wake opens behind the swimmer, towards the foot of the picture -->
+  <g fill="none" stroke="#DCEBEA" stroke-linecap="round">
+    <path d="M400 210 L160 600" stroke-width="5" opacity=".7"/>
+    <path d="M400 210 L640 600" stroke-width="5" opacity=".7"/>
+    <path d="M400 240 L250 600" stroke-width="3" opacity=".4"/>
+    <path d="M400 240 L550 600" stroke-width="3" opacity=".4"/>
+    <path d="M330 330 h140 M300 390 h200 M270 450 h260" stroke-width="3" opacity=".25"/>
   </g>
-  <g fill="#E6EFEA">
-    <circle cx="420" cy="330" r="6"/><circle cx="380" cy="372" r="5"/><circle cx="436" cy="360" r="4"/>
-    <circle cx="340" cy="420" r="5"/><circle cx="400" cy="430" r="4"/><circle cx="300" cy="470" r="4"/>
-  </g>
-  <circle cx="480" cy="250" r="26" fill="#F4A0B5"/>
-  <path d="M458 262c14 8 30 8 44 0" fill="none" stroke="#14302A" stroke-width="5"/>
+  <ellipse cx="400" cy="206" rx="44" ry="16" fill="#25515F"/>
+  <path d="M370 204 a30 26 0 0 1 60 0 z" fill="#F2A541"/>
+  <rect x="370" y="190" width="60" height="6" fill="#0E2A35"/>
+  <path d="M336 214 C360 222 380 226 400 226" fill="none" stroke="#DCEBEA" stroke-width="4" stroke-linecap="round" opacity=".7"/>
 </svg>

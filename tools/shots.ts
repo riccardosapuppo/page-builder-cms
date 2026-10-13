@@ -268,7 +268,7 @@ async function historyShot(browser: Browser, shots: Staging, editor: string, cms
     await box.blur();
   };
   await change("join-form", "Button text", "Write to us", "Button and message");
-  await change("quote-text", "Quote", "I came for the cold water and stayed for the tea and the talk.");
+  await change("winter-button", "Text", "Read about the winter swims");
   await page.locator('.canvas [data-block-id="gallery-heading"]').click();
   await page.keyboard.press("Delete");
   await page.getByRole("button", { name: "Undo", exact: true }).click();
@@ -307,8 +307,8 @@ async function responsesShot(shots: Staging, page: Page): Promise<void> {
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
   await page.getByRole("menuitem", { name: "Form responses" }).click();
   const screen = page.getByRole("dialog", { name: "Form responses" });
-  await screen.getByRole("list", { name: "Forms" }).getByRole("button", { name: /^Form in Join, Slack Water, 4 responses$/ }).click();
-  const table = screen.getByRole("table", { name: /^Form in Join on Slack Water/ });
+  await screen.getByRole("list", { name: "Forms" }).getByRole("button", { name: /^Form in Hero, Slack Water, 4 responses$/ }).click();
+  const table = screen.getByRole("table", { name: /^Form in Hero on Slack Water/ });
   await table.getByRole("rowheader").first().getByRole("button").click();
   // The newest answer, opened whole: its words are in the panel beside the list.
   await screen.getByText(ANSWERS.at(-1)!.notes).first().waitFor({ timeout: 10_000 }).catch(() => {

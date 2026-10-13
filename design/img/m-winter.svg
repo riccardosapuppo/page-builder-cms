@@ -1,20 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-  <title>A winter swim beside the jetty under a low white sun</title>
-  <rect width="800" height="600" fill="#E6EFEA"/>
-  <circle cx="220" cy="230" r="54" fill="#FFFFFF"/>
-  <rect y="300" width="800" height="60" fill="#8FB3A4"/>
-  <rect y="360" width="800" height="240" fill="#5E8E7D"/>
-  <rect y="480" width="800" height="120" fill="#3F7A68"/>
-  <rect x="440" y="250" width="360" height="16" fill="#14302A"/>
-  <g fill="#14302A">
-    <rect x="470" y="266" width="12" height="130"/><rect x="580" y="266" width="12" height="150"/>
-    <rect x="690" y="266" width="12" height="170"/>
+  <title>The jetty in winter, pale sky and grey water, the safe-water mark beyond it</title>
+  <rect width="800" height="600" fill="#DCE3E4"/>
+  <rect y="300" width="800" height="300" fill="#7E9AA0"/>
+  <rect y="300" width="800" height="6" fill="#B9CACD"/>
+  <!-- The jetty, its deck and its legs -->
+  <path d="M0 360 L520 300 H560 L0 380 Z" fill="#34434A"/>
+  <g fill="#34434A">
+    <rect x="60" y="356" width="12" height="150"/>
+    <rect x="170" y="344" width="11" height="128"/>
+    <rect x="275" y="332" width="10" height="108"/>
+    <rect x="370" y="321" width="9" height="90"/>
+    <rect x="455" y="311" width="8" height="74"/>
+    <rect x="530" y="302" width="7" height="60"/>
   </g>
-  <path d="M300 430a20 17 0 0 1 40 0z" fill="#F2A541"/>
-  <path d="M290 434h-40M350 434h44" stroke="#B7CFC5" stroke-width="4"/>
-  <g fill="#FFFFFF">
-    <circle cx="80" cy="80" r="5"/><circle cx="160" cy="130" r="4"/><circle cx="330" cy="70" r="5"/>
-    <circle cx="420" cy="150" r="4"/><circle cx="560" cy="60" r="5"/><circle cx="680" cy="140" r="4"/>
-    <circle cx="740" cy="50" r="5"/><circle cx="40" cy="200" r="4"/>
+  <g fill="#9FB6BB">
+    <rect x="80" y="520" width="240" height="6" rx="3"/>
+    <rect x="420" y="470" width="300" height="6" rx="3"/>
   </g>
+  <!-- The safe-water mark, beyond the jetty's end -->
+  <rect x="679" y="252" width="3" height="20" fill="#0E2A35"/>
+  <circle cx="680" cy="248" r="8" fill="#C2352B"/>
+  <path d="M668 302 L673 270 H687 L692 302 Z" fill="#FFFFFF"/>
+  <path d="M673 270 H677 L675 302 H669 Z M683 270 H687 L691 302 H685 Z" fill="#C2352B"/>
 </svg>

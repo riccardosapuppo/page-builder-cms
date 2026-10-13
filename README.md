@@ -643,7 +643,7 @@ runs its jobs in Solid Queue. The editor is its client, through the API in
 
 **The browser demo** is the same editor with the browser's storage in
 place of Rails: [Try the editor in your browser](https://riccardosapuppo.github.io/page-builder-cms/).
-On a first visit it puts in the example site, three pages and nine pictures,
+On a first visit it puts in the example site, three pages and fifteen pictures,
 as the CMS's seed does from the same files, and everything after is kept in
 that browser's IndexedDB, held to the same battery of cases as the CMS's
 adapter. Two tabs of one browser share the pages, and the one that saves
@@ -797,7 +797,7 @@ accessibility tests again and the serving checks, 21.7 minutes in all
 | [`builder/`](builder/README.md) | The editor: React 19, TypeScript and Vite, every dependency pinned. The document and its commands, the store with undo and redo, the two storage adapters, the renderer, the widgets, the interface, and the browser demo's shell. Its README has the commands, the stages' account and what each check holds. |
 | [`schema/`](schema/README.md) | The page document's one schema, the design tokens the code reads, the corpus both validators are held to and the tools that compare them, and the icon box's icons. |
 | [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to. |
-| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: three page documents and nine pictures drawn from the design's SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
+| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: three page documents and fifteen pictures drawn from SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
 | [`design/`](design/) | The approved design, in static HTML: the editor and a published page, the tokens, the mark, the fonts with their licences, and screenshots of every state. [`design/layout/`](design/layout/) is the editor's layout, approved on 3 October 2026, drawn the same way. |
 | [`docs/`](docs/decisions/) | [The decisions](docs/decisions/), each with its cost and the command that shows it holds, and [the pictures](docs/images/README.md) this README shows. |
 | [`tools/`](tools/README.md) | The repository's own Node tools: `npm start`, `npm run check`, the measurements, the pictures, and their tests. |

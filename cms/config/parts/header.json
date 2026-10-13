@@ -91,7 +91,9 @@
               },
               "children": [],
               "style": {
-                "base": {}
+                "base": {
+                  "background": "primary"
+                }
               }
             }
           ],
@@ -103,7 +105,9 @@
         }
       ],
       "style": {
-        "base": {}
+        "base": {
+          "background": "text"
+        }
       }
     }
   ]

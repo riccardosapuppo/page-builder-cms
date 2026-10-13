@@ -1,15 +1,21 @@
 {
   "name": "Slack Water",
   "images": [
-    { "id": "hero-dawn", "file": "images/hero-dawn.png", "alt": "The bay at dawn at slack water, with a line of buoys and three swimmers" },
-    { "id": "g-horizon", "file": "images/g-horizon.png", "alt": "A flat horizon at first light" },
-    { "id": "g-caps", "file": "images/g-caps.png", "alt": "Three swim caps at the waterline" },
-    { "id": "g-buoys", "file": "images/g-buoys.png", "alt": "The buoy line across the bay" },
-    { "id": "g-slipway", "file": "images/g-slipway.png", "alt": "The slipway running into the water" },
-    { "id": "g-rockpools", "file": "images/g-rockpools.png", "alt": "Rock pools at low water" },
-    { "id": "g-wake", "file": "images/g-wake.png", "alt": "A swimmer’s wake on still water" },
-    { "id": "m-tea", "file": "images/m-tea.png", "alt": "A flask and two cups of tea on a rock after a swim" },
-    { "id": "m-winter", "file": "images/m-winter.png", "alt": "The jetty in winter" }
+    { "id": "hero-dawn", "file": "images/hero-dawn.png", "alt": "The mouth of the bay at first light: the red and white safe-water mark, and the club’s line of orange buoys behind it" },
+    { "id": "course-line", "file": "images/course-line.png", "alt": "The beginners' course on one waterline: from the slipway, the orange float, the red can, the green cone and the orange buoy line, the water deepening at each, a dashed course joining them" },
+    { "id": "mark-1-shallows", "file": "images/mark-1-shallows.png", "alt": "A small orange float with a red pennant, in shallow water off the slipway" },
+    { "id": "mark-2-red-can", "file": "images/mark-2-red-can.png", "alt": "The red can, a red buoy fifty metres out" },
+    { "id": "mark-3-green-cone", "file": "images/mark-3-green-cone.png", "alt": "The green cone, a green buoy across the channel" },
+    { "id": "mark-4-buoy-line", "file": "images/mark-4-buoy-line.png", "alt": "The buoy line: three orange course buoys, a swimmer at the middle one" },
+    { "id": "tide-window", "file": "images/tide-window.png", "alt": "Two days of tide in the bay: the water rising and falling, slack water marked in red at every turn, and in orange the two swims, at the slack that falls at first light" },
+    { "id": "g-horizon", "file": "images/g-horizon.png", "alt": "A flat horizon at first light, the safe-water mark small at its edge" },
+    { "id": "g-caps", "file": "images/g-caps.png", "alt": "Three swim caps, orange, pink and white, at the waterline" },
+    { "id": "g-buoys", "file": "images/g-buoys.png", "alt": "The buoy line across the bay, six orange buoys on one rope" },
+    { "id": "g-slipway", "file": "images/g-slipway.png", "alt": "The slipway running into the water, the red can out in the bay" },
+    { "id": "g-rockpools", "file": "images/g-rockpools.png", "alt": "Rock pools at low water, kelp at their edges and a starfish in one" },
+    { "id": "g-wake", "file": "images/g-wake.png", "alt": "A swimmer’s wake on still water, an orange cap at its point" },
+    { "id": "m-tea", "file": "images/m-tea.png", "alt": "A red flask and two enamel mugs of tea on a rock after a swim" },
+    { "id": "m-winter", "file": "images/m-winter.png", "alt": "The jetty in winter, the safe-water mark beyond it" }
   ],
   "pages": [
     { "slug": "home", "file": "pages/home.json", "home": true },

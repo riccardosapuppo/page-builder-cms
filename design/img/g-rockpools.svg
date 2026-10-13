@@ -1,21 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-  <title>Rock pools at low water, seen from above</title>
-  <rect width="800" height="600" fill="#5E6B66"/>
-  <path d="M0 0h330c-30 60-10 120 40 150s40 110-20 150S250 380 150 360 0 300 0 300z" fill="#7C8883"/>
-  <path d="M800 280c-80 10-140 60-150 130s40 140 110 190h40z" fill="#7C8883"/>
-  <path d="M90 110c40-40 130-40 170 0s20 110-40 130-120 10-150-30-20-60 20-100z" fill="#8FB3A4"/>
-  <path d="M130 140c24-18 70-16 86 4s0 50-30 56-56-4-66-24 0-26 10-36z" fill="#B7CFC5"/>
-  <path d="M420 250c60-50 200-50 250 10s10 170-80 190-190-10-210-70 0-90 40-130z" fill="#8FB3A4"/>
-  <path d="M480 300c40-24 110-20 130 12s-6 80-56 88-90-10-100-40 4-42 26-60z" fill="#B7CFC5"/>
-  <path d="M170 450c40-30 120-26 140 10s-10 90-70 96-100-20-104-56 10-34 34-50z" fill="#8FB3A4"/>
-  <g fill="none" stroke="#1E5B4C" stroke-width="7">
-    <path d="M500 230c20 20 0 40 20 60s0 40 20 60"/>
-    <path d="M330 470c20-10 30 10 50 0s30 10 50 0"/>
-    <path d="M60 330c10 20-10 30 0 50s-10 30 0 50"/>
+  <title>Rock pools at low water, kelp at their edges and a starfish in one</title>
+  <rect width="800" height="600" fill="#34434A"/>
+  <g fill="#2A383F">
+    <path d="M0 0 H800 V90 C640 120 520 70 380 96 C240 122 120 80 0 110 Z"/>
+    <path d="M0 600 V500 C160 470 300 540 460 510 C600 484 700 520 800 500 V600 Z"/>
   </g>
-  <g fill="#B9C1BC">
-    <circle cx="360" cy="90" r="9"/><circle cx="386" cy="112" r="6"/><circle cx="700" cy="120" r="10"/>
-    <circle cx="380" cy="560" r="8"/><circle cx="620" cy="540" r="6"/><circle cx="40" cy="560" r="10"/>
+  <!-- The pools hold the sky -->
+  <path d="M90 230 C110 170 250 150 320 196 C390 242 360 330 270 346 C170 364 70 300 90 230 Z" fill="#9FC4C9"/>
+  <path d="M440 300 C470 240 620 220 690 270 C750 314 720 410 620 420 C520 430 410 372 440 300 Z" fill="#8FB6BC"/>
+  <path d="M120 446 C150 410 250 404 270 440 C290 476 230 500 180 498 C130 496 100 476 120 446 Z" fill="#9FC4C9"/>
+  <g fill="#DCEBEA" opacity=".8">
+    <rect x="160" y="214" width="110" height="5" rx="2.5"/>
+    <rect x="500" y="290" width="140" height="5" rx="2.5"/>
+    <rect x="150" y="452" width="70" height="4" rx="2"/>
   </g>
-  <path d="M560 346l10 22 24 2-18 16 6 24-22-12-22 12 6-24-18-16 24-2z" fill="#F2A541"/>
+  <!-- Kelp at the edges -->
+  <g fill="none" stroke="#3B5A23" stroke-width="10" stroke-linecap="round">
+    <path d="M96 252 C70 270 60 300 76 330"/>
+    <path d="M330 220 C356 240 370 270 360 300"/>
+    <path d="M700 300 C730 320 740 350 726 380"/>
+  </g>
+  <!-- A starfish in the second pool -->
+  <path d="M600 330 l9 22 24 2 -18 16 6 24 -21 -13 -21 13 6 -24 -18 -16 24 -2 z" fill="#F2A541"/>
 </svg>

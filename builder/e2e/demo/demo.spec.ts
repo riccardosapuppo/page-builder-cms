@@ -5,7 +5,7 @@
 // - an edit is kept in this browser and is there after a reload;
 // - two tabs: the one that saves second gets the conflict bar, and Reload
 //   takes the other's words;
-// - an image goes into the library beside the example site's nine;
+// - an image goes into the library beside the example site's fifteen;
 // - Publish opens the page as published in a new tab, with its line; its
 //   form says what the full system does instead of sending; a link to the
 //   site's other page opens it as the demo draws it; Preview shows the
@@ -165,13 +165,13 @@ test("two tabs: the one that saves second gets the conflict bar, and Reload take
   await expect(heroWords(first)).toHaveText("The second tab, after reloading", { timeout: 30_000 });
 });
 
-test("an image goes into the library from this browser, beside the example site's nine", async ({ page }) => {
+test("an image goes into the library from this browser, beside the example site's fifteen", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
   await page.getByRole("menuitem", { name: "Media library" }).click();
   const dialog = page.getByRole("dialog", { name: "Media library" });
   const images = dialog.getByRole("radiogroup", { name: "Images" }).getByRole("radio");
-  await expect(images).toHaveCount(9);
+  await expect(images).toHaveCount(15);
   await expect(dialog.getByRole("radio", { name: /^hero-dawn\.png, / })).toBeVisible();
   await expect(dialog).toContainText("This browser keeps no smaller copies of them");
 
@@ -179,7 +179,7 @@ test("an image goes into the library from this browser, beside the example site'
   const tile = dialog.getByRole("radio", { name: "harbour-wall.png, no alt text" });
   await expect(tile).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => tile.locator("img").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1200);
-  await expect(images).toHaveCount(10);
+  await expect(images).toHaveCount(16);
   await shoot(page, "demo-library");
   await noSeriousFinding(page, "the media library");
 

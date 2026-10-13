@@ -1,21 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-  <title>The concrete slipway running down into the water</title>
-  <rect width="800" height="600" fill="#E7E9EA"/>
-  <path d="M0 150c120-40 260-60 420-50s280 40 380 30v170H0z" fill="#9DB1A8"/>
-  <path d="M0 250c200-20 480-30 800-10v60H0z" fill="#B9C1BC"/>
-  <path d="M800 300v300H330L520 300z" fill="#3F7A68"/>
-  <path d="M520 300l-190 300h40l176-300z" fill="#8FB3A4"/>
-  <g stroke="#5E8E7D" stroke-width="6">
-    <path d="M600 360h140M560 430h200M500 510h180M640 560h140"/>
+  <title>The slipway running into the water, the red can out in the bay</title>
+  <rect width="800" height="600" fill="#DCEBEA"/>
+  <rect y="230" width="800" height="370" fill="#2E6270"/>
+  <rect y="230" width="800" height="6" fill="#8FB6BC"/>
+  <!-- The slipway, from the foot of the picture into the water -->
+  <path d="M120 600 L360 236 H470 L560 600 Z" fill="#C9CFCB"/>
+  <path d="M360 236 H470 L486 300 H344 Z" fill="#5F97A0" opacity=".55"/>
+  <g stroke="#AEB7B3" stroke-width="5">
+    <path d="M196 485 H533 M246 409 H514 M290 343 H498 M325 289 H485"/>
   </g>
-  <path d="M430 300h90L330 600H0z" fill="#D5DAD7"/>
-  <g stroke="#B9C1BC" stroke-width="6">
-    <path d="M418 330h86M398 364h86M374 402h90M346 446h96M312 496h104M272 554h112"/>
+  <g fill="#4F8A93">
+    <rect x="40" y="300" width="200" height="6" rx="3"/>
+    <rect x="590" y="330" width="180" height="6" rx="3"/>
+    <rect x="600" y="520" width="160" height="7" rx="3.5"/>
   </g>
-  <g fill="#14302A">
-    <rect x="440" y="276" width="12" height="28" rx="2"/>
-    <rect x="496" y="276" width="12" height="28" rx="2"/>
-  </g>
-  <circle cx="300" cy="470" r="22" fill="#F2A541"/>
-  <ellipse cx="300" cy="470" rx="22" ry="5.5" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <!-- The red can -->
+  <rect x="663" y="168" width="4" height="30" fill="#0E2A35"/>
+  <rect x="654" y="156" width="22" height="18" rx="2" fill="#C2352B"/>
+  <rect x="646" y="194" width="38" height="44" rx="3" fill="#C2352B"/>
+  <rect x="640" y="234" width="50" height="9" fill="#0E2A35"/>
 </svg>

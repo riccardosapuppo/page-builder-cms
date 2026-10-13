@@ -1,7 +1,7 @@
 # example-site/
 
-Slack Water, an invented swimming club: the example site of the approved
-design, as page documents and pictures. It is the one copy, read as it is
+Slack Water, an invented open-water swimming club: the example site, as
+page documents and pictures. It is the one copy, read as it is
 by the CMS's seed (`ruby bin/rails db:seed`,
 [cms/db/seeds/example_site.rb](../cms/db/seeds/example_site.rb)) and meant
 to be read the same way by the editor's browser demo, so that both show the
@@ -17,13 +17,16 @@ same three pages.
   [the schema](../schema/block-document.schema.json). An image is named by
   its `id` in `site.json`, never by a library's id: whoever loads the site
   uploads the image first and puts the id the library gave it in its place.
-  - `home.json`, at `/`: the home page as `design/index.html#page` draws it,
-    its Join band holding the design's form.
+  - `home.json`, at `/`: the course a beginner swims, from the shallows
+    out to the buoy line. The trial swim's form works in the first band;
+    then the beginners' course, its four marks on one waterline, when the
+    club swims (at slack water, with two days of tide drawn), the winter
+    series, the pictures, the bay, the questions and a close.
   - `winter-series.json`: a content page.
   - `notices.json`: a page that breaks assumptions on purpose: four
     columns, a word too long for any line, emoji, right-to-left text, nested
     lists, a long alt text, a dark band, a heading hidden on phones.
-- [`images/`](images/): the nine pictures, PNG. Nobody photographed them:
+- [`images/`](images/): the fifteen pictures, PNG. Nobody photographed them:
   `node tools/seed-images.ts` (from the repository root) draws each from
   the design's SVG of the same name (`design/img/`) in headless Chromium,
   and `--check` draws them again and compares the bytes.
@@ -59,6 +62,6 @@ invented, and the map's point is an arbitrary stretch of coast.
   and no sideways scroll at 320. Planted, a text in the `soft` colour on
   the notices page fails axe's colour contrast, and the site's
   `overflow-wrap` taken away makes the notices page 579 pixels wide at 320.
-  axe lists one finding of moderate impact on every page, `heading-order`:
-  the design gives an icon box's title an `h3`, and on these pages a band
-  of icon boxes comes before any `h2`.
+  axe lists one finding of moderate impact, on the notices page alone,
+  `heading-order`: the design gives an icon box's title an `h3`, and there
+  a band of icon boxes comes before any `h2`.

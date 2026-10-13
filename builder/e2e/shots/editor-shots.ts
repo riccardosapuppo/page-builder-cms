@@ -184,21 +184,22 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.locator(".topbar .save-state", { hasText: /^Saved$/ }).waitFor();
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
 
-  // #small-block (shots-extra): the hero's button selected, the same clamp
-  // as every block's, running on below it; then #block-menu, its head
-  // pressed: the moves, then More's items.
-  await page.locator('.canvas [data-block-id="hero-button"]').click();
+  // #small-block (shots-extra): the closing band's button selected, the
+  // same clamp as every block's, running on below it; then #block-menu,
+  // its head pressed: the moves, then More's items.
+  await page.locator('.canvas [data-block-id="close-button"]').click();
   await away();
   await shoot("small-block");
-  await page.locator('.canvas [data-block-id="hero-button"] > .clamp .clamp-head').click();
+  await page.locator('.canvas [data-block-id="close-button"] > .clamp .clamp-head').click();
   await page.getByRole("menu", { name: "Button: block menu" }).waitFor();
   await shoot("block-menu");
   await page.keyboard.press("Escape");
 
-  // #narrow-gutter (shots-extra): Beginners' course in What we do, its
-  // narrow clamp in the 32 gutter, the focus on the clamp's head.
-  await page.locator('.canvas [data-block-id="swims-course"]').click();
-  await page.locator('.canvas [data-block-id="swims-course"] > .clamp .clamp-head').focus();
+  // #narrow-gutter (shots-extra): the second mark's name in the band of
+  // the four marks, its narrow clamp in the gutter, the focus on the
+  // clamp's head.
+  await page.locator('.canvas [data-block-id="mark-red-can-name"]').click();
+  await page.locator('.canvas [data-block-id="mark-red-can-name"] > .clamp .clamp-head').focus();
   await away();
   await shoot("narrow-gutter");
 
@@ -302,14 +303,14 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.getByRole("dialog", { name: "Media library" }).waitFor({ state: "detached" });
   await closeDrawers(page);
 
-  // #drag: the hero's button picked up by its clamp's grip and held under
+  // #drag: the hero's picture picked up by its clamp's grip and held under
   // the heading: the drop line, the shaded areas and the live sentence in
   // the graphite bottom line; then Esc, and nothing changed.
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
-  await page.locator('.canvas [data-block-id="hero-button"]').click();
-  await pickUp(page, page.locator('.canvas [data-block-id="hero-button"] > .clamp [data-key="grip"]'));
+  await page.locator('.canvas [data-block-id="hero-image"]').click();
+  await pickUp(page, page.locator('.canvas [data-block-id="hero-image"] > .clamp [data-key="grip"]'));
   await moveOnto(page, heading, "bottom");
-  await page.getByText("Button will move to Column 1 in Hero, after Heading.").waitFor();
+  await page.getByText("Image will move to Column 1 in Hero, after Heading.").waitFor();
   await shoot("drag");
   await page.keyboard.press("Escape");
   await page.mouse.up();
@@ -482,7 +483,7 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
     await box.blur();
   };
   await change("join-form", "Button text", "Write to us", "Button and message");
-  await change("quote-text", "Quote", "I came for the cold water and stayed for the tea and the talk.");
+  await change("winter-button", "Text", "Read about the winter swims");
   await page.locator('.canvas [data-block-id="gallery-heading"]').click();
   await page.keyboard.press("Delete");
   await page.getByRole("button", { name: "Undo", exact: true }).click();

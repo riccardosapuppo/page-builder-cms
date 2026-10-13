@@ -1,21 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-  <title>A flask and two cups of tea on a rock after a swim</title>
-  <rect width="800" height="600" fill="#F2D3C6"/>
-  <rect y="250" width="800" height="170" fill="#8FB3A4"/>
-  <g fill="#B7CFC5">
-    <rect x="40" y="292" width="150" height="5" rx="2.5"/>
-    <rect x="620" y="276" width="120" height="5" rx="2.5"/>
-    <rect x="110" y="330" width="90" height="4" rx="2"/>
+  <title>A red flask and two enamel mugs of tea on a rock after a swim, steam rising</title>
+  <rect width="800" height="600" fill="#1D4A58"/>
+  <rect y="430" width="800" height="170" fill="#34434A"/>
+  <path d="M0 430 C200 410 420 440 800 420 V440 H0 Z" fill="#2A383F"/>
+  <!-- The flask -->
+  <rect x="210" y="190" width="120" height="250" rx="22" fill="#C2352B"/>
+  <rect x="226" y="150" width="88" height="50" rx="10" fill="#A92C24"/>
+  <rect x="210" y="300" width="120" height="16" fill="#FFFFFF" opacity=".85"/>
+  <!-- Two enamel mugs, blue rims -->
+  <g>
+    <rect x="420" y="330" width="120" height="110" rx="10" fill="#FFFFFF"/>
+    <rect x="420" y="330" width="120" height="12" rx="6" fill="#0E2A35"/>
+    <path d="M540 356 h18 a22 22 0 0 1 0 44 h-18" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+    <rect x="590" y="350" width="100" height="90" rx="10" fill="#FFFFFF"/>
+    <rect x="590" y="350" width="100" height="11" rx="5.5" fill="#0E2A35"/>
+    <path d="M690 372 h14 a18 18 0 0 1 0 36 h-14" fill="none" stroke="#FFFFFF" stroke-width="10"/>
   </g>
-  <path d="M0 400c140-40 300-50 460-40s260 30 340 20v220H0z" fill="#5E6B66"/>
-  <rect x="300" y="190" width="96" height="250" rx="22" fill="#F2A541"/>
-  <rect x="314" y="164" width="68" height="36" rx="6" fill="#14302A"/>
-  <path d="M470 330h96l-10 100h-76z" fill="#FFFFFF"/>
-  <path d="M600 350h86l-9 86h-68z" fill="#FFFFFF"/>
-  <path d="M566 352c24 0 30 34 4 44" fill="none" stroke="#FFFFFF" stroke-width="10"/>
-  <g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round">
-    <path d="M500 310c-12-20 12-30 0-52"/>
-    <path d="M534 312c-12-20 12-30 0-52"/>
-    <path d="M644 330c-10-18 10-26 0-44"/>
+  <!-- Steam -->
+  <g fill="none" stroke="#DCEBEA" stroke-width="7" stroke-linecap="round" opacity=".75">
+    <path d="M462 300 C440 270 486 250 462 216"/>
+    <path d="M500 304 C482 280 522 262 504 232"/>
+    <path d="M630 322 C612 298 650 280 634 250"/>
   </g>
 </svg>

@@ -6,7 +6,10 @@
     {
       "id": "intro",
       "type": "section",
-      "props": {},
+      "props": {
+        "label": "Winter series",
+        "columnWidths": "3:2"
+      },
       "children": [
         {
           "id": "intro-1",
@@ -22,7 +25,9 @@
               },
               "children": [],
               "style": {
-                "base": {}
+                "base": {
+                  "textSize": "display"
+                }
               }
             },
             {
@@ -53,21 +58,57 @@
             }
           ],
           "style": {
-            "base": {}
+            "base": {
+              "verticalAlign": "middle"
+            }
+          }
+        },
+        {
+          "id": "intro-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "details-image",
+              "type": "image",
+              "props": {
+                "mediaId": "m-winter",
+                "alt": "The jetty in winter, the safe-water mark beyond it"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "4:3"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "verticalAlign": "middle"
+            }
           }
         }
       ],
       "style": {
         "base": {
+          "background": "text",
           "spaceAbove": "section-s",
-          "spaceBelow": "section-s"
+          "spaceBelow": "section-s",
+          "spaceBetween": "xl"
+        },
+        "phone": {
+          "spaceAbove": "l"
         }
       }
     },
     {
       "id": "details",
       "type": "section",
-      "props": {},
+      "props": {
+        "label": "What to bring",
+        "columnWidths": "3:2"
+      },
       "children": [
         {
           "id": "details-1",
@@ -194,7 +235,9 @@
               },
               "children": [],
               "style": {
-                "base": {}
+                "base": {
+                  "textSize": "large"
+                }
               }
             }
           ],
@@ -208,25 +251,31 @@
           "props": {},
           "children": [
             {
-              "id": "details-image",
+              "id": "details-tea",
               "type": "image",
               "props": {
-                "mediaId": "m-winter",
-                "alt": "The jetty in winter, with a grey, flat sea beyond it"
+                "mediaId": "m-tea",
+                "alt": "A red flask and two enamel mugs of tea on a rock after a swim"
               },
               "children": [],
               "style": {
-                "base": {}
+                "base": {
+                  "aspect": "4:3"
+                }
               }
             }
           ],
           "style": {
-            "base": {}
+            "base": {
+              "verticalAlign": "middle"
+            }
           }
         }
       ],
       "style": {
         "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s",
           "spaceBetween": "xl"
         }
       }
@@ -242,70 +291,280 @@
           "id": "practical-1",
           "type": "column",
           "props": {},
+          "style": {
+            "base": {
+              "spaceBetween": "s"
+            }
+          },
           "children": [
             {
-              "id": "practical-when",
-              "type": "iconbox",
+              "id": "practical-when-rule",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-when-term",
+              "type": "text",
               "props": {
-                "icon": "calendar",
-                "title": "Every Sunday",
-                "text": "From the first Sunday of November\nto the last Sunday of March."
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "When",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "small"
+                }
+              }
+            },
+            {
+              "id": "practical-when",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Every Sunday"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-3",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-when-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "From the first Sunday of November to the last Sunday of March."
+                        }
+                      ]
+                    }
+                  ]
+                }
               },
               "children": [],
               "style": {
                 "base": {}
               }
             }
-          ],
-          "style": {
-            "base": {}
-          }
+          ]
         },
         {
           "id": "practical-2",
           "type": "column",
           "props": {},
+          "style": {
+            "base": {
+              "spaceBetween": "s"
+            }
+          },
           "children": [
             {
-              "id": "practical-time",
-              "type": "iconbox",
+              "id": "practical-time-rule",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-time-term",
+              "type": "text",
               "props": {
-                "icon": "clock",
-                "title": "At slack water",
-                "text": "The time moves with the tide. Check the table on the noticeboard."
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "What time",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "small"
+                }
+              }
+            },
+            {
+              "id": "practical-time",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "At slack water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-3",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-time-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "The time moves with the tide. Check the table on the noticeboard."
+                        }
+                      ]
+                    }
+                  ]
+                }
               },
               "children": [],
               "style": {
                 "base": {}
               }
             }
-          ],
-          "style": {
-            "base": {}
-          }
+          ]
         },
         {
           "id": "practical-3",
           "type": "column",
           "props": {},
+          "style": {
+            "base": {
+              "spaceBetween": "s"
+            }
+          },
           "children": [
             {
-              "id": "practical-where",
-              "type": "iconbox",
+              "id": "practical-where-rule",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-where-term",
+              "type": "text",
               "props": {
-                "icon": "pin",
-                "title": "The north slipway",
-                "text": "Where the footpath from the car park meets the beach."
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Where",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "small"
+                }
+              }
+            },
+            {
+              "id": "practical-where",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "The north slipway"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-3",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "practical-where-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Where the footpath from the car park meets the beach."
+                        }
+                      ]
+                    }
+                  ]
+                }
               },
               "children": [],
               "style": {
                 "base": {}
               }
             }
-          ],
-          "style": {
-            "base": {}
-          }
+          ]
         }
       ],
       "style": {
@@ -320,12 +579,20 @@
     {
       "id": "words",
       "type": "section",
-      "props": {},
+      "props": {
+        "label": "In their words"
+      },
       "children": [
         {
           "id": "words-1",
           "type": "column",
           "props": {},
+          "style": {
+            "base": {
+              "align": "center",
+              "spaceBetween": "l"
+            }
+          },
           "children": [
             {
               "id": "words-quote",
@@ -338,17 +605,7 @@
               "style": {
                 "base": {}
               }
-            }
-          ],
-          "style": {
-            "base": {}
-          }
-        },
-        {
-          "id": "words-2",
-          "type": "column",
-          "props": {},
-          "children": [
+            },
             {
               "id": "words-text",
               "type": "text",
@@ -387,26 +644,6 @@
               }
             },
             {
-              "id": "words-divider",
-              "type": "divider",
-              "props": {},
-              "children": [],
-              "style": {
-                "base": {}
-              }
-            },
-            {
-              "id": "words-spacer",
-              "type": "spacer",
-              "props": {
-                "size": "s"
-              },
-              "children": [],
-              "style": {
-                "base": {}
-              }
-            },
-            {
               "id": "words-button",
               "type": "button",
               "props": {
@@ -421,17 +658,13 @@
                 }
               }
             }
-          ],
-          "style": {
-            "base": {
-              "verticalAlign": "middle"
-            }
-          }
+          ]
         }
       ],
       "style": {
         "base": {
-          "spaceBetween": "xl"
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-l"
         }
       }
     }
