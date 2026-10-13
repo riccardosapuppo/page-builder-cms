@@ -2,10 +2,13 @@
 // screen: the demo as built for GitHub Pages (npm run build:demo, which
 // npm run e2e:demo runs first), served from dist-demo/ under
 // /page-builder-cms/ as Pages serves it (setup.ts), on E2E_DEMO_PORT
-// (4903). Each test opens a browser of its own, as a first visit. One
-// worker: the tests share the server.
+// (4903). Each test opens a browser of its own, as a first visit, but for
+// the editor's first-run note, which it has seen (harness/welcome.ts): the
+// note's own test is e2e/welcome.spec.ts. One worker: the tests share the
+// server.
 import { defineConfig, devices } from "@playwright/test";
 import { demoPort } from "../harness/ports.ts";
+import { welcomeSeen } from "../harness/welcome.ts";
 
 export default defineConfig({
   testDir: ".",
@@ -20,6 +23,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: `http://127.0.0.1:${demoPort()}`,
+    storageState: welcomeSeen(`http://127.0.0.1:${demoPort()}`),
     headless: true,
     locale: "en-US",
     timezoneId: "UTC",

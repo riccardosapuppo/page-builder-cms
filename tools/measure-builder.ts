@@ -56,6 +56,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type CDPSession, type Page } from "playwright";
 import { startBuilder, startCms, type Server } from "../builder/e2e/harness/servers.ts";
+import { welcomeSeen } from "../builder/e2e/harness/welcome.ts";
 import { bySelf, byTotal, reduce, type Profile } from "./lib/cpu-profile.ts";
 import { buildEditor } from "./lib/editor-build.ts";
 import { banner, busyRange, discardedWords, median, ms, newTally, percentile, quietLimit, quietRun, runsFrom, summary, waitForQuiet, type Tally } from "./lib/measure.ts";
@@ -346,8 +347,9 @@ async function measureForm(name: string, what: string, preview: string | undefin
     form.chromium = browser.version();
 
     // One visit first, and its context thrown away: the development server
-    // transforms each module the first time it is asked for.
-    const warm = await browser.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC" });
+    // transforms each module the first time it is asked for. Every visit is
+    // a person's who has seen the editor's first-run note.
+    const warm = await browser.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC", storageState: welcomeSeen(editor.url) });
     const warmPage = await warm.newPage();
     await warmPage.goto(`${editor.url}/?page=${large.id}`);
     // Attached, not visible: the last block of the page is a spacer.
@@ -357,7 +359,7 @@ async function measureForm(name: string, what: string, preview: string | undefin
     // One visit in a fresh context. Run again, by the caller, when the
     // machine was busy after it (quietRun).
     const visitOnce = async (id: number, expected: number, withDrag: boolean): Promise<Omit<Run, "busy">> => {
-      const context = await browser!.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC" });
+      const context = await browser!.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC", storageState: welcomeSeen(editor!.url) });
       try {
         const page = await context.newPage();
         const errors: string[] = [];
@@ -440,7 +442,7 @@ async function profileRun(readable: string, cmsPort: number, editorPort: number,
     editor = await startBuilder(editorPort, cms.url, { preview: readable });
     const large = await publishLargePage(cms.url);
     browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC" });
+    const context = await browser.newContext({ viewport: VIEWPORT, locale: "en-US", timezoneId: "UTC", storageState: welcomeSeen(editor.url) });
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     await cdp.send("Profiler.enable");

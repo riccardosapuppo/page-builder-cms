@@ -32,6 +32,7 @@ import { moveOnto, pickUp, settledTextEditor } from "../helpers/canvas.ts";
 import { sendAgain } from "../helpers/heading.ts";
 import { builderPort, cmsPort } from "../harness/ports.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../harness/servers.ts";
+import { welcomeSeen } from "../harness/welcome.ts";
 
 const folderArgument = process.argv[2];
 if (!folderArgument) {
@@ -81,7 +82,7 @@ async function group(page: Page, name: string): Promise<void> {
 
 async function photograph(browser: Browser, url: string, allowed: readonly string[], window: (typeof WINDOWS)[number], first: boolean): Promise<void> {
   mkdirSync(window.folder, { recursive: true });
-  const page = await browser.newPage({ viewport: { width: window.width, height: window.height }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
+  const page = await browser.newPage({ viewport: { width: window.width, height: window.height }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce", storageState: welcomeSeen(url) });
   const label = `${window.width}x${window.height}`;
   const cmsUrl = allowed[0]!;
   page.on("console", (message) => {

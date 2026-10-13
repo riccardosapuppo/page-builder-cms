@@ -28,7 +28,8 @@ test("the line under the title counts the saves visitors do not see yet, and des
     const { unmount } = kit.render(<TopBar />);
     expect(status()).toBe(said);
     const title = screen.getByRole("button", { name: "Switch page. Open: Winter series" });
-    expect(document.getElementById(title.getAttribute("aria-describedby")!)?.textContent).toBe(said);
+    // Described by where the page is, then by this line.
+    expect(document.getElementById(title.getAttribute("aria-describedby")!.split(" ").at(-1)!)?.textContent).toBe(said);
     unmount();
   }
 });

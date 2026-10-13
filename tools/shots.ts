@@ -47,6 +47,7 @@ import { join, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { startPagesServer, type PagesServer } from "../builder/e2e/harness/pages-server.ts";
 import { seedCms, startBuilder, startCms, type Server } from "../builder/e2e/harness/servers.ts";
+import { welcomeSeen } from "../builder/e2e/harness/welcome.ts";
 import { buildEditor } from "./lib/editor-build.ts";
 import { encodeGif, readGif } from "./lib/gif.ts";
 import { CouldNotRun, listeners } from "./lib/processes.ts";
@@ -136,9 +137,10 @@ const saved = (page: Page) => page.locator(".topbar .save-state", { hasText: /^S
 const HERO = '.canvas [data-block-id="hero-heading"] h1';
 const OLD_WORDS = "Swim at slack water";
 
-// The editor on the example site's home page, ready for a person.
+// The editor on the example site's home page, ready for a person who has
+// seen its first-run note.
 async function openEditor(browser: Browser, editor: string, cms: string, viewport: { width: number; height: number }, label: string): Promise<Page> {
-  const page = await (await context(browser, { viewport, deviceScaleFactor: 1 })).newPage();
+  const page = await (await context(browser, { viewport, deviceScaleFactor: 1, storageState: welcomeSeen(editor) })).newPage();
   page.setDefaultTimeout(60_000);
   watch(page, label, [editor, cms]);
   await page.goto(editor);
@@ -328,7 +330,7 @@ async function demoShot(browser: Browser, shots: Staging, workFolder: string, ed
   let pages: PagesServer | null = await startPagesServer(editorPort, { [DEMO_BASE]: built });
   servers.push(pages);
   try {
-    const page = await (await context(browser, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })).newPage();
+    const page = await (await context(browser, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, storageState: welcomeSeen(pages.url) })).newPage();
     page.setDefaultTimeout(60_000);
     const own = `${pages.url}${DEMO_BASE}`;
     watch(page, "demo", [own]);
@@ -378,7 +380,7 @@ async function pixelsOf(decoder: Page, png: Buffer): Promise<{ width: number; he
 async function publicationGif(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
   const window = { width: 1280, height: 800 };
   const options = { viewport: window, deviceScaleFactor: 0.75 };
-  const editing = await (await context(browser, options)).newPage();
+  const editing = await (await context(browser, { ...options, storageState: welcomeSeen(editor) })).newPage();
   const visiting = await (await context(browser, options)).newPage();
   for (const page of [editing, visiting]) page.setDefaultTimeout(60_000);
   watch(editing, "gif editor", [editor, cms]);

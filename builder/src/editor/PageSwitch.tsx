@@ -17,6 +17,7 @@ import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
 import { publishWords, useSession, type OpenPage } from "./session.tsx";
 import { shortWhen, siteWhen, wallClockAt } from "./site-time.ts";
+import { Welcome } from "./Welcome.tsx";
 
 interface PageSwitchProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
   const [creating, setCreating] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const statusId = useId();
+  const whereId = useId();
   const current = session.current;
   return (
     <div className="tb-switch">
@@ -37,7 +39,7 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
         className="tb-title"
         type="button"
         aria-label={current ? `Switch page. Open: ${title}` : "Pages"}
-        aria-describedby={current ? statusId : undefined}
+        aria-describedby={current ? `${whereId} ${statusId}` : undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => onOpen(!open)}
@@ -45,10 +47,12 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
         <span className="tb-title-row">
           <Icon name="page" className="i i-xs" />
           <span className="tb-page-title">{current ? title : "Pages"}</span>
+          {current && <><span className="tb-where-dot" aria-hidden="true">·</span><span className="tb-page-where" id={whereId}>{whereWords(current)}</span></>}
           <Icon name="chevron-down" className="i i-xs" />
         </span>
         {current && <PublishedStatus page={current} id={statusId} />}
       </button>
+      {!open && current && <Welcome title={title} />}
       {open && (
         <PagesWindow
           button={button}
@@ -64,6 +68,12 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
       {creating && <NewPageDialog onClose={() => setCreating(false)} />}
     </div>
   );
+}
+
+// Where the open document is on the site, beside its title: the home page,
+// a page's address, or a part's place on every page.
+export function whereWords(page: OpenPage): string {
+  return page.kind !== "page" ? "every page" : page.home ? "home page" : `/${page.slug ?? ""}`;
 }
 
 // The open page's title as the document holds it now.

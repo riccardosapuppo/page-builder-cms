@@ -3,9 +3,11 @@
 // two pages of one browser as the two tabs, the editor working on it, and
 // the sentences it gives up with. One editor server, the run's own, with
 // VITE_STORAGE=browser and no CMS (setup.ts), on E2E_BROWSER_PORT (4902).
-// One worker: the tests share that server.
+// One worker: the tests share that server. Every context starts as a
+// browser that has seen the editor's first-run note (harness/welcome.ts).
 import { defineConfig, devices } from "@playwright/test";
 import { browserEditorPort } from "../harness/ports.ts";
+import { welcomeSeen } from "../harness/welcome.ts";
 
 export default defineConfig({
   testDir: ".",
@@ -20,6 +22,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: `http://127.0.0.1:${browserEditorPort()}`,
+    storageState: welcomeSeen(`http://127.0.0.1:${browserEditorPort()}`),
     headless: true,
     locale: "en-US",
     timezoneId: "UTC",

@@ -145,6 +145,11 @@ body {
 .tb-title-row { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .tb-title-row .i { flex: none; color: var(--steel); }
 .tb-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 14px; line-height: 20px; font-weight: 600; }
+/* Where the page is on the site, after its title: it gives way first, and
+   a long address is cut at 160 px, so that it does not push the title out
+   of the bar's middle (the Page tab and the list of pages give it whole). */
+.tb-where-dot { flex: none; color: var(--steel); }
+.tb-page-where { flex: 0 2 auto; min-width: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; font-size: 14px; line-height: 20px; color: var(--steel); }
 .tb-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--steel); }
 /* A scheduled publish whose time has passed with the page still not live. */
 .tb-sched-late { color: var(--warn); }
@@ -729,6 +734,11 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .pop { position: absolute; z-index: 70; padding: 8px; border-radius: var(--r-tray); background: var(--plate); box-shadow: var(--lift); color: var(--graphite); }
 .pop-pages { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: 384px; max-height: calc(100vh - 80px); overflow: auto; }
 .pop-pages .search { margin: 2px 2px 6px; }
+/* The first-run note (Welcome.tsx), where the list of pages opens. */
+.pop-welcome { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: 384px; padding: 16px 18px; display: grid; gap: 8px; }
+.pop-welcome h2 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
+.pop-welcome p { margin: 0; font-size: 13px; line-height: 19px; }
+.pop-welcome .btn { justify-self: start; margin-top: 4px; }
 .pages-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; }
 .page-row { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border-radius: var(--r-control); color: var(--graphite); text-align: left; }
 .page-row:hover { background: var(--key); }
