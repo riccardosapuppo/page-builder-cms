@@ -23,7 +23,7 @@ import { entriesFor, type KeyAction, type Scope } from "./keymap.ts";
 import { firstChildOf, parentOf, stepSelection } from "./selection.ts";
 import { useOptionalSession, type Session } from "./session.tsx";
 import { publishPaused } from "./Publish.tsx";
-import { startEditing } from "./rich/tools.ts";
+import { startEditing, textEditorOpen } from "./rich/tools.ts";
 import type { Preview } from "./ui-store.ts";
 
 const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
@@ -78,8 +78,8 @@ export const MODIFIERS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt"
 // that work while typing (keep a version, preview, publish) still do.
 // True when the key was taken here.
 export function waitForText(env: Pick<EditorEnv, "ui">, event: KeyboardEvent): boolean {
-  const { editingText, textTools } = env.ui.getState();
-  if (!editingText || textTools?.id === editingText.id || event.isComposing || MODIFIERS.has(event.key)) return false;
+  const { editingText } = env.ui.getState();
+  if (!editingText || textEditorOpen(env.ui.getState()) || event.isComposing || MODIFIERS.has(event.key)) return false;
   const target = event.target instanceof Element ? event.target : null;
   if (target !== null && target !== document.body && !target.closest(".canvas")) return false;
   if (isTyping(target) || target?.closest("[role=dialog], [role=menu]")) return false;

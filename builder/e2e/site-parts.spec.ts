@@ -337,6 +337,9 @@ test.describe("a form in a part", () => {
       await open(page, id);
       await block(page, "join-form").click({ button: "right" });
       await page.getByRole("menu", { name: "Form actions" }).getByRole("menuitem", { name: /^Copy/ }).click();
+      // The menu writes to the system clipboard without waiting: the
+      // footer, a page of its own, is opened once the clipboard holds it.
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('"type":"form"');
       await open(page, footer.part.id);
       await block(page, "footer-text").click();
       await expect(block(page, "footer-text")).toBeFocused();

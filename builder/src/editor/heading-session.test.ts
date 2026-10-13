@@ -12,7 +12,7 @@ import { locate } from "../document/tree.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import { COMMIT_AFTER_MS } from "./controls.tsx";
 import { HEADING_MAX, HeadingSession, oneLine } from "./heading-session.ts";
-import type { WaitingKey } from "./rich/tools.ts";
+import { forgetLeftText, type WaitingKey } from "./rich/tools.ts";
 import { createUiStore } from "./ui-store.ts";
 
 let close: (() => void) | null = null;
@@ -21,11 +21,15 @@ afterEach(() => {
   close = null;
 });
 
-function open(keys?: readonly WaitingKey[]) {
+// The canvas watches for a text asked to open being left before its
+// editor is there (forgetLeftText), from before any line opens: with
+// `canvas`, so does this page.
+function open(keys?: readonly WaitingKey[], { canvas = false } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 13, 9));
   const store = createEditorStore({ document: textPage(), now: () => clock.now() });
   store.getState().select("h");
   const ui = createUiStore();
+  const unwatch = canvas ? forgetLeftText({ store, ui }) : null;
   ui.setState({ editingText: keys ? { id: "h", at: "end", keys } : { id: "h", at: "end" } });
   const root = document.createElement("div");
   root.dataset.blockId = "h";
@@ -43,6 +47,7 @@ function open(keys?: readonly WaitingKey[]) {
   const session = new HeadingSession({ store, ui, clock }, "h", line, "end");
   close = () => {
     session.dispose();
+    unwatch?.();
     root.remove();
     outside.remove();
   };
@@ -106,6 +111,34 @@ test("a heading emptied is not handed over: the sentence says why, and it stays 
   expect(k.ui.getState().pending.waiting).toBe(0);
 });
 
+test("emptied, it stays open when another block is chosen on the canvas: the line, open, is its own to keep, and the heading comes back chosen", async () => {
+  const k = open(undefined, { canvas: true });
+  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end", open: true });
+  k.type("   ");
+  k.store.getState().select("t");
+  expect(k.session.stopped).toBe(false);
+  expect(k.store.getState().selection).toBe("h");
+  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end", open: true });
+  expect(k.notice()).toMatch(/It stays open here until the page can take it\.$/);
+  expect(k.ui.getState().pending.waiting).toBe(1);
+  k.type("Golf");
+  await k.clock.advance(COMMIT_AFTER_MS);
+  expect(k.stored()).toBe("Golf");
+  // With words, another block chosen closes it as before.
+  k.store.getState().select("t");
+  expect(k.session.stopped).toBe(true);
+  expect(k.ui.getState().editingText).toBeNull();
+});
+
+test("a line that leaves the page without closing lets the request go back to waiting, and one mounted again opens it anew", () => {
+  const k = open();
+  k.session.dispose();
+  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end" });
+  const again = new HeadingSession({ store: k.store, ui: k.ui, clock: k.clock }, "h", k.line, "end");
+  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end", open: true });
+  again.dispose();
+});
+
 test("another block chosen hands the words over and closes the line; the words changed elsewhere close it too", () => {
   const k = open();
   k.type("Echo");
@@ -160,7 +193,7 @@ test("one line, of at most 200 characters: a break leaves it, a character past t
 test("keys pressed while the line was opening are typed into it at the end", () => {
   const k = open([{ key: "s", shift: false }, { key: "!", shift: true }, { key: "Backspace", shift: false }]);
   expect(k.session.words).toBe("Alphas");
-  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end" });
+  expect(k.ui.getState().editingText).toEqual({ id: "h", at: "end", open: true });
 });
 
 test("a line holds no control character: each run of them is one space", () => {

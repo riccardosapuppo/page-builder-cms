@@ -437,11 +437,31 @@ test("with a modal dialog open, the editor behind it takes no key even with the 
   expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
 });
 
+test("with a heading's line open, the keys on its clamp are the clamp's: none is kept back as if the line were on its way", () => {
+  const kit = shell("h1");
+  act(() => root("h1").focus());
+  press("Enter");
+  expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end", open: true });
+  // Tab from the line reaches the clamp, still inside the block: the line
+  // stays open, and the clamp's keys work there.
+  const head = within(root("h1")).getByRole("button", { name: "Heading: block menu" });
+  act(() => head.focus());
+  expect(kit.ui.getState().editingText?.id).toBe("h1");
+  press("ArrowDown");
+  expect(document.activeElement?.getAttribute("data-key")).toBe("grip");
+  let tab = false;
+  act(() => {
+    tab = fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+  });
+  expect(tab).toBe(true);
+  expect(kit.ui.getState().editingText?.keys).toBeUndefined();
+});
+
 test("a heading is written where it stands, as a text: Enter opens its line, and a character typed on a selected heading or text starts the writing with it; an arrow or a key of the keymap stays its own", async () => {
   const kit = shell("h1");
   act(() => root("h1").focus());
   press("Enter");
-  expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end" });
+  expect(kit.ui.getState().editingText).toEqual({ id: "h1", at: "end", open: true });
   const line = await screen.findByRole("textbox", { name: /^Heading/ });
   expect(line.textContent).toBe("Winter series");
   act(() => {

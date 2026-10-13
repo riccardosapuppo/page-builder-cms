@@ -95,10 +95,14 @@ export class HeadingSession {
     this.#root?.addEventListener("focusout", this.#onFocusOut);
     this.#unsubscribe = env.store.subscribe((state) => this.#watch(state));
     this.#place(at);
+    // Open: the request says so, as a text's editor says so by its tools,
+    // so choosing another block and the keys on the block's clamp are this
+    // line's to answer, not those of an editor still on its way
+    // (./rich/tools.ts, ./keys.ts).
     const opening = env.ui.getState().editingText;
-    if (opening?.id === id && opening.keys && opening.keys.length > 0) {
-      env.ui.setState({ editingText: { id, at: opening.at } });
-      this.#typeWaiting(opening.keys);
+    if (opening?.id === id) {
+      env.ui.setState({ editingText: { id, at: opening.at, open: true } });
+      if (opening.keys && opening.keys.length > 0) this.#typeWaiting(opening.keys);
     }
   }
 
@@ -167,6 +171,12 @@ export class HeadingSession {
     element.removeEventListener("paste", this.#onPaste);
     element.removeEventListener("keydown", this.#onKeyDown);
     this.#root?.removeEventListener("focusout", this.#onFocusOut);
+    // Gone without closing (React mounting it again, a drag that took the
+    // block): the request is open no more, so a line mounted again marks
+    // it anew, and choosing another block lets it go.
+    const { ui } = this.#env;
+    const asked = ui.getState().editingText;
+    if (!this.#stopped && asked?.id === this.#id && asked.open) ui.setState({ editingText: { id: asked.id, at: asked.at } });
   }
 
   // Words the page refused: held again, so whatever asked for them waits,

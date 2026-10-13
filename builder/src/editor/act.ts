@@ -36,12 +36,21 @@ export const afterRender = (run: () => void): void => {
 // to the one that took its place, where a block may have the same id.
 const stillThere = (part: Element | null): boolean => part === null || part.isConnected;
 
+// What the editor's own deferred focus last put the focus on: a later
+// request of its own takes the focus from there, as it does not from
+// anything else that took it meanwhile.
+let placedLast: Element | null = null;
+const place = (element: HTMLElement, options?: FocusOptions): void => {
+  element.focus(options);
+  placedLast = element;
+};
+
 export function focusBlock(id: string): void {
   const canvas = document.querySelector(".canvas");
   afterRender(() => {
     const element = document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`);
     if (!element || !stillThere(canvas)) return;
-    element.focus({ preventScroll: true });
+    place(element, { preventScroll: true });
     element.scrollIntoView?.({ block: "nearest" });
   });
 }
@@ -52,15 +61,26 @@ export function focusRow(id: string): void {
   const tree = document.querySelector(".tree");
   afterRender(() => {
     if (!stillThere(tree)) return;
-    document.querySelector<HTMLElement>(`.tree [data-row-id="${id}"]`)?.focus();
+    const row = document.querySelector<HTMLElement>(`.tree [data-row-id="${id}"]`);
+    if (row) place(row);
   });
 }
 
 export function placeFocus(focus: Focus | null, region: Region): void {
   if (region === "panel") return;
   if (focus === null) {
-    // Nothing left to stand on (the last section went): the canvas itself.
-    afterRender(() => document.querySelector<HTMLElement>(region === "navigator" ? ".tree [role=treeitem]" : ".canvas")?.focus());
+    // Nothing left to stand on (the last section went, or the selection
+    // was let go): the canvas itself, a frame later. Unless the focus has
+    // gone somewhere of its own by then (a key pressed in that frame, +
+    // opening a picker): it is not taken back from there. A focus an
+    // earlier request of the editor's put somewhere in that frame gives way.
+    const from = document.activeElement;
+    afterRender(() => {
+      const now = document.activeElement;
+      if (now !== null && now !== from && now !== document.body && now !== placedLast) return;
+      const target = document.querySelector<HTMLElement>(region === "navigator" ? ".tree [role=treeitem]" : ".canvas");
+      if (target) place(target);
+    });
     return;
   }
   if (region === "navigator") focusRow(focus.id);

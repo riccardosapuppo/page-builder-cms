@@ -33,6 +33,9 @@ export interface TextEditing {
   // The keys pressed for the text while its editor was on its way, in
   // order: typed into it when it opens.
   keys?: readonly WaitingKey[];
+  // Marked by a heading's line once it is open (../heading-session.ts): a
+  // text's editor says so by publishing its tools, which a line has none of.
+  open?: true;
 }
 
 export interface TextCommands {
@@ -98,18 +101,26 @@ export function startEditing(env: Pick<EditorEnv, "store" | "ui">, id: string, a
   ui.setState({ editingText: { id, at }, tray: "edit", notice: null });
 }
 
+// Whether the text or heading asked to open has its editor on the page:
+// a text's says so by its tools, a heading's line by marking the request
+// open. Until then the editor is on its way, its keys kept for it.
+export function textEditorOpen(state: { editingText: TextEditing | null; textTools: TextTools | null }): boolean {
+  const { editingText, textTools } = state;
+  return editingText !== null && (editingText.open === true || textTools?.id === editingText.id);
+}
+
 // A text asked to open whose editor is not there yet is asked no more once
 // another block is chosen or a drag starts: the keys kept for it go with
 // it, so they reach the block chosen now (../keys.ts) and are never typed
 // into the text when it is chosen again, which then waits for Enter or a
 // click like any text. An editor already open closes itself instead
-// (./text-session.ts), and keeps a text the page refuses open. Returns
-// the way to stop watching.
+// (./text-session.ts, ../heading-session.ts), and keeps words the page
+// refuses open. Returns the way to stop watching.
 export function forgetLeftText(env: Pick<EditorEnv, "store" | "ui">): () => void {
   const { store, ui } = env;
   return store.subscribe((state) => {
-    const { editingText, textTools } = ui.getState();
-    if (editingText === null || textTools?.id === editingText.id) return;
+    const { editingText } = ui.getState();
+    if (editingText === null || textEditorOpen(ui.getState())) return;
     if (state.selection !== editingText.id || state.drag !== null) ui.setState({ editingText: null });
   });
 }
