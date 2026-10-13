@@ -39,7 +39,7 @@ test("a click selects the block it falls in, whose marks and clamp are drawn the
   const clamps = screen.getAllByRole("toolbar");
   expect(clamps).toHaveLength(1);
   expect(clamps[0]!.getAttribute("aria-label")).toBe("Heading tools");
-  expect(clamps[0]!.getAttribute("aria-orientation")).toBe("vertical");
+  expect(clamps[0]!.getAttribute("aria-orientation")).toBe("horizontal");
   expect(root("h1").contains(clamps[0]!)).toBe(true);
   expect(root("h1").tabIndex).toBe(0);
   // From the top: the head (the block menu), the grip, the moves, More.

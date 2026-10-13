@@ -8,11 +8,11 @@
 // page a visitor gets. A button's marks hug the pill it draws, as the
 // approved design draws them, not the column-wide root around it, and
 // follow the pill where an alignment moves it. The seam below the
-// selection's section carries its +, a section's clamp its grip, and the
-// selected block its dimension line, in steps. The clamp keeps to the
-// margin, over no words, while a text is written too.
+// selection's section carries its +, a section's toolbar its grip, and the
+// selected block its dimension line, in steps. The toolbar floats by the
+// selection's frame, over no words, while a text is written too.
 import type { Page } from "@playwright/test";
-import { block, caption, clampFaults, clampPlace, moveOnto, pickUp, selectedText, settledTextEditor } from "./helpers/canvas.ts";
+import { block, caption, clampFaults, clampOverWords, clampPlace, moveOnto, pickUp, selectedText, settledTextEditor } from "./helpers/canvas.ts";
 import { cms, column, draftOf, expect, heading, makePage, open, openGroup, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -69,15 +69,15 @@ test("a button's hover outline and selection frame hug its pill, not its column"
   // the middle of the pill, over the block.
   await page.mouse.move(pill.x + pill.width / 2, pill.y + pill.height / 2);
   await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
-  expect(await around(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
-  // Its name sits beside the pill.
+  expect(await around(":scope > .ov-hover", 2)).toEqual([true, true, true, true]);
+  // Its name sits at the outline's top left, above the pill.
   const label = (await button.locator(":scope > .ov-hover .ov-label").boundingBox())!;
-  expect(label.x).toBeGreaterThan(pill.x + pill.width);
-  expect(label.x).toBeLessThan(pill.x + pill.width + 20);
+  expect(Math.abs(label.x - (pill.x - 2))).toBeLessThan(1);
+  expect(label.y + label.height).toBeLessThanOrEqual(pill.y);
 
   await button.click();
   await expect(button.locator(":scope > .ov-sel")).toHaveCount(1);
-  expect(await around(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  expect(await around(":scope > .ov-sel", 3)).toEqual([true, true, true, true]);
 });
 
 // An alignment moves the pill inside its root and changes the size of
@@ -102,14 +102,14 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
   await openGroup(page, "Alignment");
   await alignment.getByRole("radio", { name: "Center" }).click();
   await expect.poll(pillX).toBeGreaterThan(left + 50);
-  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  expect(await hugs(":scope > .ov-sel", 3)).toEqual([true, true, true, true]);
   const center = await pillX();
   await alignment.getByRole("radio", { name: "Right" }).click();
   await expect.poll(pillX).toBeGreaterThan(center + 50);
-  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  expect(await hugs(":scope > .ov-sel", 3)).toEqual([true, true, true, true]);
   await page.getByRole("button", { name: "Reset Alignment" }).click();
   await expect.poll(pillX).toBe(left);
-  expect(await hugs(":scope > .ov-sel", 6)).toEqual([true, true, true, true]);
+  expect(await hugs(":scope > .ov-sel", 3)).toEqual([true, true, true, true]);
 
   // The column's alignment, chosen by the keyboard while the pointer rests
   // on the button.
@@ -125,12 +125,12 @@ test("a button's frame and outline follow its pill when an alignment moves it, t
   const pill = (await button.locator(":scope > .sw-btn").boundingBox())!;
   await page.mouse.move(pill.x + pill.width / 2, pill.y + pill.height / 2);
   await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
-  expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
+  expect(await hugs(":scope > .ov-hover", 2)).toEqual([true, true, true, true]);
   const centered = await pillX();
   await columnAlignment.getByRole("radio", { name: "Center" }).press("ArrowRight");
   await expect.poll(pillX).toBeGreaterThan(centered + 50);
   await expect(button.locator(":scope > .ov-hover")).toHaveCount(1);
-  expect(await hugs(":scope > .ov-hover", 4)).toEqual([true, true, true, true]);
+  expect(await hugs(":scope > .ov-hover", 2)).toEqual([true, true, true, true]);
 });
 
 const twoSections = () => [
@@ -168,7 +168,7 @@ test("the seam below the selection's section: its +, its yellow line and the sec
   expect(draft.document.sections.map((s) => [s.id, s.children.length])).toEqual([["s1", 2], [added, 1], ["s2", 1]]);
 });
 
-test("a section's clamp sits in its margin, its grip dragging the section", async ({ page, request }) => {
+test("a section's toolbar stands inside its top left corner, in its padding, its grip dragging the section", async ({ page, request }) => {
   const { id } = await makePage(request, "Section drag", twoSections());
   await open(page, id);
   // The section chosen in the bottom line's path, from a widget in it.
@@ -177,13 +177,12 @@ test("a section's clamp sits in its margin, its grip dragging the section", asyn
   const clamp = page.getByRole("toolbar", { name: "Hero tools" });
   await expect(clamp).toBeVisible();
   expect(await clampFaults(page)).toEqual([]);
-  expect(await clampPlace(page)).toEqual({ size: "full", side: "left", tie: "none" });
-  // On the same vertical as its first column's blocks' clamps.
+  expect(await clampPlace(page)).toEqual({ side: "inside", align: "start" });
+  // 8 in from the frame's corner.
   const own = (await clamp.boundingBox())!;
-  await block(page, "h").click();
-  const blocks = (await page.getByRole("toolbar", { name: "Heading tools" }).boundingBox())!;
-  expect(Math.abs(own.x - blocks.x)).toBeLessThan(1);
-  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Hero" }).click();
+  const frame = (await page.locator('.canvas [data-block-id="s1"] > .ov-sel').boundingBox())!;
+  expect(Math.abs(own.x - (frame.x + 8))).toBeLessThan(1);
+  expect(Math.abs(own.y - (frame.y + 8))).toBeLessThan(1);
   await pickUp(page, clamp.locator("[data-grip]"));
   await moveOnto(page, block(page, "s2"), "bottom");
   await expect(caption(page).locator("strong")).toHaveText("Hero will move to the page, after Questions.");
@@ -192,6 +191,7 @@ test("a section's clamp sits in its margin, its grip dragging the section", asyn
   await saved(page);
   expect((await draftOf(request, id)).document.sections.map((s) => s.id)).toEqual(["s2", "s1"]);
 });
+
 
 test("the selected widget's dimension line names its column's Space between, as tall as the gap; a column's names its Space inside", async ({ page, request }) => {
   const padded = { ...column("c3", [heading("q", "Questions")]), style: { base: { spaceInside: "m" } } };
@@ -224,70 +224,79 @@ test("the selected widget's dimension line names its column's Space between, as 
   expect(Math.abs((await pad.boundingBox())!.height - padding)).toBeLessThan(1);
 });
 
-// A section whose columns stand a step apart (its Space between columns).
-const spaced = (id: string, label: string, columns: unknown[], spaceBetween: string) => ({ ...section(id, label, columns), style: { base: { spaceBetween } } });
 const boxOf = async (page: Page, selector: string) => (await page.locator(selector).boundingBox())!;
 
-test("the clamp keeps to the margin: full where it has 48, narrow in a gutter of 28 to 47, out to the page's margin under 28, over no block and no words", async ({ page, request }) => {
-  const { id } = await makePage(request, "Clamp places", [
-    // The theme's own gutter, 48.
-    section("wide", "Wide", [column("w1", [heading("wa", "Swim by the keys"), widget("wb", "button", { label: "Join", href: "#" })]), column("w2", [heading("wc", "Tide notes for the week")])]),
-    // Space between columns XL: a gutter of 32.
-    spaced("narrow", "Narrow", [column("n1", [heading("na", "Dawn swims, twice a week, at first light")]), column("n2", [heading("nb", "Beginners' course")])], "xl"),
-    // L: a gutter of 24, too narrow for any clamp.
-    spaced("tight", "Tight", [column("t1", [heading("ta", "One")]), column("t2", [heading("tb", "Two")]), column("t3", [heading("tc", "Three")])], "l"),
+test("the toolbar keeps off the words around the frame: above it where that is free, at its right end, under it; never over its own", async ({ page, request }) => {
+  const words = (line: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: line }] }] } });
+  const long = "Tide notes for the whole week ahead, for every swim at the slipway.";
+  const { id } = await makePage(request, "Toolbar places", [
+    // Room above the heading: the section's own space.
+    section("free", "Free", [column("f1", [heading("fa", "Swim by the keys")])]),
+    // A short line above: the toolbar goes to the frame's right end.
+    section("short", "Short", [column("s1", [widget("st", "text", words("One.")), heading("fb", "Swim at slack water")])]),
+    // A heading at the canvas's top, nothing under it: under the frame.
+    section("under", "Under", [column("u1", [heading("fc", "Swim at slack water")])]),
+    // Words above and under: over another block's words, never its own.
+    section("boxed", "Boxed", [column("b1", [widget("bt", "text", words(long)), heading("fd", "Swim at slack water"), widget("bu", "text", words(long))])]),
+    section("end", "End", [column("e1", [heading("fe", "The end")])]),
   ]);
   await open(page, id);
-  const at = async (target: string, place: Awaited<ReturnType<typeof clampPlace>>) => {
+  const at = async (target: string, place: Awaited<ReturnType<typeof clampPlace>>, top = false) => {
+    await block(page, target).evaluate((element, toTop) => {
+      if (!toTop) return element.scrollIntoView({ block: "center" });
+      const canvas = element.closest(".canvas")!;
+      canvas.scrollTop += element.getBoundingClientRect().top - (canvas.getBoundingClientRect().top + canvas.clientTop) - 12;
+    }, top);
     await block(page, target).click();
     await page.mouse.move(5, 895);
-    await expect.poll(() => clampPlace(page)).toEqual(place);
+    await expect.poll(() => clampPlace(page), target).toEqual(place);
     expect(await clampFaults(page), target).toEqual([]);
   };
-  // A first column's block: the page's margin, the full clamp, tied.
-  await at("wa", { size: "full", side: "left", tie: "on" });
-  const first = await boxOf(page, '.canvas [data-block-id="wa"]');
-  const clamp = await boxOf(page, '.canvas [data-block-id="wa"] > .clamp');
-  expect(Math.abs(clamp.x + clamp.width - (first.x - 14))).toBeLessThan(1);
-  // A short block: the same clamp, running on below it.
-  await at("wb", { size: "full", side: "left", tie: "on" });
-  const button = await boxOf(page, '.canvas [data-block-id="wb"]');
-  expect((await boxOf(page, '.canvas [data-block-id="wb"] > .clamp')).y + 100).toBeGreaterThan(button.y + button.height);
-  // The second column, 48 from the first: the full clamp in the gutter.
-  await at("wc", { size: "full", side: "left", tie: "on" });
-  // 32 from it: the narrow clamp, centred, 2 clear on each side.
-  await at("nb", { size: "narrow", side: "left", tie: "none" });
-  const narrow = await boxOf(page, '.canvas [data-block-id="nb"] > .clamp');
-  expect(Math.round(narrow.width)).toBe(28);
-  expect(Math.abs(narrow.x - ((await boxOf(page, '.canvas [data-block-id="n1"]')).x + (await boxOf(page, '.canvas [data-block-id="n1"]')).width) - 2)).toBeLessThan(1);
-  expect(Math.abs((await boxOf(page, '.canvas [data-block-id="nb"]')).x - (narrow.x + narrow.width) - 2)).toBeLessThan(1);
-  // 24: out to the nearer page margin, level with the block, untied.
-  await at("tb", { size: "full", side: "left", tie: "none" });
-  const out = await boxOf(page, '.canvas [data-block-id="tb"] > .clamp');
-  expect(out.x + out.width).toBeLessThan((await boxOf(page, '.canvas [data-block-id="t1"]')).x);
-  expect(Math.abs(out.y - ((await boxOf(page, '.canvas [data-block-id="tb"]')).y - 6))).toBeLessThan(1);
-  await at("tc", { size: "full", side: "right", tie: "none" });
-  expect((await boxOf(page, '.canvas [data-block-id="tc"] > .clamp')).x).toBeGreaterThan((await boxOf(page, '.canvas [data-block-id="t3"]')).x + (await boxOf(page, '.canvas [data-block-id="t3"]')).width);
-  // A column moves left and right; its clamp keeps the same rules.
-  await block(page, "wc").click();
-  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Column 2" }).click();
-  await expect.poll(() => clampPlace(page)).toEqual({ size: "full", side: "left", tie: "on" });
+  await at("fa", { side: "above", align: "start" });
+  expect(await clampOverWords(page)).toEqual([]);
+  // 6 above the frame, from its left edge.
+  const frame = await boxOf(page, '.canvas [data-block-id="fa"] > .ov-sel');
+  const toolbar = await boxOf(page, '.canvas [data-block-id="fa"] > .clamp');
+  expect(Math.abs(toolbar.x - frame.x)).toBeLessThan(1);
+  expect(Math.abs(toolbar.y + toolbar.height - (frame.y - 6))).toBeLessThan(1);
+  await at("fb", { side: "above", align: "end" });
+  expect(await clampOverWords(page)).toEqual([]);
+  const end = await boxOf(page, '.canvas [data-block-id="fb"] > .ov-sel');
+  const atEnd = await boxOf(page, '.canvas [data-block-id="fb"] > .clamp');
+  expect(Math.abs(atEnd.x + atEnd.width - (end.x + end.width))).toBeLessThan(1);
+  await at("fc", { side: "below", align: "start" }, true);
+  expect(await clampOverWords(page)).toEqual([]);
+  // Clear of the "+" on the frame's foot.
+  const plus = await boxOf(page, '.canvas [data-block-id="fc"] > .ov-sel > .ins-after');
+  expect((await boxOf(page, '.canvas [data-block-id="fc"] > .clamp')).y).toBeGreaterThan(plus.y + plus.height);
+  // Words all around: outside the frame all the same, off its own words.
+  await block(page, "fd").evaluate((element) => element.scrollIntoView({ block: "center" }));
+  await block(page, "fd").click();
+  await expect.poll(async () => (await clampPlace(page))?.side, "fd").not.toBe("inside");
+  expect(await clampFaults(page), "fd").toEqual([]);
+  // A column's toolbar by the same rules, its moves left and right.
+  await block(page, "fa").click();
+  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Column 1" }).click();
+  await expect(page.getByRole("toolbar", { name: "Column 1 tools" }).getByRole("button", { name: "Move left" })).toBeVisible();
   expect(await clampFaults(page)).toEqual([]);
 
-  // The check finds what it is there to find: the clamp laid over its
-  // block, then over the column beside it.
-  await block(page, "nb").click();
-  await expect.poll(() => clampPlace(page)).toMatchObject({ size: "narrow" });
-  await page.locator('.canvas [data-block-id="nb"] > .clamp').evaluate((element) => { (element as HTMLElement).style.left = "20px"; });
-  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: over its own block[\s\S]*Heading tools: over the words "Beginners/);
-  await page.locator('.canvas [data-block-id="nb"] > .clamp').evaluate((element) => { (element as HTMLElement).style.left = "-80px"; });
-  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: reaches 28 px into the column beside it/);
+  // The checks find what they are there to find: the toolbar laid over the
+  // block's own words, over the words above, then past the canvas's edge.
+  await block(page, "fd").click();
+  const laid = page.locator('.canvas [data-block-id="fd"] > .clamp');
+  await laid.evaluate((element) => { (element as HTMLElement).style.top = "4px"; (element as HTMLElement).style.left = "4px"; });
+  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: over its own words "Swim at slack water"/);
+  await laid.evaluate((element) => { (element as HTMLElement).style.top = "-30px"; });
+  expect((await clampOverWords(page)).join("\n")).toMatch(/Tide notes/);
+  await laid.evaluate((element) => { (element as HTMLElement).style.left = "-400px"; });
+  expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: past the canvas's edge/);
 });
 
-test("while a text is written, its clamp carries bold, italic and link in the same margin, over no words, and Esc gives its moves back", async ({ page, request }) => {
+
+test("while a text is written, its toolbar carries bold, italic and link where it stood, over no words, and Esc gives its moves back", async ({ page, request }) => {
   const text = (words: string) => ({ doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] } });
   // Columns a third of the page wide, a heading above the text, a rule or
-  // a button under it: the clamp stays in the margin all the same.
+  // a button under it: the toolbar keeps off their words all the same.
   const { id } = await makePage(request, "Clamp crowded", [
     section("s1", "Rule", [column("c1", [heading("h1", "Swim by the keys"), widget("t1", "text", text("Tide notes")), widget("d1", "divider", {})]), column("c2", []), column("c3", [])]),
     section("s2", "Button", [column("c4", [{ ...heading("h2", "Swim at slack water"), props: { level: 1, text: "Swim at slack water" } }, widget("t2", "text", text("Dawn swims, beginners' courses and a winter series.")), widget("b2", "button", { label: "Join a trial swim", href: "#" })]), column("c5", []), column("c6", [])]),
@@ -298,7 +307,7 @@ test("while a text is written, its clamp carries bold, italic and link in the sa
   for (const selected of ["t1", "t2"]) {
     await block(page, selected).click();
     await expect(tools).toBeVisible();
-    const before = (await tools.boundingBox())!;
+    const before = await clampPlace(page);
     expect(await clampFaults(page)).toEqual([]);
     await page.keyboard.press("Enter");
     await settledTextEditor(page, selected);
@@ -306,20 +315,20 @@ test("while a text is written, its clamp carries bold, italic and link in the sa
     // the grip and More stay.
     await expect(writing.getByRole("img", { name: "Text, being written" })).toBeVisible();
     expect(await writing.getByRole("button").evaluateAll((keys) => keys.map((key) => key.getAttribute("aria-label")))).toEqual(["Drag to move, or press Space to pick up", "Bold", "Italic", "Link", "More: copy, paste, duplicate, insert, delete"]);
-    const during = (await writing.boundingBox())!;
-    expect([during.x, during.y]).toEqual([before.x, before.y]);
+    // On the same side of the frame as before: the toolbar does not jump.
+    expect(await clampPlace(page)).toEqual(before);
     expect(await clampFaults(page)).toEqual([]);
-    // The last word made bold from the clamp, the caret kept in the text.
+    // The last word made bold from the toolbar, the caret kept in the text.
     await page.keyboard.press("End");
     for (let i = 0; i < 5; i += 1) await page.keyboard.press("Shift+ArrowLeft");
     await writing.getByRole("button", { name: "Bold" }).click();
     await expect(writing.getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
     await expect(block(page, selected).locator(".rte strong")).toHaveCount(1);
     await expect(block(page, selected).locator(".rte")).toBeFocused();
-    // From the keyboard: Tab from the text to Bold, Down to Italic, Enter.
+    // From the keyboard: Tab from the text to Bold, Right to Italic, Enter.
     await page.keyboard.press("Tab");
     await expect(writing.getByRole("button", { name: "Bold" })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowRight");
     await expect(writing.getByRole("button", { name: "Italic" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(block(page, selected).locator(".rte strong em, .rte em strong")).toHaveCount(1);
@@ -339,8 +348,9 @@ test("while a text is written, its clamp carries bold, italic and link in the sa
   }
 });
 
-// Where a written text's clamp stands against the canvas's view: whether
-// it is all in view, its top from the view's top, and the canvas's scroll.
+// Where the selected block's toolbar stands against the canvas's view:
+// whether it is all in view, its top from the view's top, and the
+// canvas's scroll.
 async function inView(page: Page): Promise<{ clamp: boolean | null; fromTop: number | null; scrollTop: number }> {
   return page.evaluate(() => {
     const canvas = document.querySelector<HTMLElement>(".canvas")!;
@@ -356,15 +366,15 @@ async function inView(page: Page): Promise<{ clamp: boolean | null; fromTop: num
 // The two scrolling faults stage 3 left, both of the floating bar's place
 // under a text: a text opened at the canvas's bottom edge scrolled out
 // from under the pointer, and a tall text's bar was not brought into view
-// on a new empty line. The clamp stands beside the text, so nothing need
-// scroll; beside a text taller than the canvas it keeps to the canvas's
-// top, its formatting at hand wherever the caret is.
-test("a text opened at the canvas's bottom edge stays under the pointer; beside a text taller than the canvas, its clamp keeps to the canvas's top", async ({ page, request }) => {
+// on a new empty line. Opening a text scrolls nothing; by a text taller
+// than the canvas the toolbar keeps to the canvas's top, inside it, its
+// formatting at hand wherever the caret is.
+test("a text opened at the canvas's bottom edge stays under the pointer; by a text taller than the canvas, its toolbar keeps to the canvas's top", async ({ page, request }) => {
   const paragraphs = (...lines: string[]) => ({ doc: { type: "doc", content: lines.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) } });
   const filler = (n: number) => section(`f${n}`, `Filler ${n}`, [column(`fc${n}`, [heading(`fh${n}`, "Swim by the keys"), widget(`ft${n}`, "text", paragraphs("Tide notes for the week ahead."))])]);
   const long = "Swim at slack water, twice a week, at first light, when the bay is flat";
   const tall = Array.from({ length: 30 }, (_, n) => `Note ${n + 1} on the tides of the bay.`);
-  const { id } = await makePage(request, "Clamp at the edge", [
+  const { id } = await makePage(request, "Toolbar at the edge", [
     filler(1), filler(2), filler(3),
     section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims, beginners' courses and a winter series.", "Bring a towel."))])]),
     section("s3", "Tall", [column("c3", [{ ...heading("h3", long), props: { level: 1, text: long } }, widget("t3", "text", paragraphs(...tall))])]),
@@ -393,9 +403,9 @@ test("a text opened at the canvas's bottom edge stays under the pointer; beside 
   await page.keyboard.press("Escape");
 
   // A text taller than the canvas, its top scrolled away: written in its
-  // middle, its clamp stands at the canvas's top, all in view; it stays
-  // there on a new empty line, which has no box of its own, and as the
-  // canvas scrolls on.
+  // middle, its toolbar stands at the canvas's top, inside it, all in view;
+  // it stays there on a new empty line, which has no box of its own, and
+  // as the canvas scrolls on.
   const tallText = block(page, "t3");
   await tallText.evaluate((element) => element.scrollIntoView({ block: "start" }));
   await page.locator(".canvas").evaluate((canvas) => { canvas.scrollTop += 300; });
@@ -404,6 +414,7 @@ test("a text opened at the canvas's bottom edge stays under the pointer; beside 
   await settledTextEditor(page, "t3");
   await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
   await expect.poll(() => inView(page)).toMatchObject({ clamp: true, fromTop: 8 });
+  expect(await clampPlace(page)).toEqual({ side: "inside", align: "start" });
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await expect.poll(() => inView(page)).toMatchObject({ clamp: true, fromTop: 8 });
@@ -412,19 +423,18 @@ test("a text opened at the canvas's bottom edge stays under the pointer; beside 
   expect(await clampFaults(page)).toEqual([]);
 });
 
-test("a short block chosen by the keyboard at the canvas's bottom edge comes into view with its whole clamp, which runs on below it", async ({ page, request }) => {
+test("a short block chosen by the keyboard at the canvas's bottom edge comes into view with its whole toolbar", async ({ page, request }) => {
   const paragraphs = (...lines: string[]) => ({ doc: { type: "doc", content: lines.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) } });
   const filler = (n: number) => section(`f${n}`, `Filler ${n}`, [column(`fc${n}`, [heading(`fh${n}`, "Swim by the keys"), widget(`ft${n}`, "text", paragraphs("Tide notes for the week ahead."))])]);
   const long = "Swim at slack water, twice a week, at first light, when the bay is flat";
-  const { id } = await makePage(request, "Clamp brought in", [
+  const { id } = await makePage(request, "Toolbar brought in", [
     filler(1), filler(2), filler(3),
     section("s2", "Long", [column("c2", [{ ...heading("long", long), props: { level: 1, text: long } }, widget("t2", "text", paragraphs("Dawn swims.")), widget("b2", "button", { label: "Join", href: "#" })])]),
   ]);
   await page.setViewportSize({ width: 1184, height: 900 });
   await open(page, id);
   // The heading at the canvas's bottom edge, the text and the button under
-  // it out of view; the arrow keys bring each in with its clamp, which is
-  // taller than either.
+  // it out of view; the arrow keys bring each in with its toolbar.
   await page.locator(".canvas").evaluate((canvas) => {
     const heading = canvas.querySelector('[data-block-id="long"]')!.getBoundingClientRect();
     canvas.scrollTop += heading.bottom - (canvas.getBoundingClientRect().bottom - 30);
@@ -433,10 +443,8 @@ test("a short block chosen by the keyboard at the canvas's bottom edge comes int
   for (const next of ["t2", "b2"]) {
     await page.keyboard.press("ArrowDown");
     await expect(block(page, next)).toBeFocused();
-    const own = (await block(page, next).boundingBox())!;
-    const clamp = (await page.locator(".canvas .clamp").boundingBox())!;
-    expect(clamp.y + clamp.height).toBeGreaterThan(own.y + own.height);
     await expect.poll(async () => (await inView(page)).clamp).toBe(true);
+    await expect.poll(() => clampFaults(page)).toEqual([]);
   }
   // Written there, the text keeps its caret in view as it grows.
   await page.keyboard.press("ArrowUp");

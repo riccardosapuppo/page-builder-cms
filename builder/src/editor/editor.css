@@ -34,6 +34,10 @@
   --mark-key: var(--graphite);
   --mark-ink: var(--graphite);
   --mark-line: var(--graphite);
+  /* The selection's faint edge (it reads over a light or a yellow band
+     without a keyline) and its tint, behind a selected row or a frame. */
+  --sel-edge: rgb(27 31 36 / .22);
+  --sel-tint: rgb(237 194 0 / .16);
   --err: #B3261E;
   --warn: #8A5800;
   --warn-tint: #FBDA8E;
@@ -78,6 +82,8 @@ body {
 
 .i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: butt; stroke-linejoin: miter; }
 .i-xs { width: 16px; height: 16px; stroke-width: 1.875; }
+/* Lucide's icons (./lucide.tsx), on their 24 grid, stroked round. */
+.li { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .i-tile { width: 24px; height: 24px; stroke-width: 1.25; }
 
 /* Keyboard focus: a graphite ring, 2 wide and 2 away, everywhere; on the
@@ -295,11 +301,9 @@ body {
 .crumb { position: relative; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 7px; border-radius: 5px; font-weight: 500; color: var(--graphite); white-space: nowrap; }
 .crumb:hover { background: var(--key); }
 .crumb .i, .crumb-sep { color: var(--steel); }
-/* The selection, marked as the outline's selected row: two corner brackets. */
-.crumb[aria-current] { background: var(--key); font-weight: 600; }
-.crumb[aria-current]::before, .crumb[aria-current]::after { content: ""; position: absolute; width: 7px; height: 7px; border: 0 solid var(--mark-line); }
-.crumb[aria-current]::before { left: 0; top: 0; border-width: 2px 0 0 2px; border-top-left-radius: 2px; }
-.crumb[aria-current]::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; border-bottom-right-radius: 2px; }
+/* The selection, marked as the canvas marks it: the selection's yellow,
+   a tint and a line inside. */
+.crumb[aria-current] { background: var(--sel-tint); box-shadow: inset 0 0 0 1.5px var(--mark); font-weight: 600; }
 .crumbs-hint { display: inline-flex; align-items: center; gap: 4px; color: var(--steel); font-size: 12px; white-space: nowrap; }
 .crumbs-hint .keys-inline { vertical-align: 0; }
 .sb-view { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
@@ -543,11 +547,9 @@ textarea.input { resize: vertical; }
 .t-chev { color: var(--steel); }
 .t-chev-none { visibility: hidden; }
 li[aria-expanded="true"] > .t-row > .t-chev { transform: rotate(90deg); }
-/* the selected row repeats the canvas selection: two corner brackets */
-li[aria-selected="true"] > .t-row { position: relative; overflow: visible; background: var(--key); color: var(--graphite); font-weight: 600; }
-li[aria-selected="true"] > .t-row::before, li[aria-selected="true"] > .t-row::after { content: ""; position: absolute; width: 8px; height: 8px; border: 0 solid var(--mark-line); pointer-events: none; }
-li[aria-selected="true"] > .t-row::before { left: 0; top: 0; border-width: 2px 0 0 2px; }
-li[aria-selected="true"] > .t-row::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
+/* the selected row repeats the canvas selection: the yellow, a tint and
+   a line inside */
+li[aria-selected="true"] > .t-row { position: relative; overflow: visible; background: var(--sel-tint); box-shadow: inset 0 0 0 1.5px var(--mark); color: var(--graphite); font-weight: 600; }
 li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .t-hidden > .t-row { color: var(--steel); }
 .t-hidden > .t-row > span { text-decoration: line-through; text-decoration-color: var(--rule); }
@@ -614,20 +616,19 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site [data-block-id]:focus { outline: none; }
 .canvas .site [data-block-id]:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; box-shadow: 0 0 0 2px var(--white); }
 
-/* The marks the editor draws over the page. Every mark on the page carries
-   a graphite keyline, so it reads over any site colour. */
+/* The marks the editor draws over the page: the selection's yellow, with
+   a faint graphite edge so a line still reads over a light or a yellow
+   band, and 6 radii. Outlines come in with a short fade. */
 .ov { position: absolute; pointer-events: none; z-index: 5; font: 600 12px/14px var(--font-ui); letter-spacing: normal; text-align: left; }
 /* The theme sizes a block's children (a display heading's lines are at
    most 7.4em wide, .w-heading.size-display > *): the marks are children of
    the block too, and take none of it. */
 .canvas .site .ov { max-width: none; margin: 0; }
-.ov-sel { inset: -6px; border: 2px solid var(--mark); border-radius: 2px; box-shadow: 0 0 0 1px var(--mark-key), inset 0 0 0 1px var(--mark-key); z-index: 7; }
-.sec > .ov-sel { inset: 8px; }
-.br { position: absolute; width: 16px; height: 16px; border: 0 solid var(--mark); filter: drop-shadow(1px 0 0 var(--mark-key)) drop-shadow(-1px 0 0 var(--mark-key)) drop-shadow(0 1px 0 var(--mark-key)) drop-shadow(0 -1px 0 var(--mark-key)); }
-.br-tl { top: -8px; left: -8px; border-width: 3px 0 0 3px; }
-.br-tr { top: -8px; right: -8px; border-width: 3px 3px 0 0; }
-.br-bl { bottom: -8px; left: -8px; border-width: 0 0 3px 3px; }
-.br-br { bottom: -8px; right: -8px; border-width: 0 3px 3px 0; }
+/* The selection: one continuous yellow line, 2 thick, 3 outside the block
+   (a section's inside it, the page's edges being the canvas's). */
+.ov-sel { inset: -3px; border: 2px solid var(--mark); border-radius: 6px; box-shadow: 0 0 0 1px var(--sel-edge); z-index: 7; transition: opacity 140ms ease-out; }
+@starting-style { .ov-sel { opacity: 0; } }
+.sec > .ov-sel { inset: 3px; }
 
 /* A text being edited (./rich/). The editor's element stands where the
    page drew the text's paragraphs, one level down, so the page's space
@@ -656,23 +657,24 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site .ov-link :is(button, input, label) { pointer-events: auto; }
 .ov-link-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
 
-/* Hover: a thinner line, its name beside the block. */
-.ov-hover { inset: -4px; border: 1.5px solid var(--mark); border-radius: 2px; box-shadow: 0 0 0 1px var(--mark-key); }
-.ov-label { position: absolute; padding: 3px 6px; border-radius: 3px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
-.ov-hover .ov-label { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
-.col > .ov-hover .ov-label, .sec > .ov-hover .ov-label { left: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
-/* With no room beside the block before the canvas's right edge (a block as
-   wide as a page that fills the canvas; Canvas.tsx, labelSide), the name
-   stands above the outline, at its right end, rather than be cut there. */
-.ov-hover[data-label-side="above"] .ov-label { left: auto; right: -1.5px; top: auto; bottom: calc(100% + 3px); transform: none; }
-/* There the name stands in the gap above the block, where the frame of a
-   selection just before it runs: level with that frame, the hovered block,
-   later in the page, draws its name over the frame's line and corner. */
-.ov-hover[data-label-side="above"] { z-index: 7; }
+/* Hover: a thinner line, 2 outside the block, its name in a yellow chip
+   at the line's top left, where the selection's toolbar names it. Where
+   that is past the canvas's top, the name stands inside the line; past
+   its right edge, at the line's right end (Canvas.tsx, labelSide). */
+.ov-hover { inset: -2px; border: 1.5px solid var(--mark); border-radius: 6px; box-shadow: 0 0 0 1px var(--sel-edge); transition: opacity 120ms ease-out; }
+@starting-style { .ov-hover { opacity: 0; } }
+.sec > .ov-hover { inset: 2px; }
+.ov-label { position: absolute; padding: 2px 6px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .16), 0 2px 6px -2px rgb(27 31 36 / .3); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
+.ov-hover .ov-label { left: -1.5px; bottom: calc(100% + 4px); }
+.ov-hover[data-label-side="inside"] .ov-label { left: 4px; top: 4px; bottom: auto; }
+.ov-hover[data-label-side="end"] .ov-label { left: auto; right: -1.5px; }
+/* The name above the line stands in the gap above the block, where the
+   frame of a selection just before it runs: level with that frame. */
+.ov-hover { z-index: 7; }
 /* A button's root is as wide as its column, as on the published page; its
    outline and frame hug the pill it draws instead (Canvas.tsx, hug). */
-.ov-hover.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 4px); top: calc(var(--hug-y, 0px) - 4px); width: calc(var(--hug-w, 100%) + 8px); height: calc(var(--hug-h, 100%) + 8px); }
-.ov-sel.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 6px); top: calc(var(--hug-y, 0px) - 6px); width: calc(var(--hug-w, 100%) + 12px); height: calc(var(--hug-h, 100%) + 12px); }
+.ov-hover.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 2px); top: calc(var(--hug-y, 0px) - 2px); width: calc(var(--hug-w, 100%) + 4px); height: calc(var(--hug-h, 100%) + 4px); border-radius: 999px; }
+.ov-sel.ov-hug { inset: auto; left: calc(var(--hug-x, 0px) - 3px); top: calc(var(--hug-y, 0px) - 3px); width: calc(var(--hug-w, 100%) + 6px); height: calc(var(--hug-h, 100%) + 6px); border-radius: 999px; }
 
 /* Dimension lines: the selected block's spacing measured in steps, never
    in pixels, beside it (design/styles.css .ov-dim-v, .ov-pad); the gap's
@@ -681,9 +683,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-dim-v { top: 100%; left: 24%; width: 12px; z-index: 8; }
 .ov-pad { left: 62%; width: 12px; z-index: 8; }
 .ov-pad-top { top: 0; }
-.ov-dim-v::before, .ov-pad-top::before { content: ""; position: absolute; left: 5px; top: 1px; bottom: 1px; width: 2px; background: var(--mark-line); }
-.ov-dim-v::after, .ov-pad-top::after { content: ""; position: absolute; inset: 0; border-top: 2px solid var(--mark-line); border-bottom: 2px solid var(--mark-line); }
-.ov-dim-v span, .ov-pad span { position: absolute; left: 18px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--mark); color: var(--on-mark); border: 1.5px solid var(--mark-line); font: 600 12px/14px var(--font-ui); white-space: nowrap; }
+.ov-dim-v::before, .ov-pad-top::before { content: ""; position: absolute; left: 5.5px; top: 1px; bottom: 1px; width: 1px; background: var(--mark-line); }
+.ov-dim-v::after, .ov-pad-top::after { content: ""; position: absolute; inset: 0 2px; border-top: 1px solid var(--mark-line); border-bottom: 1px solid var(--mark-line); }
+.ov-dim-v span, .ov-pad span { position: absolute; left: 18px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .16), 0 2px 6px -2px rgb(27 31 36 / .3); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
 .ov-dim-v span { top: 9px; }
 .ov-pad-top span { top: 3px; }
 /* A step that is the previewed device's own carries its glyph. */
@@ -772,11 +774,9 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .page-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .page-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; color: var(--steel); }
 .pr-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--steel); white-space: nowrap; }
-/* The page open, marked as the selection is: two corner brackets. */
-.page-row[aria-current] { background: var(--key); }
-.page-row[aria-current]::before, .page-row[aria-current]::after { content: ""; position: absolute; width: 8px; height: 8px; border: 0 solid var(--mark-line); }
-.page-row[aria-current]::before { left: 0; top: 0; border-width: 2px 0 0 2px; }
-.page-row[aria-current]::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
+/* The page open, marked as the selection is: the yellow, a tint and a
+   line inside. */
+.page-row[aria-current] { background: var(--sel-tint); box-shadow: inset 0 0 0 1.5px var(--mark); }
 .pages-none { margin: 6px 10px 8px; }
 .pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 8px 4px 2px; box-shadow: inset 0 1px 0 var(--alloy); }
 
@@ -810,10 +810,10 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    page): the drag library sets every element's cursor to grabbing, with
    !important, so this one needs it too. */
 :root[data-drop-refused], :root[data-drop-refused] * { cursor: no-drop !important; }
-.ov-drop { inset: -8px; z-index: 0; border: 1.5px dashed var(--mark-line); border-radius: 4px; background: var(--sec-bg); }
-.ov-drop-target { border: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--mark-key), inset 0 0 0 1px var(--mark-key); }
+.ov-drop { inset: -8px; z-index: 0; border: 1.5px dashed rgb(27 31 36 / .38); border-radius: 6px; background: var(--sec-bg); }
+.ov-drop-target { border: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--sel-edge); }
 .col > .ov-drop-target { background: var(--white); }
-.ov-drop-target > .ov-label { left: -2px; top: auto; bottom: calc(100% + 3px); background: var(--mark); color: var(--on-mark); border-color: var(--mark-line); }
+.ov-drop-target > .ov-label { left: -2px; top: auto; bottom: calc(100% + 4px); }
 .sec > .ov-drop, .sec > .ov-drop-target { inset: 0; background: none; z-index: 6; }
 .sec > .ov-drop-target > .ov-label { top: 4px; bottom: auto; left: 8px; }
 
@@ -833,17 +833,17 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site [data-drag-slot] { position: relative; height: 40px; min-height: 0; margin-block: 0; padding: 0; border: 0; background: none; box-shadow: none; z-index: 4; }
 .canvas .site [data-drag-slot] > :not(.drop-ui) { display: none !important; }
 .canvas .site [data-drag-slot="frame"], .canvas .site [data-drag-slot][data-drag-row] { height: auto; min-height: 72px; }
-.drop-slot { position: absolute; inset: 0; border-radius: 4px; outline: 1.5px dashed var(--mark-line); outline-offset: -1.5px; pointer-events: none; }
-.drop-slot[data-mode="frame"] { outline: 2px solid var(--mark); box-shadow: inset 0 0 0 3px var(--mark-key); background: rgb(237 194 0 / .12); }
-.drop-line { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
-.drop-line::before, .drop-line::after { content: ""; position: absolute; top: -6px; width: 3px; height: 15px; background: var(--mark); box-shadow: 0 0 0 1px var(--mark-key); }
-.drop-line::before { left: 0; }
-.drop-line::after { right: 0; }
-[data-drag-row] > .drop-slot .drop-line { left: 50%; right: auto; top: 0; bottom: 0; width: 3px; height: auto; margin: 0 0 0 -1.5px; }
-[data-drag-row] > .drop-slot .drop-line::before, [data-drag-row] > .drop-slot .drop-line::after { left: -6px; width: 15px; height: 3px; }
-[data-drag-row] > .drop-slot .drop-line::before { top: 0; }
-[data-drag-row] > .drop-slot .drop-line::after { top: auto; bottom: 0; }
-.drop-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px var(--mark-key); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
+.drop-slot { position: absolute; inset: 0; border-radius: 6px; outline: 1.5px dashed rgb(27 31 36 / .38); outline-offset: -1.5px; pointer-events: none; }
+.drop-slot[data-mode="frame"] { outline: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--sel-edge); background: var(--sel-tint); }
+.drop-line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px; background: var(--mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .22); }
+.drop-line::before, .drop-line::after { content: ""; position: absolute; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .3); }
+.drop-line::before { left: -4px; }
+.drop-line::after { right: -4px; }
+[data-drag-row] > .drop-slot .drop-line { left: 50%; right: auto; top: 0; bottom: 0; width: 2px; height: auto; margin: 0 0 0 -1px; }
+[data-drag-row] > .drop-slot .drop-line::before, [data-drag-row] > .drop-slot .drop-line::after { left: -3px; }
+[data-drag-row] > .drop-slot .drop-line::before { top: -4px; }
+[data-drag-row] > .drop-slot .drop-line::after { top: auto; right: auto; bottom: -4px; }
+.drop-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .16), 0 2px 6px -2px rgb(27 31 36 / .3); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
 [data-drag-row] > .drop-slot .drop-label { top: 12px; transform: none; }
 
 /* A page drawn smaller to fit (Canvas.tsx, fitPreview) draws its marks
@@ -856,9 +856,8 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    surround. */
 .frame[data-scale] .ov-link { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
-.frame[data-scale] .ov-hover .ov-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
-.frame[data-scale] :is(.col, .sec) > .ov-hover .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 100%; }
-.frame[data-scale] .ov-hover[data-label-side="above"] .ov-label { transform: scale(var(--canvas-unscale)); transform-origin: 100% 100%; }
+.frame[data-scale] .ov-hover[data-label-side="inside"] .ov-label { transform-origin: 0 0; }
+.frame[data-scale] .ov-hover[data-label-side="end"] .ov-label { transform-origin: 100% 100%; }
 .frame[data-scale] .sec > .ov-drop-target > .ov-label { transform-origin: 0 0; }
 .frame[data-scale] :is(.ov-dim-v, .ov-pad) span { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .drop-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
@@ -1029,3 +1028,8 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .dlg-about h2 { margin-top: 6px; font-size: 16px; line-height: 22px; font-weight: 600; }
 .about-line { font-size: 14px; line-height: 20px; }
 .dlg-about .btn { margin-top: 10px; }
+
+/* The marks' fades, where the person asked for less motion: none. */
+@media (prefers-reduced-motion: reduce) {
+  .ov-sel, .ov-hover { transition: none; }
+}

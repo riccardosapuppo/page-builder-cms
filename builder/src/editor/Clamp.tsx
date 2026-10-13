@@ -1,20 +1,20 @@
 // The selected block's clamp (design/layout/NOTES.md, section 4.2): its
-// tools in a vertical graphite bar in the page's margin, held to the block
-// and never over it (./clamp-place.ts says where). From the top: the
-// yellow head with the block's type, which opens the block menu (the
-// moves, then everything in More); the grip, which drags the block (or
-// picks it up with Space); move up and move down (left and right for a
-// column), each one command; and More (copy, paste after, duplicate,
-// insert before or after, select the parent, delete), the menu a right
-// click opens too. Every block, section and column gets the same clamp,
-// whatever its height: beside a short block it runs on below it.
+// tools in a graphite bar floating by the selection's frame, outside the
+// block and over none of the page's words where a place is free of them
+// (./clamp-place.ts says where). From the start: the yellow head naming
+// the block, with its type's icon, which opens the block menu (the moves,
+// then everything in More); the grip, which drags the block (or picks it
+// up with Space); move up and move down (left and right for a column),
+// each one command; and More (copy, paste after, duplicate, insert before
+// or after, select the parent, delete), the menu a right click opens too.
+// Every block, section and column gets the same toolbar.
 //
 // While its text is being written, the moving keys give their place to
 // bold, italic and link (Up, Down and Space are the text's then), the
 // head names the text, and Esc gives them back; the grip and More stay,
 // so the block can still be dragged or duplicated without leaving it.
 //
-// One Tab stop, after the block's own (a toolbar): Up and Down move along
+// One Tab stop, after the block's own (a toolbar): the arrows move along
 // it, Esc goes back to the block, or into the text being written.
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useStore } from "zustand";
@@ -27,10 +27,10 @@ import { afterRender, runCommand } from "./act.ts";
 import { caretAtEnd, editableIn } from "./caret.ts";
 import { BlockIcon } from "./block-icon.tsx";
 import { canvasUi } from "./canvas-ui.ts";
-import { CLAMP_WIDTH, placeClamp, plusShift, type Box, type ClampRoom } from "./clamp-place.ts";
+import { placeToolbar, plusShift, toolbarBox, TOOLBAR_GAP, UNDER_PLUS, type Box, type ToolbarRoom } from "./clamp-place.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
-import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
+import { Lucide } from "./lucide.tsx";
 import type { TextTools } from "./rich/tools.ts";
 
 export type ClampKind = "section" | "column" | "widget";
@@ -100,8 +100,8 @@ export function clampKey(id: string, key: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"] > .clamp [data-key="${key}"]`);
 }
 
-// Opens the block's menu from the clamp: the head's, or More's, beside
-// the clamp, at the key's height (./BlockMenu.tsx).
+// Opens the block's menu from the clamp: the head's, or More's, under the
+// toolbar, from the key's left (./BlockMenu.tsx).
 export function openClampMenu(env: Pick<EditorEnv, "ui">, from: HTMLElement, which: "head" | "more"): void {
   const clamp = from.closest(".clamp");
   if (!clamp) return;
@@ -113,48 +113,72 @@ export function openClampMenu(env: Pick<EditorEnv, "ui">, from: HTMLElement, whi
   const box = clamp.getBoundingClientRect();
   const key = from.getBoundingClientRect();
   canvasUi(env.ui).getState().setMenu(which === "head" ? "block" : "more", which);
-  env.ui.getState().setBlockMenu({ x: box.right + 12, y: which === "head" ? box.top : key.top, from: "canvas" });
+  env.ui.getState().setBlockMenu({ x: key.left, y: box.bottom + MENU_GAP, from: "canvas" });
 }
+
+// Between the toolbar and a menu opened from it.
+export const MENU_GAP = 6;
 
 // ------------------------------------------------------------- placing
 
-// The room around the block, measured on the page as it is drawn.
-function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): ClampRoom | null {
+const meets = (a: Box, b: Box): boolean => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+// What the toolbar keeps off near the frame, where it might stand: the
+// lines of the other blocks' words, a section's blocks' included (its
+// toolbar may stand inside it); the selected block's own lines; and the
+// other widgets that hold no words (a picture, a gallery, a video, a map,
+// a rule, a spacer), whose whole box counts. A block of words counts by
+// its lines, read one by one (a block's element may have no box of its
+// own, a folded menu's): the empty end of a short line is free. The
+// editor's own words (names, tips, the toolbar's) are none of the page's,
+// and the locked header and footer and the dimmed page around a part are
+// not edited here: a toolbar may stand over them.
+const NOT_PAGE = ".clamp, .ov, .ins, .ins-empty, .seam-tip, [data-theme-part], [data-around-page]";
+const WORDLESS = ["image", "gallery", "video", "map", "divider", "spacer"].map((type) => `[data-block-type="${type}"]`).join(", ");
+function coversNear(own: HTMLElement, frame: Box, width: number, height: number, section: boolean): Pick<ToolbarRoom, "words" | "ownWords" | "blocks"> {
+  const page = own.closest(".frame");
+  if (!page) return { words: [] };
+  const reach = height + UNDER_PLUS + 2;
+  const near: Box = { left: frame.left - width, right: frame.right + width, top: frame.top - reach, bottom: frame.bottom + reach };
+  const words: Box[] = [];
+  const ownWords: Box[] = [];
+  const range = document.createRange();
+  // A browser that cannot give a range's lines (jsdom) counts no words.
+  const walker = typeof range.getClientRects === "function" ? document.createTreeWalker(page, NodeFilter.SHOW_TEXT) : null;
+  for (let node = walker?.nextNode(); walker && node; node = walker.nextNode()) {
+    const parent = node.parentElement;
+    if (!parent || !node.textContent?.trim() || parent.closest(NOT_PAGE)) continue;
+    const mine = !section && own.contains(parent);
+    range.selectNodeContents(node);
+    for (const line of range.getClientRects()) if (line.width > 0 && meets(line, near)) (mine ? ownWords : words).push(line);
+  }
+  const blocks: Box[] = [];
+  for (const block of page.querySelectorAll<HTMLElement>(WORDLESS)) {
+    if (block.closest(NOT_PAGE) || own.contains(block) || block.contains(own)) continue;
+    const box = block.getBoundingClientRect();
+    if (box.width > 0 && meets(box, near)) blocks.push(box);
+  }
+  return { words, ownWords, blocks };
+}
+
+// The room around the selection, measured on the page as it is drawn:
+// the frame (a button's hugs its pill), the canvas's visible part, the
+// drawer floating over it, the words near it.
+function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): { room: ToolbarRoom; scale: number } | null {
   const canvas = own.closest<HTMLElement>(".canvas");
-  const frame = own.closest<HTMLElement>(".frame");
-  if (!canvas || !frame) return null;
-  const scale = Number(frame.dataset.scale ?? "1") || 1;
+  const scaled = own.closest<HTMLElement>(".frame");
+  if (!canvas || !scaled) return null;
+  const scale = Number(scaled.dataset.scale ?? "1") || 1;
   const bench = canvas.getBoundingClientRect();
   const view: Box = { left: bench.left + canvas.clientLeft, top: bench.top + canvas.clientTop, right: bench.left + canvas.clientLeft + canvas.clientWidth, bottom: bench.top + canvas.clientTop + canvas.clientHeight };
-  const section = kind === "section" ? own : own.closest<HTMLElement>("[data-block-type=section]");
-  const row = section?.querySelector<HTMLElement>(":scope > .sw-inner");
-  const columns = row ? [...row.children].filter((e): e is HTMLElement => e instanceof HTMLElement && e.dataset.blockType === "column") : [];
-  const boxes = columns.map((column) => column.getBoundingClientRect());
-  const ownBox = own.getBoundingClientRect();
-  const contentLeft = boxes.length > 0 ? Math.min(...boxes.map((b) => b.left)) : ownBox.left;
-  const contentRight = boxes.length > 0 ? Math.max(...boxes.map((b) => b.right)) : ownBox.right;
-  let block: Box = ownBox;
-  let leftLimit = view.left;
-  let rightLimit = view.right;
-  if (kind === "section") {
-    block = { left: contentLeft, right: contentRight, top: ownBox.top, bottom: ownBox.bottom };
-  } else {
-    // The columns beside the block's own, in its row: a stacked column is
-    // above or below it, not beside it.
-    const column = kind === "column" ? own : own.closest<HTMLElement>("[data-block-type=column]");
-    const mine = column?.getBoundingClientRect();
-    if (mine) {
-      for (const box of boxes) {
-        if (box.top >= mine.bottom || box.bottom <= mine.top) continue;
-        if (box.right <= mine.left + 0.5) leftLimit = Math.max(leftLimit, box.right);
-        if (box.left >= mine.right - 0.5) rightLimit = Math.min(rightLimit, box.left);
-      }
-    }
-  }
+  const frame = (own.querySelector(":scope > .ov-sel") ?? own).getBoundingClientRect();
   // Only the floating drawer (Insert) is over the canvas; the pushed ones
   // have a column of their own.
   const covers = [...document.querySelectorAll(".drawer-float")].map((drawer) => drawer.getBoundingClientRect());
-  return { block, leftLimit, rightLimit, contentLeft, contentRight, view, covers, height: clamp.offsetHeight, scale, section: kind === "section" };
+  const width = clamp.offsetWidth;
+  const height = clamp.offsetHeight;
+  const section = kind === "section";
+  return { scale, room: { frame, view, covers, ...coversNear(own, frame, width, height, section), width, height, section } };
 }
 
 // The seams whose "+" the clamp may stand on: the one below its section,
@@ -194,38 +218,35 @@ function forgetSeams(seams: readonly SeamPlus[]): void {
   for (const { host, edge } of seams) host.style.removeProperty(SEAM_SHIFT[edge]);
 }
 
-// Lays the clamp where it goes, in the block's own pixels (the page may be
-// drawn smaller: the clamp is drawn back up to its size, editor.css), and
-// keeps room under the block for a clamp that runs on below it, so a
-// block brought into view brings its whole clamp. Moves the seams' "+"
-// off it, and says which seams it looked at.
+// Lays the toolbar where it goes, in the block's own pixels (the page may
+// be drawn smaller: the toolbar is drawn back up to its size, canvas.css),
+// and keeps room above the block and under it for the toolbar, so a block
+// brought into view comes with a place for it outside the block on either
+// side. Moves the seams' "+" off it, and says which seams it looked at.
 function placeOnPage(clamp: HTMLElement, kind: ClampKind): SeamPlus[] {
   const own = clamp.parentElement;
   if (!own) return [];
-  const room = roomOf(own, kind, clamp);
-  if (!room) return [];
-  const place = placeClamp(room);
+  const measured = roomOf(own, kind, clamp);
+  if (!measured) return [];
+  const { room, scale } = measured;
+  const place = placeToolbar(room);
   const box = own.getBoundingClientRect();
-  const { scale } = room;
   clamp.style.left = `${(place.x - box.left) / scale - own.clientLeft}px`;
   clamp.style.top = `${(place.y - box.top) / scale - own.clientTop}px`;
-  clamp.dataset.size = place.size;
   clamp.dataset.side = place.side;
-  if (place.tie === null) clamp.style.removeProperty("--tie");
-  else clamp.style.setProperty("--tie", `${place.tie}px`);
-  clamp.dataset.tie = place.tie === null ? "none" : "on";
-  const below = place.y + room.height - box.bottom;
-  own.style.scrollMarginBottom = below > 0 ? `${Math.ceil(below / scale) + 24}px` : "";
+  clamp.dataset.align = place.align;
+  own.style.scrollMarginTop = `${Math.ceil((room.height + TOOLBAR_GAP + 16) / scale)}px`;
+  own.style.scrollMarginBottom = `${Math.ceil((room.height + UNDER_PLUS + 16) / scale)}px`;
   const seams = seamsBeside(own, kind);
-  clearSeams(seams, { left: place.x, top: place.y, right: place.x + CLAMP_WIDTH[place.size], bottom: place.y + room.height }, scale);
+  clearSeams(seams, toolbarBox(room, place), scale);
   return seams;
 }
 
-// Places the clamp now, and again whenever the block, the page, the canvas
-// or the clamp changes size, the canvas scrolls (a tall block's clamp
-// keeps to the canvas's top), the page is drawn at a new scale, or a
-// drawer opens or closes over the canvas. Gone, it gives the seams' "+"
-// back their places.
+// Places the toolbar now, and again whenever the block, the page, the
+// canvas or the toolbar changes size, the canvas scrolls (the toolbar
+// keeps in view, by a tall block at the canvas's top), the page is drawn
+// at a new scale, or a drawer opens or closes over the canvas. Gone, it
+// gives the seams' "+" back their places and the block its scroll margins.
 function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind, writing: boolean): void {
   const { ui } = useEnv();
   useLayoutEffect(() => {
@@ -269,6 +290,7 @@ function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind,
       rescaled.disconnect();
       canvas?.removeEventListener("scroll", soon);
       unsubscribe();
+      own.style.scrollMarginTop = "";
       own.style.scrollMarginBottom = "";
       forgetSeams(seams);
     };
@@ -313,8 +335,8 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
     const at = all.indexOf(event.target as HTMLElement);
     if (at < 0) return;
     let next: number | null = null;
-    if (event.key === "ArrowDown") next = Math.min(all.length - 1, at + 1);
-    else if (event.key === "ArrowUp") next = Math.max(0, at - 1);
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = Math.min(all.length - 1, at + 1);
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = Math.max(0, at - 1);
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = all.length - 1;
     else if (event.key === "Escape") {
@@ -347,7 +369,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
   // first. Only the moves, whose keys the text takes, give their place.
   // Keyed, so the two clamps share these two elements as the text opens
   // and closes: a menu opened from More keeps its key to go back to.
-  const grip = (index: number) => <button key="grip" type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(index)}><Icon name="grip" /></button>;
+  const grip = (index: number) => <button key="grip" type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(index)}><Lucide name="grip-vertical" /></button>;
   const more = (index: number) => (
     <button
       key="more"
@@ -360,17 +382,17 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       onClick={(event) => openClampMenu(env, event.currentTarget, "more")}
       {...roving(index)}
     >
-      <Icon name="more" />
+      <Lucide name="ellipsis" />
     </button>
   );
 
   if (tools) {
     return (
-      <div ref={ref} className="clamp clamp-text" role="toolbar" aria-orientation="vertical" aria-label="Text formatting" onKeyDown={onKeyDown}>
-        <span key="head-static" className="clamp-head clamp-head-static" role="img" aria-label={`${name}, being written`} title={`${name}, being written. ${LEAVE} to finish`}><BlockIcon type={type} className="i" /></span>
+      <div ref={ref} className="clamp clamp-text" role="toolbar" aria-orientation="horizontal" aria-label="Text formatting" onKeyDown={onKeyDown}>
+        <span key="head-static" className="clamp-head clamp-head-static" role="img" aria-label={`${name}, being written`} title={`${name}, being written. ${LEAVE} to finish`}><BlockIcon type={type} className="i" /><span className="clamp-name" aria-hidden="true">{name}</span></span>
         {grip(0)}
-        <button key="bold" type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(1)}><Icon name="bold" className="i i-strong" /></button>
-        <button key="italic" type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(2)}><Icon name="italic" className="i i-strong" /></button>
+        <button key="bold" type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(1)}><Lucide name="bold" /></button>
+        <button key="italic" type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(2)}><Lucide name="italic" /></button>
         <button
           type="button"
           key="link"
@@ -384,7 +406,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
           onClick={() => (tools.linkOpen ? tools.run.closeLink(true) : tools.run.openLink())}
           {...roving(3)}
         >
-          <Icon name="link" />
+          <Lucide name="link" />
         </button>
         <hr key="rule" aria-hidden="true" />
         {more(4)}
@@ -393,7 +415,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
   }
 
   return (
-    <div ref={ref} className={`clamp${kind === "section" ? " clamp-in" : ""}`} role="toolbar" aria-orientation="vertical" aria-label={`${name} tools`} onKeyDown={onKeyDown}>
+    <div ref={ref} className={`clamp${kind === "section" ? " clamp-in" : ""}`} role="toolbar" aria-orientation="horizontal" aria-label={`${name} tools`} onKeyDown={onKeyDown}>
       <button
         type="button"
         className="clamp-head"
@@ -408,10 +430,12 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
         {...roving(0)}
       >
         <BlockIcon type={type} className="i" />
+        <span className="clamp-name" aria-hidden="true">{name}</span>
+        <Lucide name="chevron-down" className="li li-xs" />
       </button>
       {grip(1)}
-      <button key="back" type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Icon name={moves.backIcon} /></button>
-      <button key="on" type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Icon name={moves.onIcon} /></button>
+      <button key="back" type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Lucide name={moves.backIcon} /></button>
+      <button key="on" type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Lucide name={moves.onIcon} /></button>
       <hr key="rule" aria-hidden="true" />
       {more(4)}
     </div>

@@ -126,6 +126,21 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
    rules as on the left (`insert-col1`: the Hero heading, its clamp in the
    32 gutter beside the image). The yellow line's label moves to the line's
    right end.
+   > **Revised on 14 October 2026** (stage 8, at the owner's request: a
+   > selection with the precision of the common design tools, the yellow
+   > and graphite kept). The clamp described below became a **floating
+   > toolbar**: horizontal, by the selection's frame (above it from its
+   > left edge, else from its right edge, else under it, else inside its
+   > top left corner: the first place whole in the canvas, clear of
+   > Insert and over none of the page's words), its head a yellow chip
+   > naming the block, Lucide's icons on its keys, a key pressed or open
+   > in yellow. The selection is one continuous yellow line, 2 thick with
+   > a 6 radius and a faint graphite edge, with no corner brackets; a
+   > hovered block's name is a yellow chip at its outline's top left;
+   > outlines and the toolbar come in with a short fade. There are no
+   > handles: nothing on the canvas resizes a block. The rules are
+   > `builder/src/editor/clamp-place.ts`'s; the reasons for the margin
+   > below stay as the record of the approved layout.
 2. **The block's toolbar is a vertical graphite clamp in the page's margin**,
    never over the block. From the top: the **yellow head** with the block's
    type icon, which opens the **block menu** (the moves, then everything in

@@ -6,7 +6,7 @@
 //
 // What the editor adds to the page is drawn inside each block's root
 // (../render/context.ts, useDecoration): the selection's marks and its
-// clamp in the page's margin (./Clamp.tsx), the hover outline, and the
+// toolbar floating by its frame (./Clamp.tsx), the hover outline, and the
 // round "+" that add on the page (the approved layout, design/layout/
 // NOTES.md, section 2): on the selected block's bottom edge, on the seam
 // below the section that holds the selection and on any seam the pointer
@@ -71,6 +71,7 @@ import { isGhostId, withGhost } from "./drag/ghost.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
+import { Lucide } from "./lucide.tsx";
 import { insertTarget, useInsert } from "./insert.ts";
 import { placeBeside, placeKey, placeWords } from "./insert-place.ts";
 import { closeInserter, InsertPicker, openInserter, PICKER_ID } from "./InsertPicker.tsx";
@@ -354,14 +355,14 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
 // The selection's frame on a button: placed on its pill.
 const selectionHug = (frame: HTMLElement | null): (() => void) | undefined => hug(frame);
 
-// A hovered block's name stands beside its outline, at its middle, as the
-// design draws it, unless there it would pass the canvas's right edge: a
-// block as wide as a page that fills the canvas (the tablet page's
-// stacked columns) leaves it no room, and the name would be cut there
-// and make the canvas scroll sideways. It then stands above the outline,
-// at its right end (editor.css, data-label-side). The side is chosen from
-// where the name is drawn beside, before the browser paints, and chosen
-// again when the outline or the canvas changes size, when a button's
+// A hovered block's name stands above its outline, at its top left, where
+// the selection's toolbar names a block, unless the canvas cuts it there:
+// past the canvas's top (a block at the canvas's top), it stands inside
+// the outline's corner; past its right edge (a block that starts near the
+// edge, the name longer than the room), at the outline's right end
+// (editor.css, data-label-side). The side is chosen from where the name
+// is drawn by default, before the browser paints, and chosen again when
+// the outline or the canvas changes size, the canvas scrolls, a button's
 // outline moves with its pill, and when the page is drawn at a new scale:
 // a window that changes size changes the canvas's first, and the scale
 // only once React draws it, which no size the observer sees changes.
@@ -370,8 +371,10 @@ function labelSide(mark: HTMLElement): void {
   const canvas = mark.closest<HTMLElement>(".canvas");
   if (!label || !canvas) return;
   delete mark.dataset.labelSide;
-  const edge = canvas.getBoundingClientRect().left + canvas.clientLeft + canvas.clientWidth;
-  if (label.getBoundingClientRect().right > edge) mark.dataset.labelSide = "above";
+  const bench = canvas.getBoundingClientRect();
+  const box = label.getBoundingClientRect();
+  if (box.top < bench.top + canvas.clientTop + 2) mark.dataset.labelSide = "inside";
+  else if (box.right > bench.left + canvas.clientLeft + canvas.clientWidth - 2) mark.dataset.labelSide = "end";
 }
 
 // The hover outline's ref: its name's side, after a button's outline is
@@ -389,10 +392,12 @@ function hoverMark(hugs: boolean) {
     const rescaled = new MutationObserver(place);
     const frame = mark.closest(".frame");
     if (frame) rescaled.observe(frame, { attributes: true, attributeFilter: ["style", "data-scale"] });
+    canvas?.addEventListener("scroll", place, { passive: true });
     return () => {
       unhug?.();
       resized.disconnect();
       rescaled.disconnect();
+      canvas?.removeEventListener("scroll", place);
     };
   };
 }
@@ -558,7 +563,6 @@ function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs
       {relation === "selected" && dimension && !pluses.picking && <DimensionLine dimension={dimension} />}
       {relation === "selected" && (
         <div className={`ov ov-sel${hugs ? " ov-hug" : ""}`} ref={hugs ? selectionHug : undefined} data-writing={tools ? "true" : undefined}>
-          <i className="br br-tl" /><i className="br br-tr" /><i className="br br-bl" /><i className="br br-br" />
           {after && (
             <button
               className="ins ins-after"
@@ -569,7 +573,7 @@ function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs
               title={`Add a block after ${name} (${ADD_KEY})`}
               onClick={(event) => openInserter(env, after, event.currentTarget)}
             >
-              <Icon name="plus" />
+              <Lucide name="plus" />
             </button>
           )}
           {tools?.linkOpen && <LinkField tools={tools} />}
@@ -591,7 +595,7 @@ function EmptyPlus({ id, name }: { id: string; name: string }) {
   const place = { kind: "block", parentId: id, index: 0 } as const;
   return (
     <button className="ins-empty" type="button" tabIndex={-1} data-plus={placeKey(place)} aria-label={`Add a block to ${name}`} onClick={(event) => openInserter(env, place, event.currentTarget)}>
-      <span className="ins ins-big" aria-hidden="true"><Icon name="plus" /></span>
+      <span className="ins ins-big" aria-hidden="true"><Lucide name="plus" /></span>
       <span className="ins-empty-name">Add a block to {name}</span>
       <small>Or drag one here from Insert</small>
     </button>
@@ -626,15 +630,15 @@ function InsertSlot({ index }: { index: number }) {
   return (
     <div ref={ref} className="ins-slot-wrap">
       <div className="ins-slot" aria-hidden="true"><span className="ins-slot-line" /><span className="ins-slot-label">New block</span></div>
-      <button className="ins is-open" type="button" tabIndex={-1} aria-label={title} aria-expanded="true" aria-controls={PICKER_ID} onClick={() => closeInserter(env, true)}><Icon name="plus" /></button>
+      <button className="ins is-open" type="button" tabIndex={-1} aria-label={title} aria-expanded="true" aria-controls={PICKER_ID} onClick={() => closeInserter(env, true)}><Lucide name="plus" /></button>
     </div>
   );
 }
 
 // How far under the selected block, the last of its column, the line
-// stands: its words (10 above it) and its end caps clear of the
-// selection's frame and corner marks (14 out, and their 1 pixel edge), as
-// the layout draws it (insert-drawer-1280).
+// stands: its words (10 above it) and the dots at its ends clear of the
+// selection's frame and of the "+" on its foot, as the layout draws it
+// (insert-drawer-1280).
 const POINT_CLEAR = 26;
 
 // Where a click in the Insert drawer lands (its drawer-where sentence
@@ -673,7 +677,7 @@ function InsertPoint({ index }: { index: number }) {
   return (
     <div ref={ref} className="ins-point" aria-hidden="true">
       <span className="ins-line" />
-      <span className="ins-label"><Icon name="plus" className="i i-xs" />A click in Insert lands here</span>
+      <span className="ins-label"><Lucide name="plus" className="li li-label" />A click in Insert lands here</span>
     </div>
   );
 }
@@ -710,7 +714,7 @@ function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>
         title={label}
         onClick={(event) => (state === "open" ? closeInserter(env, true) : openInserter(env, place, event.currentTarget))}
       >
-        <Icon name="plus" />
+        <Lucide name="plus" />
       </button>
       {state === "hover" && <span ref={tipRef} className="seam-tip" data-edge={edge} aria-hidden="true">{label}</span>}
     </>
@@ -1238,7 +1242,7 @@ function Invite({ part }: { part?: PartKind }) {
       <div className="invite-zone">
         {/* The page's first seam, open: the section picker laid out on the page. */}
         <div className="invite-title">
-          <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" /></span>
+          <span className="ins ins-sec is-static" aria-hidden="true"><Lucide name="plus" /></span>
           <h2>Start this {name} with a section</h2>
         </div>
         <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : "A section is a band across the page. Pick its columns; you can change them later."}</p>
@@ -1266,7 +1270,7 @@ function Invite({ part }: { part?: PartKind }) {
             </button>
           ))}
         </div>
-        <p className="invite-alt"><Icon name="block" className="i i-xs" /><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span className="ins-glyph" role="img" aria-label="plus"><Icon name="plus" /></span> that offers them.</span></p>
+        <p className="invite-alt"><Icon name="block" className="i i-xs" /><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span className="ins-glyph" role="img" aria-label="plus"><Lucide name="plus" /></span> that offers them.</span></p>
       </div>
       {picking && (
         <ImagePicker

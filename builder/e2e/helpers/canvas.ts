@@ -111,13 +111,16 @@ export async function settledTextEditor(page: Page, id: string): Promise<Locator
   return editor;
 }
 
-// What is wrong with where the selected block's clamp stands, by the
-// approved layout's rules (design/layout/NOTES.md, section 4.2, and the
-// check its photographs were taken with): over its own block, into
-// a column beside it, over any words of the page, its head hidden under
-// something else (a drawer, a picker), or without its moves (Move up and
-// down, or left and right for a column). Nothing, when all is well. A
-// section's clamp sits inside it, in its margin, so only its words count.
+// What is wrong with where the selected block's toolbar stands
+// (design/layout/NOTES.md, section 4.2; ../../src/editor/clamp-place.ts):
+// past the canvas's visible part, under a drawer, over the selected
+// block's own words (a section's: its blocks' words), which a click into it
+// must reach, unless the block is taller than the canvas and the toolbar
+// keeps to the canvas's top inside it; its head hidden under something
+// else (a drawer, a picker); or without its moves (Move up and down, or
+// left and right for a column). Nothing, when all is well. Over the other
+// blocks' words it may stand where no place is free of them: clampOverWords
+// reads those.
 export async function clampFaults(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const bad: string[] = [];
@@ -125,23 +128,23 @@ export async function clampFaults(page: Page): Promise<string[]> {
     const hit = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
     const range = document.createRange();
     for (const clamp of document.querySelectorAll<HTMLElement>(".canvas .clamp")) {
-      const name = clamp.getAttribute("aria-label") ?? "a clamp";
+      const name = clamp.getAttribute("aria-label") ?? "a toolbar";
       const box = r(clamp);
       const own = clamp.parentElement as HTMLElement;
-      const section = own.dataset.blockType === "section";
-      if (!section && hit(box, r(own))) bad.push(`${name}: over its own block`);
-      const column = own.dataset.blockType === "column" ? own : own.closest<HTMLElement>("[data-block-type=column]");
-      for (const other of column?.parentElement?.children ?? []) {
-        if (other === column || !(other instanceof HTMLElement) || other.dataset.blockType !== "column") continue;
-        const o = r(other);
-        if (hit(box, o)) bad.push(`${name}: reaches ${Math.round(Math.min(box.right, o.right) - Math.max(box.left, o.left))} px into the column beside it`);
-      }
-      // The page's words under it, its own block's (a section's) included.
-      const walker = document.createTreeWalker(document.querySelector(".canvas .site")!, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        if (!node.textContent?.trim() || node.parentElement?.closest(".clamp, .ov, .ins, .ins-empty, .seam-tip, [data-theme-part]")) continue;
-        range.selectNodeContents(node);
-        if ([...range.getClientRects()].some((line) => hit(box, line))) bad.push(`${name}: over the words "${node.textContent.trim().slice(0, 30)}"`);
+      const canvas = clamp.closest<HTMLElement>(".canvas")!;
+      const bench = r(canvas);
+      const left = bench.left + canvas.clientLeft;
+      const top = bench.top + canvas.clientTop;
+      if (box.left < left - 0.5 || box.right > left + canvas.clientWidth + 0.5 || box.top < top - 0.5 || box.bottom > top + canvas.clientHeight + 0.5) bad.push(`${name}: past the canvas's edge`);
+      for (const drawer of document.querySelectorAll(".drawer-float")) if (hit(box, r(drawer))) bad.push(`${name}: under a drawer`);
+      const tall = clamp.dataset.side === "inside" && r(own).height > canvas.clientHeight;
+      if (!tall) {
+        const walker = document.createTreeWalker(own, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!node.textContent?.trim() || node.parentElement?.closest(".clamp, .ov, .ins, .ins-empty, .seam-tip")) continue;
+          range.selectNodeContents(node);
+          if ([...range.getClientRects()].some((line) => hit(box, line))) bad.push(`${name}: over its own words "${node.textContent.trim().slice(0, 30)}"`);
+        }
       }
       if (!clamp.classList.contains("clamp-text")) {
         const labels = [...clamp.querySelectorAll(":scope > button")].map((key) => key.getAttribute("aria-label"));
@@ -151,11 +154,35 @@ export async function clampFaults(page: Page): Promise<string[]> {
       const head = clamp.querySelector(".clamp-head");
       if (head) {
         const h = r(head);
-        const top = document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2);
-        if (!top || !clamp.contains(top)) bad.push(`${name}: its head is hidden under ${top ? `${top.tagName.toLowerCase()}.${[...top.classList].join(".")}` : "nothing"}`);
+        const at = document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2);
+        if (!at || !clamp.contains(at)) bad.push(`${name}: its head is hidden under ${at ? `${at.tagName.toLowerCase()}.${[...at.classList].join(".")}` : "nothing"}`);
       }
     }
     return bad;
+  });
+}
+
+// The other blocks' words the selected block's toolbar stands over (the
+// locked header and footer, and the page around a part, aside): none where
+// the layout leaves a place free of them.
+export async function clampOverWords(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const clamp = document.querySelector<HTMLElement>(".canvas .clamp");
+    if (!clamp) return ["no toolbar"];
+    const own = clamp.parentElement as HTMLElement;
+    const section = own.dataset.blockType === "section";
+    const box = clamp.getBoundingClientRect();
+    const hit = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+    const range = document.createRange();
+    const found: string[] = [];
+    const walker = document.createTreeWalker(document.querySelector(".canvas .site")!, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim() || node.parentElement?.closest(".clamp, .ov, .ins, .ins-empty, .seam-tip, [data-theme-part], [data-around-page]")) continue;
+      if (!section && own.contains(node)) continue;
+      range.selectNodeContents(node);
+      if ([...range.getClientRects()].some((line) => hit(box, line))) found.push(node.textContent.trim().slice(0, 30));
+    }
+    return found;
   });
 }
 
@@ -185,8 +212,8 @@ export async function visibleShare(target: Locator): Promise<number> {
   });
 }
 
-// The keys of the selected block's clamp that something else draws over
-// (a drawer, a picker): their names; none when all five are in view.
+// The keys of the selected block's toolbar that something else draws over
+// (a drawer, a picker): their names; none when all of them are in view.
 export async function clampKeysCovered(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const clamp = document.querySelector(".canvas .clamp");
@@ -199,11 +226,11 @@ export async function clampKeysCovered(page: Page): Promise<string[]> {
   });
 }
 
-// The selected block's clamp: its size, the side of the block it stands
-// on, and whether it is tied to the selection's frame.
-export async function clampPlace(page: Page): Promise<{ size: string; side: string; tie: string } | null> {
+// The selected block's toolbar: where it stands by the selection's frame
+// (above, below, inside) and the frame's edge it starts from.
+export async function clampPlace(page: Page): Promise<{ side: string; align: string } | null> {
   return page.evaluate(() => {
     const clamp = document.querySelector<HTMLElement>(".canvas .clamp");
-    return clamp ? { size: clamp.dataset.size ?? "", side: clamp.dataset.side ?? "", tie: clamp.dataset.tie ?? "" } : null;
+    return clamp ? { side: clamp.dataset.side ?? "", align: clamp.dataset.align ?? "" } : null;
   });
 }

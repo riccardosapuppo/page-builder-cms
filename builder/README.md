@@ -31,7 +31,7 @@ on the published page and on the canvas.
 
 **Stage 3, rich text.** A text block is written where it stands on the
 canvas, in TipTap (`src/editor/rich/`), loaded on demand: bold, italic
-and links from the block's clamp or the keys, a link refused at its field
+and links from the block's toolbar or the keys, a link refused at its field
 for what the server would refuse, a paste cut to what the schema allows.
 Its typing becomes one command of the page, kept in one form
 (`src/document/rich-text.ts`), when the person pauses or leaves the text
@@ -75,10 +75,10 @@ tab, with its way back; a bottom line with
 the selection's path (each step a button), Block edges, the devices in
 one click and the page's width. The page is 1088 wide in a 1440 window
 and keeps its desktop layout at 1280. On the page, the selected block's
-tools stand in a clamp in its margin, never over it or the column beside
-it (`src/editor/Clamp.tsx`): its type, which opens the block menu, a
-grip, move up and down, More; while a text is written, bold, italic and
-link. Adding is on the page: a round "+" on the selected block's edge, on
+tools stand in a toolbar floating by the selection's frame, over none of
+the page's words (`src/editor/Clamp.tsx`): a yellow chip naming the
+block, which opens the block menu, a grip, move up and down, More; while
+a text is written, bold, italic and link. Adding is on the page: a round "+" on the selected block's edge, on
 the seams between sections and large in every empty column opens a
 yellow line at its place and a picker beside it with only what fits
 there (`src/editor/InsertPicker.tsx`), which adds by one command; the

@@ -1,16 +1,16 @@
 // Where a seam's tip stands (./Canvas.tsx, Seam): the words naming where a
 // section would go, shown while the pointer is over the seam. The layout
 // draws them on the seam, right of its "+" (design/layout/, seam-hover).
-// A "+" moved along its seam off the selected block's clamp
+// A "+" moved along its seam off the selected block's toolbar
 // (./clamp-place.ts, plusShift), a long section name or a page drawn
 // smaller can leave no room there, and the tip was cut by the canvas's
-// edge or drawn under the clamp. So it stands, in this order, wherever it
-// is whole inside the canvas's visible part and clear of the clamp and of
-// the Insert drawer over the canvas:
+// edge or drawn under the toolbar. So it stands, in this order, wherever
+// it is whole inside the canvas's visible part and clear of the toolbar
+// and of the Insert drawer over the canvas:
 // - on the seam, right of the "+", 14 from it, as the layout draws it;
 // - on the seam, left of the "+";
 // - under the "+", 6 below it, from the "+"'s left, else ending at its
-//   right, else beside the clamp, kept inside the canvas;
+//   right, else beside the toolbar, kept inside the canvas;
 // - over the "+", the same way.
 // Where no place has it whole, it takes the one that hides least of it.
 // On the seam, it is level with the "+", which may itself be cut by the

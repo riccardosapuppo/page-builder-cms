@@ -35,7 +35,8 @@ editor (`shots-extra/accent-choice.png`).
   Style and Advanced tabs). It keeps this identity and rearranges the same
   editor: a top bar with Insert, Outline and History; round "+" buttons
   on the page; the selected block's tools in a clamp in the page's
-  margin; one sidebar with Page and Block tabs and named groups; the
+  margin (the editor redrew it as a toolbar floating by the selection on
+  14 October 2026: `layout/NOTES.md`, section 4.2); one sidebar with Page and Block tabs and named groups; the
   selection's path, the devices and the page's width in a bottom line.
   `layout/NOTES.md` is its designer's record: where each part came from,
   the rules the clamp and the "+" follow, the keys, what was left out and

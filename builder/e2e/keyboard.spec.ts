@@ -234,12 +234,13 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect.poll(async () => page.locator('.canvas [data-block-id="c2"] > [data-block-id]').evaluateAll((e) => e.map((x) => x.getAttribute("data-block-type")))).toEqual(["heading", "divider", "button"]);
   },
   async duplicate(page, pressed) {
-    await block(page, "d").click();
+    // Chosen by the focus: the toolbar of the block before may stand over it.
+    await block(page, "d").focus();
     await press(page, pressed, "Control+d");
     await expect.poll(async () => (await childIds(page, "c2")).length).toBe(4);
   },
   async delete(page, pressed) {
-    await block(page, "d").click();
+    await block(page, "d").focus();
     await press(page, pressed, "Delete");
     await expect(block(page, "d")).toHaveCount(0);
     // The focus goes to the block now in its place once the page is drawn

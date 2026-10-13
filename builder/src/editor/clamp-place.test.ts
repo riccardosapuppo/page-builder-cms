@@ -1,132 +1,117 @@
-// Where the clamp stands, by the approved layout's rules (design/layout/
-// NOTES.md, section 4.2), on the page's real numbers at 1440: the page 19
-// from the canvas's edge, its columns from 83, the Hero's and What we do's
-// gutters 32, a section's default 48.
+// Where the selected block's toolbar stands (design/layout/NOTES.md,
+// section 4.2), on the page's numbers at 1440: the canvas from 52 to 848,
+// a widget's frame 3 outside it, a toolbar 36 tall.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { clampTop, placeClamp, plusShift, PLUS_REACH, type Box, type ClampRoom } from "./clamp-place.ts";
+import { insideTop, placeToolbar, plusShift, PLUS_REACH, TOOLBAR_GAP, TOOLBAR_INSIDE, toolbarBox, UNDER_PLUS, WEIGHTS, type Box, type ToolbarRoom } from "./clamp-place.ts";
 
 const view: Box = { left: 0, top: 52, right: 1126, bottom: 848 };
-const room = (over: Partial<ClampRoom>): ClampRoom => ({
-  block: { left: 83, top: 264, right: 637, bottom: 400 },
-  leftLimit: view.left,
-  rightLimit: 669,
-  contentLeft: 83,
-  contentRight: 1053,
+const room = (over: Partial<ToolbarRoom>): ToolbarRoom => ({
+  frame: { left: 80, top: 300, right: 640, bottom: 420 },
   view,
   covers: [],
-  height: 160,
-  scale: 1,
+  words: [],
+  width: 180,
+  height: 36,
   ...over,
 });
-const box = (place: ReturnType<typeof placeClamp>, height = 160) => ({ left: place.x, right: place.x + (place.size === "full" ? 34 : 28), top: place.y, bottom: place.y + height });
 const apart = (a: Box, b: Box) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
 
-test("a first column's block: the full clamp in the page's margin, 14 from the block, its tie to the frame", () => {
-  const place = placeClamp(room({}));
-  expect(place).toEqual({ side: "left", size: "full", tie: 8, x: 35, y: 258 });
-  expect(apart(box(place), room({}).block)).toBe(true);
+test("with room above the frame and no words there, the toolbar stands above it, from its left edge, 6 clear of it", () => {
+  const place = placeToolbar(room({}));
+  expect(place).toEqual({ side: "above", align: "start", x: 80, y: 300 - TOOLBAR_GAP - 36 });
+  expect(apart(toolbarBox(room({}), place), room({}).frame)).toBe(true);
 });
 
-test("a gutter of 48 or more holds the full clamp; 28 to 47 the narrow one, centred, clear of the column beside it", () => {
-  // Beginners' course, in What we do's second column: 32 to the first.
-  const column1 = { left: 83, top: 270, right: 380, bottom: 430 };
-  const narrow = room({ block: { left: 412, top: 270, right: 710, bottom: 470 }, leftLimit: column1.right });
-  const place = placeClamp(narrow);
-  expect(place).toMatchObject({ side: "left", size: "narrow", tie: null, x: 382 });
-  expect(apart(box(place), narrow.block)).toBe(true);
-  expect(apart(box(place), column1)).toBe(true);
-  expect(place.x - column1.right).toBe(2);
-  expect(narrow.block.left - (place.x + 28)).toBe(2);
-  // The theme's default gutter, 48: the full clamp.
-  expect(placeClamp(room({ block: { left: 428, top: 270, right: 710, bottom: 470 }, leftLimit: 380 }))).toMatchObject({ size: "full", tie: 8, x: 380 });
-  // 47: the narrow one.
-  expect(placeClamp(room({ block: { left: 427, top: 270, right: 710, bottom: 470 }, leftLimit: 380 }))).toMatchObject({ size: "narrow", x: 389.5 });
+test("words above its left end send it to the frame's right end; words above all along, under the frame", () => {
+  // The last line of the heading above, short: the toolbar goes right.
+  const short: Box = { left: 80, top: 250, right: 400, bottom: 280 };
+  expect(placeToolbar(room({ words: [short] }))).toMatchObject({ side: "above", align: "end", x: 640 - 180 });
+  // A line as wide as the column: under the frame.
+  const wide: Box = { left: 80, top: 250, right: 640, bottom: 280 };
+  expect(placeToolbar(room({ words: [wide] }))).toMatchObject({ side: "below", align: "start", y: 420 + UNDER_PLUS });
+  // Words above and under: inside the frame's corner, over its own block.
+  const under: Box = { left: 80, top: 430, right: 640, bottom: 460 };
+  expect(placeToolbar(room({ words: [wide, under] }))).toMatchObject({ side: "inside", x: 80 + TOOLBAR_INSIDE, y: 300 + TOOLBAR_INSIDE });
 });
 
-test("a gutter under 28 holds none: the clamp goes out to the nearer page margin, level with the block's top, with no tie", () => {
-  // A middle column of three, 24 apart: nearer the left margin.
-  const middle = room({ block: { left: 410, top: 300, right: 700, bottom: 360 }, leftLimit: 386, rightLimit: 724 });
-  expect(placeClamp(middle)).toEqual({ side: "left", size: "full", tie: null, x: 35, y: 294 });
-  // The last column: nearer the right margin.
-  const last = room({ block: { left: 760, top: 300, right: 1053, bottom: 360 }, leftLimit: 736, rightLimit: view.right });
-  expect(placeClamp(last)).toEqual({ side: "right", size: "full", tie: null, x: 1067, y: 294 });
+test("under the frame, the toolbar stands clear of a + on its foot, there or not, so it stays put as the + comes and goes", () => {
+  const wide: Box = { left: 80, top: 250, right: 640, bottom: 280 };
+  expect(placeToolbar(room({ words: [wide] }))).toMatchObject({ side: "below", y: 420 + UNDER_PLUS });
+  // The "+" is 24 round on the frame's line: 12 below it, and 4 more.
+  expect(UNDER_PLUS).toBe(12 + 4);
 });
 
-test("where an open drawer covers the left margin, the clamp goes to the block's right side by the same rules", () => {
+test("covering the selected block's own words weighs most, other words next, a picture or a rule little", () => {
+  const above: Box = { left: 80, top: 250, right: 640, bottom: 280 };
+  const under: Box = { left: 80, top: 430, right: 640, bottom: 470 };
+  const own: Box = { left: 80, top: 300, right: 640, bottom: 420 };
+  // Words above and under, its own inside: over the words of another block,
+  // never over its own, which a click must reach.
+  expect(placeToolbar(room({ words: [above, under], ownWords: [own] }))).toMatchObject({ side: "above" });
+  // A picture under it and words above: over the picture's edge.
+  expect(placeToolbar(room({ words: [above], blocks: [{ left: 80, top: 430, right: 640, bottom: 700 }], ownWords: [own] }))).toMatchObject({ side: "below" });
+  expect(WEIGHTS.own).toBeGreaterThan(WEIGHTS.words);
+  expect(WEIGHTS.words).toBeGreaterThan(WEIGHTS.blocks);
+});
+
+test("where every place covers words, the one covering the least", () => {
+  const frame = { left: 80, top: 300, right: 300, bottom: 320 };
+  const words: Box[] = [
+    { left: 80, top: 270, right: 640, bottom: 290 },
+    { left: 80, top: 322, right: 640, bottom: 340 },
+    { left: 80, top: 300, right: 300, bottom: 320 },
+    { left: 80, top: 258, right: 640, bottom: 270 },
+  ];
+  const place = placeToolbar(room({ frame, words }));
+  // Above covers 20 + 12 of its 36 rows, under 18, inside the frame 12 of
+  // the frame's own row and 18 under it: under the frame, from its left.
+  expect(place).toMatchObject({ side: "below", align: "start" });
+});
+
+test("no room above at the canvas's top: under the frame; a block taller than the canvas, inside, at the canvas's top", () => {
+  // The frame's top 20 below the canvas's top: no room for 36 and 6.
+  expect(placeToolbar(room({ frame: { left: 80, top: 72, right: 640, bottom: 200 } }))).toMatchObject({ side: "below", y: 200 + UNDER_PLUS });
+  // Taller than the canvas, its top scrolled away: inside, 8 from the canvas's top.
+  const tall = room({ frame: { left: 80, top: -400, right: 640, bottom: 1200 } });
+  expect(placeToolbar(tall)).toEqual({ side: "inside", align: "start", x: 88, y: view.top + 8 });
+  // Its foot comes up: the toolbar goes up with it, never past it.
+  expect(insideTop({ ...tall, frame: { ...tall.frame, bottom: 90 } })).toBe(90 - TOOLBAR_INSIDE - 36);
+  // A short block keeps the corner.
+  expect(insideTop({ ...tall, frame: { left: 80, top: 300, right: 640, bottom: 330 } })).toBe(308);
+});
+
+test("a section's toolbar stands inside its top left corner, in its padding; words there send it out", () => {
+  const section = room({ section: true, frame: { left: 22, top: 200, right: 1104, bottom: 700 } });
+  expect(placeToolbar(section)).toEqual({ side: "inside", align: "start", x: 22 + TOOLBAR_INSIDE, y: 200 + TOOLBAR_INSIDE });
+  // A section with no space above its heading: above the section, from its left.
+  expect(placeToolbar({ ...section, words: [{ left: 30, top: 205, right: 900, bottom: 260 }] })).toMatchObject({ side: "above", align: "start", x: 22 });
+});
+
+test("never cut by the canvas's edges, and never under the open Insert drawer: moved in, and right of it", () => {
+  // A frame from the canvas's left edge: 8 in.
+  expect(placeToolbar(room({ frame: { left: -4, top: 300, right: 300, bottom: 400 } })).x).toBe(8);
+  // Narrower than the toolbar at the right edge: in from it.
+  expect(placeToolbar(room({ frame: { left: 1060, top: 300, right: 1120, bottom: 400 } })).x).toBe(1126 - 8 - 180);
+  // The Insert drawer over the canvas's left: right of it.
   const drawer: Box = { left: 8, top: 60, right: 288, bottom: 848 };
-  // The Hero heading: its right gutter is 32, so the narrow clamp.
-  const hero = room({ covers: [drawer] });
-  expect(placeClamp(hero)).toMatchObject({ side: "right", size: "narrow", tie: null, x: 639 });
-  // A wide right gutter: the full clamp, its tie on its left.
-  expect(placeClamp(room({ covers: [drawer], rightLimit: 720 }))).toMatchObject({ side: "right", size: "full", tie: 8, x: 651 });
-  // No gutter on the right either: the page's right margin.
-  expect(placeClamp(room({ covers: [drawer], rightLimit: 650 }))).toMatchObject({ side: "right", size: "full", tie: null, x: 1067 });
-  // A drawer that does not reach the clamp leaves it on the left.
-  expect(placeClamp(room({ covers: [{ ...drawer, right: 30 }] }))).toMatchObject({ side: "left", x: 35 });
+  const place = placeToolbar(room({ covers: [drawer] }));
+  expect(place.x).toBe(288 + 8);
+  expect(apart(toolbarBox(room({}), place), drawer)).toBe(true);
 });
 
-test("where the drawer covers the block's right gutter as well, the clamp goes to the page's right margin, never under the drawer", () => {
-  const drawer: Box = { left: 8, top: 60, right: 288, bottom: 848 };
-  const under = (place: ReturnType<typeof placeClamp>, over: Box) => !apart(box(place), over);
-  // The first of four columns at 1280: the block 83 to 247, the next column
-  // at 295. Its right gutter is 48, but 261 to 295 runs under the drawer's
-  // edge at 288, as does its left margin.
-  const four = room({ block: { left: 83, top: 264, right: 247, bottom: 400 }, rightLimit: 295, covers: [drawer] });
-  const place = placeClamp(four);
-  expect(place).toMatchObject({ side: "right", size: "full", tie: null, x: 1067 });
-  expect(under(place, drawer)).toBe(false);
-  // A block wide enough that its right gutter is clear of the drawer keeps to it.
-  expect(placeClamp(room({ block: { left: 83, top: 264, right: 300, bottom: 400 }, rightLimit: 348, covers: [drawer] }))).toMatchObject({ side: "right", size: "full", tie: 8, x: 314 });
-  // Nothing beside the block free of the drawer: just clear of its edge.
-  const edge = placeClamp(room({ block: { left: 83, top: 264, right: 247, bottom: 400 }, rightLimit: 295, covers: [drawer, { left: 1000, top: 60, right: 1126, bottom: 848 }] }));
-  expect(edge).toMatchObject({ side: "right", size: "full", tie: null, x: 295 });
-  expect(under(edge, drawer)).toBe(false);
-});
-
-test("every block gets the same clamp: beside a short block it runs on below it, and never flips", () => {
-  const button = room({ block: { left: 83, top: 512, right: 637, bottom: 566 } });
-  const place = placeClamp(button);
-  expect(place).toMatchObject({ side: "left", size: "full", y: 506 });
-  expect(place.y + button.height).toBeGreaterThan(button.block.bottom);
-  // Near the canvas's foot too: the canvas scrolls to show it (Clamp.tsx).
-  expect(placeClamp(room({ block: { left: 83, top: 820, right: 637, bottom: 846 } })).y).toBe(814);
-});
-
-test("beside a block whose top has scrolled away, the clamp keeps to the canvas's top, never past the block's foot", () => {
-  const tall = (top: number, bottom: number) => room({ block: { left: 83, top, right: 637, bottom } });
-  expect(clampTop(tall(-400, 700))).toBe(view.top + 8);
-  // The foot comes up: the clamp goes up with it.
-  expect(clampTop(tall(-800, 150))).toBe(150 - 160);
-  // A short block scrolled half away stays level with its frame.
-  expect(clampTop(tall(40, 90))).toBe(34);
-});
-
-test("a section's clamp sits inside it, in the page's margin, on the same vertical as its blocks' clamps, with no tie", () => {
-  const join = room({ section: true, block: { left: 83, top: 167, right: 1053, bottom: 797 } });
-  expect(placeClamp(join)).toEqual({ side: "left", size: "full", tie: null, x: 35, y: 185 });
-});
-
-test("on a page drawn smaller, the clamp keeps its size and its 14 from the block; the frame it ties to is nearer", () => {
-  const scaled = room({ scale: 0.8, block: { left: 70, top: 200, right: 500, bottom: 300 } });
-  expect(placeClamp(scaled)).toMatchObject({ size: "full", tie: 14 - 6 * 0.8, x: 70 - 48, y: 200 - 6 * 0.8 });
-});
-
-test("a seam's + the clamp would stand on moves along its seam, off the clamp: to its right, or to its left where the seam ends first", () => {
-  // A button in the second of two columns, its clamp in the gutter in the
-  // page's middle, running on down past the section's foot: the page drawn
-  // at 84% (a 1024 window), its seam's "+" at the middle, x 355, y 670.
-  const clamp: Box = { left: 338, top: 525, right: 372, bottom: 673 };
+test("a seam's + the toolbar would stand on moves along its seam, off it: to its right, or to its left where the seam ends first", () => {
+  // A section's toolbar inside its corner, on a page drawn smaller, over
+  // the seam's "+" above it at the middle, x 355, y 260.
+  const toolbar: Box = { left: 300, top: 248, right: 480, bottom: 284 };
   const seam = { left: 19, right: 691 };
-  const shift = plusShift(clamp, { x: 355, y: 670 }, seam);
-  expect(shift).toBe(372 + PLUS_REACH - 355);
-  // Moved, the "+" (16 round) stands 6 clear of the clamp.
-  expect(355 + shift - 16 - clamp.right).toBe(6);
-  // The seam ends too soon on the right: to the clamp's left.
-  expect(plusShift(clamp, { x: 355, y: 670 }, { left: 19, right: 400 })).toBe(338 - PLUS_REACH - 355);
-  // A clamp that ends above the "+", or stands beside it, leaves it alone.
-  expect(plusShift({ ...clamp, bottom: 670 - PLUS_REACH }, { x: 355, y: 670 }, seam)).toBe(0);
-  expect(plusShift({ ...clamp, left: 35, right: 69 }, { x: 355, y: 670 }, seam)).toBe(0);
-  // The seam above a section: a clamp whose head reaches up over it.
-  expect(plusShift({ ...clamp, top: 660, bottom: 808 }, { x: 355, y: 670 }, seam)).toBe(372 + PLUS_REACH - 355);
+  const shift = plusShift(toolbar, { x: 355, y: 260 }, seam);
+  expect(shift).toBe(480 + PLUS_REACH - 355);
+  // Moved, the "+" (16 round) stands 6 clear of the toolbar.
+  expect(355 + shift - 16 - toolbar.right).toBe(6);
+  // The seam ends too soon on the right: to the toolbar's left.
+  expect(plusShift(toolbar, { x: 355, y: 260 }, { left: 19, right: 520 })).toBe(300 - PLUS_REACH - 355);
+  // A toolbar that ends above the "+", or stands beside it, leaves it alone.
+  expect(plusShift({ ...toolbar, bottom: 260 - PLUS_REACH }, { x: 355, y: 260 }, seam)).toBe(0);
+  expect(plusShift({ ...toolbar, left: 35, right: 215 }, { x: 355, y: 260 }, seam)).toBe(0);
 });

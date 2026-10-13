@@ -1,29 +1,31 @@
-// Where the selected block's clamp stands (the approved layout, design/
-// layout/NOTES.md, section 4.2): a vertical bar of the block's tools in the
-// margin beside it, never over it, never over the column beside it.
+// Where the selected block's toolbar stands (design/layout/NOTES.md,
+// section 4.2): a bar of the block's tools floating by the selection's
+// frame, outside the block, over none of the page's words where a place
+// can be found that is.
 //
-// - The margin on the block's left: the page's margin for a first column
-//   or a single one, the gutter for the others. A margin of 48 or more
-//   holds the full clamp (34 wide) and the 14 between it and the block,
-//   where its tie runs to the selection's frame. One of 28 to 47 holds the
-//   narrow clamp, 28 wide, centred in it, with no tie: it touches the
-//   selection's frame and stays clear of the column beside it.
-// - Less than 28 holds no clamp: it goes out to the page's margin nearest
-//   to the block, level with the block's top, with no tie.
-// - Where the open Insert drawer covers that place (it floats over the
-//   canvas's left), the clamp goes to the block's right side by the same
-//   rules: its gutter there, else the page's right margin. A place the
-//   drawer covers is never chosen while one it does not cover exists; if
-//   it covers them all, the clamp stands just clear of its edge.
-// - It stands level with the selection's frame, at the block's top, and
-//   runs on below a short block, in the margin where nothing else sits.
-//   Beside a block taller than the canvas whose top has scrolled away, it
-//   stays at the canvas's top for as long as the block is there.
+// - Its places, in order: above the frame, from its left edge, then from
+//   its right edge; under it, from its left, then its right (clear of a
+//   "+" on the frame's foot); and last, inside the frame's top left
+//   corner. The first one whole in the canvas's visible part, clear of the
+//   open Insert drawer (which floats over the canvas's left), that covers
+//   nothing is taken; where every place covers something, the one that
+//   covers least, weighed: the selected block's own words most (it is
+//   what is being worked on, and a click into it must land there), the
+//   other blocks' words next, other blocks with no words (a picture, a
+//   rule) a little.
+// - A section's toolbar tries its inside corner first, in the section's
+//   padding, where its blocks' toolbars do not stand; its blocks' words
+//   count as other blocks' there.
+// - Inside the frame, the toolbar keeps to the canvas's top while the
+//   block's top has scrolled away and the block is there, never below its
+//   foot: beside a block taller than the canvas it is always in view.
+// - Never cut by the canvas's edges: moved in from them, and off the
+//   drawer, to its right.
 // - A seam's "+" it would stand on moves along the seam, off it
 //   (plusShift).
 //
 // Plain geometry in the window's pixels, so the unit tests can read it;
-// ./Canvas.tsx measures the page and lays the answer on the clamp.
+// ./Clamp.tsx measures the page and lays the answer on the toolbar.
 
 export interface Box {
   left: number;
@@ -32,152 +34,125 @@ export interface Box {
   bottom: number;
 }
 
-export interface ClampRoom {
-  // The block the clamp holds.
-  block: Box;
-  // Where the free room ends on each side of the block: the column beside
-  // it in the same row, else the canvas's edge.
-  leftLimit: number;
-  rightLimit: number;
-  // The page's own columns, from the first one's left to the last one's
-  // right: the margins a clamp goes out to.
-  contentLeft: number;
-  contentRight: number;
+export interface ToolbarRoom {
+  // The selection's frame, as drawn.
+  frame: Box;
   // The canvas's visible edges.
   view: Box;
   // What hides part of the canvas (the Insert drawer, when open).
   covers: readonly Box[];
-  // The clamp's height as drawn, and the page's scale: the clamp keeps its
-  // size on a page drawn smaller; the frame it is level with does not.
+  // What the toolbar keeps off, near the frame: the lines of the other
+  // blocks' words, the selected block's own lines, and the other blocks
+  // that have no words where they would be covered (a picture, a rule).
+  words: readonly Box[];
+  ownWords?: readonly Box[];
+  blocks?: readonly Box[];
+  // The toolbar's size as drawn: it keeps its size on a page drawn smaller.
+  width: number;
   height: number;
-  scale: number;
-  // A section's clamp sits inside it, in the page's margin, its blocks'
-  // clamps on the same vertical, needing no tie.
+  // A section's toolbar tries the inside of its frame first.
   section?: boolean;
 }
 
-export type ClampSize = "full" | "narrow";
+export type ToolbarSide = "above" | "below" | "inside";
 
-export interface ClampPlace {
-  side: "left" | "right";
-  size: ClampSize;
-  // The tie to the selection's frame, and its length.
-  tie: number | null;
-  // The clamp's top left corner, in the window's pixels.
+export interface ToolbarPlace {
+  side: ToolbarSide;
+  // The frame's edge it starts from.
+  align: "start" | "end";
+  // Its top left corner, in the window's pixels.
   x: number;
   y: number;
 }
 
-export const CLAMP_WIDTH: Readonly<Record<ClampSize, number>> = { full: 34, narrow: 28 };
-// The full clamp's distance from the block: its tie runs over it.
-export const CLAMP_GAP = 14;
-const FULL_ROOM = CLAMP_WIDTH.full + CLAMP_GAP;
-const NARROW_ROOM = CLAMP_WIDTH.narrow;
-// The selection's frame stands 6 outside the block (editor.css, .ov-sel),
-// in the page's pixels; a section's clamp 18 inside its top.
-const FRAME_OUT = 6;
-const SECTION_DOWN = 18;
-// Off the canvas's top edge while the block's top is scrolled away.
-const VIEW_GAP = 8;
+// Between the frame and a toolbar above it; a toolbar inside the frame
+// stands as far in from its corner. Under the frame, clear of a "+" on
+// its foot (12 below the line) by 4, whether the "+" is there or not, so
+// the toolbar stays put as the "+" comes and goes. Off the canvas's edges.
+export const TOOLBAR_GAP = 6;
+export const TOOLBAR_INSIDE = 8;
+export const UNDER_PLUS = 16;
+// What a place's cover weighs, by what is covered (see above).
+export const WEIGHTS = { own: 3, words: 1, blocks: 0.15 } as const;
+const EDGE = 8;
 
 const overlaps = (a: Box, b: Box): boolean => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+const area = (a: Box, b: Box): number => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 
-// The clamp in a gutter of `room` on one side of the block, or null where
-// the gutter cannot hold one.
-function inGutter(room: ClampRoom, side: "left" | "right", y: number): ClampPlace | null {
-  const { block } = room;
-  const free = side === "left" ? block.left - room.leftLimit : room.rightLimit - block.right;
-  const tie = Math.max(0, CLAMP_GAP - FRAME_OUT * room.scale);
-  if (free >= FULL_ROOM) {
-    const x = side === "left" ? block.left - CLAMP_GAP - CLAMP_WIDTH.full : block.right + CLAMP_GAP;
-    return { side, size: "full", tie: room.section ? null : tie, x, y };
-  }
-  if (free >= NARROW_ROOM) {
-    const x = side === "left" ? room.leftLimit + (free - NARROW_ROOM) / 2 : block.right + (free - NARROW_ROOM) / 2;
-    return { side, size: "narrow", tie: null, x, y };
-  }
-  return null;
+// The toolbar's box at a place.
+export function toolbarBox(room: Pick<ToolbarRoom, "width" | "height">, place: Pick<ToolbarPlace, "x" | "y">): Box {
+  return { left: place.x, top: place.y, right: place.x + room.width, bottom: place.y + room.height };
 }
 
-// The clamp out in the page's margin on one side, against the page's
-// columns, where a gutter is too narrow for it.
-function inMargin(room: ClampRoom, side: "left" | "right", y: number): ClampPlace {
-  const edge = side === "left" ? room.contentLeft : room.contentRight;
-  const free = side === "left" ? edge - room.view.left : room.view.right - edge;
-  const size: ClampSize = free >= FULL_ROOM ? "full" : "narrow";
-  const width = CLAMP_WIDTH[size];
-  const off = size === "full" ? CLAMP_GAP : Math.max(0, (free - width) / 2);
-  const x = side === "left" ? edge - off - width : edge + off;
-  return { side, size, tie: null, x, y };
-}
-
-function covered(room: ClampRoom, place: ClampPlace): boolean {
-  const box = { left: place.x, top: place.y, right: place.x + CLAMP_WIDTH[place.size], bottom: place.y + room.height };
-  return room.covers.some((cover) => overlaps(cover, box));
-}
-
-// The clamp's top: level with the selection's frame (a section's, 18
-// inside it), unless the block's top has scrolled out of the canvas while
-// the block is still there, where it keeps to the canvas's top, never
-// below the block's foot.
-export function clampTop(room: ClampRoom): number {
-  const { block, view, height, scale } = room;
-  const top = room.section ? block.top + SECTION_DOWN * scale : block.top - FRAME_OUT * scale;
-  if (top >= view.top + VIEW_GAP) return top;
-  return Math.max(top, Math.min(view.top + VIEW_GAP, block.bottom - height));
-}
-
-// The clamp when the drawer covers the places beside the block on both
-// sides: level with the block, just clear of the covering drawer's right
-// edge (and of the canvas's), where it is seen and can be used.
-function clearOfCovers(room: ClampRoom, y: number): ClampPlace {
-  const width = CLAMP_WIDTH.full;
-  const box = (x: number) => ({ left: x, top: y, right: x + width, bottom: y + room.height });
-  let x = room.view.left;
-  // A cover can push the place past another, so go through them in order
-  // until the place is clear of every one.
+// Moved in from the canvas's sides, then right of every drawer it would be
+// under, as far as the canvas allows.
+function across(room: ToolbarRoom, x: number, y: number): number {
+  const most = room.view.right - EDGE - room.width;
+  let at = Math.max(room.view.left + EDGE, Math.min(x, most));
   for (const cover of [...room.covers].sort((a, b) => a.right - b.right)) {
-    if (overlaps(cover, box(x))) x = cover.right + CLAMP_GAP / 2;
+    if (overlaps(cover, toolbarBox(room, { x: at, y }))) at = Math.min(cover.right + EDGE, most);
   }
-  return { side: "right", size: "full", tie: null, x: Math.min(x, room.view.right - width), y };
+  return at;
 }
 
-export function placeClamp(room: ClampRoom): ClampPlace {
-  const y = clampTop(room);
-  // The block's left gutter, else the page's margin nearer the block.
-  const nearer: "left" | "right" = room.block.left - room.contentLeft <= room.contentRight - room.block.right ? "left" : "right";
-  const first = inGutter(room, "left", y) ?? inMargin(room, nearer, y);
-  if (!covered(room, first)) return first;
-  // Hidden there (a drawer over the canvas's left): the right side, its
-  // gutter, else the page's right margin. Never a place that is covered
-  // while one that is not exists.
-  const gutter = inGutter(room, "right", y);
-  if (gutter && !covered(room, gutter)) return gutter;
-  const margin = inMargin(room, "right", y);
-  if (!covered(room, margin)) return margin;
-  const other = inMargin(room, "left", y);
-  if (!covered(room, other)) return other;
-  return clearOfCovers(room, y);
+// The inside place's top: the frame's corner, or the canvas's top while
+// the block's top has scrolled away, never below the block's foot.
+export function insideTop(room: Pick<ToolbarRoom, "frame" | "view" | "height">): number {
+  const { frame, view, height } = room;
+  const corner = frame.top + TOOLBAR_INSIDE;
+  const foot = frame.bottom - TOOLBAR_INSIDE - height;
+  return Math.max(corner, Math.min(view.top + EDGE, foot));
+}
+
+export function placeToolbar(room: ToolbarRoom): ToolbarPlace {
+  const { frame, view, width, height } = room;
+  const above = frame.top - TOOLBAR_GAP - height;
+  const below = frame.bottom + UNDER_PLUS;
+  const start = frame.left;
+  const end = frame.right - width;
+  const outside: ToolbarPlace[] = [
+    { side: "above", align: "start", x: start, y: above },
+    { side: "above", align: "end", x: end, y: above },
+    { side: "below", align: "start", x: start, y: below },
+    { side: "below", align: "end", x: end, y: below },
+  ];
+  const inside: ToolbarPlace = { side: "inside", align: "start", x: frame.left + TOOLBAR_INSIDE, y: insideTop(room) };
+  const places = (room.section ? [inside, ...outside] : [...outside, inside]).map((place) => ({ ...place, x: across(room, place.x, place.y) }));
+  const seen = (place: ToolbarPlace) => {
+    const box = toolbarBox(room, place);
+    return box.top >= view.top + EDGE - 0.5 && box.bottom <= view.bottom - EDGE + 0.5 && !room.covers.some((cover) => overlaps(cover, box));
+  };
+  const weigh = (place: ToolbarPlace, boxes: readonly Box[] | undefined, weight: number) => (boxes ?? []).reduce((sum, box) => sum + area(toolbarBox(room, place), box), 0) * weight;
+  const covering = (place: ToolbarPlace) => weigh(place, room.words, WEIGHTS.words) + weigh(place, room.ownWords, WEIGHTS.own) + weigh(place, room.blocks, WEIGHTS.blocks);
+  let best: { place: ToolbarPlace; covers: number } | null = null;
+  for (const place of places) {
+    if (!seen(place)) continue;
+    const covers = covering(place);
+    if (covers === 0) return place;
+    if (best === null || covers < best.covers) best = { place, covers };
+  }
+  // Nowhere whole in view (a canvas shorter than the toolbar's room): the
+  // inside corner, held in the canvas as far as it goes.
+  return best?.place ?? inside;
 }
 
 // A seam's "+" (./Canvas.tsx, Seam) stands in the middle of the page, on
 // its seam, 32 round, and the seam below the section that holds the
-// selection always shows it. The clamp of a block in a column that starts
-// in the page's middle stands in the gutter there, and beside a block low
-// in its section it runs on down to that seam, most of all on a page drawn
-// smaller, where the clamp keeps its size and the section does not. The
-// clamp is drawn over the "+" (canvas.css), so none of its keys is ever
-// under it; and the "+" moves along its seam, off the clamp, so it is not
-// under the clamp either: to the clamp's right, or to its left where the
-// seam ends first. How far it moves, in the window's pixels: 0 when the
-// clamp leaves it clear.
-// Its radius (16) and the room it keeps from the clamp (6).
+// selection always shows it. A section's toolbar inside its corner, or a
+// toolbar under a block at a section's foot, can stand on it, most of all
+// on a page drawn smaller, where the toolbar keeps its size and the
+// section does not. The toolbar is drawn over the "+" (canvas.css), so
+// none of its keys is ever under it; and the "+" moves along its seam, off
+// the toolbar, so it is not under the toolbar either: to its right, or to
+// its left where the seam ends first. How far it moves, in the window's
+// pixels: 0 when the toolbar leaves it clear.
+// Its radius (16) and the room it keeps from the toolbar (6).
 export const PLUS_REACH = 22;
 
-export function plusShift(clamp: Box, plus: { x: number; y: number }, seam: { left: number; right: number }): number {
+export function plusShift(toolbar: Box, plus: { x: number; y: number }, seam: { left: number; right: number }): number {
   const reach = PLUS_REACH;
-  if (plus.x + reach <= clamp.left || plus.x - reach >= clamp.right || plus.y + reach <= clamp.top || plus.y - reach >= clamp.bottom) return 0;
-  const right = clamp.right + reach;
+  if (plus.x + reach <= toolbar.left || plus.x - reach >= toolbar.right || plus.y + reach <= toolbar.top || plus.y - reach >= toolbar.bottom) return 0;
+  const right = toolbar.right + reach;
   if (right + reach <= seam.right) return right - plus.x;
-  return clamp.left - reach - plus.x;
+  return toolbar.left - reach - plus.x;
 }

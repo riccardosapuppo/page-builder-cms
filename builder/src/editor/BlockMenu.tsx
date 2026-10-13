@@ -11,9 +11,10 @@
 // A column takes no insert before or after (a block goes inside it, from
 // its "+"), and a section has no column or section around it to select.
 //
-// Opened from the clamp, it stands beside the clamp, opening upward from
-// its foot where the window has no room below; it gives the focus back to
-// the clamp's key, else to the block, or to the outline's row.
+// Opened from the toolbar (./Clamp.tsx), it stands under it, from the
+// pressed key's left, and over it where the window has no room below; it
+// gives the focus back to the toolbar's key, else to the block, or to the
+// outline's row.
 import { Fragment, useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { makeDelete, makeDuplicate, makeMove } from "../document/commands.ts";
@@ -21,7 +22,7 @@ import { blockName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
 import { afterRender, focusBlock, focusRow, runCommand, type Region } from "./act.ts";
 import { canvasUi, useCanvasUi } from "./canvas-ui.ts";
-import { clampKey, MOVES, moveWhy, standingOf, type ClampKind } from "./Clamp.tsx";
+import { clampKey, MENU_GAP, MOVES, moveWhy, standingOf, type ClampKind } from "./Clamp.tsx";
 import { copyFromMenu, pasteFromMenu } from "./clipboard.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon, type IconName } from "./icons.tsx";
@@ -105,7 +106,8 @@ function BlockMenuAt({ id, x, y, from, kind, opener }: { id: string; x: number; 
   const opened = () => (fromClamp ? clampKey(id, fromClamp) : document.querySelector<HTMLElement>(from === "navigator" ? `.tree [data-row-id="${id}"]` : `.canvas [data-block-id="${id}"]`));
 
   // Once drawn, the menu's height keeps it in the window: where it has no
-  // room below, it opens upward from the clamp's foot (or the window's).
+  // room below, it opens upward, over the toolbar (or from the window's
+  // foot).
   useLayoutEffect(() => {
     anchor.current = fromClamp ? clampKey(id, fromClamp) : document.querySelector<HTMLElement>(from === "navigator" ? `.tree [data-row-id="${id}"]` : `.canvas [data-block-id="${id}"]`);
     const menu = document.querySelector<HTMLElement>(".menu-context");
@@ -114,7 +116,7 @@ function BlockMenuAt({ id, x, y, from, kind, opener }: { id: string; x: number; 
     const height = menu.offsetHeight;
     if (y + height <= room) return;
     const clamp = fromClamp ? document.querySelector(`.canvas [data-block-id="${id}"] > .clamp`)?.getBoundingClientRect() : undefined;
-    menu.style.top = `${Math.max(8, clamp ? clamp.bottom - height : room - height)}px`;
+    menu.style.top = `${Math.max(8, clamp ? clamp.top - MENU_GAP - height : room - height)}px`;
   }, [from, id, fromClamp, y]);
 
   if (!type || !standing) return null;

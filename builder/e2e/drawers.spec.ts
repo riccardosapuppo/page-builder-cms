@@ -2,14 +2,13 @@
 // on a page whose first column is the one a drawer would cover: a section of
 // four columns, whose first is 204 wide and begins at the page's left margin.
 // The Outline and History stand beside the page, so a block chosen in them or
-// focused by a command is in view whole with its clamp; Insert floats over the
-// page's left, so a block it covers wholly gives it way, one it covers in
-// part has its clamp on its other side, and one whose margins it covers on
-// both sides (the first of four columns at 1280) has its clamp out in the
-// page's right margin. Esc in the Outline, after another block was chosen
-// there, keeps that choice.
+// focused by a command is in view whole with its toolbar; Insert floats over
+// the page's left, so a block it covers wholly gives it way, and one it
+// covers in part, or whose room around it covers (the first of four columns
+// at 1280), has its toolbar moved right of it. Esc in the Outline, after
+// another block was chosen there, keeps that choice.
 import type { Page } from "@playwright/test";
-import { block, clampFaults, clampKeysCovered, clampPlace, visibleShare } from "./helpers/canvas.ts";
+import { block, clampFaults, clampKeysCovered, visibleShare } from "./helpers/canvas.ts";
 import { column, drawer, expect, heading, makePage, open, outlineRow, section, test, widget } from "./helpers/site.ts";
 
 const four = () => [
@@ -22,7 +21,7 @@ const three = () => [
 
 const WINDOWS = [{ width: 1440, height: 900 }, { width: 1280, height: 800 }] as const;
 
-// A block in view whole, and its clamp with it.
+// A block in view whole, and its toolbar with it.
 async function expectSeenWhole(page: Page, id: string, why: string) {
   await expect(block(page, id), why).toBeFocused();
   expect(await visibleShare(block(page, id)), `${why}: the block`).toBeGreaterThanOrEqual(0.95);
@@ -35,7 +34,7 @@ for (const size of WINDOWS) {
     test.use({ viewport: size });
 
     for (const name of ["Outline", "History"] as const) {
-      test(`with the ${name} open, a first-column block that a command focuses is in view whole with its clamp`, async ({ page, request }) => {
+      test(`with the ${name} open, a first-column block that a command focuses is in view whole with its toolbar`, async ({ page, request }) => {
         const { id } = await makePage(request, `${name} beside ${size.width}`, four());
         await open(page, id);
         await block(page, "q1").click();
@@ -94,10 +93,9 @@ test.describe("Insert, which floats over the page's left", () => {
         expect(await visibleShare(added)).toBeGreaterThanOrEqual(0.9);
         expect(await clampKeysCovered(page)).toEqual([]);
         expect(await clampFaults(page)).toEqual([]);
-        expect(await clampPlace(page)).toMatchObject({ side: "left" });
       });
 
-      test("Tab from Insert onto a block it covers wholly: Insert gives way, and Tab reaches its clamp in view", async ({ page, request }) => {
+      test("Tab from Insert onto a block it covers wholly: Insert gives way, and Tab reaches its toolbar in view", async ({ page, request }) => {
         const { id } = await makePage(request, `Tab out of Insert ${size.width}`, four());
         await open(page, id);
         await block(page, "q1").click();
@@ -115,7 +113,7 @@ test.describe("Insert, which floats over the page's left", () => {
         expect(await visibleShare(page.getByRole("button", { name: "Quote: block menu" }))).toBeGreaterThanOrEqual(0.95);
       });
 
-      test("a block it covers in part stays under it, its clamp on the other side and in view", async ({ page, request }) => {
+      test("a block it covers in part stays under it, its toolbar right of the drawer and in view", async ({ page, request }) => {
         const { id } = await makePage(request, `Insert covers in part ${size.width}`, three());
         await open(page, id);
         await block(page, "h2").click();
@@ -127,7 +125,8 @@ test.describe("Insert, which floats over the page's left", () => {
         expect(share).toBeGreaterThan(0.1);
         expect(share).toBeLessThan(0.95);
         await expect(page.locator(".drawer")).toHaveCount(1);
-        expect(await clampPlace(page)).toMatchObject({ side: "right" });
+        const cover = (await page.locator(".drawer-float").boundingBox())!;
+        expect((await page.locator(".canvas .clamp").boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
         expect(await clampKeysCovered(page)).toEqual([]);
         expect(await clampFaults(page)).toEqual([]);
       });
@@ -138,25 +137,18 @@ test.describe("Insert, which floats over the page's left", () => {
 test.describe("Insert over the first of four columns in a 1280 by 800 window", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("covers the block's margins on both sides: its clamp goes out to the page's right margin, clear of the drawer, and its keys work", async ({ page, request }) => {
+  test("covers the block and the room around it: its toolbar moves right of the drawer, clear of it, and its keys work", async ({ page, request }) => {
     const { id } = await makePage(request, "Insert covers both sides", four());
     await open(page, id);
     await block(page, "h1").click();
     const insert = await drawer(page, "Insert");
     const cover = (await insert.boundingBox())!;
     const h1 = (await block(page, "h1").boundingBox())!;
-    const last = (await block(page, "k4").boundingBox())!;
-    // Both places beside the block are under the drawer: the page's left
-    // margin, and the gutter to Column 2, where the full clamp would stand
-    // 14 from the block.
-    expect(cover.x).toBeLessThanOrEqual((await page.locator(".canvas .frame").boundingBox())!.x);
-    expect(cover.x + cover.width).toBeGreaterThan(h1.x + h1.width + 14);
-    // So the clamp stands in the page's right margin, past the last column,
-    // untied, the drawer's edge far from it; nothing covers any of its keys.
-    await expect.poll(() => clampPlace(page)).toEqual({ size: "full", side: "right", tie: "none" });
-    const clamp = (await page.locator(".canvas .clamp").boundingBox())!;
-    expect(clamp.x).toBeGreaterThanOrEqual(last.x + last.width);
-    expect(clamp.x).toBeGreaterThan(cover.x + cover.width);
+    // The drawer covers the block and the room above it, where the toolbar
+    // would stand: the toolbar moves right of the drawer, the drawer's
+    // edge clear of it; nothing covers any of its keys.
+    expect(cover.x + cover.width).toBeGreaterThan(h1.x + h1.width);
+    await expect.poll(async () => (await page.locator(".canvas .clamp").boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
     expect(await clampKeysCovered(page)).toEqual([]);
     expect(await clampFaults(page)).toEqual([]);
     // Pressed where it is drawn, More opens the block's actions; Insert stays.

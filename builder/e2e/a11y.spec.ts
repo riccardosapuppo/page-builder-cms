@@ -51,11 +51,11 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "a heading selected, its first group open, the others closed with their values");
   for (const name of ["Size and color", "Alignment", "Shown on"]) await openGroup(page, name);
   await clean(page, "every group of the heading open");
-  // Its clamp's block menu; the "+" on its edge, its yellow line and the
+  // Its toolbar's block menu; the "+" on its edge, its yellow line and the
   // picker beside it; the seam's "+" below its section, and its picker.
   await page.getByRole("button", { name: "Heading: block menu" }).click();
   await expect(page.getByRole("menu", { name: "Heading: block menu" })).toBeVisible();
-  await clean(page, "the clamp's block menu");
+  await clean(page, "the toolbar's block menu");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Add a block after Heading" }).click();
   await expect(page.getByRole("dialog", { name: "Add a block after Heading" })).toBeVisible();
@@ -83,13 +83,13 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await clean(page, "a seam under the pointer, its + and its tip");
   await page.mouse.move(size.width - 6, size.height - 6);
 
-  // A text written on the canvas: bold, italic and link in its clamp,
+  // A text written on the canvas: bold, italic and link in its toolbar,
   // then its link's field under it.
   await block(page, "text-0").click();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
   await settledTextEditor(page, "text-0");
-  await clean(page, "a text being written, bold, italic and link in its clamp");
+  await clean(page, "a text being written, bold, italic and link in its toolbar");
   await page.keyboard.press("Control+k");
   await expect(page.locator(".ov-link input")).toBeFocused();
   await clean(page, "the text's link field");
@@ -125,13 +125,14 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();
   await clean(page, "the Insert drawer's ready-made sections");
   await page.getByRole("button", { name: "Close Insert" }).click();
-  // A first column's block selected under Insert: its clamp on its right
-  // side, Insert's yellow line where a click lands.
+  // A first column's block selected under Insert: its toolbar right of
+  // the drawer, Insert's yellow line where a click lands.
   await block(page, "heading-0").click();
   await drawer(page, "Insert");
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Blocks" }).click();
-  await expect(page.locator(".canvas .clamp")).toHaveAttribute("data-side", "right");
-  await clean(page, "Insert open over a first column's block, its clamp on the right");
+  const cover = (await page.locator(".drawer-float").boundingBox())!;
+  await expect.poll(async () => (await page.locator(".canvas .clamp").boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
+  await clean(page, "Insert open over a first column's block, its toolbar right of it");
   // A key of Insert picked up by the keyboard, the grey where it cannot
   // go; then dropped, the window it asks with open at the place.
   await page.getByRole("complementary", { name: "Insert" }).getByRole("group", { name: "Media" }).getByRole("button", { name: "Video", exact: true }).focus();
@@ -151,7 +152,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await device(page, "Desktop").click();
   await block(page, "wide-only").click();
   await device(page, "Phone").click();
-  // (The selection's clamp keeps its own stop, hidden with its block.)
+  // (The selection's toolbar keeps its own stop, hidden with its block.)
   await expect(page.locator(".canvas [data-block-id][tabindex=\"0\"]")).toHaveAttribute("data-block-id", "second-a");
   await expect(page.locator(".canvas [data-block-id][tabindex=\"0\"]")).toBeVisible();
   await expect(page.locator(".canvas .clamp")).toBeHidden();
