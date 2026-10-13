@@ -736,21 +736,27 @@ says how a floor works and how the Vitest suites hold on a busy machine.
 On 13 October 2026, on the virtual machine of [Measurements](#measurements),
 with the run's servers on their own ports (3900 and 4900 for `npm
 start`'s checks, 3901 and 3902 for the CMS, 4901 and 4902 for the
-editor, 4903 for the demo), one run of the whole check, ending at 15:13
-UTC, spent 39 minutes in its suites. It ended `RESULT: 3 of 28 failed`,
-one test in each: a unit test, and in Chromium the site style's test,
-which is also among the accessibility tests, had not followed two of the
-day's changes (a deferred focus that gave way too readily, and the site
-style's new default tone). Corrected, each passed in a later run of its
-suite alone. bundler-audit was not run here, for want of its advisory
-database (CI runs it). Its counts:
+editor, 4903 for the demo), one run of the whole check, ending at 17:14
+UTC, spent 38 minutes in its suites. It ended `RESULT: 7 of 28 failed`.
+Most of that had not followed the evening's change to the example site's
+header and footer, whose menus now lead to its other pages: a test of the
+tools, a unit test, two Rails tests, the demo's test of the header, the
+production check, whose new header still had the old four links, and in
+Chromium a test of the video window, whose room on the screen came from
+how far the page scrolls, and so from the footer's height. A new test
+had a lint error, which also failed the unit test that runs the lint.
+And two tests of form responses met the machine's network changing under
+them (`net::ERR_NETWORK_CHANGED`). Corrected, each passed in a later run:
+the failed suites again, ending at 17:26 UTC, and the Chromium tests that
+had failed, alone. bundler-audit was not run here, for want of its
+advisory database (CI runs it). Its counts:
 
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
 | the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI) |
-| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 458 files, 0 warnings |
-| the editor's unit tests, and the render contract's editor half | 962 passed in 122 files, the count of the later run of that suite alone, ending at 15:15 UTC; 28 passed |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 460 files, 0 warnings |
+| the editor's unit tests, and the render contract's editor half | 969 passed in 122 files, the count of the later run; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
 | the schema's two validators | 284 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
@@ -758,12 +764,12 @@ database (CI runs it). Its counts:
 | the Rails tests | 412 runs, 2592 assertions, 0 failures, 0 errors, 0 skips; 374 API answers held to `cms/openapi.yaml` |
 | RuboCop, Brakeman | 160 files, no offenses; 79 checks, 0 warnings |
 | the editor against a CMS of its own | 86 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (85 where Windows PowerShell is not) |
-| the editor in Chromium against a CMS of its own | 232: 231 passed in that run, among them the three that failed on this machine before (below), and the site style's in the later run alone |
-| the editor on the browser's own storage | 78 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
-| the browser demo, as Pages serves it | 9 passed |
-| accessibility: the keyboard path, focus, axe | 50: 49 passed in that run, and the site style's in the later run alone |
+| the editor in Chromium against a CMS of its own | 234: 231 passed in that run, among them the three that failed on this machine before (below), and the other three in the later run alone |
+| the editor on the browser's own storage | 79 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
+| the browser demo, as Pages serves it | 10 passed, in the later run |
+| accessibility: the keyboard path, focus, axe | 50 passed |
 | how the shell, the demo and the pages are served | 84 checks, the demo at both of its bases, what a shared link to it previews with among them |
-| the CMS in production, over HTTP and in a browser | 63 checks |
+| the CMS in production, over HTTP and in a browser | 63 checks, in the later run |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 
 **The three that failed** on 8 October, at 1024 by 768, were about text, and

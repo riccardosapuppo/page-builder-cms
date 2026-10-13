@@ -241,7 +241,7 @@ export const SUITES: Suite[] = [
       const why = packages(builderRoot, "builder");
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("lint"), { cwd: builderRoot });
-      return readOxlint(step.output, step.code, 458);
+      return readOxlint(step.output, step.code, 460);
     },
   },
   {
@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 962);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 969);
     },
   },
   {
@@ -415,7 +415,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 232);
+      return why ? notRun(why) : playwright(ctx, "e2e", 234);
     },
   },
   {
@@ -425,7 +425,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:browser")) return failed("", "builder/package.json has no e2e:browser script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the editor on the browser's storage", portNumber("E2E_BROWSER_PORT", 4902)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:browser", 78);
+      return why ? notRun(why) : playwright(ctx, "e2e:browser", 79);
     },
   },
   {
@@ -435,7 +435,7 @@ export const SUITES: Suite[] = [
       if (!hasScript(builderRoot, "e2e:demo")) return failed("", "builder/package.json has no e2e:demo script");
       const why = first(packages(builderRoot, "builder"), chromium(),
         freePorts([["the demo, served as GitHub Pages serves it", portNumber("E2E_DEMO_PORT", 4903)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e:demo", 9);
+      return why ? notRun(why) : playwright(ctx, "e2e:demo", 10);
     },
   },
   {
