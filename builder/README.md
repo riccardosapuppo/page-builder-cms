@@ -25,9 +25,9 @@ which the "?" window lists; the focus placed after every command; the
 block's menu (copy, paste, duplicate, delete); where the edits are (saved,
 saving, retrying with a countdown, the conflict's banner with Reload and
 Keep mine); Preview and Publish, on the CMS's own origin; Site style, the
-palette and the type scale; the mark as the page's icon, a manifest and
-About. Each widget has its accessibility test, run with axe on the
-published page and on the canvas.
+palette, the type scale and the letter width; the mark as the page's icon,
+a manifest and About. Each widget has its accessibility test, run with axe
+on the published page and on the canvas.
 
 **Stage 3, rich text.** A text block is written where it stands on the
 canvas, in TipTap (`src/editor/rich/`), loaded on demand: bold, italic

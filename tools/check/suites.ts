@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 970);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 977);
     },
   },
   {
@@ -360,7 +360,7 @@ export const SUITES: Suite[] = [
         const prepare = await ctx.step("ruby", ["bin/rails", "db:test:prepare"], { cwd: cmsRoot });
         if (prepare.code !== 0) return failed("", `db:test:prepare failed (exit ${prepare.code})`);
         const tests = await ctx.step("ruby", ["bin/rails", "test"], { cwd: cmsRoot });
-        return readMinitest(tests.output, tests.code, 412, 374);
+        return readMinitest(tests.output, tests.code, 418, 378);
       });
     },
   },
@@ -415,7 +415,7 @@ export const SUITES: Suite[] = [
     async run(ctx) {
       const why = first(packages(builderRoot, "builder"), ruby(), chromium(),
         freePorts([["the test CMS", portNumber("E2E_CMS_PORT", 3901)], ["the test editor", portNumber("E2E_BUILDER_PORT", 4901)]]));
-      return why ? notRun(why) : playwright(ctx, "e2e", 234);
+      return why ? notRun(why) : playwright(ctx, "e2e", 235);
     },
   },
   {

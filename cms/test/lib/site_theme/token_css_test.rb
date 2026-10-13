@@ -127,6 +127,27 @@ class SiteTheme::TokenCssTest < ActiveSupport::TestCase
     assert_equal 10 + 20 + 10, css.scan(/\.widths-/).size
   end
 
+  test "each letter width gives its three widths, the default's on .sw and the others' on the page root's attribute, and a heading's face is drawn at them" do
+    css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
+    widths = css.scan(/^(\.sw|\.site\[data-letter-width="(\w+)"\] \.sw) \{ --stretch-display: ([\d.]+%); --stretch-strong: ([\d.]+%); --stretch-ui: ([\d.]+%); \}$/)
+                .to_h { |selector, name, *three| [ name || "the default", three ] }
+
+    assert_equal({ "the default" => %w[100% 100% 100%], "narrow" => %w[87.5% 100% 100%], "wide" => %w[112.5% 107.5% 105%], "widest" => %w[125% 115% 110%] }, widths)
+    assert_includes css, %(.w.face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: var(--stretch-display, 100%);)
+  end
+
+  test "a letter width outside Archivo's width axis, or a default that is not a choice, is refused" do
+    wider = tokens
+    wider["site-letter-width"]["choices"].last["display"] = "150%"
+    error = assert_raises(ArgumentError) { SiteTheme::TokenCss.generate(tokens: wider, schema: schema) }
+    assert_match(/widest gives display "150%"/, error.message)
+
+    lost = tokens
+    lost["site-letter-width"]["default"] = "extra"
+    error = assert_raises(ArgumentError) { SiteTheme::TokenCss.generate(tokens: lost, schema: schema) }
+    assert_match(/default extra is not one of its choices/, error.message)
+  end
+
   test "a tablet override applies only between the phone and desktop layouts" do
     css = SiteTheme::TokenCss.generate(tokens: tokens, schema: schema)
 

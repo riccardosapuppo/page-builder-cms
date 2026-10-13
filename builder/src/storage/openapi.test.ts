@@ -20,7 +20,7 @@ import {
   type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
   type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
   type Site, type SiteStyle, type SiteStyleChange,
-  type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
+  type LetterWidthChoice, type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import { FORM_FIELD_KINDS } from "../shared/document.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId, type PageList } from "./rails.ts";
@@ -68,10 +68,11 @@ const MEDIA_ITEM = {
 const MEDIA_USE = { pages: arr, versions: arr } as const satisfies Shape<MediaUse>;
 const MEDIA_USE_PAGE = { id: num, title: str, slug: orNull(str) } as const satisfies Shape<MediaUse["pages"][number]>;
 const MEDIA_USE_VERSION = { pageId: num, number: num } as const satisfies Shape<MediaUse["versions"][number]>;
-const SITE_STYLE = { palette: obj, typeScale: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
-const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr } as const satisfies Shape<SiteStyle["choices"]>;
+const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
+const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr, letterWidths: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
+const LETTER_WIDTH_CHOICE = { name: str, label: str } as const satisfies Shape<LetterWidthChoice>;
 const SITE = { timeZone: str } as const satisfies Shape<Site>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
 // The refusals, less the member each side names its kind with: the API's
@@ -103,7 +104,7 @@ const DRAFT_SAVE = { revision: num, document: obj, saveId: str } as const satisf
 const PUBLISH_REQUEST = { revision: optional(num) } as const satisfies Shape<PublishRequest>;
 const SCHEDULE_REQUEST = { revision: num, at: str } as const satisfies Shape<ScheduleRequest>;
 const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>;
-const SITE_STYLE_CHANGE = { palette: obj, typeScale: str } as const satisfies Shape<SiteStyleChange>;
+const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str) } as const satisfies Shape<SiteStyleChange>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
 // Not a body: the list's query parameters, compared with the operation's.
@@ -204,6 +205,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["SiteStyle's choices", SITE_STYLE_CHOICES, "#/components/schemas/SiteStyle/properties/choices"],
     ["ToneChoice", TONE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/palette/additionalProperties/items"],
     ["TypeScaleChoice", TYPE_SCALE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/typeScales/items"],
+    ["LetterWidthChoice", LETTER_WIDTH_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/letterWidths/items"],
     ["Site", SITE, "#/components/schemas/Site"],
     ["FieldError", FIELD_ERROR, "#/components/schemas/ErrorDetail"],
     ["Conflict", CONFLICT, "#/components/schemas/ConflictError", ["error"]],
@@ -267,7 +269,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(46);
+    expect(pairs).toHaveLength(47);
   });
 });
 

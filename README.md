@@ -700,8 +700,8 @@ Each of these is a choice, and the reason is given with it.
   has no authentication, and the servers listen on 127.0.0.1 only
   ([the decision](docs/decisions/no-authentication-one-address.md)).
 - **No themes to swap and no free CSS.** A page's look is values from the
-  design's tokens (a palette and a type scale, set once in Site style), never
-  a stylesheet a person writes.
+  design's tokens (a palette, a type scale and a letter width, set once in
+  Site style), never a stylesheet a person writes.
 - **No plugins, no translation of the interface, no live co-editing.** The
   interface is in one language, en-US. Two tabs get a conflict to settle, not
   a merge ([the decision](docs/decisions/one-draft-saved-at-a-revision.md)).

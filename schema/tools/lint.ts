@@ -590,11 +590,25 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
       }
     }
   }
+  // How wide the Headings typeface is drawn: a default among the choices,
+  // and each of a choice's three widths a percentage on Archivo's width
+  // axis, which tokens.css draws the faces at.
+  const widths = (tokens["site-letter-width"] ?? {}) as Obj;
+  const widthChoices = Array.isArray(widths.choices) ? widths.choices.filter(isObject) : [];
+  if (widthChoices.length === 0) problem("tokens", "site-letter-width has no choices");
+  if (!widthChoices.some((choice) => choice.name === widths.default)) problem("tokens", "site-letter-width has a default that is not one of its choices");
+  for (const choice of widthChoices) {
+    for (const part of ["display", "strong", "ui"]) {
+      const value = choice[part];
+      const percent = typeof value === "string" && /^\d+(\.\d+)?%$/.test(value) ? Number.parseFloat(value) : Number.NaN;
+      if (!(percent >= 62 && percent <= 125)) problem("tokens", `site-letter-width/${String(choice.name)} gives ${part} ${JSON.stringify(value)}, not a width of Archivo's axis (62% to 125%)`);
+    }
+  }
   for (const [name, values, names] of checks) {
     if (names.length === 0) problem("tokens", `tokens.json has no names for $defs/${name}`);
     if (!sameList(values, names)) problem("tokens", `$defs/${name} is ${JSON.stringify(values)}, tokens.json has ${JSON.stringify(names)}`);
   }
-  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json; ${tones} tones over ${slots.length} slots, ${choices.length} type-scale choices, ${drawn.size} of them drawn`);
+  report.push(`tokens: ${checks.map(([name, , names]) => `${name} = ${names.length} names`).join(", ")} from tokens.json; ${tones} tones over ${slots.length} slots, ${choices.length} type-scale choices, ${drawn.size} of them drawn, ${widthChoices.length} letter widths`);
 }
 
 // --- 6. the schema in both engines, and the README example -------------------------------

@@ -1,7 +1,8 @@
 // Site style in Chromium, against the run's CMS: the one screen that
-// changes the site's tokens. A tone chosen for a slot, and a type scale,
-// show on the canvas at once, are kept by the CMS, and the published page
-// follows on its next request, as a visitor's browser draws it. The tests
+// changes the site's tokens. A tone chosen for a slot, a type scale and a
+// letter width show on the canvas at once, are kept by the CMS, and the
+// published page follows on its next request, as a visitor's browser
+// draws it. The tests
 // of a run share one CMS, so the site's style is put back afterwards.
 import type { APIRequestContext } from "@playwright/test";
 import { cms, column, expect, heading, makePage, open, section, test } from "./helpers/site.ts";
@@ -11,7 +12,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const HARBOUR = "rgb(29, 78, 111)";
 const SIGNAL = "rgb(194, 53, 43)";
 
-async function siteStyle(request: APIRequestContext): Promise<{ palette: Record<string, string>; typeScale: string }> {
+async function siteStyle(request: APIRequestContext): Promise<{ palette: Record<string, string>; typeScale: string; letterWidth: string }> {
   return (await (await request.get(`${cms()}/api/site-style`)).json()) as never;
 }
 
@@ -72,6 +73,45 @@ test("a tone and a type scale chosen in Site style show on the canvas at once, a
     await expect(page.getByRole("tab", { name: "Page" })).toHaveAttribute("aria-selected", "true");
   } finally {
     const put = await request.put(`${cms()}/api/site-style`, { data: { palette: before.palette, typeScale: before.typeScale } });
+    expect(put.status()).toBe(200);
+  }
+});
+
+test("a letter width chosen in Site style draws the Headings typeface at it on the canvas at once, and on the published page; a menu keeps its own", async ({ page, request }) => {
+  const before = await siteStyle(request);
+  try {
+    const { id, slug } = await makePage(request, "Widths", [section("s", "Story", [column("c", [heading("h", "Out to the buoy line")])])]);
+    expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+    await open(page, id);
+    const canvasHeading = page.locator('.canvas [data-block-id="h"] h2');
+    // A new site draws it at the typeface's normal width.
+    await expect(canvasHeading).toHaveCSS("font-stretch", "100%");
+
+    await page.getByRole("complementary", { name: "Settings" }).getByRole("button", { name: "Site style", exact: true }).click();
+    const panel = page.getByRole("complementary", { name: "Site style" });
+    const widths = panel.getByRole("radiogroup", { name: "How wide the Headings typeface is drawn" });
+    await expect(widths.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-checked", "true");
+    await widths.getByRole("radio", { name: "Widest" }).click();
+    await expect(page.locator(".canvas .site")).toHaveAttribute("data-letter-width", "widest");
+    await expect(canvasHeading).toHaveCSS("font-stretch", "125%");
+    await expect(panel.getByRole("status")).toHaveText("Saved for every page");
+    expect((await siteStyle(request)).letterWidth).toBe("widest");
+    // The header's menu keeps its width: its fold is measured at it.
+    await expect(page.locator('.canvas [data-theme-part="header"] .w-menu').first()).toHaveCSS("font-stretch", "110%");
+
+    // The published page, as a visitor's browser draws it.
+    const visitor = await page.context().newPage();
+    await visitor.goto(`${cms()}/${slug}`);
+    await expect(visitor.locator(".site")).toHaveAttribute("data-letter-width", "widest");
+    await expect(visitor.getByRole("heading", { name: "Out to the buoy line" })).toHaveCSS("font-stretch", "125%");
+    await visitor.close();
+
+    await widths.getByRole("radio", { name: "Narrow" }).click();
+    await expect(canvasHeading).toHaveCSS("font-stretch", "87.5%");
+    await expect(panel.getByRole("status")).toHaveText("Saved for every page");
+    expect((await siteStyle(request)).letterWidth).toBe("narrow");
+  } finally {
+    const put = await request.put(`${cms()}/api/site-style`, { data: { palette: before.palette, typeScale: before.typeScale, letterWidth: before.letterWidth } });
     expect(put.status()).toBe(200);
   }
 });

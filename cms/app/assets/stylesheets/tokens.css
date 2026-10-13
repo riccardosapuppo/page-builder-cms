@@ -154,6 +154,16 @@
   }
 }
 
+/* ---------- Letter width: how wide the Headings typeface is drawn ---------- */
+/* Normal, the default */
+.sw { --stretch-display: 100%; --stretch-strong: 100%; --stretch-ui: 100%; }
+/* Narrow */
+.site[data-letter-width="narrow"] .sw { --stretch-display: 87.5%; --stretch-strong: 100%; --stretch-ui: 100%; }
+/* Wide */
+.site[data-letter-width="wide"] .sw { --stretch-display: 112.5%; --stretch-strong: 107.5%; --stretch-ui: 105%; }
+/* Widest */
+.site[data-letter-width="widest"] .sw { --stretch-display: 125%; --stretch-strong: 115%; --stretch-ui: 110%; }
+
 /* ---------- Block settings: one class per token, everywhere ---------- */
 .pad-none { padding: var(--space-none); }
 .pad-xs { padding: var(--space-xs); }
@@ -228,7 +238,7 @@
 .size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
 .w.face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
-.w.face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+.w.face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); font-synthesis: none; }
 .align-left { text-align: left; --cap-margin: 0 auto; }
 .align-center { text-align: center; --cap-margin: auto; }
 .align-right { text-align: right; --cap-margin: auto 0; }
@@ -316,7 +326,7 @@
   .tablet-size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
   .tablet-size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
   .w.tablet-face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
-  .w.tablet-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+  .w.tablet-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); font-synthesis: none; }
   .tablet-align-left { text-align: left; --cap-margin: 0 auto; }
   .tablet-align-center { text-align: center; --cap-margin: auto; }
   .tablet-align-right { text-align: right; --cap-margin: auto 0; }
@@ -406,7 +416,7 @@
   .phone-size-body { font-size: var(--fs-body); line-height: var(--lh-body); }
   .phone-size-small { font-size: var(--fs-small); line-height: var(--lh-small); }
   .w.phone-face-body { font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial; }
-  .w.phone-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none; }
+  .w.phone-face-heading { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); font-synthesis: none; }
   .phone-align-left { text-align: left; --cap-margin: 0 auto; }
   .phone-align-center { text-align: center; --cap-margin: auto; }
   .phone-align-right { text-align: right; --cap-margin: auto 0; }

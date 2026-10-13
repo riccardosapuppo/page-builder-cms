@@ -11,10 +11,23 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_equal "site-signal", json.dig("palette", "primary")
     assert_equal "balanced", json["typeScale"]
+    assert_equal "normal", json["letterWidth"]
     assert_nil json["updatedAt"]
     assert_equal [ [ "site-signal", "Signal", "#C2352B" ], [ "site-sea", "Sea", "#1E5B4C" ], [ "site-harbour", "Harbour", "#1D4E6F" ], [ "site-kelp", "Kelp", "#3B5A23" ], [ "site-basalt", "Basalt", "#4A4F57" ] ],
                  json.dig("choices", "palette", "primary").map { |t| t.values_at("color", "label", "hex") }
     assert_equal %w[gentle balanced strong], json.dig("choices", "typeScales").map { |c| c["name"] }
+    assert_equal [ %w[narrow Narrow], %w[normal Normal], %w[wide Wide], %w[widest Widest] ], json.dig("choices", "letterWidths").map { |c| c.values_at("name", "label") }
+  end
+
+  test "a letter width is accepted and stays; a change that does not name one keeps it" do
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "letterWidth" => "widest" }
+
+    assert_response :ok
+    assert_equal "widest", json["letterWidth"]
+    api :put, "/api/site-style", { "palette" => palette(primary: "site-harbour"), "typeScale" => "balanced" }
+    assert_response :ok
+    api :get, "/api/site-style"
+    assert_equal [ "site-harbour", "widest" ], [ json.dig("palette", "primary"), json["letterWidth"] ]
   end
 
   test "a curated tone and a type-scale choice are accepted, and stay" do
@@ -26,10 +39,10 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
   end
 
   test "anything that is not a curated value is refused, each at its place" do
-    api :put, "/api/site-style", { "palette" => palette(primary: "#ff0000").except("muted").merge("brand" => "site-sea"), "typeScale" => "huge" }
+    api :put, "/api/site-style", { "palette" => palette(primary: "#ff0000").except("muted").merge("brand" => "site-sea"), "typeScale" => "huge", "letterWidth" => "95%" }
 
     assert_response :unprocessable_content
-    assert_equal [ [ "/palette/primary", "inclusion" ], [ "/palette/muted", "blank" ], [ "/palette/brand", "unknown" ], [ "/typeScale", "inclusion" ] ],
+    assert_equal [ [ "/palette/primary", "inclusion" ], [ "/palette/muted", "blank" ], [ "/palette/brand", "unknown" ], [ "/typeScale", "inclusion" ], [ "/letterWidth", "inclusion" ] ],
                  error_pointers
     api :get, "/api/site-style"
     assert_equal "site-signal", json.dig("palette", "primary")

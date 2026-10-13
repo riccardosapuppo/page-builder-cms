@@ -162,6 +162,15 @@ describe("the checks", () => {
     expect(underDocument({ pointer: "/title", keyword: "minLength", message: "m" }).blockPointer).toBe(null);
   });
 
+  test("the site style: a letter width of the choices, when the change names one", () => {
+    const slots = { text: ["ink"] };
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"])).toEqual([]);
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"], "wide", ["normal", "wide"])).toEqual([]);
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"], "125%", ["normal", "wide"]).map((e) => [e.pointer, e.keyword, e.message])).toEqual([
+      ["/letterWidth", "inclusion", "is not one of the letter-width choices"],
+    ]);
+  });
+
   test("the site style: every slot with one of its tones, no other slot, a type scale of the choices", () => {
     const slots = { text: ["ink"], primary: ["sea", "harbour"] };
     expect(siteStyleErrors({ text: "ink", primary: "sea" }, "balanced", slots, ["gentle", "balanced"])).toEqual([]);

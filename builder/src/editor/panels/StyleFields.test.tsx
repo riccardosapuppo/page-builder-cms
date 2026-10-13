@@ -57,7 +57,7 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
   await waitFor(() => expect(document.activeElement).toBe(background().getByRole("radio", { name: "Accent, Buoy" })));
 
   // The site's own tone for a slot, where the site style has another.
-  act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", updatedAt: null, choices: { palette: {}, typeScales: [] } }));
+  act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", letterWidth: "normal", updatedAt: null, choices: { palette: {}, typeScales: [], letterWidths: [] } }));
   expect(background().getByRole("radio", { name: "Primary, Harbour" }).getAttribute("style")).toContain("#1D4E6F");
 });
 

@@ -402,8 +402,8 @@ no warnings, the same morning).
   schema's enums list. `tokens.css` is generated from `schema/tokens.json`
   by `ruby bin/rails tokens:css`; `site.css` is the design's `theme.css`,
   with the same class names and the same container queries on the page
-  root. The site style's tones and type scale reach the page as data
-  attributes on `.site`, which the generated rules read. A section's
+  root. The site style's tones, type scale and letter width reach the
+  page as data attributes on `.site`, which the generated rules read. A section's
   `columnWidths` (`3:2` is `widths-3-2`, on desktop only), an image's crop
   (`aspect: "16:9"` is `aspect-16-9`) and a section's `spaceAbove` and
   `spaceBelow` (`space-above-section-s`, `phone-space-below-xxl`) are
@@ -482,7 +482,8 @@ the media library, every word a block's.
 and space, its widths and crops, and the form's band; the editor's
 example-site test holds the pages to axe at 1440 and 390 and to no
 sideways scroll at 320. On a phone the header keeps one row, its section
-never stacking: the logo, Menu as its icon alone, and Join.
+never stacking: the logo, Menu and Join, Menu with its word where its
+column has room for it (375 wide) and its icon alone where not (320).
 
 ## Forms a visitor sends
 
@@ -739,7 +740,7 @@ the schema file) each failed it.
 | `POST /api/media/direct_uploads` | start an image upload (Active Storage's request and answer) |
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
-| `GET /api/site-style`, `PUT /api/site-style` | the palette and type scale, with their curated values; replace them |
+| `GET /api/site-style`, `PUT /api/site-style` | the palette, type scale and letter width, with their curated values; replace them (the letter width when given) |
 | `GET /api/site` | the site's settings: its time zone |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
@@ -869,6 +870,19 @@ the style back. On 1 October 2026 (Gentle / Balanced / Strong, px):
 
 With Gentle's rules renamed away in `tokens.css`, it failed on every
 step and width, Gentle drawing Balanced's sizes.
+
+The letter width is how wide the Headings typeface, Archivo, is drawn:
+Narrow, Normal, Wide or Widest, from `site-letter-width`, Normal for a
+new site. Each choice gives three widths of Archivo's width axis, custom
+properties of `tokens.css` on the attribute `data-letter-width`: one
+for headings, the logo and an icon box's title, one for buttons and an
+accordion's question, one for a form's labels and a quote's caption. A
+menu keeps its own width, 110%, the one its letters are measured at for
+its fold (`schema/header-metrics.json`), so a change of width moves no
+fold. `PUT /api/site-style` takes `letterWidth` when it is given and
+keeps the style's own when it is not; a style kept before the choice
+existed took Normal. A change of it alone is a new page for every
+browser, as a tone's is.
 
 **Header and footer.** The site's parts are pages of their own kind
 (`kind`: `header` or `footer`, at most one of each), read, saved,

@@ -130,12 +130,13 @@ test("the page root carries the site style the server would, and the width the c
   const siteStyle = {
     palette: { primary: "harbour", accent: "not-a-tone", text: "ink" },
     typeScale: "strong",
-    choices: { palette: { primary: [{ color: "sea" }, { color: "harbour" }], accent: [{ color: "buoy" }], text: [{ color: "ink" }] }, typeScales: [{ name: "balanced" }, { name: "strong" }] },
+    letterWidth: "widest",
+    choices: { palette: { primary: [{ color: "sea" }, { color: "harbour" }], accent: [{ color: "buoy" }], text: [{ color: "ink" }] }, typeScales: [{ name: "balanced" }, { name: "strong" }], letterWidths: [{ name: "normal" }, { name: "widest" }] },
   };
   const { element } = mount(<PageRoot document={page([heading("h1", "Winter")])} ctx={ctx} siteStyle={siteStyle} width={768} landmark={false} />);
   const site = element.firstElementChild as HTMLElement;
   expect(site.className).toBe("site");
-  expect({ ...site.dataset }).toEqual({ primary: "harbour", text: "ink", typeScale: "strong" });
+  expect({ ...site.dataset }).toEqual({ primary: "harbour", text: "ink", typeScale: "strong", letterWidth: "widest" });
   expect(site.style.width).toBe("768px");
   expect(site.querySelector(":scope > .sw > .sw-main > section.sec")).not.toBeNull();
   expect(element.querySelector("main")).toBeNull();

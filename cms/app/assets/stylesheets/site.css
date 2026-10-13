@@ -90,7 +90,7 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
 /* ---------- Heading ---------- */
 .w-heading {
   font-family: "Archivo", "Helvetica Neue", sans-serif;
-  font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking);
+  font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking);
   color: var(--heading-color, var(--sw-primary));
   text-wrap: balance;
 }
@@ -126,7 +126,7 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
   min-height: 54px; padding: 6px 30px; border: 0; border-radius: 999px;
   background-color: var(--sw-accent); color: var(--sw-text);
   font-family: "Archivo", "Helvetica Neue", sans-serif;
-  font-size: 17px; line-height: 1.25; font-weight: 650; font-stretch: 115%; letter-spacing: .005em;
+  font-size: 17px; line-height: 1.25; font-weight: 650; font-stretch: var(--stretch-strong, 100%); letter-spacing: .005em;
   text-align: center; text-decoration: none; cursor: pointer;
 }
 a.sw-btn:not([href]) { cursor: default; }
@@ -142,7 +142,7 @@ a.sw-btn:not([href]) { cursor: default; }
 .w-logo-link {
   display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; vertical-align: top;
   font-family: "Archivo", "Helvetica Neue", sans-serif;
-  font-size: 19px; line-height: 1.25; font-weight: 700; font-stretch: 125%; letter-spacing: -.01em; text-align: start;
+  font-size: 19px; line-height: 1.25; font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: -.01em; text-align: start;
   text-decoration: none;
 }
 .w-logo-link > span { min-width: 0; overflow-wrap: anywhere; }
@@ -166,6 +166,8 @@ a.sw-btn:not([href]) { cursor: default; }
   container: menu / inline-size;
   position: relative;
   font-family: "Archivo", "Helvetica Neue", sans-serif;
+  /* Its own width whatever the site's letter width: its letters are
+     measured at it for the fold (schema/header-metrics.json). */
   font-size: 15px; font-weight: 500; font-stretch: 110%;
 }
 .w-menu-links { margin: -2px -14px; }
@@ -266,7 +268,7 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-iconbox { display: grid; gap: var(--space-m); align-content: start; }
 .sw-icon { width: 48px; height: 48px; fill: none; stroke: var(--icon-color, var(--sw-primary)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sw-icon .fill { fill: var(--sw-accent); }
-.sw-iconbox h3 { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); font-weight: 600; font-stretch: 125%; letter-spacing: -.012em; margin-bottom: var(--space-s); }
+.sw-iconbox h3 { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); font-weight: 600; font-stretch: var(--stretch-display, 100%); letter-spacing: -.012em; margin-bottom: var(--space-s); }
 
 /* ---------- Gallery ---------- */
 .sw-gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-m); }
@@ -284,7 +286,7 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-embed-load:focus-visible::after { content: ""; position: absolute; inset: 6px; z-index: 2; border: 3px solid var(--sw-background); border-radius: 8px; pointer-events: none; }
 .sw-embed-media { position: relative; display: block; aspect-ratio: 16 / 9; }
 .sw-embed-bar { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px 16px; }
-.sw-embed-bar strong { font: 650 18px/1.25 "Archivo", sans-serif; font-stretch: 115%; }
+.sw-embed-bar strong { font: 650 18px/1.25 "Archivo", sans-serif; font-stretch: var(--stretch-strong, 100%); }
 .sw-embed-bar small { font-size: 15px; line-height: 1.4; }
 .sw-embed-bar-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
 .sw-embed-label { font-size: 16px; line-height: 1.4; }
@@ -362,14 +364,14 @@ a.sw-btn:not([href]) { cursor: default; }
    (Typeface, tokens.css). */
 .sw-quote blockquote p { font-style: italic; max-width: 20em; }
 /* The caption takes the body's line height, as in the mock, not the quote's step's. */
-.sw-quote figcaption { font-size: 16px; line-height: var(--lh-body); font-weight: 500; font-stretch: 110%; font-style: normal; color: var(--caption-color, var(--sw-muted)); }
+.sw-quote figcaption { font-size: 16px; line-height: var(--lh-body); font-weight: 500; font-stretch: var(--stretch-ui, 100%); font-style: normal; color: var(--caption-color, var(--sw-muted)); }
 
 /* ---------- Accordion ---------- */
 .sw-accordion details { border-top: 1px solid var(--line-color, var(--sw-muted)); }
 /* The last question, not the last child: the editor's canvas draws its
    marks as divs inside the block, after the questions. */
 .sw-accordion details:last-of-type { border-bottom: 1px solid var(--line-color, var(--sw-muted)); }
-.sw-accordion summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 19px; font-weight: 600; font-stretch: 115%; list-style: none; cursor: pointer; }
+.sw-accordion summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 19px; font-weight: 600; font-stretch: var(--stretch-strong, 100%); list-style: none; cursor: pointer; }
 .sw-accordion summary::-webkit-details-marker { display: none; }
 .sw-accordion summary::after { content: ""; width: 14px; height: 14px; flex: none; background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat, linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 2px 14px no-repeat; }
 .sw-accordion details[open] summary::after { background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat; }
@@ -381,7 +383,7 @@ a.sw-btn:not([href]) { cursor: default; }
    palette has no colour for an error, so a refused field says so in words
    under its label, in bold, and its border turns to ink and thickens. */
 .sw-form { display: grid; gap: var(--space-m); }
-.sw-field label { display: block; margin-bottom: 6px; font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; font-weight: 600; font-stretch: 110%; }
+.sw-field label { display: block; margin-bottom: 6px; font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; font-weight: 600; font-stretch: var(--stretch-ui, 100%); }
 .sw-field input, .sw-field textarea { display: block; width: 100%; padding: 12px 14px; border: 1.5px solid var(--sw-muted); border-radius: 4px; background: var(--sw-background); color: var(--sw-text); font: inherit; font-size: 17px; }
 .sw-field textarea { resize: vertical; }
 .sw-check { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; align-items: start; font-size: 16px; line-height: 1.45; }
@@ -410,7 +412,7 @@ a.sw-btn:not([href]) { cursor: default; }
    ink border and bold, since the form may sit far down the page. */
 .sw-errors { padding-top: var(--space-xl); }
 .sw-errors-box { padding: var(--space-m) var(--space-l); border: 2.5px solid var(--sw-text); border-radius: 4px; }
-.sw-errors-box h2 { margin: 0 0 var(--space-s); font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 20px; font-weight: 700; font-stretch: 110%; }
+.sw-errors-box h2 { margin: 0 0 var(--space-s); font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 20px; font-weight: 700; font-stretch: var(--stretch-ui, 100%); }
 .sw-errors-box ul { margin: 0; padding-left: 1.2em; }
 .sw-errors-box a { font-weight: 650; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
 

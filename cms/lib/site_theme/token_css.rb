@@ -21,7 +21,9 @@ module SiteTheme
   #   the spacing steps (--space-<step>, --section-<step>) and the type
   #   scale (--fs-<step>, --lh-<step>) for desktop, tablet and phone, for
   #   the default type-scale choice; the others are keyed on
-  #   .site[data-type-scale] the same way.
+  #   .site[data-type-scale] the same way. So is the letter width: how wide
+  #   the Headings typeface is drawn (--stretch-<part>), for the default
+  #   choice on .sw and for the others on .site[data-letter-width].
   #
   # - Block settings. A block's style names tokens ({"spaceInside": "l"});
   #   the renderer turns each into a class (pad-l), and an override for
@@ -55,6 +57,7 @@ module SiteTheme
       out << palette(tokens)
       out << spacing(tokens)
       out << type_scale(tokens, tablet_below: tablet_below, phone_below: phone_below)
+      out << letter_width(tokens)
       out << "/* ---------- Block settings: one class per token, everywhere ---------- */\n"
       out << setting_rules(tokens, schema, prefix: "").join
       devices.each do |device, query|
@@ -148,6 +151,39 @@ module SiteTheme
     # .site[data-type-scale="<name>"] .sw: the layout writes the choice on
     # .site, so a page takes its sizes without an inline style. Each of
     # those writes all four blocks, so it never mixes with the default's.
+    # The parts of the page that each letter-width choice gives a width
+    # (site-letter-width): display, strong and ui, each a custom property
+    # site.css and the face classes draw Archivo at.
+    STRETCHES = %w[display strong ui].freeze
+
+    # Archivo's width axis: a width outside it would be drawn at its end.
+    STRETCH_RANGE = (62.0..125.0)
+
+    def letter_width(tokens)
+      widths = tokens.fetch("site-letter-width")
+      default = widths.fetch("default")
+      choices = widths.fetch("choices").sort_by { |choice| choice.fetch("name") == default ? 0 : 1 }
+      raise ArgumentError, "site-letter-width's default #{default} is not one of its choices" unless choices.any? { |choice| choice.fetch("name") == default }
+
+      out = +"/* ---------- Letter width: how wide the Headings typeface is drawn ---------- */\n"
+      choices.each do |choice|
+        name = choice.fetch("name")
+        selector = name == default ? ".sw" : %(.site[data-letter-width="#{name}"] .sw)
+        widths_of = STRETCHES.map { |part| "--stretch-#{part}: #{stretch(choice, part)};" }
+        out << "/* #{choice.fetch('label')}#{', the default' if name == default} */\n"
+        out << "#{selector} { #{widths_of.join(' ')} }\n"
+      end
+      out << "\n"
+    end
+
+    def stretch(choice, part)
+      value = choice.fetch(part)
+      number = value[/\A(\d+(?:\.\d+)?)%\z/, 1]
+      return value if number && STRETCH_RANGE.cover?(number.to_f)
+
+      raise ArgumentError, "the letter width #{choice.fetch('name')} gives #{part} #{value.inspect}: a percentage from 62% to 125%, Archivo's width axis"
+    end
+
     def type_scale(tokens, tablet_below:, phone_below:)
       type = tokens.fetch("type")
       fluid = type.fetch("site").fetch("desktop-fluid")
@@ -317,7 +353,7 @@ module SiteTheme
     # upright rather than in a slanted copy of the face (font-synthesis).
     FACES = {
       "body" => 'font-family: "Source Serif 4", Georgia, serif; font-weight: inherit; font-stretch: normal; letter-spacing: normal; font-synthesis: initial;',
-      "heading" => 'font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: 125%; letter-spacing: var(--face-tracking); font-synthesis: none;'
+      "heading" => 'font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); font-synthesis: none;'
     }.freeze
 
     # The inline margins that put a capped box where its words are aligned.

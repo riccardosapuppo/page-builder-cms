@@ -171,12 +171,14 @@ module Api
       {
         "palette" => style.palette,
         "typeScale" => style.type_scale,
+        "letterWidth" => style.letter_width,
         "updatedAt" => iso(style.updated_at),
         "choices" => {
           "palette" => SiteTokens.slots.transform_values do |slot|
             slot.tones.map { |tone| { "color" => tone, "label" => slot.tone_labels.fetch(tone), "hex" => colors.fetch(tone) } }
           end,
-          "typeScales" => SiteTokens.type_scale_labels.map { |name, label| { "name" => name, "label" => label } }
+          "typeScales" => SiteTokens.type_scale_labels.map { |name, label| { "name" => name, "label" => label } },
+          "letterWidths" => SiteTokens.letter_width_labels.map { |name, label| { "name" => name, "label" => label } }
         }
       }
     end

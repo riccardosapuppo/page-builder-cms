@@ -23,7 +23,7 @@ import {
 } from "../../shared/document.ts";
 import { locate } from "../../document/tree.ts";
 import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
-import { COLUMN_GAP_DEFAULT, slotLabel, slotTone } from "../../shared/site-tokens.ts";
+import { COLUMN_GAP_DEFAULT, letterWidth, slotLabel, slotTone } from "../../shared/site-tokens.ts";
 import { afterRender } from "../act.ts";
 import { RadioField, RadioPairField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
 import { useEditor, useUi } from "../context.tsx";
@@ -194,6 +194,8 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
   const commands = useBlockCommands(block.id);
   const preview = useUi((u) => u.preview);
   const siteStyle = useUi((u) => u.siteStyle);
+  // The Headings typeface's samples, as wide as the site draws it.
+  const sans: CSSProperties = { fontStretch: letterWidth(siteStyle?.letterWidth).display };
   const columnStyle = useColumnStyle(block.id);
   const keys = acceptedKeys(block.type, wanted);
   const style: unknown = block.style;
@@ -331,7 +333,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                   return {
                     value: step,
                     label: tokenName(step),
-                    content: <><span className={sample.sans ? "sans" : undefined} style={{ fontSize: `${sample.size}px` } as CSSProperties}>Aa</span>{sample.label}</>,
+                    content: <><span className={sample.sans ? "sans" : undefined} style={{ fontSize: `${sample.size}px`, ...(sample.sans ? sans : {}) } as CSSProperties}>Aa</span>{sample.label}</>,
                   };
                 })}
                 value={value}
@@ -348,7 +350,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                 choices={TYPEFACE_TOKENS.map((face) => ({
                   value: face,
                   label: tokenName(face),
-                  content: <><span className={face === "heading" ? "sans" : undefined} style={{ fontSize: "18px" } as CSSProperties}>Aa</span>{tokenName(face)}</>,
+                  content: <><span className={face === "heading" ? "sans" : undefined} style={{ fontSize: "18px", ...(face === "heading" ? sans : {}) } as CSSProperties}>Aa</span>{tokenName(face)}</>,
                 }))}
                 value={value}
                 inUse={inUse}

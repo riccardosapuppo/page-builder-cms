@@ -20,14 +20,17 @@ import { SitePart, type SiteParts } from "./theme.tsx";
 export interface SiteStyleChoice {
   palette: Readonly<Record<string, string>>;
   typeScale: string;
+  letterWidth: string;
   choices: {
     palette: Readonly<Record<string, ReadonlyArray<{ color: string }>>>;
     typeScales: ReadonlyArray<{ name: string }>;
+    letterWidths: ReadonlyArray<{ name: string }>;
   };
 }
 
 // data-<slot>="<tone>" for every palette slot whose tone is one of the
-// slot's curated tones, and data-type-scale: tokens.css gives each tone a
+// slot's curated tones, data-type-scale and data-letter-width: tokens.css
+// gives each tone a
 // rule on that attribute, so the style reaches the page with no inline
 // style. A value the choices do not list is left out, and the slot keeps
 // its default tone: SiteHelper#site_style_data.
@@ -39,6 +42,7 @@ export function siteStyleAttributes(style: SiteStyleChoice | null | undefined): 
     if (tone !== undefined && tones.some((t) => t.color === tone)) out[`data-${slot}`] = tone;
   }
   if (style.choices.typeScales.some((t) => t.name === style.typeScale)) out["data-type-scale"] = style.typeScale;
+  if (style.choices.letterWidths.some((w) => w.name === style.letterWidth)) out["data-letter-width"] = style.letterWidth;
   return out;
 }
 

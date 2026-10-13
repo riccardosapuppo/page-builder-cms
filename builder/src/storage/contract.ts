@@ -904,30 +904,37 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
 
   // -------------------------------------------------------- site style
   {
-    name: "the site style takes one of its choices, keeps it, and refuses a tone that is not one at its slot",
+    name: "the site style takes one of its choices, keeps it, keeps its letter width when a change does not name one, and refuses a tone or a width that is not one at its place",
     needs: [],
     async run(env) {
       const before = await env.adapter.getSiteStyle();
       const slots = Object.keys(before.choices.palette);
       env.expect(slots.length).toBeGreaterThan(0);
       env.expect(before.choices.typeScales.length).toBeGreaterThan(1);
+      env.expect(before.choices.letterWidths.length).toBeGreaterThan(1);
       const slot = slots.find((s) => (before.choices.palette[s] ?? []).length > 1);
       if (slot === undefined) throw new Error("no palette slot has two tones to choose between");
       const tone = before.choices.palette[slot]!.find((t) => t.color !== before.palette[slot])!.color;
       const scale = before.choices.typeScales.find((t) => t.name !== before.typeScale)!.name;
+      const width = before.choices.letterWidths.find((w) => w.name !== before.letterWidth)!.name;
       try {
-        const changed = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale }), "the new style");
-        env.expect(changed).toMatchObject({ palette: { ...before.palette, [slot]: tone }, typeScale: scale });
-        env.expect(await env.adapter.getSiteStyle()).toMatchObject({ palette: { [slot]: tone }, typeScale: scale });
+        const changed = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale, letterWidth: width }), "the new style");
+        env.expect(changed).toMatchObject({ palette: { ...before.palette, [slot]: tone }, typeScale: scale, letterWidth: width });
+        env.expect(await env.adapter.getSiteStyle()).toMatchObject({ palette: { [slot]: tone }, typeScale: scale, letterWidth: width });
         // The same style again changes nothing, and keeps the time it was
         // changed at.
         await new Promise((done) => setTimeout(done, 25));
-        const again = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale }), "the same style again");
+        const again = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale, letterWidth: width }), "the same style again");
         env.expect(again.updatedAt, "a change that changes nothing keeps its time").toBe(changed.updatedAt);
+        // A change that does not name the letter width keeps it.
+        const kept = value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: scale }), "a style without its letter width");
+        env.expect(kept).toMatchObject({ palette: before.palette, typeScale: scale, letterWidth: width });
         const problem = refusal(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: "no-such-tone" }, typeScale: before.typeScale }), "a tone not among the choices");
         env.expect(problem.errors.map((e) => e.pointer)).toEqual([`/palette/${slot}`]);
+        const wide = refusal(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, letterWidth: "no-such-width" }), "a letter width not among the choices");
+        env.expect(wide.errors.map((e) => e.pointer)).toEqual(["/letterWidth"]);
       } finally {
-        value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale }), "putting the style back");
+        value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, letterWidth: before.letterWidth }), "putting the style back");
       }
     },
   },

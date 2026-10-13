@@ -3,7 +3,7 @@
 // whole (every slot and the type scale, as the CMS takes it); the contrast
 // of a tone said in words where the site uses it; back to a new site's
 // tone; the type scale, chosen by click or arrows, its steps read from the
-// tokens.
+// tokens; the letter width, its samples drawn at it.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
@@ -22,10 +22,12 @@ function siteStyle(palette: Record<string, string> = {}, typeScale = "balanced")
   return {
     palette: Object.fromEntries(slots.map((slot) => [slot, palette[slot] ?? tones[slot].default])),
     typeScale,
+    letterWidth: "normal",
     updatedAt: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),
       typeScales: tokens["site-type-scale"].choices.map((c) => ({ name: c.name, label: c.label })),
+      letterWidths: tokens["site-letter-width"].choices.map((c) => ({ name: c.name, label: c.label })),
     },
   };
 }
@@ -48,7 +50,7 @@ test("the slots with one tone are rows, the others open on their curated tones, 
   const tones = screen.getByRole("radiogroup", { name: "Primary color" });
   expect(within(tones).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([["Signal", "true"], ["Sea", "false"], ["Harbour", "false"], ["Kelp", "false"], ["Basalt", "false"]]);
   fireEvent.click(within(tones).getByRole("radio", { name: "Harbour" }));
-  expect(changes).toEqual([{ palette: { text: "site-deep-water", background: "site-paper", primary: "site-harbour", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced" }]);
+  expect(changes).toEqual([{ palette: { text: "site-deep-water", background: "site-paper", primary: "site-harbour", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced", letterWidth: "normal" }]);
 });
 
 test("an edited slot says what it was, reads its contrast in words, and resets to a new site's tone", () => {
@@ -98,6 +100,23 @@ test("the type scale is three choices, the arrows move it, and its steps are the
   expect(changes.at(-1)!.typeScale).toBe("gentle");
   expect(ratioWords(1.2)).toBe("a fifth");
   expect(ratioWords(1.414)).toBe("two fifths");
+});
+
+test("the letter width is four choices, Normal on; a choice goes whole to the session, and the type scale's samples are drawn at its width", () => {
+  const { kit, changes } = draw();
+  const group = screen.getByRole("radiogroup", { name: "How wide the Headings typeface is drawn" });
+  expect(within(group).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([["Narrow", "false"], ["Normal", "true"], ["Wide", "false"], ["Widest", "false"]]);
+  const sans = () => [...document.querySelectorAll<HTMLElement>(".scale li .scale-aa:not(.serif)")].map((aa) => aa.style.fontStretch);
+  expect(sans()).toEqual(["100%", "100%", "100%", "100%"]);
+
+  fireEvent.click(within(group).getByRole("radio", { name: "Widest" }));
+  expect(changes.at(-1)).toEqual({ palette: siteStyle().palette, typeScale: "balanced", letterWidth: "widest" });
+  // As the session shows a change at once: the samples follow it.
+  act(() => kit.ui.getState().setSiteStyle({ ...siteStyle(), letterWidth: "widest" }));
+  expect(sans()).toEqual(["125%", "125%", "125%", "125%"]);
+  // A change of the type scale keeps the letter width.
+  fireEvent.click(within(screen.getByRole("radiogroup", { name: "Contrast between sizes" })).getByRole("radio", { name: "Strong" }));
+  expect(changes.at(-1)).toMatchObject({ typeScale: "strong", letterWidth: "widest" });
 });
 
 test("the way back to the Page tab closes it, and the session's word on the last change is said in the head", () => {

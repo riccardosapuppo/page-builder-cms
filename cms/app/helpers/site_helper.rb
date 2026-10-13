@@ -3,8 +3,8 @@
 # The theme around every page: the site style on the page root, and the
 # site's header and footer, its parts (SiteParts).
 module SiteHelper
-  # data-<slot>="<tone>" for every palette slot, and data-type-scale, on
-  # .site: tokens.css gives each curated tone a rule on that attribute, so
+  # data-<slot>="<tone>" for every palette slot, data-type-scale and
+  # data-letter-width, on .site: tokens.css gives each curated tone a rule on that attribute, so
   # the site style reaches the page without an inline style, which the
   # Content-Security-Policy would block. A value the tokens do not list is
   # left out, and the slot keeps its default tone.
@@ -14,6 +14,7 @@ module SiteHelper
       out[name] = palette[name] if slot.tones.include?(palette[name])
     end
     data[:type_scale] = style.type_scale if SiteTokens.type_scales.include?(style.type_scale)
+    data[:letter_width] = style.letter_width if SiteTokens.letter_widths.include?(style.letter_width)
     data
   end
 

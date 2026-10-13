@@ -190,26 +190,39 @@ test("a button dragged from Insert into the header's column is saved as the head
   }
 });
 
-test("the header the site starts with holds one row on a phone 375 wide, Menu folded to its icon, published and in the editor's phone view", async ({ page, request, browser }) => {
+test("the header the site starts with holds one row on a phone, 375 and 320 wide, Menu's pill with its word where its column has room and its icon alone where not, published and in the editor's phone view", async ({ page, request, browser }) => {
   const header = await found(request, "header");
   const { id, slug } = await tidePage(request);
   await publish(request, id);
-  const phone = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: "en-US", timezoneId: "UTC" });
-  try {
-    const tab = await phone.newPage();
-    await tab.goto(`${cms()}/${slug}`);
-    await tab.evaluate(() => document.fonts.ready);
-    await expect(tab.locator("header.sw-header .w-menu-links")).toBeHidden();
-    await expect(tab.locator("header.sw-header .sw-menu-button")).toBeVisible();
-    // The pill its icon alone, its word for a screen reader.
-    expect(await tab.locator("header.sw-header .sw-menu-button").evaluate((pill) => Math.round(pill.getBoundingClientRect().width))).toBe(40);
-    await expect(tab.locator("header.sw-header .w-menu-word")).toHaveCSS("clip-path", "inset(50%)");
-    const fit = await headerFit(tab, "header.sw-header");
-    expect(fit).toMatchObject({ sideways: 0, blocks: 3, inside: true, oneRow: true });
-    expect(fit.height).toBeLessThanOrEqual(72);
-    console.log(`site parts: at 375 the header is ${fit.height} px tall, on one row`);
-  } finally {
-    await phone.close();
+  for (const width of [375, 320]) {
+    const phone = await browser.newContext({ viewport: { width, height: 812 }, locale: "en-US", timezoneId: "UTC" });
+    try {
+      const tab = await phone.newPage();
+      await tab.goto(`${cms()}/${slug}`);
+      await tab.evaluate(() => document.fonts.ready);
+      await expect(tab.locator("header.sw-header .w-menu-links")).toBeHidden();
+      await expect(tab.locator("header.sw-header .sw-menu-button")).toBeVisible();
+      // The menu's column, which its container query reads, and the pill.
+      const { column, pill } = await tab.locator("header.sw-header .w-menu").evaluate((menu) => ({
+        column: menu.getBoundingClientRect().width,
+        pill: Math.round(menu.querySelector(".sw-menu-button")!.getBoundingClientRect().width),
+      }));
+      if (column < 104) {
+        // No room for its word: the pill its icon alone, its word for a
+        // screen reader.
+        expect(pill, `at ${width}`).toBe(40);
+        await expect(tab.locator("header.sw-header .w-menu-word")).toHaveCSS("clip-path", "inset(50%)");
+      } else {
+        expect(pill, `at ${width}`).toBeGreaterThan(40);
+        await expect(tab.locator("header.sw-header .w-menu-word")).toHaveCSS("clip-path", "none");
+      }
+      const fit = await headerFit(tab, "header.sw-header");
+      expect(fit, `at ${width}`).toMatchObject({ sideways: 0, blocks: 3, inside: true, oneRow: true });
+      expect(fit.height).toBeLessThanOrEqual(72);
+      console.log(`site parts: at ${width} the header is ${fit.height} px tall, on one row; Menu's column ${Math.round(column)} px, its pill ${pill}`);
+    } finally {
+      await phone.close();
+    }
   }
   // The editor's phone view draws the header being edited the same way.
   await open(page, header.part.id);

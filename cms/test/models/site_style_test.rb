@@ -7,6 +7,7 @@ class SiteStyleTest < ActiveSupport::TestCase
     assert_not style.persisted?
     assert_equal "site-signal", style.palette["primary"]
     assert_equal "balanced", style.type_scale
+    assert_equal "normal", style.letter_width
     assert style.valid?
   end
 
@@ -16,6 +17,7 @@ class SiteStyleTest < ActiveSupport::TestCase
     assert_equal tokens["site-tones"].keys.reject { |k| k.start_with?("$") }, SiteTokens.slots.keys
     assert_equal tokens["site-tones"]["accent"]["tones"].map { |t| t["color"] }, SiteTokens.slots["accent"].tones
     assert_equal %w[gentle balanced strong], SiteTokens.type_scales
+    assert_equal %w[narrow normal wide widest], SiteTokens.letter_widths
   end
 
   test "a curated tone for a slot is accepted" do
@@ -42,5 +44,13 @@ class SiteStyleTest < ActiveSupport::TestCase
 
     assert_not style.valid?
     assert style.errors[:type_scale].any?
+  end
+
+  test "a letter width that is not one of the choices is refused" do
+    style = SiteStyle.current
+    style.letter_width = "125%"
+
+    assert_not style.valid?
+    assert style.errors[:letter_width].any?
   end
 end

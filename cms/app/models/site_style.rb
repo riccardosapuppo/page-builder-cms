@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# The site style: which tone each palette slot has, and how strongly the
-# type scale steps up. Every published page takes its colours and sizes
+# The site style: which tone each palette slot has, how strongly the type
+# scale steps up, and how wide the Headings typeface is drawn. Every published page takes its colours and sizes
 # from it. Only the values of schema/tokens.json are accepted (SiteTokens):
 # there is no free colour and no free size.
 #
@@ -12,9 +12,10 @@ class SiteStyle < ApplicationRecord
 
   validate :palette_has_a_curated_tone_for_every_slot
   validates :type_scale, inclusion: { in: ->(_) { SiteTokens.type_scales }, message: "is not one of the type-scale choices" }
+  validates :letter_width, inclusion: { in: ->(_) { SiteTokens.letter_widths }, message: "is not one of the letter-width choices" }
 
   def self.current
-    find_by(id: ID) || new(id: ID, palette: SiteTokens.default_palette, type_scale: SiteTokens.default_type_scale)
+    find_by(id: ID) || new(id: ID, palette: SiteTokens.default_palette, type_scale: SiteTokens.default_type_scale, letter_width: SiteTokens.default_letter_width)
   end
 
   # Errors on one slot are recorded as "palette/<slot>"; this is the value

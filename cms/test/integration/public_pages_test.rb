@@ -262,6 +262,18 @@ class PublicPagesTest < ActionDispatch::IntegrationTest
     assert_includes response.body, %(.site[data-type-scale="strong"] .sw {\n  --fs-display: 102px;)
   end
 
+  test "the letter width the site style chose reaches the page, and the stylesheet has its widths" do
+    SiteStyle.create!(id: SiteStyle::ID, palette: SiteTokens.default_palette, type_scale: "balanced", letter_width: "widest")
+    publish(title: "Slack Water", slug: "home", home: true)
+
+    get "/"
+
+    assert_select ".site[data-letter-width=widest]"
+    get css_path("tokens")
+    assert_includes response.body, %(.sw { --stretch-display: 100%; --stretch-strong: 100%; --stretch-ui: 100%; })
+    assert_includes response.body, %(.site[data-letter-width="widest"] .sw { --stretch-display: 125%; --stretch-strong: 115%; --stretch-ui: 110%; })
+  end
+
   test "a library image is served from this site, with its size and alt text" do
     blob = uploaded_blob(png_bytes(width: 4, height: 3))
     item = MediaItem.create_from_upload!(signed_blob_id: blob.signed_id, width: 4, height: 3, alt: "")

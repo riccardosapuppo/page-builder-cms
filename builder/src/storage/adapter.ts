@@ -229,17 +229,25 @@ export interface TypeScaleChoice {
   label: string;
 }
 
+export interface LetterWidthChoice {
+  name: string;
+  label: string;
+}
+
 export interface SiteStyle {
   // A tone for every palette slot, by colour name.
   palette: Record<string, string>;
   typeScale: string;
+  // How wide the Headings typeface is drawn.
+  letterWidth: string;
   // null until the style is first changed.
   updatedAt: Time | null;
-  // The values each part may take: the curated tones of each slot, and the
-  // type scales.
+  // The values each part may take: the curated tones of each slot, the
+  // type scales and the letter widths.
   choices: {
     palette: Record<string, ToneChoice[]>;
     typeScales: TypeScaleChoice[];
+    letterWidths: LetterWidthChoice[];
   };
 }
 
@@ -381,6 +389,8 @@ export interface Upload {
 export interface SiteStyleChange {
   palette: Record<string, string>;
   typeScale: string;
+  // Without it, the style keeps its own.
+  letterWidth?: string;
 }
 
 export interface CallOptions {

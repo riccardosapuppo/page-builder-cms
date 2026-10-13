@@ -43,11 +43,12 @@ export function defaultTone(slot: PaletteSlot): string {
 // The site style's choices and the style a new site starts with, read as
 // the server's SiteTokens reads them (cms/app/models/site_tokens.rb): every
 // slot of site-tones in the file's order, its tones with their colours,
-// and the type scales. For the browser's storage adapter, which keeps the
-// site style itself.
+// the type scales and the letter widths. For the browser's storage
+// adapter, which keeps the site style itself.
 export interface SiteStyleChoices {
   palette: Record<string, Array<{ color: string; label: string; hex: string }>>;
   typeScales: Array<{ name: string; label: string }>;
+  letterWidths: Array<{ name: string; label: string }>;
 }
 
 const SLOT_ENTRIES = Object.entries(TONES).filter(([name]) => !name.startsWith("$")) as Array<[string, { label: string; default: string; tones: Array<{ color: string; label: string }> }]>;
@@ -56,11 +57,27 @@ export function siteStyleChoices(): SiteStyleChoices {
   return {
     palette: Object.fromEntries(SLOT_ENTRIES.map(([name, slot]) => [name, slot.tones.map((tone) => ({ color: tone.color, label: tone.label, hex: COLORS[tone.color]! }))])),
     typeScales: tokens["site-type-scale"].choices.map((choice) => ({ name: choice.name, label: choice.label })),
+    letterWidths: WIDTHS.choices.map((choice) => ({ name: choice.name, label: choice.label })),
   };
 }
 
-export function defaultSiteStyle(): { palette: Record<string, string>; typeScale: string } {
-  return { palette: Object.fromEntries(SLOT_ENTRIES.map(([name, slot]) => [name, slot.default])), typeScale: tokens["site-type-scale"].default };
+export function defaultSiteStyle(): { palette: Record<string, string>; typeScale: string; letterWidth: string } {
+  return {
+    palette: Object.fromEntries(SLOT_ENTRIES.map(([name, slot]) => [name, slot.default])),
+    typeScale: tokens["site-type-scale"].default,
+    letterWidth: WIDTHS.default,
+  };
+}
+
+const WIDTHS = tokens["site-letter-width"];
+
+// The widths a letter-width choice draws the Headings typeface at, by its
+// name ("normal"): display for headings and the logo, strong for buttons,
+// ui for labels and captions, as tokens.css gives them to the page. The
+// default's for a name the tokens do not have.
+export function letterWidth(name: string | null | undefined): { display: string; strong: string; ui: string } {
+  const choice = WIDTHS.choices.find((c) => c.name === name) ?? WIDTHS.choices.find((c) => c.name === WIDTHS.default)!;
+  return { display: choice.display, strong: choice.strong, ui: choice.ui };
 }
 
 // The steps of the site's type, largest first, as Site style names them.

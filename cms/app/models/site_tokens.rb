@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 # What the site style may hold, read from schema/tokens.json: the palette
-# slots with their curated tones and defaults (site-tones) and the
-# type-scale choices (site-type-scale). The schema lint checks that the
+# slots with their curated tones and defaults (site-tones), the type-scale
+# choices (site-type-scale) and the letter widths (site-letter-width). The schema lint checks that the
 # schema's slot names are these, so the editor, the schema and this server
 # share one list.
 module SiteTokens
@@ -39,6 +39,18 @@ module SiteTokens
 
   def default_type_scale
     read.fetch("site-type-scale").fetch("default")
+  end
+
+  def letter_widths
+    letter_width_labels.keys
+  end
+
+  def letter_width_labels
+    @letter_width_labels ||= read.fetch("site-letter-width").fetch("choices").to_h { |choice| [ choice.fetch("name"), choice.fetch("label") ] }.freeze
+  end
+
+  def default_letter_width
+    read.fetch("site-letter-width").fetch("default")
   end
 
   def read

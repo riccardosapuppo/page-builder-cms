@@ -8,7 +8,7 @@
 // request, since they read the style when they are drawn.
 import { useId, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { SiteStyle } from "../storage/adapter.ts";
-import { contrastRatio, defaultTone, PALETTE_SLOTS, slotLabel, typeScale } from "../shared/site-tokens.ts";
+import { contrastRatio, defaultTone, letterWidth, PALETTE_SLOTS, slotLabel, typeScale } from "../shared/site-tokens.ts";
 import type { PaletteSlot } from "../shared/document.ts";
 import { useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
@@ -60,10 +60,11 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
       </section>
     );
   }
-  const change = (palette: Record<string, string>, scale: string) => session.saveSiteStyle({ palette, typeScale: scale });
+  const change = (palette: Record<string, string>, scale: string, width = style.letterWidth) => session.saveSiteStyle({ palette, typeScale: scale, letterWidth: width });
   const hex = (slot: PaletteSlot, tone = style.palette[slot]) => style.choices.palette[slot]?.find((t) => t.color === tone)?.hex ?? "#000000";
   const scale = typeScale(style.typeScale);
   const scaleLabel = style.choices.typeScales.find((t) => t.name === style.typeScale)?.label ?? style.typeScale;
+  const widths = letterWidth(style.letterWidth);
 
   return (
     <section className="view site-style" aria-labelledby={headId}>
@@ -147,7 +148,7 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
             <ul className="scale" aria-labelledby={`${headId}-scale`}>
               {scale.steps.map((step, index) => (
                 <li key={step.key} title={`${step.size} px in a wide window, line height ${step.lineHeight}`}>
-                  <span className={`scale-aa${step.sans ? "" : " serif"}`} style={{ fontSize: `${SAMPLE_PX[index]}px`, ...(step.sans ? { fontStretch: "125%", fontWeight: index < 3 ? 700 : 600 } : {}) }} aria-hidden="true">Aa</span>
+                  <span className={`scale-aa${step.sans ? "" : " serif"}`} style={{ fontSize: `${SAMPLE_PX[index]}px`, ...(step.sans ? { fontStretch: widths.display, fontWeight: index < 3 ? 700 : 600 } : {}) }} aria-hidden="true">Aa</span>
                   <span className="scale-name">{step.label}</span>
                   <span className="scale-num"><span className="visually-hidden">: </span>{step.size}<span className="visually-hidden"> px</span></span>
                 </li>
@@ -156,6 +157,18 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
             <p className="hint">{scaleLabel}: each size is about {ratioWords(scale.ratio)} larger than the next. Sizes in a wide window; a narrower one shrinks them all together.</p>
           </>
         )}
+
+        <h3 className="group-title">Letter width</h3>
+        <div className="field field-tight">
+          <Choice
+            label="How wide the Headings typeface is drawn"
+            className="seg seg-text seg-fill"
+            options={style.choices.letterWidths.map((w) => ({ value: w.name, label: w.label }))}
+            value={style.letterWidth}
+            onChange={(name) => change(style.palette, style.typeScale, name)}
+          />
+        </div>
+        <p className="hint">How wide the letters of the headings, the logo, buttons and labels are drawn. Menus keep their own width.</p>
       </div>
     </section>
   );

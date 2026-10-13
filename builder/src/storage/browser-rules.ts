@@ -86,6 +86,7 @@ export const WORDS = {
   toneOf: (tones: readonly string[]) => `must be one of ${tones.join(", ")}`,
   notASlot: "is not a palette slot",
   typeScale: "is not one of the type-scale choices",
+  letterWidth: "is not one of the letter-width choices",
   // The messages of the API's error answers.
   malformedJson: "The body is not valid JSON.",
   invalidRequest: "The request is not valid.",
@@ -230,7 +231,9 @@ export function mediaRefs(document: unknown): Array<[string, string]> {
 // SiteStyle's checks of a whole style: every slot of the palette named,
 // each with one of its tones, nothing else; and a type scale of the
 // choices. At /palette/<slot> and /typeScale.
-export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unknown, slots: Readonly<Record<string, readonly string[]>>, typeScales: readonly string[]): FieldError[] {
+// The letter width is checked only when the change names one: without it
+// the style keeps its own.
+export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unknown, slots: Readonly<Record<string, readonly string[]>>, typeScales: readonly string[], letterWidth?: unknown, letterWidths: readonly string[] = []): FieldError[] {
   const errors: FieldError[] = [];
   for (const [slot, tones] of Object.entries(slots)) {
     if (!Object.hasOwn(palette, slot)) errors.push(fieldError(`/palette/${escapePointer(slot)}`, "blank", WORDS.slotMissing));
@@ -240,5 +243,6 @@ export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unk
     if (!Object.hasOwn(slots, name)) errors.push(fieldError(`/palette/${escapePointer(name)}`, "unknown", WORDS.notASlot));
   }
   if (typeof typeScale !== "string" || !typeScales.includes(typeScale)) errors.push(fieldError("/typeScale", "inclusion", WORDS.typeScale));
+  if (letterWidth !== undefined && (typeof letterWidth !== "string" || !letterWidths.includes(letterWidth))) errors.push(fieldError("/letterWidth", "inclusion", WORDS.letterWidth));
   return errors;
 }

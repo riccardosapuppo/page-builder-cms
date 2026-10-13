@@ -141,6 +141,21 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_not_equal held, response.headers["ETag"]
   end
 
+  test "a change of the letter width alone is a new page for every browser" do
+    published
+    get "/tides"
+    held = response.headers["ETag"]
+    assert_select ".site[data-letter-width=normal]"
+
+    api(:put, "/api/site-style", { "palette" => SiteTokens.default_palette, "typeScale" => SiteTokens.default_type_scale, "letterWidth" => "widest" })
+    assert_response :ok
+    get "/tides", headers: { "If-None-Match" => held }
+
+    assert_response :ok
+    assert_select ".site[data-letter-width=widest]"
+    assert_not_equal held, response.headers["ETag"]
+  end
+
   # A header or footer published applies to every page at once, with no
   # page published. The pages are asked for with the cache on, so a stale
   # outer fragment would answer with the old header even under a new ETag.

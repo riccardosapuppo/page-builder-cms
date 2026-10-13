@@ -41,10 +41,12 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
   return {
     palette: Object.fromEntries(slots.map((slot) => [slot, palette[slot] ?? tones[slot].default])),
     typeScale: "balanced",
+    letterWidth: "normal",
     updatedAt: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),
       typeScales: tokens["site-type-scale"].choices.map((c) => ({ name: c.name, label: c.label })),
+      letterWidths: tokens["site-letter-width"].choices.map((c) => ({ name: c.name, label: c.label })),
     },
   };
 }

@@ -131,8 +131,12 @@ tone of each slot (Signal, Sea, Harbour...), and every block that uses the
 slot follows. `site-tones` in `tokens.json` lists the six slots of the
 approved mock, each with the tones the site owner may choose from (curated,
 never a free colour) and the tone a new site starts with; `site-type-scale`
-lists the other choice of the site style, Gentle, Balanced or Strong, each
-naming the sizes it draws under `type`. Balanced is the mock's scale
+lists a choice of the site style, Gentle, Balanced or Strong, each naming
+the sizes it draws under `type`; `site-letter-width` the third, how wide
+the Headings typeface (Archivo) is drawn, Narrow, Normal (a new site's),
+Wide or Widest, each three widths of Archivo's width axis: for headings
+and the logo, for buttons, for labels. A menu keeps its own width, the one
+its fold is measured at. Balanced is the mock's scale
 (`type.site`, each step about a third above the next in a wide window).
 The mock names Gentle and Strong without drawing them; their sizes
 (`type.site-gentle`, `type.site-strong`) follow the panel's hint, a step
@@ -406,8 +410,9 @@ The first six were run on 8 October 2026 on the corpus as it stood then,
   the section steps, and every crop's value is the ratio its name says
   (`16:9` is `16 / 9`); the palette-slot enum is the slots of `site-tones`, and
   the background enum is `none` and those slots. Every tone is a colour of
-  `tokens.json`, every slot's default is one of its tones, and the type
-  scale's default is one of its choices. Every type-scale choice draws a
+  `tokens.json`, every slot's default is one of its tones, the type
+  scale's default is one of its choices, and so is the letter width's, each
+  of its widths on Archivo's axis (62% to 125%). Every type-scale choice draws a
   scale of its own under `type`, with a size and line height for every
   step on every device, each size smaller than the one above it, and no
   two choices give a heading step the same size on the same device: with

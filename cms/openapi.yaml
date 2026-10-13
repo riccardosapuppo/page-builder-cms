@@ -927,7 +927,7 @@ paths:
     put:
       operationId: setSiteStyle
       summary: Change the site style
-      description: The whole style, every palette slot named, each with one of its curated tones.
+      description: The whole style, every palette slot named, each with one of its curated tones. The letter width when given; without it, the style keeps its own.
       tags: [site-style]
       requestBody:
         required: true
@@ -941,6 +941,8 @@ paths:
                 palette:
                   $ref: '#/components/schemas/Palette'
                 typeScale:
+                  type: string
+                letterWidth:
                   type: string
       responses:
         '200':
@@ -1386,11 +1388,14 @@ components:
     SiteStyle:
       type: object
       additionalProperties: false
-      required: [palette, typeScale, updatedAt, choices]
+      required: [palette, typeScale, letterWidth, updatedAt, choices]
       properties:
         palette:
           $ref: '#/components/schemas/Palette'
         typeScale:
+          type: string
+        letterWidth:
+          description: How wide the Headings typeface is drawn.
           type: string
         updatedAt:
           description: Null until the style is first changed.
@@ -1399,7 +1404,7 @@ components:
           description: The values each part of the style may take, from schema/tokens.json.
           type: object
           additionalProperties: false
-          required: [palette, typeScales]
+          required: [palette, typeScales, letterWidths]
           properties:
             palette:
               type: object
@@ -1418,6 +1423,17 @@ components:
                       type: string
                       pattern: '^#[0-9A-Fa-f]{6}$'
             typeScales:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [name, label]
+                properties:
+                  name:
+                    type: string
+                  label:
+                    type: string
+            letterWidths:
               type: array
               items:
                 type: object

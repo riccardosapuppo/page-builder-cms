@@ -858,7 +858,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     if (!shown) return;
     const queue = styleQueue.current;
     queue.kept ??= shown;
-    ui.getState().setSiteStyle({ ...shown, palette: change.palette, typeScale: change.typeScale });
+    ui.getState().setSiteStyle({ ...shown, palette: change.palette, typeScale: change.typeScale, letterWidth: change.letterWidth ?? shown.letterWidth });
     setStyleSave({ phase: "saving" });
     queue.next = change;
     if (queue.busy) return;

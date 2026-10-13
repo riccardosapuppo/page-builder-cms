@@ -34,8 +34,9 @@ const SLOTS = ["text", "background", "primary", "accent", "soft", "muted"] as co
 const STYLE: SiteStyle = {
   palette: Object.fromEntries(SLOTS.map((slot) => [slot, tokens["site-tones"][slot].default])),
   typeScale: "balanced",
+  letterWidth: "normal",
   updatedAt: null,
-  choices: { palette: {}, typeScales: [] },
+  choices: { palette: {}, typeScales: [], letterWidths: [] },
 };
 
 const labelled = (label: string): PageDocument => {

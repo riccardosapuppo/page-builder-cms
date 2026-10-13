@@ -470,7 +470,8 @@ textarea.input { resize: vertical; }
 .steps:has(> button:nth-child(2):last-child) { grid-template-columns: repeat(2, 1fr); }
 .steps button { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 54px; padding-bottom: 7px; border-radius: var(--r-control); background: var(--key); color: var(--graphite); font-size: 12px; font-weight: 500; box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
 .steps button span { font-family: "Source Serif 4", serif; line-height: 1; }
-.steps button span.sans { font-family: "Archivo", sans-serif; font-stretch: 125%; font-weight: 700; }
+/* As wide as the site draws the Headings typeface: the sample's own style. */
+.steps button span.sans { font-family: "Archivo", sans-serif; font-weight: 700; }
 .steps button:hover { background: var(--alloy); }
 .steps button[aria-checked="true"] { background: var(--graphite); color: var(--white); box-shadow: none; }
 .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
