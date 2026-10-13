@@ -339,6 +339,7 @@ test.describe("a form in a part", () => {
       await page.getByRole("menu", { name: "Form actions" }).getByRole("menuitem", { name: /^Copy/ }).click();
       await open(page, footer.part.id);
       await block(page, "footer-text").click();
+      await expect(block(page, "footer-text")).toBeFocused();
       await page.keyboard.press("Control+v");
       const pasted = page.locator('.canvas [data-editing-part="footer"] [data-block-type="form"]');
       await expect(pasted).toHaveCount(1);

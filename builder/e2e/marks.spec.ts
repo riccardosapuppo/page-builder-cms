@@ -440,6 +440,7 @@ test("a short block chosen by the keyboard at the canvas's bottom edge comes int
   }
   // Written there, the text keeps its caret in view as it grows.
   await page.keyboard.press("ArrowUp");
+  await expect(block(page, "t2")).toBeFocused();
   await page.keyboard.press("Enter");
   await settledTextEditor(page, "t2");
   await page.keyboard.press("Enter");

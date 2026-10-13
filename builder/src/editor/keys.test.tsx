@@ -459,9 +459,16 @@ test("a heading is written where it stands, as a text: Enter opens its line, and
   });
   await waitFor(() => expect(focused()).toBe("h1"));
 
-  // On a text, the editor is asked for, the character waiting for it.
+  // On a text, the editor is asked for, the character waiting for it. The
+  // editor is a chunk of its own, which the canvas fetches once a text is
+  // selected; it is waited for here, since an editor that suspends inside
+  // the key's act is never drawn again in this environment, and whether an
+  // earlier test had fetched it in time made this one pass or hang.
   press("ArrowDown");
   await waitFor(() => expect(focused()).toBe("t1"));
+  await act(async () => {
+    await import("./rich/TextEditor.tsx");
+  });
   press("x");
   expect(kit.ui.getState().editingText?.id).toBe("t1");
   const text = await screen.findByRole("textbox", { name: /^Text/ });

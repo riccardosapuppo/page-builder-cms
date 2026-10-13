@@ -182,12 +182,15 @@ test("seams: none shows until the pointer finds one, the page's top and foot amo
 test("the + key opens after the selection: a block after a widget, a section after a section, at a column's end, a section at the page's end with nothing selected", async ({ page, request }) => {
   const { id } = await makePage(request, "Plus key", fixture());
   await open(page, id);
-  // Esc gives the focus back to the block the picker opened from, a frame
-  // after the picker is gone: the next key waits for it, or on a slow
-  // machine it lands on the page's body and nothing hears it.
+  // The picker takes the focus once it stands beside its line, a moment
+  // after it shows, and Esc gives the focus back to the block it opened
+  // from a frame after it is gone: each next key waits for the focus, or
+  // on a slow machine it lands on the page's body and nothing hears it.
   const opens = async (title: string, from?: string) => {
     await page.keyboard.press("+");
-    await expect(page.getByRole("dialog", { name: title })).toBeVisible();
+    const picker = page.getByRole("dialog", { name: title });
+    await expect(picker).toBeVisible();
+    await expect(picker.getByRole("searchbox")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     if (from) await expect(block(page, from)).toBeFocused();

@@ -286,7 +286,9 @@ test.describe("from the picker a + opens", () => {
     // Esc while it moves puts it back: the picker comes back as it was,
     // the focus on its key, nothing added.
     await page.keyboard.press("Space");
+    await expect(caption(page).locator("strong")).toHaveText("Gallery will be added to Column 1 in First, after Quote.");
     await page.keyboard.press("ArrowRight");
+    await expect(caption(page).locator("strong")).toHaveText("Gallery will be added to Column 2 in First, after Divider.");
     await page.keyboard.press("Escape");
     await expect(caption(page)).toHaveText("Cancelled: nothing was added.");
     await expect(picker).toHaveCSS("opacity", "1");
