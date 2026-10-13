@@ -92,6 +92,7 @@ export interface DraftBlock {
   id: string;
   type: string;
   props: Record<string, unknown>;
+  style?: Record<string, unknown>;
   children: DraftBlock[];
 }
 

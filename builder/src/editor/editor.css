@@ -460,11 +460,28 @@ textarea.input { resize: vertical; }
 .ruler-wide .ruler-nums { font-size: 11px; line-height: 13px; }
 .ruler-wide .ruler-nums b { white-space: normal; text-align: center; }
 
-.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
-.swatches button { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
-.swatches button[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--graphite), inset 0 0 0 4px var(--white); }
-.swatches button .pick-check { right: -5px; bottom: -5px; }
+/* A colour's choices (StyleFields.tsx, ColorPalette.tsx): round tiles, ten
+   to a row, the site's colours above the palette so the two rows line up.
+   The colour in use is ringed outside its circle, white then graphite,
+   which reads beside any colour; a hue whose shades are shown, in steel. */
+.field-lead { margin: 0 0 6px; font-size: 11px; line-height: 14px; font-weight: 600; color: var(--steel); }
+.swatches, .palette-hues, .palette-shades { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+.swatches button, .palette-hues button, .palette-shades button {
+  position: relative; aspect-ratio: 1; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgb(27 31 36 / .14);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  -webkit-touch-callout: none; user-select: none; touch-action: manipulation;
+}
+.swatches button:hover, .palette-hues button:hover, .palette-shades button:hover { transform: scale(1.1); }
+.swatches button[aria-checked="true"], .palette-hues button[aria-pressed="true"], .palette-shades button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--graphite); }
+.palette-hues button[aria-expanded="true"]:not([aria-pressed="true"]) { box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--rule); }
 .swatches .sw-none { background: linear-gradient(135deg, transparent 46%, var(--rule) 46%, var(--rule) 54%, transparent 54%), var(--white); }
+.palette { display: grid; gap: 0; margin-top: 12px; }
+.palette-shades { margin-top: 10px; padding: 8px; border-radius: var(--r-control); background: var(--white); box-shadow: inset 0 0 0 1px var(--hair); }
+.palette .hint { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .swatches button, .palette-hues button, .palette-shades button { transition: none; }
+  .swatches button:hover, .palette-hues button:hover, .palette-shades button:hover { transform: none; }
+}
 .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 /* Two choices (Typeface's) share the row. */
 .steps:has(> button:nth-child(2):last-child) { grid-template-columns: repeat(2, 1fr); }
@@ -968,6 +985,20 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
    ring outside. */
 .tones button.is-on::before { box-shadow: inset 0 0 0 2px var(--graphite), inset 0 0 0 4px var(--white); }
 .tones button .pick-check { right: -4px; top: -6px; }
+/* A free colour's picker (ColorPicker.tsx): the area of saturation and
+   brightness over the hue, the hue bar, the colour as hex. Its thumbs are
+   rings of white and graphite, which read on any colour. */
+.cp { display: grid; gap: 10px; margin-top: 10px; }
+.cp-area { position: relative; height: 132px; border-radius: var(--r-control); background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--hue)); box-shadow: inset 0 0 0 1px var(--hair); cursor: crosshair; touch-action: none; }
+.cp-hue { position: relative; height: 14px; margin: 0 7px; border-radius: 999px; background: linear-gradient(to right, #f00, #ff0 16.67%, #0f0 33.33%, #0ff 50%, #00f 66.67%, #f0f 83.33%, #f00); box-shadow: inset 0 0 0 1px var(--hair); cursor: ew-resize; touch-action: none; }
+.cp-thumb { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--white), 0 0 0 3px rgb(27 31 36 / .5), 0 2px 6px rgb(27 31 36 / .3); pointer-events: none; }
+.cp-hue .cp-thumb { top: 50%; background: var(--hue); }
+.cp-hex { display: grid; grid-template-columns: 32px 1fr; align-items: center; gap: 8px; margin: 0; }
+.cp-swatch { width: 32px; height: 32px; border-radius: var(--r-control); background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
+.cp-hex .input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .02em; }
+/* The palette's last tile, which opens the picker: the hue wheel until a
+   colour of no hue is in use, then that colour. */
+.palette-hues button.palette-custom { background: var(--c, conic-gradient(from 90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)); }
 .checks { list-style: none; padding: 0; display: grid; gap: 3px; margin-top: 10px; }
 .checks li { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 16px; color: var(--graphite); }
 .checks .i { width: 16px; height: 16px; stroke-width: 2; flex: none; }

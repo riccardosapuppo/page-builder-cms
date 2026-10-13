@@ -14,7 +14,7 @@
 // Remove that takes the device's key out, so the device follows the
 // desktop again (./device-style.ts, backToDesktop: never the desktop's
 // value written in its place).
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { Fragment, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { REMOVE } from "../../document/commands.ts";
 import { STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
@@ -23,12 +23,17 @@ import {
 } from "../../shared/document.ts";
 import { locate } from "../../document/tree.ts";
 import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
-import { COLUMN_GAP_DEFAULT, letterWidth, slotLabel, slotTone } from "../../shared/site-tokens.ts";
+import { DARK_SLOTS, isFreeColor, normalizeHex, wordsOn, type FreeColor } from "../../shared/free-colors.ts";
+import { COLUMN_GAP_DEFAULT, contrastRatio, letterWidth, slotLabel, slotTone } from "../../shared/site-tokens.ts";
+import { ColorPalette } from "../ColorPalette.tsx";
+import { ColorPicker } from "../ColorPicker.tsx";
+import { previewedStyle } from "../color-preview.ts";
 import { afterRender } from "../act.ts";
 import { RadioField, RadioPairField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
-import { useEditor, useUi } from "../context.tsx";
+import { useEditor, useEnv, useUi } from "../context.tsx";
 import { backToDesktop, deviceOf, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
 import { Icon } from "../icons.tsx";
+import { contrastWords } from "../SiteStylePanel.tsx";
 import { useBlockCommands } from "./hooks.ts";
 import { spaceSteps } from "./steps.ts";
 
@@ -189,17 +194,53 @@ export function useColumnStyle(id: string): unknown {
   });
 }
 
+// The background a block stands on, where it sets none: its column's, then
+// its section's, as the previewed device shows them; null for the page's.
+function useBackdrop(id: string, device: ReturnType<typeof deviceOf>): string | null {
+  return useEditor((s) => {
+    let found = locate(s.document, id);
+    while (found?.parentId) {
+      const parent = locate(s.document, found.parentId);
+      if (!parent) break;
+      const value = shownValue(parent.block.style, device, "background");
+      if (value !== null && value !== "none") return value;
+      found = parent;
+    }
+    return null;
+  });
+}
+
 // The block's settings of `keys`, those its type accepts.
 export function StyleFields({ block, keys: wanted }: { block: Block; keys: readonly StyleKey[] }) {
   const commands = useBlockCommands(block.id);
   const preview = useUi((u) => u.preview);
   const siteStyle = useUi((u) => u.siteStyle);
+  const { ui } = useEnv();
   // The Headings typeface's samples, as wide as the site draws it.
   const sans: CSSProperties = { fontStretch: letterWidth(siteStyle?.letterWidth).display };
   const columnStyle = useColumnStyle(block.id);
   const keys = acceptedKeys(block.type, wanted);
   const style: unknown = block.style;
   const device = deviceOf(preview);
+  const backdrop = useBackdrop(block.id, device);
+  // The colour whose picker is open (the palette's Custom tile).
+  const [picking, setPicking] = useState<{ id: string; key: "background" | "color" } | null>(null);
+  // A slot's tone or a free colour, as a colour.
+  const hexOf = (value: string): string => (isFreeColor(value) ? value : slotTone(value as PaletteSlot, siteStyle?.palette).hex);
+  const site = { text: slotTone("text", siteStyle?.palette).hex, background: slotTone("background", siteStyle?.palette).hex };
+  // The background the block shows on the previewed device, its own or the
+  // one it stands on, and the colour of its words there: its own colour, or
+  // the one that background brings (tokens.css, ../../shared/free-colors.ts).
+  // A colour being picked for the block is measured as the canvas draws it
+  // (../color-preview.ts), so the contrast follows a drag.
+  const colorPreview = useUi((u) => u.colorPreview);
+  const measured = colorPreview !== null && "id" in colorPreview && colorPreview.id === block.id ? previewedStyle(style, colorPreview) : style;
+  const ownBackground = shownValue(measured, device, "background");
+  const background = ownBackground !== null && ownBackground !== "none" ? ownBackground : (backdrop ?? "background");
+  const pairedWords = isFreeColor(background) ? wordsOn(background, site) : DARK_SLOTS.includes(background as PaletteSlot) ? site.background : site.text;
+  const ownColor = shownValue(measured, device, "color");
+  const wordsHex = ownColor !== null ? hexOf(ownColor) : pairedWords;
+  const backgroundHex = hexOf(background);
 
   const swatch = (slot: PaletteSlot): Choice<string> => {
     const tone = slotTone(slot, siteStyle?.palette);
@@ -309,19 +350,66 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
           case "spaceBelow":
             return <RulerField key={key} {...common} steps={spaceSteps(SECTION_SPACE_TOKENS)} value={value} ring={ring} onChange={set} />;
           case "background":
+          case "color": {
+            const free = isFreeColor(value) ? value : null;
+            const open = picking?.id === block.id && picking.key === key;
+            const slots = key === "background" ? SWATCH_ORDER.filter((slot) => (BACKGROUND_TOKENS as readonly string[]).includes(slot)).map(swatch) : SWATCH_ORDER.map(swatch);
+            const choices: Choice<string>[] = [...(key === "background" ? [{ value: "none", label: "None" }] : []), ...slots];
+            // A divider's and an accordion's colour is their lines', not
+            // words: no contrast of words to say.
+            const words = key === "color" ? !(block.type === "divider" || block.type === "accordion") : true;
+            const own = key === "color" ? ownColor !== null : ownBackground !== null && ownBackground !== "none";
+            const start: FreeColor = free ?? normalizeHex(key === "color" ? wordsHex : backgroundHex) ?? "#000000";
+            const check = contrastWords(contrastRatio(wordsHex, backgroundHex));
             return (
-              <RadioField
-                key={key}
-                {...common}
-                look="swatches"
-                choices={[{ value: "none", label: "None" }, ...SWATCH_ORDER.filter((slot) => (BACKGROUND_TOKENS as readonly string[]).includes(slot)).map(swatch)]}
-                value={value}
-                inUse={inUse}
-                onChange={set}
-              />
+              <Fragment key={key}>
+                <RadioField
+                  {...common}
+                  look="swatches"
+                  lead="Site colours"
+                  choices={choices}
+                  value={value}
+                  inUse={inUse}
+                  onChange={(next) => {
+                    setPicking(null);
+                    return set(next);
+                  }}
+                  extra={
+                    <>
+                      <ColorPalette
+                        label={label}
+                        value={value}
+                        onPick={(color) => {
+                          setPicking(null);
+                          set(color);
+                        }}
+                        customOpen={open}
+                        onCustom={() => setPicking(open ? null : { id: block.id, key })}
+                      />
+                      {open && (
+                        <ColorPicker
+                          label={label}
+                          value={start}
+                          onCommit={(color) => {
+                            set(color);
+                            ui.getState().setColorPreview(null);
+                          }}
+                          onPreview={(color) => ui.getState().setColorPreview(color === null ? null : { id: block.id, device, key, color })}
+                        />
+                      )}
+                    </>
+                  }
+                />
+                {words && own && (
+                  <ul className="checks" aria-label={`${label}: contrast`}>
+                    <li className={check.passes ? "pass" : "fail"}>
+                      <Icon name={check.passes ? "check" : "warning"} />Words on {key === "background" ? "it" : "their background"}: {check.words}
+                    </li>
+                  </ul>
+                )}
+              </Fragment>
             );
-          case "color":
-            return <RadioField key={key} {...common} look="swatches" choices={SWATCH_ORDER.map(swatch)} value={value} inUse={inUse} onChange={set} />;
+          }
           case "textSize":
             return (
               <RadioField

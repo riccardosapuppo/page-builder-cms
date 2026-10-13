@@ -15,6 +15,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { PageDocument } from "../shared/document.ts";
 import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
+import type { ColorPreview } from "./color-preview.ts";
 import { PendingText } from "./pending.ts";
 import type { TextEditing, TextTools } from "./rich/tools.ts";
 
@@ -103,6 +104,8 @@ export interface UiState {
   // again for them (./library/service.ts, ensure).
   mediaLooking: ReadonlySet<string>;
   siteStyle: SiteStyle | null;
+  // A colour shown on the canvas while it is picked (./color-preview.ts).
+  colorPreview: ColorPreview | null;
   // The site's settings: its time zone.
   site: Site | null;
   // The header and footer drawn around a page on the canvas.
@@ -160,6 +163,7 @@ export interface UiState {
   setPageView(view: PageView | null): void;
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
+  setColorPreview(preview: ColorPreview | null): void;
   setSite(site: Site | null): void;
   setParts(parts: Partial<PartsShown>): void;
   setAroundPart(page: AroundPart | null): void;
@@ -190,6 +194,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     media: new Map(),
     mediaLooking: new Set(),
     siteStyle: initial.siteStyle ?? null,
+    colorPreview: null,
     site: initial.site ?? null,
     parts: initial.parts ?? { header: null, footer: null },
     aroundPart: initial.aroundPart ?? null,
@@ -221,6 +226,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setPageView: (pageView) => set((state) => (state.pageView?.width === pageView?.width && state.pageView?.scale === pageView?.scale ? {} : { pageView })),
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
     setSiteStyle: (siteStyle) => set({ siteStyle }),
+    setColorPreview: (colorPreview) => set({ colorPreview }),
     setSite: (site) => set({ site }),
     setParts: (parts) => set((state) => ({ parts: { ...state.parts, ...parts } })),
     setAroundPart: (aroundPart) => set({ aroundPart }),

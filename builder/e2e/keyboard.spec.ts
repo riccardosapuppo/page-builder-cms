@@ -205,6 +205,24 @@ const EXERCISES: Record<KeyAction, (page: Page, pressed: Set<string>) => Promise
     await expect(menu).toHaveCount(0);
     await expect(block(page, "a")).toBeFocused();
   },
+  async shades(page, pressed) {
+    // A colour of the palette, in a section's Background: its shades open,
+    // the focus on its 500; Esc closes them, back on the colour.
+    await block(page, "s2").focus();
+    const sidebar = page.getByRole("complementary", { name: "Settings" });
+    await sidebar.getByRole("tab", { name: "Block" }).click();
+    const background = sidebar.getByRole("button", { name: /^Background/ });
+    if ((await background.getAttribute("aria-expanded")) === "false") await background.click();
+    const red = sidebar.getByRole("group", { name: "Background: swatches" }).getByRole("button", { name: "Red", exact: true });
+    await red.focus();
+    await press(page, pressed, "Shift+Enter");
+    await expect(sidebar.getByRole("group", { name: "Red shades" })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "Red 500" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(sidebar.getByRole("group", { name: "Red shades" })).toHaveCount(0);
+    await expect(red).toBeFocused();
+    await expect(red).toHaveAttribute("aria-pressed", "false");
+  },
   async copy(page, pressed) {
     await block(page, "c").click();
     await press(page, pressed, "Control+c");

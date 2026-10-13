@@ -1,28 +1,48 @@
 // Site style (design/shots/site-style.png): the one screen that changes the
 // site's tokens, the tone of each palette slot and the type scale, for
-// every page. Each slot offers only its curated tones (the CMS's choices,
-// from schema/tokens.json), says in words how the tone reads where the site
-// uses it, and can go back to the tone a new site has. A change shows on
+// every page. Each slot offers its curated tones (the CMS's choices, from
+// schema/tokens.json) and a colour of the site's own, picked or typed
+// (ColorPicker.tsx), says in words how the colour reads where the site
+// uses it, warning where it reads poorly but keeping it, and can go back
+// to the tone a new site has. A change shows on
 // the canvas at once and goes to the CMS through the session, which says
 // here whether it was kept: the published pages follow from the next
 // request, since they read the style when they are drawn.
 import { useId, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { SiteStyle } from "../storage/adapter.ts";
+import { isFreeColor, normalizeHex, type FreeColor } from "../shared/free-colors.ts";
 import { contrastRatio, defaultTone, letterWidth, PALETTE_SLOTS, slotLabel, typeScale } from "../shared/site-tokens.ts";
 import type { PaletteSlot } from "../shared/document.ts";
-import { useUi } from "./context.tsx";
+import { ColorPalette } from "./ColorPalette.tsx";
+import { ColorPicker } from "./ColorPicker.tsx";
+import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
+import { paletteName } from "./palette.ts";
 import { useSession } from "./session.tsx";
 
-// Where the site puts each slot that has more than one tone, as the
-// contrast it needs: a slot's tone against another slot's, in either
-// direction (tokens.json, pairs).
-const CHECKS: Partial<Record<PaletteSlot, ReadonlyArray<{ label: string; fg: PaletteSlot | "tone"; bg: PaletteSlot | "tone" }>>> = {
+// Where the site puts each slot, as the contrast it needs: the words a band
+// in the slot carries (tokens.css: the Background slot's colour on Text,
+// Primary and Muted, the Text slot's on the others), and the slot as words
+// on the Background, a slot's tone against another slot's.
+const CHECKS: Readonly<Record<PaletteSlot, ReadonlyArray<{ label: string; fg: PaletteSlot | "tone"; bg: PaletteSlot | "tone" }>>> = {
+  text: [
+    { label: "Body text on the background", fg: "tone", bg: "background" },
+    { label: "Words on a band in it", fg: "background", bg: "tone" },
+  ],
+  background: [
+    { label: "Body text on it", fg: "text", bg: "tone" },
+    { label: "Button text on Primary", fg: "tone", bg: "primary" },
+  ],
   primary: [
     { label: "Button text on it", fg: "background", bg: "tone" },
     { label: "Links on the background", fg: "tone", bg: "background" },
   ],
   accent: [{ label: "Button text on it", fg: "text", bg: "tone" }],
+  soft: [{ label: "Text on a band in it", fg: "text", bg: "tone" }],
+  muted: [
+    { label: "Captions on the background", fg: "tone", bg: "background" },
+    { label: "Words on a band in it", fg: "background", bg: "tone" },
+  ],
 };
 
 // "8.9 to 1, easy to read". Cut, not rounded, to one decimal: 4.48 is not
@@ -49,8 +69,14 @@ const SAMPLE_PX = [26, 23, 20, 17, 16, 14, 12] as const;
 
 export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHide?: () => void }) {
   const style = useUi((u) => u.siteStyle);
+  // A slot being picked (./color-preview.ts): its chip and the checks
+  // measure the colour as the canvas draws it, so they follow a drag.
+  const colorPreview = useUi((u) => u.colorPreview);
+  const { ui } = useEnv();
   const session = useSession();
   const [open, setOpen] = useState<PaletteSlot | null>(null);
+  // The slot whose picker is open (the palette's Custom tile).
+  const [custom, setCustom] = useState<PaletteSlot | null>(null);
   const headId = useId();
   if (!style) {
     return (
@@ -61,7 +87,8 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
     );
   }
   const change = (palette: Record<string, string>, scale: string, width = style.letterWidth) => session.saveSiteStyle({ palette, typeScale: scale, letterWidth: width });
-  const hex = (slot: PaletteSlot, tone = style.palette[slot]) => style.choices.palette[slot]?.find((t) => t.color === tone)?.hex ?? "#000000";
+  const hex = (slot: PaletteSlot, tone = style.palette[slot]) => (isFreeColor(tone) ? tone : (style.choices.palette[slot]?.find((t) => t.color === tone)?.hex ?? "#000000"));
+  const drawn = (slot: PaletteSlot) => (colorPreview !== null && "slot" in colorPreview && colorPreview.slot === slot ? colorPreview.color : hex(slot));
   const scale = typeScale(style.typeScale);
   const scaleLabel = style.choices.typeScales.find((t) => t.name === style.typeScale)?.label ?? style.typeScale;
   const widths = letterWidth(style.letterWidth);
@@ -74,21 +101,19 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
         <ul className="slots">
           {PALETTE_SLOTS.map((slot) => {
             const tones = style.choices.palette[slot] ?? [];
-            const tone = tones.find((t) => t.color === style.palette[slot]);
+            const value = style.palette[slot] ?? "";
+            const free = isFreeColor(value) ? value : null;
+            const tone = tones.find((t) => t.color === value);
             const first = tones.find((t) => t.color === defaultTone(slot));
-            const edited = tone !== undefined && first !== undefined && tone.color !== first.color;
+            const edited = first !== undefined && value !== first.color;
+            const isOpen = open === slot;
             const name = (
               <span className="slot-name">
                 {slotLabel(slot)}
-                <small>{tone?.label ?? style.palette[slot]}</small>
-                {edited && <small className="slot-edited">Edited, was {first.label}</small>}
+                <small>{free ? (paletteName(free) ?? `Custom, ${free}`) : (tone?.label ?? value)}</small>
+                {edited && first && <small className="slot-edited">Edited, was {first.label}</small>}
               </span>
             );
-            const chip = <span className="slot-chip" style={{ "--c": tone?.hex ?? "transparent" } as CSSProperties} aria-hidden="true" />;
-            if (tones.length <= 1) {
-              return <li key={slot} className="slot" title={tone ? `${tone.label}, ${tone.hex}` : undefined}>{chip}{name}</li>;
-            }
-            const isOpen = open === slot;
             return (
               <li key={slot} className={`slot slot-pick${isOpen ? " slot-open" : ""}`}>
                 <button
@@ -96,23 +121,51 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                   type="button"
                   aria-expanded={isOpen}
                   data-autofocus={slot === "primary" ? "" : undefined}
-                  title={tone ? `${tone.label}, ${tone.hex}` : undefined}
-                  onClick={() => setOpen(isOpen ? null : slot)}
+                  title={free ?? (tone ? `${tone.label}, ${tone.hex}` : undefined)}
+                  onClick={() => {
+                    setOpen(isOpen ? null : slot);
+                    setCustom(null);
+                  }}
                 >
-                  {chip}{name}<Icon name="chevron-down" className="i i-xs slot-chev" />
+                  <span className="slot-chip" style={{ "--c": drawn(slot) } as CSSProperties} aria-hidden="true" />
+                  {name}<Icon name="chevron-down" className="i i-xs slot-chev" />
                 </button>
                 {isOpen && (
                   <div className="slot-editor">
                     <Tones
                       label={`${slotLabel(slot)} color`}
                       tones={tones}
-                      value={style.palette[slot] ?? ""}
-                      onChange={(color) => change({ ...style.palette, [slot]: color }, style.typeScale)}
+                      value={value}
+                      onChange={(choice) => {
+                        setCustom(null);
+                        change({ ...style.palette, [slot]: choice }, style.typeScale);
+                      }}
                     />
+                    <ColorPalette
+                      label={slotLabel(slot)}
+                      value={value}
+                      onPick={(color) => {
+                        setCustom(null);
+                        change({ ...style.palette, [slot]: color }, style.typeScale);
+                      }}
+                      customOpen={custom === slot}
+                      onCustom={() => setCustom(custom === slot ? null : slot)}
+                    />
+                    {custom === slot && (
+                      <ColorPicker
+                        label={slotLabel(slot)}
+                        value={free ?? normalizeHex(hex(slot)) ?? "#000000"}
+                        onCommit={(color: FreeColor) => {
+                          change({ ...style.palette, [slot]: color }, style.typeScale);
+                          ui.getState().setColorPreview(null);
+                        }}
+                        onPreview={(color) => ui.getState().setColorPreview(color === null ? null : { slot, color })}
+                      />
+                    )}
                     <ul className="checks" aria-label="Contrast checks">
-                      {(CHECKS[slot] ?? []).map((check) => {
-                        const fg = check.fg === "tone" ? hex(slot) : hex(check.fg);
-                        const bg = check.bg === "tone" ? hex(slot) : hex(check.bg);
+                      {CHECKS[slot].map((check) => {
+                        const fg = drawn(check.fg === "tone" ? slot : check.fg);
+                        const bg = drawn(check.bg === "tone" ? slot : check.bg);
                         const { words, passes } = contrastWords(contrastRatio(fg, bg));
                         return (
                           <li key={check.label} className={passes ? "pass" : "fail"}>
@@ -123,7 +176,16 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                     </ul>
                     {edited && first && (
                       <div className="slot-actions">
-                        <button className="btn btn-small btn-secondary" type="button" onClick={() => change({ ...style.palette, [slot]: first.color }, style.typeScale)}>Reset to {first.label}</button>
+                        <button
+                          className="btn btn-small btn-secondary"
+                          type="button"
+                          onClick={() => {
+                            setCustom(null);
+                            change({ ...style.palette, [slot]: first.color }, style.typeScale);
+                          }}
+                        >
+                          Reset to {first.label}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -210,8 +272,13 @@ function useRadioKeys(values: readonly string[], value: string, onChange: (value
   };
 }
 
+// A slot's curated tones, then Custom: a colour of the site's own, shown
+// as the hue wheel until there is one.
 function Tones({ label, tones, value, onChange }: { label: string; tones: SiteStyle["choices"]["palette"][string]; value: string; onChange: (color: string) => void }) {
   const onKeyDown = useRadioKeys(tones.map((t) => t.color), value, onChange);
+  // A colour of the site's own leaves no tone checked: the first is the
+  // stop for the Tab key.
+  const stop = tones.some((t) => t.color === value) ? value : tones[0]?.color;
   return (
     <div className="tones" role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
       {tones.map((tone) => {
@@ -222,7 +289,7 @@ function Tones({ label, tones, value, onChange }: { label: string; tones: SiteSt
             type="button"
             role="radio"
             aria-checked={on}
-            tabIndex={on ? 0 : -1}
+            tabIndex={tone.color === stop ? 0 : -1}
             data-value={tone.color}
             className={on ? "is-on" : undefined}
             style={{ "--c": tone.hex } as CSSProperties}

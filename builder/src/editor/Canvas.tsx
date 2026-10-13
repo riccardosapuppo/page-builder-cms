@@ -50,7 +50,7 @@ import { blockName, blockWithPlace, plural, tokenName } from "../document/labels
 import { locate } from "../document/tree.ts";
 import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
 import { PageSections } from "../render/blocks.tsx";
-import { PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { FreeColorsStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SitePart } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { PartKind } from "../storage/adapter.ts";
@@ -62,6 +62,7 @@ import { openBlockMenu } from "./BlockMenu.tsx";
 import { canvasUi } from "./canvas-ui.ts";
 import "./canvas.css";
 import { Clamp } from "./Clamp.tsx";
+import { withBlockPreview, withPalettePreview } from "./color-preview.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
 import { giveWayTo } from "./Drawer.tsx";
@@ -794,7 +795,12 @@ export function Canvas() {
   const selection = useEditor((s) => s.selection);
   const preview = useUi((u) => u.preview);
   const media = useUi((u) => u.media);
-  const siteStyle = useUi((u) => u.siteStyle);
+  // A colour being picked (./color-preview.ts) is drawn before it is kept:
+  // a slot of the site style's, or a block's own.
+  const colorPreview = useUi((u) => u.colorPreview);
+  const kept = useUi((u) => u.siteStyle);
+  const siteStyle = useMemo(() => withPalettePreview(kept, colorPreview), [kept, colorPreview]);
+  const shown = useMemo(() => withBlockPreview(drawn, colorPreview), [drawn, colorPreview]);
   // What is edited: a page, with the parts drawn around it; or a part,
   // with the page opened last around it.
   const opened = useOptionalSession();
@@ -1059,14 +1065,14 @@ export function Canvas() {
             data-locked-hover={lockedHover ?? undefined}
           >
             {kind !== "page"
-              ? <PartRoot kind={kind} document={drawn} ctx={ctx} siteStyle={siteStyle} parts={parts} around={around?.document ?? null} aroundTitle={around?.title ?? null} width={width} />
+              ? <PartRoot kind={kind} document={shown} ctx={ctx} siteStyle={siteStyle} parts={parts} around={around?.document ?? null} aroundTitle={around?.title ?? null} width={width} />
               : document.sections.length === 0 ? (
                 <>
-                  <ThemeAround siteStyle={siteStyle}><SitePart kind="header" document={parts.header} ctx={ctx} locked /></ThemeAround>
+                  <ThemeAround siteStyle={siteStyle} documents={[parts.header]}><SitePart kind="header" document={parts.header} ctx={ctx} locked /></ThemeAround>
                   <Invite />
-                  <ThemeAround siteStyle={siteStyle}><SitePart kind="footer" document={parts.footer} ctx={ctx} locked /></ThemeAround>
+                  <ThemeAround siteStyle={siteStyle} documents={[parts.footer]}><SitePart kind="footer" document={parts.footer} ctx={ctx} locked /></ThemeAround>
                 </>
-              ) : <PageRoot document={drawn} ctx={ctx} siteStyle={siteStyle} landmark={false} parts={parts} lockedParts {...(width === undefined ? {} : { width })} />}
+              ) : <PageRoot document={shown} ctx={ctx} siteStyle={siteStyle} landmark={false} parts={parts} lockedParts {...(width === undefined ? {} : { width })} />}
           </div>
           <FitNow frame={frame} scale={scale} />
         </div>
@@ -1099,9 +1105,15 @@ function seamAt(frame: Element, x: number, y: number): number | null {
 
 // A page root around the site's header or footer alone, with the site's
 // style, for the empty page: the invitation to add a section sits between
-// them, outside the page's stylesheets' reach.
-function ThemeAround({ siteStyle, children }: { siteStyle: SiteStyleChoice | null; children: ReactNode }) {
-  return <div className="site" {...siteStyleAttributes(siteStyle)}><div className="sw">{children}</div></div>;
+// them, outside the page's stylesheets' reach. The documents are those it
+// draws, for their free colours.
+function ThemeAround({ siteStyle, documents, children }: { siteStyle: SiteStyleChoice | null; documents: readonly unknown[]; children: ReactNode }) {
+  return (
+    <div className="site" {...siteStyleAttributes(siteStyle)}>
+      <FreeColorsStyle palette={siteStyle?.palette} documents={documents} />
+      <div className="sw">{children}</div>
+    </div>
+  );
 }
 
 // What locked thing of the canvas a point falls on: the site's header or
@@ -1152,18 +1164,20 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
       {around && around.sections.length > 0 ? <PageSections document={around} ctx={quiet} /> : <p className="around-none chrome">The page goes here.</p>}
     </div>
   );
-  const other = <SitePart kind={kind === "header" ? "footer" : "header"} document={kind === "header" ? parts.footer : parts.header} ctx={quiet} locked />;
+  const otherDocument = kind === "header" ? parts.footer : parts.header;
+  const other = <SitePart kind={kind === "header" ? "footer" : "header"} document={otherDocument} ctx={quiet} locked />;
   if (!editing) {
     return (
       <>
-        {kind === "footer" && <ThemeAround siteStyle={siteStyle}>{other}{page}</ThemeAround>}
+        {kind === "footer" && <ThemeAround siteStyle={siteStyle} documents={[otherDocument, around]}>{other}{page}</ThemeAround>}
         <Invite part={kind} />
-        {kind === "header" && <ThemeAround siteStyle={siteStyle}>{page}{other}</ThemeAround>}
+        {kind === "header" && <ThemeAround siteStyle={siteStyle} documents={[around, otherDocument]}>{page}{other}</ThemeAround>}
       </>
     );
   }
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={sized}>
+      <FreeColorsStyle palette={siteStyle?.palette} documents={[document, around, otherDocument]} />
       <div className="sw">
         {kind === "header" ? editing : other}
         {page}

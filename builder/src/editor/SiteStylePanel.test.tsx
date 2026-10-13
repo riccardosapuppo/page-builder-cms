@@ -41,14 +41,21 @@ function draw(style: SiteStyle = siteStyle()) {
   return { kit, changes, closed: () => closed };
 }
 
-test("the slots with one tone are rows, the others open on their curated tones, and a choice goes whole to the session", () => {
+test("every slot opens on its curated tones and the palette, Custom last, and a choice goes whole to the session", () => {
   const { changes } = draw();
   expect(screen.getByRole("heading", { name: "Site style" })).toBeTruthy();
-  // Background, Soft and Muted have one tone each: nothing to press.
-  expect(screen.getAllByRole("button", { expanded: false }).map((b) => b.querySelector(".slot-name")?.firstChild?.textContent)).toEqual(["Text", "Primary", "Accent"]);
+  // Every slot, those with one curated tone too: a colour of the site's
+  // own can go in any of them.
+  expect(screen.getAllByRole("button", { expanded: false }).map((b) => b.querySelector(".slot-name")?.firstChild?.textContent)).toEqual(["Text", "Background", "Primary", "Accent", "Soft", "Muted"]);
   fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));
   const tones = screen.getByRole("radiogroup", { name: "Primary color" });
   expect(within(tones).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([["Signal", "true"], ["Sea", "false"], ["Harbour", "false"], ["Kelp", "false"], ["Basalt", "false"]]);
+  // Under the tones, the palette: its nineteen hues, none in use, and the
+  // tile that opens the picker.
+  const palette = within(screen.getByRole("group", { name: "Primary: swatches" })).getAllByRole("button");
+  expect(palette).toHaveLength(20);
+  expect(palette.filter((b) => b.getAttribute("aria-pressed") === "true")).toEqual([]);
+  expect(palette.at(-1)!.getAttribute("aria-label")).toBe("A colour of its own");
   fireEvent.click(within(tones).getByRole("radio", { name: "Harbour" }));
   expect(changes).toEqual([{ palette: { text: "site-deep-water", background: "site-paper", primary: "site-harbour", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced", letterWidth: "normal" }]);
 });

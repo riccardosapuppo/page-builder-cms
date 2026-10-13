@@ -163,6 +163,8 @@ test("a setting the block leaves unset checks the value in use, as the design do
   expect(checked("Text size in this column")).toEqual(["Body"]);
   // The swatches in the design's order, then Slate; a column's text sizes are the design's three.
   expect(names("Background")).toEqual(["None", "Background", "Soft", "Primary", "Accent", "Text", "Muted"]);
+  // Under the site's colours, the palette, the picker's tile last.
+  expect(within(fieldOf("Background")).getByRole("group", { name: "Background: swatches" }).lastElementChild?.getAttribute("aria-label")).toBe("A colour of its own");
   expect(names("Text size in this column")).toEqual(["Small", "Body", "Large"]);
   expect(within(fieldOf("Alignment")).getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true").map((r) => r.getAttribute("aria-label"))).toEqual(["Top", "Left"]);
   // Choosing the value in use sets nothing; another one sets it.

@@ -55,6 +55,8 @@ export function inScope(scope: Scope, target: EventTarget | null, typing = false
       return Boolean(element?.closest(".canvas, .tree"));
     case "editor":
       return element === null || element === document.body || Boolean(element.closest(".app"));
+    case "swatch":
+      return Boolean(element?.closest(".palette-hues, .palette-shades"));
     default:
       return false;
   }

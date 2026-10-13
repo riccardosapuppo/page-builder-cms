@@ -14,6 +14,7 @@
 // open. A value the server refused opens the group that holds its field,
 // so the refusal shows on the field it names, until the group is closed
 // by hand; closed, it says it holds one.
+import { isFreeColor } from "../../shared/free-colors.ts";
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { tokenName } from "../../document/labels.ts";
 import type { Block, BlockType, PaletteSlot, WidgetBlock } from "../../shared/document.ts";
@@ -24,6 +25,7 @@ import { useEnv, useUi } from "../context.tsx";
 import { deviceOf, OVERRIDE_DEVICES, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
 import { Icon } from "../icons.tsx";
 import { excerpt } from "../names.ts";
+import { paletteName } from "../palette.ts";
 import type { WidgetPanel } from "./types.ts";
 import { ShownOn, shownOnWords } from "./ShownOn.tsx";
 import { columnsWords, nameWords, SectionColumns, SectionName } from "./structure.tsx";
@@ -106,8 +108,10 @@ interface WordsContext {
   columnStyle: unknown;
 }
 
-// A colour slot's tone in the site's palette, and a dot of it.
+// A colour slot's tone in the site's palette, and a dot of it; a free
+// colour (../../shared/free-colors.ts) is said as itself.
 function tone(slot: string, palette: WordsContext["palette"]): { label: string; dot: ReactNode } {
+  if (isFreeColor(slot)) return { label: paletteName(slot) ?? slot, dot: <i className="sum-dot" style={{ "--c": slot } as CSSProperties} aria-hidden="true" /> };
   const found = slotTone(slot as PaletteSlot, palette);
   return { label: found.label, dot: <i className="sum-dot" style={{ "--c": found.hex } as CSSProperties} aria-hidden="true" /> };
 }

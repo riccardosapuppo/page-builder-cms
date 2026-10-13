@@ -341,6 +341,8 @@ export interface Choice<T extends string | number> {
   // A swatch's colour.
   color?: string;
   title?: string;
+  // In place of the swatch's own class (sw-none when it has no colour).
+  className?: string;
 }
 
 // Arrow keys move the choice along a radio group, as a native one does.
@@ -403,7 +405,7 @@ function RadioGroup<T extends string | number>({ choices, value, inUse = null, c
             aria-label={iconOnly || look === "swatches" || choice.content ? choice.label : undefined}
             title={choice.title ?? (iconOnly || look === "swatches" ? choice.label : undefined)}
             tabIndex={index === tabStop ? 0 : -1}
-            className={look === "swatches" && choice.color === undefined ? "sw-none" : undefined}
+            className={choice.className ?? (look === "swatches" && choice.color === undefined ? "sw-none" : undefined)}
             style={choice.color ? ({ "--c": choice.color } as CSSProperties) : undefined}
             onClick={() => {
               if (!checked) choose(choice.value);
@@ -411,7 +413,7 @@ function RadioGroup<T extends string | number>({ choices, value, inUse = null, c
             onKeyDown={(event) => onKeyDown(event, index)}
           >
             {look === "swatches"
-              ? checked && <span className="pick-check" aria-hidden="true"><Icon name="check" /></span>
+              ? null
               : choice.content ?? (
                 <>
                   {choice.icon && <Icon name={choice.icon} />}
@@ -452,14 +454,21 @@ interface RadioFieldProps<T extends string | number> extends ScopeProps {
   // seg: a segmented row (.seg); swatches: colour circles; steps: tiles.
   look?: RadioLook;
   rules?: FieldRules;
+  // Said small above the choices (a colour's "Site colours").
+  lead?: string;
+  // Drawn under the choices, in the field, before its notes and errors (a
+  // colour's palette and picker).
+  extra?: ReactNode;
 }
 
-export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules }: RadioFieldProps<T>) {
+export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules, lead, extra }: RadioFieldProps<T>) {
   const id = useId();
   const { errors, choose } = useChoice(onChange, blockId, field, rules);
   return (
     <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
+      {lead && <p className="field-lead">{lead}</p>}
       <RadioGroup choices={choices} value={value} inUse={inUse} choose={choose} look={look} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, errors, note)} invalid={errors.length > 0} />
+      {extra}
     </FieldFrame>
   );
 }

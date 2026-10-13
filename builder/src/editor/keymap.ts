@@ -28,7 +28,7 @@ export type KeyAction =
   | "selectNext" | "selectPrevious" | "selectParent" | "selectFirstChild" | "clearSelection" | "blockTools"
   | "pickUp" | "moveVertically" | "moveHorizontally" | "drop" | "cancelMove"
   | "addHere" | "addTile" | "pickUpTile"
-  | "editText" | "blockMenu" | "copy" | "paste" | "duplicate" | "delete"
+  | "editText" | "blockMenu" | "copy" | "paste" | "duplicate" | "delete" | "shades"
   | "bold" | "italic" | "link" | "leaveText"
   | "undo" | "redo" | "saveVersion"
   | "preview" | "publish"
@@ -41,16 +41,18 @@ export type KeyAction =
 // - editor: anywhere in the editor;
 // - tile: a block of the Insert drawer, or of the picker a "+" opens;
 // - moving: while a block is picked up with the keyboard;
-// - text: in the text of a text block, edited on the canvas.
+// - text: in the text of a text block, edited on the canvas;
+// - swatch: a colour of the palette, in the sidebar (./ColorPalette.tsx).
 // Never in a menu or a dialog, which keep their keys, and never in a text
 // field or a text being written, whose typing keys are the text's (Delete
 // deletes a letter there, not the block), but for the text editor's own
 // keys and the entries marked `typing`.
-export type Scope = "canvas" | "selection" | "editor" | "tile" | "moving" | "text";
+export type Scope = "canvas" | "selection" | "editor" | "tile" | "moving" | "text" | "swatch";
 
 // Who carries the entry out: the editor's keydown listener, the drag
 // library's keyboard sensor, the text editor on the canvas (./rich/), or
-// the browser (a button's own key, the clipboard's events).
+// the browser and the control in focus (a button's own key, the
+// clipboard's events, a swatch's).
 export type Via = "keymap" | "drag" | "text" | "native";
 
 export interface Chord {
@@ -134,6 +136,10 @@ export const KEYMAP: readonly KeyEntry[] = [
   { action: "paste", group: "Editing", label: "Paste after the selection", chords: [{ key: "v", mod: true }], scope: "selection", via: "native" },
   { action: "duplicate", group: "Editing", label: "Duplicate", chords: [{ key: "d", mod: true }], scope: "selection", via: "keymap" },
   { action: "delete", group: "Editing", label: "Delete", chords: [{ key: "Delete" }, { key: "Backspace" }], scope: "selection", via: "keymap" },
+  // A colour of the palette in the sidebar, as holding it down does: its
+  // shades open under the palette, the focus on the one in use or the 500;
+  // pressed again, or Esc, they close (./ColorPalette.tsx).
+  { action: "shades", group: "Editing", label: "Show a colour's lighter and darker shades", chords: [{ key: "Enter", shift: true }], scope: "swatch", via: "native" },
 
   { action: "bold", group: "Text, while you write", label: "Bold", chords: [{ key: "b", mod: true }], scope: "text", via: "text" },
   { action: "italic", group: "Text, while you write", label: "Italic", chords: [{ key: "i", mod: true }], scope: "text", via: "text" },
