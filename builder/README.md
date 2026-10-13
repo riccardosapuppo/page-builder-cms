@@ -262,14 +262,23 @@ refused in the browser's words; the notice that says how Publish went,
 closed from the keyboard with the focus kept; axe on each screen; and no
 request off the demo's path.
 
-**Online only from a public repository.** The CI's `demo` job builds and
-tries the demo on every run. Its `pages` job deploys that build to
-GitHub Pages, from `main`, on a push or run by hand, and only while the
+**Online on a host of its own, with a mirror on GitHub Pages.** The demo
+is at `https://builder.riccardosapuppo.com/`: a build of `main` made with
+`DEMO_BASE=/`, uploaded from this machine. The CI's `demo` job builds and
+tries the demo on every run. Its `pages` job deploys that build to GitHub
+Pages, from `main`, on a push or run by hand, and only while the
 repository is public: the free plan publishes Pages from public
-repositories alone, so a private repository's demo is never online
-(`../tools/ci.test.ts` holds the job to that). Once the repository is
-public, and Pages is set to deploy from GitHub Actions in its settings,
-the demo is at `https://riccardosapuppo.github.io/page-builder-cms/`.
+repositories alone (`../tools/ci.test.ts` holds the job to that). That
+copy, at `https://riccardosapuppo.github.io/page-builder-cms/`, is a mirror
+every push brings up to date.
+
+A link to the demo shared on a site that draws previews shows the editor
+on the example site: the demo's page, and only the demo's, carries Open
+Graph tags (`build/demo.ts`, `linkPreviewTags`), every address absolute on
+the demo's own host, since those sites resolve none, and the build puts the
+picture at its root as `preview.png`, 1200 by 627. `npm run shots` makes it
+with the README's pictures, as `docs/images/demo-preview.png`; the editor the
+CMS serves carries neither.
 
 ## Where things are
 

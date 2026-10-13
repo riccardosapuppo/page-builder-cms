@@ -1,7 +1,7 @@
 # Pictures
 
-The pictures the project's README shows. A script makes each one from the
-running system; none is drawn or edited by hand, and a change to the editor
+The pictures the project's README shows, and the one a shared link to the
+browser demo previews with. A script makes each one from the running system; none is drawn or edited by hand, and a change to the editor
 or to the published page is followed by `npm run shots`, which makes them
 again.
 
@@ -14,6 +14,7 @@ again.
 | `history.png` | The editor's History: this session's changes, a version kept under a name, the version that is live. |
 | `form-responses.png` | Form responses: the answers four visitors sent from the served home page, the newest opened whole. |
 | `demo.png` | The browser demo after Publish, with its notice and its bottom line. |
+| `demo-preview.png` | The browser demo at 1200 by 627, the size a shared link's preview is drawn, the home page's heading selected. Not in the README: the demo's build puts it at its root as `preview.png`, and its page names it in its Open Graph tags (`builder/build/demo.ts`). |
 | `publish.gif` | A real publication: the served page, the editor with the heading selected, new words typed and saved, Publish pressed, and the served page with the change. |
 
 ## Making them

@@ -241,7 +241,7 @@ export const SUITES: Suite[] = [
       const why = packages(builderRoot, "builder");
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("lint"), { cwd: builderRoot });
-      return readOxlint(step.output, step.code, 456);
+      return readOxlint(step.output, step.code, 458);
     },
   },
   {
@@ -249,7 +249,7 @@ export const SUITES: Suite[] = [
     what: "the editor's unit tests (Vitest, project unit)",
     async run(ctx) {
       const why = packages(builderRoot, "builder");
-      return why ? notRun(why) : vitestProject(ctx, "unit", 952);
+      return why ? notRun(why) : vitestProject(ctx, "unit", 962);
     },
   },
   {
@@ -277,7 +277,7 @@ export const SUITES: Suite[] = [
       const why = first(packages(schemaTools, "schema/tools"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("compare"), { cwd: schemaTools });
-      const corpus = readCompare(step.output, step.code, 283);
+      const corpus = readCompare(step.output, step.code, 284);
       if (corpus.status !== "passed") return corpus;
       const examples = await ctx.step(...npmRun("compare:examples"), { cwd: schemaTools });
       const pages = readCompare(examples.output, examples.code, 5);
@@ -461,7 +461,7 @@ export const SUITES: Suite[] = [
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("check:serving"), { cwd: folder });
       if (step.code === 2) return notRun(/^RESULT: .*$/m.exec(step.output)?.[0] ?? "it could not run");
-      return readChecks(step.output, step.code, 80);
+      return readChecks(step.output, step.code, 84);
     },
   },
   {

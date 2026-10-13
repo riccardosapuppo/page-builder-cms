@@ -1,8 +1,9 @@
 // Where the demo is served from (./demo.ts): GitHub Pages' path by default,
 // the root of a host of its own with DEMO_BASE=/, any path that starts and
 // ends with a slash; anything else stops the build, saying why.
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { DEMO_PAGES_BASE, demoBase } from "./demo.ts";
+import { DEMO_DESCRIPTION, DEMO_PAGES_BASE, DEMO_PREVIEW, DEMO_SITE, demoBase, demoLinkPreview, linkPreviewTags } from "./demo.ts";
 
 test("the demo's base: Pages' path by default, the root or another path when DEMO_BASE says so, and nothing else", () => {
   expect(DEMO_PAGES_BASE).toBe("/page-builder-cms/");
@@ -14,4 +15,43 @@ test("the demo's base: Pages' path by default, the root or another path when DEM
   for (const wrong of ["page-builder-cms", "/page-builder-cms", "page-builder-cms/", "//", "/Demo/", "/a b/", "https://builder.example.org/"]) {
     expect(() => demoBase({ DEMO_BASE: wrong }), wrong).toThrow(/^DEMO_BASE must be a path that starts and ends with "\/"/);
   }
+});
+
+// What a shared link to the demo previews with (Open Graph).
+test("a link to the demo previews with the demo's own tags: every address absolute on its own host, the picture's size and words", () => {
+  const tags = linkPreviewTags();
+  const said = (key: string) => tags.find((tag) => tag.property === key || tag.name === key)?.content;
+  expect(DEMO_SITE).toBe("https://builder.riccardosapuppo.com/");
+  expect(said("og:url")).toBe(DEMO_SITE);
+  expect(said("og:image")).toBe("https://builder.riccardosapuppo.com/preview.png");
+  expect([said("og:image:width"), said("og:image:height"), said("og:image:type")]).toEqual(["1200", "627", "image/png"]);
+  expect(said("og:title")).toBe("Page Builder CMS");
+  expect(said("og:type")).toBe("website");
+  expect(said("twitter:card")).toBe("summary_large_image");
+  expect(said("description")).toBe(DEMO_DESCRIPTION);
+  expect(said("og:description")).toBe(DEMO_DESCRIPTION);
+  expect(said("og:image:alt")).toMatch(/Slack Water, an invented swimming club/);
+  // Every address a tag gives is absolute.
+  for (const tag of tags.filter((t) => /url|image$/.test(t.property ?? ""))) expect(new URL(tag.content!).protocol, tag.property).toBe("https:");
+  // Another host's copy names its own.
+  expect(linkPreviewTags("https://demo.example.org/editor/").find((tag) => tag.property === "og:image")?.content).toBe("https://demo.example.org/editor/preview.png");
+});
+
+test("the demo's build puts the tags in its page's head and the picture at its root, unhashed", () => {
+  const plugin = demoLinkPreview();
+  const transform = plugin.transformIndexHtml as unknown as () => Array<{ tag: string; attrs: Record<string, string>; injectTo: string }>;
+  const tags = transform();
+  expect(tags.every((tag) => tag.tag === "meta" && tag.injectTo === "head")).toBe(true);
+  expect(tags.map((tag) => tag.attrs)).toEqual(linkPreviewTags());
+  const emitted: Array<{ type: string; fileName: string; source: Uint8Array }> = [];
+  (plugin.generateBundle as unknown as (this: unknown) => void).call({ emitFile: (file: (typeof emitted)[number]) => emitted.push(file) });
+  expect(emitted.map((file) => [file.type, file.fileName])).toEqual([["asset", "preview.png"]]);
+  expect(Buffer.from(emitted[0]!.source).equals(readFileSync(DEMO_PREVIEW.source))).toBe(true);
+});
+
+test("the picture is a PNG of the size the tags give, light enough for the sites that draw previews", () => {
+  const png = readFileSync(DEMO_PREVIEW.source);
+  expect(png.subarray(1, 4).toString("latin1")).toBe("PNG");
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([DEMO_PREVIEW.width, DEMO_PREVIEW.height]);
+  expect(png.length).toBeLessThan(1_000_000);
 });

@@ -5,9 +5,9 @@
 // The README's pictures, made from the running system and nothing else,
 // into docs/images/ (--out for another folder): the editor with a block
 // selected, the published page on a desktop and on a phone, the version
-// history, Form responses, the browser demo with its bottom line, and the
-// GIF of a real publication, and the site's header open in the editor as a
-// page is. Their names, sizes and limits are listed in
+// history, Form responses, the browser demo with its bottom line and the
+// picture a shared link to it previews with, the GIF of a real
+// publication, and the site's header open in the editor as a page is. Their names, sizes and limits are listed in
 // tools/lib/shot-images.ts, which also reads the result back.
 //
 // It starts a CMS of its own in the e2e environment on 127.0.0.1:3905
@@ -66,6 +66,8 @@ const port = (name: string, fallback: number): number => {
 // Where the demo is served on GitHub Pages, and so here; the build's own
 // page is checked to hold it.
 const DEMO_BASE = "/page-builder-cms/";
+// The picture a shared link to the demo previews with, at its own size.
+const PREVIEW = IMAGES.find((spec) => spec.file === "demo-preview.png")!;
 
 function argumentsOf(argv: string[]): { only: ImageSpec[]; out: string } {
   let out = join(root, IMAGES_DIR);
@@ -340,6 +342,17 @@ async function demoShot(browser: Browser, shots: Staging, workFolder: string, ed
     await page.locator(".canvas .frame").waitFor();
     await settled(page);
     await page.locator(HERO).click();
+    // The picture a shared link to the demo previews with (Open Graph,
+    // builder/build/demo.ts): the editor at that picture's size, the
+    // heading selected.
+    if (shots.wants("demo-preview.png")) {
+      await page.setViewportSize({ width: PREVIEW.width, height: PREVIEW.height });
+      await settled(page);
+      await parked(page);
+      await shots.shoot(page, "demo-preview.png");
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await settled(page);
+    }
     const opened = page.context().waitForEvent("page");
     await page.getByRole("button", { name: "Publish", exact: true }).click();
     const view = await opened;
@@ -483,7 +496,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
         servers.splice(servers.indexOf(server), 1);
       }
     }
-    if (wanted.has("demo.png")) await demoShot(browser, shots, work, editorPort);
+    if (wanted.has("demo.png") || wanted.has("demo-preview.png")) await demoShot(browser, shots, work, editorPort);
   } finally {
     await browser?.close();
     for (const server of servers.reverse()) {

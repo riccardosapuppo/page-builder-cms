@@ -101,9 +101,9 @@ test("the README's first line is the repository's description, word for word", (
 });
 
 test("the README links the browser demo under its name, and shows each picture the script makes", () => {
-  assert.match(readme, /\[Try the editor in your browser\]\(https:\/\/riccardosapuppo\.github\.io\/page-builder-cms\/\)/);
+  assert.match(readme, /\[Try the editor in your browser\]\(https:\/\/builder\.riccardosapuppo\.com\/\)/);
   const shown = picturesIn(readme);
-  for (const spec of IMAGES) assert.ok(shown.includes(`docs/images/${spec.file}`), `the README does not show docs/images/${spec.file} as a picture`);
+  for (const spec of IMAGES.filter((one) => one.readme !== false)) assert.ok(shown.includes(`docs/images/${spec.file}`), `the README does not show docs/images/${spec.file} as a picture`);
   // The GIF comes first: under the first line, before anything else is said.
   assert.equal(readme.indexOf("docs/images/publish.gif") < readme.indexOf("\n## "), true, "the GIF of the publication is not before the first section");
 });

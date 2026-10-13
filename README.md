@@ -2,7 +2,7 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 
 ![A real publication on Rails: the page Rails serves, the editor with a heading selected, new words typed and saved, Publish pressed, and the served page with the change](docs/images/publish.gif)
 
-[Try the editor in your browser](https://riccardosapuppo.github.io/page-builder-cms/) ·
+[Try the editor in your browser](https://builder.riccardosapuppo.com/) ·
 [The API, described](cms/openapi.yaml) ·
 [The page document's schema](schema/block-document.schema.json) ·
 [Decisions, with their cost](docs/decisions/) ·
@@ -642,7 +642,7 @@ runs its jobs in Solid Queue. The editor is its client, through the API in
 [`cms/openapi.yaml`](cms/openapi.yaml).
 
 **The browser demo** is the same editor with the browser's storage in
-place of Rails: [Try the editor in your browser](https://riccardosapuppo.github.io/page-builder-cms/).
+place of Rails: [Try the editor in your browser](https://builder.riccardosapuppo.com/).
 On a first visit it puts in the example site, three pages and fifteen pictures,
 as the CMS's seed does from the same files, and everything after is kept in
 that browser's IndexedDB, held to the same battery of cases as the CMS's
@@ -669,17 +669,20 @@ line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
   no smaller copies are kept, as for the CMS.
 - **Publish is a version and a state**, not a publication: the page it opens
   is the demo's drawing of the document, not HTML a server wrote.
-- **It is online only from a public repository.** The CI's `demo` job builds
-  and tries it on every run; its `pages` job deploys it to GitHub Pages from
-  `main`, and only while the repository is public, since the free plan
-  publishes Pages from public repositories alone. A private repository has
-  no demo online: the link above answers once it is public and Pages is set
-  to deploy from GitHub Actions. From a clone, `npm run build:demo --prefix
-  builder` then `npm run serve:demo --prefix builder` serve the same build
-  as Pages serves it, and `npm run e2e:demo --prefix builder` tells its
-  story in Chromium. On GitHub Pages the page is cached ten minutes by
-  headers a site cannot set, so for that long after a new deploy a browser
-  may load the previous page.
+- **It is online on a host of its own, with a mirror on GitHub Pages.** At
+  `https://builder.riccardosapuppo.com/` is a build of `main` made for the
+  root of a host (`DEMO_BASE=/`, [builder/README.md](builder/README.md)),
+  uploaded from this machine. The CI's `demo` job builds and tries the demo
+  on every run, and its `pages` job deploys it to GitHub Pages from `main`,
+  at `https://riccardosapuppo.github.io/page-builder-cms/`, a mirror every
+  push brings up to date, while the repository is public: the free plan
+  publishes Pages from public repositories alone. Every page of the demo
+  asks search engines to leave it out of their indexes. From a clone,
+  `npm run build:demo --prefix builder` then `npm run serve:demo --prefix
+  builder` serve the same build as Pages serves it, and `npm run e2e:demo
+  --prefix builder` tells its story in Chromium. On GitHub Pages the page
+  is cached ten minutes by headers a site cannot set, so for that long
+  after a new deploy a browser may load the previous page.
 
 [builder/README.md](builder/README.md#the-browser-demo) has how it is built,
 served and held to what it promises, and the
@@ -727,33 +730,36 @@ as not run, and the run exits 2, never 0. `npm run check -- --list` names the
 suites; `--only` and `--skip` take those names. [tools/README.md](tools/README.md#npm-run-check)
 says how a floor works and how the Vitest suites hold on a busy machine.
 
-On 12 October 2026, on the virtual machine of [Measurements](#measurements),
-with the run's servers on ports of their own (3900 and 4900 for `npm
+On 13 October 2026, on the virtual machine of [Measurements](#measurements),
+with the run's servers on their own ports (3900 and 4900 for `npm
 start`'s checks, 3901 and 3902 for the CMS, 4901 and 4902 for the
-editor, and the demo moved to 4913 by `E2E_DEMO_PORT`, since a demo
-served from another checkout held 4903), one run of the whole check,
-ending at 18:20 UTC, spent 39 minutes in its suites. It ended
-`RESULT: 27 passed, 1 could not run here`: bundler-audit was not run here,
-for want of its advisory database (CI runs it). Its counts:
+editor, 4903 for the demo), one run of the whole check, ending at 15:13
+UTC, spent 39 minutes in its suites. It ended `RESULT: 3 of 28 failed`,
+one test in each: a unit test, and in Chromium the site style's test,
+which is also among the accessibility tests, had not followed two of the
+day's changes (a deferred focus that gave way too readily, and the site
+style's new default tone). Corrected, each passed in a later run of its
+suite alone. bundler-audit was not run here, for want of its advisory
+database (CI runs it). Its counts:
 
 | Suite | What it counted |
 | --- | --- |
 | the repository's tools, type-checked | 0 type errors |
-| the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI), the count of a later run of that suite alone, ending at 09:26 UTC on 13 October, after a test was added |
-| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 456 files, 0 warnings, the count of a later run alone, ending at 12:12 UTC on 13 October, after nine files were added |
-| the editor's unit tests, and the render contract's editor half | 952 passed in 121 files, the count of a later run of that suite alone, ending at 12:23 UTC on 13 October, after sixteen tests were added; 28 passed |
+| the tools' own tests | 125 passed, 1 skipped (it needs process groups, and runs in CI) |
+| the editor, type-checked and linted | 3 programs, 0 type errors; Oxlint, 458 files, 0 warnings |
+| the editor's unit tests, and the render contract's editor half | 962 passed in 122 files, the count of the later run of that suite alone, ending at 15:15 UTC; 28 passed |
 | the editor's build and its bundle check | passes: no `eval`, no `Function`, the validator and four fonts with their licences in, the CMS's storage in and the browser's out |
-| the schema's two validators | 283 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
+| the schema's two validators | 284 corpus files, and the example site's 3 pages with the 2 starters of the header and footer, 0 disagreements, 0 exceptions; the corpus is what its generator writes; the lint caught 19 of 19 planted faults |
 | the 500-block fixture, the example site's pictures and the header's letter widths | each is what its generator writes |
 | the API description | valid, 0 warnings |
-| the Rails tests | 411 runs, 2535 assertions, 0 failures, 0 errors, 0 skips; 374 API answers held to `cms/openapi.yaml` |
-| RuboCop, Brakeman | 160 files, no offenses, the count of a later run of RuboCop alone, ending at 09:29 UTC on 13 October, after a file was added; 79 checks, 0 warnings |
+| the Rails tests | 412 runs, 2592 assertions, 0 failures, 0 errors, 0 skips; 374 API answers held to `cms/openapi.yaml` |
+| RuboCop, Brakeman | 160 files, no offenses; 79 checks, 0 warnings |
 | the editor against a CMS of its own | 86 tests: the storage battery, the random-page agreement check, canvas parity, the header and footer and the menu's fold against the CMS's, and the API examples of `cms/README.md` run as written (85 where Windows PowerShell is not) |
-| the editor in Chromium against a CMS of its own | 229 passed, among them the three that failed on this machine before (below) |
+| the editor in Chromium against a CMS of its own | 232: 231 passed in that run, among them the three that failed on this machine before (below), and the site style's in the later run alone |
 | the editor on the browser's own storage | 78 passed, 7 skipped (the four of scheduling and the three of responses, which need a server) |
 | the browser demo, as Pages serves it | 9 passed |
-| accessibility: the keyboard path, focus, axe | 48 passed |
-| how the shell, the demo and the pages are served | 80 checks, the count of a later run alone, ending at 12:18 UTC on 13 October, once it served the demo at both of its bases |
+| accessibility: the keyboard path, focus, axe | 50: 49 passed in that run, and the site style's in the later run alone |
+| how the shell, the demo and the pages are served | 84 checks, the demo at both of its bases, what a shared link to it previews with among them |
 | the CMS in production, over HTTP and in a browser | 63 checks |
 | `npm start` in smoke mode, and its stops | 7 checks; 11 checks |
 

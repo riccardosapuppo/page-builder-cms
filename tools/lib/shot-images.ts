@@ -25,6 +25,8 @@ export interface ImageSpec {
   // A GIF's frames, at least.
   minFrames?: number;
   shows: string;
+  // false for a picture made with the README's but not shown there.
+  readme?: false;
 }
 
 export const IMAGES: readonly ImageSpec[] = [
@@ -35,6 +37,7 @@ export const IMAGES: readonly ImageSpec[] = [
   { file: "history.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the editor's History: this session, a version kept under a name, and the published one" },
   { file: "form-responses.png", kind: "png", width: 1440, height: 900, minBytes: 40_000, maxBytes: 400_000, shows: "Form responses, with a visitor's answer opened" },
   { file: "demo.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the browser demo after Publish, with its bottom line" },
+  { file: "demo-preview.png", kind: "png", width: 1200, height: 627, minBytes: 40_000, maxBytes: 1_000_000, readme: false, shows: "the browser demo as a shared link previews it (Open Graph, builder/build/demo.ts): the editor on the example site's home page, its heading selected" },
   { file: "publish.gif", kind: "gif", width: 960, height: 600, minBytes: 60_000, maxBytes: 2_000_000, minFrames: 8, shows: "a heading changed in the editor and published on Rails, then the served page with the change" },
 ];
 

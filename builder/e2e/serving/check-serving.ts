@@ -49,7 +49,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import { MARKS } from "../../build/bundle-check.ts";
-import { DEMO_PAGES_BASE } from "../../build/demo.ts";
+import { DEMO_PAGES_BASE, DEMO_PREVIEW, DEMO_SITE } from "../../build/demo.ts";
 import { builderRoot } from "../../build/paths.ts";
 import { ASSET_CACHE, PAGE_CACHE } from "../../build/serving.ts";
 import { builderPort, cmsPort, demoPort } from "../harness/ports.ts";
@@ -147,6 +147,14 @@ async function demoChecks(root: string, vite: string, base: string, started: (se
     await answer.arrayBuffer();
     check(linked && answer.status === 200, `${label}: the page links its ${rel} at ${path}, which is there`, `linked ${linked}, status ${answer.status}`);
   }
+  // What a link to the demo previews with: the tags, each address
+  // absolute on the demo's own host whatever host this copy is on, and the
+  // picture at the build's root under its own name.
+  const tag = (property: string) => new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(html)?.[1];
+  check(tag("og:url") === DEMO_SITE && tag("og:image") === `${DEMO_SITE}${DEMO_PREVIEW.file}` && tag("og:image:width") === String(DEMO_PREVIEW.width) && tag("og:image:height") === String(DEMO_PREVIEW.height), `${label}: the page says what a shared link to the demo previews with, at ${DEMO_SITE}`, `og:url ${tag("og:url")}, og:image ${tag("og:image")}`);
+  const preview = await get(server.url, `${base}${DEMO_PREVIEW.file}`);
+  const previewBytes = (await preview.arrayBuffer()).byteLength;
+  check(preview.status === 200 && preview.headers.get("content-type") === "image/png" && previewBytes > 0 && previewBytes < 1_000_000, `${label}: the preview picture is at ${base}${DEMO_PREVIEW.file}, a PNG under 1 MB`, `${preview.status} ${preview.headers.get("content-type")}, ${previewBytes} bytes`);
   if (script) {
     const asset = await get(server.url, script);
     await asset.arrayBuffer();

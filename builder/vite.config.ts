@@ -26,7 +26,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import { bundleCheck } from "./build/bundle-check.ts";
-import { buildStorage, DEMO_BASE, DEMO_MODE, DEMO_OUT_DIR } from "./build/demo.ts";
+import { buildStorage, DEMO_BASE, DEMO_MODE, DEMO_OUT_DIR, demoLinkPreview } from "./build/demo.ts";
 import { shellServing } from "./build/serving.ts";
 import { storageEntry } from "./build/storage-entry.ts";
 import { cmsPort } from "./e2e/harness/ports.ts";
@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
   const storage = buildStorage(mode);
   return {
     base: demo ? DEMO_BASE : "/",
-    plugins: [storageEntry(storage), react(), documentValidator(), siteIcons(), siteTheme(), fontLicences(), bundleCheck(storage), shellServing()],
+    plugins: [storageEntry(storage), react(), documentValidator(), siteIcons(), siteTheme(), fontLicences(), bundleCheck(storage), shellServing(), ...(demo ? [demoLinkPreview()] : [])],
     resolve: { alias: fontAliases() },
     // No fallback page: an address that is not a file is a 404, never the
     // editor's index answered for it.
