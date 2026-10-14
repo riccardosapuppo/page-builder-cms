@@ -14,6 +14,9 @@
 import tokens from "../../../schema/tokens.json";
 import { reservedClass } from "../../../schema/tools/rules.ts";
 import { isObject } from "../document/json.ts";
+import { FRAME_ORIGINS, MAP_ORIGIN, VIDEO_ORIGINS } from "./frames.ts";
+
+export { FRAME_ORIGINS };
 
 // The characters an address may hold after its scheme and host, as the
 // schema's href lists them: no space, no control character, no quote or
@@ -38,14 +41,10 @@ interface VideoRule {
 // address built from it. A Map, so a provider named "__proto__" or
 // "constructor" finds nothing, as it finds nothing in Ruby's Hash.
 const VIDEO: ReadonlyMap<string, VideoRule> = new Map([
-  ["youtube", { origin: "https://www.youtube-nocookie.com", id: /^[A-Za-z0-9_-]{11}$/, path: (id: string) => `/embed/${id}` }],
-  ["vimeo", { origin: "https://player.vimeo.com", id: /^[0-9]{1,12}$/, path: (id: string) => `/video/${id}?dnt=1` }],
+  ["youtube", { origin: VIDEO_ORIGINS.youtube, id: /^[A-Za-z0-9_-]{11}$/, path: (id: string) => `/embed/${id}` }],
+  ["vimeo", { origin: VIDEO_ORIGINS.vimeo, id: /^[0-9]{1,12}$/, path: (id: string) => `/video/${id}?dnt=1` }],
 ]);
 
-const MAP_ORIGIN = "https://www.openstreetmap.org";
-
-// Every origin a page may frame.
-export const FRAME_ORIGINS: readonly string[] = [...[...VIDEO.values()].map((rule) => rule.origin), MAP_ORIGIN];
 
 // The href to write, or null to write the text without a link.
 export function linkHref(value: unknown): string | null {

