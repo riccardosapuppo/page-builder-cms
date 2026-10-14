@@ -17,7 +17,9 @@ import { COMMIT_AFTER_MS } from "./controls.tsx";
 
 // refuse: the page's answer to each commit in turn, true for a refusal;
 // past its end, every commit is taken.
-function draw(value: FreeColor = "#ff0000", refuse: boolean[] = []) {
+// strict: drawn as the editor draws it in development (main.tsx), its
+// effects run, undone and run again.
+function draw(value: FreeColor = "#ff0000", refuse: boolean[] = [], strict = false) {
   const kept: FreeColor[] = [];
   const shown: Array<FreeColor | null> = [];
   const handle = createRef<ColorPickerHandle>();
@@ -39,7 +41,7 @@ function draw(value: FreeColor = "#ff0000", refuse: boolean[] = []) {
       />
     ) : null;
   }
-  const view = kit.render(<Field on />);
+  const view = kit.render(<Field on />, { strict });
   return { kit, kept, shown, handle, hide: () => view.rerender(<Field on={false} />) };
 }
 
@@ -174,6 +176,21 @@ test("a typed colour the page refuses as it is handed over says so, and waits: h
   });
   expect([all, kept, pending.waiting]).toEqual([false, [], 1]);
   // The page takes it now (the field it waited for written right).
+  act(() => {
+    all = pending.deliver();
+  });
+  expect([all, kept, pending.waiting]).toEqual([true, ["#1d4e6f"], 0]);
+});
+
+test("drawn in strict mode, its effects run twice, a refused colour waits all the same and is kept once the page can take it", () => {
+  const { kit, kept } = draw("#ff0000", [true], true);
+  const pending = kit.ui.getState().pending;
+  fireEvent.change(screen.getByLabelText("Primary: hex"), { target: { value: "#1d4e6f" } });
+  let all = true;
+  act(() => {
+    all = pending.deliver();
+  });
+  expect([all, pending.waiting]).toEqual([false, 1]);
   act(() => {
     all = pending.deliver();
   });

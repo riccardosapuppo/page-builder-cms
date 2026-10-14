@@ -53,7 +53,9 @@ export interface Kit {
   block(id: string): Block | undefined;
   // The command the last change was made with.
   lastCommand(): Command | undefined;
-  render(node: ReactNode): RenderResult;
+  // strict: in strict mode at the root, as the editor is drawn in
+  // development (src/main.tsx): effects run, are undone and run again.
+  render(node: ReactNode, options?: { strict?: boolean }): RenderResult;
   // The server refuses the last save for a value of a block, as the API
   // answers a 422: a pointer into the request and the block's pointer.
   refuse(id: string, field: string, keyword: string, message: string): void;
@@ -82,7 +84,10 @@ export function editorKit(options: { document: PageDocument; selection?: string 
     block: (id) => locate(store.getState().document, id)?.block,
     lastCommand: () => store.getState().past.at(-1)?.command,
     // A wrapper, so a rerender keeps the providers.
-    render: (node) => render(node, {
+    // Strict mode is the library's: at the root, around the wrapper (a
+    // StrictMode inside a component mounted with it replays no effect).
+    render: (node, drawn) => render(node, {
+      reactStrictMode: drawn?.strict ?? false,
       wrapper: ({ children }) => (
         <EditorProvider env={env}>
           <SessionProvider value={session}>

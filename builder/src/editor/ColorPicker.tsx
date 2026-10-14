@@ -138,18 +138,23 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
   };
 
   // Anything waiting is kept when the picker goes, no pause outlives it,
-  // and what the canvas shows of the picking goes with it.
+  // and what the canvas shows of the picking goes with it. Drawn in strict
+  // mode (development), the picker goes and comes back at once: back, it
+  // is no longer going.
   const latest = useRef({ commit, onPreview, clock });
   useLayoutEffect(() => {
     latest.current = { commit, onPreview, clock };
   });
-  useEffect(() => () => {
-    going.current = true;
-    if (waiting.current !== null) latest.current.commit(waiting.current);
-    if (timer.current !== null) latest.current.clock.clearTimeout(timer.current);
-    timer.current = null;
-    release.current?.();
-    latest.current.onPreview?.(null);
+  useEffect(() => {
+    going.current = false;
+    return () => {
+      going.current = true;
+      if (waiting.current !== null) latest.current.commit(waiting.current);
+      if (timer.current !== null) latest.current.clock.clearTimeout(timer.current);
+      timer.current = null;
+      release.current?.();
+      latest.current.onPreview?.(null);
+    };
   }, []);
 
   useImperativeHandle(ref, () => ({
