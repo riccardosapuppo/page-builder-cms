@@ -84,6 +84,18 @@ test("a swatch or Reset chosen in the pause after the picker's arrows wins: the 
   expect(kit.lastCommand()?.label).toBe("Cleared Background, Button in Widgets");
 });
 
+test("a colour typed in the picker, on a block with none of its own, is kept at Enter, though the panel shows it as it is typed", () => {
+  const kit = editorKit({ document: widgetPage(), selection: "button" });
+  kit.render(<BlockPanel id="button" />);
+  openGroups("Colors");
+  fireEvent.click(within(screen.getByRole("group", { name: "Background: swatches" })).getByRole("button", { name: "A colour of its own" }));
+  const hex = screen.getByLabelText("Background: hex");
+  fireEvent.change(hex, { target: { value: "#123456" } });
+  expect(kit.ui.getState().colorPreview).toMatchObject({ id: "button", key: "background", color: "#123456" });
+  fireEvent.keyDown(hex, { key: "Enter" });
+  expect(kit.block("button")?.style).toEqual({ base: { background: "#123456" } });
+});
+
 test("a colour waiting after the picker's arrows is handed over before another page replaces this one, and keeps nothing on that page", async () => {
   const kit = editorKit({ document: widgetPage(), selection: "button" });
   const view = kit.render(<BlockPanel id="button" />);

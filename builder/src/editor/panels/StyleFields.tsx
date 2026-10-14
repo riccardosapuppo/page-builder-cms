@@ -241,12 +241,17 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
   // (../color-preview.ts), so the contrast follows a drag.
   const colorPreview = useUi((u) => u.colorPreview);
   const measured = colorPreview !== null && "id" in colorPreview && colorPreview.id === block.id ? previewedStyle(style, colorPreview) : style;
-  const ownBackground = shownValue(measured, device, "background");
-  const background = ownBackground !== null && ownBackground !== "none" ? ownBackground : (backdrop ?? "background");
-  const pairedWords = isFreeColor(background) ? wordsOn(background, site) : DARK_SLOTS.includes(background as PaletteSlot) ? site.background : site.text;
-  const ownColor = shownValue(measured, device, "color");
-  const wordsHex = ownColor !== null ? hexOf(ownColor) : pairedWords;
-  const backgroundHex = hexOf(background);
+  const coloursOf = (of: unknown) => {
+    const ownBackground = shownValue(of, device, "background");
+    const background = ownBackground !== null && ownBackground !== "none" ? ownBackground : (backdrop ?? "background");
+    const ownColor = shownValue(of, device, "color");
+    const paired = isFreeColor(background) ? wordsOn(background, site) : DARK_SLOTS.includes(background as PaletteSlot) ? site.background : site.text;
+    return { ownBackground, ownColor, wordsHex: ownColor !== null ? hexOf(ownColor) : paired, backgroundHex: hexOf(background) };
+  };
+  const { ownBackground, ownColor, wordsHex, backgroundHex } = coloursOf(measured);
+  // Where a picker opens: the colours as kept, never one being picked,
+  // which the picker, following its value, would take for kept.
+  const keptColours = coloursOf(style);
 
   const swatch = (slot: PaletteSlot): Choice<string> => {
     const tone = slotTone(slot, siteStyle?.palette);
@@ -367,7 +372,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
             // words: no contrast of words to say.
             const words = key === "color" ? !(block.type === "divider" || block.type === "accordion") : true;
             const own = key === "color" ? ownColor !== null : ownBackground !== null && ownBackground !== "none";
-            const start: FreeColor = free ?? normalizeHex(key === "color" ? wordsHex : backgroundHex) ?? "#000000";
+            const start: FreeColor = free ?? normalizeHex(key === "color" ? keptColours.wordsHex : keptColours.backgroundHex) ?? "#000000";
             const check = contrastWords(contrastRatio(wordsHex, backgroundHex));
             return (
               <Fragment key={key}>
