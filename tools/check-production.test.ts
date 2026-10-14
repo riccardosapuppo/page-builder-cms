@@ -112,13 +112,13 @@ for (const [script, stopped] of [["tools/check-production.ts", "the check stoppe
 for (const [script, named, stopped] of [["tools/check-production.ts", "production-check", "the check stopped"], ["tools/measure-server.ts", "measure-server", "the measurement stopped"]] as const) {
   test(`planted: a folder a run stopped before its end left in cms/tmp; ${script} deletes it before it makes its own, and says so`, () => {
     withPlantedFault((env) => {
-      // Named for a process id, which Windows can give this run again.
-      const left = join(root, "cms", "tmp", `${named}-${port}-1`);
+      // Named for a process that no longer runs (no system gives this id).
+      const left = join(root, "cms", "tmp", `${named}-${port}-999999999`);
       mkdirSync(left, { recursive: true });
       writeFileSync(join(left, "production.sqlite3"), "");
       try {
         const { code, output } = tool(script, { ...env, MEASURE_QUIET_MAX: "101" });
-        assert.ok(output.includes(`deleted what an earlier run left: cms/tmp/${named}-${port}-1`), output);
+        assert.ok(output.includes(`deleted what an earlier run left: cms/tmp/${named}-${port}-999999999`), output);
         // It went on to the precompile, which the planted fault stops.
         assert.match(output, new RegExp(`${stopped}: assets:precompile failed`));
         assert.equal(existsSync(left), false, output);
