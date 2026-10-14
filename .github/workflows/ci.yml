@@ -230,6 +230,17 @@ jobs:
           path: builder/e2e/test-results
           retention-days: 7
           if-no-files-found: ignore
+      # The same snapshots in the log, each in a group of its own, so they
+      # can be read there with nothing to download.
+      - name: Show the failed browser tests' snapshots
+        if: failure()
+        run: |
+          [ -d builder/e2e/test-results ] || exit 0
+          find builder/e2e/test-results -name 'error-context.*' | sort | while read -r file; do
+            echo "::group::$file"
+            cat "$file"
+            echo "::endgroup::"
+          done
 
   contract:
     name: Render contract, the server's half and the editor's
