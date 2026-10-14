@@ -275,6 +275,23 @@ test("a chunk the entry imports statically is loaded at once, not lazy: the faul
   assert.throws(() => graph([], "assets/index-AAAAAAAA.js"), /not among the chunks/);
 });
 
+test("a chunk only a lazy chunk imports statically loads later too, with it, as a provider's SDK brings its own", () => {
+  const chunks = [
+    { name: "assets/index-AAAAAAAA.js", text: 'const a=()=>import("./anthropic-EEEEEEEE.js"),o=()=>import("./openai-FFFFFFFF.js")' },
+    { name: "assets/anthropic-EEEEEEEE.js", text: 'import{n}from"./node.browser-GGGGGGGG.js";' },
+    { name: "assets/openai-FFFFFFFF.js", text: 'import{n}from"./node.browser-GGGGGGGG.js";import{m}from"./more-HHHHHHHH.js";' },
+    { name: "assets/node.browser-GGGGGGGG.js", text: 'import{d}from"./deeper-IIIIIIII.js";export const n=1;' },
+    { name: "assets/more-HHHHHHHH.js", text: "export const m=1;" },
+    { name: "assets/deeper-IIIIIIII.js", text: "export const d=1;" },
+  ];
+  const { atOnce, lazy, along } = graph(chunks, "assets/index-AAAAAAAA.js");
+  assert.deepEqual([...atOnce], ["assets/index-AAAAAAAA.js"]);
+  assert.deepEqual([...lazy.keys()].sort(), ["assets/anthropic-EEEEEEEE.js", "assets/openai-FFFFFFFF.js"]);
+  assert.deepEqual([...along.keys()].sort(), ["assets/deeper-IIIIIIII.js", "assets/more-HHHHHHHH.js", "assets/node.browser-GGGGGGGG.js"]);
+  assert.equal(along.get("assets/deeper-IIIIIIII.js"), "assets/node.browser-GGGGGGGG.js");
+  assert.equal(along.get("assets/more-HHHHHHHH.js"), "assets/openai-FFFFFFFF.js");
+});
+
 test("a profile is reduced to own time and total time per function, idle left out and a recursion counted once", () => {
   const frame = (functionName: string, lineNumber = 0) => ({ functionName, url: "http://x/assets/index-AAAA.js", lineNumber, columnNumber: 0 });
   // (root) > render > walk > walk (a recursion) > leaf; and (root) > (idle).

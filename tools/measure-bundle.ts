@@ -93,14 +93,15 @@ try {
   if (!entry) throw new Error(`the entry ${scripts[0]} is not in the build`);
 
   // --- Which chunks are loaded at once, which later ------------------------------
-  const { atOnce, lazy } = graph(files.filter((f) => f.name.endsWith(".js")).map((f) => ({ name: f.name, text: text(f) })), entry.name);
+  const { atOnce, lazy, along } = graph(files.filter((f) => f.name.endsWith(".js")).map((f) => ({ name: f.name, text: text(f) })), entry.name);
   const editorChunk = [...lazy.keys()].find((name) => stem(name) === "TextEditor");
   check(editorChunk !== undefined, "the text editor is a chunk the entry loads with import()", editorChunk ?? "none among " + [...lazy.keys()].join(", "));
   check(editorChunk !== undefined && text(files.find((f) => f.name === editorChunk)!).includes(TEXT_EDITOR_MARK), "the text editor's chunk holds ProseMirror's code", TEXT_EDITOR_MARK);
   check(!text(entry).includes(TEXT_EDITOR_MARK), "the entry holds none of ProseMirror's code");
   check([...atOnce].every((name) => !name.includes("TextEditor")), "no chunk loaded at once imports the text editor statically");
   const jsFiles = files.filter((f) => f.name.endsWith(".js"));
-  check(jsFiles.every((f) => atOnce.has(f.name) || lazy.has(f.name)), "every JavaScript file is either loaded at once or reached by import()", jsFiles.map((f) => f.name).join(", "));
+  const unreached = jsFiles.filter((f) => !atOnce.has(f.name) && !lazy.has(f.name) && !along.has(f.name));
+  check(unreached.length === 0, "every JavaScript file is loaded at once, reached by import(), or comes along with a chunk that is", unreached.map((f) => f.name).join(", "));
 
   // --- The table ------------------------------------------------------------------
   const row = (f: File, what: string): string => `| ${f.name} | ${what} | ${f.bytes.length} (${kib(f.bytes.length)} KiB) | ${gzip(f.bytes)} (${kib(gzip(f.bytes))} KiB) |`;
@@ -126,13 +127,14 @@ try {
     const what = stem(name) === "TextEditor" ? "the text editor (TipTap, ProseMirror), loaded when a text is first edited" : `loaded later, by import() from ${from}`;
     console.log(row(file, what));
   }
+  for (const [name, from] of along) console.log(row(files.find((f) => f.name === name)!, `loaded later, with ${from}`));
   const fonts = files.filter((f) => f.name.endsWith(".woff2"));
   for (const font of fonts) console.log(row(font, "a font, fetched when a page uses it"));
   check(fonts.length === 4, "the build holds the four fonts", fonts.map((f) => f.name).join(", "));
   const other = files.filter((f) => !f.name.endsWith(".js") && !f.name.endsWith(".css") && !f.name.endsWith(".woff2") && f.name !== "index.html");
   console.log(`(also in the build, not counted: ${other.map((f) => `${f.name} ${f.bytes.length} bytes`).join(", ")})`);
   console.log("");
-  console.log(`The entry holds ${entry.bytes.length} bytes of JavaScript; the lazy chunks together ${[...lazy.keys()].reduce((n, name) => n + files.find((f) => f.name === name)!.bytes.length, 0)} bytes.`);
+  console.log(`The entry holds ${entry.bytes.length} bytes of JavaScript; the chunks loaded later together ${[...lazy.keys(), ...along.keys()].reduce((n, name) => n + files.find((f) => f.name === name)!.bytes.length, 0)} bytes.`);
 } catch (error) {
   console.log(`the measurement stopped: ${(error as Error).message}`);
   if (error instanceof CouldNotRun) exitCode = 2;

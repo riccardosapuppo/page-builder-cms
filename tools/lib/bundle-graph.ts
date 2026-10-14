@@ -2,8 +2,11 @@
 // later, read from the files themselves: a chunk is loaded at once when the
 // entry, or a chunk the entry imports statically (at any depth), names it in
 // an import or an export ... from; it is lazy when some file reaches it with
-// import() and nothing at once imports it statically. Names are what the
-// bundler writes: "./x-HASH.js", between double quotes or backticks.
+// import() and nothing at once imports it statically; and it comes along
+// with a lazy chunk when only lazy chunks (or what comes along with them)
+// import it statically, as a provider's SDK brings code of its own. Names
+// are what the bundler writes: "./x-HASH.js", between double quotes or
+// backticks.
 export interface Chunk {
   name: string;
   text: string;
@@ -23,6 +26,9 @@ export interface Graph {
   atOnce: Set<string>;
   // Each chunk loaded later, and the chunk that reaches it with import().
   lazy: Map<string, string>;
+  // Each chunk loaded later because a chunk loaded later imports it
+  // statically, and that chunk.
+  along: Map<string, string>;
 }
 
 // `folder` is the path the chunks' names are under ("assets/"), so that
@@ -49,5 +55,16 @@ export function graph(chunks: readonly Chunk[], entry: string, folder = "assets/
       if (target && !atOnce.has(target.name)) lazy.set(target.name, chunk.name);
     }
   }
-  return { atOnce, lazy };
+  const along = new Map<string, string>();
+  for (const queue = [...lazy.keys()]; queue.length > 0;) {
+    const from = queue.pop()!;
+    for (const name of staticImports(byName.get(from)!.text)) {
+      const target = byName.get(folder + name);
+      if (target && !atOnce.has(target.name) && !lazy.has(target.name) && !along.has(target.name)) {
+        along.set(target.name, from);
+        queue.push(target.name);
+      }
+    }
+  }
+  return { atOnce, lazy, along };
 }
