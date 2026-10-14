@@ -218,6 +218,18 @@ jobs:
       # GitHub Pages serves it (on 4903), and by the CMS.
       - run: npm run check:serving
         working-directory: builder
+      # What the browser saw when a test failed (Playwright's snapshot of
+      # the page, error-context.md), kept a week: a run on GitHub is slower
+      # than the machine the tests were written on, and a race that shows
+      # only here can then be read, not guessed.
+      - name: Keep the failed browser tests' results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: builder/e2e/test-results
+          retention-days: 7
+          if-no-files-found: ignore
 
   contract:
     name: Render contract, the server's half and the editor's

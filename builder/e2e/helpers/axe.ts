@@ -1,7 +1,10 @@
 // axe in Chromium (@axe-core/playwright): every rule axe runs by default,
 // on the whole page or a part of it. A finding of serious or critical
 // impact fails the test that asks; the others are given back as lines, for
-// the test to show, not hide.
+// the test to show, not hide. The page's fades are let end first (the
+// selected block's toolbar comes in over 140 ms): axe reads the colours an
+// element has when it runs, and a key half faded in reads as faint, on a
+// machine slow enough to run axe within the fade.
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
@@ -15,6 +18,9 @@ export interface AxeReport {
 }
 
 export async function axe(page: Page, options: { include?: string; exclude?: readonly string[] } = {}): Promise<AxeReport> {
+  await page.evaluate(() => Promise.all(document.getAnimations()
+    .filter((animation) => Number.isFinite(Number(animation.effect?.getComputedTiming().endTime)))
+    .map((animation) => animation.finished.catch(() => undefined))));
   let builder = new AxeBuilder({ page });
   if (options.include) builder = builder.include(options.include);
   for (const excluded of options.exclude ?? []) builder = builder.exclude(excluded);

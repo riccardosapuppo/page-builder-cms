@@ -286,7 +286,16 @@ test("the toolbar keeps off the words around the frame: above it where that is f
   const laid = page.locator('.canvas [data-block-id="fd"] > .clamp');
   await laid.evaluate((element) => { (element as HTMLElement).style.top = "4px"; (element as HTMLElement).style.left = "4px"; });
   expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: over its own words "Swim at slack water"/);
-  await laid.evaluate((element) => { (element as HTMLElement).style.top = "-30px"; });
+  // Over the words above, wherever the fonts put them: its top on their
+  // last line.
+  await laid.evaluate((element) => {
+    const toolbar = element as HTMLElement;
+    const home = toolbar.offsetParent as HTMLElement;
+    const box = home.getBoundingClientRect();
+    const scale = box.height / home.offsetHeight || 1;
+    const words = document.querySelector('.canvas [data-block-id="bt"] p')!.getBoundingClientRect();
+    toolbar.style.top = `${(words.bottom - 12 - box.top) / scale}px`;
+  });
   expect((await clampOverWords(page)).join("\n")).toMatch(/Tide notes/);
   await laid.evaluate((element) => { (element as HTMLElement).style.left = "-400px"; });
   expect((await clampFaults(page)).join("\n")).toMatch(/Heading tools: past the canvas's edge/);
