@@ -186,6 +186,22 @@ test("Sticky header, published, keeps the header at the top of the window while 
       expect(targetTop, `spaced, ${size.width} wide`).toBeGreaterThanOrEqual(headerBottom);
       expect(targetTop - headerBottom, `spaced, ${size.width} wide`).toBeLessThan(80);
     }
+
+    // A heading of the header at Display, on one line: the block an anchor
+    // names stops below it too.
+    await saveDraft({ ...kept, sections: [...kept.sections, section("big", "Big", [column("big-1", [{ ...heading("big-a", "Tides"), style: { base: { textSize: "display" } } }])])] }, "display-header");
+    await publish(request, header.id);
+    for (const size of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await visitor.setViewportSize(size);
+      await visitor.goto("about:blank");
+      await visitor.goto(`${cms()}/${slug}#band-one`);
+      await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+      const { headerBottom, targetTop } = await visitor.evaluate(() => ({
+        headerBottom: document.querySelector("header.sw-header")!.getBoundingClientRect().bottom,
+        targetTop: document.getElementById("band-one")!.getBoundingClientRect().top,
+      }));
+      expect(targetTop, `display, ${size.width} wide`).toBeGreaterThanOrEqual(headerBottom);
+    }
     await visitor.close();
   } finally {
     // What every page drew, published again, then the draft as it was.

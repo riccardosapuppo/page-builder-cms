@@ -83,6 +83,21 @@ class RenderPolicyTest < ActiveSupport::TestCase
   test "the space steps a sticky header counts are the site's own, from tokens.json" do
     assert_equal SiteTokens.site_space, RenderPolicy::SITE_SPACE
     assert_equal SiteTokens.section_space, RenderPolicy::SECTION_SPACE
+    assert_equal SiteTokens.text_lines, RenderPolicy::TEXT_LINE
+  end
+
+  test "a sticky header's rows count a heading's and a text's line at its type step, past what a row holds" do
+    heading = ->(level, style = {}) { { "type" => "heading", "props" => { "level" => level }, "style" => style } }
+    header = ->(column) { { "sticky" => true, "sections" => [ { "props" => { "stack" => "never" }, "children" => [ column ] } ] } }
+    assert_equal "2 2 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(2, { "base" => { "textSize" => "display" } }) ] }))
+    assert_equal "2 1 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(1) ] }))
+    assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(2) ] }))
+    assert_equal "1 2 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(3, { "tablet" => { "textSize" => "display" } }) ] }))
+    # A text at its column's step, or its own.
+    assert_equal "2 2 1", RenderPolicy.sticky_rows(header.({ "style" => { "base" => { "textSize" => "display" } }, "children" => [ { "type" => "text" } ] }))
+    assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "style" => { "base" => { "textSize" => "display" } }, "children" => [ { "type" => "text", "style" => { "base" => { "textSize" => "small" } } } ] }))
+    # A step that is not one, or a level out of range: the level's, else h2's.
+    assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(9, { "base" => { "textSize" => "huge" } }) ] }))
   end
 
   test "a sticky header's rows count a column's own space inside and between its blocks, past the theme's" do

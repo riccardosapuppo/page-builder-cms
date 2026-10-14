@@ -62,9 +62,16 @@ const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15
 // wrong), its sections with their columns and where they stack, and the
 // shapes no schema would let through.
 const stackValue = fc.oneof(fc.constantFrom("phone", "never", "tablet", "Phone"), anyJson);
-const headerBlock = fc.oneof({ weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "Image", "") }) }, { weight: 1, arbitrary: anyJson });
+const sizeStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("display", "heading-1", "heading-2", "heading-3", "large", "body", "small") }, { weight: 1, arbitrary: fc.constantFrom("Display", "huge", "valueOf", "", 2) }, { weight: 1, arbitrary: anyJson });
+const sizeSides = fc.oneof({ weight: 5, arbitrary: fc.record({ textSize: sizeStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const sizeStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: sizeSides, tablet: sizeSides, phone: sizeSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const headerBlock = fc.oneof(
+  { weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "Image", "") }) },
+  { weight: 3, arbitrary: fc.record({ type: fc.constantFrom("heading", "text"), props: fc.oneof(fc.record({ level: fc.oneof(fc.integer({ min: 0, max: 5 }), fc.constantFrom(2.5, "1", null)) }, { requiredKeys: [] }), anyJson), style: sizeStyle }, { requiredKeys: ["type"] }) },
+  { weight: 1, arbitrary: anyJson },
+);
 const columnStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("none", "xs", "s", "m", "l", "xl", "xxl") }, { weight: 1, arbitrary: fc.constantFrom("section-l", "XXL", "huge", "toString", "", 48) }, { weight: 1, arbitrary: anyJson });
-const columnSides = fc.oneof({ weight: 5, arbitrary: fc.record({ spaceInside: columnStep, spaceBetween: columnStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const columnSides = fc.oneof({ weight: 5, arbitrary: fc.record({ spaceInside: columnStep, spaceBetween: columnStep, textSize: sizeStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const columnStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: columnSides, tablet: columnSides, phone: columnSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const headerColumn = fc.oneof({ weight: 5, arbitrary: fc.record({ children: fc.oneof({ weight: 5, arbitrary: fc.array(headerBlock, { maxLength: 4 }) }, { weight: 1, arbitrary: anyJson }), style: columnStyle }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const spaceStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l") }, { weight: 1, arbitrary: fc.constantFrom("Section-l", "huge", "constructor", "__proto__", "", 96) }, { weight: 1, arbitrary: anyJson });

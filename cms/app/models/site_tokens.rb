@@ -53,6 +53,18 @@ module SiteTokens
     read.fetch("site-letter-width").fetch("default")
   end
 
+  # The tallest line of each type step on a desktop, a tablet and a phone,
+  # in whole pixels: of the three type scales (type.site, type.site-gentle,
+  # type.site-strong), the largest size times its line height.
+  def text_lines
+    @text_lines ||= begin
+      scales = %w[site-gentle site site-strong].map { |name| read.fetch("type").fetch(name) }
+      %w[display heading-1 heading-2 heading-3 large body small].to_h do |step|
+        [ step, %w[desktop tablet phone].map { |device| scales.map { |scale| size, height = scale.fetch(step).fetch(device); (size * height).ceil }.max } ]
+      end.freeze
+    end
+  end
+
   # The space steps a column's spaceInside and spaceBetween may name, in
   # pixels (tokens.json, space.site), the same on every device.
   def site_space

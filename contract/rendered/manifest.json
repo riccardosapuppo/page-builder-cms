@@ -30,7 +30,7 @@
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
     "cms/app/models/block_style.rb": "903c0b2c39ffaa6fde80d2bcacf6b81f2b7fa2ecde026fb3d1da65bf51f3bb86",
     "cms/app/models/form_block.rb": "a66401ff4783c7a20ba28822fb9615ae6b3810e6fbc4d21adbec9e183bdeab91",
-    "cms/app/models/render_policy.rb": "cb1be06963532f72356e2addcb115844638c62ea395c209282ffc450415a26d7",
+    "cms/app/models/render_policy.rb": "3a9497440ea2bf7dbdef185ea196b2db19071dd238c23e7223a2c327d47c3af8",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "364f74b2db68d4ba89661630a77bc4d350feb6d614336dfd6943dd8690de35c9",
     "cms/app/views/blocks/_block.html.erb": "a6b0e6a36d350854e468a49a6d818ea719af5fbcaafb05cdc56e3efac93a30f5",

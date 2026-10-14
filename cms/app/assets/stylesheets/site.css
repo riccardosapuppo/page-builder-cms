@@ -245,11 +245,13 @@ a.sw-btn:not([href]) { cursor: default; }
    anchor of the page stops the block below it, not under it. */
 .sw-header[data-sticky] { position: sticky; top: 0; background-color: var(--sw-background); }
 /* Its anchors stop below it: data-sticky holds its rows on a desktop, a
-   tablet and a phone (RenderPolicy.sticky_rows: a row for each block of a
-   column, three for a tall block, and the rows a section's own space above
-   and below takes past the header's), counted at 88 px each, the most a
-   header's row of logo, menu or button takes with its space, 68 on a
-   phone, with 16 to spare. The page has no script to measure it. */
+   tablet and a phone (RenderPolicy.sticky_rows: its height reckoned from
+   its document, a row for each block of a column, three for a tall block,
+   with the space its sections and columns set past the theme's and each
+   heading's and text's line past what a row holds), counted at 88 px each,
+   the most a header's row of logo, menu or button takes with its space, 68
+   on a phone, with 16 to spare. The page has no script to measure it: a
+   text that wraps is counted on one line. */
 .site:has(.sw-header[data-sticky]) > .sw { --sticky-rows: 1; --sticky-row: 88px; }
 .site:has(.sw-header[data-sticky^="2 "]) > .sw { --sticky-rows: 2; }
 .site:has(.sw-header[data-sticky^="3 "]) > .sw { --sticky-rows: 3; }

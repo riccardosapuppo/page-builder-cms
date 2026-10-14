@@ -116,14 +116,44 @@ function sectionHeight(section: Record<string, unknown>, device: number): number
 }
 
 // A column's height: its rows (columnRows); its own space inside, above
-// and below; and the space between its blocks past the theme's (site.css,
-// .col's --col-gap).
+// and below; the space between its blocks past the theme's (site.css,
+// .col's --col-gap); and each heading's and text's line past what a row
+// holds (textOver).
 function columnHeight(column: unknown, device: number): number {
   if (!isObject(column)) return STICKY_ROW[device]!;
-  const blocks = Array.isArray(column.children) ? column.children.length : 0;
+  const blocks = Array.isArray(column.children) ? column.children : [];
   const inside = step(column, "spaceInside", device, SITE_SPACE) ?? 0;
   const between = step(column, "spaceBetween", device, SITE_SPACE) ?? COLUMN_GAP;
-  return columnRows(column) * STICKY_ROW[device]! + 2 * inside + Math.max(0, between - COLUMN_GAP) * Math.max(0, blocks - 1);
+  const texts = blocks.reduce<number>((sum, block) => sum + textOver(block, column, device), 0);
+  return columnRows(column) * STICKY_ROW[device]! + 2 * inside + Math.max(0, between - COLUMN_GAP) * Math.max(0, blocks.length - 1) + texts;
+}
+
+// The pixels a heading's or a text's line takes past what a header's row
+// holds (the row less the header's space above and below), on one line: a
+// heading at its own type step, else its level's (h1 heading-1 to h4
+// large, as ../widgets/heading/render.tsx draws it); a text at its own,
+// else its column's, else body. A text that wraps is taller still; the page
+// has no script to measure it.
+function textOver(block: unknown, column: Record<string, unknown>, device: number): number {
+  if (!isObject(block)) return 0;
+  let size: string | null = null;
+  if (block.type === "heading") {
+    const level = isObject(block.props) ? block.props.level : undefined;
+    size = named(block, "textSize", device) ?? LEVEL_STEPS[(Number.isInteger(level) && (level as number) >= 1 && (level as number) <= 4 ? (level as number) : 2) - 1]!;
+  } else if (block.type === "text") {
+    size = named(block, "textSize", device) ?? named(column, "textSize", device) ?? "body";
+  }
+  return size === null ? 0 : Math.max(0, TEXT_LINE[size]![device]! - (STICKY_ROW[device]! - 2 * HEADER_SPACE[device]!));
+}
+
+// A block's own type step for a style key on a device, as the page's
+// classes apply it (step's rule), or null.
+function named(block: Record<string, unknown>, key: string, device: number): string | null {
+  const style = isObject(block.style) ? block.style : {};
+  const own = device === 1 ? style.tablet : device === 2 ? style.phone : undefined;
+  const base = style.base;
+  const name = [isObject(own) ? own[key] : undefined, isObject(base) ? base[key] : undefined].find((value) => typeof value === "string" && Object.hasOwn(TEXT_LINE, value));
+  return typeof name === "string" ? name : null;
 }
 
 // The pixels of a block's own step for a style key on a device: the
@@ -155,6 +185,22 @@ export const STICKY_SPARE = 16;
 const SITE_SPACE: Readonly<Record<string, number>> = tokens.space.site;
 const SECTION_SPACE: Readonly<Record<string, number>> = { ...tokens.space.site, ...tokens.space["site-section"] };
 const COLUMN_GAP = SITE_SPACE.l!;
+
+// The tallest line of each type step on a desktop, a tablet and a phone, in
+// whole pixels: of the three type scales, the largest size times its line
+// height (tokens.json, type.site, type.site-gentle and type.site-strong), so
+// a site's own scale is never above it. A heading's level draws it at a
+// step when it names none.
+type Steps = Readonly<Record<string, Readonly<Record<string, readonly number[]>>>>;
+const SCALES = ["site-gentle", "site", "site-strong"].map((name) => (tokens.type as unknown as Record<string, Steps>)[name]!);
+const TEXT_LINE: Readonly<Record<string, readonly number[]>> = Object.fromEntries(["display", "heading-1", "heading-2", "heading-3", "large", "body", "small"].map((name) => [
+  name,
+  ["desktop", "tablet", "phone"].map((device) => Math.max(...SCALES.map((scale) => {
+    const [size, height] = scale[name]![device]! as [number, number];
+    return Math.ceil(size * height);
+  }))),
+]));
+const LEVEL_STEPS = ["heading-1", "heading-2", "heading-3", "large"] as const;
 
 // The pixels a section's own space above and below adds on a device (0 a
 // desktop, 1 a tablet, 2 a phone) over the header's own: the device's own

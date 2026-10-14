@@ -148,6 +148,19 @@ describe("a sticky header's rows", () => {
     expect(stickyRows(header(column({ base: { spaceBetween: "l", spaceInside: "section-l" } }, "button", "button")))).toBe("2 2 2");
     expect(stickyRows(header(column({ base: { spaceInside: "huge", spaceBetween: 48 } }, "button")))).toBe("1 1 1");
   });
+  test("a heading's and a text's line counts at its type step, past what a row holds", () => {
+    const heading = (level: number, style: unknown = {}) => ({ type: "heading", props: { level }, style });
+    const header = (column: unknown) => ({ sticky: true, sections: [{ props: { stack: "never" }, children: [column] }] });
+    expect(stickyRows(header({ children: [heading(2, { base: { textSize: "display" } })] }))).toBe("2 2 1");
+    expect(stickyRows(header({ children: [heading(1)] }))).toBe("2 1 1");
+    expect(stickyRows(header({ children: [heading(2)] }))).toBe("1 1 1");
+    expect(stickyRows(header({ children: [heading(3, { tablet: { textSize: "display" } })] }))).toBe("1 2 1");
+    // A text at its column's step, or its own.
+    expect(stickyRows(header({ style: { base: { textSize: "display" } }, children: [{ type: "text" }] }))).toBe("2 2 1");
+    expect(stickyRows(header({ style: { base: { textSize: "display" } }, children: [{ type: "text", style: { base: { textSize: "small" } } }] }))).toBe("1 1 1");
+    // A step that is not one, or a level out of range: the level's, else h2's.
+    expect(stickyRows(header({ children: [heading(9, { base: { textSize: "huge" } })] }))).toBe("1 1 1");
+  });
   test("the row, the header's space and the spare it counts with are the published page's own (site.css)", () => {
     const css = readFileSync(new URL("../../../cms/app/assets/stylesheets/site.css", import.meta.url), "utf8");
     expect(css).toContain(`--sticky-row: ${STICKY_ROW[0]}px`);

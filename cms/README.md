@@ -866,11 +866,16 @@ and a class may not be one of the theme's (`reservedClass`, both rules
 of `lib/block_document/rules.rb`). A header whose document says
 `"sticky": true` is drawn with `data-sticky`, and `site.css` keeps it
 at the top of the window. The attribute holds the header's rows on a
-desktop, a tablet and a phone (`RenderPolicy.sticky_rows`: a row for each
-block of a column, three for a tall one; a section as tall as its
-tallest column, or as all of them where they stack), and the page's
-anchors stop that many rows below the window's top: the page has no
-script to measure the header.
+desktop, a tablet and a phone (`RenderPolicy.sticky_rows`), and the
+page's anchors stop that many rows below the window's top: the page has
+no script to measure the header, so its height is reckoned from its
+document. A column is a row for each block, three for a tall one, with
+the space it sets inside and between its blocks past the theme's, and
+each heading's and text's line past what a row holds, at the tallest of
+the three type scales; a section is its tallest column, or all of them
+where they stack, with the space it sets above and below past the
+header's. A text is counted on one line: one that wraps in a sticky
+header can still reach over an anchor's first line.
 
 **Custom CSS** (`app/models/custom_css.rb`). The site style holds the
 site's own stylesheet, `custom_css` (`customCss` in the API, "" for

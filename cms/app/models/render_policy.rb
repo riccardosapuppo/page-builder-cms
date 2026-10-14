@@ -113,15 +113,45 @@ module RenderPolicy
   end
 
   # A column's height: its rows (column_rows); its own space inside, above
-  # and below; and the space between its blocks past the theme's (site.css,
-  # .col's --col-gap).
+  # and below; the space between its blocks past the theme's (site.css,
+  # .col's --col-gap); and each heading's and text's line past what a row
+  # holds (text_over).
   def column_height(column, device)
     return STICKY_ROW[device] unless column.is_a?(Hash)
 
-    blocks = column["children"].is_a?(Array) ? column["children"].size : 0
+    blocks = column["children"].is_a?(Array) ? column["children"] : []
     inside = step(column, "spaceInside", device, SITE_SPACE) || 0
     between = step(column, "spaceBetween", device, SITE_SPACE) || COLUMN_GAP
-    (column_rows(column) * STICKY_ROW[device]) + (2 * inside) + ([ between - COLUMN_GAP, 0 ].max * [ blocks - 1, 0 ].max)
+    texts = blocks.sum { |block| text_over(block, column, device) }
+    (column_rows(column) * STICKY_ROW[device]) + (2 * inside) + ([ between - COLUMN_GAP, 0 ].max * [ blocks.size - 1, 0 ].max) + texts
+  end
+
+  # The pixels a heading's or a text's line takes past what a header's row
+  # holds (the row less the header's space above and below), on one line:
+  # a heading at its own type step, else its level's (h1 heading-1 to h4
+  # large, as _heading.html.erb draws it); a text at its own, else its
+  # column's, else body. A text that wraps is taller still; the page has no
+  # script to measure it.
+  def text_over(block, column, device)
+    return 0 unless block.is_a?(Hash)
+
+    size = case block["type"]
+    when "heading"
+      level = block["props"].is_a?(Hash) ? block["props"]["level"] : nil
+      named(block, "textSize", device) || LEVEL_STEPS[(level.is_a?(Integer) && level.between?(1, 4) ? level : 2) - 1]
+    when "text"
+      named(block, "textSize", device) || named(column, "textSize", device) || "body"
+    end
+    size.nil? ? 0 : [ TEXT_LINE.fetch(size)[device] - (STICKY_ROW[device] - (2 * HEADER_SPACE[device])), 0 ].max
+  end
+
+  # A block's own type step for a style key on a device, as the page's
+  # classes apply it (step's rule), or nil.
+  def named(block, key, device)
+    style = block["style"].is_a?(Hash) ? block["style"] : {}
+    own = style[[ nil, "tablet", "phone" ][device]]
+    base = style["base"]
+    [ own.is_a?(Hash) ? own[key] : nil, base.is_a?(Hash) ? base[key] : nil ].find { |value| TEXT_LINE.key?(value) }
   end
 
   # The pixels of a block's own step for a style key on a device: the
@@ -153,6 +183,18 @@ module RenderPolicy
   SITE_SPACE = { "none" => 0, "xs" => 4, "s" => 8, "m" => 16, "l" => 24, "xl" => 32, "xxl" => 48 }.freeze
   SECTION_SPACE = SITE_SPACE.merge("section-s" => 64, "section-l" => 96).freeze
   COLUMN_GAP = SITE_SPACE.fetch("l")
+
+  # The tallest line of each type step on a desktop, a tablet and a phone,
+  # in whole pixels: of the three type scales, the largest size times its
+  # line height (tokens.json, type.site, type.site-gentle and
+  # type.site-strong, which render_policy_test.rb holds this to), so a
+  # site's own scale is never above it. A heading's level draws it at a
+  # step when it names none.
+  TEXT_LINE = {
+    "display" => [ 102, 68, 51 ], "heading-1" => [ 76, 54, 43 ], "heading-2" => [ 57, 43, 36 ], "heading-3" => [ 45, 37, 33 ],
+    "large" => [ 37, 32, 30 ], "body" => [ 29, 28, 26 ], "small" => [ 23, 23, 21 ]
+  }.freeze
+  LEVEL_STEPS = %w[heading-1 heading-2 heading-3 large].freeze
 
   # The pixels a section's own space above and below adds on a device (0 a
   # desktop, 1 a tablet, 2 a phone) over the header's own: the device's own
