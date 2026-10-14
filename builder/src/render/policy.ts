@@ -72,22 +72,36 @@ export function anchor(value: unknown): string | null {
   return typeof value === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(value) ? value : null;
 }
 
+// The blocks a header's column counts three rows for: drawn taller than a
+// bar's logo, menu or button.
+const TALL_BLOCKS: ReadonlySet<unknown> = new Set(["image", "gallery", "video", "map", "iconbox", "quote", "accordion"]);
+
+// A column's rows, one for each of its blocks, three for a tall one, and at
+// least one.
+function columnRows(column: unknown): number {
+  const blocks = isObject(column) && Array.isArray(column.children) ? column.children : [];
+  return Math.max(1, blocks.reduce<number>((sum, block) => sum + (isObject(block) && TALL_BLOCKS.has(block.type) ? 3 : 1), 0));
+}
+
 // The rows a sticky header draws on a desktop, a tablet and a phone, as
-// "desktop tablet phone" (each from 1 to 6), or null for a document that
-// is not a sticky header's: one for each section, and on the devices where
-// a section's columns go one under the other, one for each column (no
-// stack: tablets and phones; phone: phones; never: none). The page's
-// anchors stop that many rows below the window's top (site.css).
+// "desktop tablet phone" (each from 1 to 9), or null for a document that
+// is not a sticky header's: a section is as many rows as its tallest
+// column (columnRows), or, on the devices where its columns go one under
+// the other, as all its columns together (no stack: tablets and phones;
+// phone: phones; never: none). The page's anchors stop that many rows
+// below the window's top (site.css).
 export function stickyRows(document: unknown): string | null {
   if (!isObject(document) || document.sticky !== true) return null;
   const sections = Array.isArray(document.sections) ? document.sections.filter(isObject) : [];
   const rows = sections.reduce<[number, number, number]>(([desktop, tablet, phone], section) => {
-    const columns = Array.isArray(section.children) ? section.children.length : 0;
+    const found = Array.isArray(section.children) ? section.children.map(columnRows) : [];
+    const columns = found.length > 0 ? found : [1];
     const stack = isObject(section.props) ? section.props.stack : undefined;
-    const stacked = columns >= 2 ? columns : 1;
-    return [desktop + 1, tablet + (stack === "phone" || stack === "never" ? 1 : stacked), phone + (stack === "never" ? 1 : stacked)];
+    const side = Math.max(...columns);
+    const stacked = columns.length >= 2 ? columns.reduce((sum, n) => sum + n, 0) : side;
+    return [desktop + side, tablet + (stack === "phone" || stack === "never" ? side : stacked), phone + (stack === "never" ? side : stacked)];
   }, [0, 0, 0]);
-  return rows.map((count) => Math.min(6, Math.max(1, count))).join(" ");
+  return rows.map((count) => Math.min(9, Math.max(1, count))).join(" ");
 }
 
 // A block's classes of the site's own, as the page writes them: the names

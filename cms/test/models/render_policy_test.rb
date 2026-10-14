@@ -65,13 +65,18 @@ class RenderPolicyTest < ActiveSupport::TestCase
     assert_nil RenderPolicy.map_src("54.5", 0, 10)
   end
 
-  test "a sticky header's rows: one for each section, and on the devices where columns stack, one for each column, at most 6" do
+  test "a sticky header's rows: a column's blocks, three for a tall one; a section's tallest column, or all where they stack; at most 9" do
     section = ->(columns, stack = nil) { { "props" => stack ? { "stack" => stack } : {}, "children" => Array.new(columns) { {} } } }
     assert_equal "1 1 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(3, "never") ] })
     assert_equal "1 2 2", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(2) ] })
     assert_equal "1 1 3", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(3, "phone") ] })
     assert_equal "3 4 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(1), section.(3, "never"), section.(2) ] })
-    assert_equal "3 6 6", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(4), section.(4), section.(1) ] })
+    assert_equal "3 9 9", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(4), section.(4), section.(1) ] })
+    holding = ->(stack, *columns) { { "props" => stack ? { "stack" => stack } : {}, "children" => columns.map { |types| { "children" => types.map { |type| { "type" => type } } } } } }
+    assert_equal "2 2 2", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.(nil, %w[button button]) ] })
+    assert_equal "3 4 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.("never", %w[logo], %w[menu], %w[button]), holding.(nil, %w[heading button], %w[heading]) ] })
+    assert_equal "3 3 5", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.("phone", %w[image], %w[text text]) ] })
+    assert_equal "9 9 9", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.(nil, %w[gallery map video quote]) ] })
     [ { "sections" => [ section.(2) ] }, { "sticky" => false }, { "sticky" => "true" }, nil, [] ].each { |document| assert_nil RenderPolicy.sticky_rows(document) }
   end
 

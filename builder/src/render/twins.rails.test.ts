@@ -62,8 +62,10 @@ const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15
 // wrong), its sections with their columns and where they stack, and the
 // shapes no schema would let through.
 const stackValue = fc.oneof(fc.constantFrom("phone", "never", "tablet", "Phone"), anyJson);
+const headerBlock = fc.oneof({ weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "Image", "") }) }, { weight: 1, arbitrary: anyJson });
+const headerColumn = fc.oneof({ weight: 5, arbitrary: fc.record({ children: fc.oneof({ weight: 5, arbitrary: fc.array(headerBlock, { maxLength: 4 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const headerSection = fc.oneof(
-  { weight: 6, arbitrary: fc.record({ props: fc.oneof(fc.record({ stack: stackValue }, { requiredKeys: [] }), anyJson), children: fc.oneof({ weight: 5, arbitrary: fc.array(fc.constant({}), { maxLength: 5 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) },
+  { weight: 6, arbitrary: fc.record({ props: fc.oneof(fc.record({ stack: stackValue }, { requiredKeys: [] }), anyJson), children: fc.oneof({ weight: 5, arbitrary: fc.array(headerColumn, { maxLength: 5 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) },
   { weight: 1, arbitrary: anyJson },
 );
 const headerDocument = fc.oneof(

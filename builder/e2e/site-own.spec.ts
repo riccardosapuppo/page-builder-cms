@@ -10,7 +10,7 @@
 import type { APIRequestContext } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
-import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test } from "./helpers/site.ts";
+import { cms, column, draftOf, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -135,11 +135,12 @@ test("Sticky header, published, keeps the header at the top of the window while 
     await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(400);
     await expect.poll(() => visitor.locator("header.sw-header").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
 
-    // A taller header: a second section, whose two columns go one under
-    // the other on a tablet and a phone. A link to an anchor of the page
-    // stops the block below it, on a desktop and on a phone.
+    // A taller header: a second section, its first column of two blocks,
+    // its two columns one under the other on a tablet and a phone. A link
+    // to an anchor of the page stops the block below it, on a desktop and
+    // on a phone.
     const kept = (await draftOf(request, header.id)).document as { sections: unknown[] };
-    await saveDraft({ ...kept, sections: [...kept.sections, section("tall", "Tides", [column("tall-1", [heading("tall-a", "High water 06:12")]), column("tall-2", [heading("tall-b", "Low water 12:30")])])] }, "tall-header");
+    await saveDraft({ ...kept, sections: [...kept.sections, section("tall", "Tides", [column("tall-1", [heading("tall-a", "High water 06:12"), widget("tall-c", "button", { label: "Tide table", href: "/tides" })]), column("tall-2", [heading("tall-b", "Low water 12:30")])])] }, "tall-header");
     await publish(request, header.id);
     for (const size of [{ width: 1024, height: 600 }, { width: 390, height: 844 }]) {
       await visitor.setViewportSize(size);
@@ -147,7 +148,7 @@ test("Sticky header, published, keeps the header at the top of the window while 
       // scroll the page already there.
       await visitor.goto("about:blank");
       await visitor.goto(`${cms()}/${slug}#band-one`);
-      await expect(visitor.locator("header.sw-header")).toHaveAttribute("data-sticky", "2 3 3");
+      await expect(visitor.locator("header.sw-header")).toHaveAttribute("data-sticky", "3 4 4");
       await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(100);
       const { headerBottom, targetTop } = await visitor.evaluate(() => ({
         headerBottom: document.querySelector("header.sw-header")!.getBoundingClientRect().bottom,

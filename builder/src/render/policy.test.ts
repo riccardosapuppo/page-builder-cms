@@ -107,6 +107,7 @@ describe("six decimals, as Ruby's format(\"%.6f\") writes them", () => {
 
 describe("a sticky header's rows", () => {
   const section = (columns: number, stack?: string) => ({ props: stack === undefined ? {} : { stack }, children: Array.from({ length: columns }, () => ({})) });
+  const holding = (stack: string | undefined, ...columns: string[][]) => ({ props: stack === undefined ? {} : { stack }, children: columns.map((types) => ({ children: types.map((type) => ({ type })) })) });
   test("one for each section on a desktop; on a tablet and a phone, one for each column where the columns stack", () => {
     expect(stickyRows({ sticky: true, sections: [section(3, "never")] })).toBe("1 1 1");
     expect(stickyRows({ sticky: true, sections: [section(1)] })).toBe("1 1 1");
@@ -114,8 +115,15 @@ describe("a sticky header's rows", () => {
     expect(stickyRows({ sticky: true, sections: [section(3, "phone")] })).toBe("1 1 3");
     expect(stickyRows({ sticky: true, sections: [section(1), section(3, "never"), section(2)] })).toBe("3 4 4");
   });
-  test("at most 6 on any device; none for a header that does not stay at the top", () => {
-    expect(stickyRows({ sticky: true, sections: [section(4), section(4), section(1)] })).toBe("3 6 6");
+  test("a column is a row for each of its blocks, three for a tall one; a section, its tallest column, or all of them where they stack", () => {
+    expect(stickyRows({ sticky: true, sections: [holding(undefined, ["button", "button"])] })).toBe("2 2 2");
+    expect(stickyRows({ sticky: true, sections: [holding("never", ["logo"], ["menu"], ["button"]), holding(undefined, ["heading", "button"], ["heading"])] })).toBe("3 4 4");
+    expect(stickyRows({ sticky: true, sections: [holding("phone", ["image"], ["text", "text"])] })).toBe("3 3 5");
+    expect(stickyRows({ sticky: true, sections: [holding(undefined, [])] })).toBe("1 1 1");
+  });
+  test("at most 9 on any device; none for a header that does not stay at the top", () => {
+    expect(stickyRows({ sticky: true, sections: [section(4), section(4), section(1)] })).toBe("3 9 9");
+    expect(stickyRows({ sticky: true, sections: [holding(undefined, ["gallery", "map", "video", "quote"])] })).toBe("9 9 9");
     expect(stickyRows({ sticky: true, sections: [] })).toBe("1 1 1");
     for (const document of [{ sections: [section(2)] }, { sticky: false, sections: [section(2)] }, { sticky: "true" }, null, []]) expect(stickyRows(document)).toBeNull();
   });

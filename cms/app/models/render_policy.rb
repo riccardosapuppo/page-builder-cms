@@ -74,23 +74,38 @@ module RenderPolicy
     value.is_a?(String) && /\A[a-z][a-z0-9-]{0,63}\z/.match?(value) ? value : nil
   end
 
+  # The blocks a header's column counts three rows for: drawn taller than a
+  # bar's logo, menu or button.
+  TALL_BLOCKS = %w[image gallery video map iconbox quote accordion].freeze
+
   # The rows a sticky header draws on a desktop, a tablet and a phone, as
-  # "desktop tablet phone" (each from 1 to 6), or nil for a document that is
-  # not a sticky header's. One row for each section, and on the devices
-  # where a section's columns go one under the other, one for each column:
-  # with no stack, on tablets and phones; with stack phone, on phones; with
-  # never, on none. The page's anchors stop that many rows below the
-  # window's top (site.css): the page has no script to measure the header.
+  # "desktop tablet phone" (each from 1 to 9), or nil for a document that is
+  # not a sticky header's. A column is a row for each of its blocks, three
+  # for a tall one, and at least one; a section is as many rows as its
+  # tallest column, or, on the devices where its columns go one under the
+  # other, as all its columns together: with no stack, on tablets and
+  # phones; with stack phone, on phones; with never, on none. The page's
+  # anchors stop that many rows below the window's top (site.css): the page
+  # has no script to measure the header.
   def sticky_rows(document)
     return nil unless document.is_a?(Hash) && document["sticky"] == true
 
     rows = Array(document["sections"]).select { |section| section.is_a?(Hash) }.reduce([ 0, 0, 0 ]) do |(desktop, tablet, phone), section|
-      columns = section["children"].is_a?(Array) ? section["children"].size : 0
+      columns = (section["children"].is_a?(Array) ? section["children"] : []).map { |column| column_rows(column) }
+      columns = [ 1 ] if columns.empty?
       stack = section["props"].is_a?(Hash) ? section["props"]["stack"] : nil
-      stacked = columns >= 2 ? columns : 1
-      [ desktop + 1, tablet + (stack == "phone" || stack == "never" ? 1 : stacked), phone + (stack == "never" ? 1 : stacked) ]
+      side = columns.max
+      stacked = columns.size >= 2 ? columns.sum : side
+      [ desktop + side, tablet + (stack == "phone" || stack == "never" ? side : stacked), phone + (stack == "never" ? side : stacked) ]
     end
-    rows.map { |count| count.clamp(1, 6) }.join(" ")
+    rows.map { |count| count.clamp(1, 9) }.join(" ")
+  end
+
+  # A column's rows, one for each of its blocks, three for a tall one, and
+  # at least one.
+  def column_rows(column)
+    blocks = column.is_a?(Hash) && column["children"].is_a?(Array) ? column["children"] : []
+    [ blocks.sum { |block| block.is_a?(Hash) && TALL_BLOCKS.include?(block["type"]) ? 3 : 1 }, 1 ].max
   end
 
   # A block's classes of the site's own, as the page writes them: the
