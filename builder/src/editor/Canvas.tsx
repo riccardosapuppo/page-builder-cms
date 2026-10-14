@@ -1105,8 +1105,9 @@ const EDITOR_CONTROLS = ".clamp, .ins, .ins-empty, .ins-slot-wrap, .seam, .seam-
 
 // Everything of the editor's drawn inside the page root: the site's custom
 // CSS stops at them (@scope's lower boundary), so a rule of its own for
-// button or a never restyles the editor's keys on the canvas.
-const IN_PAGE_CONTROLS = ".clamp, .ins, .ins-big, .ins-empty, .ins-point, .ins-sec, .ins-slot-wrap, .ov, .ov-link, .seam, .seam-hover, .seam-tip, .chrome";
+// button, a or span never restyles the editor's keys on the canvas, nor
+// the drop line and its label while a block is dragged.
+const IN_PAGE_CONTROLS = ".clamp, .drop-ui, .ins, .ins-big, .ins-empty, .ins-point, .ins-sec, .ins-slot-wrap, .ov, .ov-link, .seam, .seam-hover, .seam-tip, .chrome";
 
 // How near a seam between two sections the pointer must be for it to
 // answer, in the window's pixels.
