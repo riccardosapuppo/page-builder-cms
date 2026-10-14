@@ -4,8 +4,10 @@
 // the colour here and, through onPreview, wherever the panel shows it at
 // once; it is kept (onCommit) when the pointer is let go, a pause after
 // the arrow keys, or Enter or leaving the hex field, so a drag is one
-// change, not one per pixel. A choice the panel makes in the pause (a
-// swatch, Reset) comes after the picked colour: the panel drops what waits
+// change, not one per pixel. A colour waiting for the arrows' pause is
+// held as a text waiting in a field is (./pending.ts): another command, a
+// drag or another page hands it over first, on the page it was picked on.
+// A choice the panel makes in the pause (a swatch, Reset) drops it instead
 // (discard, through the picker's ref), so it is not kept over the choice.
 //
 // Both the area and the bar are sliders to a keyboard: the arrows move
@@ -39,7 +41,7 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 
 export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPickerProps) {
-  const { clock } = useEnv();
+  const { clock, ui } = useEnv();
   const id = useId();
   // The picker's own place: the hue is kept even where the colour has none
   // (a grey), so moving to black and back does not lose it.
@@ -49,6 +51,8 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
   const shown = rgbToHex(hsvToRgb(hsv));
   const kept = useRef<FreeColor>(value);
   const timer = useRef<unknown>(null);
+  // Lets go of the colour held while it waits.
+  const release = useRef<(() => void) | null>(null);
   const dragging = useRef<"area" | "hue" | null>(null);
 
   // The colour changed from outside (another tab, undo): the picker
@@ -66,6 +70,8 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
       clock.clearTimeout(timer.current);
       timer.current = null;
     }
+    release.current?.();
+    release.current = null;
     if (color === kept.current) {
       onPreview?.(null);
       return;
@@ -84,6 +90,8 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     if (keep === "now") commit(color);
     else if (keep === "pause") {
       if (timer.current !== null) clock.clearTimeout(timer.current);
+      release.current?.();
+      release.current = ui.getState().pending.hold(() => commit(color));
       timer.current = clock.setTimeout(() => {
         timer.current = null;
         commit(color);
@@ -99,6 +107,7 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
   });
   useEffect(() => () => {
     if (timer.current !== null) latest.current.commit(latest.current.shown);
+    release.current?.();
     latest.current.onPreview?.(null);
   }, []);
 
@@ -107,6 +116,8 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
       if (timer.current === null) return;
       clock.clearTimeout(timer.current);
       timer.current = null;
+      release.current?.();
+      release.current = null;
       setHsv(rgbToHsv(hexToRgb(kept.current)));
       setTyped(kept.current);
       setRefused(null);

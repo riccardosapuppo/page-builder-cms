@@ -68,7 +68,7 @@ test("a swatch or Reset chosen in the pause after the picker's arrows wins: the 
   openGroups("Colors");
   const pick = () => {
     fireEvent.click(within(screen.getByRole("group", { name: "Background: swatches" })).getByRole("button", { name: "A colour of its own" }));
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Background: saturation and brightness" }), { key: "ArrowLeft", shiftKey: true });
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Background: saturation and brightness" }), { key: "ArrowDown", shiftKey: true });
   };
   // A swatch: the picker closes, and keeps nothing of its own.
   pick();
@@ -82,6 +82,28 @@ test("a swatch or Reset chosen in the pause after the picker's arrows wins: the 
   await act(() => kit.clock.advance(COMMIT_AFTER_MS));
   expect(kit.block("button")?.style).toEqual({ base: {} });
   expect(kit.lastCommand()?.label).toBe("Cleared Background, Button in Widgets");
+});
+
+test("a colour waiting after the picker's arrows is handed over before another page replaces this one, and keeps nothing on that page", async () => {
+  const kit = editorKit({ document: widgetPage(), selection: "button" });
+  const view = kit.render(<BlockPanel id="button" />);
+  openGroups("Colors");
+  fireEvent.click(within(screen.getByRole("group", { name: "Background: swatches" })).getByRole("button", { name: "A colour of its own" }));
+  fireEvent.keyDown(screen.getByRole("slider", { name: "Background: saturation and brightness" }), { key: "ArrowDown", shiftKey: true });
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+  // What the editor does before it opens another page (App's openPage).
+  act(() => {
+    kit.ui.getState().pending.deliver();
+  });
+  const picked = kit.block("button")?.style as { base: { background?: string } } | undefined;
+  expect(picked?.base.background).toMatch(/^#[0-9a-f]{6}$/);
+  expect(kit.ui.getState().pending.waiting).toBe(0);
+  // The other page has a block of the same id: the panel goes, and keeps
+  // nothing there, then or after the pause.
+  act(() => kit.store.getState().load(widgetPage()));
+  view.unmount();
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(kit.block("button")?.style).toEqual({ base: {} });
 });
 
 // A setting's field, by its label, and what the field says beside and under it.
