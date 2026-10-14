@@ -4,7 +4,7 @@
 //
 // The README's pictures, made from the running system and nothing else,
 // into docs/images/ (--out for another folder): the editor with a block
-// selected, the published page on a desktop and on a phone, the version
+// selected, in a desktop's window and on a phone, the published page on a desktop and on a phone, the version
 // history, Form responses, the browser demo with its bottom line and the
 // picture a shared link to it previews with, the GIF of a real
 // publication, and the site's header open in the editor as a page is. Their names, sizes and limits are listed in
@@ -141,8 +141,9 @@ const OLD_WORDS = "Swim at slack water";
 
 // The editor on the example site's home page, ready for a person who has
 // seen its first-run note.
-async function openEditor(browser: Browser, editor: string, cms: string, viewport: { width: number; height: number }, label: string): Promise<Page> {
-  const page = await (await context(browser, { viewport, deviceScaleFactor: 1, storageState: welcomeSeen(editor) })).newPage();
+async function openEditor(browser: Browser, editor: string, cms: string, viewport: { width: number; height: number }, label: string, phone = false): Promise<Page> {
+  const device = phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { deviceScaleFactor: 1 };
+  const page = await (await context(browser, { viewport, ...device, storageState: welcomeSeen(editor) })).newPage();
   page.setDefaultTimeout(60_000);
   watch(page, label, [editor, cms]);
   await page.goto(editor);
@@ -231,6 +232,21 @@ async function editorShot(browser: Browser, shots: Staging, editor: string, cms:
   must((await page.locator(".canvas [data-editor-selected=true]").count()) === 1, "the hero's heading is not the one block selected");
   await parked(page);
   await shots.shoot(page, "editor.png");
+  await page.context().close();
+}
+
+// The editor on a phone, at twice the pixels: the hero's heading tapped,
+// and its settings risen from the bar at the foot as a sheet.
+async function phoneEditorShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 390, height: 844 }, "editor on a phone", true);
+  must((await page.locator(".app").getAttribute("data-layout")) === "narrow", "the editor on a phone does not lay itself out for one");
+  await page.locator(HERO).tap();
+  await page.getByRole("navigation", { name: "Editor tools" }).getByRole("button", { name: "Settings", exact: true }).tap();
+  await page.getByRole("complementary", { name: "Settings" }).waitFor();
+  must((await page.locator(".canvas [data-editor-selected=true]").count()) === 1, "the hero's heading is not the one block selected");
+  must(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the editor scrolls sideways on a phone");
+  await settled(page);
+  await shots.shoot(page, "editor-phone.png");
   await page.context().close();
 }
 
@@ -471,7 +487,7 @@ function sweep(cmsPort: number): void {
 async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: number, editorPort: number): Promise<void> {
   let browser: Browser | null = null;
   try {
-    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "header.png", "history.png", "form-responses.png", "publish.gif"].some((name) => wanted.has(name));
+    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "history.png", "form-responses.png", "publish.gif"].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
       const cms = await startCms(cmsPort);
@@ -484,6 +500,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
       await publishedPages(browser, shots, cms.url);
       if (wanted.has("form-responses.png")) await visitorsSend(browser, cms.url);
       if (wanted.has("editor.png")) await editorShot(browser, shots, editor.url, cms.url);
+      if (wanted.has("editor-phone.png")) await phoneEditorShot(browser, shots, editor.url, cms.url);
       if (wanted.has("header.png")) await headerShot(browser, shots, editor.url, cms.url);
       if (wanted.has("history.png") || wanted.has("form-responses.png")) {
         const page = await historyShot(browser, shots, editor.url, cms.url);

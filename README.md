@@ -225,6 +225,11 @@ says how, and what holds them to what the script makes.
 The editor with the home page open, its heading selected: the Outline on the
 left, the page in the middle, the heading's settings on the right.
 
+![The editor on a phone](docs/images/editor-phone.png)
+
+The same editor on a 390 by 844 phone, at twice the pixels: the heading
+tapped, and its settings risen from the bar at the foot.
+
 ![The site's header open in the editor](docs/images/header.png)
 
 The site's header, opened by a click on it, built as a page is: its menu
