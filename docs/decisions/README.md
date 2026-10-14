@@ -58,6 +58,13 @@ it holds.
   (3 October 2026): `VITE_CMS_ORIGIN`, else an absolute API base's origin,
   else `npm start`'s CMS; the development server takes it from `CMS_URL`.
 
+**The Assistant**
+- [A visitor's model key stays in the tab's memory, and the page can send it only to its provider](assistant-key-in-memory.md)
+  (14 October 2026): the browser calls Anthropic or OpenAI straight, the
+  key held in a closure and forgotten when asked, when idle and when the
+  page is left; the build's Content-Security-Policy connects to the two
+  providers and nothing else; what the model writes is read without trust.
+
 **The demo**
 - [The browser demo is a build of its own, and draws what the CMS would serve](demo-without-the-cms.md)
   (8 October 2026): the storage chosen by the entry point when the editor

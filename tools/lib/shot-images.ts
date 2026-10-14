@@ -32,6 +32,7 @@ export interface ImageSpec {
 export const IMAGES: readonly ImageSpec[] = [
   { file: "editor.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the editor with the home page open, its heading selected, the Outline and the settings beside the page" },
   { file: "editor-phone.png", kind: "png", width: 780, height: 1688, minBytes: 60_000, maxBytes: 600_000, shows: "the editor on a 390 by 844 phone, drawn at twice the pixels: the hero's heading selected, its settings risen from the bar at the foot" },
+  { file: "assistant.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the Assistant after writing a page from the sample written by hand: its four sections on the canvas and in its drawer, its heading selected" },
   { file: "header.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the site's header open in the editor as a page is, its menu selected, the home page dimmed under it" },
   { file: "published-desktop.png", kind: "png", width: 1440, height: 900, minBytes: 60_000, maxBytes: 400_000, shows: "the home page as the CMS serves it to a desktop window" },
   { file: "published-phone.png", kind: "png", width: 780, height: 1688, minBytes: 60_000, maxBytes: 600_000, shows: "the same page on a 390 by 844 phone, drawn at twice the pixels" },

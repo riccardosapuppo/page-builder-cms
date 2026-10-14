@@ -9,6 +9,7 @@ again.
 | --- | --- |
 | `editor.png` | The editor, 1440 by 900, with the home page open, its heading selected, the Outline on the left and the heading's settings on the right. |
 | `editor-phone.png` | The editor on a 390 by 844 phone, at twice the pixels: the hero's heading tapped, its settings risen from the bar at the foot as a sheet. |
+| `assistant.png` | The Assistant, 1440 by 900, after writing a page from the sample written by hand (no key, no model): its four sections on the canvas and listed in its drawer, each a step in History; the new page's heading selected, Write it again among its settings. |
 | `header.png` | The site's header open in the editor, 1440 by 900, as a page is opened: its menu selected, the menu's links on the right, the home page dimmed under it. |
 | `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
 | `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |

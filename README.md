@@ -30,6 +30,22 @@ and caches it; and keeps what visitors send from its form. The same editor
 also runs with no server at all, keeping its pages in the browser: that is
 the demo, [below](#the-two-modes).
 
+An Assistant writes with a model of the person's own, Anthropic's or
+OpenAI's. The person brings the key. It is kept in the tab's memory only,
+and the browser sends it to that provider and nowhere else. The Assistant
+can do three things:
+
+- **Write a page from a brief.** The page grows on the canvas section by
+  section, and each section is a step in History.
+- **Write a heading or a text again**: shorter, warmer, in another
+  language.
+- **Describe an image** of the library, from the picture itself.
+
+What the model writes is read without trust, and held to the page's schema
+like any edit. With no key, a sample written by hand goes through the same
+steps. [The Assistant](builder/src/assistant/README.md) and
+[where the key goes](docs/decisions/assistant-key-in-memory.md).
+
 ## Why Rails
 
 Rails and React are the stack of the CMS work I want to do, and building
@@ -230,6 +246,13 @@ left, the page in the middle, the heading's settings on the right.
 The same editor on a 390 by 844 phone, at twice the pixels: the heading
 tapped, and its settings risen from the bar at the foot.
 
+![The Assistant after writing a page](docs/images/assistant.png)
+
+The Assistant after writing a page, the sample written by hand: each of its
+four sections went onto the canvas as it came, and each is a step in
+History. The page's heading is selected, with Write it again among its
+settings.
+
 ![The site's header open in the editor](docs/images/header.png)
 
 The site's header, opened by a click on it, built as a page is: its menu
@@ -329,6 +352,12 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
 - **A visitor's form is counted under the socket's own address.** Cost: behind
   a proxy the whole site shares one count of ten forms in ten minutes.
   [The note](docs/decisions/form-count-by-socket-peer.md).
+- **A visitor's model key stays in the tab's memory, and the page can send
+  it only to its provider.** The browser calls Anthropic or OpenAI
+  straight. The build's Content-Security-Policy lets the page connect to
+  the site and the two APIs and nothing else. Cost: a reload forgets the
+  key, and the development server has no policy.
+  [The note](docs/decisions/assistant-key-in-memory.md).
 
 What those decisions add up to for the person who extends the project is
 [what adding a widget takes](#adding-a-widget): one commit, listed below.

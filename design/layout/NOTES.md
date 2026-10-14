@@ -485,6 +485,29 @@ so no keyboard opens unasked; the words say tap, and teach no keys. The
 mock's shots stay as approved; `builder/src/editor/layout-mode.ts` holds
 the widths, and `builder/e2e/small-windows.spec.ts` drives them.
 
+**The owner's choice of 14 October 2026: the Assistant.** A model of the
+person's own writes for the editor, with their Anthropic or OpenAI key,
+which is kept in the tab's memory only. Each part is drawn in the layout's
+own controls:
+
+- **Where it opens.** A fourth drawer key, Lucide's sparkles alone, named
+  Assistant to a screen reader and in its title. It stands on the top
+  bar's right, after the save state and before Preview: the left side,
+  the mock's drawers and Undo and Redo, has no room left at 1280 without
+  moving the page's title off the bar's middle. On a phone, it is in More. Its drawer
+  pushes the page aside as the Outline and History do, so the page it
+  writes grows beside it in view.
+- **What the drawer holds.** The provider is a segmented control and the
+  key a field; the model and the brief follow once a key is kept. The page
+  being written is listed above them as its sections land, with a Stop.
+  Without a key, the drawer offers the sample written by hand.
+- **In the panels.** A heading's and a text's Text group end with Write it
+  again, and an image's Image group with Describe the image. Each shows the
+  model's words before anything changes, with Use it, Again and Discard.
+
+The mock draws none of it, and its shots stay as approved.
+`builder/e2e/assistant.spec.ts` drives it.
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every

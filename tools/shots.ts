@@ -250,6 +250,28 @@ async function phoneEditorShot(browser: Browser, shots: Staging, editor: string,
   await page.context().close();
 }
 
+// The Assistant after writing a page from the sample written by hand (no
+// key, no model: builder/src/assistant/sample.ts): its four sections on the
+// canvas and in the drawer, the new page's top in view, its heading selected
+// with Write it again among its settings. Last of the CMS's
+// pictures, since it makes a page the others do not show.
+async function assistantShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "assistant");
+  await page.locator(".topbar").getByRole("button", { name: "Assistant", exact: true }).click();
+  const box = page.getByRole("complementary", { name: "Assistant", exact: true });
+  await box.getByRole("button", { name: "Build the sample page" }).click();
+  await box.getByRole("status").filter({ hasText: "4 sections on “Open day”" }).waitFor();
+  must((await page.locator(".canvas [data-block-type='section']:not([data-theme-part] *)").count()) === 4, "the sample's four sections are not on the canvas");
+  await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  // Its heading selected: the heading's settings beside it, Write it again among them.
+  await page.locator(".canvas [data-block-type='heading']:not([data-theme-part] *)").first().click();
+  await page.locator(".topbar .save-state").filter({ hasText: /^Saved$/ }).waitFor();
+  await parked(page);
+  await settled(page);
+  await shots.shoot(page, "assistant.png");
+  await page.context().close();
+}
+
 // The site's header, opened by a click on it around the home page, as a
 // page is opened: its menu selected, the menu's links beside it, and the
 // home page dimmed and locked under the header.
@@ -487,7 +509,7 @@ function sweep(cmsPort: number): void {
 async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: number, editorPort: number): Promise<void> {
   let browser: Browser | null = null;
   try {
-    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "history.png", "form-responses.png", "publish.gif"].some((name) => wanted.has(name));
+    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "history.png", "form-responses.png", "publish.gif", "assistant.png"].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
       const cms = await startCms(cmsPort);
@@ -508,6 +530,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
         await page.context().close();
       }
       if (wanted.has("publish.gif")) await publicationGif(browser, shots, editor.url, cms.url);
+      if (wanted.has("assistant.png")) await assistantShot(browser, shots, editor.url, cms.url);
       for (const server of [editor, cms]) {
         for (const line of await server.stop()) console.log(line);
         servers.splice(servers.indexOf(server), 1);
