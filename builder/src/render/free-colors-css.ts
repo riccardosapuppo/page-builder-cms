@@ -53,34 +53,62 @@ function freeBackground(color: FreeColor, site: { text: string; background: stri
   };
 }
 
-// The rules of one device for the free colours: the attribute's prefix is
-// the device's, as a class's is (data-tablet-bg).
-function deviceRules(prefix: string, colors: readonly FreeColor[], site: { text: string; background: string }): string[] {
-  const rules: string[] = [];
-  for (const color of colors) {
+// Which colour wins, as tokens.css has it for the curated tones, kept with
+// free colours (a rule weighs what its selector does: one for each
+// attribute or class):
+// - on one device, a block's own colour wins over the colour its
+//   background brings, curated or free: the colour rules come after the
+//   background rules, and a slot's colour over a free background is
+//   written again, heavier ([data-bg].fg-primary);
+// - a tablet's or a phone's own background brings its colour over the
+//   desktop's own colour, as a device's slot does: a device's rules weigh
+//   two ([data-tablet-bg="..."][data-tablet-bg]), the desktop's one.
+//
+// One device's rules for the free colours: the attribute's prefix is the
+// device's, as a class's is (data-tablet-bg); the desktop's weigh one, a
+// device's two.
+const attribute = (prefix: string, family: string, color: FreeColor) =>
+  prefix === "" ? `[data-${family}="${color}"]` : `[data-${prefix}${family}="${color}"][data-${prefix}${family}]`;
+
+function backgroundRules(prefix: string, colors: readonly FreeColor[], site: { text: string; background: string }): string[] {
+  return colors.flatMap((color) => {
     const background = freeBackground(color, site);
-    rules.push(`[data-${prefix}bg="${color}"] { ${background.declarations} }`);
-    rules.push(`[data-${prefix}bg="${color}"] > * { --ring-color: ${background.ring}; }`);
-    rules.push(`[data-${prefix}fg="${color}"] { color: ${color}; }`);
-    rules.push(`[data-${prefix}line="${color}"] { --line-color: ${color}; }`);
-  }
-  return rules;
+    const selector = attribute(prefix, "bg", color);
+    return [`${selector} { ${background.declarations} }`, `${selector} > * { --ring-color: ${background.ring}; }`];
+  });
 }
 
-// A tablet or phone override in a slot's tone on a block whose own colour
-// is free: tokens.css draws it, but before this stylesheet, whose base rule
-// for the free colour would otherwise win on that device too. The same
-// declarations again, on the blocks that have a free colour.
-function overridesOverFree(prefix: string): string[] {
-  const rules: string[] = [];
-  for (const slot of ["none", ...PALETTE_SLOTS] as const) {
+function colourRules(prefix: string, colors: readonly FreeColor[]): string[] {
+  return colors.flatMap((color) => [`${attribute(prefix, "fg", color)} { color: ${color}; }`, `${attribute(prefix, "line", color)} { --line-color: ${color}; }`]);
+}
+
+// A slot's colour on a block whose own background is free, on the desktop:
+// tokens.css draws it before this stylesheet, whose background rule would
+// otherwise bring its own colour over it.
+function slotColoursOverFree(): string[] {
+  return PALETTE_SLOTS.map((slot) => `[data-bg].fg-${slot} { color: var(--sw-${slot}); }`);
+}
+
+// A tablet's or a phone's override in a slot's tone, on a block with a free
+// colour of the desktop's: tokens.css draws it before this stylesheet, whose
+// rules for the free colour would otherwise win on that device too. The
+// same declarations again, weighing two: its background (with the colour
+// it brings) over the desktop's free background or colour, before the
+// device's own free colours; its colour over those and over the device's
+// free background, after them.
+function slotBackgroundsOverFree(prefix: string): string[] {
+  return (["none", ...PALETTE_SLOTS] as const).flatMap((slot) => {
     const background = slotBackground(slot);
-    rules.push(`[data-bg].${prefix}bg-${slot} { ${background.declarations} }`);
-    rules.push(`[data-bg].${prefix}bg-${slot} > * { --ring-color: ${background.ring}; }`);
-  }
-  for (const slot of PALETTE_SLOTS) rules.push(`[data-fg].${prefix}fg-${slot} { color: var(--sw-${slot}); }`);
-  for (const slot of PALETTE_SLOTS) rules.push(`[data-line].${prefix}line-${slot} { --line-color: var(--sw-${slot}); }`);
-  return rules;
+    const selector = `:is([data-bg], [data-fg]).${prefix}bg-${slot}`;
+    return [`${selector} { ${background.declarations} }`, `${selector} > * { --ring-color: ${background.ring}; }`];
+  });
+}
+
+function slotColoursOverDeviceFree(prefix: string): string[] {
+  return [
+    ...PALETTE_SLOTS.map((slot) => `:is([data-bg], [data-fg], [data-${prefix}bg]).${prefix}fg-${slot} { color: var(--sw-${slot}); }`),
+    ...PALETTE_SLOTS.map((slot) => `[data-line].${prefix}line-${slot} { --line-color: var(--sw-${slot}); }`),
+  ];
 }
 
 // The stylesheet for the free colours of a page: the site style's free
@@ -97,12 +125,13 @@ export function freeColorsCss(input: FreeColorsInput): string {
     out.push(`.site[data-${slot}="${color}"] { --sw-${slot}: ${color}; }`);
   }
   if (colors.length > 0) {
-    out.push(...deviceRules("", colors, site));
+    out.push(...backgroundRules("", colors, site), ...colourRules("", colors), ...slotColoursOverFree());
     for (const device of DEVICES) {
       if (device === "base") continue;
+      const prefix = `${device}-`;
       out.push(`@container site (${QUERIES[device]}) {`);
-      out.push(...deviceRules(`${device}-`, colors, site).map((rule) => `  ${rule}`));
-      out.push(...overridesOverFree(`${device}-`).map((rule) => `  ${rule}`));
+      const rules = [...backgroundRules(prefix, colors, site), ...slotBackgroundsOverFree(prefix), ...colourRules(prefix, colors), ...slotColoursOverDeviceFree(prefix)];
+      out.push(...rules.map((rule) => `  ${rule}`));
       out.push("}");
     }
   }

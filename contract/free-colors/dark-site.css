@@ -3,57 +3,63 @@
 .site[data-background="#101418"] { --sw-background: #101418; }
 [data-bg="#000000"] { background-color: #000000; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
 [data-bg="#000000"] > * { --ring-color: var(--sw-text); }
-[data-fg="#000000"] { color: #000000; }
-[data-line="#000000"] { --line-color: #000000; }
 [data-bg="#767676"] { background-color: #767676; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #767676; --caption-color: currentColor; }
 [data-bg="#767676"] > * { --ring-color: var(--sw-background); }
-[data-fg="#767676"] { color: #767676; }
-[data-line="#767676"] { --line-color: #767676; }
 [data-bg="#777777"] { background-color: #777777; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #777777; --caption-color: currentColor; }
 [data-bg="#777777"] > * { --ring-color: var(--sw-background); }
-[data-fg="#777777"] { color: #777777; }
-[data-line="#777777"] { --line-color: #777777; }
 [data-bg="#ffffff"] { background-color: #ffffff; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #ffffff; --caption-color: currentColor; }
 [data-bg="#ffffff"] > * { --ring-color: var(--sw-background); }
+[data-fg="#000000"] { color: #000000; }
+[data-line="#000000"] { --line-color: #000000; }
+[data-fg="#767676"] { color: #767676; }
+[data-line="#767676"] { --line-color: #767676; }
+[data-fg="#777777"] { color: #777777; }
+[data-line="#777777"] { --line-color: #777777; }
 [data-fg="#ffffff"] { color: #ffffff; }
 [data-line="#ffffff"] { --line-color: #ffffff; }
+[data-bg].fg-text { color: var(--sw-text); }
+[data-bg].fg-background { color: var(--sw-background); }
+[data-bg].fg-primary { color: var(--sw-primary); }
+[data-bg].fg-accent { color: var(--sw-accent); }
+[data-bg].fg-soft { color: var(--sw-soft); }
+[data-bg].fg-muted { color: var(--sw-muted); }
 @container site (560px <= width < 800px) {
-  [data-tablet-bg="#000000"] { background-color: #000000; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
-  [data-tablet-bg="#000000"] > * { --ring-color: var(--sw-text); }
-  [data-tablet-fg="#000000"] { color: #000000; }
-  [data-tablet-line="#000000"] { --line-color: #000000; }
-  [data-tablet-bg="#767676"] { background-color: #767676; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #767676; --caption-color: currentColor; }
-  [data-tablet-bg="#767676"] > * { --ring-color: var(--sw-background); }
-  [data-tablet-fg="#767676"] { color: #767676; }
-  [data-tablet-line="#767676"] { --line-color: #767676; }
-  [data-tablet-bg="#777777"] { background-color: #777777; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #777777; --caption-color: currentColor; }
-  [data-tablet-bg="#777777"] > * { --ring-color: var(--sw-background); }
-  [data-tablet-fg="#777777"] { color: #777777; }
-  [data-tablet-line="#777777"] { --line-color: #777777; }
-  [data-tablet-bg="#ffffff"] { background-color: #ffffff; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #ffffff; --caption-color: currentColor; }
-  [data-tablet-bg="#ffffff"] > * { --ring-color: var(--sw-background); }
-  [data-tablet-fg="#ffffff"] { color: #ffffff; }
-  [data-tablet-line="#ffffff"] { --line-color: #ffffff; }
-  [data-bg].tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
-  [data-bg].tablet-bg-none > * { --ring-color: inherit; }
-  [data-bg].tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
-  [data-bg].tablet-bg-text > * { --ring-color: var(--sw-background); }
-  [data-bg].tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
-  [data-bg].tablet-bg-background > * { --ring-color: var(--sw-text); }
-  [data-bg].tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
-  [data-bg].tablet-bg-primary > * { --ring-color: var(--sw-background); }
-  [data-bg].tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
-  [data-bg].tablet-bg-accent > * { --ring-color: var(--sw-text); }
-  [data-bg].tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
-  [data-bg].tablet-bg-soft > * { --ring-color: var(--sw-text); }
-  [data-bg].tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
-  [data-bg].tablet-bg-muted > * { --ring-color: var(--sw-background); }
-  [data-fg].tablet-fg-text { color: var(--sw-text); }
-  [data-fg].tablet-fg-background { color: var(--sw-background); }
-  [data-fg].tablet-fg-primary { color: var(--sw-primary); }
-  [data-fg].tablet-fg-accent { color: var(--sw-accent); }
-  [data-fg].tablet-fg-soft { color: var(--sw-soft); }
-  [data-fg].tablet-fg-muted { color: var(--sw-muted); }
+  [data-tablet-bg="#000000"][data-tablet-bg] { background-color: #000000; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  [data-tablet-bg="#000000"][data-tablet-bg] > * { --ring-color: var(--sw-text); }
+  [data-tablet-bg="#767676"][data-tablet-bg] { background-color: #767676; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #767676; --caption-color: currentColor; }
+  [data-tablet-bg="#767676"][data-tablet-bg] > * { --ring-color: var(--sw-background); }
+  [data-tablet-bg="#777777"][data-tablet-bg] { background-color: #777777; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #777777; --caption-color: currentColor; }
+  [data-tablet-bg="#777777"][data-tablet-bg] > * { --ring-color: var(--sw-background); }
+  [data-tablet-bg="#ffffff"][data-tablet-bg] { background-color: #ffffff; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #ffffff; --caption-color: currentColor; }
+  [data-tablet-bg="#ffffff"][data-tablet-bg] > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).tablet-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  :is([data-bg], [data-fg]).tablet-bg-none > * { --ring-color: inherit; }
+  :is([data-bg], [data-fg]).tablet-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).tablet-bg-text > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).tablet-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  :is([data-bg], [data-fg]).tablet-bg-background > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).tablet-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).tablet-bg-primary > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).tablet-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).tablet-bg-accent > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).tablet-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  :is([data-bg], [data-fg]).tablet-bg-soft > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).tablet-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).tablet-bg-muted > * { --ring-color: var(--sw-background); }
+  [data-tablet-fg="#000000"][data-tablet-fg] { color: #000000; }
+  [data-tablet-line="#000000"][data-tablet-line] { --line-color: #000000; }
+  [data-tablet-fg="#767676"][data-tablet-fg] { color: #767676; }
+  [data-tablet-line="#767676"][data-tablet-line] { --line-color: #767676; }
+  [data-tablet-fg="#777777"][data-tablet-fg] { color: #777777; }
+  [data-tablet-line="#777777"][data-tablet-line] { --line-color: #777777; }
+  [data-tablet-fg="#ffffff"][data-tablet-fg] { color: #ffffff; }
+  [data-tablet-line="#ffffff"][data-tablet-line] { --line-color: #ffffff; }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-text { color: var(--sw-text); }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-background { color: var(--sw-background); }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-primary { color: var(--sw-primary); }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-accent { color: var(--sw-accent); }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-soft { color: var(--sw-soft); }
+  :is([data-bg], [data-fg], [data-tablet-bg]).tablet-fg-muted { color: var(--sw-muted); }
   [data-line].tablet-line-text { --line-color: var(--sw-text); }
   [data-line].tablet-line-background { --line-color: var(--sw-background); }
   [data-line].tablet-line-primary { --line-color: var(--sw-primary); }
@@ -62,42 +68,42 @@
   [data-line].tablet-line-muted { --line-color: var(--sw-muted); }
 }
 @container site (width < 560px) {
-  [data-phone-bg="#000000"] { background-color: #000000; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
-  [data-phone-bg="#000000"] > * { --ring-color: var(--sw-text); }
-  [data-phone-fg="#000000"] { color: #000000; }
-  [data-phone-line="#000000"] { --line-color: #000000; }
-  [data-phone-bg="#767676"] { background-color: #767676; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #767676; --caption-color: currentColor; }
-  [data-phone-bg="#767676"] > * { --ring-color: var(--sw-background); }
-  [data-phone-fg="#767676"] { color: #767676; }
-  [data-phone-line="#767676"] { --line-color: #767676; }
-  [data-phone-bg="#777777"] { background-color: #777777; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #777777; --caption-color: currentColor; }
-  [data-phone-bg="#777777"] > * { --ring-color: var(--sw-background); }
-  [data-phone-fg="#777777"] { color: #777777; }
-  [data-phone-line="#777777"] { --line-color: #777777; }
-  [data-phone-bg="#ffffff"] { background-color: #ffffff; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #ffffff; --caption-color: currentColor; }
-  [data-phone-bg="#ffffff"] > * { --ring-color: var(--sw-background); }
-  [data-phone-fg="#ffffff"] { color: #ffffff; }
-  [data-phone-line="#ffffff"] { --line-color: #ffffff; }
-  [data-bg].phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
-  [data-bg].phone-bg-none > * { --ring-color: inherit; }
-  [data-bg].phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
-  [data-bg].phone-bg-text > * { --ring-color: var(--sw-background); }
-  [data-bg].phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
-  [data-bg].phone-bg-background > * { --ring-color: var(--sw-text); }
-  [data-bg].phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
-  [data-bg].phone-bg-primary > * { --ring-color: var(--sw-background); }
-  [data-bg].phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
-  [data-bg].phone-bg-accent > * { --ring-color: var(--sw-text); }
-  [data-bg].phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
-  [data-bg].phone-bg-soft > * { --ring-color: var(--sw-text); }
-  [data-bg].phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
-  [data-bg].phone-bg-muted > * { --ring-color: var(--sw-background); }
-  [data-fg].phone-fg-text { color: var(--sw-text); }
-  [data-fg].phone-fg-background { color: var(--sw-background); }
-  [data-fg].phone-fg-primary { color: var(--sw-primary); }
-  [data-fg].phone-fg-accent { color: var(--sw-accent); }
-  [data-fg].phone-fg-soft { color: var(--sw-soft); }
-  [data-fg].phone-fg-muted { color: var(--sw-muted); }
+  [data-phone-bg="#000000"][data-phone-bg] { background-color: #000000; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  [data-phone-bg="#000000"][data-phone-bg] > * { --ring-color: var(--sw-text); }
+  [data-phone-bg="#767676"][data-phone-bg] { background-color: #767676; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #767676; --caption-color: currentColor; }
+  [data-phone-bg="#767676"][data-phone-bg] > * { --ring-color: var(--sw-background); }
+  [data-phone-bg="#777777"][data-phone-bg] { background-color: #777777; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #777777; --caption-color: currentColor; }
+  [data-phone-bg="#777777"][data-phone-bg] > * { --ring-color: var(--sw-background); }
+  [data-phone-bg="#ffffff"][data-phone-bg] { background-color: #ffffff; color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: #ffffff; --caption-color: currentColor; }
+  [data-phone-bg="#ffffff"][data-phone-bg] > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).phone-bg-none { background-color: transparent; color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  :is([data-bg], [data-fg]).phone-bg-none > * { --ring-color: inherit; }
+  :is([data-bg], [data-fg]).phone-bg-text { background-color: var(--sw-text); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).phone-bg-text > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).phone-bg-background { background-color: var(--sw-background); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  :is([data-bg], [data-fg]).phone-bg-background > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).phone-bg-primary { background-color: var(--sw-primary); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-primary); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).phone-bg-primary > * { --ring-color: var(--sw-background); }
+  :is([data-bg], [data-fg]).phone-bg-accent { background-color: var(--sw-accent); color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).phone-bg-accent > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).phone-bg-soft { background-color: var(--sw-soft); color: var(--sw-text); --heading-color: initial; --link-color: initial; --icon-color: initial; --mark-disc: initial; --mark-line: initial; --caption-color: initial; }
+  :is([data-bg], [data-fg]).phone-bg-soft > * { --ring-color: var(--sw-text); }
+  :is([data-bg], [data-fg]).phone-bg-muted { background-color: var(--sw-muted); color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-muted); --caption-color: currentColor; }
+  :is([data-bg], [data-fg]).phone-bg-muted > * { --ring-color: var(--sw-background); }
+  [data-phone-fg="#000000"][data-phone-fg] { color: #000000; }
+  [data-phone-line="#000000"][data-phone-line] { --line-color: #000000; }
+  [data-phone-fg="#767676"][data-phone-fg] { color: #767676; }
+  [data-phone-line="#767676"][data-phone-line] { --line-color: #767676; }
+  [data-phone-fg="#777777"][data-phone-fg] { color: #777777; }
+  [data-phone-line="#777777"][data-phone-line] { --line-color: #777777; }
+  [data-phone-fg="#ffffff"][data-phone-fg] { color: #ffffff; }
+  [data-phone-line="#ffffff"][data-phone-line] { --line-color: #ffffff; }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-text { color: var(--sw-text); }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-background { color: var(--sw-background); }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-primary { color: var(--sw-primary); }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-accent { color: var(--sw-accent); }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-soft { color: var(--sw-soft); }
+  :is([data-bg], [data-fg], [data-phone-bg]).phone-fg-muted { color: var(--sw-muted); }
   [data-line].phone-line-text { --line-color: var(--sw-text); }
   [data-line].phone-line-background { --line-color: var(--sw-background); }
   [data-line].phone-line-primary { --line-color: var(--sw-primary); }

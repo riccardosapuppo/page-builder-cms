@@ -48,8 +48,8 @@ class FreeColorsPagesTest < ActionDispatch::IntegrationTest
     assert_equal %w[immutable max-age=31536000 public], response.headers["Cache-Control"].split(", ").sort
     assert_includes response.body, %(.site[data-primary="#2f6f5e"] { --sw-primary: #2f6f5e; })
     assert_includes response.body, %([data-bg="#e9dcc3"] { background-color: #e9dcc3; color: var(--sw-text);)
-    assert_includes response.body, %(  [data-phone-fg="#c2352b"] { color: #c2352b; })
-    assert_includes response.body, %(  [data-bg].tablet-bg-soft { background-color: var(--sw-soft);)
+    assert_includes response.body, %(  [data-phone-fg="#c2352b"][data-phone-fg] { color: #c2352b; })
+    assert_includes response.body, %(  :is([data-bg], [data-fg]).tablet-bg-soft { background-color: var(--sw-soft);)
     assert_equal FreeColors.css(text: "#0e2a35", background: "#ffffff", slots: { "primary" => "#2f6f5e" }, colors: %w[#1d4e6f #c2352b #e9dcc3]), response.body
   end
 

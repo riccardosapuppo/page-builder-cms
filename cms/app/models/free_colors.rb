@@ -96,11 +96,12 @@ module FreeColors
     free_slots.each { |slot| out << %(.site[data-#{slot}="#{slots[slot]}"] { --sw-#{slot}: #{slots[slot]}; }) }
     unless colors.empty?
       site = { text: text, background: background }
-      out.concat(device_rules("", colors, site))
+      out.concat(background_rules("", colors, site), colour_rules("", colors), slot_colours_over_free)
       queries.each do |device, query|
+        prefix = "#{device}-"
         out << "@container site (#{query}) {"
-        out.concat(device_rules("#{device}-", colors, site).map { |rule| "  #{rule}" })
-        out.concat(overrides_over_free("#{device}-").map { |rule| "  #{rule}" })
+        rules = background_rules(prefix, colors, site) + slot_backgrounds_over_free(prefix) + colour_rules(prefix, colors) + slot_colours_over_device_free(prefix)
+        out.concat(rules.map { |rule| "  #{rule}" })
         out << "}"
       end
     end
@@ -115,16 +116,43 @@ module FreeColors
     }
   end
 
-  def device_rules(prefix, colors, site)
+  # Which colour wins, as tokens.css has it for the curated tones, kept with
+  # free colours (a rule weighs what its selector does): on one device, a
+  # block's own colour over the colour its background brings, curated or
+  # free; a tablet's or a phone's own background brings its colour over the
+  # desktop's own colour, a device's rules weighing two, the desktop's one.
+  # The editor's twin says it at length (free-colors-css.ts).
+  def attribute(prefix, family, color)
+    prefix.empty? ? %([data-#{family}="#{color}"]) : %([data-#{prefix}#{family}="#{color}"][data-#{prefix}#{family}])
+  end
+
+  def background_rules(prefix, colors, site)
     colors.flat_map do |color|
       declarations, ring = free_background(color, site)
-      [
-        %([data-#{prefix}bg="#{color}"] { #{declarations} }),
-        %([data-#{prefix}bg="#{color}"] > * { --ring-color: #{ring}; }),
-        %([data-#{prefix}fg="#{color}"] { color: #{color}; }),
-        %([data-#{prefix}line="#{color}"] { --line-color: #{color}; })
-      ]
+      selector = attribute(prefix, "bg", color)
+      [ "#{selector} { #{declarations} }", "#{selector} > * { --ring-color: #{ring}; }" ]
     end
+  end
+
+  def colour_rules(prefix, colors)
+    colors.flat_map { |color| [ "#{attribute(prefix, 'fg', color)} { color: #{color}; }", "#{attribute(prefix, 'line', color)} { --line-color: #{color}; }" ] }
+  end
+
+  def slot_colours_over_free
+    SLOTS.map { |slot| "[data-bg].fg-#{slot} { color: var(--sw-#{slot}); }" }
+  end
+
+  def slot_backgrounds_over_free(prefix)
+    [ "none", *SLOTS ].flat_map do |slot|
+      declarations, ring = SiteTheme::TokenCss.background(slot)
+      selector = ":is([data-bg], [data-fg]).#{prefix}bg-#{slot}"
+      [ "#{selector} { #{declarations} }", "#{selector} > * { --ring-color: #{ring}; }" ]
+    end
+  end
+
+  def slot_colours_over_device_free(prefix)
+    SLOTS.map { |slot| ":is([data-bg], [data-fg], [data-#{prefix}bg]).#{prefix}fg-#{slot} { color: var(--sw-#{slot}); }" } +
+      SLOTS.map { |slot| "[data-line].#{prefix}line-#{slot} { --line-color: var(--sw-#{slot}); }" }
   end
 
   def free_background(color, site)
@@ -135,18 +163,6 @@ module FreeColors
       [ "background-color: #{color}; color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; " \
         "--mark-disc: initial; --mark-line: initial; --caption-color: currentColor;", "var(--sw-text)" ]
     end
-  end
-
-  def overrides_over_free(prefix)
-    rules = []
-    [ "none", *SLOTS ].each do |slot|
-      declarations, ring = SiteTheme::TokenCss.background(slot)
-      rules << "[data-bg].#{prefix}bg-#{slot} { #{declarations} }"
-      rules << "[data-bg].#{prefix}bg-#{slot} > * { --ring-color: #{ring}; }"
-    end
-    SLOTS.each { |slot| rules << "[data-fg].#{prefix}fg-#{slot} { color: var(--sw-#{slot}); }" }
-    SLOTS.each { |slot| rules << "[data-line].#{prefix}line-#{slot} { --line-color: var(--sw-#{slot}); }" }
-    rules
   end
 
   # The address of a page's stylesheet, or nil when it needs none: the

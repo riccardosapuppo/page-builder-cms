@@ -17,6 +17,8 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const GREEN = "rgb(47, 111, 94)";
 const INDIGO_900 = "rgb(26, 35, 126)";
 const PAPER = "rgb(255, 255, 255)";
+const PLUM = "rgb(59, 47, 92)";
+const TEAL = "rgb(0, 121, 107)";
 
 async function siteStyle(request: APIRequestContext): Promise<{ palette: Record<string, string>; typeScale: string }> {
   return (await (await request.get(`${cms()}/api/site-style`)).json()) as never;
@@ -91,6 +93,45 @@ test("a section's background from the swatches, a hue's shade held open, shows o
   await visitor.goto(`${cms()}/${slug}`);
   await expect(visitor.locator('[data-block-id="s"]')).toHaveCSS("background-color", INDIGO_900);
   await expect(visitor.getByRole("heading", { name: "In the site's own colours" })).toHaveCSS("color", PAPER);
+  await visitor.close();
+});
+
+// Which colour wins with free colours, as with the curated tones: a block's
+// own colour over the one its background brings, free or curated, in
+// whatever order the stylesheet writes the colours; and a tablet's own
+// background brings its colour over the desktop's own colour.
+test("a block's own colour wins over the one its free background brings, and a tablet's own background brings its colour over the desktop's", async ({ page, request }) => {
+  // A section of one column, the column's style the one given.
+  const own = (id: string, text: string, style: Record<string, unknown>) => section(`s${id}`, text, [{ ...column(id, [heading(`${id}h`, text)]), style }]);
+  const { id, slug } = await makePage(request, "Whose colour", [
+    // A light free background, and a free colour that sorts before it.
+    own("c1", "Plum on sand", { base: { background: "#f2c94c", color: "#3b2f5c" } }),
+    // A dark free background, and Primary for the words.
+    own("c2", "Primary on plum", { base: { background: "#3b2f5c", color: "primary" } }),
+    // Teal words; on a tablet, a dark background of the tablet's own.
+    own("c3", "Teal, then light on plum", { base: { color: "#00796b" }, tablet: { background: "#3b2f5c" } }),
+    section("sp", "Primary", [column("cp", [{ ...heading("p", "Primary"), style: { base: { color: "primary" } } }])]),
+  ]);
+  const colour = (target: typeof page, block: string) => target.locator(`[data-block-id="${block}"]`).evaluate((element) => getComputedStyle(element).color);
+
+  await open(page, id);
+  const primary = await colour(page, "p");
+  expect(primary).not.toBe(PAPER);
+  await expect(block(page, "c1")).toHaveCSS("color", PLUM);
+  await expect(block(page, "c2")).toHaveCSS("color", primary);
+  await expect(block(page, "c3")).toHaveCSS("color", TEAL);
+
+  expect((await request.post(`${cms()}/api/pages/${id}/publish`, { data: {} })).status()).toBe(200);
+  const visitor = await page.context().newPage();
+  await visitor.goto(`${cms()}/${slug}`);
+  await expect(visitor.locator('[data-block-id="c1"]')).toHaveCSS("color", PLUM);
+  await expect(visitor.locator('[data-block-id="c2"]')).toHaveCSS("color", await colour(visitor, "p"));
+  await expect(visitor.locator('[data-block-id="c3"]')).toHaveCSS("color", TEAL);
+  // A tablet's width: the tablet's own dark background, and its light words.
+  await visitor.setViewportSize({ width: 700, height: 900 });
+  await expect(visitor.locator('[data-block-id="c3"]')).toHaveCSS("background-color", PLUM);
+  await expect(visitor.locator('[data-block-id="c3"]')).toHaveCSS("color", PAPER);
+  await expect(visitor.locator('[data-block-id="c1"]')).toHaveCSS("color", PLUM);
   await visitor.close();
 });
 
