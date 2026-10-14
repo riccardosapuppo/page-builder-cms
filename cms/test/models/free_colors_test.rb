@@ -78,25 +78,33 @@ class FreeColorsTest < ActiveSupport::TestCase
     assert_equal({}, BlockStyle.free_color_data("junk", "background"))
   end
 
-  test "a page with no free colour needs no stylesheet; one with some gets an address that holds them all and the release" do
+  # The rules kept under a page's address.
+  def kept(path)
+    digest = path[%r{\A/colors/([0-9a-f]{64})\.css\z}, 1]
+    assert digest, path
+    ColorSheet.find_by!(digest: digest).css
+  end
+
+  test "a page with no free colour needs no stylesheet; one with some gets the address of its rules, kept once under their digest" do
     style = SiteStyle.current
     plain = page_document
 
     assert_nil FreeColors.path(style, [ plain, nil ])
     coloured = page_document(widgets: [ heading_block("h1", "Swim").merge("style" => { "base" => { "color" => "#c2352b", "background" => "#1d4e6f" } }) ])
-    path = FreeColors.path(style, [ coloured, page_document(widgets: [ heading_block("h2", "Bay").merge("style" => { "base" => { "color" => "#1d4e6f" } }) ]) ])
-    query = Rack::Utils.parse_query(URI(path).query)
+    bay = page_document(widgets: [ heading_block("h2", "Bay").merge("style" => { "base" => { "color" => "#1d4e6f" } }) ])
+    path = FreeColors.path(style, [ coloured, bay ])
 
-    assert_equal "/colors.css", URI(path).path
-    assert_equal({ "t" => "0e2a35", "b" => "ffffff", "c" => "1d4e6f,c2352b" }, query.except("v"))
-    assert_match(/\A[0-9a-z]{1,12}\z/, query["v"])
+    assert_equal FreeColors.css(text: "#0e2a35", background: "#ffffff", slots: {}, colors: %w[#1d4e6f #c2352b]), kept(path)
+    # The same colours, from other documents: the same address, no second sheet.
+    assert_no_difference -> { ColorSheet.count } do
+      assert_equal path, FreeColors.path(style, [ bay, coloured, plain ])
+    end
   end
 
-  test "Site style's own tones go in the address by slot, and its Text and Background as the colours they are" do
+  test "Site style's own tones go in the rules by slot, and its Text and Background pair the free backgrounds" do
     style = SiteStyle.current
     style.palette = style.palette.merge("primary" => "#1d4e6f", "text" => "#f4f1ea", "background" => "#101418")
-    query = Rack::Utils.parse_query(URI(FreeColors.path(style, [ page_document ])).query)
 
-    assert_equal({ "t" => "f4f1ea", "b" => "101418", "s" => "text-f4f1ea,background-101418,primary-1d4e6f" }, query.except("v"))
+    assert_equal FreeColors.css(text: "#f4f1ea", background: "#101418", slots: { "text" => "#f4f1ea", "background" => "#101418", "primary" => "#1d4e6f" }, colors: []), kept(FreeColors.path(style, [ page_document ]))
   end
 end

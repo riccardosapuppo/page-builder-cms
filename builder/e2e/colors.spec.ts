@@ -1,8 +1,8 @@
 // Colours of the site's own, in Chromium against the run's CMS: a slot's
 // in Site style and a block's in its panel, picked from the swatches or the
 // picker, show on the canvas at once and on the published page, where the
-// CMS's stylesheet for them draws them (/colors.css; the page's policy
-// takes no inline style); a dark background brings the site's light tone
+// CMS's stylesheet for them draws them (/colors/<digest>.css; the page's
+// policy takes no inline style); a dark background brings the site's light tone
 // for its words; a drag over the picker shows each colour on the canvas
 // before it is kept, then keeps one, one step of undo; nothing serious or
 // critical for axe with the swatches and the picker open. The tests of a
@@ -53,7 +53,7 @@ test("a colour of the site's own for Primary shows on the canvas at once, and on
     const visitor = await page.context().newPage();
     await visitor.goto(`${cms()}/${slug}`);
     await expect(visitor.locator(".site")).toHaveAttribute("data-primary", "#2f6f5e");
-    await expect(visitor.locator('link[rel=stylesheet][href^="/colors.css?"]')).toHaveCount(1);
+    await expect(visitor.locator('link[rel=stylesheet][href^="/colors/"]')).toHaveCount(1);
     await expect(visitor.locator('[data-block-id="b"] .sw-btn')).toHaveCSS("background-color", GREEN);
     await expect(visitor.locator("[style]")).toHaveCount(0);
     await visitor.close();

@@ -56,7 +56,7 @@ the server writes for them. The editor's half is
     `node tools/gen-contract-500.ts` from the repository root (seeded, so
     every run writes the same bytes; `--check` compares).
 - [`free-colors/`](free-colors): the stylesheet of a page's free colours
-  (`/colors.css` on the CMS, a style element on the canvas), for each case
+  (`/colors/<digest>.css` on the CMS, a style element on the canvas), for each case
   of `cases.json`: `<case>.css`, written by
   `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_colors_test.rb`,
   the bytes the editor's `free-colors-css.ts` must give too.

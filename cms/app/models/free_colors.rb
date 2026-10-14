@@ -6,9 +6,10 @@
 # attribute (BlockStyle.free_color_data, SiteHelper#site_style_data), never
 # as an inline style, which the pages' Content-Security-Policy would block;
 # the rules that colour it are a stylesheet made for the colours the page
-# uses, at an address that holds them all (FreeColorsController, /colors.css),
-# written here exactly as the editor writes them for its canvas
-# (builder/src/render/free-colors-css.ts): the same input, the same bytes.
+# uses, kept once under its digest (ColorSheet) and linked as
+# /colors/<digest>.css (FreeColorsController), written here exactly as the
+# editor writes them for its canvas (builder/src/render/free-colors-css.ts):
+# the same input, the same bytes.
 #
 # A free background brings the colours that read on it, as a slot's does
 # (tokens.css, bg-<slot>): of the site's Text and Background tones, the one
@@ -165,18 +166,15 @@ module FreeColors
     end
   end
 
-  # The address of a page's stylesheet, or nil when it needs none: the
-  # site's tones, its free tones and the colours, and the release, whose
-  # code writes the rules, so the address can be kept for good.
+  # The address of a page's stylesheet, or nil when it needs none: its
+  # rules, from the site's tones, its free tones and the colours, kept
+  # (ColorSheet) and named by their digest, so the address holds them for
+  # good, however many colours the page names.
   def path(style, documents)
     site = site_colors(style)
     colors = documents.flat_map { |document| of_document(document) }.uniq.sort
     return nil if colors.empty? && site[:slots].empty?
 
-    query = { "t" => site[:text].delete("#").downcase, "b" => site[:background].delete("#").downcase }
-    query["s"] = site[:slots].map { |slot, color| "#{slot}-#{color.delete('#')}" }.join(",") unless site[:slots].empty?
-    query["c"] = colors.map { |color| color.delete("#") }.join(",") unless colors.empty?
-    query["v"] = PageCache.revision.to_s[0, 12]
-    "/colors.css?#{query.map { |key, value| "#{key}=#{value}" }.join('&')}"
+    "/colors/#{ColorSheet.keep(css(text: site[:text], background: site[:background], slots: site[:slots], colors: colors))}.css"
   end
 end

@@ -863,14 +863,18 @@ background or colour may name a colour of its own (the schema's
 style, which the pages' `style-src 'self'` would block: `data-primary`
 on `.site` for a slot, `data-bg`, `data-fg` or `data-line` (and
 their `tablet-` and `phone-` forms) on a block. The layout links
-`/colors.css?t=…&b=…&s=…&c=…&v=…` after `tokens.css` when the page, its
-header or its footer names one: the site's Text and Background tones, its
-free tones by slot, the free colours its blocks name, sorted, and the
-release, whose code writes the rules. `FreeColorsController` writes the
-rules from the address alone (a free background takes the site tone that
-reads better on it, as a slot's band does), with `Cache-Control: public,
-max-age=31536000, immutable`; an address no page writes (a bad hex, an
-unknown or repeated slot, more than 256 colours) is a 404. The editor
+`/colors/<digest>.css` after `tokens.css` when the page, its header or
+its footer names one. Its rules come from the site's Text and Background
+tones, its free tones by slot and the free colours its blocks name (a free
+background takes the site tone that reads better on it, as a slot's band
+does); they are written as the page is drawn and kept once under their
+SHA-256 (`ColorSheet`, the `color_sheets` table), so the address names
+only rules a page was drawn with, however many colours it names.
+`FreeColorsController` serves them with `Cache-Control: public,
+max-age=31536000, immutable`; an address no page links is a 404. On one
+device a block's own colour wins over the one its background brings, as
+with the curated tones, and a tablet's or a phone's own background brings
+its colour over the desktop's own colour. The editor
 writes the same bytes for its canvas (`builder/src/render/free-colors-css.ts`):
 `test/models/free_colors_test.rb` and the editor's
 `free-colors.contract.test.ts` hold both to `../contract/free-colors/`. The choice reaches the

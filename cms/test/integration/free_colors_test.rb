@@ -2,9 +2,10 @@ require "test_helper"
 
 # Free colours on the published page: carried by data attributes, never by
 # inline style (the pages' policy is style-src 'self'), and drawn by the
-# stylesheet at /colors.css, which a page links only when it has some;
-# the address holds every colour, so its answer is kept for good, and an
-# address no page writes is a 404.
+# stylesheet at /colors/<digest>.css, which a page links only when it has
+# some: its rules, kept under their digest when the page is drawn, however
+# many colours it names, so the answer is kept for good; an address no page
+# links is a 404.
 class FreeColorsPagesTest < ActionDispatch::IntegrationTest
   include Documents
 
@@ -39,7 +40,7 @@ class FreeColorsPagesTest < ActionDispatch::IntegrationTest
     links = css_select("link[rel=stylesheet]").map { |link| link["href"] }
     assert_equal 3, links.size
     colors = links.last
-    assert_match %r{\A/colors\.css\?t=0e2a35&b=ffffff&s=primary-2f6f5e&c=1d4e6f,c2352b,e9dcc3&v=\w+\z}, colors
+    assert_match %r{\A/colors/[0-9a-f]{64}\.css\z}, colors
 
     get colors
 
@@ -58,33 +59,41 @@ class FreeColorsPagesTest < ActionDispatch::IntegrationTest
 
     get "/"
 
-    assert_select %(link[href^="/colors.css"]), count: 0
+    assert_select %(link[href^="/colors/"]), count: 0
   end
 
-  test "an address no page writes is a 404: a missing or bad tone, an unknown or repeated slot, a bad colour, too many, a list where a word goes" do
-    good = "t=0e2a35&b=ffffff"
-    get "/colors.css?#{good}&c=e9dcc3"
-    assert_response :ok
-    [
-      "b=ffffff&c=e9dcc3",
-      "t=0E2A35&b=ffffff&c=e9dcc3",
-      "t=zzzzzz&b=ffffff",
-      "#{good}&s=brand-1d4e6f",
-      "#{good}&s=primary-1d4e6f,primary-2f6f5e",
-      "#{good}&s=primary",
-      "#{good}&c=e9dcc3,red",
-      "#{good}&c=#{([ 'e9dcc3' ] * 257).join(',')}",
-      "#{good}&c[]=e9dcc3"
-    ].each do |query|
-      get "/colors.css?#{query}"
-      assert_response :not_found, query
+  test "a page that names more colours than any address could hold gets them all" do
+    colors = (1..300).map { |n| format("#%06x", n * 40_000) }
+    # Fifty headings to a column, the most it holds.
+    sections = colors.each_slice(50).with_index.map do |slice, s|
+      section_block("s#{s}", slice.each_with_index.map { |color, n| heading_block("h#{s}n#{n}", "Tide #{n}").merge("style" => { "base" => { "color" => color } }) })
     end
-  end
+    publish(page_document.merge("sections" => sections))
 
-  test "the stylesheet's answer for colours a page names, without the release, is the same rules" do
-    get "/colors.css?t=0e2a35&b=ffffff&c=3b2f5c"
+    get "/"
+    get css_select("link[rel=stylesheet]").last["href"]
 
     assert_response :ok
-    assert_includes response.body, %([data-bg="#3b2f5c"] { background-color: #3b2f5c; color: var(--sw-background);)
+    colors.each { |color| assert_includes response.body, %([data-fg="#{color}"] { color: #{color}; }) }
+  end
+
+  test "an address no page links is a 404: a digest no sheet is kept under, or no digest" do
+    publish(coloured)
+    get "/"
+    path = css_select("link[rel=stylesheet]").last["href"]
+    get path
+    assert_response :ok
+
+    [
+      "/colors/#{Digest::SHA256.hexdigest('no sheet')}.css",
+      path.upcase.sub("/COLORS/", "/colors/").sub(".CSS", ".css"),
+      path.sub(".css", ""),
+      path.sub(/\h{8}\.css/, ".css"),
+      "/colors.css",
+      "/colors/#{'g' * 64}.css"
+    ].each do |address|
+      get address
+      assert_response :not_found, address
+    end
   end
 end
