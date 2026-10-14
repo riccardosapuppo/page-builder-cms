@@ -141,6 +141,13 @@ export interface UiState {
   // A block being dragged, by the mouse or the keyboard (the store holds
   // the drag itself), and the live region's last word on a drag that ended.
   dragMode: "pointer" | "keyboard" | null;
+  // Where the drag began: a row of the Outline, or the page (the canvas's
+  // selection, a key of Insert or of a picker). While a row's block moves
+  // over the Outline, or with the keyboard, the canvas draws it as itself
+  // where it would land (live); over the canvas, as the drop line, so the
+  // page never moves under the pointer.
+  dragFrom: "outline" | "page" | null;
+  dragLive: boolean;
   dragSaid: string;
   // What a key being dragged asks for once it is dropped ("its images"),
   // for the live region; null for a block that needs nothing first.
@@ -214,6 +221,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     copied: null,
     blockMenu: null,
     dragMode: null,
+    dragFrom: null,
+    dragLive: false,
     dragSaid: "",
     dragAsks: null,
     pending: new PendingText(),

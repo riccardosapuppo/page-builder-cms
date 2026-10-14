@@ -20,9 +20,16 @@
 // device's glyph at the end of its row; one hidden on some device is
 // grayed out.
 //
-// While a block is dragged the tree shows the store's preview: the
-// dragged block as a line where it would land, its container marked.
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+// Every row can be dragged (./drag/dnd.ts, ROW_SENSORS: the mouse once it
+// has moved, a finger held still, or Space and the arrows) and is a place
+// to drop (./drag/outline-place.ts). While a row's block moves, the tree
+// stays as the page is, the row dimmed and a yellow line where the block
+// will land, its container marked and opened; the canvas draws the block
+// there as itself (./drag/DragLayer.tsx). A drag begun on the page shows
+// the store's preview here instead: the dragged block as a line where it
+// would land, its container marked.
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import type { DragSession, DropTarget } from "../document/drag.ts";
 import { blockName } from "../document/labels.ts";
 import { allBlocks, locate } from "../document/tree.ts";
 import type { Block, PageDocument, StyleTokens } from "../shared/document.ts";
@@ -31,7 +38,9 @@ import { WidgetIcon } from "../widgets/icon.tsx";
 import { openBlockMenu, openRowMenu } from "./BlockMenu.tsx";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { overriddenOn, type OverrideDevice } from "./device-style.ts";
-import { draggedName } from "./drag/marks.ts";
+import { ROW_SENSORS, rowSource, rowTarget, useDraggable, useRowTarget } from "./drag/dnd.ts";
+import { draggedName, draggedOf } from "./drag/marks.ts";
+import { siblingsIn } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
@@ -72,6 +81,16 @@ function flagWords(devices: readonly OverrideDevice[]): string {
   return devices.length === 2 ? "Has tablet and phone overrides" : `Has a ${devices[0]} override`;
 }
 
+// Where the line stands for a place, in the tree as the page is: before
+// the row of the block the place comes before, after the last one's rows,
+// or inside the container's row when it holds nothing else.
+function lineOf(session: DragSession, target: DropTarget): Line | null {
+  const ids = siblingsIn(session.base, draggedOf(session), target.parentId);
+  if (ids.length === 0) return target.parentId === null ? null : { id: target.parentId, at: "inside" };
+  const next = ids[target.index];
+  return next !== undefined ? { id: next, at: "before" } : { id: ids.at(-1)!, at: "after" };
+}
+
 function countWidgets(doc: PageDocument): number {
   return doc.sections.reduce((sum, section) => sum + section.children.reduce((n, column) => n + column.children.length, 0), 0);
 }
@@ -83,7 +102,10 @@ const widgetsWords = (count: number): string => `${count} ${count === 1 ? "widge
 export function Navigator() {
   const env = useEnv();
   const { store, ui } = env;
-  const doc = useEditor((s) => s.drag?.preview ?? s.document);
+  // A drag from here leaves the rows as the page is; one from the page
+  // shows its preview.
+  const fromOutline = useUi((u) => u.dragFrom === "outline");
+  const doc = useEditor((s) => (s.drag && !fromOutline ? s.drag.preview : s.document));
   const base = useEditor((s) => s.document);
   const drag = useEditor((s) => s.drag);
   // While a block is dragged: which row is the line, and which container
@@ -91,8 +113,9 @@ export function Navigator() {
   const dragging = useMemo<Dragging | null>(() => {
     if (!drag) return null;
     const id = drag.source.kind === "block" ? drag.source.id : drag.source.block.id;
-    return { id, target: drag.target && drag.verdict?.allowed ? drag.target.parentId : undefined, name: draggedName(drag) };
-  }, [drag]);
+    const target = drag.target !== null && drag.verdict?.allowed ? drag.target : null;
+    return { id, target: target?.parentId, name: draggedName(drag), line: fromOutline ? (target ? lineOf(drag, target) : null) : undefined };
+  }, [drag, fromOutline]);
   const selection = useEditor((s) => s.selection);
   const serverErrors = useUi((u) => u.serverErrors);
   // Around a page, the site's header and footer, each a row that opens it.
@@ -102,6 +125,11 @@ export function Navigator() {
   const [active, setActive] = useState<string | null>(null);
   const [seen, setSeen] = useState<string | null>(null);
   const items = useRef(new Map<string, HTMLLIElement>());
+  // Each row's element, kept by its block's id as the row is drawn.
+  const register = useCallback((id: string, element: HTMLLIElement | null) => {
+    if (element) items.current.set(id, element);
+    else items.current.delete(id);
+  }, []);
   const [tab, setTab] = useState<(typeof OUTLINE_TABS)[number]>("blocks");
   const tabsId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -133,6 +161,24 @@ export function Navigator() {
     if (selection !== null) items.current.get(selection)?.scrollIntoView?.({ block: "nearest" });
   }, [selection, expanded]);
 
+  // Moving a row's block: the container it would land in opens, with the
+  // rows above it, and they stay open, so no row moves away from under the
+  // pointer; and the block, once dropped and selected, keeps the rows as
+  // they are, as one chosen here does. Adjusted while drawing, as the
+  // selection's rows are.
+  const opening = dragging?.line !== undefined && dragging.target !== undefined ? dragging.target : null;
+  const moving = dragging?.line !== undefined ? dragging.id : null;
+  const [movedSeen, setMovedSeen] = useState<{ opening: string | null; moving: string | null }>({ opening: null, moving: null });
+  if (opening !== movedSeen.opening || moving !== movedSeen.moving) {
+    setMovedSeen({ opening, moving });
+    if (moving !== null && moving !== movedSeen.moving) setChosenHere(moving);
+    if (opening !== null) {
+      const chain: string[] = [];
+      for (let up: string | null = opening; up !== null; up = locate(base, up)?.parentId ?? null) chain.push(up);
+      if (chain.some((id) => !expanded.has(id))) setExpanded(new Set([...expanded, ...chain]));
+    }
+  }
+
   const shownOpen = useMemo(() => {
     if (!dragging) return expanded;
     const open = new Set(expanded);
@@ -160,6 +206,8 @@ export function Navigator() {
   });
 
   const onKeyDown = (event: KeyboardEvent<HTMLLIElement>, row: Row) => {
+    // While a block moves, the arrows, Space and Esc are the drag's.
+    if (event.defaultPrevented || store.getState().drag !== null) return;
     const index = rows.findIndex((r) => r.block.id === row.block.id);
     const isOpen = expanded.has(row.block.id);
     let target: Row | undefined;
@@ -249,7 +297,7 @@ export function Navigator() {
                   selection={selection}
                   tabStop={tabStop}
                   errorsOn={errorsOn}
-                  items={items}
+                  register={register}
                   onChoose={choose}
                   onToggle={toggle}
                   onKeyDown={onKeyDown}
@@ -300,11 +348,20 @@ function Headings() {
   );
 }
 
+interface Line {
+  id: string;
+  at: "before" | "after" | "inside";
+}
+
 interface Dragging {
   id: string;
   // The container the block would land in; undefined when nowhere.
   target: string | null | undefined;
   name: string;
+  // A drag from the Outline: where the line stands, null when nowhere.
+  // Undefined for a drag from the page, which the tree follows in the
+  // preview.
+  line: Line | null | undefined;
 }
 
 interface TreeItemProps {
@@ -317,7 +374,7 @@ interface TreeItemProps {
   selection: string | null;
   tabStop: string | null;
   errorsOn: ReadonlySet<string | null>;
-  items: RefObject<Map<string, HTMLLIElement>>;
+  register: (id: string, element: HTMLLIElement | null) => void;
   onChoose: (id: string, focus?: boolean) => void;
   onToggle: (id: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLLIElement>, row: Row) => void;
@@ -326,13 +383,26 @@ interface TreeItemProps {
 function TreeItem(props: TreeItemProps) {
   const kept = useKeptWords();
   const env = useEnv();
-  const { doc, dragging, block, level, parent, expanded, selection, tabStop, errorsOn, items, onChoose, onToggle, onKeyDown } = props;
-  if (dragging?.id === block.id) {
+  const { doc, dragging, block, level, parent, expanded, selection, tabStop, errorsOn, register, onChoose, onToggle, onKeyDown } = props;
+  // The row is a drag source and a place to drop (./drag/dnd.ts), but not
+  // while the tree shows a drag begun on the page, whose rows move with it.
+  const previewing = dragging !== null && dragging.line === undefined;
+  const data = useMemo(() => ({ kind: "row" as const, id: block.id }), [block.id]);
+  const { ref: sourceRef } = useDraggable({ id: rowSource(block.id), data, sensors: ROW_SENSORS, disabled: previewing });
+  const { ref: dropRef } = useRowTarget({ id: rowTarget(block.id), disabled: previewing });
+  const itemRef = useCallback((element: HTMLLIElement | null) => {
+    register(block.id, element);
+    sourceRef(element);
+  }, [block.id, register, sourceRef]);
+  const rowRef = useCallback((element: HTMLDivElement | null) => dropRef(element), [dropRef]);
+  if (dragging !== null && dragging.line === undefined && dragging.id === block.id) {
     return <li className="t-insert" aria-hidden="true" style={{ marginLeft: 4 + (level - 1) * 19 }}><span>{dragging.name}</span></li>;
   }
   const children = block.children as readonly Block[];
   const hasChildren = children.length > 0;
   const isOpen = hasChildren && expanded.has(block.id);
+  const line = dragging?.line?.id === block.id ? dragging.line.at : null;
+  const indent = 4 + (level - 1) * 19;
   const name = blockName(doc, block.id);
   const detail = excerpt(block);
   const icon = block.type === "section" ? <Icon name="section" /> : block.type === "column" ? <Icon name="column" /> : <WidgetIcon icon={widgetDefinition(block.type).icon} className="i" />;
@@ -341,10 +411,7 @@ function TreeItem(props: TreeItemProps) {
   const flagsId = `nav_flags_${block.id}`;
   return (
     <li
-      ref={(element) => {
-        if (element) items.current.set(block.id, element);
-        else items.current.delete(block.id);
-      }}
+      ref={itemRef}
       role="treeitem"
       aria-level={level}
       aria-expanded={hasChildren ? isOpen : undefined}
@@ -354,7 +421,7 @@ function TreeItem(props: TreeItemProps) {
       tabIndex={tabStop === block.id ? 0 : -1}
       // The row the drawer gives the focus to when it opens.
       data-autofocus={tabStop === block.id ? "" : undefined}
-      className={hidden ? "t-hidden" : undefined}
+      className={[hidden ? "t-hidden" : "", dragging?.line !== undefined && dragging.id === block.id ? "t-moving" : ""].filter(Boolean).join(" ") || undefined}
       data-row-id={block.id}
       onKeyDown={(event) => {
         if (event.target === event.currentTarget) onKeyDown(event, { block, level, parent, hasChildren });
@@ -365,8 +432,9 @@ function TreeItem(props: TreeItemProps) {
       }}
     >
       <div
+        ref={rowRef}
         className={`t-row${dragging?.target === block.id ? " t-target" : ""}`}
-        style={{ paddingLeft: 4 + (level - 1) * 19 }}
+        style={{ paddingLeft: indent }}
         onClick={() => onChoose(block.id)}
       >
         <span
@@ -419,6 +487,9 @@ function TreeItem(props: TreeItemProps) {
           {children.map((child) => <TreeItem key={child.id} {...props} block={child} level={level + 1} parent={block.id} />)}
         </ul>
       )}
+      {/* Where a row's block will land: over the gap between rows, so no
+          row moves under the pointer; inside a row, one step in. */}
+      {line && <span className="t-line" data-at={line} style={{ left: indent + 18 + (line === "inside" ? 19 : 0) }} aria-hidden="true" />}
     </li>
   );
 }

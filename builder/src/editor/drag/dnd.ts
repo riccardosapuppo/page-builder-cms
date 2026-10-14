@@ -4,7 +4,8 @@
 //
 // What the editor takes from it: the pointer and keyboard sensors, the
 // collision with what is under the pointer, the drop target, the overlay
-// that follows the pointer, and the auto-scroll near the canvas's edges.
+// that follows the pointer, and the auto-scroll near the edges of the
+// canvas and of the Outline.
 // What it does not take: the library's own feedback (moving or cloning
 // the dragged element: the canvas draws the store's preview instead, so
 // React keeps every element of the page) and its announcements (the
@@ -70,6 +71,31 @@ export const TILE_SENSORS = [
   KeyboardSensor.configure({ keyboardCodes: sensorCodes() }),
 ];
 
+// A row of the Outline (../Navigator.tsx): dragged with the mouse once it
+// has moved 4 pixels, with a finger once it has been held still a quarter
+// of a second (a finger that moves at once scrolls the list), or picked up
+// with Space and moved with the arrows, as a block of the canvas is. A
+// press belongs to the innermost row under it, never to the rows around
+// it, and the row's chevron and "…" keep their clicks.
+const rowPressed = (target: EventTarget | null, row: Element | undefined): boolean =>
+  target instanceof Element && target.closest("[role=treeitem]") === row && target.closest(".t-chev, .t-more") === null;
+
+export const ROW_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: (event) => (event.pointerType === "touch"
+      ? [new PointerActivationConstraints.Delay({ value: 250, tolerance: 8 })]
+      : [new PointerActivationConstraints.Distance({ value: 4 })]),
+    preventActivation: (event, source) => !rowPressed(event.target, source.element),
+  }),
+  KeyboardSensor.configure({ keyboardCodes: sensorCodes() }),
+];
+
+// The library's ids for a row, as a source and as a target; the canvas's
+// targets are the blocks' own ids, which hold no colon.
+export const rowSource = (id: string): string => `row-source:${id}`;
+export const rowTarget = (id: string): string => `row:${id}`;
+export const rowOfTarget = (id: string): string | null => (id.startsWith("row:") ? id.slice("row:".length) : null);
+
 // The library's collision priority for a container: one with children
 // ranks below them (low), an empty one keeps the default (none given).
 export function collisionPriority(children: number): CollisionPriority | undefined {
@@ -80,8 +106,9 @@ export function collisionPriority(children: number): CollisionPriority | undefin
 // its targets' shapes, not what lies on top of them: a pointer over it
 // would land on the hidden block under it, and a key of Insert, picked up
 // there, would already be on its way into that block. Over a drawer, the
-// pointer is on nothing of the page (the Outline and History, beside the
-// page, hold none of its blocks, so they are no place to drop either).
+// pointer is on nothing of the page (History holds none of its blocks;
+// the Outline's rows are targets of their own, for a row's drag:
+// useRowTarget).
 function overDrawer(point: { x: number; y: number }): boolean {
   for (const drawer of document.querySelectorAll(".drawer")) {
     const box = drawer.getBoundingClientRect();
@@ -107,4 +134,10 @@ const LOW: CollisionDetector = (input) => {
 
 export function useDropTarget(input: Omit<UseDroppableInput, "collisionDetector">, priority: CollisionPriority | undefined) {
   return useDroppable({ ...input, collisionDetector: priority === CollisionPriority.Low ? LOW : UNDER });
+}
+
+// A row of the Outline as a target, for a row's drag alone: what the
+// pointer is over in the drawer, which the canvas's targets leave out.
+export function useRowTarget(input: Omit<UseDroppableInput, "collisionDetector" | "accept">) {
+  return useDroppable({ ...input, accept: (source) => (source.data as { kind?: unknown } | undefined)?.kind === "row", collisionDetector: pointerIntersection });
 }

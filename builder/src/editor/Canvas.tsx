@@ -23,7 +23,10 @@
 // dragged block as the drop indicator, the container it would land in
 // framed, those that cannot take it shaded. Every block, and the page
 // itself, is a drop target of the drag library; the selected block is its
-// source, picked up by the clamp's grip or by Space.
+// source, picked up by the clamp's grip or by Space. A block moved from a
+// row of the Outline is drawn as itself where it would land, framed and
+// named, and kept in view, so the page moves with it (live); once the
+// pointer comes over the canvas, as the drop indicator again.
 //
 // The page's own links, buttons and disclosures do nothing here: a click
 // selects the block it falls in, a right click opens its menu.
@@ -190,6 +193,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   const ghost = isGhostId(named);
   const id = ghost ? null : named;
   const relation = useStore(store, (s) => (s.drag ? null : relationOf(s.document, s.selection, id)));
+  const live = useStore(ui, (u) => u.dragLive);
   const hovered = useStore(ui, (u) => id !== null && u.hover === id);
   const name = useStore(store, (s) => nameOf(s.drag?.preview ?? s.document, id));
   const mark = useStore(store, useShallow((s): DragMark => (s.drag && id !== null ? dragMarkOf(s.drag, s.drag.preview, id) : null)));
@@ -223,7 +227,8 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   if (id === null) return undefined;
   const kind = block.type === "section" ? "section" : block.type === "column" ? "column" : "widget";
   const empty = block.type === "column" && Array.isArray(block.children) && block.children.length === 0;
-  const slot = mark?.kind === "slot" ? mark : null;
+  const slot = mark?.kind === "slot" && !live ? mark : null;
+  const moving = mark?.kind === "slot" && live ? mark : null;
   return {
     ref,
     attributes: {
@@ -234,10 +239,13 @@ function useDecoration(block: RawBlock): Decoration | undefined {
       "data-editor-selected": relation === "selected" ? "true" : undefined,
       "data-drag-slot": slot ? slot.mode : undefined,
       "data-drag-row": slot?.row ? "true" : undefined,
+      "data-drag-live": moving ? "" : undefined,
     },
     after: slot
       ? <DropIndicator mode={slot.mode} label={slot.label} />
-      : <Marks id={id} kind={kind} type={block.type as BlockType} name={name} relation={relation} hovered={hovered && mark === null} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} pluses={pluses} />,
+      : moving
+        ? <MovingFrame label={moving.label} />
+        : <Marks id={id} kind={kind} type={block.type as BlockType} name={name} relation={relation} hovered={hovered && mark === null} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} pluses={pluses} />,
     // While a drag lasts nothing is selected (relation null), so the
     // editor gives way to the page's drawing of the text.
     ...(editing && relation === "selected"
@@ -412,6 +420,16 @@ export function DropIndicator({ mode, label }: { mode: "line" | "frame"; label: 
   return (
     <span className="drop-ui drop-slot" data-mode={mode} aria-hidden="true">
       {mode === "line" && <span className="drop-line" />}
+      <span className="drop-label">{label}</span>
+    </span>
+  );
+}
+
+// A block moved from the Outline, drawn as itself where it would land: the
+// selection's yellow frame around it, and its name.
+function MovingFrame({ label }: { label: string }) {
+  return (
+    <span className="drop-ui drop-live" aria-hidden="true">
       <span className="drop-label">{label}</span>
     </span>
   );
@@ -804,7 +822,10 @@ function CanvasView() {
   // What is drawn while a widget is dragged: the preview, and a dimmed copy
   // of the widget where it stood (./drag/ghost.ts).
   const session = useEditor((s) => s.drag);
-  const drawn = useMemo(() => (session ? withGhost(session) : document), [session, document]);
+  // Moved from the Outline, the block goes as itself: no copy where it
+  // stood (./drag/ghost.ts), the page closing up behind it.
+  const live = useUi((u) => u.dragLive);
+  const drawn = useMemo(() => (session ? (live ? session.preview : withGhost(session)) : document), [session, document, live]);
   const dragType = useEditor((s) => s.drag?.type ?? null);
   const pageMark = useEditor(useShallow((s): DragMark => (s.drag ? containerMark(s.drag, s.drag.preview, PAGE_TARGET) : null)));
   const sections = useEditor((s) => (s.drag?.preview ?? s.document).sections.length);
@@ -962,12 +983,13 @@ function CanvasView() {
     };
   }, [dragging]);
 
-  // With the keyboard, the place the block would land stays in view.
-  const keyboardTarget = useEditor((s) => (s.drag && ui.getState().dragMode === "keyboard" ? `${s.drag.target?.parentId ?? ""} ${s.drag.target?.index ?? ""}` : null));
+  // With the keyboard, or from the Outline, the place the block would land
+  // stays in view.
+  const followedTarget = useEditor((s) => (s.drag && (ui.getState().dragMode === "keyboard" || ui.getState().dragLive) ? `${s.drag.target?.parentId ?? ""} ${s.drag.target?.index ?? ""}` : null));
   useEffect(() => {
-    if (keyboardTarget === null) return;
-    frame.current?.querySelector<HTMLElement>("[data-drag-slot]")?.scrollIntoView?.({ block: "nearest" });
-  }, [keyboardTarget]);
+    if (followedTarget === null) return;
+    frame.current?.querySelector<HTMLElement>("[data-drag-slot], [data-drag-live]")?.scrollIntoView?.({ block: "nearest" });
+  }, [followedTarget]);
 
   const pick = (target: EventTarget | null) => {
     const element = target instanceof Element ? target : null;

@@ -451,6 +451,17 @@ are in `builder/src/editor/lucide/`, and
 `builder/src/editor/icons.test.ts` holds every icon to its file. The
 mock's sprites and shots stay as approved.
 
+**The owner's choice of 14 October 2026: the Outline's rows drag.** A
+row moves its block, by the mouse, a finger held still, or Space and the
+arrows, as the canvas's grip does. While it moves, the tree stays as the
+page is: the row dimmed where it stands, the drop line in yellow between
+two rows or one step inside a row, the container it lands in marked and
+opened. The canvas draws the block itself where it would land, in the
+selection's frame with its name, and keeps it in view: the page moves
+with the block, which the mock's drag state (a line where it lands) does
+not show. Over the canvas, the canvas's own marks come back.
+`builder/e2e/outline-drag.spec.ts` drives it.
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every

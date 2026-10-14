@@ -173,7 +173,7 @@ function typingWords(): string {
 
 // What the window says under a group.
 export const GROUP_NOTES: Partial<Record<KeyGroup, string>> = {
-  Moving: "While a block moves, the bottom line says where it will land, and screen readers hear the same sentence.",
+  Moving: "While a block moves, the bottom line says where it will land, and screen readers hear the same sentence. A row of the Outline moves its block the same ways, and the page shows the block where it would land as it goes.",
   "Text, while you write": `In a text on the page, Ctrl+Z and Ctrl+Shift+Z undo and redo the typing; outside the text, whole changes. Delete and Backspace delete letters, not the block. Shift+Enter starts a new line in the same paragraph. ${typingWords()} work while you type, here and in the sidebar’s fields.`,
   "Adding and looking": "On the page, + opens a picker beside the selection with only what fits there. A block in Insert goes after the selection with Enter, or where it is dragged on the page, by the mouse or by Space and the arrows. One that needs an image or a video asks for it where it lands.",
 };

@@ -233,3 +233,58 @@ test("a refused block is refused by the server, or, with no CMS, by this browser
   expect(screen.getByRole("treeitem", { name: "Hero, refused by this browser's storage" })).toBeTruthy();
   expect(document.querySelector("[title]:has(.i-xs)")?.getAttribute("title") ?? [...document.querySelectorAll("[title]")].map((e) => e.getAttribute("title")).find((t) => t?.includes("refused this block"))).toBe("This browser's storage refused this block in the last save");
 });
+
+test("a row's block moved from the Outline: the rows stay as the page is, the row dimmed, the line where it will land, its container marked and opened", () => {
+  const kit = editorKit({ document: page() });
+  const { container } = kit.render(<Navigator />);
+  act(() => kit.store.getState().select("q1"));
+  act(() => {
+    kit.ui.setState({ dragFrom: "outline", dragLive: true });
+    kit.store.getState().startDrag({ kind: "block", id: "q1" });
+    kit.store.getState().dragOver({ parentId: "c1", index: 1 });
+  });
+  const li = (id: string) => container.querySelector<HTMLElement>(`[data-row-id="${id}"]`)!;
+  const line = (id: string) => li(id).querySelector(":scope > .t-line")?.getAttribute("data-at") ?? null;
+  // The hero's first column opened for the line; the quote still where it stands, dimmed.
+  expect(rows()).toEqual([
+    "1 Hero open", "2 Column 1 open", "3 Heading: Winter series", "3 Text: Meet at the slipway.", "3 Button: Join", "2 Column 2 closed",
+    "1 Join open", "2 Column 1 open", "3 Divider", "3 Quote: Cold, then glad.", "3 Gallery: 2 images",
+  ]);
+  expect(li("q1").classList.contains("t-moving")).toBe(true);
+  expect(line("t1")).toBe("before");
+  expect(li("c1").querySelector(":scope > .t-row")!.classList.contains("t-target")).toBe(true);
+  // While it moves, the tree's arrows are the drag's: the selection stays.
+  fireEvent.keyDown(li("d1"), { key: "ArrowDown" });
+  expect(kit.store.getState().selection).toBe("q1");
+
+  act(() => kit.store.getState().dragOver({ parentId: "c1", index: 3 }));
+  expect([line("t1"), line("b1")]).toEqual([null, "after"]);
+  act(() => kit.store.getState().dragOver({ parentId: "c2", index: 0 }));
+  expect(rows()).toContain("2 Column 2 open");
+  expect(line("i1")).toBe("before");
+
+  // Dropped there: the rows opened stay open.
+  act(() => {
+    kit.store.getState().drop();
+    kit.ui.setState({ dragFrom: null, dragLive: false });
+  });
+  expect(kit.store.getState().document.sections[0]!.children[1]!.children.map((b) => b.id)).toEqual(["q1", "i1"]);
+  expect(rows()).toEqual([
+    "1 Hero open", "2 Column 1 open", "3 Heading: Winter series", "3 Text: Meet at the slipway.", "3 Button: Join", "2 Column 2 open", "3 Quote: Cold, then glad.", "3 Image: Swimmers at dawn",
+    "1 Join open", "2 Column 1 open", "3 Divider", "3 Gallery: 2 images",
+  ]);
+  expect(container.querySelector(".t-line, .t-moving")).toBeNull();
+});
+
+test("a drag begun on the page still shows its preview here: the dragged block as a line where it would land", () => {
+  const kit = editorKit({ document: page() });
+  const { container } = kit.render(<Navigator />);
+  act(() => kit.store.getState().select("q1"));
+  act(() => {
+    kit.ui.setState({ dragFrom: "page" });
+    kit.store.getState().startDrag({ kind: "block", id: "q1" });
+    kit.store.getState().dragOver({ parentId: "c1", index: 0 });
+  });
+  expect(container.querySelector(".t-insert")?.textContent).toBe("Quote");
+  expect(container.querySelector(".t-line, .t-moving")).toBeNull();
+});

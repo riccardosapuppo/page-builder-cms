@@ -12,19 +12,21 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 
 The editor builds a page from sections, columns and fifteen kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
-accordion, divider, spacer, form, logo and menu), with rich text written
-where it stands on the canvas, undo and redo, a tablet's and a phone's own
-values, a media library and a form; and it builds the site's header and
-footer the same way, from sections, columns and blocks dragged where they
-go, parts of the site that every page shows once published, the header
+accordion, divider, spacer, form, logo and menu), dragged into place on the
+page or in the Outline, where the page moves with the block as it goes;
+with rich text written where it stands on the canvas, undo and redo, a
+tablet's and a phone's own values, a media library and a form. It builds
+the site's header and footer the same way, from sections, columns and
+blocks, parts of the site that every page shows once published, the header
 staying at the top of the window if asked. Site style sets the site's
-palette, colours of its own included, its type scale and its letter
-width; any block may take CSS classes and an anchor of its own, which
-the site's custom CSS styles, inside the site and nowhere else. Rails keeps each page as one JSON document that a
-single schema describes, with one draft and its versions; publishes it now
-or at a set time; draws it on the server and caches it; and keeps what
-visitors send from its form. The same editor also runs with no server at
-all, keeping its pages in the browser: that is the demo, [below](#the-two-modes).
+palette, colours of its own included, its type scale and its letter width;
+any block may take CSS classes and an anchor of its own, which the site's
+custom CSS styles, inside the site and nowhere else. Rails keeps each page
+as one JSON document that a single schema describes, with one draft and
+its versions; publishes it now or at a set time; draws it on the server
+and caches it; and keeps what visitors send from its form. The same editor
+also runs with no server at all, keeping its pages in the browser: that is
+the demo, [below](#the-two-modes).
 
 ## Why Rails
 

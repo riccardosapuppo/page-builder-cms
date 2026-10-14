@@ -848,6 +848,12 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 [data-drag-row] > .drop-slot .drop-line::after { top: auto; right: auto; bottom: -4px; }
 .drop-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 4px; background: var(--mark); color: var(--on-mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .16), 0 2px 6px -2px rgb(27 31 36 / .3); font: 600 12px/16px var(--font-ui); white-space: nowrap; }
 [data-drag-row] > .drop-slot .drop-label { top: 12px; transform: none; }
+/* A block moved from the Outline, drawn as itself where it would land
+   (Canvas.tsx, MovingFrame): the selection's frame around it, its name on
+   the frame's top edge. */
+.canvas .site [data-drag-live] { position: relative; z-index: 4; }
+.drop-live { position: absolute; inset: -3px; border-radius: 6px; outline: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--sel-edge); pointer-events: none; }
+.drop-live > .drop-label { left: 8px; top: 0; }
 
 /* A page drawn smaller to fit (Canvas.tsx, fitPreview) draws its marks
    smaller with it, since they hang from its blocks. The editor's own
@@ -865,6 +871,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .frame[data-scale] :is(.ov-dim-v, .ov-pad) span { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .drop-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] [data-drag-row] > .drop-slot .drop-label { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
+.frame[data-scale] .drop-live > .drop-label { transform: translateY(-50%) scale(var(--canvas-unscale)); transform-origin: 0 50%; }
 .frame[data-scale] .veil-note { transform: scale(var(--canvas-unscale)); transform-origin: 0 0; }
 .frame[data-scale] .invite { zoom: var(--canvas-unscale); }
 
@@ -887,6 +894,17 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .t-insert::before { content: ""; position: absolute; left: 22px; right: 0; top: 8px; height: 2px; background: var(--mark-line); }
 .t-insert::after { content: ""; position: absolute; left: 22px; right: 0; top: 4px; height: 10px; border-left: 2px solid var(--mark-line); border-right: 2px solid var(--mark-line); }
 .t-insert span { position: absolute; left: 32px; top: 1px; z-index: 1; padding: 1px 5px; border-radius: 3px; background: var(--mark); color: var(--on-mark); font-size: 12px; line-height: 16px; font-weight: 600; }
+/* A row's block moved from the Outline: the row and its rows dimmed where
+   they stand, and a line where it will land, over the gap between two
+   rows (before a row, after one and its rows) or one step inside a row,
+   so no row moves under the pointer. */
+.tree li { position: relative; }
+.t-moving { opacity: .45; }
+.t-line { position: absolute; right: 4px; height: 2px; border-radius: 1px; background: var(--mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .3); pointer-events: none; z-index: 1; }
+.t-line::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--mark); box-shadow: 0 0 0 1px rgb(27 31 36 / .3); }
+.t-line[data-at="before"] { top: -1px; }
+.t-line[data-at="after"] { bottom: -1px; }
+.t-line[data-at="inside"] { top: 27px; }
 
 /* The keyboard shortcuts window (design/layout/shots/shortcuts.png), and
    keys wherever there is room for them. */
