@@ -9,6 +9,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { expect, test } from "vitest";
 import { describedText, editorKit, groupNames, openGroups, widgetPage } from "../../../test/editor-kit.tsx";
 import { page } from "../../../test/document-page.ts";
+import { COMMIT_AFTER_MS } from "../controls.tsx";
 import { BlockPanel } from "./EditPanel.tsx";
 
 // The settings' names in the groups that hold style keys, top to bottom.
@@ -59,6 +60,28 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
   // The site's own tone for a slot, where the site style has another.
   act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", letterWidth: "normal", updatedAt: null, choices: { palette: {}, typeScales: [], letterWidths: [] } }));
   expect(background().getByRole("radio", { name: "Primary, Harbour" }).getAttribute("style")).toContain("#1D4E6F");
+});
+
+test("a swatch or Reset chosen in the pause after the picker's arrows wins: the colour waiting is not kept over it", async () => {
+  const kit = editorKit({ document: widgetPage(), selection: "button" });
+  kit.render(<BlockPanel id="button" />);
+  openGroups("Colors");
+  const pick = () => {
+    fireEvent.click(within(screen.getByRole("group", { name: "Background: swatches" })).getByRole("button", { name: "A colour of its own" }));
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Background: saturation and brightness" }), { key: "ArrowLeft", shiftKey: true });
+  };
+  // A swatch: the picker closes, and keeps nothing of its own.
+  pick();
+  fireEvent.click(within(screen.getByRole("radiogroup", { name: "Background" })).getByRole("radio", { name: "Primary, Signal" }));
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(kit.block("button")?.style).toEqual({ base: { background: "primary" } });
+  expect(screen.queryByRole("slider", { name: "Background: saturation and brightness" })).toBeNull();
+  // Reset: the picker stays, and keeps nothing after the pause.
+  pick();
+  fireEvent.click(screen.getByRole("button", { name: "Reset Background" }));
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(kit.block("button")?.style).toEqual({ base: {} });
+  expect(kit.lastCommand()?.label).toBe("Cleared Background, Button in Widgets");
 });
 
 // A setting's field, by its label, and what the field says beside and under it.

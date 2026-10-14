@@ -2,25 +2,28 @@
 // area shows each colour at once (onPreview) and keeps one when let go;
 // the arrows keep one after a pause; the hex field keeps what is typed as
 // #rrggbb, says when it is not a colour and shows the kept one again; the
-// picker going keeps what waits and stops showing what was picked.
+// picker going keeps what waits and stops showing what was picked; a
+// choice made beside it in the arrows' pause drops what waits.
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from "@testing-library/react";
-import { useState } from "react";
+import { createRef, useState } from "react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { FreeColor } from "../shared/free-colors.ts";
-import { ColorPicker } from "./ColorPicker.tsx";
+import { ColorPicker, type ColorPickerHandle } from "./ColorPicker.tsx";
 import { COMMIT_AFTER_MS } from "./controls.tsx";
 
 function draw(value: FreeColor = "#ff0000") {
   const kept: FreeColor[] = [];
   const shown: Array<FreeColor | null> = [];
+  const handle = createRef<ColorPickerHandle>();
   const kit = editorKit({ document: page() });
   function Field({ on }: { on: boolean }) {
     const [now, setNow] = useState<FreeColor>(value);
     return on ? (
       <ColorPicker
+        ref={handle}
         label="Primary"
         value={now}
         onCommit={(color) => {
@@ -32,7 +35,7 @@ function draw(value: FreeColor = "#ff0000") {
     ) : null;
   }
   const view = kit.render(<Field on />);
-  return { kit, kept, shown, hide: () => view.rerender(<Field on={false} />) };
+  return { kit, kept, shown, handle, hide: () => view.rerender(<Field on={false} />) };
 }
 
 // jsdom lays nothing out: the area is given a box, and pointer capture.
@@ -81,6 +84,21 @@ test("the hex field keeps what is typed as #rrggbb; what is no colour is said, a
   fireEvent.blur(field);
   expect(screen.getByText("Write a colour as six hex digits, like #1d4e6f.")).toBeTruthy();
   expect(kept).toEqual(["#1d4e6f"]);
+});
+
+test("a choice made beside the picker in the arrows' pause drops the colour waiting: nothing kept, then or when the picker goes", async () => {
+  const { kit, kept, shown, handle, hide } = draw("#808080");
+  const area = screen.getByRole("slider", { name: "Primary: saturation and brightness" });
+  fireEvent.keyDown(area, { key: "ArrowRight", shiftKey: true });
+  expect(shown.at(-1)).not.toBe("#808080");
+  act(() => handle.current!.discard());
+  // What is shown is the colour kept, here and wherever the panel shows it.
+  expect(shown.at(-1)).toBeNull();
+  expect((screen.getByLabelText("Primary: hex") as HTMLInputElement).value).toBe("#808080");
+  expect(area.getAttribute("aria-valuetext")).toBe("Saturation 0%, brightness 50%");
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  hide();
+  expect(kept).toEqual([]);
 });
 
 test("the picker going keeps the colour waiting and stops showing the picking", async () => {

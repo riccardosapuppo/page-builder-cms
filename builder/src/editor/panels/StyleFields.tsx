@@ -14,7 +14,7 @@
 // Remove that takes the device's key out, so the device follows the
 // desktop again (./device-style.ts, backToDesktop: never the desktop's
 // value written in its place).
-import { Fragment, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { Fragment, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { REMOVE } from "../../document/commands.ts";
 import { STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
@@ -26,7 +26,7 @@ import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
 import { DARK_SLOTS, isFreeColor, normalizeHex, wordsOn, type FreeColor } from "../../shared/free-colors.ts";
 import { COLUMN_GAP_DEFAULT, contrastRatio, letterWidth, slotLabel, slotTone } from "../../shared/site-tokens.ts";
 import { ColorPalette } from "../ColorPalette.tsx";
-import { ColorPicker } from "../ColorPicker.tsx";
+import { ColorPicker, type ColorPickerHandle } from "../ColorPicker.tsx";
 import { previewedStyle } from "../color-preview.ts";
 import { afterRender } from "../act.ts";
 import { RadioField, RadioPairField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
@@ -225,6 +225,12 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
   const backdrop = useBackdrop(block.id, device);
   // The colour whose picker is open (the palette's Custom tile).
   const [picking, setPicking] = useState<{ id: string; key: "background" | "color" } | null>(null);
+  // Its picker: a choice of the same setting made beside it (a swatch,
+  // Reset, Remove) drops the colour the picker still waits to keep.
+  const picker = useRef<ColorPickerHandle>(null);
+  const replacing = (key: StyleKey) => {
+    if (picking?.id === block.id && picking.key === key) picker.current?.discard();
+  };
   // A slot's tone or a free colour, as a colour.
   const hexOf = (value: string): string => (isFreeColor(value) ? value : slotTone(value as PaletteSlot, siteStyle?.palette).hex);
   const site = { text: slotTone("text", siteStyle?.palette).hex, background: slotTone("background", siteStyle?.palette).hex };
@@ -267,6 +273,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                 type="button"
                 aria-label={`Reset ${label}`}
                 onClick={(event) => {
+                  replacing(key);
                   if (commands.setStyle("base", { [key]: REMOVE }) === null) focusFieldOf(event);
                 }}
               >
@@ -304,6 +311,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
               type="button"
               aria-label={`Remove the ${device} override of ${label}`}
               onClick={(event) => {
+                replacing(key);
                 if (commands.setStyle(device, backToDesktop(key)) === null) focusFieldOf(event);
               }}
             >
@@ -371,6 +379,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                   value={value}
                   inUse={inUse}
                   onChange={(next) => {
+                    replacing(key);
                     setPicking(null);
                     return set(next);
                   }}
@@ -380,6 +389,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                         label={label}
                         value={value}
                         onPick={(color) => {
+                          replacing(key);
                           setPicking(null);
                           set(color);
                         }}
@@ -388,6 +398,7 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                       />
                       {open && (
                         <ColorPicker
+                          ref={picker}
                           label={label}
                           value={start}
                           onCommit={(color) => {

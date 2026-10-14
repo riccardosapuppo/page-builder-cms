@@ -8,13 +8,13 @@
 // the canvas at once and goes to the CMS through the session, which says
 // here whether it was kept: the published pages follow from the next
 // request, since they read the style when they are drawn.
-import { useId, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { SiteStyle } from "../storage/adapter.ts";
 import { isFreeColor, normalizeHex, type FreeColor } from "../shared/free-colors.ts";
 import { contrastRatio, defaultTone, letterWidth, PALETTE_SLOTS, slotLabel, typeScale } from "../shared/site-tokens.ts";
 import type { PaletteSlot } from "../shared/document.ts";
 import { ColorPalette } from "./ColorPalette.tsx";
-import { ColorPicker } from "./ColorPicker.tsx";
+import { ColorPicker, type ColorPickerHandle } from "./ColorPicker.tsx";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { paletteName } from "./palette.ts";
@@ -75,8 +75,11 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
   const { ui } = useEnv();
   const session = useSession();
   const [open, setOpen] = useState<PaletteSlot | null>(null);
-  // The slot whose picker is open (the palette's Custom tile).
+  // The slot whose picker is open (the palette's Custom tile), and the
+  // picker: a tone, a swatch or Reset chosen beside it drops the colour it
+  // still waits to keep.
   const [custom, setCustom] = useState<PaletteSlot | null>(null);
+  const picker = useRef<ColorPickerHandle>(null);
   const headId = useId();
   if (!style) {
     return (
@@ -137,6 +140,7 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                       tones={tones}
                       value={value}
                       onChange={(choice) => {
+                        picker.current?.discard();
                         setCustom(null);
                         change({ ...style.palette, [slot]: choice }, style.typeScale);
                       }}
@@ -145,6 +149,7 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                       label={slotLabel(slot)}
                       value={value}
                       onPick={(color) => {
+                        picker.current?.discard();
                         setCustom(null);
                         change({ ...style.palette, [slot]: color }, style.typeScale);
                       }}
@@ -153,10 +158,15 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                     />
                     {custom === slot && (
                       <ColorPicker
+                        ref={picker}
                         label={slotLabel(slot)}
                         value={free ?? normalizeHex(hex(slot)) ?? "#000000"}
                         onCommit={(color: FreeColor) => {
-                          change({ ...style.palette, [slot]: color }, style.typeScale);
+                          // The style as it is when the colour is kept, after
+                          // the arrows' pause maybe: a type scale chosen in
+                          // it stays.
+                          const now = ui.getState().siteStyle ?? style;
+                          change({ ...now.palette, [slot]: color }, now.typeScale, now.letterWidth);
                           ui.getState().setColorPreview(null);
                         }}
                         onPreview={(color) => ui.getState().setColorPreview(color === null ? null : { slot, color })}
@@ -180,6 +190,7 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                           className="btn btn-small btn-secondary"
                           type="button"
                           onClick={() => {
+                            picker.current?.discard();
                             setCustom(null);
                             change({ ...style.palette, [slot]: first.color }, style.typeScale);
                           }}

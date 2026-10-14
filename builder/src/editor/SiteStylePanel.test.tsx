@@ -12,6 +12,7 @@ import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { SiteStyle, SiteStyleChange } from "../storage/adapter.ts";
 import { contrastRatio } from "../shared/site-tokens.ts";
+import { COMMIT_AFTER_MS } from "./controls.tsx";
 import { contrastWords, ratioWords, SiteStylePanel } from "./SiteStylePanel.tsx";
 
 // The site style as the CMS answers it, from the tokens.
@@ -73,6 +74,38 @@ test("an edited slot says what it was, reads its contrast in words, and resets t
   ]);
   fireEvent.click(screen.getByRole("button", { name: "Reset to Signal" }));
   expect(changes.at(-1)!.palette.primary).toBe("site-signal");
+});
+
+test("a tone chosen in the pause after the picker's arrows wins, and a colour kept after the pause keeps the type scale chosen in it", async () => {
+  const changes: SiteStyleChange[] = [];
+  // The session as the editor's: the panel shows a change at once.
+  const kit = editorKit({
+    document: page(),
+    session: {
+      saveSiteStyle: (change) => {
+        changes.push(change);
+        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...change });
+      },
+    },
+  });
+  kit.ui.getState().setSiteStyle(siteStyle());
+  kit.render(<SiteStylePanel onClose={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));
+  const pick = () => {
+    fireEvent.click(within(screen.getByRole("group", { name: "Primary: swatches" })).getByRole("button", { name: "A colour of its own" }));
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Primary: saturation and brightness" }), { key: "ArrowLeft", shiftKey: true });
+  };
+  pick();
+  fireEvent.click(within(screen.getByRole("radiogroup", { name: "Primary color" })).getByRole("radio", { name: "Harbour" }));
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(changes.map((change) => change.palette.primary)).toEqual(["site-harbour"]);
+  // The picker again, and the type scale in the pause: the colour kept
+  // after it goes with the new scale, not the one it was picked under.
+  pick();
+  fireEvent.click(within(screen.getByRole("radiogroup", { name: "Contrast between sizes" })).getByRole("radio", { name: "Strong" }));
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(changes.map((change) => change.typeScale)).toEqual(["balanced", "strong", "strong"]);
+  expect(changes.at(-1)!.palette.primary).toMatch(/^#[0-9a-f]{6}$/);
 });
 
 test("every curated tone reads at least 4.5 to 1 where the site puts it", () => {

@@ -4,16 +4,25 @@
 // the colour here and, through onPreview, wherever the panel shows it at
 // once; it is kept (onCommit) when the pointer is let go, a pause after
 // the arrow keys, or Enter or leaving the hex field, so a drag is one
-// change, not one per pixel.
+// change, not one per pixel. A choice the panel makes in the pause (a
+// swatch, Reset) comes after the picked colour: the panel drops what waits
+// (discard, through the picker's ref), so it is not kept over the choice.
 //
 // Both the area and the bar are sliders to a keyboard: the arrows move
 // them by 1 (the area's left and right the saturation, up and down the
 // brightness), with Shift by 10. The palette of ready colours beside it
 // is ./ColorPalette.tsx.
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type Ref } from "react";
 import { hexToRgb, hsvToRgb, normalizeHex, rgbToHex, rgbToHsv, type FreeColor, type Hsv } from "../shared/free-colors.ts";
 import { useEnv } from "./context.tsx";
 import { COMMIT_AFTER_MS, ErrorList } from "./controls.tsx";
+
+// What the panel can tell its picker.
+export interface ColorPickerHandle {
+  // Another choice takes the colour's place: a colour still waiting to be
+  // kept is dropped, and the picker shows the one kept.
+  discard: () => void;
+}
 
 interface ColorPickerProps {
   // What the colour is of ("Primary", "Background"): the controls' names.
@@ -23,12 +32,13 @@ interface ColorPickerProps {
   // The colour shown while it is picked, before it is kept; null when the
   // picking stopped without keeping one.
   onPreview?: (color: FreeColor | null) => void;
+  ref?: Ref<ColorPickerHandle>;
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 
-export function ColorPicker({ label, value, onCommit, onPreview }: ColorPickerProps) {
+export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPickerProps) {
   const { clock } = useEnv();
   const id = useId();
   // The picker's own place: the hue is kept even where the colour has none
@@ -91,6 +101,18 @@ export function ColorPicker({ label, value, onCommit, onPreview }: ColorPickerPr
     if (timer.current !== null) latest.current.commit(latest.current.shown);
     latest.current.onPreview?.(null);
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    discard: () => {
+      if (timer.current === null) return;
+      clock.clearTimeout(timer.current);
+      timer.current = null;
+      setHsv(rgbToHsv(hexToRgb(kept.current)));
+      setTyped(kept.current);
+      setRefused(null);
+      onPreview?.(null);
+    },
+  }), [clock, onPreview]);
 
   const fromArea = (event: PointerEvent<HTMLElement>, keep: "now" | "later") => {
     const box = event.currentTarget.getBoundingClientRect();
