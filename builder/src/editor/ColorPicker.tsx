@@ -76,8 +76,11 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
 
   // Keeps a colour: true once the page has it, false when it refuses it.
   // What waits is let go first, so the command it makes finds nothing of
-  // it left to hand over.
-  const commit = useCallback((color: FreeColor): boolean => {
+  // it left to hand over; a colour the page refuses (another field's text
+  // it cannot keep yet) waits again, so the next hand-over tries it, unless
+  // the picker is going.
+  const going = useRef(false);
+  const commit = useCallback(function keep(color: FreeColor): boolean {
     if (timer.current !== null) {
       clock.clearTimeout(timer.current);
       timer.current = null;
@@ -91,8 +94,12 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     }
     const taken = onCommit(color);
     if (taken) kept.current = color;
+    else if (!going.current) {
+      waiting.current = color;
+      release.current = ui.getState().pending.hold(() => keep(color));
+    }
     return taken;
-  }, [clock, onCommit, onPreview]);
+  }, [clock, onCommit, onPreview, ui]);
 
   // A colour to keep later, held until then: it takes the place of the one
   // waiting, the arrows' pause with it.
@@ -137,6 +144,7 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     latest.current = { commit, onPreview, clock };
   });
   useEffect(() => () => {
+    going.current = true;
     if (waiting.current !== null) latest.current.commit(waiting.current);
     if (timer.current !== null) latest.current.clock.clearTimeout(timer.current);
     timer.current = null;

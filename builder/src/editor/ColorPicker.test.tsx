@@ -164,7 +164,7 @@ test("a colour typed in the arrows' pause takes the place of the one waiting: th
   expect([kept, pending.waiting]).toEqual([["#1d4e6f"], 0]);
 });
 
-test("a typed colour the page refuses as it is handed over says so: the hand-over answers false, and nothing is kept", () => {
+test("a typed colour the page refuses as it is handed over says so, and waits: handed over again once the page can take it, it is kept", () => {
   const { kit, kept } = draw("#ff0000", [true]);
   const pending = kit.ui.getState().pending;
   fireEvent.change(screen.getByLabelText("Primary: hex"), { target: { value: "#1d4e6f" } });
@@ -172,7 +172,20 @@ test("a typed colour the page refuses as it is handed over says so: the hand-ove
   act(() => {
     all = pending.deliver();
   });
-  expect([all, kept]).toEqual([false, []]);
+  expect([all, kept, pending.waiting]).toEqual([false, [], 1]);
+  // The page takes it now (the field it waited for written right).
+  act(() => {
+    all = pending.deliver();
+  });
+  expect([all, kept, pending.waiting]).toEqual([true, ["#1d4e6f"], 0]);
+});
+
+test("a colour the page refuses as the picker goes is not left waiting with no picker to keep it", () => {
+  const { kit, kept, hide } = draw("#ff0000", [true, true]);
+  const pending = kit.ui.getState().pending;
+  fireEvent.change(screen.getByLabelText("Primary: hex"), { target: { value: "#1d4e6f" } });
+  hide();
+  expect([kept, pending.waiting]).toEqual([[], 0]);
 });
 
 test("a colour the page refuses is not taken as kept: the same colour, kept again, reaches the page", () => {
