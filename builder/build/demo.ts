@@ -4,6 +4,7 @@
 // it at its root, DEMO_BASE=/ in the environment of the build, of
 // serve:demo and of e2e:demo. Its own folder, so the editor's build in
 // dist/ is never replaced by it.
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HtmlTagDescriptor, Plugin } from "vite";
@@ -47,10 +48,18 @@ export const DEMO_PREVIEW = {
 
 export const DEMO_DESCRIPTION = "Try a page builder in your browser: build a page from sections, columns and fifteen kinds of block, then preview and publish it, all kept in this browser.";
 
+// The picture's fingerprint, the first 12 hex digits of its SHA-256, which
+// its address carries (?v=): a site that keeps link previews by address
+// (LinkedIn keeps them for weeks) sees a new picture as a new address. null
+// before there is one.
+export function previewVersion(source: string = DEMO_PREVIEW.source): string | null {
+  return existsSync(source) ? createHash("sha256").update(readFileSync(source)).digest("hex").slice(0, 12) : null;
+}
+
 // The tags a shared link's preview is read from: Open Graph's, the
 // description beside them, and the card's size for the sites that read
 // Twitter's. Every address is absolute: those sites resolve none.
-export function linkPreviewTags(site: string = DEMO_SITE): Array<Record<string, string>> {
+export function linkPreviewTags(site: string = DEMO_SITE, version: string | null = previewVersion()): Array<Record<string, string>> {
   return [
     { name: "description", content: DEMO_DESCRIPTION },
     { property: "og:type", content: "website" },
@@ -58,7 +67,7 @@ export function linkPreviewTags(site: string = DEMO_SITE): Array<Record<string, 
     { property: "og:title", content: "Page Builder CMS" },
     { property: "og:description", content: DEMO_DESCRIPTION },
     { property: "og:url", content: site },
-    { property: "og:image", content: new URL(DEMO_PREVIEW.file, site).href },
+    { property: "og:image", content: `${new URL(DEMO_PREVIEW.file, site).href}${version === null ? "" : `?v=${version}`}` },
     { property: "og:image:type", content: "image/png" },
     { property: "og:image:width", content: String(DEMO_PREVIEW.width) },
     { property: "og:image:height", content: String(DEMO_PREVIEW.height) },

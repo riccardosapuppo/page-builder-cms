@@ -1,9 +1,10 @@
 // Where the demo is served from (./demo.ts): GitHub Pages' path by default,
 // the root of a host of its own with DEMO_BASE=/, any path that starts and
 // ends with a slash; anything else stops the build, saying why.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { DEMO_DESCRIPTION, DEMO_PAGES_BASE, DEMO_PREVIEW, DEMO_SITE, demoBase, demoLinkPreview, linkPreviewTags } from "./demo.ts";
+import { DEMO_DESCRIPTION, DEMO_PAGES_BASE, DEMO_PREVIEW, DEMO_SITE, demoBase, demoLinkPreview, linkPreviewTags, previewVersion } from "./demo.ts";
 
 test("the demo's base: Pages' path by default, the root or another path when DEMO_BASE says so, and nothing else", () => {
   expect(DEMO_PAGES_BASE).toBe("/page-builder-cms/");
@@ -23,7 +24,10 @@ test("a link to the demo previews with the demo's own tags: every address absolu
   const said = (key: string) => tags.find((tag) => tag.property === key || tag.name === key)?.content;
   expect(DEMO_SITE).toBe("https://builder.riccardosapuppo.com/");
   expect(said("og:url")).toBe(DEMO_SITE);
-  expect(said("og:image")).toBe("https://builder.riccardosapuppo.com/preview.png");
+  // The picture's address carries its fingerprint: a new picture is a new address.
+  const version = createHash("sha256").update(readFileSync(DEMO_PREVIEW.source)).digest("hex").slice(0, 12);
+  expect(previewVersion()).toBe(version);
+  expect(said("og:image")).toBe(`https://builder.riccardosapuppo.com/preview.png?v=${version}`);
   expect([said("og:image:width"), said("og:image:height"), said("og:image:type")]).toEqual(["1200", "627", "image/png"]);
   expect(said("og:title")).toBe("Page Builder CMS");
   expect(said("og:type")).toBe("website");
@@ -34,7 +38,10 @@ test("a link to the demo previews with the demo's own tags: every address absolu
   // Every address a tag gives is absolute.
   for (const tag of tags.filter((t) => /url|image$/.test(t.property ?? ""))) expect(new URL(tag.content!).protocol, tag.property).toBe("https:");
   // Another host's copy names its own.
-  expect(linkPreviewTags("https://demo.example.org/editor/").find((tag) => tag.property === "og:image")?.content).toBe("https://demo.example.org/editor/preview.png");
+  expect(linkPreviewTags("https://demo.example.org/editor/", "0123456789ab").find((tag) => tag.property === "og:image")?.content).toBe("https://demo.example.org/editor/preview.png?v=0123456789ab");
+  // Before there is a picture, its address alone.
+  expect(linkPreviewTags(DEMO_SITE, null).find((tag) => tag.property === "og:image")?.content).toBe("https://builder.riccardosapuppo.com/preview.png");
+  expect(previewVersion("no-such-picture.png")).toBeNull();
 });
 
 test("the demo's build puts the tags in its page's head and the picture at its root, unhashed", () => {
