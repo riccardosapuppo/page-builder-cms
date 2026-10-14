@@ -166,6 +166,13 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   // page, the section picker above it. Then #new-section: 2 columns added
   // there, a large "+" in each empty column; undone after.
   await deselect();
+  // The hero is taller than the canvas: its foot is brought to the
+  // canvas's middle first, where the pointer can find the seam.
+  await page.locator(".canvas").evaluate((canvas) => {
+    const foot = canvas.querySelector('[data-block-id="hero"]')?.getBoundingClientRect().bottom ?? 0;
+    const box = canvas.getBoundingClientRect();
+    canvas.scrollBy(0, foot - (box.top + box.height / 2));
+  });
   const hero = await page.locator('.canvas [data-block-id="hero"]').boundingBox();
   if (!hero) throw new Error("the hero is not on screen");
   await page.mouse.move(hero.x + hero.width / 2 - 120, hero.y + hero.height, { steps: 4 });
