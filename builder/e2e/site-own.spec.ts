@@ -187,6 +187,22 @@ test("Sticky header, published, keeps the header at the top of the window while 
       expect(targetTop - headerBottom, `spaced, ${size.width} wide`).toBeLessThan(80);
     }
 
+    // A form under the sticky header: a link to a field (the list above a
+    // refused form) leaves room for the field's label and message below
+    // the header, as without one (site.css, .sw-field's 8rem).
+    const formed = await makePage(request, "Form under a sticky header", [section("fs", "Join", [column("fc", [{ ...heading("fh", "Join"), props: { level: 2, text: "Join", anchor: "join" } }, widget("ff", "form", { items: [{ name: "name", kind: "text", label: "Name", required: true, maxLength: 100 }, { name: "distance", kind: "checkbox", label: "I can swim 200 meters", required: true }], submitLabel: "Send", confirmation: "Thank you." })])])]);
+    await publish(request, formed.id);
+    for (const size of [{ width: 1024, height: 600 }, { width: 390, height: 844 }]) {
+      await visitor.setViewportSize(size);
+      await visitor.goto(`${cms()}/${formed.slug}`);
+      const margins = await visitor.evaluate(() => {
+        const top = (selector: string) => parseFloat(getComputedStyle(document.querySelector(selector)!).scrollMarginTop);
+        return { anchor: top("#join"), field: top(".sw-field input"), box: top(".sw-check input"), rem: parseFloat(getComputedStyle(document.documentElement).fontSize) };
+      });
+      expect(margins.anchor, `${size.width} wide`).toBeGreaterThan(80);
+      expect([margins.field, margins.box], `${size.width} wide`).toEqual([margins.anchor + 8 * margins.rem, margins.anchor + margins.rem]);
+    }
+
     // A heading of the header at Display, on one line: the block an anchor
     // names stops below it too.
     await saveDraft({ ...kept, sections: [...kept.sections, section("big", "Big", [column("big-1", [{ ...heading("big-a", "Tides"), style: { base: { textSize: "display" } } }])])] }, "display-header");

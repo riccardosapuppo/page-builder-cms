@@ -262,6 +262,10 @@ a.sw-btn:not([href]) { cursor: default; }
 .site:has(.sw-header[data-sticky^="8 "]) > .sw { --sticky-rows: 8; }
 .site:has(.sw-header[data-sticky^="9 "]) > .sw { --sticky-rows: 9; }
 .site:has(.sw-header[data-sticky]) [id] { scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px); }
+/* A form's field keeps its own room above it below the header: its label
+   and its message (.sw-field's 8rem, .sw-check's 1rem, below). */
+.site:has(.sw-header[data-sticky]) :is(.sw-field input, .sw-field textarea) { scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px + 8rem); }
+.site:has(.sw-header[data-sticky]) .sw-check input { scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px + 1rem); }
 @container site (width < 800px) {
   .site:has(.sw-header[data-sticky*=" 1 "]) > .sw { --sticky-rows: 1; }
   .site:has(.sw-header[data-sticky*=" 2 "]) > .sw { --sticky-rows: 2; }
