@@ -10,7 +10,9 @@
 // first, and so does the panel going. What does not keep to the site is
 // said with its line and stays a draft, unsaved, the rules kept last still
 // drawn: the panel shows it again when it opens, and the tab's close warns
-// of it.
+// of it. A stylesheet on its way is a draft too, until its save is in: if
+// the save fails, the site's style is put back (the canvas draws the rules
+// kept), and the text stays in the field, a draft, with Try again.
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { checkCustomCss, CUSTOM_CSS_MAX, type CssProblem } from "../shared/custom-css.ts";
 import { useEnv, useUi } from "./context.tsx";
@@ -22,6 +24,7 @@ const count = (text: string) => [...text].length.toLocaleString("en-US");
 
 export function CustomCssPanel({ onClose, onHide }: { onClose: () => void; onHide?: () => void }) {
   const kept = useUi((u) => u.siteStyle?.customCss ?? null);
+  const draft = useUi((u) => u.customCssDraft);
   const { clock, ui } = useEnv();
   const session = useSession();
   const { styleSave } = session;
@@ -37,6 +40,8 @@ export function CustomCssPanel({ onClose, onHide }: { onClose: () => void; onHid
   // The text last handed to the session, the pause's timer, and the hold
   // on the handover while the text waits.
   const sent = useRef(kept ?? "");
+  // The stylesheet whose save is on its way, until it is in or fails.
+  const sending = useRef<string | null>(null);
   const timer = useRef<unknown>(null);
   const release = useRef<(() => void) | null>(null);
 
@@ -52,16 +57,35 @@ export function CustomCssPanel({ onClose, onHide }: { onClose: () => void; onHid
     release.current = null;
     const found = checkCustomCss(value);
     setProblem(found);
-    ui.getState().setCustomCssDraft(found && value !== sent.current ? value : null);
     const style = ui.getState().siteStyle;
-    if (found || value === sent.current || !style) return;
+    if (found || value === sent.current || !style) {
+      // A text that does not keep to the site, or one still on its way, stays a draft.
+      ui.getState().setCustomCssDraft((found && value !== sent.current) || sending.current === value ? value : null);
+      return;
+    }
+    ui.getState().setCustomCssDraft(value);
     sent.current = value;
+    sending.current = value;
     session.saveSiteStyle({ palette: style.palette, typeScale: style.typeScale, letterWidth: style.letterWidth, customCss: value });
   };
   const latest = useRef({ text, keep });
   useLayoutEffect(() => {
     latest.current = { text, keep };
   });
+
+  // The save the stylesheet went with: in, it is the site's, and no draft
+  // is left; failed, the text stays here and a draft, and is sent again
+  // from the stylesheet the site kept.
+  useEffect(() => {
+    if (sending.current === null) return;
+    if (styleSave.phase === "saved") {
+      if (ui.getState().customCssDraft === sending.current) ui.getState().setCustomCssDraft(null);
+      sending.current = null;
+    } else if (styleSave.phase === "failed") {
+      sent.current = kept ?? "";
+      sending.current = null;
+    }
+  }, [styleSave.phase, kept, ui]);
 
   // The stylesheet changed from elsewhere (a refused save put back, another
   // tab): shown, unless the person is writing here or has a draft.
@@ -88,7 +112,12 @@ export function CustomCssPanel({ onClose, onHide }: { onClose: () => void; onHid
           <h2 id={headId}>Custom CSS</h2>
           <p>Your own rules, on every page of your site.</p>
           {styleSave.phase === "failed"
-            ? <p className="error" role="alert"><Icon name="error" />{styleSave.message}</p>
+            ? (
+              <>
+                <p className="error" role="alert"><Icon name="error" />{styleSave.message}</p>
+                {problem === null && draft !== null && <button className="btn btn-small btn-secondary" type="button" onClick={() => keep(text)}>Try again</button>}
+              </>
+            )
             : <p className="style-save" role="status">{styleSave.phase === "saving" ? "Saving…" : styleSave.phase === "saved" ? "Saved for every page" : ""}</p>}
         </div>
         {onHide && <button className="ibtn" type="button" aria-label="Hide the sidebar" title="Hide the sidebar" onClick={onHide}><Icon name="close" /></button>}

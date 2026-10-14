@@ -2,15 +2,18 @@
 // checked after a pause in the writing, or when the field is left, and kept
 // with the rest of the site style once it keeps to the site; what does not
 // keep to the site said with its line, and nothing kept until it is put
-// right; what waits for its pause when the panel goes, kept.
+// right; what waits for its pause when the panel goes, kept; a stylesheet
+// whose save fails kept in its field and as a draft, to be sent again.
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
+import { createStore, useStore } from "zustand";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
 import type { SiteStyle, SiteStyleChange } from "../storage/adapter.ts";
 import { COMMIT_AFTER_MS } from "./controls.tsx";
 import { CustomCssPanel } from "./CustomCssPanel.tsx";
+import { emptySession, SessionProvider, type StyleSave } from "./session.tsx";
 
 const style = (customCss: string): SiteStyle => ({
   palette: { primary: "site-signal" },
@@ -79,4 +82,53 @@ test("what waits for its pause is kept when the panel goes", () => {
   fireEvent.change(field(), { target: { value: ".b { margin: 0; }" } });
   view.unmount();
   expect(changes.map((change) => change.customCss)).toEqual([".b { margin: 0; }"]);
+});
+
+// A session whose saves the test answers, as the editor's does (App.tsx,
+// saveSiteStyle): the style shown at once, put back when the save fails.
+function drawSaving(start: string) {
+  const changes: SiteStyleChange[] = [];
+  const kit = editorKit({ document: page() });
+  kit.ui.getState().setSiteStyle(style(start));
+  // The style the site last kept, and how its save went.
+  let kept = style(start);
+  const saves = createStore<{ styleSave: StyleSave }>()(() => ({ styleSave: { phase: "idle" } }));
+  function Saving() {
+    const styleSave = useStore(saves, (s) => s.styleSave);
+    const session = emptySession({
+      styleSave,
+      saveSiteStyle: (change) => {
+        changes.push(change);
+        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...change });
+        saves.setState({ styleSave: { phase: "saving" } });
+      },
+    });
+    return <SessionProvider value={session}><CustomCssPanel onClose={() => {}} /></SessionProvider>;
+  }
+  kit.render(<Saving />);
+  const answer = (ok: boolean) => act(() => {
+    if (ok) kept = kit.ui.getState().siteStyle!;
+    else kit.ui.getState().setSiteStyle(kept);
+    saves.setState({ styleSave: ok ? { phase: "saved" } : { phase: "failed", message: "Not saved, the site keeps its style as it was: the network is down." } });
+  });
+  return { kit, changes, answer, field: () => screen.getByLabelText("Rules") as HTMLTextAreaElement };
+}
+
+test("a stylesheet whose save fails stays in its field and as a draft, the tab's close warned, the canvas on the one kept; Try again sends it again", async () => {
+  const { kit, changes, answer, field } = drawSaving(".a { color: red; }");
+  fireEvent.change(field(), { target: { value: ".a { color: blue; }" } });
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect(changes.map((change) => change.customCss)).toEqual([".a { color: blue; }"]);
+  // On its way, it is a draft: closing the tab now warns.
+  expect(kit.ui.getState().customCssDraft).toBe(".a { color: blue; }");
+  answer(false);
+  expect(field().value).toBe(".a { color: blue; }");
+  expect(kit.ui.getState().customCssDraft).toBe(".a { color: blue; }");
+  expect(kit.ui.getState().siteStyle?.customCss).toBe(".a { color: red; }");
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(changes.map((change) => change.customCss)).toEqual([".a { color: blue; }", ".a { color: blue; }"]);
+  answer(true);
+  expect(kit.ui.getState().customCssDraft).toBeNull();
+  expect(field().value).toBe(".a { color: blue; }");
+  expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
 });
