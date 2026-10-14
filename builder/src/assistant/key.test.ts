@@ -11,10 +11,11 @@ const KEY = "sk-ant-api03-not-a-real-key-a1b2";
 function keeper() {
   const clock = new FakeClock();
   const page = new EventTarget();
-  const keys = createKeyKeeper(clock, page);
+  const keys = createKeyKeeper(clock);
+  const unwatch = keys.watch(page);
   const told: Array<[Held | null, ForgetReason | null]> = [];
   keys.subscribe((held, why) => told.push([held, why]));
-  return { clock, page, keys, told };
+  return { clock, page, keys, told, unwatch };
 }
 
 test("a key kept shows only its provider and its last four characters, and is lent whole to a call", () => {
@@ -59,15 +60,33 @@ test("forgotten when the page is left, the back-forward cache included", () => {
   expect(told.at(-1)).toEqual([null, "left"]);
 });
 
-test("an editor that goes forgets the key and stops listening for the page", () => {
-  const { clock, page, keys } = keeper();
+test("an editor that stops watching the page forgets the key, and stops listening; watched again, it listens again", () => {
+  const { clock, page, keys, told, unwatch } = keeper();
   keys.keep("anthropic", KEY);
-  keys.dispose();
+  unwatch();
   expect(keys.held()).toBeNull();
+  expect(told.at(-1)).toEqual([null, "left"]);
   expect(clock.pending).toBe(0);
   keys.keep("anthropic", KEY);
   page.dispatchEvent(new Event("pagehide"));
   expect(keys.held()).not.toBeNull();
+  // As an effect run again does: the keeper is whole, and listens.
+  keys.watch(page);
+  page.dispatchEvent(new Event("pagehide"));
+  expect(keys.held()).toBeNull();
+});
+
+test("a key kept or forgotten changes the ticket, and a call made for another ticket is lent nothing", () => {
+  const { keys } = keeper();
+  const first = keys.ticket();
+  keys.keep("anthropic", KEY);
+  const kept = keys.ticket();
+  expect(kept).not.toBe(first);
+  expect(keys.lend((key) => key, kept)).toBe(KEY);
+  keys.forget();
+  keys.keep("openai", "sk-other-not-a-real-key");
+  expect(() => keys.lend((key) => key, kept)).toThrow("The key changed.");
+  expect(keys.lend((key) => key)).toBe("sk-other-not-a-real-key");
 });
 
 test("an empty key is refused", () => {

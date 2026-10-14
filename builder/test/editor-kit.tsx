@@ -7,6 +7,9 @@ import { fireEvent, render, screen, type RenderResult } from "@testing-library/r
 import type { ReactNode } from "react";
 import type { Command } from "../src/document/commands.ts";
 import { locate, pointerOf } from "../src/document/tree.ts";
+import { AssistantProvider, createAssistant, type AssistantStore } from "../src/assistant/context.tsx";
+import type { ProviderId } from "../src/assistant/key.ts";
+import type { ProviderClient } from "../src/assistant/providers.ts";
 import { EditorProvider, type EditorEnv } from "../src/editor/context.tsx";
 import { MediaServiceProvider } from "../src/editor/library/context.tsx";
 import type { MediaService } from "../src/editor/library/service.ts";
@@ -49,6 +52,8 @@ export interface Kit {
   ui: UiStore;
   clock: FakeClock;
   media: MediaService | null;
+  // The Assistant's state (src/assistant/context.tsx), on the providers the test gives.
+  assistant: AssistantStore;
   doc(): PageDocument;
   block(id: string): Block | undefined;
   // The command the last change was made with.
@@ -66,7 +71,9 @@ export interface Kit {
 // `responses`: what the form responses' screen reads and deletes through
 // (src/editor/responses/context.ts); without it, as with a storage that
 // keeps none, the screen has no way in.
-export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session>; media?: (ui: UiStore) => MediaService; responses?: ResponsesStorage }): Kit {
+// `providers`: the Assistant's (src/assistant/providers.ts); without them,
+// a call to one fails, as with no network.
+export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session>; media?: (ui: UiStore) => MediaService; responses?: ResponsesStorage; providers?: (id: ProviderId) => Promise<ProviderClient> }): Kit {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const store = createEditorStore({ document: options.document, now: () => clock.now() });
   if (options.selection) store.getState().select(options.selection);
@@ -74,8 +81,12 @@ export function editorKit(options: { document: PageDocument; selection?: string 
   const env: EditorEnv = { store, ui, clock, newId: counter("n") };
   const session: Session = emptySession(options.session);
   const media = options.media?.(ui) ?? null;
+  const assistant = createAssistant(clock, options.providers ?? (async () => {
+    throw new TypeError("No provider in this test.");
+  }));
   return {
     env,
+    assistant,
     store,
     ui,
     clock,
@@ -90,11 +101,13 @@ export function editorKit(options: { document: PageDocument; selection?: string 
       reactStrictMode: drawn?.strict ?? false,
       wrapper: ({ children }) => (
         <EditorProvider env={env}>
-          <SessionProvider value={session}>
-            <MediaServiceProvider value={media}>
-              <ResponsesProvider value={options.responses ?? null}>{children}</ResponsesProvider>
-            </MediaServiceProvider>
-          </SessionProvider>
+          <AssistantProvider value={assistant}>
+            <SessionProvider value={session}>
+              <MediaServiceProvider value={media}>
+                <ResponsesProvider value={options.responses ?? null}>{children}</ResponsesProvider>
+              </MediaServiceProvider>
+            </SessionProvider>
+          </AssistantProvider>
         </EditorProvider>
       ),
     }),

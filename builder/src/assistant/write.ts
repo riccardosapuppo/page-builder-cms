@@ -5,9 +5,11 @@
 // grow and History holds each step, each one undoable. What the editor
 // does is passed in (PageHooks), so this runs the same in a test.
 //
-// A stop, a refusal or a fault keeps what is already on the page. The
-// page is left alone once another one is opened in its place: nothing
-// written for it lands on another page.
+// A stop, a refusal or a fault keeps what is already on the page, and a
+// stop lets nothing more land, not even sections that had come while the
+// page was being made. However the answer ends, a button that leads to a
+// section the page does not have is taken out, while the page is open. The page is left alone once another one is opened
+// in its place: nothing written for it lands on another page.
 import { makeDelete, makeInsert, makeSetPage, type Made } from "../document/commands.ts";
 import { idDraw, type NewId } from "../document/ids.ts";
 import type { PageDocument } from "../shared/document.ts";
@@ -43,7 +45,7 @@ export interface Writing {
 // "Added section Hero" said as the Assistant's: "Assistant added section Hero".
 export const ASSISTANTS = (label: string): string => `Assistant ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
 
-function asAssistants(made: Made): Made {
+export function asAssistants(made: Made): Made {
   return made.ok ? { ok: true, command: { ...made.command, label: ASSISTANTS(made.command.label) } } : made;
 }
 
@@ -55,8 +57,11 @@ export async function writePage(options: {
   newId: NewId;
   hooks: PageHooks;
   tell: (writing: Writing) => void;
+  // The run's stop: what has not landed when it comes never does.
+  signal?: AbortSignal;
 }): Promise<Writing> {
-  const { ask, facts, newId, hooks, tell } = options;
+  const { ask, facts, newId, hooks, tell, signal } = options;
+  const stopped = (): boolean => signal?.aborted === true;
   const builder = new PlanBuilder(facts);
   let writing: Writing = { phase: "asking", title: null, sections: [], notes: [], usage: null, error: null };
   const update = (change: Partial<Writing>): void => {
@@ -79,11 +84,11 @@ export async function writePage(options: {
   let lost: string | null = null;
   const step = (run: () => Promise<void> | void): void => {
     steps = steps.then(async () => {
-      if (lost !== null) return;
+      if (lost !== null || stopped()) return;
       const why = await open(UNTITLED);
       if (why !== null) lost = why;
       else if (!hooks.still()) lost = "Another page was opened: the Assistant stopped writing to this one.";
-      if (lost === null) await run();
+      if (lost === null && !stopped()) await run();
     });
   };
 
@@ -109,6 +114,16 @@ export async function writePage(options: {
     }),
   });
 
+  // The buttons whose section never came go, however the answer ended:
+  // once the steps waiting are through, while the page made is the one open.
+  const tidy = async (): Promise<void> => {
+    if (opening === null || lost !== null || (await opening) !== null || !hooks.still()) return;
+    for (const button of builder.unmet(hooks.document())) {
+      hooks.apply(asAssistants(makeDelete(hooks.document(), button.id)));
+      builder.notes.push(`Took out the button “${button.label}”: the section it leads to was not written.`);
+    }
+  };
+
   try {
     const answer = await ask((piece) => {
       if (writing.phase === "asking") update({ phase: "writing" });
@@ -120,18 +135,18 @@ export async function writePage(options: {
     } catch {
       builder.notes.push("The answer ended before it was whole: what came is on the page.");
     }
-    if (lost === null && opening !== null) {
-      for (const button of builder.unmet(hooks.document())) {
-        hooks.apply(asAssistants(makeDelete(hooks.document(), button.id)));
-        builder.notes.push(`Took out the button “${button.label}”: the section it leads to was not written.`);
-      }
+    await tidy();
+    if (stopped()) {
+      update({ phase: "stopped", usage: answer.usage, error: null });
+      return writing;
     }
     if (opening === null) builder.notes.push("The answer held no page.");
     update({ phase: lost === null ? "done" : "failed", usage: answer.usage, error: lost });
   } catch (error) {
     await steps;
-    const stopped = error instanceof AssistantError && error.kind === "stopped";
-    update({ phase: stopped ? "stopped" : "failed", error: stopped ? null : error instanceof Error ? error.message : String(error) });
+    await tidy();
+    const halted = stopped() || (error instanceof AssistantError && error.kind === "stopped");
+    update({ phase: halted ? "stopped" : "failed", error: halted ? null : error instanceof Error ? error.message : String(error) });
   }
   return writing;
 }

@@ -1,10 +1,12 @@
 // The text widget's Text group. The text is written on the canvas, where
 // it stands, in the text editor (../../editor/rich/): this group opens it
-// there and says how; while it is being written, the group lists the keys
-// that work in it, from the keymap (design/layout/, the text-editing
-// state). What the server refused in the text shows above the groups,
+// there and says how, with the Assistant's Write it again below
+// (../../editor/AssistantTools.tsx); while it is being written, the group
+// lists the keys that work in it, from the keymap (design/layout/, the
+// text-editing state). What the server refused in the text shows above the groups,
 // with the panel's other unclaimed refusals.
 import { useId } from "react";
+import { RewriteTool } from "../../editor/AssistantTools.tsx";
 import { useEnv, useUi } from "../../editor/context.tsx";
 import { entry, entryCaps, type KeyAction } from "../../editor/keymap.ts";
 import { useCoarsePointer } from "../../editor/layout-mode.ts";
@@ -33,12 +35,15 @@ function TextContent({ block }: ContentProps<"text">) {
     );
   }
   return (
-    <div className="field">
-      <button className="btn btn-small btn-secondary" type="button" aria-describedby={`${id}-hint`} onClick={() => startEditing(env, block.id, "end")}>
-        Edit on the page
-      </button>
-      <p className="hint" id={`${id}-hint`}>Or {touch ? "tap" : "click"} the text on the page, or press Enter with it selected. Select words to make them bold, italic or a link; Esc leaves the text.</p>
-    </div>
+    <>
+      <div className="field">
+        <button className="btn btn-small btn-secondary" type="button" aria-describedby={`${id}-hint`} onClick={() => startEditing(env, block.id, "end")}>
+          Edit on the page
+        </button>
+        <p className="hint" id={`${id}-hint`}>Or {touch ? "tap" : "click"} the text on the page, or press Enter with it selected. Select words to make them bold, italic or a link; Esc leaves the text.</p>
+      </div>
+      <RewriteTool block={block} />
+    </>
   );
 }
 

@@ -70,7 +70,7 @@ test("a whole plan goes in, section by section, and the store takes every block"
     section("Join", [column([
       { kind: "heading", level: 2, text: "Book your place", display: false },
       { kind: "form", fields: [{ type: "text", label: "Your name", required: true }, { type: "email", label: "Email", required: true }, { type: "longtext", label: "Anything we should know?", required: false }, { type: "checkbox", label: "I can swim 200 metres", required: true }], submitLabel: "Book", confirmation: "See you on the slipway." },
-    ])], { anchor: "join", background: "primary" }),
+    ])], { anchor: "join", background: "muted" }),
   ]);
   expect(refused).toEqual([]);
   expect(builder.notes).toEqual([]);
@@ -183,6 +183,19 @@ test("columns: empty ones go, four at most, and widths only where they fit the c
     "Kept the first 4 columns of the section “Many”: a section has at most 4.",
     "Left out an image that is not in the site's library.",
     "Left out the section “Nothing”: nothing in it could be kept.",
+  ]);
+});
+
+test("a section's background is never the colour of its keys: a form on primary, a button on accent, take soft", () => {
+  const { doc, builder } = fill([
+    section("Book", [column([{ kind: "form", fields: [{ type: "email", label: "Email", required: true }], submitLabel: "Book", confirmation: "Thanks." }])], { background: "primary" }),
+    section("Go", [column([{ kind: "button", label: "Go", target: "/" }])], { background: "accent" }),
+    section("Fine", [column([{ kind: "button", label: "Go", target: "/" }])], { background: "primary" }),
+  ]);
+  expect(doc.sections.map((s) => s.style.base.background)).toEqual(["soft", "soft", "primary"]);
+  expect(builder.notes).toEqual([
+    "Gave the section “Book” the soft background: its form's send key would not show on the primary one.",
+    "Gave the section “Go” the soft background: its buttons would not show on the accent one.",
   ]);
 });
 

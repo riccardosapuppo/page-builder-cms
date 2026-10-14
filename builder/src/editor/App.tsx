@@ -49,6 +49,8 @@ import { EditorProvider, useUi, type EditorEnv } from "./context.tsx";
 import { DragLayer } from "./drag/DragLayer.tsx";
 import { DrawerShell } from "./Drawer.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
+import { AssistantPanel } from "./AssistantPanel.tsx";
+import { AssistantProvider, createAssistant } from "../assistant/context.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { MediaProvider } from "./library/context.tsx";
@@ -163,6 +165,10 @@ interface AppProps {
 
 export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, foot, tabs = windowTabs }: AppProps) {
   const { store, ui, clock } = env;
+  // The Assistant (../assistant/README.md): one for the editor's life; the
+  // key it may hold is forgotten when the window is left, or the editor goes.
+  const [assistant] = useState(() => createAssistant(clock));
+  useEffect(() => assistant.watch(window), [assistant]);
   const words = useMemo(() => keptWords(cmsOrigin), [cmsOrigin]);
   const publishedWords = useMemo(() => publishWords(adapter.capabilities.livePages), [adapter]);
   const [status, setStatus] = useState<Status>({ kind: "loading" });
@@ -376,19 +382,24 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     live.current.autosave?.dispose();
   }, []);
 
-  const createPage = useCallback(async (page: NewPage): Promise<FieldError[] | null> => {
+  const makePage = useCallback(async (page: NewPage): Promise<{ ok: true; id: number } | { ok: false; errors: FieldError[] }> => {
     let outcome;
     try {
       outcome = await adapter.createPage(page);
     } catch (error) {
-      return [{ pointer: "", keyword: "unknown", blockPointer: null, message: `The page could not be made: ${describe(error)}` }];
+      return { ok: false, errors: [{ pointer: "", keyword: "unknown", blockPointer: null, message: `The page could not be made: ${describe(error)}` }] };
     }
-    if (!outcome.ok) return outcome.problem.errors.length > 0 ? outcome.problem.errors : [{ pointer: "", keyword: "invalid", blockPointer: null, message: outcome.problem.message }];
+    if (!outcome.ok) return { ok: false, errors: outcome.problem.errors.length > 0 ? outcome.problem.errors : [{ pointer: "", keyword: "invalid", blockPointer: null, message: outcome.problem.message }] };
     await refreshPages().catch(() => undefined);
     const why = await openPage(outcome.value.page.id);
     if (why) ui.getState().say(why);
-    return null;
+    return { ok: true, id: outcome.value.page.id };
   }, [adapter, openPage, refreshPages, ui]);
+
+  const createPage = useCallback(async (page: NewPage): Promise<FieldError[] | null> => {
+    const made = await makePage(page);
+    return made.ok ? null : made.errors;
+  }, [makePage]);
 
   const setSlug = useCallback(async (slug: string): Promise<FieldError[] | null> => {
     if (!current) return null;
@@ -920,9 +931,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const isOpen = useCallback((id: number) => loaded.current === id, []);
   const session = useMemo<Session>(() => ({
     pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
-    openPage, isOpen, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
+    openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, isOpen, createPage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);
@@ -941,6 +952,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
   return (
     <EditorProvider env={env}>
+      <AssistantProvider value={assistant}>
       <SessionProvider value={session}>
         <MediaProvider adapter={adapter} inBrowser={cmsOrigin === null}>
           <ResponsesProvider value={responses}>
@@ -954,6 +966,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
                 {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
                 {drawer === "outline" && <DrawerShell which="outline"><Navigator /></DrawerShell>}
                 {drawer === "history" && <DrawerShell which="history"><HistoryPanel /></DrawerShell>}
+                {drawer === "assistant" && <DrawerShell which="assistant"><AssistantPanel /></DrawerShell>}
                 {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
                 <Sidebar />
                 <StatusBar />
@@ -970,6 +983,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
           </ResponsesProvider>
         </MediaProvider>
       </SessionProvider>
+      </AssistantProvider>
     </EditorProvider>
   );
 }

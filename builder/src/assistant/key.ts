@@ -36,23 +36,32 @@ export interface KeyKeeper {
   held(): Held | null;
   keep(provider: ProviderId, key: string): void;
   forget(why?: ForgetReason): void;
+  // A number that changes each time a key is kept or forgotten: a call
+  // takes it when it starts, and is lent the key only if it is the same
+  // when the key is lent, so a key changed meanwhile (another provider's,
+  // pasted while an image was made smaller) never goes to the provider the
+  // call was made for.
+  ticket(): number;
   // Lends the key to `call`, a request to the provider, which counts as a
-  // use; throws when no key is kept.
-  lend<T>(call: (key: string, provider: ProviderId) => T): T;
+  // use; throws when no key is kept, or when `ticket` is not the one now.
+  lend<T>(call: (key: string, provider: ProviderId) => T, ticket?: number): T;
   // Told when a key is kept (why null) or forgotten.
   subscribe(listener: (held: Held | null, why: ForgetReason | null) => void): () => void;
-  // Stops listening for the page being left, for an editor that goes.
-  dispose(): void;
+  // Forgets the key when `page` is left, until the function it returns is
+  // called, which forgets the key too: the editor watches the window while
+  // it is there (an effect, run again as often as React likes).
+  watch(page: EventTarget): () => void;
 }
 
 // The last four characters, after an ellipsis: enough to tell two keys
 // apart, never enough to use one.
 export const hintOf = (key: string): string => `…${key.slice(-4)}`;
 
-export function createKeyKeeper(clock: Clock, page: EventTarget | null = typeof globalThis.addEventListener === "function" ? globalThis : null): KeyKeeper {
+export function createKeyKeeper(clock: Clock): KeyKeeper {
   let key: string | null = null;
   let provider: ProviderId | null = null;
   let timer: ClockTimer | null = null;
+  let count = 0;
   const listeners = new Set<(held: Held | null, why: ForgetReason | null) => void>();
 
   const held = (): Held | null => (key === null || provider === null ? null : { provider, hint: hintOf(key) });
@@ -73,10 +82,10 @@ export function createKeyKeeper(clock: Clock, page: EventTarget | null = typeof 
     if (key === null) return;
     key = null;
     provider = null;
+    count += 1;
     tell(why);
   }
   const left = (): void => forget("left");
-  page?.addEventListener("pagehide", left);
 
   return {
     held,
@@ -85,12 +94,15 @@ export function createKeyKeeper(clock: Clock, page: EventTarget | null = typeof 
       if (trimmed === "") throw new Error("A key is needed.");
       key = trimmed;
       provider = which;
+      count += 1;
       wait();
       tell(null);
     },
     forget,
-    lend(call) {
+    ticket: () => count,
+    lend(call, ticket) {
       if (key === null || provider === null) throw new Error("No key is kept.");
+      if (ticket !== undefined && ticket !== count) throw new Error("The key changed.");
       wait();
       return call(key, provider);
     },
@@ -100,10 +112,12 @@ export function createKeyKeeper(clock: Clock, page: EventTarget | null = typeof 
         listeners.delete(listener);
       };
     },
-    dispose() {
-      page?.removeEventListener("pagehide", left);
-      forget("left");
-      listeners.clear();
+    watch(page) {
+      page.addEventListener("pagehide", left);
+      return () => {
+        page.removeEventListener("pagehide", left);
+        forget("left");
+      };
     },
   };
 }

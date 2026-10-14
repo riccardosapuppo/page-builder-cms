@@ -154,3 +154,43 @@ test("an answer that ends before it is whole: what came is on the page, and it i
   expect(result.notes).toContain("The answer ended before it was whole: what came is on the page.");
   expect(page()!.getState().document.sections).toHaveLength(2);
 });
+
+test("stopped while the new page is still being made: the sections that had come wait no longer, and none lands", async () => {
+  const { hooks, page } = editor();
+  let opened: () => void = () => undefined;
+  const slow: PageHooks = { ...hooks, open: (title) => new Promise((done) => (opened = () => void hooks.open(title).then(done))) };
+  const stop = new AbortController();
+  const text = JSON.stringify(PLAN);
+  const result = writePage({
+    // Every section comes, then the answer waits until it is stopped.
+    ask: async (written) => {
+      written(text);
+      await new Promise((done) => stop.signal.addEventListener("abort", done));
+      throw new AssistantError("Stopped.", "stopped");
+    },
+    facts: FACTS, newId, hooks: slow, tell: () => undefined, signal: stop.signal,
+  });
+  await new Promise((done) => setTimeout(done, 0));
+  stop.abort();
+  opened();
+  expect((await result).phase).toBe("stopped");
+  expect(page()!.getState().document.sections).toEqual([]);
+});
+
+test("an answer that fails after a button's section was named but never written: the button still goes, as at a whole answer's end", async () => {
+  const { hooks, page } = editor();
+  const text = JSON.stringify(PLAN);
+  // Hero, whose Book button leads to #join, comes; then the provider fails.
+  const cut = text.indexOf("\"label\":\"Empty\"");
+  const result = await writePage({
+    ask: answer(text.slice(0, cut), 7, () => new AssistantError("Anthropic is busy just now. Try again in a minute.", "busy")),
+    facts: FACTS, newId, hooks, tell: () => undefined,
+  });
+  expect(result.phase).toBe("failed");
+  const hero = page()!.getState().document.sections[0]!.children[0]!.children;
+  expect(hero.map((block) => block.type)).toEqual(["heading"]);
+  expect(result.notes).toEqual([
+    "Took out the button “Book”: the section it leads to was not written.",
+    "Took out the button “Prices”: the section it leads to was not written.",
+  ]);
+});

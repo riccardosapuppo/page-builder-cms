@@ -21,7 +21,9 @@ the words.
 - **What the interface sees** is the provider and the key's last four
   characters, for the person to recognise it.
 - **Only two places it can go.** It is lent to one call at a time, which goes
-  to the provider and nowhere else. The page's Content-Security-Policy lets
+  to the provider and nowhere else. A call takes the keeper's ticket when it
+  starts; if another key is kept while the call is being made (an image made
+  smaller first), the new key is not lent to the old provider. The page's Content-Security-Policy lets
   the editor connect only to its own site and the two providers' APIs.
 
 Storing the key encrypted would protect less than it seems: whatever runs on
@@ -61,8 +63,11 @@ guarantee that holds.
    - **Images and forms.** An image is the library's, by id. A form's
      fields get names from their labels, and a page takes one form.
    - **Notes.** What cannot be made to fit is left out and said in a note.
-4. **The end.** Any button whose section never came is taken out. A stop,
-   a refusal or another page opened midway keeps what is already in.
+4. **The end.** However the answer ends, any button whose section never
+   came is taken out, while the page made is the one open. A stop, a
+   refusal or another page opened midway keeps what is already in, and a
+   stop lets nothing more land, not even sections that came while the page
+   was being made.
 
 ## The providers
 

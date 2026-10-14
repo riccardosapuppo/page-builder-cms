@@ -1,0 +1,69 @@
+/* The Assistant's drawer (AssistantPanel.tsx), in the drawers' own words:
+   the same fields, keys and hints as Outline and History. The one moment
+   it has of its own is each section's line coming in as the section lands
+   on the canvas, which is where the person looks. */
+.as-body { padding-top: 2px; }
+.as-lead { margin: 10px 0 0; font-size: 13px; line-height: 19px; color: var(--graphite); }
+.as-forgotten { margin-top: 10px; color: var(--warn); }
+.as-first { margin-top: 14px; }
+.as-go { margin-top: 16px; }
+.as-out { display: inline-flex; align-items: center; gap: 4px; color: var(--graphite); text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 3px; }
+.as-out:hover { text-decoration-color: currentColor; }
+.as-out .i { width: 14px; height: 14px; }
+
+/* The sample, for a person with no key: set off below the key's form. */
+.as-sample { margin-top: 24px; padding-top: 16px; box-shadow: inset 0 1px 0 var(--alloy); }
+.as-sample .group-title { margin: 0; }
+.as-sample .btn { margin-top: 10px; }
+
+/* The key kept: its provider and four characters, and the way to forget it. */
+.as-held { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 6px 6px 6px 10px; background: var(--key); border-radius: var(--r-control); }
+.as-held-what { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.as-held-what .i { flex: none; width: 16px; height: 16px; }
+.as-held-words { display: flex; flex-direction: column; min-width: 0; }
+.as-held-name { font-size: 13px; line-height: 18px; font-weight: 600; }
+.as-held-hint { font-size: 12px; line-height: 16px; color: var(--steel); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.as-brief { min-height: 128px; }
+.as-example { font-size: 12px; line-height: 16px; color: var(--steel); text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 3px; }
+.as-example:hover { color: var(--graphite); text-decoration-color: currentColor; }
+
+/* The page being written, above the form: what it is doing, and each
+   section as it lands. */
+.as-progress { margin-top: 12px; padding: 8px 10px 10px 12px; background: var(--white); border: 1px solid var(--alloy); border-radius: var(--r-control); }
+.as-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+.as-progress-head .group-title { margin: 0; }
+.as-line { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0 0; font-size: 13px; line-height: 19px; color: var(--graphite); }
+.as-line.error { color: var(--err); }
+.as-line .i { flex: none; width: 16px; height: 16px; margin-top: 1.5px; }
+.as-sections { display: grid; gap: 2px; margin: 8px 0 0; padding: 0; list-style: none; }
+.as-sections li { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 13px; line-height: 18px; }
+.as-sections li .i { flex: none; width: 16px; height: 16px; color: var(--live); }
+.as-sections li.as-left { color: var(--steel); }
+.as-sections li.as-left .i { color: var(--warn); }
+@media (prefers-reduced-motion: no-preference) {
+  .as-sections li { animation: as-land 220ms cubic-bezier(.16, 1, .3, 1) both; }
+}
+@keyframes as-land { from { opacity: 0; transform: translateY(6px); } }
+.as-notes { margin-top: 10px; font-size: 12px; line-height: 16px; }
+.as-notes summary { color: var(--graphite); font-weight: 600; cursor: pointer; }
+.as-notes ul { margin: 6px 0 0; padding-left: 16px; color: var(--steel); }
+.as-notes li + li { margin-top: 4px; }
+
+/* The Assistant in a block's panel (AssistantTools.tsx): the ways to write
+   a text again as keys, a line for one of the person's own, and what the
+   model wrote, shown before it is taken. */
+.as-tool { padding-top: 14px; box-shadow: inset 0 1px 0 var(--alloy); }
+.as-tool > .label .i { width: 14px; height: 14px; }
+.as-tool-none { margin-top: 0; }
+.as-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-own { display: flex; gap: 6px; margin-top: 8px; }
+.as-own .input { min-width: 0; flex: 1; min-height: 28px; padding: 4px 8px; font-size: 12px; }
+.as-tool-asking, .as-tool-failed { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.as-tool-asking .as-line { margin: 0; }
+.as-suggestion { display: grid; gap: 8px; }
+.as-suggested { padding: 8px 10px; background: var(--white); border: 1px solid var(--alloy); border-left-width: 1px; border-radius: var(--r-field); font-size: 13px; line-height: 19px; color: var(--graphite); }
+.as-suggested > * + * { margin-top: 6px; }
+.as-suggested ul, .as-suggested ol { padding-left: 18px; }
+.as-suggested ul { list-style: disc; }
+.as-suggested ol { list-style: decimal; }
+.as-tool-choices { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -77,6 +77,9 @@ export interface Session {
   isOpen(id: number): boolean;
   // Makes a page and opens it; resolves with the server's findings, or null.
   createPage(page: NewPage): Promise<FieldError[] | null>;
+  // The same, giving the new page's id: for the Assistant, which writes
+  // into the page it made only while isOpen says it is still open.
+  makePage(page: NewPage): Promise<{ ok: true; id: number } | { ok: false; errors: FieldError[] }>;
   // Changes the open page's address; resolves with the server's findings,
   // or null.
   setSlug(slug: string): Promise<FieldError[] | null>;
@@ -167,6 +170,7 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     openPage: async () => null,
     isOpen: (id) => changes.current?.id === id,
     createPage: async () => null,
+    makePage: async () => ({ ok: false, errors: [{ pointer: "", keyword: "unknown", blockPointer: null, message: "No page can be made here." }] }),
     setSlug: async () => null,
     preview: () => {},
     publish: async () => {},

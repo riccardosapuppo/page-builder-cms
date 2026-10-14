@@ -1,9 +1,11 @@
 // The image's Image group: the picture with Replace image, and its alt
-// text, or the mark that it is decorative and needs none. The source and
+// text, or the mark that it is decorative and needs none; then the
+// Assistant's Describe the image (../../editor/AssistantTools.tsx). The source and
 // the text change together when the image is replaced, so the page never
 // holds a picture with another picture's description.
 import { useMemo, useState } from "react";
 import { REMOVE, type Updates } from "../../document/commands.ts";
+import { DescribeTool } from "../../editor/AssistantTools.tsx";
 import { ServerErrors, TextField, Toggle } from "../../editor/controls.tsx";
 import { useUi } from "../../editor/context.tsx";
 import { mediaResolver } from "../../editor/media.ts";
@@ -75,6 +77,7 @@ function ImageContent({ block }: ContentProps<"image">) {
         />
         <p className="hint">A decorative image adds nothing to the text: screen readers skip it.</p>
       </div>
+      <DescribeTool block={block} />
       {picking && (
         <ImagePicker
           confirm="Use image"

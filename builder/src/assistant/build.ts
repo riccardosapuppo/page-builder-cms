@@ -20,6 +20,10 @@
 // - An image is one of the library's, by id; an empty alt text means the
 //   image only decorates.
 // - A form's fields get names from their labels, the page at most one form.
+// - A section's background is never the colour of the keys it holds: a
+//   button is drawn in the accent colour, a form's send key in the primary
+//   one (site.css, .sw-btn and .sw-btn-primary); such a section takes the
+//   soft background instead, and the note says so.
 import {
   COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type FormField, type HeadingLevel, type ImageProps, type PageDocument, type Paragraph,
   type RichTextBlock, type SectionBlock, type WidgetBlock,
@@ -120,7 +124,8 @@ export class PlanBuilder {
     if (anchor !== null) props.anchor = anchor;
     const widths = plan.widths === "equal" ? null : plan.widths;
     if (widths !== null && (COLUMN_WIDTHS_BY_COUNT[columns.length as 1 | 2 | 3 | 4] as readonly string[]).includes(widths)) props.columnWidths = widths as ColumnWidthsToken;
-    const style: SectionBlock["style"] = { base: plan.background === "none" ? {} : { background: plan.background } };
+    const background = this.behindKeys(plan, columns);
+    const style: SectionBlock["style"] = { base: background === "none" ? {} : { background } };
     return { id, type: "section", props, children: columns, style };
   }
 
@@ -132,6 +137,18 @@ export class PlanBuilder {
     const anchors = new Set(blocks.map((block) => (block.props as { anchor?: string }).anchor).filter((anchor) => anchor !== undefined));
     const ids = new Set(blocks.map((block) => block.id));
     return this.links.filter((link) => ids.has(link.id) && !anchors.has(link.anchor)).map(({ id, label }) => ({ id, label }));
+  }
+
+  // The plan's background, or soft where the plan's would hide the keys
+  // the section holds.
+  private behindKeys(plan: PlanSection, columns: readonly ColumnBlock[]): PlanSection["background"] {
+    const types = new Set(columns.flatMap((column) => column.children.map((block) => block.type)));
+    const hidden = plan.background === "primary" && types.has("form") ? "its form's send key"
+      : plan.background === "accent" && types.has("button") ? "its buttons"
+      : null;
+    if (hidden === null) return plan.background;
+    this.notes.push(`Gave ${this.called(plan)} the soft background: ${hidden} would not show on the ${plan.background} one.`);
+    return "soft";
   }
 
   private called(plan: PlanSection): string {

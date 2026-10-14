@@ -120,6 +120,9 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
         <button className="btn btn-secondary" type="button" onClick={() => { onClose(); toggleDrawer(env, "history"); }}>
           <Icon name="history" />History
         </button>
+        <button className="btn btn-secondary" type="button" onClick={() => { onClose(); toggleDrawer(env, "assistant"); }}>
+          <Icon name="sparkles" />Assistant
+        </button>
       </div>
       <Devices />
       <BlockEdges />

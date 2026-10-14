@@ -19,7 +19,7 @@ import { coarsePointer, TYPING } from "./layout-mode.ts";
 import { SheetGrip } from "./sheet-grip.tsx";
 import { pushes, type Drawer } from "./ui-store.ts";
 
-export const DRAWER_NAMES: Readonly<Record<Drawer, string>> = { insert: "Insert", outline: "Outline", history: "History" };
+export const DRAWER_NAMES: Readonly<Record<Drawer, string>> = { insert: "Insert", outline: "Outline", history: "History", assistant: "Assistant" };
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 

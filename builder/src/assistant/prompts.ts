@@ -50,7 +50,7 @@ export function pageQuestion(model: string, brief: string, site: SiteWords): Que
     "- A button leads to a section of this plan (#its-anchor), to one of the site's pages (its path), or to an address the person gives. Nothing else.",
     "- At most one form, with only the fields its purpose needs, and only if the page asks the reader to send something.",
     "- One to four columns in a section: two or three for things side by side; widths with as many parts as there are columns, or equal.",
-    "- Backgrounds: mostly none or background; soft or muted to set a section apart; primary, accent or text for one section that must stand out.",
+    "- Backgrounds: mostly none or background; soft or muted to set a section apart; primary, accent or text for one section that must stand out. Buttons are drawn in the accent colour and a form's send key in the primary one: never put a button on accent, or a form on primary.",
   ].join("\n");
   return { model, system, text: `The page the person wants:\n\n${brief.trim()}`, schema: PLAN_SCHEMA, name: "page_plan", maxTokens: 32000, effort: "medium" };
 }

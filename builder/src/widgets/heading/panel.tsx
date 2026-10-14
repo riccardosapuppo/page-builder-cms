@@ -1,8 +1,10 @@
 // The heading's Text group: its text, its level and an optional link, as
-// the approved layout draws them (design/layout/, the editor state). Its
+// the approved layout draws them (design/layout/, the editor state); then
+// the Assistant's Write it again (../../editor/AssistantTools.tsx). Its
 // size and colour are the Size and color group's, from the site's type
 // scale and palette.
 import { REMOVE } from "../../document/commands.ts";
+import { RewriteTool } from "../../editor/AssistantTools.tsx";
 import { RadioField, TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import { usePageLinks } from "../../editor/session.tsx";
@@ -44,6 +46,7 @@ function HeadingContent({ block }: ContentProps<"heading">) {
         rules={{ kind: "href", maxLength: 2048 }}
         onCommit={(href) => commands.setProps({ href: href.trim() === "" ? REMOVE : href.trim() })}
       />
+      <RewriteTool block={block} />
     </>
   );
 }

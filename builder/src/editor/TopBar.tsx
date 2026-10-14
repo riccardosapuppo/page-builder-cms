@@ -125,6 +125,7 @@ export function TopBar() {
 
       <div className="tb-right">
         {session.autosave && <SaveState />}
+        {current && <DrawerKey which="assistant" icon="sparkles" bare title="Assistant: a page written from a brief, by a model of yours" />}
         <PreviewButton />
         <PublishButton onSchedule={() => setScheduleOpen(true)} />
         <SidebarKey />
@@ -200,10 +201,30 @@ function useBarRoom(): RefObject<HTMLElement | null> {
 }
 
 // A drawer's key: pressed while its drawer is open; its words give way to
-// its icon when the bar is short of room (useBarRoom).
-function DrawerKey({ which, icon, keys, title }: { which: Drawer; icon: IconName; keys?: KeyEntry; title: string }) {
+// its icon when the bar is short of room (useBarRoom). The Assistant's is
+// its icon alone (`bare`), its name said to a screen reader and in its
+// title, on the bar's right before Preview: the left side has no room left
+// at 1280 for a fourth drawer's key without moving the page's title off
+// the bar's middle.
+function DrawerKey({ which, icon, keys, title, bare = false }: { which: Drawer; icon: IconName; keys?: KeyEntry; title: string; bare?: boolean }) {
   const env = useEnv();
   const open = useUi((u) => u.drawer === which);
+  if (bare) {
+    return (
+      <button
+        className="ibtn tb-drawer-icon"
+        type="button"
+        data-drawer={which}
+        aria-label={DRAWER_NAMES[which]}
+        aria-pressed={open}
+        aria-controls={open ? `drawer_${which}` : undefined}
+        title={title}
+        onClick={() => toggleDrawer(env, which)}
+      >
+        <Icon name={icon} />
+      </button>
+    );
+  }
   return (
     <button
       className="btn btn-quiet tb-word-btn"
