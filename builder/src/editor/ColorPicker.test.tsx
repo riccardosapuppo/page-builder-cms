@@ -3,7 +3,8 @@
 // the arrows keep one after a pause; the hex field keeps what is typed as
 // #rrggbb, says when it is not a colour and shows the kept one again; the
 // picker going keeps what waits and stops showing what was picked; a
-// choice made beside it in the arrows' pause drops what waits.
+// choice made beside it in the arrows' pause drops what waits; a colour
+// the page refuses is not kept, so it can be kept again.
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
@@ -14,7 +15,9 @@ import type { FreeColor } from "../shared/free-colors.ts";
 import { ColorPicker, type ColorPickerHandle } from "./ColorPicker.tsx";
 import { COMMIT_AFTER_MS } from "./controls.tsx";
 
-function draw(value: FreeColor = "#ff0000") {
+// refuse: the page's answer to each commit in turn, true for a refusal;
+// past its end, every commit is taken.
+function draw(value: FreeColor = "#ff0000", refuse: boolean[] = []) {
   const kept: FreeColor[] = [];
   const shown: Array<FreeColor | null> = [];
   const handle = createRef<ColorPickerHandle>();
@@ -27,8 +30,10 @@ function draw(value: FreeColor = "#ff0000") {
         label="Primary"
         value={now}
         onCommit={(color) => {
+          if (refuse.length > 0 && refuse.shift()) return false;
           kept.push(color);
           setNow(color);
+          return true;
         }}
         onPreview={(color) => shown.push(color)}
       />
@@ -113,4 +118,14 @@ test("the picker going keeps the colour waiting and stops showing the picking", 
   expect(shown.at(-1)).toBeNull();
   await act(() => kit.clock.advance(COMMIT_AFTER_MS));
   expect(kept).toHaveLength(1);
+});
+
+test("a colour the page refuses is not taken as kept: the same colour, kept again, reaches the page", () => {
+  const { kept } = draw("#ff0000", [true]);
+  const field = screen.getByLabelText("Primary: hex");
+  fireEvent.change(field, { target: { value: "#1d4e6f" } });
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(kept).toEqual([]);
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(kept).toEqual(["#1d4e6f"]);
 });

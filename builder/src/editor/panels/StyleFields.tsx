@@ -407,8 +407,9 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                           label={label}
                           value={start}
                           onCommit={(color) => {
-                            set(color);
+                            const refused = set(color);
                             ui.getState().setColorPreview(null);
+                            return refused === null;
                           }}
                           onPreview={(color) => ui.getState().setColorPreview(color === null ? null : { id: block.id, device, key, color })}
                         />

@@ -168,6 +168,9 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
                           const now = ui.getState().siteStyle ?? style;
                           change({ ...now.palette, [slot]: color }, now.typeScale, now.letterWidth);
                           ui.getState().setColorPreview(null);
+                          // Taken at once: a save the server refuses puts the
+                          // style back, and the picker follows it.
+                          return true;
                         }}
                         onPreview={(color) => ui.getState().setColorPreview(color === null ? null : { slot, color })}
                       />

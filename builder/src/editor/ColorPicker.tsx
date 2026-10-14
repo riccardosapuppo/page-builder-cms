@@ -30,7 +30,11 @@ interface ColorPickerProps {
   // What the colour is of ("Primary", "Background"): the controls' names.
   label: string;
   value: FreeColor;
-  onCommit: (color: FreeColor) => void;
+  // Keeps the colour, and says whether the page took it: refused (a text
+  // still refused in another field holds every command), the picker keeps
+  // the colour it had, so the same one can be kept again once the page
+  // takes it.
+  onCommit: (color: FreeColor) => boolean;
   // The colour shown while it is picked, before it is kept; null when the
   // picking stopped without keeping one.
   onPreview?: (color: FreeColor | null) => void;
@@ -76,8 +80,7 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
       onPreview?.(null);
       return;
     }
-    kept.current = color;
-    onCommit(color);
+    if (onCommit(color)) kept.current = color;
   }, [clock, onCommit, onPreview]);
 
   // A new place, shown at once and kept now or after a pause.
