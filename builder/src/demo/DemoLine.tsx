@@ -48,7 +48,7 @@ export function DemoLine({ news = nothing, startOver }: { news?: SeedNews; start
           <a href={SOURCE_ADDRESS}>Source on GitHub</a>.
         </p>{" "}
         <p className="demo-credit">
-          <img src={photograph} alt="" width="16" height="16" />
+          <img src={photograph} alt="" width="18" height="18" />
           Developed by Riccardo Sapuppo
         </p>
       </div>

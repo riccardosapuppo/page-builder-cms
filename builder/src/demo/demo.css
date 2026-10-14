@@ -16,12 +16,12 @@
 .demo-line a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
 .demo-line a:hover { text-decoration-thickness: 2px; }
 /* Who made it, at the end of the line's first row, or under it where the
-   row has no room: the author's photograph in a 16 px disc, as small as
-   the line. */
+   row has no room: the author's face in an 18 px disc, which stands out
+   of the 16 px line by a pixel each way and leaves its height alone. */
 .demo-line-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; }
 .demo-line-row > p:first-child { flex: 1 1 auto; min-width: 0; }
 .demo-credit { display: flex; align-items: center; gap: 6px; flex: none; }
-.demo-credit img { display: block; width: 16px; height: 16px; border-radius: 50%; }
+.demo-credit img { display: block; width: 18px; height: 18px; margin-block: -1px; border-radius: 50%; }
 /* A newer example site, offered: its words in graphite, its two buttons
    as links of the line. */
 .demo-newer { margin-top: 2px; color: var(--graphite); }
