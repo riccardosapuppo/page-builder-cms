@@ -81,7 +81,21 @@ class RenderPolicyTest < ActiveSupport::TestCase
   end
 
   test "the space steps a sticky header counts are the site's own, from tokens.json" do
+    assert_equal SiteTokens.site_space, RenderPolicy::SITE_SPACE
     assert_equal SiteTokens.section_space, RenderPolicy::SECTION_SPACE
+  end
+
+  test "a sticky header's rows count a column's own space inside and between its blocks, past the theme's" do
+    column = ->(style, *types) { { "children" => types.map { |type| { "type" => type } }, "style" => style } }
+    header = ->(*columns) { { "sticky" => true, "sections" => [ { "props" => { "stack" => "never" }, "children" => columns } ] } }
+    assert_equal "2 2 3", RenderPolicy.sticky_rows(header.(column.({ "base" => { "spaceInside" => "xxl" } }, "button")))
+    assert_equal "4 4 4", RenderPolicy.sticky_rows(header.(column.({ "base" => { "spaceBetween" => "xxl" } }, "button", "button", "button")))
+    # Side by side, the tallest column; a tablet's own space, a phone's never the tablet's.
+    assert_equal "2 2 3", RenderPolicy.sticky_rows(header.(column.({}, "logo"), column.({ "base" => { "spaceInside" => "xxl" } }, "button")))
+    assert_equal "1 2 1", RenderPolicy.sticky_rows(header.(column.({ "tablet" => { "spaceInside" => "xxl" } }, "button")))
+    # The theme's space between, or less, a step that is not one, adds nothing.
+    assert_equal "2 2 2", RenderPolicy.sticky_rows(header.(column.({ "base" => { "spaceBetween" => "l", "spaceInside" => "section-l" } }, "button", "button")))
+    assert_equal "1 1 1", RenderPolicy.sticky_rows(header.(column.({ "base" => { "spaceInside" => "huge", "spaceBetween" => 48 } }, "button")))
   end
 
   test "a sticky header's rows count a section's own space above and below, past the header's 20 (12 on a phone) and the 16 to spare, at a row's 88 (68)" do

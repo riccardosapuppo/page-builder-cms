@@ -136,6 +136,18 @@ describe("a sticky header's rows", () => {
     expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "huge", spaceBelow: 96 } })] })).toBe("1 1 1");
     expect(stickyRows({ sticky: true, sections: [spaced("section-l")] })).toBe("1 1 1");
   });
+  test("a column's own space inside and between its blocks counts, past the theme's", () => {
+    const column = (style: unknown, ...types: string[]) => ({ children: types.map((type) => ({ type })), style });
+    const header = (...columns: unknown[]) => ({ sticky: true, sections: [{ props: { stack: "never" }, children: columns }] });
+    expect(stickyRows(header(column({ base: { spaceInside: "xxl" } }, "button")))).toBe("2 2 3");
+    expect(stickyRows(header(column({ base: { spaceBetween: "xxl" } }, "button", "button", "button")))).toBe("4 4 4");
+    // Side by side, the tallest column; a tablet's own space, a phone's never the tablet's.
+    expect(stickyRows(header(column({}, "logo"), column({ base: { spaceInside: "xxl" } }, "button")))).toBe("2 2 3");
+    expect(stickyRows(header(column({ tablet: { spaceInside: "xxl" } }, "button")))).toBe("1 2 1");
+    // The theme's space between, or less, a step that is not one, adds nothing.
+    expect(stickyRows(header(column({ base: { spaceBetween: "l", spaceInside: "section-l" } }, "button", "button")))).toBe("2 2 2");
+    expect(stickyRows(header(column({ base: { spaceInside: "huge", spaceBetween: 48 } }, "button")))).toBe("1 1 1");
+  });
   test("the row, the header's space and the spare it counts with are the published page's own (site.css)", () => {
     const css = readFileSync(new URL("../../../cms/app/assets/stylesheets/site.css", import.meta.url), "utf8");
     expect(css).toContain(`--sticky-row: ${STICKY_ROW[0]}px`);
@@ -144,6 +156,8 @@ describe("a sticky header's rows", () => {
     expect(css).toMatch(new RegExp(`\\.sw-header \\{[^}]*--sec-y: ${HEADER_SPACE[2]}px`));
     expect(css).toContain(`* var(--sticky-row) + ${STICKY_SPARE}px)`);
     expect([STICKY_ROW[1], HEADER_SPACE[1]]).toEqual([STICKY_ROW[0], HEADER_SPACE[0]]);
+    // A column's blocks stand the theme's l apart (the step the count takes as given).
+    expect(css).toContain("--col-gap: var(--space-l);");
   });
   test("at most 9 on any device; none for a header that does not stay at the top", () => {
     expect(stickyRows({ sticky: true, sections: [section(4), section(4), section(1)] })).toBe("3 9 9");

@@ -94,18 +94,48 @@ function columnRows(column: unknown): number {
 export function stickyRows(document: unknown): string | null {
   if (!isObject(document) || document.sticky !== true) return null;
   const sections = Array.isArray(document.sections) ? document.sections.filter(isObject) : [];
-  const rows = sections.reduce<[number, number, number]>(([desktop, tablet, phone], section) => {
-    const found = Array.isArray(section.children) ? section.children.map(columnRows) : [];
-    const columns = found.length > 0 ? found : [1];
-    const stack = isObject(section.props) ? section.props.stack : undefined;
-    const side = Math.max(...columns);
-    const stacked = columns.length >= 2 ? columns.reduce((sum, n) => sum + n, 0) : side;
-    return [desktop + side, tablet + (stack === "phone" || stack === "never" ? side : stacked), phone + (stack === "never" ? side : stacked)];
-  }, [0, 0, 0]);
-  return rows.map((count, device) => {
-    const over = sections.reduce((sum, section) => sum + spaceOver(section, device), 0);
-    return Math.min(9, Math.max(1, count + Math.ceil(Math.max(0, over - STICKY_SPARE) / STICKY_ROW[device]!)));
+  return STICKY_ROW.map((row, device) => {
+    const height = sections.reduce((sum, section) => sum + sectionHeight(section, device), 0);
+    return Math.min(9, Math.max(1, Math.ceil(Math.max(0, height - STICKY_SPARE) / row)));
   }).join(" ");
+}
+
+// A section's height in a sticky header on a device (0 a desktop, 1 a
+// tablet, 2 a phone), as the rows count it: its columns side by side, the
+// tallest; one under the other (no stack: tablets and phones; phone:
+// phones; never: none), all of them; and its own space above and below past
+// the header's. A section's space between its columns is across them only:
+// their gap, one under the other, is the theme's.
+function sectionHeight(section: Record<string, unknown>, device: number): number {
+  const columns = Array.isArray(section.children) ? section.children : [];
+  const found = columns.map((column) => columnHeight(column, device));
+  const heights = found.length > 0 ? found : [STICKY_ROW[device]!];
+  const stack = isObject(section.props) ? section.props.stack : undefined;
+  const stacked = heights.length >= 2 && (device === 1 ? stack !== "phone" && stack !== "never" : device === 2 && stack !== "never");
+  return (stacked ? heights.reduce((sum, height) => sum + height, 0) : Math.max(...heights)) + spaceOver(section, device);
+}
+
+// A column's height: its rows (columnRows); its own space inside, above
+// and below; and the space between its blocks past the theme's (site.css,
+// .col's --col-gap).
+function columnHeight(column: unknown, device: number): number {
+  if (!isObject(column)) return STICKY_ROW[device]!;
+  const blocks = Array.isArray(column.children) ? column.children.length : 0;
+  const inside = step(column, "spaceInside", device, SITE_SPACE) ?? 0;
+  const between = step(column, "spaceBetween", device, SITE_SPACE) ?? COLUMN_GAP;
+  return columnRows(column) * STICKY_ROW[device]! + 2 * inside + Math.max(0, between - COLUMN_GAP) * Math.max(0, blocks - 1);
+}
+
+// The pixels of a block's own step for a style key on a device: the
+// device's own where it names a step of the table, else the base's, a
+// phone's never the tablet's, as the page's classes apply them; null where
+// neither does.
+function step(block: Record<string, unknown>, key: string, device: number, table: Readonly<Record<string, number>>): number | null {
+  const style = isObject(block.style) ? block.style : {};
+  const own = device === 1 ? style.tablet : device === 2 ? style.phone : undefined;
+  const base = style.base;
+  const name = [isObject(own) ? own[key] : undefined, isObject(base) ? base[key] : undefined].find((value) => typeof value === "string" && Object.hasOwn(table, value));
+  return typeof name === "string" ? table[name]! : null;
 }
 
 // What a header's row is counted at, and the header's own space above and
@@ -117,9 +147,14 @@ export const STICKY_ROW: readonly number[] = [88, 88, 68];
 export const HEADER_SPACE: readonly number[] = [20, 20, 12];
 export const STICKY_SPARE = 16;
 
-// The space steps a section's spaceAbove and spaceBelow may name, in
-// pixels: the site's steps and the section steps, the same on every device.
+// The space steps a column's spaceInside and spaceBetween may name, and
+// those a section's spaceAbove and spaceBelow may, in pixels, the same on
+// every device: the site's steps, and the section steps with them. A
+// column's blocks stand the theme's l apart where it sets no space between
+// them.
+const SITE_SPACE: Readonly<Record<string, number>> = tokens.space.site;
 const SECTION_SPACE: Readonly<Record<string, number>> = { ...tokens.space.site, ...tokens.space["site-section"] };
+const COLUMN_GAP = SITE_SPACE.l!;
 
 // The pixels a section's own space above and below adds on a device (0 a
 // desktop, 1 a tablet, 2 a phone) over the header's own: the device's own
@@ -127,14 +162,8 @@ const SECTION_SPACE: Readonly<Record<string, number>> = { ...tokens.space.site, 
 // as the page's classes apply them; none where the section's space is the
 // header's or less.
 function spaceOver(section: Record<string, unknown>, device: number): number {
-  const style = isObject(section.style) ? section.style : {};
-  const own = device === 1 ? style.tablet : device === 2 ? style.phone : undefined;
-  const base = style.base;
   const header = HEADER_SPACE[device]!;
-  const sides = ["spaceAbove", "spaceBelow"].reduce((sum, key) => {
-    const step = [isObject(own) ? own[key] : undefined, isObject(base) ? base[key] : undefined].find((value) => typeof value === "string" && Object.hasOwn(SECTION_SPACE, value));
-    return sum + (typeof step === "string" ? SECTION_SPACE[step]! : header);
-  }, 0);
+  const sides = ["spaceAbove", "spaceBelow"].reduce((sum, key) => sum + (step(section, key, device, SECTION_SPACE) ?? header), 0);
   return Math.max(0, sides - 2 * header);
 }
 

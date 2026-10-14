@@ -159,12 +159,18 @@ test("Sticky header, published, keeps the header at the top of the window while 
     }
 
     // The header's row with space of its own above and below it (64 on
-    // every device, over the header's own 20, 12 on a phone): the block an
-    // anchor names still stops below it.
+    // every device, over the header's own 20, 12 on a phone), and its first
+    // column with 48 inside it: the block an anchor names still stops below
+    // it.
     const spaced = kept.sections.map((each, index) => {
       if (index > 0) return each;
-      const own = each as { style?: { base?: Record<string, unknown> } };
-      return { ...own, style: { ...own.style, base: { ...own.style?.base, spaceAbove: "section-s", spaceBelow: "section-s" } } };
+      const own = each as { style?: { base?: Record<string, unknown> }; children?: unknown[] };
+      const columns = (own.children ?? []).map((column, at) => {
+        if (at > 0) return column;
+        const first = column as { style?: { base?: Record<string, unknown> } };
+        return { ...first, style: { ...first.style, base: { ...first.style?.base, spaceInside: "xxl" } } };
+      });
+      return { ...own, children: columns, style: { ...own.style, base: { ...own.style?.base, spaceAbove: "section-s", spaceBelow: "section-s" } } };
     });
     await saveDraft({ ...kept, sections: spaced }, "spaced-header");
     await publish(request, header.id);

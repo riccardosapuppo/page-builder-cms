@@ -63,7 +63,10 @@ const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15
 // shapes no schema would let through.
 const stackValue = fc.oneof(fc.constantFrom("phone", "never", "tablet", "Phone"), anyJson);
 const headerBlock = fc.oneof({ weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "Image", "") }) }, { weight: 1, arbitrary: anyJson });
-const headerColumn = fc.oneof({ weight: 5, arbitrary: fc.record({ children: fc.oneof({ weight: 5, arbitrary: fc.array(headerBlock, { maxLength: 4 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const columnStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("none", "xs", "s", "m", "l", "xl", "xxl") }, { weight: 1, arbitrary: fc.constantFrom("section-l", "XXL", "huge", "toString", "", 48) }, { weight: 1, arbitrary: anyJson });
+const columnSides = fc.oneof({ weight: 5, arbitrary: fc.record({ spaceInside: columnStep, spaceBetween: columnStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const columnStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: columnSides, tablet: columnSides, phone: columnSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+const headerColumn = fc.oneof({ weight: 5, arbitrary: fc.record({ children: fc.oneof({ weight: 5, arbitrary: fc.array(headerBlock, { maxLength: 4 }) }, { weight: 1, arbitrary: anyJson }), style: columnStyle }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const spaceStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l") }, { weight: 1, arbitrary: fc.constantFrom("Section-l", "huge", "constructor", "__proto__", "", 96) }, { weight: 1, arbitrary: anyJson });
 const spaceSides = fc.oneof({ weight: 5, arbitrary: fc.record({ spaceAbove: spaceStep, spaceBelow: spaceStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const sectionStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: spaceSides, tablet: spaceSides, phone: spaceSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });

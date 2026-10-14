@@ -91,18 +91,49 @@ module RenderPolicy
     return nil unless document.is_a?(Hash) && document["sticky"] == true
 
     sections = Array(document["sections"]).select { |section| section.is_a?(Hash) }
-    rows = sections.reduce([ 0, 0, 0 ]) do |(desktop, tablet, phone), section|
-      columns = (section["children"].is_a?(Array) ? section["children"] : []).map { |column| column_rows(column) }
-      columns = [ 1 ] if columns.empty?
-      stack = section["props"].is_a?(Hash) ? section["props"]["stack"] : nil
-      side = columns.max
-      stacked = columns.size >= 2 ? columns.sum : side
-      [ desktop + side, tablet + (stack == "phone" || stack == "never" ? side : stacked), phone + (stack == "never" ? side : stacked) ]
-    end
-    rows.each_with_index.map do |count, device|
-      over = sections.sum { |section| space_over(section, device) }
-      (count + ([ over - STICKY_SPARE, 0 ].max.to_f / STICKY_ROW[device]).ceil).clamp(1, 9)
+    STICKY_ROW.each_index.map do |device|
+      height = sections.sum { |section| section_height(section, device) }
+      ([ height - STICKY_SPARE, 0 ].max.to_f / STICKY_ROW[device]).ceil.clamp(1, 9)
     end.join(" ")
+  end
+
+  # A section's height in a sticky header on a device (0 a desktop, 1 a
+  # tablet, 2 a phone), as the rows count it: its columns side by side, the
+  # tallest; one under the other (no stack: tablets and phones; phone:
+  # phones; never: none), all of them; and its own space above and below
+  # past the header's. A section's space between its columns is across
+  # them only: their gap, one under the other, is the theme's.
+  def section_height(section, device)
+    columns = section["children"].is_a?(Array) ? section["children"] : []
+    heights = columns.map { |column| column_height(column, device) }
+    heights = [ STICKY_ROW[device] ] if heights.empty?
+    stack = section["props"].is_a?(Hash) ? section["props"]["stack"] : nil
+    stacked = heights.size >= 2 && (device == 1 ? !%w[phone never].include?(stack) : device == 2 && stack != "never")
+    (stacked ? heights.sum : heights.max) + space_over(section, device)
+  end
+
+  # A column's height: its rows (column_rows); its own space inside, above
+  # and below; and the space between its blocks past the theme's (site.css,
+  # .col's --col-gap).
+  def column_height(column, device)
+    return STICKY_ROW[device] unless column.is_a?(Hash)
+
+    blocks = column["children"].is_a?(Array) ? column["children"].size : 0
+    inside = step(column, "spaceInside", device, SITE_SPACE) || 0
+    between = step(column, "spaceBetween", device, SITE_SPACE) || COLUMN_GAP
+    (column_rows(column) * STICKY_ROW[device]) + (2 * inside) + ([ between - COLUMN_GAP, 0 ].max * [ blocks - 1, 0 ].max)
+  end
+
+  # The pixels of a block's own step for a style key on a device: the
+  # device's own where it names a step of the table, else the base's, a
+  # phone's never the tablet's, as the page's classes apply them; nil where
+  # neither does.
+  def step(block, key, device, table)
+    style = block["style"].is_a?(Hash) ? block["style"] : {}
+    own = style[[ nil, "tablet", "phone" ][device]]
+    base = style["base"]
+    name = [ own.is_a?(Hash) ? own[key] : nil, base.is_a?(Hash) ? base[key] : nil ].find { |value| table.key?(value) }
+    name.nil? ? nil : table.fetch(name)
   end
 
   # What a header's row is counted at, and the header's own space above
@@ -113,11 +144,15 @@ module RenderPolicy
   HEADER_SPACE = [ 20, 20, 12 ].freeze
   STICKY_SPARE = 16
 
-  # The space steps a section's spaceAbove and spaceBelow may name, in
-  # pixels, the same on every device: tokens.json's space.site and
-  # space.site-section, which render_policy_test.rb holds this to (the
-  # module needs nothing of Rails, so the editor's twins can run it).
-  SECTION_SPACE = { "none" => 0, "xs" => 4, "s" => 8, "m" => 16, "l" => 24, "xl" => 32, "xxl" => 48, "section-s" => 64, "section-l" => 96 }.freeze
+  # The space steps a column's spaceInside and spaceBetween may name, and
+  # those a section's spaceAbove and spaceBelow may, in pixels, the same on
+  # every device: tokens.json's space.site, and space.site-section with
+  # them, which render_policy_test.rb holds these to (the module needs
+  # nothing of Rails, so the editor's twins can run it). A column's blocks
+  # stand the theme's l apart where it sets no space between them.
+  SITE_SPACE = { "none" => 0, "xs" => 4, "s" => 8, "m" => 16, "l" => 24, "xl" => 32, "xxl" => 48 }.freeze
+  SECTION_SPACE = SITE_SPACE.merge("section-s" => 64, "section-l" => 96).freeze
+  COLUMN_GAP = SITE_SPACE.fetch("l")
 
   # The pixels a section's own space above and below adds on a device (0 a
   # desktop, 1 a tablet, 2 a phone) over the header's own: the device's own
@@ -125,13 +160,7 @@ module RenderPolicy
   # as the page's classes apply them; none where the section's space is the
   # header's or less.
   def space_over(section, device)
-    style = section["style"].is_a?(Hash) ? section["style"] : {}
-    own = style[[ nil, "tablet", "phone" ][device]]
-    base = style["base"]
-    sides = %w[spaceAbove spaceBelow].sum do |key|
-      step = [ own.is_a?(Hash) ? own[key] : nil, base.is_a?(Hash) ? base[key] : nil ].find { |value| SECTION_SPACE.key?(value) }
-      step.nil? ? HEADER_SPACE[device] : SECTION_SPACE.fetch(step)
-    end
+    sides = %w[spaceAbove spaceBelow].sum { |key| step(section, key, device, SECTION_SPACE) || HEADER_SPACE[device] }
     [ sides - (2 * HEADER_SPACE[device]), 0 ].max
   end
 

@@ -53,6 +53,12 @@ module SiteTokens
     read.fetch("site-letter-width").fetch("default")
   end
 
+  # The space steps a column's spaceInside and spaceBetween may name, in
+  # pixels (tokens.json, space.site), the same on every device.
+  def site_space
+    @site_space ||= read.fetch("space").fetch("site").freeze
+  end
+
   # The space steps a section's spaceAbove and spaceBelow may name, in
   # pixels: the site's steps and the section steps (tokens.json, space.site
   # and space.site-section), the same on every device.
