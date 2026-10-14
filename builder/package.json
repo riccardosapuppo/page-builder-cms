@@ -28,6 +28,7 @@
     "shots:editor": "node e2e/shots/editor-shots.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
     "@dnd-kit/abstract": "0.5.0",
     "@dnd-kit/collision": "0.5.0",
     "@dnd-kit/dom": "0.5.0",
@@ -51,6 +52,7 @@
     "@tiptap/react": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
     "ajv": "8.20.0",
+    "openai": "7.25.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zustand": "5.0.15"
