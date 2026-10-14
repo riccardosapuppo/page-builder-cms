@@ -44,7 +44,9 @@ class SiteOwnTest < ActionDispatch::IntegrationTest
     header.publish!
     get "/"
 
-    assert_select %(header.sw-header[data-sticky="1 1 1"]), count: 1
+    # Its heading is a level 1, a line of up to 76 px on a wide page (heading-1
+    # in the Strong type scale): two rows there, one on a tablet and a phone.
+    assert_select %(header.sw-header[data-sticky="2 1 1"]), count: 1
     get css_select("link[rel=stylesheet]").first["href"]
     assert_includes response.body, ".sw-header[data-sticky] { position: sticky; top: 0;"
     assert_includes response.body, "scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px)"
