@@ -31,6 +31,7 @@ output = {
   "classes" => input.fetch("classes").map { |value| JSON.generate(RenderPolicy.classes(value)) },
   "maps" => input.fetch("maps").map { |latitude, longitude, zoom| RenderPolicy.map_src(latitude, longitude, zoom) },
   "decimals" => input.fetch("decimals").map { |number| RenderPolicy.decimal(number) },
+  "stickyRows" => input.fetch("stickyRows").map { |document| RenderPolicy.sticky_rows(document) },
   "richTexts" => input.fetch("richTexts").map { |doc| view.rich_text(doc).to_str }
 }
 File.binwrite(ARGV.fetch(1), JSON.generate(output))

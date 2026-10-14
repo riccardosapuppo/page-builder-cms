@@ -6,10 +6,12 @@
 // draws them locked (inert, and marked as the site's parts) around a page
 // being edited, so the page is edited in its place, below the header it
 // will have, and a click on one opens it. A header whose document says it
-// is sticky stays at the top of the window (data-sticky, site.css).
+// is sticky stays at the top of the window (data-sticky, site.css), which
+// holds its rows on each device (./policy.ts, stickyRows).
 import { isObject } from "../document/json.ts";
 import { PageSections } from "./blocks.tsx";
 import type { RenderContext } from "./context.ts";
+import { stickyRows } from "./policy.ts";
 
 export type PartKind = "header" | "footer";
 
@@ -20,9 +22,10 @@ export interface SiteParts {
   footer: unknown;
 }
 
-// Whether a part is the header and its document says it stays at the top.
-export function stickyHeader(kind: PartKind, document: unknown): boolean {
-  return kind === "header" && isObject(document) && document.sticky === true;
+// For the header whose document says it stays at the top, its rows on
+// each device; null for any other part.
+export function stickyHeader(kind: PartKind, document: unknown): string | null {
+  return kind === "header" ? stickyRows(document) : null;
 }
 
 export function SitePart({ kind, document, ctx, locked = false }: { kind: PartKind; document: unknown; ctx: RenderContext; locked?: boolean }) {
@@ -30,7 +33,7 @@ export function SitePart({ kind, document, ctx, locked = false }: { kind: PartKi
   if (!Array.isArray(sections) || sections.length === 0) return null;
   const Element = kind;
   return (
-    <Element className={`sw-${kind}`} data-sticky={stickyHeader(kind, document) ? "" : undefined} inert={locked || undefined} data-theme-part={locked ? kind : undefined}>
+    <Element className={`sw-${kind}`} data-sticky={stickyHeader(kind, document) ?? undefined} inert={locked || undefined} data-theme-part={locked ? kind : undefined}>
       <PageSections document={document} ctx={ctx} />
     </Element>
   );

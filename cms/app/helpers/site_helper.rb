@@ -39,13 +39,14 @@ module SiteHelper
   # fragment of the cache where the page's are (@cache_blocks), the images
   # it names looked up apart from the page's. A part with no section draws
   # nothing, not even its element. A header whose document says it is
-  # sticky stays at the top of the window (data-sticky, site.css).
+  # sticky stays at the top of the window (data-sticky, site.css), which
+  # holds its rows on each device (RenderPolicy.sticky_rows).
   def site_part(part, element)
     document = BlockDocument::Upgrade.call(part.document)
     return nil if Array(document["sections"]).empty?
 
-    sticky = element == :header && document["sticky"] == true
-    content_tag(element, class: "sw-#{element}", data: { sticky: ("" if sticky) }) do
+    sticky = element == :header ? RenderPolicy.sticky_rows(document) : nil
+    content_tag(element, class: "sw-#{element}", data: { sticky: sticky }) do
       render_document(document, media: MediaResolver.for_document(document), cached: @cache_blocks)
     end
   end

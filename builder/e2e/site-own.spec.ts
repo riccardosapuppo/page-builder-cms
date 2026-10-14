@@ -114,7 +114,9 @@ test("Sticky header, published, keeps the header at the top of the window while 
     expect(put.status(), await put.text()).toBe(200);
   };
   try {
-    const bands = Array.from({ length: 6 }, (_, k) => section(`s${k}`, `Band ${k}`, [column(`c${k}`, [heading(`h${k}`, `Band ${k}`)])]));
+    // Six bands, the second heading with an anchor a link may name, with
+    // the page enough below it to scroll it to the top.
+    const bands = Array.from({ length: 6 }, (_, k) => section(`s${k}`, `Band ${k}`, [column(`c${k}`, [k === 1 ? { ...heading(`h${k}`, `Band ${k}`), props: { level: 2, text: `Band ${k}`, anchor: "band-one" } } : heading(`h${k}`, `Band ${k}`)])]));
     const { id, slug } = await makePage(request, "Long page", bands);
     await publish(request, id);
     await open(page, header.id);
@@ -132,6 +134,28 @@ test("Sticky header, published, keeps the header at the top of the window while 
     await visitor.evaluate(() => window.scrollTo(0, 900));
     await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(400);
     await expect.poll(() => visitor.locator("header.sw-header").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
+
+    // A taller header: a second section, whose two columns go one under
+    // the other on a tablet and a phone. A link to an anchor of the page
+    // stops the block below it, on a desktop and on a phone.
+    const kept = (await draftOf(request, header.id)).document as { sections: unknown[] };
+    await saveDraft({ ...kept, sections: [...kept.sections, section("tall", "Tides", [column("tall-1", [heading("tall-a", "High water 06:12")]), column("tall-2", [heading("tall-b", "Low water 12:30")])])] }, "tall-header");
+    await publish(request, header.id);
+    for (const size of [{ width: 1024, height: 600 }, { width: 390, height: 844 }]) {
+      await visitor.setViewportSize(size);
+      // A page loaded anew: the same address with another anchor would only
+      // scroll the page already there.
+      await visitor.goto("about:blank");
+      await visitor.goto(`${cms()}/${slug}#band-one`);
+      await expect(visitor.locator("header.sw-header")).toHaveAttribute("data-sticky", "2 3 3");
+      await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+      const { headerBottom, targetTop } = await visitor.evaluate(() => ({
+        headerBottom: document.querySelector("header.sw-header")!.getBoundingClientRect().bottom,
+        targetTop: document.getElementById("band-one")!.getBoundingClientRect().top,
+      }));
+      expect(targetTop, `${size.width} wide`).toBeGreaterThanOrEqual(headerBottom);
+      expect(targetTop - headerBottom, `${size.width} wide`).toBeLessThan(80);
+    }
     await visitor.close();
   } finally {
     // What every page drew, published again, then the draft as it was.

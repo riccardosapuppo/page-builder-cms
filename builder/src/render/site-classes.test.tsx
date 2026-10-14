@@ -79,10 +79,10 @@ test("the site's custom CSS: inside the site on a page; on the canvas renamed an
   expect(style("")).toBeNull();
 });
 
-test("a header that says it is sticky is marked so; a footer never is, nor a header that does not say so", () => {
+test("a header that says it is sticky is marked so, with its rows on each device; a footer never is, nor a header that does not say so", () => {
   const part = (sticky?: unknown): Raw => ({ ...page({}, {}, [widget("l", "logo", { name: "Slack Water" })]), ...(sticky === undefined ? {} : { sticky }) });
   const element = (kind: PartKind, document: Raw): Element => host(renderToStaticMarkup(<SitePart kind={kind} document={document} ctx={ctx} />)).firstElementChild!;
-  expect(element("header", part(true)).getAttribute("data-sticky")).toBe("");
+  expect(element("header", part(true)).getAttribute("data-sticky")).toBe("1 1 1");
   expect(element("header", part()).hasAttribute("data-sticky")).toBe(false);
   expect(element("header", part(false)).hasAttribute("data-sticky")).toBe(false);
   expect(element("footer", part(true)).hasAttribute("data-sticky")).toBe(false);

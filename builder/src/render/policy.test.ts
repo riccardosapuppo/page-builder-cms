@@ -3,7 +3,7 @@
 // values beside it; the render contract holds both to the goldens.
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
-import { anchor, decimal, FRAME_ORIGINS, imageSrc, isVideoProvider, linkHref, mapSrc, MAX_URL_LENGTH, videoSrc } from "./policy.ts";
+import { anchor, decimal, FRAME_ORIGINS, imageSrc, isVideoProvider, linkHref, mapSrc, MAX_URL_LENGTH, stickyRows, videoSrc } from "./policy.ts";
 
 describe("links", () => {
   test.each([
@@ -102,5 +102,21 @@ describe("six decimals, as Ruby's format(\"%.6f\") writes them", () => {
     expect((0.0078125).toFixed(6)).toBe("0.007813");
     expect((141.018 + ((360 / 2 ** 6) * 400) / 256).toFixed(6)).toBe("149.807063");
     expect(decimal(1.23456789)).toBe((1.23456789).toFixed(6));
+  });
+});
+
+describe("a sticky header's rows", () => {
+  const section = (columns: number, stack?: string) => ({ props: stack === undefined ? {} : { stack }, children: Array.from({ length: columns }, () => ({})) });
+  test("one for each section on a desktop; on a tablet and a phone, one for each column where the columns stack", () => {
+    expect(stickyRows({ sticky: true, sections: [section(3, "never")] })).toBe("1 1 1");
+    expect(stickyRows({ sticky: true, sections: [section(1)] })).toBe("1 1 1");
+    expect(stickyRows({ sticky: true, sections: [section(2)] })).toBe("1 2 2");
+    expect(stickyRows({ sticky: true, sections: [section(3, "phone")] })).toBe("1 1 3");
+    expect(stickyRows({ sticky: true, sections: [section(1), section(3, "never"), section(2)] })).toBe("3 4 4");
+  });
+  test("at most 6 on any device; none for a header that does not stay at the top", () => {
+    expect(stickyRows({ sticky: true, sections: [section(4), section(4), section(1)] })).toBe("3 6 6");
+    expect(stickyRows({ sticky: true, sections: [] })).toBe("1 1 1");
+    for (const document of [{ sections: [section(2)] }, { sticky: false, sections: [section(2)] }, { sticky: "true" }, null, []]) expect(stickyRows(document)).toBeNull();
   });
 });

@@ -32,7 +32,7 @@ class SiteOwnTest < ActionDispatch::IntegrationTest
     assert_equal %w[lede big], css_select(%([data-block-id="h1"])).first["class"].split.last(2)
   end
 
-  test "a header that says it stays at the top is drawn with data-sticky, which the theme keeps there; one that does not, without" do
+  test "a header that says it stays at the top is drawn with data-sticky and its rows, which the theme keeps there; one that does not, without" do
     publish(page_document)
     get "/"
     assert_select "header.sw-header"
@@ -44,9 +44,10 @@ class SiteOwnTest < ActionDispatch::IntegrationTest
     header.publish!
     get "/"
 
-    assert_select "header.sw-header[data-sticky]", count: 1
+    assert_select %(header.sw-header[data-sticky="1 1 1"]), count: 1
     get css_select("link[rel=stylesheet]").first["href"]
     assert_includes response.body, ".sw-header[data-sticky] { position: sticky; top: 0;"
+    assert_includes response.body, "scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px)"
   end
 
   test "the site's custom CSS is linked last, served inside the site, kept for good at its own version" do

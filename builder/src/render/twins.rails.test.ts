@@ -1,6 +1,6 @@
 // The editor's twins of the server's render rules, run beside the server's
-// own on the same generated values: the URL policy and a block's classes
-// (policy.ts and
+// own on the same generated values: the URL policy, a block's classes and
+// a sticky header's rows (policy.ts and
 // cms/app/models/render_policy.rb) and rich text (rich-text.tsx and
 // cms/app/helpers/rich_text_helper.rb). Unlike the random-page agreement
 // check, which saves pages and so only meets what the schema accepts, this
@@ -23,7 +23,7 @@ import { afterAll, expect, test } from "vitest";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
 import { canonical, parseSections } from "../../test/html-compare.ts";
 import { href } from "../../test/render-arbitraries.ts";
-import { anchor, decimal, imageSrc, isVideoProvider, linkHref, mapSrc, siteClasses, videoSrc } from "./policy.ts";
+import { anchor, decimal, imageSrc, isVideoProvider, linkHref, mapSrc, siteClasses, stickyRows, videoSrc } from "./policy.ts";
 import { renderRichText } from "./rich-text.tsx";
 
 const SEED = 20261002;
@@ -58,6 +58,19 @@ const classList = fc.array(fc.tuple(className, blank), { maxLength: 9 }).map((pa
 
 const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15", null));
 
+// A header's document, as far as its rows go: sticky or not (or written
+// wrong), its sections with their columns and where they stack, and the
+// shapes no schema would let through.
+const stackValue = fc.oneof(fc.constantFrom("phone", "never", "tablet", "Phone"), anyJson);
+const headerSection = fc.oneof(
+  { weight: 6, arbitrary: fc.record({ props: fc.oneof(fc.record({ stack: stackValue }, { requiredKeys: [] }), anyJson), children: fc.oneof({ weight: 5, arbitrary: fc.array(fc.constant({}), { maxLength: 5 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) },
+  { weight: 1, arbitrary: anyJson },
+);
+const headerDocument = fc.oneof(
+  { weight: 6, arbitrary: fc.record({ sticky: fc.oneof({ weight: 4, arbitrary: fc.constant(true) }, { weight: 1, arbitrary: anyJson }), sections: fc.oneof({ weight: 5, arbitrary: fc.array(headerSection, { maxLength: 9 }) }, { weight: 1, arbitrary: anyJson }) }, { requiredKeys: [] }) },
+  { weight: 1, arbitrary: anyJson },
+);
+
 // Rich text with what the schema allows and what it does not.
 const markJson = fc.oneof(
   fc.constantFrom({ type: "bold" }, { type: "italic" }, { type: "underline" }, { type: "code" }, "bold", null, { type: "link" }),
@@ -91,6 +104,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
     maps: sample(fc.tuple(coordinate(90), coordinate(180), zoom), 20000, 5),
     decimals: sample(fc.oneof(coordinate(180).filter((x): x is number => typeof x === "number"), fc.double({ min: -1e-5, max: 1e-5, noNaN: true }).map((x) => (Object.is(x, -0) ? 0 : x))), 20000, 6),
     richTexts: sample(richDoc, 1500, 7),
+    stickyRows: sample(headerDocument, 3000, 9),
   };
   writeFileSync(join(work, "in.json"), JSON.stringify(input));
   const ruby = spawnSync("ruby", [join(builderRoot, "test", "ruby", "twins.rb"), join(work, "in.json"), join(work, "out.json")], {
@@ -113,6 +127,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
     classes: read.classes.map((v) => JSON.stringify(siteClasses(v))),
     maps: read.maps.map(([latitude, longitude, z]) => mapSrc(latitude, longitude, z)),
     decimals: read.decimals.map((v) => decimal(v)),
+    stickyRows: read.stickyRows.map((v) => stickyRows(v)),
   };
   for (const [part, values] of Object.entries(ours)) {
     const theirs = server[part]!;
@@ -125,6 +140,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
   expect(ours.links.filter((v) => v === null).length).toBeGreaterThan(100);
   expect(ours.maps.filter((v) => v !== null).length).toBeGreaterThan(1000);
   expect(ours.classes.filter((v) => v !== "[]").length).toBeGreaterThan(500);
+  expect(new Set(ours.stickyRows.filter((v) => v !== null)).size).toBeGreaterThan(20);
   expect(ours.decimals.filter((v, i) => v !== read.decimals[i]!.toFixed(6)).length).toBeGreaterThan(100);
 
   const richDiffer: string[] = [];

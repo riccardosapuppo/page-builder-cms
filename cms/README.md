@@ -865,7 +865,11 @@ anchor as the element's id, through `RenderPolicy.classes` and
 and a class may not be one of the theme's (`reservedClass`, both rules
 of `lib/block_document/rules.rb`). A header whose document says
 `"sticky": true` is drawn with `data-sticky`, and `site.css` keeps it
-at the top of the window, the page's anchors stopping below it.
+at the top of the window. The attribute holds the header's rows on a
+desktop, a tablet and a phone (`RenderPolicy.sticky_rows`: one for each
+section, one for each column where its columns stack), and the page's
+anchors stop that many rows below the window's top: the page has no
+script to measure the header.
 
 **Custom CSS** (`app/models/custom_css.rb`). The site style holds the
 site's own stylesheet, `custom_css` (`customCss` in the API, "" for

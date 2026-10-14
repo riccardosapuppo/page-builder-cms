@@ -244,7 +244,34 @@ a.sw-btn:not([href]) { cursor: default; }
    background unless its sections have one of their own, and a link to an
    anchor of the page stops the block below it, not under it. */
 .sw-header[data-sticky] { position: sticky; top: 0; background-color: var(--sw-background); }
-.site:has(.sw-header[data-sticky]) [id] { scroll-margin-top: 104px; }
+/* Its anchors stop below it: data-sticky holds its rows on a desktop, a
+   tablet and a phone (RenderPolicy.sticky_rows), counted at 88 px each,
+   the most a header's row of logo, menu and button takes with its space,
+   68 on a phone, with 16 to spare. The page has no script to measure it. */
+.site:has(.sw-header[data-sticky]) > .sw { --sticky-rows: 1; --sticky-row: 88px; }
+.site:has(.sw-header[data-sticky^="2 "]) > .sw { --sticky-rows: 2; }
+.site:has(.sw-header[data-sticky^="3 "]) > .sw { --sticky-rows: 3; }
+.site:has(.sw-header[data-sticky^="4 "]) > .sw { --sticky-rows: 4; }
+.site:has(.sw-header[data-sticky^="5 "]) > .sw { --sticky-rows: 5; }
+.site:has(.sw-header[data-sticky^="6 "]) > .sw { --sticky-rows: 6; }
+.site:has(.sw-header[data-sticky]) [id] { scroll-margin-top: calc(var(--sticky-rows) * var(--sticky-row) + 16px); }
+@container site (width < 800px) {
+  .site:has(.sw-header[data-sticky*=" 1 "]) > .sw { --sticky-rows: 1; }
+  .site:has(.sw-header[data-sticky*=" 2 "]) > .sw { --sticky-rows: 2; }
+  .site:has(.sw-header[data-sticky*=" 3 "]) > .sw { --sticky-rows: 3; }
+  .site:has(.sw-header[data-sticky*=" 4 "]) > .sw { --sticky-rows: 4; }
+  .site:has(.sw-header[data-sticky*=" 5 "]) > .sw { --sticky-rows: 5; }
+  .site:has(.sw-header[data-sticky*=" 6 "]) > .sw { --sticky-rows: 6; }
+}
+@container site (width < 560px) {
+  .site:has(.sw-header[data-sticky]) > .sw { --sticky-row: 68px; }
+  .site:has(.sw-header[data-sticky$=" 1"]) > .sw { --sticky-rows: 1; }
+  .site:has(.sw-header[data-sticky$=" 2"]) > .sw { --sticky-rows: 2; }
+  .site:has(.sw-header[data-sticky$=" 3"]) > .sw { --sticky-rows: 3; }
+  .site:has(.sw-header[data-sticky$=" 4"]) > .sw { --sticky-rows: 4; }
+  .site:has(.sw-header[data-sticky$=" 5"]) > .sw { --sticky-rows: 5; }
+  .site:has(.sw-header[data-sticky$=" 6"]) > .sw { --sticky-rows: 6; }
+}
 .sw-footer { --sec-y: var(--space-xxl); --cols-gap: var(--space-m); }
 .sw-header .w-button .sw-btn { min-height: 40px; padding: 0 20px; font-size: 15px; overflow-wrap: anywhere; }
 .sw-menu-button, .sw-accordion summary, .sw-quote figcaption {

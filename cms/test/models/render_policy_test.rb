@@ -65,6 +65,16 @@ class RenderPolicyTest < ActiveSupport::TestCase
     assert_nil RenderPolicy.map_src("54.5", 0, 10)
   end
 
+  test "a sticky header's rows: one for each section, and on the devices where columns stack, one for each column, at most 6" do
+    section = ->(columns, stack = nil) { { "props" => stack ? { "stack" => stack } : {}, "children" => Array.new(columns) { {} } } }
+    assert_equal "1 1 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(3, "never") ] })
+    assert_equal "1 2 2", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(2) ] })
+    assert_equal "1 1 3", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(3, "phone") ] })
+    assert_equal "3 4 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(1), section.(3, "never"), section.(2) ] })
+    assert_equal "3 6 6", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ section.(4), section.(4), section.(1) ] })
+    [ { "sections" => [ section.(2) ] }, { "sticky" => false }, { "sticky" => "true" }, nil, [] ].each { |document| assert_nil RenderPolicy.sticky_rows(document) }
+  end
+
   test "the frames a page may hold are exactly the providers' origins" do
     assert_equal %w[https://www.youtube-nocookie.com https://player.vimeo.com https://www.openstreetmap.org], RenderPolicy::FRAME_ORIGINS
   end

@@ -1204,7 +1204,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
   const Element = kind;
   const editing = document.sections.length === 0
     ? null
-    : <Element className={`sw-${kind} sw-editing`} data-editing-part={kind} data-sticky={stickyHeader(kind, document) ? "" : undefined}><div className="sw-main"><PageSections document={document} ctx={ctx} /></div></Element>;
+    : <Element className={`sw-${kind} sw-editing`} data-editing-part={kind} data-sticky={stickyHeader(kind, document) ?? undefined}><div className="sw-main"><PageSections document={document} ctx={ctx} /></div></Element>;
   const page = (
     <div className="sw-around" inert data-around-page="" aria-label={aroundTitle ? `${aroundTitle}, the page around the ${kind}` : undefined}>
       {around && around.sections.length > 0 ? <PageSections document={around} ctx={quiet} /> : <p className="around-none chrome">The page goes here.</p>}

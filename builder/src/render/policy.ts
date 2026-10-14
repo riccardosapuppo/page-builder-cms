@@ -12,6 +12,7 @@
 // repaired, and the text around it stays.
 
 import { reservedClass } from "../../../schema/tools/rules.ts";
+import { isObject } from "../document/json.ts";
 
 // The characters an address may hold after its scheme and host, as the
 // schema's href lists them: no space, no control character, no quote or
@@ -69,6 +70,24 @@ export function isVideoProvider(provider: unknown): provider is string {
 // A block's anchor, the id #anchor links scroll to, or null.
 export function anchor(value: unknown): string | null {
   return typeof value === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(value) ? value : null;
+}
+
+// The rows a sticky header draws on a desktop, a tablet and a phone, as
+// "desktop tablet phone" (each from 1 to 6), or null for a document that
+// is not a sticky header's: one for each section, and on the devices where
+// a section's columns go one under the other, one for each column (no
+// stack: tablets and phones; phone: phones; never: none). The page's
+// anchors stop that many rows below the window's top (site.css).
+export function stickyRows(document: unknown): string | null {
+  if (!isObject(document) || document.sticky !== true) return null;
+  const sections = Array.isArray(document.sections) ? document.sections.filter(isObject) : [];
+  const rows = sections.reduce<[number, number, number]>(([desktop, tablet, phone], section) => {
+    const columns = Array.isArray(section.children) ? section.children.length : 0;
+    const stack = isObject(section.props) ? section.props.stack : undefined;
+    const stacked = columns >= 2 ? columns : 1;
+    return [desktop + 1, tablet + (stack === "phone" || stack === "never" ? 1 : stacked), phone + (stack === "never" ? 1 : stacked)];
+  }, [0, 0, 0]);
+  return rows.map((count) => Math.min(6, Math.max(1, count))).join(" ");
 }
 
 // A block's classes of the site's own, as the page writes them: the names

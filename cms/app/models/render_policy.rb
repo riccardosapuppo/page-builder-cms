@@ -74,6 +74,25 @@ module RenderPolicy
     value.is_a?(String) && /\A[a-z][a-z0-9-]{0,63}\z/.match?(value) ? value : nil
   end
 
+  # The rows a sticky header draws on a desktop, a tablet and a phone, as
+  # "desktop tablet phone" (each from 1 to 6), or nil for a document that is
+  # not a sticky header's. One row for each section, and on the devices
+  # where a section's columns go one under the other, one for each column:
+  # with no stack, on tablets and phones; with stack phone, on phones; with
+  # never, on none. The page's anchors stop that many rows below the
+  # window's top (site.css): the page has no script to measure the header.
+  def sticky_rows(document)
+    return nil unless document.is_a?(Hash) && document["sticky"] == true
+
+    rows = Array(document["sections"]).select { |section| section.is_a?(Hash) }.reduce([ 0, 0, 0 ]) do |(desktop, tablet, phone), section|
+      columns = section["children"].is_a?(Array) ? section["children"].size : 0
+      stack = section["props"].is_a?(Hash) ? section["props"]["stack"] : nil
+      stacked = columns >= 2 ? columns : 1
+      [ desktop + 1, tablet + (stack == "phone" || stack == "never" ? 1 : stacked), phone + (stack == "never" ? 1 : stacked) ]
+    end
+    rows.map { |count| count.clamp(1, 6) }.join(" ")
+  end
+
   # A block's classes of the site's own, as the page writes them: the
   # names between single spaces of its className that are class names and
   # not the theme's (BlockDocument::Rules), in order, once each.
