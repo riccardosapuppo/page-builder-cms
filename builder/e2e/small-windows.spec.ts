@@ -3,7 +3,9 @@
 // whole; the keys in a bar at the foot; Insert, the Outline, History, the
 // settings and the "+" picker sheets that rise from it, the window's width;
 // the top bar's windows inside the window; nothing of the editor reaching
-// past the window's sides. On a tablet: the approved layout, its panels
+// past the window's sides; the top bar the mark, the page's title with
+// whether it is live under it, both on the left, and Publish on the right,
+// the save state drawn only when a save waits or fails. On a tablet: the approved layout, its panels
 // over the canvas, the page keeping its width, the bottom line's path whole.
 // With a finger anywhere: keys 44 square at least, and no keyboard opened
 // for the person (no field focused unasked).
@@ -93,6 +95,47 @@ test.describe("in a phone's window, 390 by 844, with a finger", () => {
     expect(await page.locator(".statusbar").evaluate((line) => [...line.querySelectorAll("button, a[href], input, [tabindex]:not([tabindex='-1'])")].filter((key) => key.getClientRects().length > 0).length)).toBe(0);
     expect(await sideways(page)).toEqual({ window: 0, canvas: 0 });
     await noSeriousFinding(page, "a phone, nothing open");
+  });
+
+  test.describe("with a save the network loses", () => {
+    // The browser's own line for the request the test drops.
+    test.use({ allowConsole: /net::ERR_INTERNET_DISCONNECTED/ });
+
+    test("the top bar is the mark, a key of its own, the page's title with whether it is live under it, both on the left, and Publish on the right; the save state is said, and drawn only when a save waits or fails", async ({ page, request }) => {
+      const { id } = await makePage(request, "Phone bar, with a title long enough to be cut short", content());
+      await open(page, id);
+      const mark = await box(page.getByRole("button", { name: "Page Builder CMS menu" }));
+      expect([mark.left, mark.width, mark.height]).toEqual([8, 44, 44]);
+      await expect(page.locator(".tb-mark .i"), "no chevron beside the mark").toBeHidden();
+      const title = page.getByRole("button", { name: /^Switch page\. Open: Phone bar/ });
+      const button = await box(title);
+      const words = await box(title.locator(".tb-page-title"));
+      const live = await box(title.locator(".tb-status"));
+      expect(button.left).toBeGreaterThanOrEqual(mark.right);
+      expect(button.height).toBe(44);
+      expect(live.left, "the title and the line under it start together").toBe(words.left);
+      expect(live.top).toBeGreaterThanOrEqual(words.bottom);
+      await expect(title.locator(".tb-title-row > .i").first(), "no page icon before the title").toBeHidden();
+      expect(await title.locator(".tb-page-title").evaluate((element) => element.scrollWidth > element.clientWidth), "the long title is cut short").toBe(true);
+      const more = await box(page.getByRole("button", { name: "More publish options" }));
+      const publish = await box(page.getByRole("button", { name: "Publish", exact: true }));
+      expect(Math.abs(more.right - (390 - 8)), `Publish's choices end at the bar's margin, at ${more.right}`).toBeLessThanOrEqual(1);
+      expect(button.right).toBeLessThanOrEqual(publish.left);
+      // All saved: said to a screen reader, not drawn.
+      const state = page.locator(".topbar .save-state");
+      await expect(state).toHaveText("Saved");
+      expect((await box(state)).width).toBeLessThanOrEqual(1);
+      // A save the network loses: its icon, between the title and Publish.
+      await page.route("**/api/pages/*/draft", (route) => (route.request().method() === "PUT" ? route.abort("internetdisconnected") : route.fallback()));
+      await block(page, "q2").tap();
+      await page.keyboard.press("Delete");
+      await expect(state).toHaveText(/^Not saved, retrying/);
+      const failing = await box(state.locator(".i"));
+      expect([failing.width, failing.height]).toEqual([20, 20]);
+      expect([failing.left >= button.left, failing.right <= publish.left], `the icon at ${failing.left} to ${failing.right}`).toEqual([true, true]);
+      expect(await sideways(page)).toEqual({ window: 0, canvas: 0 });
+      await noSeriousFinding(page, "a phone, a save the network lost");
+    });
   });
 
   test("a tap selects a block; Settings rises as a sheet on the bar, the grip makes it tall, and a drag down closes it", async ({ page, request }) => {

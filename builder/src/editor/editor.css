@@ -137,11 +137,12 @@ body {
 .app[data-layout="medium"] :is(.tb-where-dot, .tb-page-where) { display: none; }
 
 /* A phone's window (narrow, under 700): one column, the page drawn at its
-   width. The top bar keeps the mark's menu, the page, the save state and
-   Publish; the bar at the foot holds the keys (PhoneBar.tsx); the drawers
-   and the sidebar rise from it as sheets over the canvas; the bottom line
-   shows only while a block moves, saying where it will land. The bars
-   keep clear of the notch and of the home bar (the safe area). */
+   width. The top bar keeps the mark's menu, the page and Publish, and the
+   save state when a save waits or fails (below); the bar at the foot holds
+   the keys (PhoneBar.tsx); the drawers and the sidebar rise from it as
+   sheets over the canvas; the bottom line shows only while a block moves,
+   saying where it will land. The bars keep clear of the notch and of the
+   home bar (the safe area). */
 .app[data-layout="narrow"] {
   --phonebar: 60px;
   --sheet-foot: calc(var(--phonebar) + env(safe-area-inset-bottom));
@@ -154,8 +155,23 @@ body {
 .app[data-layout="narrow"] .tb-left > :is(.tb-sep, [data-drawer], .ibtn),
 .app[data-layout="narrow"] .tb-right > :is(a, .ibtn-side, .tb-drawer-icon) { display: none; }
 .app[data-layout="narrow"] :is(.tb-where-dot, .tb-page-where) { display: none; }
+/* The phone's top bar is three things: the mark, a key of its own at the
+   left; the page's title and whether it is live, one under the other,
+   beside it on the left, the title cut before the line under it, and that
+   line cut at the bar's room; Publish at the right. The save state shows
+   when a save waits or fails, an icon before Publish; while all is saved
+   or saving, it is said to a screen reader only. */
+.app[data-layout="narrow"] .topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
+.app[data-layout="narrow"] .tb-mark { justify-content: center; width: 44px; height: 44px; padding: 0; }
+.app[data-layout="narrow"] .tb-mark > .i { display: none; }
+.app[data-layout="narrow"] .tb-center { justify-content: flex-start; }
+.app[data-layout="narrow"] .tb-title { align-items: flex-start; gap: 0; padding: 4px 8px; }
+.app[data-layout="narrow"] .tb-title-row > .i:first-child { display: none; }
+.app[data-layout="narrow"] .tb-status { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.app[data-layout="narrow"] .tb-status > [class^="dot-"] { display: inline-block; margin-right: 6px; }
 .app[data-layout="narrow"] .save-state { margin: 0 2px; }
-.app[data-layout="narrow"] .save-state > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.app[data-layout="narrow"] .save-state > span,
+.app[data-layout="narrow"] .save-state:not(.save-warn, .save-err) { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .app[data-layout="narrow"] .save-state::after { content: none; }
 .app[data-layout="narrow"] .canvas { grid-column: 1; grid-row: 3; padding-top: 0; scrollbar-gutter: auto; }
 :root:has(.app:is([data-layout="narrow"], [data-layout="medium"])) { overscroll-behavior: none; }

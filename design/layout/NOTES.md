@@ -472,7 +472,11 @@ right, shut at first, and the Outline and History float over its left as
 Insert does, one panel at a time: the page keeps the window's width, and
 the top bar the page's name whole. In a phone's window
 (under 700) the page is drawn at the phone's width, whole; the top bar
-keeps the mark's menu, the page and Publish; a bar at the foot holds
+keeps the mark's menu, the page and Publish (since 15 October 2026, the
+owner's ask for a calmer bar: the mark alone, a key of its own; the page's
+title with whether it is live under it, both on the left, no page icon;
+Publish on the right; the save state drawn only when a save waits or
+fails, said to a screen reader always); a bar at the foot holds
 Insert, the Outline, Undo, Redo, Settings and More (Preview, History, the
 device, Block edges); the drawers, the settings and the "+" picker rise
 from it as sheets over the canvas, the window's width, each with a grip
