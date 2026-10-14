@@ -1,12 +1,14 @@
 // The demo's line at the bottom of the window, under the editor's bottom
 // line and under each page the demo draws: what the demo is, and where the
-// source is. Word for word as the project gives it. Under the editor it
-// also says when a newer edition of the example site is out and this
-// browser kept the pages its visitor worked on (../storage/example-site.ts),
-// with the way to start over with the new one, asked twice, since it
-// replaces those pages.
+// source is, word for word as the project gives it; and who made it, as
+// About says it, beside the author's photograph. Under the editor it also
+// says when a newer edition of the example site is out and this browser
+// kept the pages its visitor worked on (../storage/example-site.ts), with
+// the way to start over with the new one, asked twice, since it replaces
+// those pages.
 import { useState, useSyncExternalStore } from "react";
 import type { ExampleOutcome } from "../storage/example-site.ts";
+import photograph from "./riccardo-sapuppo.webp";
 
 export const SOURCE_ADDRESS = "https://github.com/riccardosapuppo/page-builder-cms";
 
@@ -40,10 +42,16 @@ export function DemoLine({ news = nothing, startOver }: { news?: SeedNews; start
   const [starting, setStarting] = useState(false);
   return (
     <aside className="demo-line chrome" aria-label="About this demo">
-      <p>
-        Browser demo: drafts stay in this browser. The full CMS runs on Rails 8, with publishing, shared versions and caching.{" "}
-        <a href={SOURCE_ADDRESS}>Source on GitHub</a>.
-      </p>
+      <div className="demo-line-row">
+        <p>
+          Browser demo: drafts stay in this browser. The full CMS runs on Rails 8, with publishing, shared versions and caching.{" "}
+          <a href={SOURCE_ADDRESS}>Source on GitHub</a>.
+        </p>{" "}
+        <p className="demo-credit">
+          <img src={photograph} alt="" width="16" height="16" />
+          Developed by Riccardo Sapuppo
+        </p>
+      </div>
       {outcome === "newer kept" && startOver && (
         <p className="demo-newer">
           {asking ? (

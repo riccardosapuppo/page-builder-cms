@@ -31,7 +31,7 @@ import { block } from "../helpers/canvas.ts";
 import { saveState } from "../helpers/heading.ts";
 import { png } from "../helpers/images.ts";
 
-const LINE = "Browser demo: drafts stay in this browser. The full CMS runs on Rails 8, with publishing, shared versions and caching. Source on GitHub.";
+const LINE = "Browser demo: drafts stay in this browser. The full CMS runs on Rails 8, with publishing, shared versions and caching. Source on GitHub. Developed by Riccardo Sapuppo";
 const SOURCE = "https://github.com/riccardosapuppo/page-builder-cms";
 const PUBLISHED_LINE = "Published in this browser. In the full system, Rails publishes and serves this page, with the cache.";
 const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";

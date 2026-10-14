@@ -662,7 +662,8 @@ footer are built and published there as on the CMS, and every page
 published in that browser shows them. A form there is
 not sent: one line says what Rails does with its answers. At the bottom, one
 line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
-8, with publishing, shared versions and caching. Source on GitHub."
+8, with publishing, shared versions and caching. Source on GitHub.", and
+at its end "Developed by Riccardo Sapuppo" beside the author's photograph.
 
 **The demo's limits**, which are those of having no server:
 - **Nothing is served.** No page at an address of its own, no cache, no

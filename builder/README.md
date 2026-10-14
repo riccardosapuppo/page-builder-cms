@@ -234,7 +234,8 @@ same demo from the source, at `/`.
 - At the bottom, under the editor's bottom line and under each page it
   draws, one line: "Browser demo: drafts stay in this browser. The full
   CMS runs on Rails 8, with publishing, shared versions and caching.
-  Source on GitHub."
+  Source on GitHub.", and at its end "Developed by Riccardo Sapuppo"
+  beside the author's photograph.
 
 **Its limits.**
 - Nothing is served: no page at an address of its own, no cache, no
