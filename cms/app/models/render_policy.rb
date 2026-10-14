@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # The rules the page renderer applies to every address it writes into a
-# page: links, image sources, and the players and maps a visitor can load.
+# page: links, image sources, and the players and maps a visitor can load;
+# and to a block's anchor and classes of the site's own.
 #
 # The schema already refuses a document with a bad address, so on a stored
 # document these rules change nothing. They are the last check before a
@@ -68,9 +69,18 @@ module RenderPolicy
     VIDEO.key?(provider)
   end
 
-  # A section's anchor, the id #anchor links scroll to, or nil.
+  # A block's anchor, the id #anchor links scroll to, or nil.
   def anchor(value)
     value.is_a?(String) && /\A[a-z][a-z0-9-]{0,63}\z/.match?(value) ? value : nil
+  end
+
+  # A block's classes of the site's own, as the page writes them: the
+  # names between single spaces of its className that are class names and
+  # not the theme's (BlockDocument::Rules), in order, once each.
+  def classes(value)
+    return [] unless value.is_a?(String)
+
+    value.split(/ /, -1).select { |name| /\A[A-Za-z][A-Za-z0-9_-]{0,39}\z/.match?(name) && BlockDocument::Rules.reserved_class(name).nil? }.uniq
   end
 
   # The map address for a point and a zoom level, or nil. The frame shows

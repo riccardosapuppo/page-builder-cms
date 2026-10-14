@@ -256,53 +256,62 @@ export const IMAGE_REF_KEYS = ["mediaId", "url", "alt", "decorative"] as const;
 
 // ----------------------------------------------------------------- props
 
-// No properties at all: `{}`, and nothing may be added to it.
-export type NoProps = Record<string, never>;
+// What every block may have of its own, whatever its type: CSS classes of
+// the site's own, which its custom CSS can style (names the theme uses are
+// refused, schema/tools/rules.ts), and an anchor, the id a link to #anchor
+// scrolls to, unique on the page and never in the header or footer.
+export interface BlockAttributes {
+  className?: string;
+  anchor?: string;
+}
 
-export interface SectionProps {
+// An image's props: the image, and the block's own two. A gallery's items
+// are images alone.
+export type ImageProps = ImageRef & BlockAttributes;
+export const IMAGE_PROPS_KEYS = [...IMAGE_REF_KEYS, "className", "anchor"] as const;
+
+export interface SectionProps extends BlockAttributes {
   // Shown only in the editor: the navigator and the history.
   label?: string;
-  // In-page link target: #anchor scrolls to the section.
-  anchor?: string;
   columnWidths?: ColumnWidthsToken;
   stack?: StackToken;
 }
-export interface HeadingProps {
+export interface HeadingProps extends BlockAttributes {
   level: HeadingLevel;
   text: string;
   href?: string;
 }
-export interface TextProps {
+export interface TextProps extends BlockAttributes {
   doc: RichTextDoc;
 }
-export interface ButtonProps {
+export interface ButtonProps extends BlockAttributes {
   label: string;
   href: string;
 }
-export interface SpacerProps {
+export interface SpacerProps extends BlockAttributes {
   size: SpaceToken;
 }
-export interface GalleryProps {
+export interface GalleryProps extends BlockAttributes {
   items: ImageRef[];
 }
 // Stored as provider and id, never as a URL: the renderers build the address.
-export interface VideoProps {
+export interface VideoProps extends BlockAttributes {
   provider: VideoProvider;
   videoId: string;
   title: string;
 }
-export interface MapProps {
+export interface MapProps extends BlockAttributes {
   latitude: number;
   longitude: number;
   zoom: number;
   label: string;
 }
-export interface IconboxProps {
+export interface IconboxProps extends BlockAttributes {
   icon: IconName;
   title: string;
   text: string;
 }
-export interface QuoteProps {
+export interface QuoteProps extends BlockAttributes {
   text: string;
   attribution?: string;
 }
@@ -310,7 +319,7 @@ export interface AccordionItem {
   question: string;
   answer: string;
 }
-export interface AccordionProps {
+export interface AccordionProps extends BlockAttributes {
   items: AccordionItem[];
 }
 // One field of a form. name is the key its answers are kept under, made by
@@ -325,7 +334,7 @@ interface FormFieldOf<K extends FormFieldKind> {
 export type FormField =
   | (FormFieldOf<"text" | "textarea"> & { maxLength: number })
   | (FormFieldOf<"email" | "checkbox"> & { maxLength?: never });
-export interface FormProps {
+export interface FormProps extends BlockAttributes {
   // The fields, in the order the page shows them.
   items: FormField[];
   submitLabel: string;
@@ -334,7 +343,7 @@ export interface FormProps {
 }
 // The site's mark, with the site's name beside it as a link to the home
 // page, or alone (decorative) when there is no name.
-export interface LogoProps {
+export interface LogoProps extends BlockAttributes {
   name?: string;
 }
 // One link of a menu.
@@ -344,7 +353,7 @@ export interface MenuLink {
 }
 // The site's links, folding into Menu where the block is too narrow for
 // them; label names the menu for a screen reader.
-export interface MenuProps {
+export interface MenuProps extends BlockAttributes {
   label: string;
   items: MenuLink[];
 }
@@ -363,12 +372,12 @@ interface BlockOf<T extends BlockType, P, C> {
 type NoChildren = [];
 
 export type SectionBlock = BlockOf<"section", SectionProps, ColumnBlock[]>;
-export type ColumnBlock = BlockOf<"column", NoProps, WidgetBlock[]>;
+export type ColumnBlock = BlockOf<"column", BlockAttributes, WidgetBlock[]>;
 export type HeadingBlock = BlockOf<"heading", HeadingProps, NoChildren>;
 export type TextBlock = BlockOf<"text", TextProps, NoChildren>;
-export type ImageBlock = BlockOf<"image", ImageRef, NoChildren>;
+export type ImageBlock = BlockOf<"image", ImageProps, NoChildren>;
 export type ButtonBlock = BlockOf<"button", ButtonProps, NoChildren>;
-export type DividerBlock = BlockOf<"divider", NoProps, NoChildren>;
+export type DividerBlock = BlockOf<"divider", BlockAttributes, NoChildren>;
 export type SpacerBlock = BlockOf<"spacer", SpacerProps, NoChildren>;
 export type GalleryBlock = BlockOf<"gallery", GalleryProps, NoChildren>;
 export type VideoBlock = BlockOf<"video", VideoProps, NoChildren>;
@@ -395,6 +404,9 @@ export interface PageDocument {
   title: string;
   // Shown under the title in search results; absent when the page has none.
   description?: string;
+  // The site's header's: it stays at the top of the window while the page
+  // scrolls. Only true is stored; a page's or a footer's is not read.
+  sticky?: true;
   sections: SectionBlock[];
 }
 
@@ -402,33 +414,32 @@ export interface PageDocument {
 
 // Which props each block type has, and whether each is required. The type
 // below makes the compiler hold this table to the interfaces above, key for
-// key; document.test.ts holds it to the schema. The image's props (and a
-// gallery item) are an ImageRef, whose rules are exactly-one-of and are
-// tested on their own.
+// key; document.test.ts holds it to the schema. The image's props are an
+// ImageRef and the block's own two (a gallery item an ImageRef alone),
+// whose rules are exactly-one-of and are tested on their own.
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T];
 type KeyTable<T> = { readonly [K in keyof T]-?: K extends RequiredKeys<T> ? "required" : "optional" };
 
+const OWN = { className: "optional", anchor: "optional" } as const satisfies KeyTable<BlockAttributes>;
+
 export const PROP_KEYS = {
-  section: { label: "optional", anchor: "optional", columnWidths: "optional", stack: "optional" },
-  column: {},
-  heading: { level: "required", text: "required", href: "optional" },
-  text: { doc: "required" },
-  button: { label: "required", href: "required" },
-  divider: {},
-  spacer: { size: "required" },
-  gallery: { items: "required" },
-  video: { provider: "required", videoId: "required", title: "required" },
-  map: { latitude: "required", longitude: "required", zoom: "required", label: "required" },
-  iconbox: { icon: "required", title: "required", text: "required" },
-  quote: { text: "required", attribution: "optional" },
-  accordion: { items: "required" },
-  form: { items: "required", submitLabel: "required", confirmation: "required" },
-  logo: { name: "optional" },
-  menu: { label: "required", items: "required" },
-} as const satisfies { [T in Exclude<BlockType, "image" | "column" | "divider">]: KeyTable<PropsOf<T>> } & {
-  column: Record<string, never>;
-  divider: Record<string, never>;
-};
+  section: { label: "optional", anchor: "optional", className: "optional", columnWidths: "optional", stack: "optional" },
+  column: OWN,
+  heading: { level: "required", text: "required", href: "optional", ...OWN },
+  text: { doc: "required", ...OWN },
+  button: { label: "required", href: "required", ...OWN },
+  divider: OWN,
+  spacer: { size: "required", ...OWN },
+  gallery: { items: "required", ...OWN },
+  video: { provider: "required", videoId: "required", title: "required", ...OWN },
+  map: { latitude: "required", longitude: "required", zoom: "required", label: "required", ...OWN },
+  iconbox: { icon: "required", title: "required", text: "required", ...OWN },
+  quote: { text: "required", attribution: "optional", ...OWN },
+  accordion: { items: "required", ...OWN },
+  form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
+  logo: { name: "optional", ...OWN },
+  menu: { label: "required", items: "required", ...OWN },
+} as const satisfies { [T in Exclude<BlockType, "image">]: KeyTable<PropsOf<T>> };
 
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
 export const MENU_LINK_KEYS = { label: "required", href: "required" } as const satisfies KeyTable<MenuLink>;
@@ -441,5 +452,6 @@ export const DOCUMENT_KEYS = {
   schemaVersion: "required",
   title: "required",
   description: "optional",
+  sticky: "optional",
   sections: "required",
 } as const satisfies KeyTable<PageDocument>;

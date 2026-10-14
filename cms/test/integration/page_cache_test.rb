@@ -141,6 +141,21 @@ class PageCacheTest < ActionDispatch::IntegrationTest
     assert_not_equal held, response.headers["ETag"]
   end
 
+  test "a change of the custom CSS alone is a new page for every browser, linking the new version" do
+    published
+    get "/tides"
+    held = response.headers["ETag"]
+    assert_select %(link[href^="/custom.css"]), count: 0
+
+    api(:put, "/api/site-style", { "palette" => SiteTokens.default_palette, "typeScale" => SiteTokens.default_type_scale, "customCss" => ".hero { color: red; }" })
+    assert_response :ok
+    get "/tides", headers: { "If-None-Match" => held }
+
+    assert_response :ok
+    assert_select %(link[href^="/custom.css?v="]), count: 1
+    assert_not_equal held, response.headers["ETag"]
+  end
+
   test "a change of the letter width alone is a new page for every browser" do
     published
     get "/tides"

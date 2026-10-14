@@ -24,6 +24,7 @@ function siteStyle(palette: Record<string, string> = {}, typeScale = "balanced")
     palette: Object.fromEntries(slots.map((slot) => [slot, palette[slot] ?? tones[slot].default])),
     typeScale,
     letterWidth: "normal",
+    customCss: "",
     updatedAt: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),

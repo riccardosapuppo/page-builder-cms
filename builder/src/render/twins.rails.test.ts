@@ -1,5 +1,6 @@
 // The editor's twins of the server's render rules, run beside the server's
-// own on the same generated values: the URL policy (policy.ts and
+// own on the same generated values: the URL policy and a block's classes
+// (policy.ts and
 // cms/app/models/render_policy.rb) and rich text (rich-text.tsx and
 // cms/app/helpers/rich_text_helper.rb). Unlike the random-page agreement
 // check, which saves pages and so only meets what the schema accepts, this
@@ -22,7 +23,7 @@ import { afterAll, expect, test } from "vitest";
 import { builderRoot, repoRoot } from "../../build/paths.ts";
 import { canonical, parseSections } from "../../test/html-compare.ts";
 import { href } from "../../test/render-arbitraries.ts";
-import { anchor, decimal, imageSrc, isVideoProvider, linkHref, mapSrc, videoSrc } from "./policy.ts";
+import { anchor, decimal, imageSrc, isVideoProvider, linkHref, mapSrc, siteClasses, videoSrc } from "./policy.ts";
 import { renderRichText } from "./rich-text.tsx";
 
 const SEED = 20261002;
@@ -46,6 +47,15 @@ const coordinate = (limit: number) => fc.oneof(
   fc.tuple(fc.integer({ min: -limit * 64, max: limit * 64 }), fc.integer({ min: -2000, max: 2000 })).map(([n, ulps]) => (2 * n + 1) / 128 + ulps * Number.EPSILON * Math.abs((2 * n + 1) / 128)),
   fc.constantFrom("54.5", null, true),
 );
+// A block's classes: names a site may give, the theme's in any case,
+// names that are no class names, and every blank between them.
+const className = fc.oneof(
+  fc.stringMatching(/^[A-Za-z][A-Za-z0-9_-]{0,41}$/),
+  fc.constantFrom("sw-btn", "Hide-desktop", "SEC", "fill", "BG-primary", "line", "lines", "cols-2", "\u212Aelvin", "\u0130con", "caf\u00e9", "2col", ""),
+);
+const blank = fc.constantFrom(" ", " ", " ", "  ", "\t", "\n", "\u00a0", "\u3000");
+const classList = fc.array(fc.tuple(className, blank), { maxLength: 9 }).map((parts) => parts.map(([name, gap]) => name + gap).join(""));
+
 const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15", null));
 
 // Rich text with what the schema allows and what it does not.
@@ -77,6 +87,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
     images: sample(fc.oneof(messy, anyJson, href), 3000, 2),
     videos: sample(fc.tuple(fc.oneof(fc.constantFrom("youtube", "vimeo", "dailymotion", "__proto__", "constructor", "YouTube"), anyJson), fc.oneof(fc.stringMatching(/^[A-Za-z0-9_-]{11}$/), fc.stringMatching(/^[0-9]{1,13}$/), messy, anyJson)), 3000, 3),
     anchors: sample(fc.oneof(fc.stringMatching(/^[a-z][a-z0-9-]{0,66}$/), messy, anyJson), 2000, 4),
+    classes: sample(fc.oneof({ weight: 4, arbitrary: classList }, { weight: 1, arbitrary: messy }, { weight: 1, arbitrary: anyJson }), 3000, 8),
     maps: sample(fc.tuple(coordinate(90), coordinate(180), zoom), 20000, 5),
     decimals: sample(fc.oneof(coordinate(180).filter((x): x is number => typeof x === "number"), fc.double({ min: -1e-5, max: 1e-5, noNaN: true }).map((x) => (Object.is(x, -0) ? 0 : x))), 20000, 6),
     richTexts: sample(richDoc, 1500, 7),
@@ -99,6 +110,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
     videos: read.videos.map(([provider, id]) => videoSrc(provider, id)),
     providers: read.videos.map(([provider]) => isVideoProvider(provider)),
     anchors: read.anchors.map((v) => anchor(v)),
+    classes: read.classes.map((v) => JSON.stringify(siteClasses(v))),
     maps: read.maps.map(([latitude, longitude, z]) => mapSrc(latitude, longitude, z)),
     decimals: read.decimals.map((v) => decimal(v)),
   };
@@ -112,6 +124,7 @@ test("the URL policy and rich text answer as the server's do, on values the sche
   expect(ours.links.filter((v) => v !== null).length).toBeGreaterThan(100);
   expect(ours.links.filter((v) => v === null).length).toBeGreaterThan(100);
   expect(ours.maps.filter((v) => v !== null).length).toBeGreaterThan(1000);
+  expect(ours.classes.filter((v) => v !== "[]").length).toBeGreaterThan(500);
   expect(ours.decimals.filter((v, i) => v !== read.decimals[i]!.toFixed(6)).length).toBeGreaterThan(100);
 
   const richDiffer: string[] = [];

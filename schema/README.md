@@ -60,6 +60,17 @@ The page document's one schema, and the design tokens it names.
   always `[]`).
 - **Every block has the same five keys**, `{id, type, props, children,
   style}`, and no others.
+- **Every block may have a class and an anchor** in its props:
+  `className`, CSS class names of the site's own, which its custom CSS
+  styles it by ("hero big": one to eight names, each a letter then up to
+  39 letters, digits, hyphens or underscores, one space between two), and
+  `anchor`, the id a link to `#anchor` scrolls to (lowercase letters,
+  digits and hyphens, starting with a letter). An image's props are an
+  image reference with these two (`imageProps`); a gallery's items are
+  image references alone.
+- **The site's header may stay at the top** of the window while the page
+  scrolls: `"sticky": true` on its document. A page's or a footer's is
+  not read.
 - **Column widths** are a property of the section, `columnWidths`: a
   preset of parts in column order, `3:2`, `2:3`, `2:1`, `1:2`, `fit:1` or
   `1:fit` for two columns and `2:1:1`, `1:2:1`, `1:1:2` or `fit:1:fit` for
@@ -158,9 +169,9 @@ around every page (see the CMS's README). Nothing in the schema sets them
 apart; two rules of their own live outside it, in the CMS
 (`SiteParts.check`) and in the editor (`validatePart`), after the
 schema: a part holds no form, since a form's answers are kept with the
-version of the page they were sent from, and its sections take no
-anchor, since a part is drawn in every page beside the page's own
-sections, whose anchors its own are not checked against. The starters
+version of the page they were sent from, and its blocks take no anchor,
+since a part is drawn in every page beside the page's own blocks, whose
+anchors its own are not checked against. The starters
 every page draws
 until a part publishes, `cms/config/parts/header.json` and
 `footer.json`, go through the comparison beside the example site's
@@ -201,7 +212,8 @@ before the schema, identically in the editor and on the server.
 | The text is strict JSON | A byte-order mark, comments, trailing commas, raw control characters: the schema only sees what a parser made of the text | application rules: `parse` |
 | `2.0` is the integer `2` | Both engines accept `2.0` where an integer is required, as the specification says, but Ruby keeps it a Float: the page would render `<h2.0>` | application rules: normalisation, after the checks |
 | The media item exists | The schema does not know the library | the server, when it saves (stage 1) |
-| Section anchors are unique on the page | Same reason as block ids: an anchor is a field of each section, and the sections are many items | application rules: `uniqueAnchor`, at the second section in page order. An anchor is the section's element id on the page, and a link reaches only the first element with an id |
+| Anchors are unique on the page | Same reason as block ids: an anchor is a field of each block, and the blocks are many items in a tree | application rules: `uniqueAnchor`, at the second block in document order (a section, then its columns and their widgets). An anchor is the block's element id on the page, and a link reaches only the first element with an id |
+| A block's classes are not the theme's | The pattern says what a class name is; which names the theme's stylesheets use is a list, and in any case | application rules: `reservedClass`, at the block's `className`: none of `col`, `cols`, `fill`, `line`, `sec`, `site`, `sun`, `sw`, `w`, and none starting with `align-`, `aspect-`, `bg-`, `cols-`, `desktop-`, `face-`, `fg-`, `gap-`, `hide-`, `line-`, `pad-`, `phone-`, `size-`, `space-`, `spacer-`, `stack-`, `sw-`, `tablet-`, `valign-`, `w-` or `widths-`, which the theme's rules would reach |
 | A form's field names are unique in the form | `uniqueItems` compares whole fields, and two fields that differ only in their label would pass it; their answers would then be kept under one key | application rules: `uniqueFieldName`, at the second field in order. Two forms of one page may use the same names |
 | The video id exists at the provider | Only the provider knows | not checked: the player shows the provider's own error |
 | Older documents | Each `schemaVersion` has its own shape | upgrade functions, run when a document is read (none exist for version 1) |

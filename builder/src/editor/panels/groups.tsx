@@ -28,6 +28,7 @@ import { excerpt } from "../names.ts";
 import { paletteName } from "../palette.ts";
 import type { WidgetPanel } from "./types.ts";
 import { ShownOn, shownOnWords } from "./ShownOn.tsx";
+import { advancedWords, BlockAdvanced } from "./advanced.tsx";
 import { columnsWords, nameWords, SectionColumns, SectionName } from "./structure.tsx";
 import { acceptedKeys, inUseOf, StyleFields, useColumnStyle, type StyleKey } from "./StyleFields.tsx";
 
@@ -67,26 +68,26 @@ const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly
 // The groups of each type, top to bottom: "content" is a widget's own
 // group (its folder's panel), "columns" and "name" a section's, "shown"
 // every block's.
-type GroupId = StyleGroupId | "content" | "columns" | "name" | "shown";
-const TEXT: readonly GroupId[] = ["content", "size", "alignment", "shown"];
+type GroupId = StyleGroupId | "content" | "columns" | "name" | "shown" | "advanced";
+const TEXT: readonly GroupId[] = ["content", "size", "alignment", "shown", "advanced"];
 export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
-  section: ["columns", "background", "spacing", "shown", "name"],
-  column: ["spacing", "background", "type", "alignment", "shown"],
+  section: ["columns", "background", "spacing", "shown", "name", "advanced"],
+  column: ["spacing", "background", "type", "alignment", "shown", "advanced"],
   heading: TEXT,
   text: TEXT,
   quote: TEXT,
-  image: ["content", "shape", "shown"],
-  button: ["content", "colors", "alignment", "shown"],
-  divider: ["line-color", "shown"],
-  accordion: ["content", "line-color", "shown"],
-  spacer: ["content", "shown"],
-  video: ["content", "shown"],
-  map: ["content", "shown"],
-  gallery: ["content", "spacing", "shown"],
-  iconbox: ["content", "text-color", "alignment", "shown"],
-  form: ["content", "shown"],
-  logo: ["content", "text-color", "alignment", "shown"],
-  menu: ["content", "text-color", "alignment", "shown"],
+  image: ["content", "shape", "shown", "advanced"],
+  button: ["content", "colors", "alignment", "shown", "advanced"],
+  divider: ["line-color", "shown", "advanced"],
+  accordion: ["content", "line-color", "shown", "advanced"],
+  spacer: ["content", "shown", "advanced"],
+  video: ["content", "shown", "advanced"],
+  map: ["content", "shown", "advanced"],
+  gallery: ["content", "spacing", "shown", "advanced"],
+  iconbox: ["content", "text-color", "alignment", "shown", "advanced"],
+  form: ["content", "shown", "advanced"],
+  logo: ["content", "text-color", "alignment", "shown", "advanced"],
+  menu: ["content", "text-color", "alignment", "shown", "advanced"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -243,6 +244,15 @@ export function useBlockGroups(block: Block): GroupSpec[] {
         return [{ id, name: "Name and link", keys: [], holds: (field) => field === "/props/label" || field === "/props/anchor", summary: nameWords(block), body: <SectionName block={block} /> }];
       case "shown":
         return [{ id, name: "Shown on", keys: [], holds: (field) => styleKeyOf(field) === "visibility", summary: shownOnWords(block.style), body: <ShownOn block={block} /> }];
+      case "advanced":
+        return [{
+          id,
+          name: "Advanced",
+          keys: [],
+          holds: (field) => field === "/props/className" || (block.type !== "section" && field === "/props/anchor"),
+          summary: advancedWords(block),
+          body: <BlockAdvanced block={block} />,
+        }];
       default: {
         const keys = acceptedKeys(block.type, STYLE_GROUPS[id].keys);
         if (keys.length === 0) return [];

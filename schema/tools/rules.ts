@@ -14,8 +14,9 @@
 //      fail, so if it does, that is a bug and it throws
 //   4. the tree: well-formed strings ("wellFormed"), finite numbers
 //      ("finite"), exact integers ("safeInteger"), unique block ids
-//      ("uniqueId"), unique section anchors ("uniqueAnchor"), unique field
-//      names in a form ("uniqueFieldName")
+//      ("uniqueId"), unique anchors ("uniqueAnchor"), unique field names
+//      in a form ("uniqueFieldName"), classes of the site's own that are
+//      not the theme's ("reservedClass")
 //   5. normalisation: an integral number becomes an integer (2.0 -> 2)
 // Then the schema runs on the normalised document.
 
@@ -32,7 +33,8 @@ export type RuleKeyword =
   | "safeInteger"
   | "uniqueId"
   | "uniqueAnchor"
-  | "uniqueFieldName";
+  | "uniqueFieldName"
+  | "reservedClass";
 
 export interface RuleError {
   pointer: string;
@@ -326,6 +328,31 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// The class names the theme's stylesheets use (site.css, tokens.css): a
+// block's class of the site's own is none of these and starts with none of
+// the prefixes, which the theme's rules would otherwise reach (a
+// hide-desktop of the site's own would hide the block on a desktop). In
+// any case, since the site's own names are told apart from the theme's
+// whatever their case. cms/lib/block_document/rules.rb holds the same two
+// lists.
+export const RESERVED_CLASS_NAMES = ["col", "cols", "fill", "line", "sec", "site", "sun", "sw", "w"] as const;
+export const RESERVED_CLASS_PREFIXES = [
+  "align-", "aspect-", "bg-", "cols-", "desktop-", "face-", "fg-", "gap-", "hide-", "line-", "pad-", "phone-",
+  "size-", "space-", "spacer-", "stack-", "sw-", "tablet-", "valign-", "w-", "widths-",
+] as const;
+
+// The first class of a block's className that is the theme's, or null:
+// the names are what lies between single spaces, lowercased in ASCII only,
+// as the Ruby twin reads them.
+export function reservedClass(className: unknown): string | null {
+  if (typeof className !== "string") return null;
+  for (const name of className.split(" ")) {
+    const lower = name.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+    if ((RESERVED_CLASS_NAMES as readonly string[]).includes(lower) || RESERVED_CLASS_PREFIXES.some((prefix) => lower.startsWith(prefix))) return name;
+  }
+  return null;
+}
+
 export function checkTree(document: unknown): RuleError[] {
   const errors: RuleError[] = [];
 
@@ -352,6 +379,10 @@ export function checkTree(document: unknown): RuleError[] {
         value.forEach((child, k) => stack.push({ value: child, pointer: `${pointer}/${k}`, depth: depth + 1 }));
       } else {
         if (value.type === "form") errors.push(...duplicateFieldNames(value, pointer));
+        if (typeof value.type === "string" && isObject(value.props)) {
+          const reserved = reservedClass(value.props.className);
+          if (reserved !== null) errors.push({ pointer: `${pointer}/props/className`, keyword: "reservedClass", message: `The class "${reserved}" is one the theme uses: give the block a name of the site's own.` });
+        }
         for (const [key, child] of Object.entries(value)) {
           if (!key.isWellFormed()) {
             errors.push({ pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair." });
@@ -412,25 +443,34 @@ function duplicateFieldNames(form: Record<string, unknown>, pointer: string): Ru
   return errors;
 }
 
-// Section anchors, in page order: the second section with an anchor is the
-// one reported. An anchor is the id of the section's element on the
+// Anchors, in document order (a section, then its columns and their
+// widgets, as block ids are read): the second block with an anchor is the
+// one reported. An anchor is the id of the block's element on the
 // published page, and a link to #anchor goes to the first element with
-// that id, so a second section with it could never be reached. Only
-// sections carry an anchor, and sections are the page's own children.
-// Exported for the editor, which checks a change's anchors on their own.
+// that id, so a second block with it could never be reached. Exported for
+// the editor, which checks a change's anchors on their own.
 export function duplicateAnchors(document: unknown): RuleError[] {
   if (!isObject(document) || !Array.isArray(document.sections)) return [];
   const errors: RuleError[] = [];
   const seen = new Set<string>();
-  document.sections.forEach((section: unknown, k: number) => {
-    const anchor = isObject(section) && isObject(section.props) ? section.props.anchor : undefined;
-    if (typeof anchor !== "string") return;
-    if (seen.has(anchor)) {
-      errors.push({ pointer: `/sections/${k}/props/anchor`, keyword: "uniqueAnchor", message: `The anchor "${anchor}" is already used by another section.` });
-    } else {
-      seen.add(anchor);
+  const blocks: Array<{ block: unknown; pointer: string }> = [];
+  const pushChildren = (list: unknown[], pointer: string): void => {
+    for (let k = list.length - 1; k >= 0; k--) blocks.push({ block: list[k], pointer: `${pointer}/${k}` });
+  };
+  pushChildren(document.sections, "/sections");
+  for (let item = blocks.pop(); item; item = blocks.pop()) {
+    const { block, pointer } = item;
+    if (!isObject(block)) continue;
+    const anchor = isObject(block.props) ? block.props.anchor : undefined;
+    if (typeof anchor === "string") {
+      if (seen.has(anchor)) {
+        errors.push({ pointer: `${pointer}/props/anchor`, keyword: "uniqueAnchor", message: `The anchor "${anchor}" is already used by another block.` });
+      } else {
+        seen.add(anchor);
+      }
     }
-  });
+    if (Array.isArray(block.children)) pushChildren(block.children, `${pointer}/children`);
+  }
   return errors;
 }
 

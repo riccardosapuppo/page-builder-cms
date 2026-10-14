@@ -123,7 +123,7 @@ export function applyOp(doc: PageDocument, op: Op): PageDocument {
       });
     }
     case "set":
-      if (op.id === null && !PAGE_KEYS.has(op.key)) stale(`a set step changes the page's title or description, not ${op.key}`);
+      if (op.id === null && !PAGE_KEYS.has(op.key)) stale(`a set step changes the page's title, its description or whether a header stays at the top, not ${op.key}`);
       return updateObject(doc, op.id, op.path, (object) => setKey(object, op));
     case "insertItem":
     case "removeItem":
@@ -170,10 +170,10 @@ function changeList(list: readonly unknown[], op: Extract<Op, { op: "insertItem"
 }
 
 // What a set step may reach: a block's props and style, and the page's own
-// keys (its title and description). Never a block's id, type or children,
-// which only the structural steps change, nor the page's sections or
-// schemaVersion.
-const PAGE_KEYS = new Set(["title", "description"]);
+// keys (its title and description, and a header's sticky). Never a
+// block's id, type or children, which only the structural steps change,
+// nor the page's sections or schemaVersion.
+const PAGE_KEYS = new Set(["title", "description", "sticky"]);
 const BLOCK_ROOTS = new Set(["props", "style"]);
 
 function updateObject(doc: PageDocument, id: string | null, path: Path, change: (object: Record<string, unknown>) => Record<string, unknown>): PageDocument {

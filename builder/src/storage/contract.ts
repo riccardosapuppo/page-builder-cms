@@ -939,6 +939,30 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  {
+    name: "the site style keeps its custom CSS, keeps it when a change does not name one, takes it out with nothing, and refuses CSS that does not keep to the site at /customCss with its line",
+    needs: [],
+    async run(env) {
+      const before = await env.adapter.getSiteStyle();
+      env.expect(typeof before.customCss).toBe("string");
+      const css = ".hero { letter-spacing: .02em; }\n.price::after { content: \"}\"; }";
+      try {
+        const set = value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, customCss: css }), "a style with custom CSS");
+        env.expect(set.customCss).toBe(css);
+        const kept = value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale }), "a style without its custom CSS");
+        env.expect(kept.customCss).toBe(css);
+        env.expect((await env.adapter.getSiteStyle()).customCss).toBe(css);
+        const broken = refusal(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, customCss: ".a { color: red; }\n}" }), "CSS with a brace that closes nothing");
+        env.expect(broken.errors.map((e) => [e.pointer, e.message])).toEqual([["/customCss", "line 2: This } closes nothing."]]);
+        env.expect((await env.adapter.getSiteStyle()).customCss).toBe(css);
+        const none = value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, customCss: "" }), "a style with no custom CSS");
+        env.expect(none.customCss).toBe("");
+      } finally {
+        value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, customCss: before.customCss }), "putting the style back");
+      }
+    },
+  },
+
   // -------------------------------------------------- the site's settings
   {
     name: "the site's settings are its time zone, the same twice",

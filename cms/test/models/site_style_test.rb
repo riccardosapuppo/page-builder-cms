@@ -61,4 +61,18 @@ class SiteStyleTest < ActiveSupport::TestCase
     assert_not style.valid?
     assert style.errors[:letter_width].any?
   end
+
+  test "custom CSS is kept when it keeps to the site, and refused with its line when it does not" do
+    style = SiteStyle.current
+    assert_equal "", style.custom_css
+    style.custom_css = ".hero { color: #123456; }"
+
+    assert style.save
+    style.custom_css = ".a { color: red;\n.b { color: blue; }"
+    assert_not style.valid?
+    assert_equal [ "line 1: This { is not closed: end the rule with }." ], style.errors[:custom_css]
+    style.custom_css = ".a { color: red; }\n@import url(/x.css);"
+    assert_not style.valid?
+    assert_equal [ "line 2: @import is not allowed: the page loads only its own stylesheets." ], style.errors[:custom_css]
+  end
 end

@@ -171,6 +171,15 @@ describe("the checks", () => {
     ]);
   });
 
+  test("the site style: custom CSS that keeps to the site, when the change names it, as the CMS checks it", () => {
+    const slots = { text: ["ink"] };
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"], undefined, [], ".a { color: red; }")).toEqual([]);
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"], undefined, [], "")).toEqual([]);
+    expect(siteStyleErrors({ text: "ink" }, "balanced", slots, ["balanced"], undefined, [], "@import url(/x.css);").map((e) => [e.pointer, e.keyword, e.message])).toEqual([
+      ["/customCss", "invalid", "line 1: @import is not allowed: the page loads only its own stylesheets."],
+    ]);
+  });
+
   test("the site style: every slot with one of its tones, no other slot, a type scale of the choices", () => {
     const slots = { text: ["ink"], primary: ["sea", "harbour"] };
     expect(siteStyleErrors({ text: "ink", primary: "sea" }, "balanced", slots, ["gentle", "balanced"])).toEqual([]);

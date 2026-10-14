@@ -456,7 +456,7 @@ no warnings, the same morning).
   and footer. The starters are checked as the CMS starts against the
   rules a part's draft is held to (a test starts the CMS in a process of
   its own with a starter broken, and it stops, naming the value); a
-  part's draft holds no form and no section anchor. A publish of a part
+  part's draft holds no form and no anchor. A publish of a part
   reaches every published page at its next visit (see how the pages are
   cached, below); the preview draws the parts' drafts.
 
@@ -857,6 +857,29 @@ only from `site-tones` and `site-type-scale` in
 colour of the site's own written `#rrggbb` (anything else is refused at
 `/palette/<slot>`, "must be one of …, or a colour as #rrggbb").
 
+**Classes, anchors and a sticky header.** Every block may name CSS
+classes of the site's own (`className`, "hero big") and an anchor
+(`anchor`): `block_root` writes the classes after the theme's and the
+anchor as the element's id, through `RenderPolicy.classes` and
+`RenderPolicy.anchor`. Anchors are unique on the page (`uniqueAnchor`)
+and a class may not be one of the theme's (`reservedClass`, both rules
+of `lib/block_document/rules.rb`). A header whose document says
+`"sticky": true` is drawn with `data-sticky`, and `site.css` keeps it
+at the top of the window, the page's anchors stopping below it.
+
+**Custom CSS** (`app/models/custom_css.rb`). The site style holds the
+site's own stylesheet, `custom_css` (`customCss` in the API, "" for
+none). `CustomCss.check` refuses what would not keep to the site, as the
+editor's `custom-css.ts` does on the shared cases of
+`../contract/custom-css/`: a rule left open, a `}` that closes nothing,
+an `@import`, an address with a brace outside quotes, more than 50 000
+characters; the 422 is at `/customCss`, with the line. The layout links
+`/custom.css?v=<digest>` after the free colours when there is some:
+`CustomCssController` serves it inside `@scope (.site) { … }`, kept for
+good when the address names the stylesheet as it is now, unkept for an
+older one. The site style's key of the page cache holds it, so a change
+redraws every page once.
+
 **Free colours** (`app/models/free_colors.rb`). A slot or a block's
 background or colour may name a colour of its own (the schema's
 `freeColor`). The page carries it as a data attribute, never an inline
@@ -916,8 +939,8 @@ footer, and makes them the first time it is asked, each with its starter
 as its draft. A part has no address and is never the home page: a
 `PATCH` that names either is a 422 at its member, keyword `part`. Its
 draft is held to a page's rules and to two of its own, no form and no
-section anchor (it is drawn in every page, beside the page's own
-sections, whose anchors its own are not checked against), refused at the
+anchor on any block (it is drawn in every page, beside the page's own
+blocks, whose anchors its own are not checked against), refused at the
 form's block or at the anchor with the keyword `part`: at each save, and
 again, as a page's rules are, when a publish, a schedule, a version or a
 restore reads a stored document. The site's time zone is not a part's:

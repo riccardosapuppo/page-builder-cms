@@ -21,6 +21,7 @@ import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { BlockPanel, MovingPanel, PagePanel, PartPanel } from "./panels/EditPanel.tsx";
 import { PART_NAMES, partOf, useOpenKind, useSession } from "./session.tsx";
+import { CustomCssPanel } from "./CustomCssPanel.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
 import type { SideTab, UiStore } from "./ui-store.ts";
 
@@ -33,6 +34,12 @@ const TAB_NAMES: Readonly<Record<Tab, string>> = { page: "Page", block: "Block" 
 export function openSiteStyle(ui: UiStore): void {
   ui.setState({ sidebarOpen: true, tray: "site-style" });
   afterRender(() => document.querySelector<HTMLElement>(".site-style [data-autofocus]")?.focus());
+}
+
+// Opens the site's custom CSS in the sidebar, as the site style opens.
+export function openCustomCss(ui: UiStore): void {
+  ui.setState({ sidebarOpen: true, tray: "custom-css" });
+  afterRender(() => document.querySelector<HTMLElement>(".custom-css [data-autofocus]")?.focus());
 }
 
 // A level below Page, back to it: the Page tab, whatever is selected, the
@@ -62,6 +69,13 @@ export function Sidebar() {
     return (
       <aside className="sidebar chrome" aria-label="Site style">
         <SiteStylePanel onClose={() => backToPage(ui, store.getState().selection, "data-site-style")} onHide={() => toggleSidebar(ui)} />
+      </aside>
+    );
+  }
+  if (tray === "custom-css") {
+    return (
+      <aside className="sidebar chrome" aria-label="Custom CSS">
+        <CustomCssPanel onClose={() => backToPage(ui, store.getState().selection, "data-custom-css")} onHide={() => toggleSidebar(ui)} />
       </aside>
     );
   }
@@ -141,13 +155,21 @@ function PageTab() {
       <Icon name="chevron-right" className="i i-xs" />
     </button>
   );
-  if (kind !== "page") return <PartPanel kind={kind} after={style} />;
+  const css = (
+    <button className="sb-link" type="button" data-custom-css="" aria-label="Custom CSS" aria-describedby={`${id}-css`} onClick={() => openCustomCss(ui)}>
+      <Icon name="code" />
+      <span><strong>Custom CSS</strong><small id={`${id}-css`}>Your own rules for every page</small></span>
+      <Icon name="chevron-right" className="i i-xs" />
+    </button>
+  );
+  if (kind !== "page") return <PartPanel kind={kind} after={<>{style}{css}</>} />;
   return (
     <PagePanel
       after={(
         <>
           {PART_KINDS.map((part) => <PartLink key={part} kind={part} />)}
           {style}
+          {css}
         </>
       )}
     />

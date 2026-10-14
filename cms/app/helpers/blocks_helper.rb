@@ -50,12 +50,15 @@ module BlocksHelper
     end
   end
 
-  # The attributes of a block's root element: its classes, then
+  # The attributes of a block's root element: its classes, the block's
+  # classes of the site's own last, then its anchor as its id, then
   # data-block-id, data-block-type and data-style (the stored style, for the
   # contract with the editor's renderer), then any data the partial adds.
   def block_root(block, classes, data: {}, **attributes)
+    props = block_props(block)
     {
-      class: classes.flatten.compact,
+      class: [ *classes.flatten.compact, *RenderPolicy.classes(props["className"]) ],
+      id: RenderPolicy.anchor(props["anchor"]),
       **attributes,
       data: {
         block_id: block["id"].to_s,

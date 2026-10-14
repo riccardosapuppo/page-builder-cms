@@ -8,7 +8,7 @@ import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
-  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
+  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
   MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
   SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
@@ -126,16 +126,27 @@ describe("the document's types match the schema", () => {
     expect(properties(schema).schemaVersion?.const).toBe(SCHEMA_VERSION);
   });
 
-  test("an image is an image reference, and so is each gallery item", () => {
-    expect(branch("image").props).toBe(def("imageRef"));
+  test("each gallery item is an image reference, and an image's props are one with the block's class and anchor", () => {
     const galleryItems = properties(branch("gallery").props).items as Node;
     expect(deref(galleryItems.items as Node)).toBe(def("imageRef"));
+    expect(branch("image").props).toBe(def("imageProps"));
     expect(Object.keys(properties(def("imageRef"))).sort()).toEqual([...IMAGE_REF_KEYS].sort());
-    // Exactly one source and exactly one of alt and decorative: the two
-    // if/then/else pairs ImageSource and ImageText spell out.
-    const pairs = (def("imageRef").allOf as Node[]).map((rule) => [(rule.if as Node).required, (rule.else as Node).required]);
+    expect(Object.keys(properties(def("imageProps"))).sort()).toEqual([...IMAGE_PROPS_KEYS].sort());
+    // Exactly one source and exactly one of alt and decorative, for both:
+    // the two if/then/else pairs ImageSource and ImageText spell out.
+    for (const name of ["imageRef", "imageProps"]) expect(def(name).$ref, name).toBe("#/$defs/imageRules");
+    const pairs = (def("imageRules").allOf as Node[]).map((rule) => [(rule.if as Node).required, (rule.else as Node).required]);
     expect(pairs).toEqual([[["mediaId"], ["url"]], [["decorative"], ["alt"]]]);
-    expect(properties(def("imageRef")).decorative?.const).toBe(true);
+    expect(def("decorative").const).toBe(true);
+  });
+
+  test("every block type takes the same class and anchor, by the schema's two definitions", () => {
+    for (const type of BLOCK_TYPES) {
+      const own = properties(branch(type).props);
+      expect(own.className?.$ref, type).toBe("#/$defs/className");
+      expect(own.anchor?.$ref, type).toBe("#/$defs/anchor");
+    }
+    expect(properties(schema).sticky?.const).toBe(true);
   });
 
   test("the column-width presets each count of columns may name", () => {

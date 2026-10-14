@@ -45,6 +45,11 @@ the server writes for them. The editor's half is
     no object); and limits the schema refuses (zero, negative, past the
     kind's most, a string, 100.5), with 100.0 and 1e2, which both read as
     the whole number 100.
+  - `site-own.json`: classes of the site's own and anchors on every kind
+    of block, written after the theme's classes and as the element's id,
+    and the values the renderers refuse: a theme's class in any case, a
+    name that is no class name, blanks other than one space, a name twice,
+    a class or an anchor that is no string, an anchor in upper case.
   - `free-colors.json`: colours of the site's own (`#rrggbb`) on every
     block that takes a background or a colour, on every device, beside
     slots, and the values the renderers refuse (upper case, three digits, a
@@ -55,6 +60,10 @@ the server writes for them. The editor's half is
   - `large-500.json`: a page of exactly 500 blocks, written by
     `node tools/gen-contract-500.ts` from the repository root (seeded, so
     every run writes the same bytes; `--check` compares).
+- [`custom-css/`](custom-css): the site's custom CSS, checked the same
+  way by the editor (`custom-css.ts`) and the CMS (`CustomCss`):
+  `cases.json`, each case's stylesheet and the problem both must find,
+  or none, and the stylesheet as the page draws it.
 - [`free-colors/`](free-colors): the stylesheet of a page's free colours
   (`/colors/<digest>.css` on the CMS, a style element on the canvas), for each case
   of `cases.json`: `<case>.css`, written by

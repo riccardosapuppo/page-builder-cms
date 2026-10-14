@@ -48,10 +48,11 @@ import { useShallow } from "zustand/react/shallow";
 import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
-import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
+import { OwnClassPrefix, type Decoration, type RawBlock, type RenderContext } from "../render/context.ts";
+import { CANVAS_CLASS_PREFIX } from "../shared/custom-css.ts";
 import { PageSections } from "../render/blocks.tsx";
-import { FreeColorsStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
-import { SitePart } from "../render/theme.tsx";
+import { CustomCssStyle, FreeColorsStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { SitePart, stickyHeader } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { PartKind } from "../storage/adapter.ts";
 import type { EditorState } from "../store/editor-store.ts";
@@ -784,7 +785,19 @@ function useSeamTip(tipRef: { current: HTMLSpanElement | null }, plusRef: { curr
 
 // ------------------------------------------------------------- the canvas
 
+// The canvas: the page being edited, where every class of the site's own
+// carries the canvas's prefix (OwnClassPrefix) and its custom CSS is
+// renamed to match, so the editor's stylesheets never reach a block named
+// like one of their classes (btn, menu).
 export function Canvas() {
+  return (
+    <OwnClassPrefix.Provider value={CANVAS_CLASS_PREFIX}>
+      <CanvasView />
+    </OwnClassPrefix.Provider>
+  );
+}
+
+function CanvasView() {
   const env = useEnv();
   const { store, ui } = env;
   const document = useEditor((s) => s.drag?.preview ?? s.document);
@@ -1075,7 +1088,7 @@ export function Canvas() {
                   <Invite />
                   <ThemeAround siteStyle={siteStyle} documents={[parts.footer]}><SitePart kind="footer" document={parts.footer} ctx={ctx} locked /></ThemeAround>
                 </>
-              ) : <PageRoot document={shown} ctx={ctx} siteStyle={siteStyle} landmark={false} parts={parts} lockedParts {...(width === undefined ? {} : { width })} />}
+              ) : <PageRoot document={shown} ctx={ctx} siteStyle={siteStyle} landmark={false} parts={parts} lockedParts editorControls={IN_PAGE_CONTROLS} {...(width === undefined ? {} : { width })} />}
           </div>
           <FitNow frame={frame} scale={scale} />
         </div>
@@ -1089,6 +1102,11 @@ export function Canvas() {
 
 // The editor's own controls on the page, whose clicks are their own.
 const EDITOR_CONTROLS = ".clamp, .ins, .ins-empty, .ins-slot-wrap, .seam, .seam-tip";
+
+// Everything of the editor's drawn inside the page root: the site's custom
+// CSS stops at them (@scope's lower boundary), so a rule of its own for
+// button or a never restyles the editor's keys on the canvas.
+const IN_PAGE_CONTROLS = ".clamp, .ins, .ins-big, .ins-empty, .ins-point, .ins-sec, .ins-slot-wrap, .ov, .ov-link, .seam, .seam-hover, .seam-tip, .chrome";
 
 // How near a seam between two sections the pointer must be for it to
 // answer, in the window's pixels.
@@ -1114,6 +1132,7 @@ function ThemeAround({ siteStyle, documents, children }: { siteStyle: SiteStyleC
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={documents} />
+      <CustomCssStyle css={siteStyle?.customCss} leave={IN_PAGE_CONTROLS} />
       <div className="sw">{children}</div>
     </div>
   );
@@ -1161,7 +1180,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
   const Element = kind;
   const editing = document.sections.length === 0
     ? null
-    : <Element className={`sw-${kind} sw-editing`} data-editing-part={kind}><div className="sw-main"><PageSections document={document} ctx={ctx} /></div></Element>;
+    : <Element className={`sw-${kind} sw-editing`} data-editing-part={kind} data-sticky={stickyHeader(kind, document) ? "" : undefined}><div className="sw-main"><PageSections document={document} ctx={ctx} /></div></Element>;
   const page = (
     <div className="sw-around" inert data-around-page="" aria-label={aroundTitle ? `${aroundTitle}, the page around the ${kind}` : undefined}>
       {around && around.sections.length > 0 ? <PageSections document={around} ctx={quiet} /> : <p className="around-none chrome">The page goes here.</p>}
@@ -1181,6 +1200,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={sized}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={[document, around, otherDocument]} />
+      <CustomCssStyle css={siteStyle?.customCss} leave={IN_PAGE_CONTROLS} />
       <div className="sw">
         {kind === "header" ? editing : other}
         {page}

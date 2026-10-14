@@ -56,7 +56,7 @@ class BlockDocumentTest < ActiveSupport::TestCase
     errors = BlockDocument.check(document).errors
 
     assert_equal [ [ "/sections/3/props/anchor", "uniqueAnchor", "/sections/3" ] ], errors.map { |e| [ e.pointer, e.keyword, e.block_pointer ] }
-    assert_equal "The anchor \"join\" is already used by another section.", errors.first.message
+    assert_equal "The anchor \"join\" is already used by another block.", errors.first.message
     document["sections"][3]["props"]["anchor"] = "join-again"
     assert BlockDocument.check(document).ok?
   end

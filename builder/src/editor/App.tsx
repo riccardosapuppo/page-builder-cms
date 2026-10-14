@@ -858,9 +858,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     if (!shown) return;
     const queue = styleQueue.current;
     queue.kept ??= shown;
-    ui.getState().setSiteStyle({ ...shown, palette: change.palette, typeScale: change.typeScale, letterWidth: change.letterWidth ?? shown.letterWidth });
+    // The whole style as it is to be, every part named: a change that
+    // names fewer parts keeps the others as shown, a change still waiting
+    // for its turn included, which this one then stands in for.
+    const whole = { palette: change.palette, typeScale: change.typeScale, letterWidth: change.letterWidth ?? shown.letterWidth, customCss: change.customCss ?? shown.customCss };
+    ui.getState().setSiteStyle({ ...shown, ...whole });
     setStyleSave({ phase: "saving" });
-    queue.next = change;
+    queue.next = whole;
     if (queue.busy) return;
     queue.busy = true;
     void (async () => {
@@ -895,15 +899,16 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
   // Closing the tab while edits are only here asks first: the page's or
   // the part's edits, text typed in a field and not handed over yet
-  // (handed over now, so the autosave counts it), and a site style on its
-  // way to the CMS or waiting behind the one that is.
+  // (handed over now, so the autosave counts it), a site style on its way
+  // to the CMS or waiting behind the one that is, and custom CSS kept as a
+  // draft because it does not keep to the site.
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       // A text the page refused, still held where it is written, is an
       // edit the server does not have either.
       const refused = !ui.getState().pending.deliver();
       const style = styleQueue.current;
-      const unsaved = refused || live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null;
+      const unsaved = refused || live.current.autosave?.getSnapshot().warnOnClose === true || style.busy || style.next !== null || ui.getState().customCssDraft !== null;
       if (unsaved) event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);

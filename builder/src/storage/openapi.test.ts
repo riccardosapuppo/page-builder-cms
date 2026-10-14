@@ -68,7 +68,7 @@ const MEDIA_ITEM = {
 const MEDIA_USE = { pages: arr, versions: arr } as const satisfies Shape<MediaUse>;
 const MEDIA_USE_PAGE = { id: num, title: str, slug: orNull(str) } as const satisfies Shape<MediaUse["pages"][number]>;
 const MEDIA_USE_VERSION = { pageId: num, number: num } as const satisfies Shape<MediaUse["versions"][number]>;
-const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
+const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, customCss: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr, letterWidths: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
@@ -104,7 +104,7 @@ const DRAFT_SAVE = { revision: num, document: obj, saveId: str } as const satisf
 const PUBLISH_REQUEST = { revision: optional(num) } as const satisfies Shape<PublishRequest>;
 const SCHEDULE_REQUEST = { revision: num, at: str } as const satisfies Shape<ScheduleRequest>;
 const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>;
-const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str) } as const satisfies Shape<SiteStyleChange>;
+const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str), customCss: optional(str) } as const satisfies Shape<SiteStyleChange>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
 // Not a body: the list's query parameters, compared with the operation's.

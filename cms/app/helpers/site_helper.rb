@@ -27,16 +27,25 @@ module SiteHelper
     tag.link(rel: "stylesheet", href: path) if path
   end
 
+  # The site's own stylesheet (CustomCss), after the theme's and the free
+  # colours', or nothing when it has none: its address names its version.
+  def custom_css_link(style = site_style)
+    css = CustomCss.scoped(style.custom_css)
+    tag.link(rel: "stylesheet", href: "/custom.css?v=#{CustomCss.digest(css)}") unless css.empty?
+  end
+
   # A part of the site around the page, in the element the layout gives it
   # (header or footer): its sections, drawn as a page's are, each block a
   # fragment of the cache where the page's are (@cache_blocks), the images
   # it names looked up apart from the page's. A part with no section draws
-  # nothing, not even its element.
+  # nothing, not even its element. A header whose document says it is
+  # sticky stays at the top of the window (data-sticky, site.css).
   def site_part(part, element)
     document = BlockDocument::Upgrade.call(part.document)
     return nil if Array(document["sections"]).empty?
 
-    content_tag(element, class: "sw-#{element}") do
+    sticky = element == :header && document["sticky"] == true
+    content_tag(element, class: "sw-#{element}", data: { sticky: ("" if sticky) }) do
       render_document(document, media: MediaResolver.for_document(document), cached: @cache_blocks)
     end
   end

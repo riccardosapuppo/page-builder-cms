@@ -24,7 +24,7 @@ test("closed groups say their values, and which are open is kept in this browser
   const sidebar = page.getByRole("complementary", { name: "Settings" });
   const head = (name: string) => sidebar.getByRole("button", { name, exact: true });
   await block(page, "h").click();
-  await expect(sidebar.locator(".grp-name")).toHaveText(["Text", "Size and color", "Alignment", "Shown on"]);
+  await expect(sidebar.locator(".grp-name")).toHaveText(["Text", "Size and color", "Alignment", "Shown on", "Advanced"]);
   await expect(head("Text")).toHaveAttribute("aria-expanded", "true");
   await expect(head("Size and color")).toHaveAccessibleDescription("Heading 2, theme color");
   await expect(head("Alignment")).toHaveAccessibleDescription("Left");
@@ -95,7 +95,7 @@ test("a value the CMS refuses opens the group that holds it, closed before, and 
   await expect(nameAndLink).toHaveAttribute("aria-expanded", "true");
   const anchor = sidebar.getByRole("textbox", { name: "Anchor id" });
   await expect(anchor).toHaveAttribute("aria-invalid", "true");
-  await expect(anchor).toHaveAccessibleDescription(/The anchor "join" is already used by another section\./);
+  await expect(anchor).toHaveAccessibleDescription(/The anchor "join" is already used by another block\./);
   // Closed by hand, it says it holds a refusal, and the panel lists it.
   await nameAndLink.click();
   await expect(nameAndLink).toHaveAccessibleDescription("Join Refused");

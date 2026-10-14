@@ -21,8 +21,9 @@ require "json"
 #      it does, that is a bug and it raises
 #   4. the tree: well-formed strings ("wellFormed"), finite numbers
 #      ("finite"), exact integers ("safeInteger"), unique block ids
-#      ("uniqueId"), unique section anchors ("uniqueAnchor"), unique field
-#      names in a form ("uniqueFieldName")
+#      ("uniqueId"), unique anchors ("uniqueAnchor"), unique field names
+#      in a form ("uniqueFieldName"), classes of the site's own that are
+#      not the theme's ("reservedClass")
 #   5. normalisation: an integral Float becomes an Integer (2.0 -> 2)
 # Then the schema runs on the normalised document.
 module BlockDocument
@@ -30,6 +31,16 @@ module BlockDocument
     MAX_NESTING = 64
     # 2^53 - 1, the largest integer both languages read exactly.
     MAX_SAFE_INTEGER = 9_007_199_254_740_991
+
+    # The class names the theme's stylesheets use (site.css, tokens.css): a
+    # block's class of the site's own is none of these and starts with none
+    # of the prefixes, which the theme's rules would otherwise reach. In any
+    # case. schema/tools/rules.ts holds the same two lists.
+    RESERVED_CLASS_NAMES = %w[col cols fill line sec site sun sw w].freeze
+    RESERVED_CLASS_PREFIXES = %w[
+      align- aspect- bg- cols- desktop- face- fg- gap- hide- line- pad- phone-
+      size- space- spacer- stack- sw- tablet- valign- w- widths-
+    ].freeze
 
     Error = Data.define(:pointer, :keyword, :message)
 
@@ -116,6 +127,9 @@ module BlockDocument
             value.each_with_index { |child, k| stack << [ child, "#{pointer}/#{k}", depth + 1 ] }
           else
             errors.concat(duplicate_field_names(value, pointer)) if value["type"] == "form"
+            if value["type"].is_a?(String) && value["props"].is_a?(Hash) && (reserved = reserved_class(value["props"]["className"]))
+              errors << Error.new(pointer: "#{pointer}/props/className", keyword: "reservedClass", message: "The class \"#{reserved}\" is one the theme uses: give the block a name of the site's own.")
+            end
             value.each do |key, child|
               unless key.is_a?(String) && well_formed?(key)
                 errors << Error.new(pointer: pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair.")
@@ -185,27 +199,49 @@ module BlockDocument
       errors
     end
 
-    # Section anchors, in page order: the second section with an anchor is
-    # the one reported. An anchor is the id of the section's element on the
+    # Anchors, in document order (a section, then its columns and their
+    # widgets, as block ids are read): the second block with an anchor is
+    # the one reported. An anchor is the id of the block's element on the
     # published page, and a link to #anchor goes to the first element with
-    # that id, so a second section with it could never be reached. Only
-    # sections carry an anchor, and sections are the page's own children.
+    # that id, so a second block with it could never be reached.
     def duplicate_anchors(document)
       return [] unless document.is_a?(Hash) && document["sections"].is_a?(Array)
 
       errors = []
       seen = {}
-      document["sections"].each_with_index do |section, k|
-        anchor = section["props"]["anchor"] if section.is_a?(Hash) && section["props"].is_a?(Hash)
-        next unless anchor.is_a?(String)
+      blocks = []
+      push_children = lambda do |list, pointer|
+        (list.size - 1).downto(0) { |k| blocks << [ list[k], "#{pointer}/#{k}" ] }
+      end
+      push_children.call(document["sections"], "/sections")
+      until blocks.empty?
+        block, pointer = blocks.pop
+        next unless block.is_a?(Hash)
 
-        if seen.key?(anchor)
-          errors << Error.new(pointer: "/sections/#{k}/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"#{anchor}\" is already used by another section.")
-        else
-          seen[anchor] = true
+        anchor = block["props"]["anchor"] if block["props"].is_a?(Hash)
+        if anchor.is_a?(String)
+          if seen.key?(anchor)
+            errors << Error.new(pointer: "#{pointer}/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"#{anchor}\" is already used by another block.")
+          else
+            seen[anchor] = true
+          end
         end
+        push_children.call(block["children"], "#{pointer}/children") if block["children"].is_a?(Array)
       end
       errors
+    end
+
+    # The first class of a block's className that is the theme's, or nil:
+    # the names are what lies between single spaces (a regexp, since
+    # split(" ") would split at any blank), lowercased in ASCII only, as the
+    # TypeScript twin reads them.
+    def reserved_class(class_name)
+      return nil unless class_name.is_a?(String)
+
+      class_name.split(/ /, -1).find do |name|
+        lower = name.downcase(:ascii)
+        RESERVED_CLASS_NAMES.include?(lower) || RESERVED_CLASS_PREFIXES.any? { |prefix| lower.start_with?(prefix) }
+      end
     end
 
     # Step 5: normalisation. Ruby keeps 2.0 a Float, which would render as

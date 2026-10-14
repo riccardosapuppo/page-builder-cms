@@ -14,6 +14,7 @@ require "json"
 require "action_view"
 
 cms = File.expand_path("../../../cms", __dir__)
+require File.join(cms, "lib/block_document/rules")
 require File.join(cms, "app/models/render_policy")
 require File.join(cms, "app/helpers/rich_text_helper")
 
@@ -27,6 +28,7 @@ output = {
   "videos" => input.fetch("videos").map { |provider, id| RenderPolicy.video_src(provider, id) },
   "providers" => input.fetch("videos").map { |provider, _| RenderPolicy.video_provider?(provider) },
   "anchors" => input.fetch("anchors").map { |value| RenderPolicy.anchor(value) },
+  "classes" => input.fetch("classes").map { |value| JSON.generate(RenderPolicy.classes(value)) },
   "maps" => input.fetch("maps").map { |latitude, longitude, zoom| RenderPolicy.map_src(latitude, longitude, zoom) },
   "decimals" => input.fetch("decimals").map { |number| RenderPolicy.decimal(number) },
   "richTexts" => input.fetch("richTexts").map { |doc| view.rich_text(doc).to_str }

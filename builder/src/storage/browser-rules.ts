@@ -14,6 +14,7 @@
 //
 // browser-rules.test.ts holds the lists, the limits and the words to the
 // Ruby they follow.
+import { checkCustomCss } from "../shared/custom-css.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
 import type { FieldError, ImageType } from "./adapter.ts";
 import { escapePointer } from "../shared/validate.ts";
@@ -232,9 +233,10 @@ export function mediaRefs(document: unknown): Array<[string, string]> {
 // SiteStyle's checks of a whole style: every slot of the palette named,
 // each with one of its tones, nothing else; and a type scale of the
 // choices. At /palette/<slot> and /typeScale.
-// The letter width is checked only when the change names one: without it
-// the style keeps its own.
-export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unknown, slots: Readonly<Record<string, readonly string[]>>, typeScales: readonly string[], letterWidth?: unknown, letterWidths: readonly string[] = []): FieldError[] {
+// The letter width and the custom CSS are checked only when the change
+// names them: without one the style keeps its own. The CSS as the CMS
+// checks it (SiteStyle, CustomCss.check), at /customCss with its line.
+export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unknown, slots: Readonly<Record<string, readonly string[]>>, typeScales: readonly string[], letterWidth?: unknown, letterWidths: readonly string[] = [], customCss?: unknown): FieldError[] {
   const errors: FieldError[] = [];
   for (const [slot, tones] of Object.entries(slots)) {
     if (!Object.hasOwn(palette, slot)) errors.push(fieldError(`/palette/${escapePointer(slot)}`, "blank", WORDS.slotMissing));
@@ -246,5 +248,9 @@ export function siteStyleErrors(palette: Record<string, unknown>, typeScale: unk
   }
   if (typeof typeScale !== "string" || !typeScales.includes(typeScale)) errors.push(fieldError("/typeScale", "inclusion", WORDS.typeScale));
   if (letterWidth !== undefined && (typeof letterWidth !== "string" || !letterWidths.includes(letterWidth))) errors.push(fieldError("/letterWidth", "inclusion", WORDS.letterWidth));
+  if (typeof customCss === "string") {
+    const problem = checkCustomCss(customCss);
+    if (problem) errors.push(fieldError("/customCss", "invalid", `line ${problem.line}: ${problem.message}`));
+  }
   return errors;
 }

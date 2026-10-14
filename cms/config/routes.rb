@@ -54,6 +54,8 @@ Rails.application.routes.draw do
   # The stylesheet of a page's free colours, by its digest: a page's
   # address never has a slash or a dot, so it is no page.
   get "colors/:digest.css", to: "free_colors#show", constraints: { digest: /[0-9a-f]{64}/ }, format: false
+  # The site's own stylesheet, the version its address names.
+  get "custom.css", to: "custom_css#show", format: false
   root "pages#home"
   get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page
 

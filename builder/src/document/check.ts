@@ -25,7 +25,7 @@ import {
 } from "../shared/validate.ts";
 import { blockName, blockWithPlace, ITEM_NAMES, plural, TYPE_NAMES } from "./labels.ts";
 import { canContain, childTypes, containersFor, type ContainerType } from "./nesting.ts";
-import { duplicateId, locate, pointerOf, type ParentId } from "./tree.ts";
+import { allBlocks, duplicateId, locate, pointerOf, type ParentId } from "./tree.ts";
 
 export type Reason =
   // The block, container or item is not on the page.
@@ -171,16 +171,16 @@ export function checkUniqueIds(doc: PageDocument): CommandError | null {
 
 // Anchors the page holds twice once the change is made. The rule is the
 // server's own (duplicateAnchors), so the error is where the server puts
-// it: at the second section in page order. The sentence names the section
-// that had the anchor before, one the change did not touch. Anchors sit on
-// sections only, so this reads the page's sections and nothing under them.
+// it: at the second block in document order. The sentence names the block
+// that had the anchor before, one the change did not touch.
 export function checkUniqueAnchors(doc: PageDocument, changed: ReadonlySet<string> = new Set()): CommandError | null {
   const [twice] = duplicateAnchors(doc);
   if (!twice) return null;
-  const anchor = doc.sections[Number(twice.pointer.split("/")[2])]?.props.anchor;
-  const holders = doc.sections.filter((section) => section.props.anchor === anchor);
-  const owner = holders.find((section) => !changed.has(section.id)) ?? holders[0];
-  const name = owner ? blockName(doc, owner.id) : "another section";
+  const located = [...allBlocks(doc)];
+  const anchor = located.find((found) => `${pointerOf(found.path)}/props/anchor` === twice.pointer)?.block.props.anchor;
+  const holders = located.map((found) => found.block).filter((block) => block.props.anchor === anchor);
+  const owner = holders.find((block) => !changed.has(block.id)) ?? holders[0];
+  const name = owner ? blockName(doc, owner.id) : "another block";
   return refusal("duplicateAnchor", `The anchor #${anchor ?? ""} is already used by ${name}.`, [{ ...twice, layer: "rules" }]);
 }
 

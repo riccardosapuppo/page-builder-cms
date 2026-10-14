@@ -24,6 +24,10 @@
       "type": "string",
       "maxLength": 160
     },
+    "sticky": {
+      "description": "The site's header's: it stays at the top of the window while the page scrolls under it. Only true is stored; a page's or a footer's is not read.",
+      "const": true
+    },
     "sections": {
       "type": "array",
       "maxItems": 100,
@@ -101,11 +105,8 @@
               "type": "string",
               "maxLength": 60
             },
-            "anchor": {
-              "description": "In-page link target: #anchor scrolls to the section.",
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9-]{0,63}$"
-            },
+            "anchor": { "$ref": "#/$defs/anchor" },
+            "className": { "$ref": "#/$defs/className" },
             "columnWidths": { "$ref": "#/$defs/columnWidthsToken" },
             "stack": { "$ref": "#/$defs/stackToken" }
           }
@@ -151,7 +152,11 @@
       "properties": {
         "props": {
           "type": "object",
-          "additionalProperties": false
+          "additionalProperties": false,
+          "properties": {
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
         },
         "children": {
           "type": "array",
@@ -175,7 +180,9 @@
           "properties": {
             "level": { "type": "integer", "minimum": 1, "maximum": 4 },
             "text": { "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
-            "href": { "$ref": "#/$defs/href" }
+            "href": { "$ref": "#/$defs/href" },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -190,7 +197,9 @@
           "required": ["doc"],
           "additionalProperties": false,
           "properties": {
-            "doc": { "$ref": "#/$defs/pmDoc" }
+            "doc": { "$ref": "#/$defs/pmDoc" },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -200,7 +209,7 @@
     "imageBlock": {
       "type": "object",
       "properties": {
-        "props": { "$ref": "#/$defs/imageRef" },
+        "props": { "$ref": "#/$defs/imageProps" },
         "children": { "$ref": "#/$defs/noChildren" },
         "style": { "$ref": "#/$defs/imageStyle" }
       }
@@ -214,7 +223,9 @@
           "additionalProperties": false,
           "properties": {
             "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
-            "href": { "$ref": "#/$defs/href" }
+            "href": { "$ref": "#/$defs/href" },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -226,7 +237,11 @@
       "properties": {
         "props": {
           "type": "object",
-          "additionalProperties": false
+          "additionalProperties": false,
+          "properties": {
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
         },
         "children": { "$ref": "#/$defs/noChildren" },
         "style": { "$ref": "#/$defs/lineStyle" }
@@ -240,7 +255,9 @@
           "required": ["size"],
           "additionalProperties": false,
           "properties": {
-            "size": { "$ref": "#/$defs/spaceToken" }
+            "size": { "$ref": "#/$defs/spaceToken" },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -260,7 +277,9 @@
               "minItems": 1,
               "maxItems": 24,
               "items": { "$ref": "#/$defs/imageRef" }
-            }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -283,7 +302,9 @@
               "$ref": "#/$defs/line",
               "type": "string",
               "maxLength": 120
-            }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           },
           "allOf": [
             {
@@ -312,7 +333,9 @@
             "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
             "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
             "zoom": { "type": "integer", "minimum": 1, "maximum": 19 },
-            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 }
+            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -332,7 +355,9 @@
               "enum": ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"]
             },
             "title": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
-            "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 300 }
+            "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 300 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -348,7 +373,9 @@
           "additionalProperties": false,
           "properties": {
             "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 500 },
-            "attribution": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 }
+            "attribution": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -376,7 +403,9 @@
                   "answer": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 2000 }
                 }
               }
-            }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -405,7 +434,9 @@
               "$ref": "#/$defs/paragraph",
               "type": "string",
               "maxLength": 500
-            }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -420,7 +451,9 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 }
+            "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -443,7 +476,9 @@
               "minItems": 1,
               "maxItems": 12,
               "items": { "$ref": "#/$defs/menuLink" }
-            }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
           }
         },
         "children": { "$ref": "#/$defs/noChildren" },
@@ -503,19 +538,37 @@
     },
 
     "imageRef": {
-      "description": "One image: from the media library ({mediaId}) or from another site ({url}), never both. It has alt text, or is marked decorative and has none. The image widget's props and each gallery item have this shape.",
+      "description": "One image: from the media library ({mediaId}) or from another site ({url}), never both. It has alt text, or is marked decorative and has none. Each gallery item has this shape, and the image widget's props have it with the block's class and anchor (imageProps).",
+      "$ref": "#/$defs/imageRules",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "mediaId": { "$ref": "#/$defs/mediaId" },
         "url": { "$ref": "#/$defs/imageUrl" },
         "alt": { "$ref": "#/$defs/line", "type": "string", "maxLength": 300 },
-        "decorative": {
-          "description": "Only true is stored: an image that adds nothing for a screen reader. Absent means the image needs alt text.",
-          "const": true
-        }
-      },
-      "$comment": "Exactly one source and exactly one of alt or decorative, written with if/then/else rather than oneOf. The 'properties: {x: true}' beside each 'required' only declares the key for ajv's strictRequired; it checks nothing.",
+        "decorative": { "$ref": "#/$defs/decorative" }
+      }
+    },
+    "imageProps": {
+      "description": "The image widget's props: one image as imageRef has it, and the block's class and anchor.",
+      "$ref": "#/$defs/imageRules",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mediaId": { "$ref": "#/$defs/mediaId" },
+        "url": { "$ref": "#/$defs/imageUrl" },
+        "alt": { "$ref": "#/$defs/line", "type": "string", "maxLength": 300 },
+        "decorative": { "$ref": "#/$defs/decorative" },
+        "className": { "$ref": "#/$defs/className" },
+        "anchor": { "$ref": "#/$defs/anchor" }
+      }
+    },
+    "decorative": {
+      "description": "Only true is stored: an image that adds nothing for a screen reader. Absent means the image needs alt text.",
+      "const": true
+    },
+    "imageRules": {
+      "$comment": "Exactly one source and exactly one of alt or decorative, written with if/then/else rather than oneOf, for imageRef and imageProps alike. The 'properties: {x: true}' beside each 'required' only declares the key for ajv's strictRequired; it checks nothing.",
       "allOf": [
         {
           "if": { "type": "object", "properties": { "mediaId": true }, "required": ["mediaId"] },
@@ -538,6 +591,16 @@
     "blockId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "anchor": {
+      "description": "In-page link target: #anchor scrolls to the block, whose element on the page has it as its id. Unique on the page, and none in the site's header or footer: application rules.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "className": {
+      "description": "CSS classes of the site's own, which its custom CSS can style: one to eight names, each a letter then up to 39 letters, digits, hyphens or underscores, one space between two. The names the theme uses are refused by an application rule.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,39}(?: [A-Za-z][A-Za-z0-9_-]{0,39}){0,7}$"
     },
     "mediaId": {
       "description": "The public id of a media library item. The renderers resolve it to a file address.",

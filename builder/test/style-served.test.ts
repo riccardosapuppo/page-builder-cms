@@ -7,7 +7,7 @@ import { expect, test } from "vitest";
 import type { PageSummary, SiteStyle } from "../src/storage/adapter.ts";
 import { servedWithParts, servedWithStyle } from "./style-served.ts";
 
-const style = (typeScale: string, updatedAt: string | null): SiteStyle => ({ palette: { primary: "site-sea" }, typeScale, letterWidth: "normal", updatedAt, choices: { palette: { primary: [{ color: "site-sea" }] }, typeScales: [{ name: "balanced" }, { name: "strong" }], letterWidths: [{ name: "normal" }] } }) as unknown as SiteStyle;
+const style = (typeScale: string, updatedAt: string | null): SiteStyle => ({ palette: { primary: "site-sea" }, typeScale, letterWidth: "normal", customCss: "", updatedAt, choices: { palette: { primary: [{ color: "site-sea" }] }, typeScales: [{ name: "balanced" }, { name: "strong" }], letterWidths: [{ name: "normal" }] } }) as unknown as SiteStyle;
 
 // A CMS whose style a contract changes at the given serves (counted from
 // 1) and puts back before the next read: each such serve draws the page in

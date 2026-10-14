@@ -11,7 +11,7 @@ import type { BlockFieldError, FieldError, PartKind } from "../../storage/adapte
 import { MAX_ITEMS } from "../../widgets/menu/panel.tsx";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
-import { describedBy, ErrorList, TextField, useFieldClaims } from "../controls.tsx";
+import { describedBy, ErrorList, TextField, Toggle, useFieldClaims } from "../controls.tsx";
 import { runCommand } from "../act.ts";
 import { useEditor, useEnv, useRun, useUi, type EditorEnv } from "../context.tsx";
 import { deviceOf } from "../device-style.ts";
@@ -52,6 +52,7 @@ export function PartPanel({ kind, after }: { kind: PartKind; after?: ReactNode }
       <div className="sb-body sb-body-pad part-panel">
         <p>The {kind} is drawn on every page, {where} its sections. Build it as you build a page: sections, columns and blocks. Logo and Menu are in Insert, under Site.</p>
         <p>{live ? `Publish puts it on every page at once.` : `Publish puts it on every page shown in this browser.`} {published ? "" : `Until then, every page shows the ${kind} the site started with.`}</p>
+        {kind === "header" && <StickyHeader />}
         {back && (
           <button
             className="btn btn-secondary btn-block"
@@ -67,6 +68,29 @@ export function PartPanel({ kind, after }: { kind: PartKind; after?: ReactNode }
         {after}
       </div>
     </>
+  );
+}
+
+// Whether the header stays at the top of the window while the page
+// scrolls under it: a setting of the header's own document, published with
+// it, one step of history.
+function StickyHeader() {
+  const sticky = useEditor((s) => s.document.sticky === true);
+  const { store } = useEnv();
+  const run = useRun();
+  const hint = useId();
+  return (
+    <div className="field part-sticky">
+      <Toggle
+        label="Sticky header"
+        checked={sticky}
+        blockId={null}
+        field="/sticky"
+        describedById={hint}
+        onChange={(on) => run(makeSetPage(store.getState().document, { sticky: on ? true : REMOVE }))}
+      />
+      <p className="hint" id={hint}>{sticky ? "Stays at the top of the window while the page scrolls under it." : "Scrolls away with the page. On, it stays at the top of the window."}</p>
+    </div>
   );
 }
 

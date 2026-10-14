@@ -35,6 +35,7 @@ const STYLE: SiteStyle = {
   palette: Object.fromEntries(SLOTS.map((slot) => [slot, tokens["site-tones"][slot].default])),
   typeScale: "balanced",
   letterWidth: "normal",
+  customCss: "",
   updatedAt: null,
   choices: { palette: {}, typeScales: [], letterWidths: [] },
 };

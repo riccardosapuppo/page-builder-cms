@@ -2,13 +2,16 @@
 // twin of block_root, block_props, block_style and prop_text in
 // cms/app/helpers/blocks_helper.rb.
 //
-// A root carries its classes, then data-block-id, data-block-type and
+// A root carries its classes, the block's classes of the site's own last
+// (each with the prefix of where it is drawn, OwnClassPrefix), then its
+// anchor as its id, then data-block-id, data-block-type and
 // data-style (the stored style, canonically, which the contract compares),
 // then the data its block type adds. A value that is null or undefined
 // writes no attribute, as Rails leaves out a nil.
-import { createElement, type ReactNode } from "react";
+import { createElement, useContext, type ReactNode } from "react";
 import { isObject } from "../document/json.ts";
-import type { Decoration, RawBlock } from "./context.ts";
+import { OwnClassPrefix, type Decoration, type RawBlock } from "./context.ts";
+import { anchor, siteClasses } from "./policy.ts";
 import { dataStyle } from "./style.ts";
 
 export function blockProps(block: RawBlock): Record<string, unknown> {
@@ -47,14 +50,18 @@ interface BlockRootProps {
   classes: ReadonlyArray<string | null | undefined | false | readonly string[]>;
   // data-<name>, by name without the prefix.
   data?: Readonly<Record<string, string | number | null | undefined>>;
-  // Other attributes of the root (a section's id, a spacer's aria-hidden).
+  // Other attributes of the root (a spacer's aria-hidden).
   attributes?: Readonly<Record<string, string | null | undefined>>;
   decoration: Decoration | undefined;
   children?: ReactNode;
 }
 
 export function BlockRoot({ as = "div", block, classes, data = {}, attributes = {}, decoration, children }: BlockRootProps) {
-  const own: Record<string, unknown> = { className: classNames(...classes) };
+  const stored = blockProps(block);
+  const prefix = useContext(OwnClassPrefix);
+  const own: Record<string, unknown> = { className: classNames(...classes, siteClasses(stored.className).map((name) => `${prefix}${name}`)) };
+  const id = anchor(stored.anchor);
+  if (id !== null) own.id = id;
   for (const [name, value] of Object.entries(attributes)) if (value !== null && value !== undefined) own[name] = value;
   const allData: Record<string, string | number | null | undefined> = {
     "block-id": idText(block.id),

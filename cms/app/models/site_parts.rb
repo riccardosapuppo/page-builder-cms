@@ -62,11 +62,11 @@ module SiteParts
 
   # The words of the part's own rules.
   FORM = "A header or footer holds no form: a form's answers belong to the page it is on."
-  ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs."
+  ANCHOR = "A header or footer block takes no anchor: it would be on every page, where the page's own blocks have theirs."
 
   # The checks of a part's document: a page's (BlockDocument.check), then
-  # the part's own rules: no form, and no section anchor, since the header
-  # and footer are drawn in every page beside its own sections, whose
+  # the part's own rules: no form, and no anchor on any block, since the
+  # header and footer are drawn in every page beside its own blocks, whose
   # anchors their own are not checked against.
   def check(document)
     result = BlockDocument.check(document)
@@ -77,11 +77,20 @@ module SiteParts
     errors.empty? ? result : BlockDocument::Result.new(document: nil, errors: errors)
   end
 
-  # The pointer of every section anchor of a document.
+  # The pointer of every anchor of a document's blocks: a section's, then
+  # its columns' and their widgets'.
   def anchors(document)
-    Array(document["sections"]).each_with_index.filter_map do |section, s|
-      "/sections/#{s}/props/anchor" if section.is_a?(Hash) && section["props"].is_a?(Hash) && section["props"].key?("anchor")
+    found = []
+    walk = lambda do |blocks, pointer|
+      Array(blocks).each_with_index do |block, k|
+        next unless block.is_a?(Hash)
+
+        found << "#{pointer}/#{k}/props/anchor" if block["props"].is_a?(Hash) && block["props"].key?("anchor")
+        walk.call(block["children"], "#{pointer}/#{k}/children")
+      end
     end
+    walk.call(document["sections"], "/sections")
+    found
   end
 
   # The pointer of every form block of a document.

@@ -14,7 +14,6 @@ import { WIDGET_TYPES } from "../shared/document.ts";
 import { WIDGET_RENDERERS } from "../widgets/registry.ts";
 import { BlockRoot, blockProps, blockStyle, classNames } from "./block-root.tsx";
 import type { BlockRenderProps, Decoration, RawBlock, RenderContext } from "./context.ts";
-import { anchor } from "./policy.ts";
 import { classValue, columnWidths, freeColorData, stack, styleClasses, visibilityClasses } from "./style.ts";
 
 const SECTIONS: readonly string[] = ["section"];
@@ -75,7 +74,6 @@ function Section({ block, ctx, decoration }: BlockRenderProps) {
       as="section"
       block={block}
       classes={["sec", styleClasses(style, "background"), styleClasses(style, "spaceAbove"), styleClasses(style, "spaceBelow"), visibilityClasses(style)]}
-      attributes={{ id: anchor(props.anchor) }}
       data={{ columns: columns.length, "column-widths": widths, stack: stacks, ...freeColorData(style, "background") }}
       decoration={decoration}
     >

@@ -16,7 +16,11 @@ accordion, divider, spacer, form, logo and menu), with rich text written
 where it stands on the canvas, undo and redo, a tablet's and a phone's own
 values, a media library and a form; and it builds the site's header and
 footer the same way, from sections, columns and blocks dragged where they
-go, parts of the site that every page shows once published. Rails keeps each page as one JSON document that a
+go, parts of the site that every page shows once published, the header
+staying at the top of the window if asked. Site style sets the site's
+palette, colours of its own included, its type scale and its letter
+width; any block may take CSS classes and an anchor of its own, which
+the site's custom CSS styles, inside the site and nowhere else. Rails keeps each page as one JSON document that a
 single schema describes, with one draft and its versions; publishes it now
 or at a set time; draws it on the server and caches it; and keeps what
 visitors send from its form. The same editor also runs with no server at
@@ -279,9 +283,10 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   saves itself, versions, a preview, a publish and a schedule, and every
   published page shows a publish at its next visit, its ETag and cached
   HTML keyed on the parts' published versions. Until a part publishes,
-  every page draws its starter (`cms/config/parts`). Cost: a change is
-  live only once published, and a part holds no form and no section
-  anchor. [The note](docs/decisions/header-and-footer-are-parts.md), which
+  every page draws its starter (`cms/config/parts`). The header may stay
+  at the top of the window while the page scrolls (Sticky header, in its
+  Page tab). Cost: a change is live only once published, and a part holds
+  no form and no anchor. [The note](docs/decisions/header-and-footer-are-parts.md), which
   replaced [the header and footer kept as the site style is](docs/decisions/header-and-footer-kept-as-the-site-style.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
@@ -699,12 +704,21 @@ Each of these is a choice, and the reason is given with it.
   project and open every question of who may see and change what. So the API
   has no authentication, and the servers listen on 127.0.0.1 only
   ([the decision](docs/decisions/no-authentication-one-address.md)).
-- **No themes to swap and no free CSS.** A page's look is values from the
-  design's tokens (a palette, a type scale and a letter width, set once in
-  Site style), never a stylesheet a person writes. A colour of the site's
-  own, `#rrggbb`, is one such value: a palette slot or a block may name
-  one, and the page draws it from a stylesheet the CMS writes for the
-  colours it names (`/colors/<digest>.css`), never from an inline style.
+- **No themes to swap, and the site's own CSS stays inside the site.** A
+  page's look is values from the design's tokens (a palette, a type scale
+  and a letter width, set once in Site style). A colour of the site's own,
+  `#rrggbb`, is one such value: a palette slot or a block may name one,
+  and the page draws it from a stylesheet the CMS writes for the colours
+  it names (`/colors/<digest>.css`), never from an inline style. What the
+  tokens leave out, the site's custom CSS gives (the owner's decision, 14
+  October 2026): one stylesheet, written in the editor beside Site style,
+  drawn on every page after the theme's inside an `@scope (.site)` rule
+  (`/custom.css`). It reaches a block by the CSS classes and the anchor
+  the block's Advanced group gives it. It is checked to keep to the site
+  (no rule left open, no brace that closes nothing, no `@import`), the
+  theme's own class names are refused to a block, and on the canvas its
+  rules stop at the editor's controls. A block's own settings stay
+  tokens.
 - **No plugins, no translation of the interface, no live co-editing.** The
   interface is in one language, en-US. Two tabs get a conflict to settle, not
   a merge ([the decision](docs/decisions/one-draft-saved-at-a-revision.md)).

@@ -187,6 +187,8 @@ interface StyleRecord {
   typeScale: string;
   // Absent from a record kept before the choice existed: the default.
   letterWidth?: string;
+  // Absent from a record kept before it existed: none.
+  customCss?: string;
   updatedAt: Time;
 }
 
@@ -1116,27 +1118,29 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
 
     async setSiteStyle(style: SiteStyleChange, options) {
       checkSignal(options, "Changing the site style");
-      const body = wire({ palette: style.palette, typeScale: style.typeScale, letterWidth: style.letterWidth }) as Record<string, unknown>;
+      const body = wire({ palette: style.palette, typeScale: style.typeScale, letterWidth: style.letterWidth, customCss: style.customCss }) as Record<string, unknown>;
       const check = new BodyCheck(body);
       check.object("palette", { required: true });
       check.string("typeScale", { required: true });
       check.string("letterWidth");
+      check.string("customCss");
       if (check.errors.length > 0) return invalid("invalid_request", check.errors);
       const choices = siteStyleChoices();
       const slots = Object.fromEntries(Object.entries(choices.palette).map(([slot, tones]) => [slot, tones.map((tone) => tone.color)]));
-      const errors = siteStyleErrors(body.palette as Record<string, unknown>, body.typeScale, slots, choices.typeScales.map((scale) => scale.name), body.letterWidth, choices.letterWidths.map((width) => width.name));
+      const errors = siteStyleErrors(body.palette as Record<string, unknown>, body.typeScale, slots, choices.typeScales.map((scale) => scale.name), body.letterWidth, choices.letterWidths.map((width) => width.name), body.customCss);
       if (errors.length > 0) return invalid("invalid_request", errors);
       return write(["site"], async (tx): Promise<Outcome<SiteStyle, Invalid>> => {
         const site = tx.objectStore("site");
         const stored = (await request(site.get("style"))) as StyleRecord | undefined;
         const palette = body.palette as Record<string, string>;
         const typeScale = body.typeScale as string;
-        // Without a letter width the style keeps its own.
+        // Without a letter width or custom CSS the style keeps its own.
         const letterWidth = (body.letterWidth as string | undefined) ?? styleOf(stored ?? null).letterWidth;
+        const customCss = (body.customCss as string | undefined) ?? styleOf(stored ?? null).customCss;
         // A change that changes nothing keeps its time, as a record saved
         // unchanged keeps its updated_at.
-        if (stored && sameJson(stored.palette, palette) && stored.typeScale === typeScale && styleOf(stored).letterWidth === letterWidth) return { ok: true, value: styleOf(stored) };
-        const record: StyleRecord = { key: "style", palette, typeScale, letterWidth, updatedAt: now() };
+        if (stored && sameJson(stored.palette, palette) && stored.typeScale === typeScale && styleOf(stored).letterWidth === letterWidth && styleOf(stored).customCss === customCss) return { ok: true, value: styleOf(stored) };
+        const record: StyleRecord = { key: "style", palette, typeScale, letterWidth, customCss, updatedAt: now() };
         await request(site.put(record));
         return { ok: true, value: styleOf(record) };
       });
@@ -1198,6 +1202,7 @@ function styleOf(stored: StyleRecord | null): SiteStyle {
     palette: stored?.palette ?? defaults.palette,
     typeScale: stored?.typeScale ?? defaults.typeScale,
     letterWidth: stored?.letterWidth ?? defaults.letterWidth,
+    customCss: stored?.customCss ?? "",
     updatedAt: stored?.updatedAt ?? null,
     choices: siteStyleChoices(),
   };

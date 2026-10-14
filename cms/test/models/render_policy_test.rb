@@ -1,6 +1,14 @@
 require "test_helper"
 
 class RenderPolicyTest < ActiveSupport::TestCase
+  test "a className gives the names that are class names and not the theme's, in order, once each" do
+    assert_equal %w[hero big], RenderPolicy.classes("hero big hero")
+    assert_equal %w[hero big], RenderPolicy.classes("hero  big")
+    assert_equal %w[hero], RenderPolicy.classes("sw-btn hero Hide-desktop sec fill")
+    assert_equal [], RenderPolicy.classes("2col hero! café a	b")
+    [ nil, 1, {}, [], "" ].each { |value| assert_equal [], RenderPolicy.classes(value), value.inspect }
+  end
+
   test "the links a visitor may follow are kept as written" do
     [
       "https://example.com", "https://tide.example.org:8443/times?day=1&tz=UTC#now", "http://example.com/a",

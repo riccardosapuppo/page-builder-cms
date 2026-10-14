@@ -286,7 +286,7 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       <input
         type="text"
         className={icon || prefix ? undefined : "input"}
-        spellCheck={rules?.kind === "href" || rules?.kind === "anchor" || rules?.kind === "slug" ? false : undefined}
+        spellCheck={rules?.kind === "href" || rules?.kind === "anchor" || rules?.kind === "classes" || rules?.kind === "slug" ? false : undefined}
         list={suggestions && suggestions.length > 0 ? `${id}-list` : undefined}
         {...common}
         onKeyDown={(event) => {

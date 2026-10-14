@@ -927,7 +927,7 @@ paths:
     put:
       operationId: setSiteStyle
       summary: Change the site style
-      description: The whole style, every palette slot named, each with one of its curated tones. The letter width when given; without it, the style keeps its own.
+      description: The whole style, every palette slot named, each with one of its curated tones or a colour of the site's own. The letter width and the custom CSS when given; without one, the style keeps its own. CSS that does not keep to the site (an unclosed rule, a brace that closes nothing, @import) is refused at /customCss, with its line.
       tags: [site-style]
       requestBody:
         required: true
@@ -944,6 +944,8 @@ paths:
                   type: string
                 letterWidth:
                   type: string
+                customCss:
+                  $ref: '#/components/schemas/CustomCss'
       responses:
         '200':
           description: Changed.
@@ -1385,10 +1387,14 @@ components:
       type: object
       additionalProperties:
         type: string
+    CustomCss:
+      description: The site's own stylesheet, drawn inside the site on every page after the theme's (in an @scope rule whose root is the page root, linked as /custom.css). Empty for none.
+      type: string
+      maxLength: 50000
     SiteStyle:
       type: object
       additionalProperties: false
-      required: [palette, typeScale, letterWidth, updatedAt, choices]
+      required: [palette, typeScale, letterWidth, customCss, updatedAt, choices]
       properties:
         palette:
           $ref: '#/components/schemas/Palette'
@@ -1397,6 +1403,8 @@ components:
         letterWidth:
           description: How wide the Headings typeface is drawn.
           type: string
+        customCss:
+          $ref: '#/components/schemas/CustomCss'
         updatedAt:
           description: Null until the style is first changed.
           type: [string, 'null']

@@ -1,0 +1,32 @@
+{
+  "about": "Custom CSS checked the same way by the editor (builder/src/shared/custom-css.ts) and the CMS (cms/app/models/custom_css.rb): each case's stylesheet, or its text repeated, and the problem both must find, or null. See contract/README.md.",
+  "cases": [
+    { "name": "nothing", "css": "", "problem": null },
+    { "name": "rules and an at-rule", "css": ".hero-title { letter-spacing: .02em; }\n@media (width < 600px) {\n  .hero-title { font-size: 2rem; }\n}\n:scope { --lede: 1.2; }", "problem": null },
+    { "name": "braces in strings and comments", "css": ".a::before { content: \"}\"; }\n/* } { */\n.b::after { content: '{'; }", "problem": null },
+    { "name": "an escaped brace, a quote escaped in a string", "css": ".a\\{b { color: red; }\n.c::before { content: \"\\\"}\"; }", "problem": null },
+    { "name": "a string's line continued", "css": ".a::before { content: \"one \\\ntwo\"; }", "problem": null },
+    { "name": "an address in quotes, a brace in it", "css": ".a { background: url(\"/media/x}.png\"); }", "problem": null },
+    { "name": "an address with no quotes", "css": ".a { background: url( /media/x.png ); }", "problem": null },
+    { "name": "a word that ends in url", "css": ".a { --my-url(: 1; }", "problem": null },
+    { "name": "a brace that closes nothing", "css": ".a { color: red; } }\nbody { display: none; }", "problem": { "message": "This } closes nothing.", "line": 1 } },
+    { "name": "a rule not closed", "css": ".a { color: red;\n.b { color: blue; }", "problem": { "message": "This { is not closed: end the rule with }.", "line": 1 } },
+    { "name": "a comment not closed", "css": ".a {}\n/* never", "problem": { "message": "A comment is not closed: end it with */.", "line": 2 } },
+    { "name": "a string past its line", "css": ".a { content: \"x\n}", "problem": { "message": "A string runs past the end of its line: close its quote.", "line": 1 } },
+    { "name": "a string not closed", "css": ".a { content: 'x \\", "problem": { "message": "A string is not closed.", "line": 1 } },
+    { "name": "an import", "css": ".a {}\n@IMPORT url(x.css);", "problem": { "message": "@import is not allowed: the page loads only its own stylesheets.", "line": 2 } },
+    { "name": "a brace in an address with no quotes", "css": ".a {\n  background: url(x}.png);\n}", "problem": { "message": "A url( holds a brace: put the address in quotes.", "line": 2 } },
+    { "name": "an address not closed", "css": ".a { background: url(x.png }", "problem": { "message": "A url( is not closed: end it with ).", "line": 1 } },
+    { "name": "a form feed ends a string, as the browser reads it: the braces after it are no string's", "css": ".a { content: \"\f} } body { display: none; } /*\"*/ }", "problem": { "message": "A string runs past the end of its line: close its quote.", "line": 1 } },
+    { "name": "a carriage return ends a string the same way", "css": ".a { content: '\r} } body { display: none; } /*'*/ }", "problem": { "message": "A string runs past the end of its line: close its quote.", "line": 1 } },
+    { "name": "CR LF, CR and a form feed each end a line", "css": ".a { color: red; }\r\n.b { color: blue; }\r.c {\f}\n.d {", "problem": { "message": "This { is not closed: end the rule with }.", "line": 5 } },
+    { "name": "a string's line continued by CR LF", "css": ".a::before { content: \"one \\\r\ntwo\"; }", "problem": null },
+    { "name": "an address whose name is written with an escape is an address all the same: a brace in it", "css": "a { background: u\\72l({); } } [class~=\"chrome\"] { display: none; }", "problem": { "message": "A url( holds a brace: put the address in quotes.", "line": 1 } },
+    { "name": "a name escaped whole, one blank after its code", "css": "a { background: \\75 rl({); }", "problem": { "message": "A url( holds a brace: put the address in quotes.", "line": 1 } },
+    { "name": "a ) after a backslash does not end an address", "css": "a { background: url(x\\){); } } [x] { color: red; }", "problem": { "message": "A url( holds a brace: put the address in quotes.", "line": 1 } },
+    { "name": "an import whose name is written with an escape", "css": "@\\69mport url(/x.css);", "problem": { "message": "@import is not allowed: the page loads only its own stylesheets.", "line": 1 } },
+    { "name": "an address holding a ) after a backslash, and nothing else", "css": "a { background: url(/a\\)b.png); }", "problem": null },
+    { "name": "too long", "repeat": { "text": "a", "times": 50001 }, "problem": { "message": "Keep it under 50,000 characters.", "line": 1 } },
+    { "name": "as long as it may be", "repeat": { "text": "a", "times": 50000 }, "problem": null }
+  ]
+}

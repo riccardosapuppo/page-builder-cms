@@ -6,6 +6,7 @@
     "empty.json": "da64b1119befdc62fd6ed691cc5bd3a6a8e199ff2449e21998a9d2542cdd9f61",
     "free-colors.json": "65776155ea3be6b876de6ca06533798dcdc5664ecf0586f63ec9f274ca1435d4",
     "large-500.json": "3f5c33b8c838e7d999e5bda48cd421835fc89195593938ecba7899b74ee5fa5a",
+    "site-own.json": "2644746c74a9e7b1d0bcb9e82c3d23a35bbc9862f67eed6dcbc2ab6c2d5757d8",
     "traps-form.json": "07d2f4539895538d511faea86f89ed09b1005d93b6dab1c8b7940fedc9613b19",
     "traps-media.json": "a0689b8131c7ecaba894de4d9f2f4b15667decdacfa3b74654985d7ac044050a",
     "traps-site.json": "ee756d81b212800bc7a209c693c4f3aae4ecc60a9791f17b9322cd172cfd74dd",
@@ -17,6 +18,7 @@
     "empty.html": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "free-colors.html": "eb2609a8b8936ca1ada4eab905ddfc9a10c50a733b64620288844cd7e9101ef3",
     "large-500.html": "35cf074a83c4fbf6638e9106d292f3eefae79c7b9ff5a8b2a39afcef95b7c3bc",
+    "site-own.html": "bc0d53272192e2bb120eeb568a7f000e3381f8c3ca427d499bd82fe059e47f36",
     "traps-form.html": "9db7e3b9223c5d7607708497e1b9433a43479861a8babb1a7070627f729bd13d",
     "traps-media.html": "6db9387e1bb472e41fc3752eccda601a5c4cfbcdd9ec2c7f00aa688acf283dd4",
     "traps-site.html": "4d0bd36798833d1d70653026ccad510ecd607bfea1d64a347db693c025806be3",
@@ -24,11 +26,11 @@
     "traps-text.html": "e3ba952de547c0b3be38efe47980b33e9639f04e74ea82ff8b3c16ebc36224b6"
   },
   "renderer": {
-    "cms/app/helpers/blocks_helper.rb": "31bca745d4f0133cc51f35ab401c033bcc559a908fd9e7be06dc91a3cde7d575",
+    "cms/app/helpers/blocks_helper.rb": "7ff964735189bc1947e4dc25a3995c94a5d48fbca7174e68a87bb0f00c129c45",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
     "cms/app/models/block_style.rb": "903c0b2c39ffaa6fde80d2bcacf6b81f2b7fa2ecde026fb3d1da65bf51f3bb86",
     "cms/app/models/form_block.rb": "a66401ff4783c7a20ba28822fb9615ae6b3810e6fbc4d21adbec9e183bdeab91",
-    "cms/app/models/render_policy.rb": "7f97f23b2d7176ba9bd8ae150d1eea8b82d408cf62b6ef8d26504c3157b60f22",
+    "cms/app/models/render_policy.rb": "71311966127dac558447073abc6752c71f686580bb60d67e50ff0f295dba357e",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "364f74b2db68d4ba89661630a77bc4d350feb6d614336dfd6943dd8690de35c9",
     "cms/app/views/blocks/_block.html.erb": "a6b0e6a36d350854e468a49a6d818ea719af5fbcaafb05cdc56e3efac93a30f5",
@@ -44,13 +46,13 @@
     "cms/app/views/blocks/_map.html.erb": "98723942344b3b8b256b8608cfa7c5bf5c138ca2a8181a631b9713403eb3a444",
     "cms/app/views/blocks/_menu.html.erb": "202c8ce2414919d1d2fc57579b1da54a791b3bec292f43f7fd5ac18ae145a678",
     "cms/app/views/blocks/_quote.html.erb": "d5c25a69987506bd090920e10afb3ba0641b25fa0c5ce9565b3b6322158d084e",
-    "cms/app/views/blocks/_section.html.erb": "8f33dcbd27d313e389b9ae617974ef5fc4cae64c61f73fd07cd86b616b176558",
+    "cms/app/views/blocks/_section.html.erb": "78a9530122cd29beee6b6da19f6eb944f6167ac300cf50a4918d8969efc47843",
     "cms/app/views/blocks/_spacer.html.erb": "90496c09e14e5331c4f1b1ae848cdfdbee5df1a7d75832fbbae5c76fbdbee249",
     "cms/app/views/blocks/_text.html.erb": "de530b36ed7d5f1c3d911addd4089b429122e346b3f440c48318d318b1836c81",
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
     "cms/lib/site_theme/token_css.rb": "4a557a84109d31b8e0184df101a2ba5fbbb685e0885e1c38dcd6e7efdfe2d1e5",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
-    "schema/block-document.schema.json": "615c254c0b2a2d8e3cb05feed35b0756d9d618270f41a590075d5572942aef66",
+    "schema/block-document.schema.json": "ba83dcb60b69e35f7a8600f898020858ad55a13635284a33478a2c9b4789f3c5",
     "schema/icons.svg": "86273c3534a9d322caa64654f5dbc2034b237e8edb5f786491261a0468796562"
   }
 }

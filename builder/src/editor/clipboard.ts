@@ -50,13 +50,15 @@ export function pasteText(env: Env, text: string, region: Region, kind: PageKind
   return runCommand(env, (doc) => makePaste(doc, block, selection, env.newId), region);
 }
 
-// A header's or footer's section takes no anchor (PART_ANCHOR,
-// ../shared/validate.ts): a section pasted into one leaves its anchor
-// behind, as a section pasted into a page leaves one the page uses.
+// A header's or footer's block takes no anchor (PART_ANCHOR,
+// ../shared/validate.ts): a block pasted into one leaves its anchor, and
+// those of the blocks under it, behind, as a block pasted into a page
+// leaves one the page uses.
 function withoutAnchor(block: Block): Block {
-  if (block.type !== "section" || block.props.anchor === undefined) return block;
-  const { anchor: _anchor, ...props } = block.props;
-  return { ...block, props };
+  const { anchor, ...props } = block.props as Record<string, unknown>;
+  const children = (block.children as readonly Block[]).map(withoutAnchor);
+  if (anchor === undefined && children.every((child, k) => child === block.children[k])) return block;
+  return { ...block, props: anchor === undefined ? block.props : props, children } as Block;
 }
 
 // The menu's copy: the browser's clipboard as well as this tab's.

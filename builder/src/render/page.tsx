@@ -10,8 +10,9 @@
 // (./theme.tsx); the canvas draws them locked, with nothing of the
 // editor's on their blocks. Without them it draws the sections alone, as
 // the render contract compares them.
-import { memo, useMemo } from "react";
-import type { RenderContext } from "./context.ts";
+import { memo, useContext, useMemo } from "react";
+import { OwnClassPrefix, type RenderContext } from "./context.ts";
+import { canvasCss, checkCustomCss, scopedCss } from "../shared/custom-css.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
 import { PageSections } from "./blocks.tsx";
 import { freeColorsCss, freeColorsFor } from "./free-colors-css.ts";
@@ -23,6 +24,8 @@ export interface SiteStyleChoice {
   palette: Readonly<Record<string, string>>;
   typeScale: string;
   letterWidth: string;
+  // The site's own stylesheet; absent or "" for none.
+  customCss?: string;
   choices: {
     palette: Readonly<Record<string, ReadonlyArray<{ color: string }>>>;
     typeScales: ReadonlyArray<{ name: string }>;
@@ -60,6 +63,19 @@ export const FreeColorsStyle = memo(
   (a, b) => a.palette === b.palette && a.documents.length === b.documents.length && a.documents.every((document, at) => document === b.documents[at]),
 );
 
+// The site's own stylesheet (../shared/custom-css.ts), inside the site,
+// after the free colours; nothing when there is none, or when it does not
+// keep to the site. The published page links the CMS's /custom.css
+// instead. On the canvas, its classes renamed as the canvas names them
+// (OwnClassPrefix), and `leave`: the editor's own controls drawn in the
+// page, which the rules must not reach (@scope's lower boundary).
+export const CustomCssStyle = memo(function CustomCssStyle({ css, leave }: { css: string | undefined; leave?: string | undefined }) {
+  const prefix = useContext(OwnClassPrefix);
+  if (!css || checkCustomCss(css) !== null) return null;
+  const scoped = scopedCss(prefix === "" ? css : canvasCss(css, prefix), leave);
+  return scoped === "" ? null : <style data-custom-css="">{scoped}</style>;
+});
+
 interface PageRootProps {
   document: unknown;
   ctx: RenderContext;
@@ -74,15 +90,19 @@ interface PageRootProps {
   // and marked as the site's parts) on the canvas.
   parts?: SiteParts | null;
   lockedParts?: boolean;
+  // The editor's controls in the page, which the site's custom CSS leaves
+  // alone (CustomCssStyle); absent on a page a visitor sees.
+  editorControls?: string;
 }
 
-export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false }: PageRootProps) {
+export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false, editorControls }: PageRootProps) {
   const sections = <PageSections document={document} ctx={ctx} />;
   const quiet = useMemo<RenderContext>(() => ({ media: ctx.media }), [ctx.media]);
   const partCtx = lockedParts ? quiet : ctx;
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={width === undefined ? undefined : { width: `${width}px` }}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={[document, parts?.header, parts?.footer]} />
+      <CustomCssStyle css={siteStyle?.customCss} leave={editorControls} />
       <div className="sw">
         {parts && <SitePart kind="header" document={parts.header} ctx={partCtx} locked={lockedParts} />}
         {landmark ? <main>{sections}</main> : <div className="sw-main">{sections}</div>}

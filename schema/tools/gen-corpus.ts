@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { MAX_NESTING } from "./rules.ts";
 
 const CORPUS = join(dirname(fileURLToPath(import.meta.url)), "..", "corpus");
-const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor", "uniqueFieldName"]);
+const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor", "uniqueFieldName", "reservedClass"]);
 
 // The corpus is built by mutation, so the tree is handled as plain JSON.
 type J = any;
@@ -355,6 +355,20 @@ valid("section-anchors-apart-from-ids", "an anchor may be another block's id, si
   section("plain", [column("plain-1", [])]),
   section("plain-again", [column("plain-again-1", [])]),
 ]));
+valid("classes-and-anchors", "every block may have classes of the site's own and an anchor: a section, a column and every kind of widget; eight names at most, each up to 40 characters, upper case and underscores too; an image's beside its image, a gallery's items with neither", doc("Classes and anchors", [
+  section("ca", [
+    block("ca-1", "column", { className: "side", anchor: "side" }, [
+      block("ca-h", "heading", { level: 2, text: "Prices", className: "lede Big_2", anchor: "prices" }),
+      block("ca-img", "image", { url: "https://example.com/swim.jpg", alt: "A swimmer at dawn", className: "photo", anchor: "photo" }),
+      block("ca-div", "divider", { className: "rule-x" }),
+      block("ca-gal", "gallery", { items: [{ url: "https://example.com/a.jpg", alt: "The bay" }], className: "strip", anchor: "strip" }),
+      block("ca-btn", "button", { label: "Join", href: "#prices", className: `${"n".repeat(40)}` }),
+    ]),
+  ], { anchor: "top", className: "hero a b c d e f g" }),
+]));
+valid("header-sticky", "the site's header may stay at the top of the window: sticky is true, or absent", { ...doc("Header", [
+  section("hd", [column("hd-1", [block("hd-logo", "logo", { name: "Slack Water" })])]),
+]), sticky: true });
 valid("rich-text", "the rich-text subset: nested lists three deep, every mark, hard break with marks, empty paragraph, numbered list attrs", doc("Rich text", [
   section("rt", [column("rt-1", [text("rt-text", rich(
     p(t("Plain, "), t("bold", [bold]), t(", "), t("italic", [italic]), t(", "), t("both", [bold, italic]), t(" and "), t("a link", [link("https://example.com/")]), t(".")),
@@ -579,7 +593,7 @@ invalid("tree-section-five-columns", "a section has at most four columns", `${HE
   at(d, HERO).children.push(column("c3", []), column("c4", []), column("c5", []));
 });
 invalid("tree-heading-with-children", "widgets hold no blocks", `${H}/children`, "maxItems", (d) => { at(d, H).children.push(text("child", rich(p(t("x"))))); });
-invalid("tree-column-props", "a column has no properties: its width comes from the section's columnWidths", `${COL}/props/width`, "additionalProperties", (d) => { at(d, COL).props.width = 50; });
+invalid("tree-column-props", "a column's props are its class and anchor alone: its width comes from the section's columnWidths", `${COL}/props/width`, "additionalProperties", (d) => { at(d, COL).props.width = 50; });
 invalid("tree-section-widths-for-three-on-two", "a preset of three parts on a section of two columns", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "2:1:1"; });
 invalid("tree-section-widths-free-ratio", "column widths are presets, not any ratio", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "60:40"; });
 invalid("tree-section-widths-equal-written", "equal widths are the absence of a preset, never written", `${HERO}/props/columnWidths`, "enum", (d) => { at(d, HERO).props.columnWidths = "equal"; });
@@ -591,6 +605,23 @@ invalid("section-anchor-duplicate", "section anchors are unique on the page (a r
 invalid("section-anchor-duplicate-first-changed", "the second section with an anchor, in page order, is the one refused, whichever of the two was changed", `${JOIN}/props/anchor`, "uniqueAnchor", (d) => {
   at(d, HERO).props.anchor = "join";
 });
+invalid("block-anchor-duplicate", "anchors are unique across every block of the page (a rule): a link to #top would never reach a button with it, the second in document order", `${BTN}/props/anchor`, "uniqueAnchor", (d) => {
+  at(d, BTN).props.anchor = "top";
+});
+invalid("block-anchor-duplicate-section-second", "the second in document order is refused: a section's anchor after a heading's", `${JOIN}/props/anchor`, "uniqueAnchor", (d) => {
+  at(d, H).props.anchor = "join";
+});
+invalid("column-anchor-pattern", "a column's anchor is an anchor like a section's", `${COL}/props/anchor`, "pattern", (d) => { at(d, COL).props.anchor = "Side"; });
+invalid("class-name-mark", "a class name is a letter then letters, digits, hyphens or underscores", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = "hero!"; });
+invalid("class-name-digit-first", "a class name starts with a letter", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = "2col"; });
+invalid("class-name-two-spaces", "one space between two names, no more", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = "hero  big"; });
+invalid("class-name-nine", "eight names at most", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = "a b c d e f g h i"; });
+invalid("class-name-too-long", "a name has at most 40 characters", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = "n".repeat(41); });
+invalid("class-name-empty", "no class is no className, never an empty one", `${H}/props/className`, "pattern", (d) => { at(d, H).props.className = ""; });
+invalid("class-name-theme", "a class may not be one the theme uses (a rule): hide-desktop of the site's own would hide the block", `${H}/props/className`, "reservedClass", (d) => { at(d, H).props.className = "lede hide-desktop"; });
+invalid("class-name-theme-any-case", "nor one of them in another case", `${COL}/props/className`, "reservedClass", (d) => { at(d, COL).props.className = "SW-Inner"; });
+invalid("gallery-item-class", "a gallery's items are images alone: a class is the gallery's", `${GAL}/props/items/0/className`, "additionalProperties", (d) => { at(d, GAL).props.items[0].className = "photo"; });
+invalid("document-sticky-false", "sticky is true or absent, never false", "/sticky", "const", (d) => { d.sticky = false; });
 invalid("tree-section-label-too-long", "a section label has at most 60 characters", `${HERO}/props/label`, "maxLength", (d) => { at(d, HERO).props.label = "x".repeat(61); });
 invalid("tree-section-unknown-prop", "section props are closed", `${HERO}/props/columns`, "additionalProperties", (d) => { at(d, HERO).props.columns = 2; });
 invalid("tree-section-widths-fit-for-two-on-three", "a fit preset of two parts on a section of three columns", `${SITE}/props/columnWidths`, "enum", (d) => { at(d, SITE).props.columnWidths = "fit:1"; });
@@ -611,7 +642,7 @@ invalid("style-pixel-value", "block settings never use pixels", `${COL}/style/ba
 invalid("style-tone-not-slot", "blocks name palette slots, not tones", `${H}/style/base/color`, "enum", (d) => { at(d, H).style.base.color = "site-sea"; });
 invalid("style-key-not-for-type", "a divider has no text size", `${DIV}/style/base/textSize`, "additionalProperties", (d) => { at(d, DIV).style.base.textSize = "large"; });
 invalid("style-typeface-unknown", "a typeface is the body's or the headings', never a font's name", `${H}/style/base/typeface`, "enum", (d) => { at(d, H).style.base.typeface = "Archivo"; });
-invalid("style-unknown-key", "no free CSS: only the listed settings", `${H}/style/base/fontFamily`, "additionalProperties", (d) => { at(d, H).style.base.fontFamily = "Archivo"; });
+invalid("style-unknown-key", "a block's style is its listed settings, by token: CSS of the site's own is its custom CSS", `${H}/style/base/fontFamily`, "additionalProperties", (d) => { at(d, H).style.base.fontFamily = "Archivo"; });
 invalid("style-empty-override", "an override with nothing in it is not stored", `${COL}/style/phone`, "minProperties", (d) => { at(d, COL).style.phone = {}; });
 invalid("style-desktop-key", "desktop is base: there is no desktop key", `${H}/style/desktop`, "additionalProperties", (d) => { at(d, H).style.desktop = { textSize: "body" }; });
 invalid("style-missing-base", "base is required", `${H}/style`, "required", (d) => { delete at(d, H).style.base; });

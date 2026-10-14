@@ -12,6 +12,7 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     assert_equal "site-signal", json.dig("palette", "primary")
     assert_equal "balanced", json["typeScale"]
     assert_equal "normal", json["letterWidth"]
+    assert_equal "", json["customCss"]
     assert_nil json["updatedAt"]
     assert_equal [ [ "site-signal", "Signal", "#C2352B" ], [ "site-sea", "Sea", "#1E5B4C" ], [ "site-harbour", "Harbour", "#1D4E6F" ], [ "site-kelp", "Kelp", "#3B5A23" ], [ "site-basalt", "Basalt", "#4A4F57" ] ],
                  json.dig("choices", "palette", "primary").map { |t| t.values_at("color", "label", "hex") }
@@ -61,5 +62,32 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_equal [ [ "/palette/text", "inclusion" ] ], error_pointers
+  end
+
+  test "the site's custom CSS is kept and stays; a change that does not name it keeps it, and \"\" takes it out" do
+    css = ".hero { letter-spacing: .02em; }\n.price::after { content: \"}\"; }"
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => css }
+
+    assert_response :ok
+    assert_equal css, json["customCss"]
+    api :put, "/api/site-style", { "palette" => palette(primary: "site-harbour"), "typeScale" => "balanced" }
+    api :get, "/api/site-style"
+    assert_equal css, json["customCss"]
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => "" }
+    assert_equal "", json["customCss"]
+  end
+
+  test "custom CSS that does not keep to the site is refused at /customCss, with its line, and the style keeps its own" do
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => ".a { color: red; }" }
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => ".a { color: red; }\n}\nbody { display: none; }" }
+
+    assert_response :unprocessable_content
+    assert_equal [ [ "/customCss", "invalid" ] ], error_pointers
+    assert_equal "line 2: This } closes nothing.", json.fetch("errors").first["message"]
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => 7 }
+    assert_response :unprocessable_content
+    assert_equal [ [ "/customCss", "type" ] ], error_pointers
+    api :get, "/api/site-style"
+    assert_equal ".a { color: red; }", json["customCss"]
   end
 end

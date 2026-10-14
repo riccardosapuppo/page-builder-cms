@@ -1,14 +1,17 @@
 // The rules the renderer applies to every address it writes into a page:
-// links, image sources, and the players and maps a visitor can load. The
-// twin of cms/app/models/render_policy.rb, rule for rule; the render
-// contract and the random-page agreement check hold the two to the same
-// output, and twins.rails.test.ts runs both on the same generated values.
+// links, image sources, and the players and maps a visitor can load; and to
+// a block's anchor and classes of the site's own. The twin of
+// cms/app/models/render_policy.rb, rule for rule; the render contract and
+// the random-page agreement check hold the two to the same output, and
+// twins.rails.test.ts runs both on the same generated values.
 //
 // The schema already refuses a document with a bad address, so on a valid
 // document these rules change nothing. They are the last check before the
 // page or the canvas shows the value, for a document that reached the
 // renderer some other way: an address they refuse is dropped, never
 // repaired, and the text around it stays.
+
+import { reservedClass } from "../../../schema/tools/rules.ts";
 
 // The characters an address may hold after its scheme and host, as the
 // schema's href lists them: no space, no control character, no quote or
@@ -63,9 +66,18 @@ export function isVideoProvider(provider: unknown): provider is string {
   return typeof provider === "string" && VIDEO.has(provider);
 }
 
-// A section's anchor, the id #anchor links scroll to, or null.
+// A block's anchor, the id #anchor links scroll to, or null.
 export function anchor(value: unknown): string | null {
   return typeof value === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(value) ? value : null;
+}
+
+// A block's classes of the site's own, as the page writes them: the names
+// between single spaces of its className that are class names and not the
+// theme's (../../../schema/tools/rules.ts), in order, once each.
+export function siteClasses(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  const names = value.split(" ").filter((name) => /^[A-Za-z][A-Za-z0-9_-]{0,39}$/.test(name) && reservedClass(name) === null);
+  return [...new Set(names)];
 }
 
 // The map address for a point and a zoom level, or null: an area about 800

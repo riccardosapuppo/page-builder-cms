@@ -54,7 +54,7 @@ test("while a block is dragged its settings wait: what moves and where from, its
   expect(within(panel()).getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeTruthy();
   // Its groups, closed, each with its value, none a key or a field.
   const groups = [...panel().querySelectorAll(".grp")].map((group) => [group.querySelector(".grp-name")?.textContent, group.querySelector(".grp-sum-words")?.textContent]);
-  expect(groups).toEqual([["Button", "Join"], ["Colors", "Buoy, theme text"], ["Alignment", "Left"], ["Shown on", "Every device"]]);
+  expect(groups).toEqual([["Button", "Join"], ["Colors", "Buoy, theme text"], ["Alignment", "Left"], ["Shown on", "Every device"], ["Advanced", "No class or anchor"]]);
   expect(within(panel()).queryAllByRole("textbox")).toHaveLength(0);
   expect(within(panel()).queryAllByRole("button")).toHaveLength(0);
   expect(panel().querySelectorAll("[aria-expanded]")).toHaveLength(0);
@@ -133,7 +133,7 @@ test("a page's Page tab leads to the header and the footer, each saying where it
   const opened: number[] = [];
   const kit = editorKit({ document: page(), session: { current, parts: PARTS, openPage: async (id) => { opened.push(id); return null; } } });
   kit.render(<Sidebar />);
-  expect([...screen.getByRole("tabpanel").querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Header", "Footer", "Site style"]);
+  expect([...screen.getByRole("tabpanel").querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Header", "Footer", "Site style", "Custom CSS"]);
   const said = (name: string) => document.getElementById(screen.getByRole("button", { name }).getAttribute("aria-describedby")!)?.textContent;
   expect(said("Header")).toBe("Changes not published yet");
   expect(said("Footer")).toBe("Not published yet: every page shows the starting one");
@@ -152,13 +152,44 @@ test("a header's Page tab says it is on every page and how it goes live, and lea
   expect(panel.textContent).toContain("On every page, not published yet");
   expect(panel.textContent).toContain("Until then, every page shows the header the site started with.");
   // None of a page's own settings (its title and address, its search
-  // results): a part is seen only around a page. The site style is still a
-  // click away.
+  // results): a part is seen only around a page. The site style and the
+  // custom CSS are still a click away.
   for (const field of ["Title", "Description"]) expect(within(panel).queryByLabelText(field), field).toBeNull();
-  expect([...panel.querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Site style"]);
+  expect([...panel.querySelectorAll(".sb-link")].map((b) => b.getAttribute("aria-label"))).toEqual(["Site style", "Custom CSS"]);
   fireEvent.click(within(panel).getByRole("button", { name: "Back to Winter series" }));
   await act(async () => {});
   expect(opened).toEqual([7]);
+});
+
+test("a header's Page tab has Sticky header, which keeps it at the top of the window: one step of its history each way; a footer's has none", () => {
+  const header = { id: 4, kind: "header" as const, slug: null, home: false, published: null, revision: 3, links: { preview: "/preview/4", live: null } };
+  const kit = editorKit({ document: page(), session: { current: header, parts: PARTS } });
+  const { unmount } = kit.render(<Sidebar />);
+  const sticky = () => screen.getByRole("switch", { name: "Sticky header" }) as HTMLInputElement;
+  expect(sticky().checked).toBe(false);
+  fireEvent.click(sticky());
+  expect(kit.store.getState().document.sticky).toBe(true);
+  expect(kit.lastCommand()?.label).toBe("Made the header stay at the top");
+  expect(sticky().checked).toBe(true);
+  fireEvent.click(sticky());
+  expect("sticky" in kit.store.getState().document).toBe(false);
+  expect(kit.lastCommand()?.label).toBe("Let the header scroll with the page");
+  unmount();
+  const footer = { ...header, id: 5, kind: "footer" as const };
+  editorKit({ document: page(), session: { current: footer, parts: PARTS } }).render(<Sidebar />);
+  expect(screen.queryByRole("switch", { name: "Sticky header" })).toBeNull();
+});
+
+test("Custom CSS opens a level below the Page tab, beside Site style, and leads back to it", async () => {
+  const kit = editorKit({ document: page(), session: { current } });
+  kit.render(<Sidebar />);
+  fireEvent.click(screen.getByRole("button", { name: "Custom CSS" }));
+  expect(kit.ui.getState().tray).toBe("custom-css");
+  const panel = screen.getByRole("complementary", { name: "Custom CSS" });
+  expect(within(panel).getByRole("heading", { name: "Custom CSS" })).toBeTruthy();
+  fireEvent.click(within(panel).getByRole("button", { name: "Back to Page" }));
+  expect(kit.ui.getState().tray).toBe("edit");
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Custom CSS" })));
 });
 
 test("over the site style too, the sidebar's close button hides the sidebar, which comes back on the site style", async () => {

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "title": "Header",
+  "sections": [
+    {
+      "id": "hd",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "hd-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "hd-logo",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ],
+  "sticky": true
+}

@@ -372,7 +372,12 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
       return value<SiteStyle>(await call("getSiteStyle", {}, undefined, options), 200, "getSiteStyle");
     },
     async setSiteStyle(style: SiteStyleChange, options) {
-      const body = { palette: style.palette, typeScale: style.typeScale, ...(style.letterWidth === undefined ? {} : { letterWidth: style.letterWidth }) };
+      const body = {
+        palette: style.palette,
+        typeScale: style.typeScale,
+        ...(style.letterWidth === undefined ? {} : { letterWidth: style.letterWidth }),
+        ...(style.customCss === undefined ? {} : { customCss: style.customCss }),
+      };
       return settle<SiteStyle, Invalid>(await call("setSiteStyle", {}, body, options), 200, ["invalid"], "setSiteStyle");
     },
     async getSite(options) {

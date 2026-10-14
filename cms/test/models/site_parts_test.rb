@@ -3,7 +3,7 @@ require "test_helper"
 # The site's header and footer, pages of their own kind: made once, with
 # their starter as the first draft; drawn as the starter until published,
 # then as the published version; held to a page's rules and two of their
-# own, no form and no section anchor.
+# own, no form and no anchor on any block.
 class SitePartsTest < ActiveSupport::TestCase
   def form_block(id)
     { "id" => id, "type" => "form", "props" => { "items" => [ { "name" => "email", "kind" => "email", "label" => "Email", "required" => true } ],
@@ -45,6 +45,17 @@ class SitePartsTest < ActiveSupport::TestCase
     assert_equal [ [ "/sections/0/children/0/children/1", "part" ], [ "/sections/0/props/anchor", "part" ] ], result.errors.map { |e| [ e.pointer, e.keyword ] }
     assert_equal "/sections/0", result.errors.last.block_pointer
     assert_equal SiteParts::ANCHOR, result.errors.last.message
+    assert_predicate BlockDocument.check(document), :ok?, "the same document is a valid page"
+  end
+
+  test "no block of a part takes an anchor, a widget's or a column's any more than a section's, each refused in document order" do
+    document = page_document(title: "Header", widgets: [ heading_block("h", "Header").tap { |block| block["props"]["anchor"] = "top" } ])
+    document["sections"][0]["children"][0]["props"]["anchor"] = "side"
+
+    result = SiteParts.check(document)
+
+    assert_equal [ "/sections/0/children/0/props/anchor", "/sections/0/children/0/children/0/props/anchor" ], result.errors.map(&:pointer)
+    assert_equal [ SiteParts::ANCHOR ], result.errors.map(&:message).uniq
     assert_predicate BlockDocument.check(document), :ok?, "the same document is a valid page"
   end
 

@@ -8,7 +8,7 @@ import type { CommandError } from "../document/check.ts";
 import type { BlockFieldError } from "../storage/adapter.ts";
 
 // What kind of value a field holds, for the sentence about a broken pattern.
-export type FieldKind = "line" | "paragraph" | "href" | "imageUrl" | "anchor" | "slug" | "number" | "other";
+export type FieldKind = "line" | "paragraph" | "href" | "imageUrl" | "anchor" | "classes" | "slug" | "number" | "other";
 
 export interface FieldRules {
   kind?: FieldKind;
@@ -23,6 +23,7 @@ const PATTERNS: Readonly<Record<FieldKind, string>> = {
   href: "Use a full address (https://…), a path on this site (/…), #anchor, mailto: or tel:.",
   imageUrl: "Use an https:// address, or a path on this site (/…).",
   anchor: "Lowercase letters, digits and hyphens, starting with a letter.",
+  classes: "Up to eight names, each a letter then letters, digits, hyphens or underscores, at most 40 long.",
   slug: "Lowercase letters, digits and hyphens.",
   number: "Write a number.",
   other: "This value is not accepted here.",

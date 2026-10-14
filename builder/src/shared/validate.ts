@@ -90,7 +90,7 @@ export function validateBlockSchema(value: unknown): BlockValidation {
 // anchors theirs are not checked against. The server's words
 // (SiteParts::FORM, SiteParts::ANCHOR).
 export const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
-export const PART_ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs.";
+export const PART_ANCHOR = "A header or footer block takes no anchor: it would be on every page, where the page's own blocks have theirs.";
 
 // The pointer of every form block of a document, in page order, as the
 // server's SiteParts.forms finds them.
@@ -99,10 +99,19 @@ export function partForms(document: PageDocument): string[] {
     column.children.flatMap((block, w) => (block.type === "form" ? [`/sections/${s}/children/${c}/children/${w}`] : []))));
 }
 
-// The pointer of every section anchor of a document, as the server's
-// SiteParts.anchors finds them.
+// The pointer of every anchor of a document's blocks, a section's, then
+// its columns' and their widgets', as the server's SiteParts.anchors finds
+// them.
 export function partAnchors(document: PageDocument): string[] {
-  return document.sections.flatMap((section, s) => (section.props.anchor === undefined ? [] : [`/sections/${s}/props/anchor`]));
+  const found: string[] = [];
+  const walk = (blocks: readonly Block[], pointer: string): void => {
+    blocks.forEach((block, k) => {
+      if (block.props.anchor !== undefined) found.push(`${pointer}/${k}/props/anchor`);
+      walk(block.children, `${pointer}/${k}/children`);
+    });
+  };
+  walk(document.sections, "/sections");
+  return found;
 }
 
 // Every fault of a part's own rules, in the server's order (SiteParts.check):

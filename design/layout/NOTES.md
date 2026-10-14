@@ -428,6 +428,16 @@ language of the layout's own controls. The panel of 9 October is gone,
 and the menu is a Menu block of the header, its links set in its panel;
 `builder/e2e/site-parts.spec.ts` drives the parts.
 
+**The owner's choice of 14 October 2026: the site's own classes, anchors
+and CSS, and a sticky header.** Every block's panel ends with Advanced,
+which the mock does not draw: the block's CSS classes and its anchor id
+(a section's anchor stays in Name and link, as drawn). Custom CSS opens a
+level below the Page tab, beside Site style and drawn as it is, with its
+way back: one field of code, its problem said with its line. The
+header's Page tab has Sticky header, a switch in the layout's language.
+All three are drawn in the layout's own controls; the mock's shots stay
+as approved, and `builder/e2e/site-own.spec.ts` drives them.
+
 **The owner's choice of 14 October 2026: Lucide's icons in the whole
 editor.** The floating toolbar took Lucide's icons for its keys the night
 before (section 4.2); every other icon followed: the chrome's, each

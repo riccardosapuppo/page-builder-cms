@@ -83,12 +83,13 @@ module PageCache
     [ page.published_version_id, page.published_at&.utc&.strftime("%Y%m%dT%H%M%S.%6N") ]
   end
 
-  # The site style as a short key: the tone of each slot, the type scale
-  # and the letter width. The validations allow one way to write a given style, so equal
-  # keys mean equal pages.
+  # The site style as a short key: the tone of each slot, the type scale,
+  # the letter width and the custom CSS, whose address the layout writes.
+  # The validations allow one way to write a given style, so equal keys
+  # mean equal pages.
   def site_style_key(site_style)
     palette = site_style.palette.is_a?(Hash) ? site_style.palette.sort : site_style.palette
-    ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale, site_style.letter_width ]))
+    ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale, site_style.letter_width, site_style.custom_css ]))
   end
 
   # The header and footer the pages draw (SiteParts.live), each as its kind

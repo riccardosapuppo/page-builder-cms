@@ -11,7 +11,7 @@
 // may go there, the preset fits the columns) and refuse with a sentence;
 // the reducer checks what the schema says when the command is applied.
 import {
-  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
+  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STYLE_TOKEN_KEYS,
   type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock, type StackToken,
   type StyleTokens, type WidgetBlock,
 } from "../shared/document.ts";
@@ -23,7 +23,7 @@ import {
 } from "./labels.ts";
 import { canContain } from "./nesting.ts";
 import { invertOp, type Op, type Path } from "./ops.ts";
-import { childrenOf, locate, typeOf, type ParentId, type Position } from "./tree.ts";
+import { allBlocks, childrenOf, locate, typeOf, type AnyBlock, type ParentId, type Position } from "./tree.ts";
 
 export type CommandKind =
   | "insert" | "delete" | "move" | "duplicate" | "paste"
@@ -70,7 +70,7 @@ const unknown = (id: string): Made => refuse(refusal("unknown", `There is no blo
 // editor adds lands where a person reading the JSON expects it. A key that
 // is already there keeps its place.
 function propOrder(type: BlockType): readonly string[] {
-  if (type === "image") return IMAGE_REF_KEYS;
+  if (type === "image") return IMAGE_PROPS_KEYS;
   return Object.keys(PROP_KEYS[type]);
 }
 
@@ -302,15 +302,20 @@ export function makePaste(doc: PageDocument, block: Block, selection: string | n
   return made("paste", insertLabel(doc, "Pasted", copy, at), { id: copy.id }, ops);
 }
 
-// A section's anchor is its address on the page, which no other section
-// may have (the application rules refuse it), so a copy keeps its anchor
-// only where the page does not use it yet: a duplicate never does, a
-// section pasted from another page may.
+// A block's anchor is its address on the page, which no other block may
+// have (the application rules refuse it), so a copy, and every block under
+// it, keeps an anchor only where the page does not use it yet: a duplicate
+// never does, a block pasted from another page may.
 function withoutTakenAnchor(doc: PageDocument, copy: Block): Block {
-  if (copy.type !== "section") return copy;
-  const { anchor, ...props } = copy.props;
-  if (anchor === undefined || !doc.sections.some((section) => section.props.anchor === anchor)) return copy;
-  return { ...copy, props };
+  const taken = new Set<string>();
+  for (const { block } of allBlocks(doc)) if (block.props.anchor !== undefined) taken.add(block.props.anchor);
+  const strip = (block: AnyBlock): AnyBlock => {
+    const { anchor, ...rest } = block.props;
+    const props = typeof anchor === "string" && taken.has(anchor) ? rest : block.props;
+    const children = block.children.map(strip);
+    return props === block.props && children.every((child, k) => child === block.children[k]) ? block : { ...block, props, children };
+  };
+  return strip(copy as unknown as AnyBlock) as unknown as Block;
 }
 
 // ----------------------------------------------------------- properties
@@ -454,12 +459,16 @@ export function makeSetColumnCount(doc: PageDocument, sectionId: string, count: 
 
 // ----------------------------------------------------------------- page
 
-export function makeSetPage(doc: PageDocument, updates: { title?: string; description?: string | typeof REMOVE }): Made {
+// The page's own keys: its title and description, or, for the site's
+// header, whether it stays at the top of the window.
+export function makeSetPage(doc: PageDocument, updates: { title?: string; description?: string | typeof REMOVE; sticky?: true | typeof REMOVE }): Made {
   const { ops } = keySteps(null, [], doc as unknown as Record<string, unknown>, updates, Object.keys(DOCUMENT_KEYS));
   const keys = Object.keys(updates);
-  const label = keys.length === 1 && keys[0] === "description" && updates.description === REMOVE
-    ? "Removed the page description"
-    : keys.length === 1 ? `Changed the page ${keys[0] === "title" ? "title" : "description"}` : "Changed the page title and description";
+  const label = keys.length === 1 && keys[0] === "sticky"
+    ? (updates.sticky === REMOVE ? "Let the header scroll with the page" : "Made the header stay at the top")
+    : keys.length === 1 && keys[0] === "description" && updates.description === REMOVE
+      ? "Removed the page description"
+      : keys.length === 1 ? `Changed the page ${keys[0] === "title" ? "title" : "description"}` : "Changed the page title and description";
   return made("page", label, null, ops);
 }
 
@@ -475,7 +484,7 @@ export function makeReplacePage(doc: PageDocument, next: PageDocument, label: st
     ops.push({ op: "remove", at: { parentId: null, index }, block: copyJson(doc.sections[index]!) as Block });
   }
   next.sections.forEach((section, index) => ops.push({ op: "insert", at: { parentId: null, index }, block: copyJson(section) as Block }));
-  const updates: Updates = { title: next.title, description: next.description ?? REMOVE };
+  const updates: Updates = { title: next.title, description: next.description ?? REMOVE, sticky: next.sticky ?? REMOVE };
   ops.push(...keySteps(null, [], doc as unknown as Record<string, unknown>, updates, Object.keys(DOCUMENT_KEYS)).ops);
   return made("page", label, null, ops);
 }

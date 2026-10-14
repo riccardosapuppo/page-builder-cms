@@ -40,7 +40,7 @@ export type OpenGroups = Readonly<Record<string, Readonly<Record<string, boolean
 
 // What the sidebar shows: the settings of the page and of the selection
 // (its Page and Block tabs), or, a level below Page, the site style.
-export type Tray = "edit" | "site-style";
+export type Tray = "edit" | "site-style" | "custom-css";
 
 // The site's header and footer as the canvas draws them around a page: each
 // part's draft as the storage last gave it, or as it was edited last in
@@ -106,6 +106,10 @@ export interface UiState {
   siteStyle: SiteStyle | null;
   // A colour shown on the canvas while it is picked (./color-preview.ts).
   colorPreview: ColorPreview | null;
+  // Custom CSS written and not kept, because it does not keep to the site
+  // (./CustomCssPanel.tsx): shown again when the panel opens, and the
+  // tab's close warns of it. null when there is none.
+  customCssDraft: string | null;
   // The site's settings: its time zone.
   site: Site | null;
   // The header and footer drawn around a page on the canvas.
@@ -164,6 +168,7 @@ export interface UiState {
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
   setColorPreview(preview: ColorPreview | null): void;
+  setCustomCssDraft(draft: string | null): void;
   setSite(site: Site | null): void;
   setParts(parts: Partial<PartsShown>): void;
   setAroundPart(page: AroundPart | null): void;
@@ -195,6 +200,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     mediaLooking: new Set(),
     siteStyle: initial.siteStyle ?? null,
     colorPreview: null,
+    customCssDraft: null,
     site: initial.site ?? null,
     parts: initial.parts ?? { header: null, footer: null },
     aroundPart: initial.aroundPart ?? null,
@@ -227,6 +233,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
     setSiteStyle: (siteStyle) => set({ siteStyle }),
     setColorPreview: (colorPreview) => set({ colorPreview }),
+    setCustomCssDraft: (customCssDraft) => set({ customCssDraft }),
     setSite: (site) => set({ site }),
     setParts: (parts) => set((state) => ({ parts: { ...state.parts, ...parts } })),
     setAroundPart: (aroundPart) => set({ aroundPart }),

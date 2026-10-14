@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "title": "Classes and anchors",
+  "sections": [
+    {
+      "id": "ca",
+      "type": "section",
+      "props": {
+        "anchor": "top",
+        "className": "hero a b c d e f g"
+      },
+      "children": [
+        {
+          "id": "ca-1",
+          "type": "column",
+          "props": {
+            "className": "side",
+            "anchor": "side"
+          },
+          "children": [
+            {
+              "id": "ca-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Prices",
+                "className": "lede Big_2",
+                "anchor": "prices"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ca-img",
+              "type": "image",
+              "props": {
+                "url": "https://example.com/swim.jpg",
+                "alt": "A swimmer at dawn",
+                "className": "photo",
+                "anchor": "photo"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ca-div",
+              "type": "divider",
+              "props": {
+                "className": "rule-x"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ca-gal",
+              "type": "gallery",
+              "props": {
+                "items": [
+                  {
+                    "url": "https://example.com/a.jpg",
+                    "alt": "The bay"
+                  }
+                ],
+                "className": "strip",
+                "anchor": "strip"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ca-btn",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "#prices",
+                "className": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

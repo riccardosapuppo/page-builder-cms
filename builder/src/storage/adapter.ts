@@ -240,6 +240,9 @@ export interface SiteStyle {
   typeScale: string;
   // How wide the Headings typeface is drawn.
   letterWidth: string;
+  // The site's own stylesheet, drawn inside the site on every page
+  // (../shared/custom-css.ts); "" for none.
+  customCss: string;
   // null until the style is first changed.
   updatedAt: Time | null;
   // The values each part may take: the curated tones of each slot, the
@@ -389,8 +392,9 @@ export interface Upload {
 export interface SiteStyleChange {
   palette: Record<string, string>;
   typeScale: string;
-  // Without it, the style keeps its own.
+  // Without either, the style keeps its own.
   letterWidth?: string;
+  customCss?: string;
 }
 
 export interface CallOptions {

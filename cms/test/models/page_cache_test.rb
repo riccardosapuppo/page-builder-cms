@@ -196,8 +196,8 @@ class PageCacheModelTest < ActiveSupport::TestCase
     assert_match(/\Atokens-[0-9a-f]{8,}\z/, PageCache.token_css_revision)
   end
 
-  test "the site style's key follows its tones and its type scale, not the order it was written in" do
-    style = ->(palette, scale = "balanced") { SiteStyle.new(palette: palette, type_scale: scale) }
+  test "the site style's key follows its tones, its type scale and its custom CSS, not the order it was written in" do
+    style = ->(palette, scale = "balanced", css = "") { SiteStyle.new(palette: palette, type_scale: scale, custom_css: css) }
     palette = SiteTokens.default_palette
     reordered = palette.to_a.reverse.to_h
     key = PageCache.site_style_key(style.call(palette))
@@ -205,6 +205,7 @@ class PageCacheModelTest < ActiveSupport::TestCase
     assert_equal key, PageCache.site_style_key(style.call(reordered))
     assert_not_equal key, PageCache.site_style_key(style.call(palette.merge("primary" => "site-harbour")))
     assert_not_equal key, PageCache.site_style_key(style.call(palette, "strong"))
+    assert_not_equal key, PageCache.site_style_key(style.call(palette, "balanced", ".hero { color: red; }"))
   end
 
   test "a block's key is the digest of its subtree: a widget changed changes it, its column and its section, nothing else" do

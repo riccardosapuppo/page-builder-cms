@@ -3,7 +3,9 @@
 # The site style: which tone each palette slot has, how strongly the type
 # scale steps up, and how wide the Headings typeface is drawn. Every published page takes its colours and sizes
 # from it. A slot takes one of its curated tones (SiteTokens) or a colour of
-# the site's own, "#1d4e6f" (FreeColors); there is no free size.
+# the site's own, "#1d4e6f" (FreeColors); there is no free size. And the
+# site's own stylesheet, its custom CSS, which every page draws inside the
+# site, after the theme's (CustomCss).
 #
 # One row for the whole site, id 1. Until someone changes the style there
 # is no row, and the defaults of tokens.json apply.
@@ -13,6 +15,7 @@ class SiteStyle < ApplicationRecord
   validate :palette_has_a_curated_tone_for_every_slot
   validates :type_scale, inclusion: { in: ->(_) { SiteTokens.type_scales }, message: "is not one of the type-scale choices" }
   validates :letter_width, inclusion: { in: ->(_) { SiteTokens.letter_widths }, message: "is not one of the letter-width choices" }
+  validate :custom_css_keeps_to_the_site
 
   def self.current
     find_by(id: ID) || new(id: ID, palette: SiteTokens.default_palette, type_scale: SiteTokens.default_type_scale, letter_width: SiteTokens.default_letter_width)
@@ -27,6 +30,17 @@ class SiteStyle < ApplicationRecord
   end
 
   private
+
+  # The custom CSS must keep to its scope, as the editor checks it before
+  # sending it (CustomCss.check): the problem, with its line.
+  def custom_css_keeps_to_the_site
+    unless custom_css.is_a?(String)
+      errors.add(:custom_css, :invalid, message: "must be a string")
+      return
+    end
+    problem = CustomCss.check(custom_css)
+    errors.add(:custom_css, :invalid, message: "line #{problem.line}: #{problem.message}") if problem
+  end
 
   # The palette must name every slot, each with one of that slot's tones,
   # and nothing else. Errors are keyed by slot, so the API can point at the

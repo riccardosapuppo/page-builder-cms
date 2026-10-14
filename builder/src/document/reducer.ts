@@ -104,10 +104,10 @@ function check(next: PageDocument, ops: readonly Op[]): CommandError | null {
     const ids = checkUniqueIds(next);
     if (ids) return ids;
   }
-  // Anchors sit on sections: a section brought in, or one whose props
-  // changed, may now share its anchor with another.
+  // Any block may have an anchor: one brought in, with those under it, or
+  // one whose props changed, may now share its anchor with another.
   const changed = new Set([...inserted, ...edited]);
-  if ([...changed].some((id) => locate(next, id)?.block.type === "section")) {
+  if (changed.size > 0) {
     const anchors = checkUniqueAnchors(next, changed);
     if (anchors) return anchors;
   }

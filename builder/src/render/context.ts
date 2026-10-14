@@ -1,7 +1,7 @@
 // What every block renderer receives besides its block: how to find a
 // library image, and, on the canvas only, what the editor adds to a block's
 // root element.
-import type { ReactNode, Ref } from "react";
+import { createContext, type ReactNode, type Ref } from "react";
 
 // A block as the renderer meets it: an object with a type the tree allows
 // at its place, and anything at all in its other keys. The editor's blocks
@@ -44,6 +44,13 @@ export interface Decoration {
   // text and a heading call it; every other block's content is the page's.
   editing?: (drawn: ReactNode) => ReactNode;
 }
+
+// The prefix every class of the site's own carries where the page is
+// drawn: "" on a page a visitor sees and in the contract, the canvas's
+// own- in the editor (../shared/custom-css.ts, CANVAS_CLASS_PREFIX), whose
+// own stylesheets would otherwise reach a block named like one of their
+// classes.
+export const OwnClassPrefix = createContext("");
 
 export interface RenderContext {
   media: MediaResolver;

@@ -227,6 +227,21 @@ describe("duplicate and paste", () => {
     expect(copied.props).toEqual({ label: "Join", anchor: "join" });
   });
 
+  test("a copy keeps no anchor the page uses anywhere under it, a column's and a widget's as a section's; a paste elsewhere keeps the free ones", () => {
+    const anchors = (doc: PageDocument) => [...JSON.stringify(doc).matchAll(/"anchor":"([a-z0-9-]+)"/g)].map((m) => m[1]).sort();
+    const start = page();
+    const button = apply(start, makeSetProps(start, "b1", { anchor: "cta" })).document;
+    const doc = apply(button, makeSetProps(button, "c1", { anchor: "side" })).document;
+    const duplicated = apply(doc, makeDuplicate(doc, "hero", counter("dup"))).document;
+    expect(anchors(duplicated)).toEqual(["cta", "join", "side"]);
+    expect(validateDocument(duplicated).valid).toBe(true);
+    const copied = copyBlock(doc, "hero");
+    if (!copied) throw new Error("nothing copied");
+    const elsewhere = done(applyCommand(doc, command(makeDelete(doc, "hero")))).document;
+    const there = apply(elsewhere, makePaste(elsewhere, copied, "join", counter("p"))).document;
+    expect(anchors(there)).toEqual(["cta", "join", "side"]);
+  });
+
   test("where a paste goes: beside the selection, else inside it, else beside a block above", () => {
     const doc = page();
     expect(pasteTarget(doc, "quote", "c2")).toEqual({ parentId: "c2", index: 1 });
@@ -308,6 +323,17 @@ describe("properties and style", () => {
     expect(removed.focus).toBeNull();
     const blank = applyCommand(doc, command(makeSetPage(doc, { title: "   " })));
     expect(blank.ok ? null : blank.error.reason).toBe("invalid");
+  });
+
+  test("the header stays at the top, or scrolls with the page again: one step each, which undo takes back", () => {
+    const doc = page();
+    const on = apply(doc, makeSetPage(doc, { sticky: true }));
+    expect(on.command.label).toBe("Made the header stay at the top");
+    expect(Object.keys(on.document)).toEqual(["schemaVersion", "title", "description", "sticky", "sections"]);
+    const off = apply(on.document, makeSetPage(on.document, { sticky: REMOVE }));
+    expect(off.command.label).toBe("Let the header scroll with the page");
+    expect("sticky" in off.document).toBe(false);
+    expect(done(applyCommand(off.document, invertCommand(off.command))).document.sticky).toBe(true);
   });
 });
 
@@ -477,13 +503,23 @@ describe("the reducer", () => {
     expect(result.ok ? null : result.error).toMatchObject({ reason: "duplicateId", message: "The id q1 is already used by another block." });
   });
 
+  test("an anchor is unique across every block: a heading's that a later section has is refused at the section, as on the server, naming it", () => {
+    const doc = page();
+    const taken = applyCommand(doc, command(makeSetProps(doc, "h1", { anchor: "join" })));
+    expect(taken.ok ? null : taken.error).toMatchObject({
+      reason: "duplicateAnchor",
+      message: "The anchor #join is already used by Join.",
+      errors: [{ pointer: "/sections/1/props/anchor", keyword: "uniqueAnchor", layer: "rules" }],
+    });
+  });
+
   test("an anchor another section has is refused, at the second section in page order as on the server, naming the other", () => {
     const doc = page();
     const taken = applyCommand(doc, command(makeSetProps(doc, "hero", { anchor: "join" })));
     expect(taken.ok ? null : taken.error).toEqual({
       reason: "duplicateAnchor",
       message: "The anchor #join is already used by Join.",
-      errors: [{ pointer: "/sections/1/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"join\" is already used by another section.", layer: "rules" }],
+      errors: [{ pointer: "/sections/1/props/anchor", keyword: "uniqueAnchor", message: "The anchor \"join\" is already used by another block.", layer: "rules" }],
     });
     // A section brought back by an undo is held to it too.
     const removed = command(makeDelete(doc, "join"));

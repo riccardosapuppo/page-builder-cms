@@ -18,22 +18,22 @@ const NAMES = (container: HTMLElement) => [...container.querySelectorAll(".grp:n
 test("each type shows the settings it accepts and no other, in the groups that name them", () => {
   const kit = editorKit({ document: widgetPage(), selection: "image" });
   const { container, rerender } = kit.render(<BlockPanel id="image" />);
-  expect(groupNames()).toEqual(["Image", "Shape", "Shown on"]);
+  expect(groupNames()).toEqual(["Image", "Shape", "Shown on", "Advanced"]);
   openGroups("Shape");
   expect(NAMES(container)).toEqual(["Crop"]);
   rerender(<BlockPanel id="button" />);
-  expect(groupNames()).toEqual(["Button", "Colors", "Alignment", "Shown on"]);
+  expect(groupNames()).toEqual(["Button", "Colors", "Alignment", "Shown on", "Advanced"]);
   openGroups("Colors", "Alignment");
   expect(NAMES(container)).toEqual(["Background", "Text color", "Alignment"]);
   rerender(<BlockPanel id="video" />);
-  expect(groupNames()).toEqual(["Video", "Shown on"]);
+  expect(groupNames()).toEqual(["Video", "Shown on", "Advanced"]);
   expect(NAMES(container)).toEqual([]);
 });
 
 test("a column's settings come in the approved layout's groups and order: space, background, type and colour, placement", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
   const { container } = kit.render(<BlockPanel id="c1" />);
-  expect(groupNames()).toEqual(["Spacing", "Background", "Text size and color", "Alignment", "Shown on"]);
+  expect(groupNames()).toEqual(["Spacing", "Background", "Text size and color", "Alignment", "Shown on", "Advanced"]);
   openGroups("Background", "Text size and color", "Alignment");
   expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Text color", "Alignment"]);
   // The design's Alignment: vertical, then horizontal, side by side.
@@ -58,7 +58,7 @@ test("a choice sets the base value, in the site's colours, and Reset takes it ou
   await waitFor(() => expect(document.activeElement).toBe(background().getByRole("radio", { name: "Accent, Buoy" })));
 
   // The site's own tone for a slot, where the site style has another.
-  act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", letterWidth: "normal", updatedAt: null, choices: { palette: {}, typeScales: [], letterWidths: [] } }));
+  act(() => kit.ui.getState().setSiteStyle({ palette: { primary: "site-harbour" }, typeScale: "balanced", letterWidth: "normal", customCss: "", updatedAt: null, choices: { palette: {}, typeScales: [], letterWidths: [] } }));
   expect(background().getByRole("radio", { name: "Primary, Harbour" }).getAttribute("style")).toContain("#1D4E6F");
 });
 

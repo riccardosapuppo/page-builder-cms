@@ -23,6 +23,18 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/block-anchor-duplicate-section-second.json": {
+    "rule": "the second in document order is refused: a section's anchor after a heading's",
+    "pointer": "/sections/6/props/anchor",
+    "keyword": "uniqueAnchor",
+    "layer": "rules"
+  },
+  "invalid/block-anchor-duplicate.json": {
+    "rule": "anchors are unique across every block of the page (a rule): a link to #top would never reach a button with it, the second in document order",
+    "pointer": "/sections/0/children/0/children/2/props/anchor",
+    "keyword": "uniqueAnchor",
+    "layer": "rules"
+  },
   "invalid/block-children-null.json": {
     "rule": "children is an array",
     "pointer": "/sections/6/children/0/children/0/children",
@@ -233,6 +245,60 @@
     "keyword": "required",
     "layer": "schema"
   },
+  "invalid/class-name-digit-first.json": {
+    "rule": "a class name starts with a letter",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/class-name-empty.json": {
+    "rule": "no class is no className, never an empty one",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/class-name-mark.json": {
+    "rule": "a class name is a letter then letters, digits, hyphens or underscores",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/class-name-nine.json": {
+    "rule": "eight names at most",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/class-name-theme-any-case.json": {
+    "rule": "nor one of them in another case",
+    "pointer": "/sections/0/children/0/props/className",
+    "keyword": "reservedClass",
+    "layer": "rules"
+  },
+  "invalid/class-name-theme.json": {
+    "rule": "a class may not be one the theme uses (a rule): hide-desktop of the site's own would hide the block",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "reservedClass",
+    "layer": "rules"
+  },
+  "invalid/class-name-too-long.json": {
+    "rule": "a name has at most 40 characters",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/class-name-two-spaces.json": {
+    "rule": "one space between two names, no more",
+    "pointer": "/sections/0/children/0/children/0/props/className",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/column-anchor-pattern.json": {
+    "rule": "a column's anchor is an anchor like a section's",
+    "pointer": "/sections/0/children/0/props/anchor",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
   "invalid/divider-children.json": {
     "rule": "a divider holds no blocks",
     "pointer": "/sections/6/children/0/children/0/children",
@@ -315,6 +381,12 @@
     "rule": "the document is an object",
     "pointer": "",
     "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/document-sticky-false.json": {
+    "rule": "sticky is true or absent, never false",
+    "pointer": "/sticky",
+    "keyword": "const",
     "layer": "schema"
   },
   "invalid/dup-key-escaped.json": {
@@ -537,6 +609,12 @@
     "rule": "a form holds no blocks",
     "pointer": "/sections/6/children/0/children/3/children",
     "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/gallery-item-class.json": {
+    "rule": "a gallery's items are images alone: a class is the gallery's",
+    "pointer": "/sections/2/children/0/children/1/props/items/0/className",
+    "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/gallery-item-missing-alt.json": {
@@ -1254,7 +1332,7 @@
     "layer": "schema"
   },
   "invalid/style-unknown-key.json": {
-    "rule": "no free CSS: only the listed settings",
+    "rule": "a block's style is its listed settings, by token: CSS of the site's own is its custom CSS",
     "pointer": "/sections/0/children/0/children/0/style/base/fontFamily",
     "keyword": "additionalProperties",
     "layer": "schema"
@@ -1380,7 +1458,7 @@
     "layer": "schema"
   },
   "invalid/tree-column-props.json": {
-    "rule": "a column has no properties: its width comes from the section's columnWidths",
+    "rule": "a column's props are its class and anchor alone: its width comes from the section's columnWidths",
     "pointer": "/sections/0/children/0/props/width",
     "keyword": "additionalProperties",
     "layer": "schema"
@@ -1541,6 +1619,9 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "valid/classes-and-anchors.json": {
+    "rule": "every block may have classes of the site's own and an anchor: a section, a column and every kind of widget; eight names at most, each up to 40 characters, upper case and underscores too; an image's beside its image, a gallery's items with neither"
+  },
   "valid/columns-one-to-four.json": {
     "rule": "sections with one, two, three and four columns, and an empty column"
   },
@@ -1555,6 +1636,9 @@
   },
   "valid/form-fields-every-kind.json": {
     "rule": "every kind of field, required and not; a line of text limited to 1 and to 300 characters, a longer text to 5000; names of one letter and of 40 characters, with digits and hyphens; twenty fields, the most a form holds; and a second form using the same names, since names are unique in a form, not on the page"
+  },
+  "valid/header-sticky.json": {
+    "rule": "the site's header may stay at the top of the window: sticky is true, or absent"
   },
   "valid/heading-link.json": {
     "rule": "a heading may carry a link, as in the approved mock"

@@ -172,6 +172,7 @@ module Api
         "palette" => style.palette,
         "typeScale" => style.type_scale,
         "letterWidth" => style.letter_width,
+        "customCss" => style.custom_css,
         "updatedAt" => iso(style.updated_at),
         "choices" => {
           "palette" => SiteTokens.slots.transform_values do |slot|

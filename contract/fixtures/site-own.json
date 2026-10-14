@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "title": "The site's own",
+  "description": "Classes of the site's own and anchors on every kind of block, written after the theme's classes and as the element's id; and the values the renderers refuse: a theme's class in any case, a name that is no class name, blanks other than one space, a name twice, a className or an anchor that is no string, an anchor in upper case.",
+  "sections": [
+    {
+      "id": "band",
+      "type": "section",
+      "props": { "label": "Band", "className": "hero band", "anchor": "top" },
+      "style": { "base": { "background": "soft" } },
+      "children": [
+        {
+          "id": "band-1",
+          "type": "column",
+          "props": { "className": "side", "anchor": "side" },
+          "style": { "base": {} },
+          "children": [
+            { "id": "h", "type": "heading", "props": { "level": 2, "text": "Prices", "className": "lede Big_2", "anchor": "prices" }, "children": [], "style": { "base": {} } },
+            { "id": "t", "type": "text", "props": { "doc": { "type": "doc", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Short, cold swims." } ] } ] }, "className": "intro" }, "children": [], "style": { "base": {} } },
+            { "id": "i", "type": "image", "props": { "url": "https://example.com/bay.jpg", "alt": "The bay", "className": "photo", "anchor": "photo" }, "children": [], "style": { "base": {} } },
+            { "id": "b", "type": "button", "props": { "label": "Join", "href": "#prices", "className": "cta" }, "children": [], "style": { "base": {} } },
+            { "id": "d", "type": "divider", "props": { "className": "rule" }, "children": [], "style": { "base": {} } },
+            { "id": "sp", "type": "spacer", "props": { "size": "m", "anchor": "gap" }, "children": [], "style": { "base": {} } }
+          ]
+        },
+        {
+          "id": "band-2",
+          "type": "column",
+          "props": {},
+          "style": { "base": {} },
+          "children": [
+            { "id": "q", "type": "quote", "props": { "text": "Cold, then glad.", "className": "pull", "anchor": "voice" }, "children": [], "style": { "base": {} } },
+            { "id": "ib", "type": "iconbox", "props": { "icon": "sunrise", "title": "Dawn", "text": "At first light.", "className": "card" }, "children": [], "style": { "base": {} } },
+            { "id": "acc", "type": "accordion", "props": { "items": [ { "question": "When?", "answer": "At dawn." } ], "className": "faq", "anchor": "faq" }, "children": [], "style": { "base": {} } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "refused",
+      "type": "section",
+      "props": { "label": "Refused", "className": "sw-inner Hide-desktop own", "anchor": "Top" },
+      "style": { "base": {} },
+      "children": [
+        {
+          "id": "refused-1",
+          "type": "column",
+          "props": { "className": 42, "anchor": 7 },
+          "style": { "base": {} },
+          "children": [
+            { "id": "r1", "type": "heading", "props": { "level": 3, "text": "Marks", "className": "hero! 2col café <b> a\tb  ok ok", "anchor": "bad anchor" }, "children": [], "style": { "base": {} } },
+            { "id": "r2", "type": "heading", "props": { "level": 3, "text": "Quotes", "className": "x\" onmouseover=\"alert(1)", "anchor": "\"><script>" }, "children": [], "style": { "base": {} } },
+            { "id": "r3", "type": "heading", "props": { "level": 3, "text": "Theme", "className": "BG-primary fill line lines cols-2 W", "anchor": "" }, "children": [], "style": { "base": {} } }
+          ]
+        }
+      ]
+    }
+  ]
+}

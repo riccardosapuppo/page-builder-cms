@@ -998,6 +998,10 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .cp-hex { display: grid; grid-template-columns: 32px 1fr; align-items: center; gap: 8px; margin: 0; }
 .cp-swatch { width: 32px; height: 32px; border-radius: var(--r-control); background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
 .cp-hex .input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .02em; }
+
+/* Custom CSS: the site's own rules, written as code. */
+.custom-css .css-input { min-height: 320px; resize: vertical; font: 13px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.custom-css .hint code { font: 12px ui-monospace, "Cascadia Mono", Consolas, monospace; }
 /* The palette's last tile, which opens the picker: the hue wheel until a
    colour of no hue is in use, then that colour. */
 .palette-hues button.palette-custom { background: var(--c, conic-gradient(from 90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)); }

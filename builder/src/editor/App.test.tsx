@@ -42,6 +42,7 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
     palette: Object.fromEntries(slots.map((slot) => [slot, palette[slot] ?? tones[slot].default])),
     typeScale: "balanced",
     letterWidth: "normal",
+    customCss: "",
     updatedAt: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),
@@ -72,6 +73,9 @@ class FakeSite {
   // Called as a version is kept, before it answers: another tab at work.
   onVersion: (() => void) | null = null;
   refuseStyle = false;
+  // While set, a change of the site style waits for it before it is
+  // answered: one on its way.
+  styleGate: Promise<void> | null = null;
   style = tokenStyle();
   // false for the browser demo's storage: a publish kept, no page served.
   livePages = true;
@@ -137,6 +141,7 @@ class FakeSite {
       getSite: async () => ({ timeZone: "Europe/London" }),
       setSiteStyle: async (change) => {
         this.styles.push(change);
+        if (this.styleGate) await this.styleGate;
         if (this.refuseStyle) return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/palette/primary", keyword: "inclusion", blockPointer: null, message: "must be one of the slot's tones" }] } };
         this.style = { ...this.style, ...change, updatedAt: T };
         return { ok: true, value: this.style };
@@ -646,6 +651,58 @@ test("a site style change shows on the canvas at once and goes to the CMS; refus
   await waitFor(() => expect(root().getAttribute("data-primary")).toBe("site-harbour"));
   expect(screen.getByRole("alert").textContent).toBe("Not saved, the site keeps its style as it was: must be one of the slot's tones");
   expect(env.ui.getState().siteStyle?.palette.primary).toBe("site-harbour");
+});
+
+test("a change of the site style that takes the place of one waiting its turn keeps the custom CSS that one held", async () => {
+  const { site, env, clock } = start(1);
+  await opened();
+  let release = () => {};
+  site.styleGate = new Promise((done) => {
+    release = done;
+  });
+  // A tone on its way to the CMS, held there.
+  fireEvent.click(screen.getByRole("button", { name: "Site style" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));
+  await act(async () => fireEvent.click(screen.getByRole("radio", { name: "Harbour" })));
+  // Custom CSS kept after its pause, behind it.
+  fireEvent.click(screen.getByRole("button", { name: "Back to Page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Custom CSS" }));
+  fireEvent.change(screen.getByLabelText("Rules"), { target: { value: ".hero { color: red; }" } });
+  await act(() => clock.advance(1_000));
+  // Another tone, which takes the waiting change's place.
+  fireEvent.click(screen.getByRole("button", { name: "Back to Page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Site style" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Primary/ }));
+  await act(async () => fireEvent.click(screen.getByRole("radio", { name: "Kelp" })));
+  site.styleGate = null;
+  await act(async () => release());
+  await waitFor(() => expect(site.styles).toHaveLength(2));
+  expect(site.styles[1]).toMatchObject({ palette: { primary: "site-kelp" }, customCss: ".hero { color: red; }" });
+  await waitFor(() => expect(document.querySelector(".style-save")?.textContent).toBe("Saved for every page"));
+  expect(env.ui.getState().siteStyle).toMatchObject({ palette: { primary: "site-kelp" }, customCss: ".hero { color: red; }" });
+});
+
+test("custom CSS waiting for its pause goes when the tab closes; CSS that does not keep to the site stays a draft the close warns of, shown again when the panel opens", async () => {
+  const { site } = start(1);
+  await opened();
+  fireEvent.click(screen.getByRole("button", { name: "Custom CSS" }));
+  fireEvent.change(screen.getByLabelText("Rules"), { target: { value: ".hero { color: red; }" } });
+  // The tab closing before the pause: the CSS is handed over, on its way.
+  window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+  expect(site.styles.map((style) => style.customCss)).toEqual([".hero { color: red; }"]);
+  await waitFor(() => expect(document.querySelector(".style-save")?.textContent).toBe("Saved for every page"));
+  // CSS that does not keep to the site, kept nowhere: the close asks.
+  fireEvent.change(screen.getByLabelText("Rules"), { target: { value: ".hero { color: red; }\n}" } });
+  fireEvent.blur(screen.getByLabelText("Rules"));
+  const closing = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(closing);
+  expect(closing.defaultPrevented).toBe(true);
+  expect(site.styles).toHaveLength(1);
+  // The panel closed and opened again: the draft, as written.
+  fireEvent.click(screen.getByRole("button", { name: "Back to Page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Custom CSS" }));
+  expect((screen.getByLabelText("Rules") as HTMLTextAreaElement).value).toBe(".hero { color: red; }\n}");
+  expect(screen.getByText(/^Line 2: This \} closes nothing\./)).toBeTruthy();
 });
 
 // The canvas's parts: the one being edited, the page around it and the

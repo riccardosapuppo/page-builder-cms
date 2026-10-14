@@ -239,6 +239,12 @@ a.sw-btn:not([href]) { cursor: default; }
    header's small one, whose label breaks inside it rather than leave the
    row. */
 .sw-header { position: relative; z-index: 2; --sec-y: 20px; --cols-gap: var(--space-l); }
+/* A sticky header (the header's own setting, data-sticky): it stays at the
+   top of the window while the page scrolls under it, on the page's
+   background unless its sections have one of their own, and a link to an
+   anchor of the page stops the block below it, not under it. */
+.sw-header[data-sticky] { position: sticky; top: 0; background-color: var(--sw-background); }
+.site:has(.sw-header[data-sticky]) [id] { scroll-margin-top: 104px; }
 .sw-footer { --sec-y: var(--space-xxl); --cols-gap: var(--space-m); }
 .sw-header .w-button .sw-btn { min-height: 40px; padding: 0 20px; font-size: 15px; overflow-wrap: anywhere; }
 .sw-menu-button, .sw-accordion summary, .sw-quote figcaption {

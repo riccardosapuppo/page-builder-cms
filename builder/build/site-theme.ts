@@ -29,7 +29,7 @@ const RESOLVED = `\0${SITE_THEME_MODULE}`;
 // The words of the part's own rules, the server's (SiteParts::FORM,
 // SiteParts::ANCHOR).
 const PART_FORM = "A header or footer holds no form: a form's answers belong to the page it is on.";
-const PART_ANCHOR = "A header or footer section takes no anchor: it would be on every page, where the page's own sections have theirs.";
+const PART_ANCHOR = "A header or footer block takes no anchor: it would be on every page, where the page's own blocks have theirs.";
 
 // Each rule a starter breaks, as the CMS names it when it refuses to start
 // ("/sections/0/children/1/children/0 (part): ..."): the application rules
@@ -58,10 +58,19 @@ function schemaErrors(document: unknown, schema: object): Array<{ pointer: strin
   });
 }
 
-// The pointer of every section anchor of a valid document.
+// The pointer of every anchor of a valid document's blocks: a section's,
+// then its columns' and their widgets'.
 function anchors(document: unknown): string[] {
-  const sections = (document as { sections: Array<{ props: { anchor?: string } }> }).sections;
-  return sections.flatMap((section, s) => (section.props.anchor === undefined ? [] : [`/sections/${s}/props/anchor`]));
+  type Held = { props: { anchor?: string }; children: Held[] };
+  const found: string[] = [];
+  const walk = (blocks: Held[], pointer: string): void => {
+    blocks.forEach((block, k) => {
+      if (block.props.anchor !== undefined) found.push(`${pointer}/${k}/props/anchor`);
+      walk(block.children, `${pointer}/${k}/children`);
+    });
+  };
+  walk((document as { sections: Held[] }).sections, "/sections");
+  return found;
 }
 
 // The pointer of every form block of a valid document.
