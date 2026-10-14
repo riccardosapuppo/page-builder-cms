@@ -42,7 +42,9 @@
 // before the folder is deleted. A run stopped before its end leaves its
 // build in cms/public/assets, so before it waits for a quiet machine it
 // removes a build it finds there, and stops if anything of it remains
-// (tools/lib/build-left-behind.ts). Ruby on the PATH, the CMS's gems
+// (tools/lib/build-left-behind.ts); and its folder under cms/tmp, which
+// the next run on the same port deletes before it makes its own
+// (tools/lib/runs-left-behind.ts). Ruby on the PATH, the CMS's gems
 // installed.
 //
 // Exits 0 when it measured and its own checks passed, 1 when one of them
@@ -56,6 +58,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
+import { clearRunsLeftBehind, runName } from "./lib/runs-left-behind.ts";
 import { api, countBlocks, headings, publishLargePage, starterBlocks, withHeadingText, type Document } from "./lib/measure-site.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "./lib/processes.ts";
 
@@ -80,7 +83,7 @@ const PORT = ((raw) => {
 })(process.env.MEASURE_SERVER_PORT);
 const BASE = `http://127.0.0.1:${PORT}`;
 const SLUG = "five-hundred-blocks";
-const run = `measure-server-${process.pid}`;
+const run = runName("measure-server", PORT);
 const tmp = join(cms, "tmp", run);
 const env: NodeJS.ProcessEnv = {
   ...process.env,
@@ -303,6 +306,7 @@ try {
   console.log(`the machine was ${quiet.readings.map((r) => `${r.toFixed(0)}%`).join(" then ")} busy before the run (waited ${quiet.waited.toFixed(0)} s)`);
   underLoad ||= quiet.underLoad;
 
+  clearRunsLeftBehind(join(cms, "tmp"), "measure-server", PORT);
   mkdirSync(tmp, { recursive: true });
   rails(["assets:precompile"], "assets:precompile");
   stage.precompiled = true;

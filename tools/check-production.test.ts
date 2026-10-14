@@ -17,6 +17,10 @@
 //   folder; it runs on the same port (PRODUCTION_CHECK_PORT, or 3902), and
 //   MEASURE_QUIET_MAX=101 lets it past its wait for a quiet machine after
 //   two readings, whatever the load.
+// - A folder in cms/tmp as a run of the same tool on the same port stopped
+//   before its end leaves one, its databases marked as production's, then
+//   each tool runs with the fault above: each deletes the folder before it
+//   makes its own, and says so (tools/lib/runs-left-behind.ts).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -99,6 +103,28 @@ for (const [script, stopped] of [["tools/check-production.ts", "the check stoppe
         assert.equal(existsSync(planted), false, output);
         assert.equal(code, 1, output);
       } finally {
+        rmSync(join(root, "cms", "public", "assets"), { recursive: true, force: true });
+      }
+    });
+  });
+}
+
+for (const [script, named, stopped] of [["tools/check-production.ts", "production-check", "the check stopped"], ["tools/measure-server.ts", "measure-server", "the measurement stopped"]] as const) {
+  test(`planted: a folder a run stopped before its end left in cms/tmp; ${script} deletes it before it makes its own, and says so`, () => {
+    withPlantedFault((env) => {
+      // Named for a process id, which Windows can give this run again.
+      const left = join(root, "cms", "tmp", `${named}-${port}-1`);
+      mkdirSync(left, { recursive: true });
+      writeFileSync(join(left, "production.sqlite3"), "");
+      try {
+        const { code, output } = tool(script, { ...env, MEASURE_QUIET_MAX: "101" });
+        assert.ok(output.includes(`deleted what an earlier run left: cms/tmp/${named}-${port}-1`), output);
+        // It went on to the precompile, which the planted fault stops.
+        assert.match(output, new RegExp(`${stopped}: assets:precompile failed`));
+        assert.equal(existsSync(left), false, output);
+        assert.equal(code, 1, output);
+      } finally {
+        rmSync(left, { recursive: true, force: true });
         rmSync(join(root, "cms", "public", "assets"), { recursive: true, force: true });
       }
     });

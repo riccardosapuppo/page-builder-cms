@@ -46,7 +46,9 @@
 // before the folder is deleted. A run stopped before its end leaves its
 // build in cms/public/assets, so before it precompiles the check removes
 // a build it finds there, and stops if anything of it remains
-// (tools/lib/build-left-behind.ts). Ruby must be on the PATH, the gems of
+// (tools/lib/build-left-behind.ts); and its folder under cms/tmp, which
+// the next run on the same port deletes before it makes its own
+// (tools/lib/runs-left-behind.ts). Ruby must be on the PATH, the gems of
 // cms/ installed, and Playwright's Chromium in its cache.
 //
 // Runs on Windows, Linux and macOS. Exits 0 when every check passes, 1
@@ -60,6 +62,7 @@ import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync } from
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
+import { clearRunsLeftBehind, runName } from "./lib/runs-left-behind.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree, type Listener } from "./lib/processes.ts";
 import { DESIGN, headerChecks, headerDocument, type HeaderWords } from "./lib/header-checks.ts";
 import { fixture, visitorChecks } from "./lib/visitor-checks.ts";
@@ -85,7 +88,7 @@ const PAGE_CACHE = "max-age=0, must-revalidate, public";
 // An address of TEST-NET-1 (RFC 5737), which no machine has: asked to
 // listen there, a server that failed to refuse could not open it either.
 const OUTSIDE = "192.0.2.1";
-const run = `production-check-${process.pid}`;
+const run = runName("production-check", PORT);
 const tmp = join(cms, "tmp", run);
 const env: NodeJS.ProcessEnv = {
   ...process.env,
@@ -348,6 +351,7 @@ if (taken.length) {
   process.exit(2);
 }
 
+clearRunsLeftBehind(join(cms, "tmp"), "production-check", PORT);
 mkdirSync(tmp, { recursive: true });
 let main: ChildProcess | undefined;
 let refused: ChildProcess | undefined;
