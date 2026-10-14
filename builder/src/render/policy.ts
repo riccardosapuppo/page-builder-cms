@@ -11,6 +11,7 @@
 // renderer some other way: an address they refuse is dropped, never
 // repaired, and the text around it stays.
 
+import tokens from "../../../schema/tokens.json";
 import { reservedClass } from "../../../schema/tools/rules.ts";
 import { isObject } from "../document/json.ts";
 
@@ -101,7 +102,40 @@ export function stickyRows(document: unknown): string | null {
     const stacked = columns.length >= 2 ? columns.reduce((sum, n) => sum + n, 0) : side;
     return [desktop + side, tablet + (stack === "phone" || stack === "never" ? side : stacked), phone + (stack === "never" ? side : stacked)];
   }, [0, 0, 0]);
-  return rows.map((count) => Math.min(9, Math.max(1, count))).join(" ");
+  return rows.map((count, device) => {
+    const over = sections.reduce((sum, section) => sum + spaceOver(section, device), 0);
+    return Math.min(9, Math.max(1, count + Math.ceil(Math.max(0, over - STICKY_SPARE) / STICKY_ROW[device]!)));
+  }).join(" ");
+}
+
+// What a header's row is counted at, and the header's own space above and
+// below a section that sets none, on a desktop, a tablet and a phone; and
+// the pixels to spare under it all, which a section's own space uses first
+// (site.css: --sticky-row, .sw-header's --sec-y, the 16 added;
+// policy.test.ts reads them there).
+export const STICKY_ROW: readonly number[] = [88, 88, 68];
+export const HEADER_SPACE: readonly number[] = [20, 20, 12];
+export const STICKY_SPARE = 16;
+
+// The space steps a section's spaceAbove and spaceBelow may name, in
+// pixels: the site's steps and the section steps, the same on every device.
+const SECTION_SPACE: Readonly<Record<string, number>> = { ...tokens.space.site, ...tokens.space["site-section"] };
+
+// The pixels a section's own space above and below adds on a device (0 a
+// desktop, 1 a tablet, 2 a phone) over the header's own: the device's own
+// step where it names one, else the base's, a phone's never the tablet's,
+// as the page's classes apply them; none where the section's space is the
+// header's or less.
+function spaceOver(section: Record<string, unknown>, device: number): number {
+  const style = isObject(section.style) ? section.style : {};
+  const own = device === 1 ? style.tablet : device === 2 ? style.phone : undefined;
+  const base = style.base;
+  const header = HEADER_SPACE[device]!;
+  const sides = ["spaceAbove", "spaceBelow"].reduce((sum, key) => {
+    const step = [isObject(own) ? own[key] : undefined, isObject(base) ? base[key] : undefined].find((value) => typeof value === "string" && Object.hasOwn(SECTION_SPACE, value));
+    return sum + (typeof step === "string" ? SECTION_SPACE[step]! : header);
+  }, 0);
+  return Math.max(0, sides - 2 * header);
 }
 
 // A block's classes of the site's own, as the page writes them: the names

@@ -246,7 +246,8 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-header[data-sticky] { position: sticky; top: 0; background-color: var(--sw-background); }
 /* Its anchors stop below it: data-sticky holds its rows on a desktop, a
    tablet and a phone (RenderPolicy.sticky_rows: a row for each block of a
-   column, three for a tall block), counted at 88 px each, the most a
+   column, three for a tall block, and the rows a section's own space above
+   and below takes past the header's), counted at 88 px each, the most a
    header's row of logo, menu or button takes with its space, 68 on a
    phone, with 16 to spare. The page has no script to measure it. */
 .site:has(.sw-header[data-sticky]) > .sw { --sticky-rows: 1; --sticky-row: 88px; }

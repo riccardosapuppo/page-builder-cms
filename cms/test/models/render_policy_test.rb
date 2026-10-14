@@ -80,6 +80,25 @@ class RenderPolicyTest < ActiveSupport::TestCase
     [ { "sections" => [ section.(2) ] }, { "sticky" => false }, { "sticky" => "true" }, nil, [] ].each { |document| assert_nil RenderPolicy.sticky_rows(document) }
   end
 
+  test "the space steps a sticky header counts are the site's own, from tokens.json" do
+    assert_equal SiteTokens.section_space, RenderPolicy::SECTION_SPACE
+  end
+
+  test "a sticky header's rows count a section's own space above and below, past the header's 20 (12 on a phone) and the 16 to spare, at a row's 88 (68)" do
+    spaced = ->(style) { { "props" => { "stack" => "never" }, "children" => [ { "children" => [ { "type" => "button" } ] } ], "style" => style } }
+    assert_equal "2 2 3", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "section-s", "spaceBelow" => "section-s" } }) ] })
+    assert_equal "3 3 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "section-l", "spaceBelow" => "section-l" } }) ] })
+    # A device's own step, and a phone that takes the base's, never the tablet's.
+    assert_equal "1 3 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "m" }, "tablet" => { "spaceAbove" => "section-l", "spaceBelow" => "section-l" } }) ] })
+    assert_equal "1 1 2", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "phone" => { "spaceAbove" => "section-l" } }) ] })
+    # No more than the header's own, what the 16 to spare holds, or a step
+    # that is not one, adds nothing.
+    assert_equal "1 1 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "none", "spaceBelow" => "l" } }) ] })
+    assert_equal "1 1 2", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "none", "spaceBelow" => "xxl" } }) ] })
+    assert_equal "1 1 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.({ "base" => { "spaceAbove" => "huge", "spaceBelow" => 96 } }) ] })
+    assert_equal "1 1 1", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ spaced.("section-l") ] })
+  end
+
   test "the frames a page may hold are exactly the providers' origins" do
     assert_equal %w[https://www.youtube-nocookie.com https://player.vimeo.com https://www.openstreetmap.org], RenderPolicy::FRAME_ORIGINS
   end

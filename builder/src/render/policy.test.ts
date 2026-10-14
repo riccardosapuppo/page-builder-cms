@@ -3,7 +3,8 @@
 // values beside it; the render contract holds both to the goldens.
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
-import { anchor, decimal, FRAME_ORIGINS, imageSrc, isVideoProvider, linkHref, mapSrc, MAX_URL_LENGTH, stickyRows, videoSrc } from "./policy.ts";
+import { readFileSync } from "node:fs";
+import { anchor, decimal, FRAME_ORIGINS, HEADER_SPACE, imageSrc, isVideoProvider, linkHref, mapSrc, MAX_URL_LENGTH, STICKY_ROW, STICKY_SPARE, stickyRows, videoSrc } from "./policy.ts";
 
 describe("links", () => {
   test.each([
@@ -120,6 +121,29 @@ describe("a sticky header's rows", () => {
     expect(stickyRows({ sticky: true, sections: [holding("never", ["logo"], ["menu"], ["button"]), holding(undefined, ["heading", "button"], ["heading"])] })).toBe("3 4 4");
     expect(stickyRows({ sticky: true, sections: [holding("phone", ["image"], ["text", "text"])] })).toBe("3 3 5");
     expect(stickyRows({ sticky: true, sections: [holding(undefined, [])] })).toBe("1 1 1");
+  });
+  test("a section's own space above and below counts, past the header's 20 (12 on a phone) and the 16 to spare, at a row's 88 (68)", () => {
+    const spaced = (style: unknown) => ({ props: { stack: "never" }, children: [{ children: [{ type: "button" }] }], style });
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "section-s", spaceBelow: "section-s" } })] })).toBe("2 2 3");
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "section-l", spaceBelow: "section-l" } })] })).toBe("3 3 4");
+    // A device's own step, and a phone that takes the base's, never the tablet's.
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "m" }, tablet: { spaceAbove: "section-l", spaceBelow: "section-l" } })] })).toBe("1 3 1");
+    expect(stickyRows({ sticky: true, sections: [spaced({ phone: { spaceAbove: "section-l" } })] })).toBe("1 1 2");
+    // No more than the header's own, what the 16 to spare holds, or a step
+    // that is not one, adds nothing.
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "none", spaceBelow: "l" } })] })).toBe("1 1 1");
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "none", spaceBelow: "xxl" } })] })).toBe("1 1 2");
+    expect(stickyRows({ sticky: true, sections: [spaced({ base: { spaceAbove: "huge", spaceBelow: 96 } })] })).toBe("1 1 1");
+    expect(stickyRows({ sticky: true, sections: [spaced("section-l")] })).toBe("1 1 1");
+  });
+  test("the row, the header's space and the spare it counts with are the published page's own (site.css)", () => {
+    const css = readFileSync(new URL("../../../cms/app/assets/stylesheets/site.css", import.meta.url), "utf8");
+    expect(css).toContain(`--sticky-row: ${STICKY_ROW[0]}px`);
+    expect(css).toContain(`--sticky-row: ${STICKY_ROW[2]}px`);
+    expect(css).toMatch(new RegExp(`\\.sw-header \\{[^}]*--sec-y: ${HEADER_SPACE[0]}px`));
+    expect(css).toMatch(new RegExp(`\\.sw-header \\{[^}]*--sec-y: ${HEADER_SPACE[2]}px`));
+    expect(css).toContain(`* var(--sticky-row) + ${STICKY_SPARE}px)`);
+    expect([STICKY_ROW[1], HEADER_SPACE[1]]).toEqual([STICKY_ROW[0], HEADER_SPACE[0]]);
   });
   test("at most 9 on any device; none for a header that does not stay at the top", () => {
     expect(stickyRows({ sticky: true, sections: [section(4), section(4), section(1)] })).toBe("3 9 9");

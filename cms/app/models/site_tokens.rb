@@ -53,6 +53,13 @@ module SiteTokens
     read.fetch("site-letter-width").fetch("default")
   end
 
+  # The space steps a section's spaceAbove and spaceBelow may name, in
+  # pixels: the site's steps and the section steps (tokens.json, space.site
+  # and space.site-section), the same on every device.
+  def section_space
+    @section_space ||= read.fetch("space").fetch("site").merge(read.fetch("space").fetch("site-section")).freeze
+  end
+
   def read
     @read ||= JSON.parse(File.read(PATH, encoding: "UTF-8")).freeze
   end

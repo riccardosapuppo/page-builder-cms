@@ -90,7 +90,8 @@ module RenderPolicy
   def sticky_rows(document)
     return nil unless document.is_a?(Hash) && document["sticky"] == true
 
-    rows = Array(document["sections"]).select { |section| section.is_a?(Hash) }.reduce([ 0, 0, 0 ]) do |(desktop, tablet, phone), section|
+    sections = Array(document["sections"]).select { |section| section.is_a?(Hash) }
+    rows = sections.reduce([ 0, 0, 0 ]) do |(desktop, tablet, phone), section|
       columns = (section["children"].is_a?(Array) ? section["children"] : []).map { |column| column_rows(column) }
       columns = [ 1 ] if columns.empty?
       stack = section["props"].is_a?(Hash) ? section["props"]["stack"] : nil
@@ -98,7 +99,40 @@ module RenderPolicy
       stacked = columns.size >= 2 ? columns.sum : side
       [ desktop + side, tablet + (stack == "phone" || stack == "never" ? side : stacked), phone + (stack == "never" ? side : stacked) ]
     end
-    rows.map { |count| count.clamp(1, 9) }.join(" ")
+    rows.each_with_index.map do |count, device|
+      over = sections.sum { |section| space_over(section, device) }
+      (count + ([ over - STICKY_SPARE, 0 ].max.to_f / STICKY_ROW[device]).ceil).clamp(1, 9)
+    end.join(" ")
+  end
+
+  # What a header's row is counted at, and the header's own space above
+  # and below a section that sets none, on a desktop, a tablet and a phone;
+  # and the pixels to spare under it all, which a section's own space uses
+  # first (site.css: --sticky-row, .sw-header's --sec-y, the 16 added).
+  STICKY_ROW = [ 88, 88, 68 ].freeze
+  HEADER_SPACE = [ 20, 20, 12 ].freeze
+  STICKY_SPARE = 16
+
+  # The space steps a section's spaceAbove and spaceBelow may name, in
+  # pixels, the same on every device: tokens.json's space.site and
+  # space.site-section, which render_policy_test.rb holds this to (the
+  # module needs nothing of Rails, so the editor's twins can run it).
+  SECTION_SPACE = { "none" => 0, "xs" => 4, "s" => 8, "m" => 16, "l" => 24, "xl" => 32, "xxl" => 48, "section-s" => 64, "section-l" => 96 }.freeze
+
+  # The pixels a section's own space above and below adds on a device (0 a
+  # desktop, 1 a tablet, 2 a phone) over the header's own: the device's own
+  # step where it names one, else the base's, a phone's never the tablet's,
+  # as the page's classes apply them; none where the section's space is the
+  # header's or less.
+  def space_over(section, device)
+    style = section["style"].is_a?(Hash) ? section["style"] : {}
+    own = style[[ nil, "tablet", "phone" ][device]]
+    base = style["base"]
+    sides = %w[spaceAbove spaceBelow].sum do |key|
+      step = [ own.is_a?(Hash) ? own[key] : nil, base.is_a?(Hash) ? base[key] : nil ].find { |value| SECTION_SPACE.key?(value) }
+      step.nil? ? HEADER_SPACE[device] : SECTION_SPACE.fetch(step)
+    end
+    [ sides - (2 * HEADER_SPACE[device]), 0 ].max
   end
 
   # A column's rows, one for each of its blocks, three for a tall one, and

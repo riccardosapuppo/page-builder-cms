@@ -157,6 +157,29 @@ test("Sticky header, published, keeps the header at the top of the window while 
       expect(targetTop, `${size.width} wide`).toBeGreaterThanOrEqual(headerBottom);
       expect(targetTop - headerBottom, `${size.width} wide`).toBeLessThan(80);
     }
+
+    // The header's row with space of its own above and below it (64 on
+    // every device, over the header's own 20, 12 on a phone): the block an
+    // anchor names still stops below it.
+    const spaced = kept.sections.map((each, index) => {
+      if (index > 0) return each;
+      const own = each as { style?: { base?: Record<string, unknown> } };
+      return { ...own, style: { ...own.style, base: { ...own.style?.base, spaceAbove: "section-s", spaceBelow: "section-s" } } };
+    });
+    await saveDraft({ ...kept, sections: spaced }, "spaced-header");
+    await publish(request, header.id);
+    for (const size of [{ width: 1024, height: 600 }, { width: 390, height: 844 }]) {
+      await visitor.setViewportSize(size);
+      await visitor.goto("about:blank");
+      await visitor.goto(`${cms()}/${slug}#band-one`);
+      await expect.poll(() => visitor.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+      const { headerBottom, targetTop } = await visitor.evaluate(() => ({
+        headerBottom: document.querySelector("header.sw-header")!.getBoundingClientRect().bottom,
+        targetTop: document.getElementById("band-one")!.getBoundingClientRect().top,
+      }));
+      expect(targetTop, `spaced, ${size.width} wide`).toBeGreaterThanOrEqual(headerBottom);
+      expect(targetTop - headerBottom, `spaced, ${size.width} wide`).toBeLessThan(80);
+    }
     await visitor.close();
   } finally {
     // What every page drew, published again, then the draft as it was.
