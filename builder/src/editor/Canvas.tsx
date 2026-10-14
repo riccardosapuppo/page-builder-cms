@@ -65,7 +65,7 @@ import { afterRender } from "./act.ts";
 import { openBlockMenu } from "./BlockMenu.tsx";
 import { canvasUi } from "./canvas-ui.ts";
 import "./canvas.css";
-import { Clamp } from "./Clamp.tsx";
+import { Clamp, FRAME_MOVED } from "./Clamp.tsx";
 import { withBlockPreview, withPalettePreview } from "./color-preview.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
@@ -360,8 +360,9 @@ function hug(mark: HTMLElement | null, then?: () => void): (() => void) | undefi
   };
 }
 
-// The selection's frame on a button: placed on its pill.
-const selectionHug = (frame: HTMLElement | null): (() => void) | undefined => hug(frame);
+// The selection's frame on a button: placed on its pill, the toolbar told
+// each time, as nothing it watches changes size (./Clamp.tsx).
+const selectionHug = (frame: HTMLElement | null): (() => void) | undefined => hug(frame, () => frame?.dispatchEvent(new Event(FRAME_MOVED, { bubbles: true })));
 
 // A hovered block's name stands above its outline, at its top left, where
 // the selection's toolbar names a block, unless the canvas cuts it there:

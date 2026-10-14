@@ -242,11 +242,17 @@ function placeOnPage(clamp: HTMLElement, kind: ClampKind): SeamPlus[] {
   return seams;
 }
 
+// Said on a block by its selection's frame when the frame moves with
+// nothing changing size: a button's frame on its pill, aligned anew
+// (Canvas.tsx, hug). The toolbar, which stands by the frame, follows it.
+export const FRAME_MOVED = "editor-frame-moved";
+
 // Places the toolbar now, and again whenever the block, the page, the
-// canvas or the toolbar changes size, the canvas scrolls (the toolbar
-// keeps in view, by a tall block at the canvas's top), the page is drawn
-// at a new scale, or a drawer opens or closes over the canvas. Gone, it
-// gives the seams' "+" back their places and the block its scroll margins.
+// canvas or the toolbar changes size, the selection's frame moves, the
+// canvas scrolls (the toolbar keeps in view, by a tall block at the
+// canvas's top), the page is drawn at a new scale, or a drawer opens or
+// closes over the canvas. Gone, it gives the seams' "+" back their places
+// and the block its scroll margins.
 function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind, writing: boolean): void {
   const { ui } = useEnv();
   useLayoutEffect(() => {
@@ -281,6 +287,7 @@ function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind,
     const scaled = own.closest(".frame");
     if (scaled) rescaled.observe(scaled, { attributes: true, attributeFilter: ["style", "data-scale"] });
     canvas?.addEventListener("scroll", soon, { passive: true });
+    own.addEventListener(FRAME_MOVED, place);
     const unsubscribe = ui.subscribe((state, before) => {
       if (state.drawer !== before.drawer) afterRender(place);
     });
@@ -289,6 +296,7 @@ function useClampPlace(ref: { current: HTMLDivElement | null }, kind: ClampKind,
       resized.disconnect();
       rescaled.disconnect();
       canvas?.removeEventListener("scroll", soon);
+      own.removeEventListener(FRAME_MOVED, place);
       unsubscribe();
       own.style.scrollMarginTop = "";
       own.style.scrollMarginBottom = "";
