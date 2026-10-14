@@ -117,7 +117,10 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   first changed). The header and footer are records of `pages`, of their
   own kind. Its
   layout is `LAYOUT`, a step per version, as the document upgrades are:
-  a later layout is a step added at the end.
+  a later layout is a step added at the end. A change that adds a field
+  to a record adds a step too, if one with nothing in it: an editor
+  built before it would write the record without the field, and the
+  version tells its tabs to let go (version 2, the style's custom CSS).
 - **Two tabs.** Every write is one readwrite transaction, and IndexedDB
   runs the transactions of one database's stores one after the other,
   whichever tab sends them: a save checks the revision and writes in the

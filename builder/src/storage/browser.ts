@@ -132,6 +132,11 @@ export const LAYOUT: readonly LayoutStep[] = [
     database.createObjectStore("blobs", { keyPath: "id" });
     database.createObjectStore("site", { keyPath: "key" });
   },
+  // Version 2: the site style's record holds the site's custom CSS. No
+  // store changes; the step is there so that a tab of an editor built
+  // before it, which would put the style back without the stylesheet,
+  // lets go of the database (onversionchange) once this build opens it.
+  () => undefined,
 ];
 
 const STORES = ["pages", "versions", "media", "blobs", "site"] as const;
