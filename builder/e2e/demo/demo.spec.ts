@@ -1,7 +1,12 @@
 // The browser demo's story, on its build as GitHub Pages serves it, each
 // test a first visit in a browser of its own:
 // - the example site is there, its three pages published, the home page
-//   open, and the demo's line at the bottom, word for word;
+//   open, and the demo's line at the bottom, word for word, who made it a
+//   link to the author's site;
+// - the line's key shuts it down to who made it and opens it again, the
+//   browser keeping the choice under the editor and under the pages the
+//   demo draws; on a phone, shut, it is one row a finger's height and the
+//   canvas takes the room;
 // - an edit is kept in this browser and is there after a reload;
 // - two tabs: the one that saves second gets the conflict bar, and Reload
 //   takes the other's words;
@@ -26,7 +31,7 @@
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
-import { test as base, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test as base, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { DEMO_BASE } from "../../build/demo.ts";
 import { axe } from "../helpers/axe.ts";
 import { block } from "../helpers/canvas.ts";
@@ -35,6 +40,8 @@ import { png } from "../helpers/images.ts";
 
 const LINE = "Browser demo: drafts stay in this browser. The full CMS runs on Rails 8, with publishing, shared versions and caching. Source on GitHub. Developed by Riccardo Sapuppo";
 const SOURCE = "https://github.com/riccardosapuppo/page-builder-cms";
+const AUTHOR = "https://riccardosapuppo.com";
+const CREDIT = "Developed by Riccardo Sapuppo";
 const PUBLISHED_LINE = "Published in this browser. In the full system, Rails publishes and serves this page, with the cache.";
 const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
@@ -115,6 +122,7 @@ test("a first visit opens the example site: three pages and the header and foote
   const line = page.getByRole("complementary", { name: "About this demo" });
   await expect(line).toHaveText(LINE);
   await expect(line.getByRole("link", { name: "Source on GitHub" })).toHaveAttribute("href", SOURCE);
+  await expect(line.getByRole("link", { name: CREDIT })).toHaveAttribute("href", AUTHOR);
   // At the bottom, under the editor's bottom line, not at the top.
   const own = (await line.boundingBox())!;
   const bottomLine = (await page.locator(".statusbar").boundingBox())!;
@@ -135,6 +143,78 @@ test("a first visit opens the example site: three pages and the header and foote
 
   await shoot(page, "demo-editor");
   await noSeriousFinding(page, "the editor on the example site");
+});
+
+// Where an element stands, to the pixel.
+async function box(locator: Locator) {
+  const b = (await locator.boundingBox())!;
+  return { left: Math.round(b.x), top: Math.round(b.y), right: Math.round(b.x + b.width), bottom: Math.round(b.y + b.height), width: Math.round(b.width), height: Math.round(b.height) };
+}
+
+test("the demo's line shuts down to who made it with its key, and opens again; the browser keeps the choice, under the editor and under the pages the demo draws", async ({ page, context }) => {
+  await openDemo(page);
+  const line = page.getByRole("complementary", { name: "About this demo" });
+  const key = line.getByRole("button", { name: "About this demo" });
+  const author = line.getByRole("link", { name: CREDIT });
+  await expect(key).toHaveAttribute("aria-expanded", "true");
+  const open = await box(line);
+  const credit = await box(author);
+  // From the keyboard as from a pointer, the focus kept on the key.
+  await key.focus();
+  await page.keyboard.press("Enter");
+  await expect(line).toHaveText(CREDIT);
+  await expect(key).toHaveAttribute("aria-expanded", "false");
+  await expect(key).toBeFocused();
+  // At the window's foot still, who made it where it was, on the right.
+  const shut = await box(line);
+  expect(shut.bottom).toBe(open.bottom);
+  expect((await box(author)).right).toBe(credit.right);
+  await expect(author).toHaveAttribute("href", AUTHOR);
+  await shoot(page, "demo-line-shut");
+  await noSeriousFinding(page, "the demo's line shut");
+
+  // Shut on the next visit, and under a page the demo draws; opened there,
+  // open again under the editor on the visit after.
+  await page.reload();
+  await openDemo(page);
+  await expect(line).toHaveText(CREDIT);
+  const view = await context.newPage();
+  await view.goto(`${DEMO_BASE}?published=1`);
+  const viewLine = view.getByRole("complementary", { name: "About this demo" });
+  await expect(viewLine).toHaveText(CREDIT);
+  await viewLine.getByRole("button", { name: "About this demo" }).click();
+  await expect(viewLine).toHaveText(LINE);
+  await view.close();
+  await page.reload();
+  await openDemo(page);
+  await expect(line).toHaveText(LINE);
+  await expect(key).toHaveAttribute("aria-expanded", "true");
+});
+
+test.describe("on a phone, 390 by 844, with a finger", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("the demo's line, shut with its key, is one row a finger's height between the canvas and the bar at the foot, and the canvas takes the room it gave", async ({ page }) => {
+    await openDemo(page);
+    const line = page.getByRole("complementary", { name: "About this demo" });
+    const key = line.getByRole("button", { name: "About this demo" });
+    const canvas = page.locator(".canvas");
+    const keyBox = await box(key);
+    expect([keyBox.width, keyBox.height]).toEqual([44, 44]);
+    const open = await box(line);
+    const canvasOpen = await box(canvas);
+    await key.tap();
+    await expect(line).toHaveText(CREDIT);
+    const shut = await box(line);
+    expect(shut.height).toBe(44);
+    expect(shut.height).toBeLessThan(open.height);
+    expect(shut.bottom).toBe((await box(page.getByRole("navigation", { name: "Editor tools" }))).top);
+    const canvasShut = await box(canvas);
+    expect(canvasShut.height).toBe(canvasOpen.height + open.height - shut.height);
+    expect(canvasShut.bottom).toBe(shut.top);
+    await expect(line.getByRole("link", { name: CREDIT })).toHaveAttribute("href", AUTHOR);
+    await noSeriousFinding(page, "a phone, the demo's line shut");
+  });
 });
 
 // The edition this browser was given, as the demo keeps it.

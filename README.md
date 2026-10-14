@@ -701,7 +701,9 @@ published in that browser shows them. A form there is
 not sent: one line says what Rails does with its answers. At the bottom, one
 line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
 8, with publishing, shared versions and caching. Source on GitHub.", and
-at its end "Developed by Riccardo Sapuppo" beside the author's photograph.
+at its end "Developed by Riccardo Sapuppo" beside the author's face, a link
+to the author's site. Its key shuts the line down to that credit and opens
+it again, and the browser remembers the choice.
 
 **The demo's limits**, which are those of having no server:
 - **Nothing is served.** No page at an address of its own, no cache, no

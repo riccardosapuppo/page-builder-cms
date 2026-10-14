@@ -248,7 +248,9 @@ same demo from the source, at `/`.
   draws, one line: "Browser demo: drafts stay in this browser. The full
   CMS runs on Rails 8, with publishing, shared versions and caching.
   Source on GitHub.", and at its end "Developed by Riccardo Sapuppo"
-  beside the author's photograph.
+  beside the author's face, a link to the author's site. Its key shuts
+  the line down to that credit, one row, and opens it again; the browser
+  keeps the choice for the editor and the pages alike.
 
 **Its limits.**
 - Nothing is served: no page at an address of its own, no cache, no

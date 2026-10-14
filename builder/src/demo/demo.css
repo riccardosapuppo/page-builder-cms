@@ -14,19 +14,44 @@
    higher, and a toast of four lines would stand over it. */
 .toast.toast-save { bottom: 76px; }
 
-.demo-line { font: 400 12px/16px var(--font-ui); color: var(--steel); }
+/* The line's words on the left, its key on the right, at the top. */
+.demo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 8px; font: 400 12px/16px var(--font-ui); color: var(--steel); }
 .demo-line a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
 .demo-line a:hover { text-decoration-thickness: 2px; }
 /* Who made it, at the end of the line's first row, or under it where the
-   row has no room: the author's face in an 18 px disc, which stands out
-   of the 16 px line by a pixel each way and leaves its height alone. */
-.demo-line-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; }
-.demo-line-row > p:first-child { flex: 1 1 auto; min-width: 0; }
-.demo-credit { display: flex; align-items: center; gap: 6px; flex: none; }
-.demo-credit img { display: block; width: 18px; height: 18px; margin-block: -1px; border-radius: 50%; }
+   row has no room (on the right from a tablet's width up, where it stays
+   when the line is shut): the author's face, head and shoulders, in a
+   white disc of 20 px, a ring of the mark's yellow around it with the
+   line's ground between, all of it standing out of the 16 px line and
+   leaving its height alone; and the author's name, a link to the author's
+   site with the face and the words before it, the name alone underlined. */
+.demo-line-row { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; }
+.demo-words { flex: 1 1 auto; min-width: 0; }
+.demo-credit { display: flex; align-items: center; flex: none; }
+@media (min-width: 700px) { .demo-credit { margin-left: auto; } }
+.demo-line .demo-credit a { display: flex; align-items: center; gap: 9px; color: inherit; text-decoration: none; }
+.demo-face { flex: none; display: block; width: 20px; height: 20px; margin: -2px 0 -2px 3px; border-radius: 50%; overflow: hidden; background: var(--white); outline: 1.5px solid var(--mark); outline-offset: 1.5px; }
+.demo-face img { display: block; width: 100%; height: 100%; }
+.demo-credit-name { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
+.demo-credit a:hover .demo-credit-name { text-decoration-thickness: 2px; }
+/* The key that shuts the line down to who made it (a cross) and opens it
+   again (a chevron up): steel, on the key's ground under the pointer, a
+   finger's size where the pointer is coarse (editor.css, section 7). With
+   a mouse it leaves the line's height alone; shut, the line is that one
+   row, the key's height on a touch screen. */
+.demo-line-key { grid-column: 2; grid-row: 1; display: inline-grid; place-items: center; width: 20px; height: 20px; margin: -2px -4px -2px 0; border-radius: var(--r-control); color: var(--steel); }
+.demo-line-key .i { width: 14px; height: 14px; stroke-width: 2; }
+.demo-line-key:hover { background: var(--key); color: var(--graphite); }
+.demo-line[data-shut] { align-items: center; }
+.demo-line[data-shut] .demo-line-key .i { transform: rotate(180deg); }
+@media (pointer: coarse) {
+  .demo-line-key { width: 44px; height: 44px; margin: 0 -12px -7px 0; }
+  .app-foot[data-layout="narrow"] > .demo-line .demo-line-key { margin-block: -6px; }
+  body.demo-page > #editor_root > .demo-line .demo-line-key { margin-block: -12px -16px; }
+}
 /* A newer example site, offered: its words in graphite, its two buttons
    as links of the line. */
-.demo-newer { margin-top: 2px; color: var(--graphite); }
+.demo-newer { grid-column: 1; margin-top: 2px; color: var(--graphite); }
 .demo-line-button { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .demo-line-button:hover { text-decoration-thickness: 2px; }
 .demo-line-button:disabled { color: var(--steel); cursor: default; }
