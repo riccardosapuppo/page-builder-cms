@@ -80,11 +80,14 @@ body {
 .logo { display: block; flex: none; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: butt; stroke-linejoin: miter; }
-.i-xs { width: 16px; height: 16px; stroke-width: 1.875; }
-/* Lucide's icons (./lucide.tsx), on their 24 grid, stroked round. */
+/* Lucide's icons (./icons.tsx), on their 24 grid, stroked round. In the
+   chrome a stroke is 1.5 px at any size, as the approved design's icons
+   drew it: 1.8 of the grid at 20 px, 2.25 at 16, 2.4 at 14. The canvas's
+   own keys (.li) draw theirs a little finer. */
+.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.i-xs { width: 16px; height: 16px; stroke-width: 2.25; }
 .li { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.i-tile { width: 24px; height: 24px; stroke-width: 1.25; }
+.i-tile { width: 24px; height: 24px; stroke-width: 1.5; }
 
 /* Keyboard focus: a graphite ring, 2 wide and 2 away, everywhere; on the
    canvas with a white keyline in the gap, so it reads on any site colour.
@@ -94,7 +97,7 @@ body {
 :where(.chrome) :focus-visible, :where(.chrome) [data-focus-ring]:focus { outline: 2px solid var(--graphite); outline-offset: 2px; }
 
 .pick-check { position: absolute; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--graphite); color: var(--white); box-shadow: 0 0 0 2px var(--white); pointer-events: none; }
-.pick-check .i { width: 12px; height: 12px; stroke-width: 2.5; }
+.pick-check .i { width: 12px; height: 12px; stroke-width: 3; }
 
 @media (prefers-reduced-motion: no-preference) {
   .btn, .ibtn, .tile, .t-chev, .menu-item { transition: background-color .12s ease, transform .12s ease; }
@@ -388,7 +391,7 @@ body {
 .grp-dev, .grp-err { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .grp-dev { color: var(--graphite); }
 .grp-err { color: var(--err); }
-.grp-dev .i, .grp-err .i { width: 14px; height: 14px; stroke-width: 2; }
+.grp-dev .i, .grp-err .i { width: 14px; height: 14px; stroke-width: 2.4; }
 .sum-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px var(--rule); }
 .grp-body { padding: 2px 16px 18px; }
 .grp-body > .field:first-child, .grp-body > :first-child > .field:first-child { margin-top: 0; }
@@ -414,9 +417,9 @@ body {
 /* A tablet's or a phone's own value, and what a change does while one is
    previewed (design/styles.css, .scope-device, .scope-then, .override). */
 .scope-device { color: var(--graphite); font-weight: 600; }
-.scope-device .i { width: 14px; height: 14px; stroke-width: 2; align-self: center; }
+.scope-device .i { width: 14px; height: 14px; stroke-width: 2.4; align-self: center; }
 .scope-then { display: flex; align-items: flex-start; gap: 5px; margin-top: 6px; color: var(--steel); font-size: 12px; line-height: 16px; }
-.scope-then .i { width: 14px; height: 14px; margin-top: 1px; stroke-width: 2; flex: none; }
+.scope-then .i { width: 14px; height: 14px; margin-top: 1px; stroke-width: 2.4; flex: none; }
 .override { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 6px 8px; margin-top: 8px; padding: 8px 10px 10px; border-radius: var(--r-control); background: var(--key); font-size: 12px; line-height: 16px; }
 .override > .i { margin-top: -2px; }
 .override p { color: var(--graphite); }
@@ -434,7 +437,7 @@ textarea.input { resize: vertical; }
 .hint-pad { padding: 0 8px; }
 .field-error .input, .input[aria-invalid="true"] { border-color: var(--err); box-shadow: 0 0 0 1px var(--err); }
 .error { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; color: var(--err); font-size: 12px; line-height: 16px; }
-.error .i { width: 16px; height: 16px; stroke-width: 1.875; }
+.error .i { width: 16px; height: 16px; stroke-width: 2.25; }
 .note { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: var(--r-control); background: var(--key); font-size: 12px; line-height: 16px; }
 .note .i { margin-top: -2px; color: var(--steel); }
 .device-note .i { color: var(--graphite); }
@@ -689,7 +692,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .ov-dim-v span { top: 9px; }
 .ov-pad-top span { top: 3px; }
 /* A step that is the previewed device's own carries its glyph. */
-.ov-dim-v span .i, .ov-pad span .i { width: 14px; height: 14px; stroke-width: 2; }
+.ov-dim-v span .i, .ov-pad span .i { width: 14px; height: 14px; stroke-width: 2.4; }
 
 /* Empty page: an invitation, not a void. */
 .invite { padding: 40px 48px 56px; color: var(--graphite); }
@@ -899,7 +902,7 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .keys-group dd { display: flex; gap: 4px; flex: none; margin: 0; }
 .keys-group .hint { margin-top: 8px; }
 kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--rule); border-bottom-width: 2.5px; border-radius: 5px; background: var(--plate); color: var(--graphite); font: 600 12px/1 var(--font-ui); }
-kbd .i-key { width: 14px; height: 14px; stroke-width: 2.15; }
+kbd .i-key { width: 14px; height: 14px; stroke-width: 2.6; }
 .keys { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; flex: none; }
 kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2px; border-radius: 4px; color: var(--steel); font: 600 12px/1 var(--font-ui); }
 .dlg-foot-note { justify-content: flex-start; padding: 14px 24px 18px; background: var(--key); border-radius: 0 0 12px 12px; }
@@ -952,7 +955,7 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .notice-link:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
 
 .invite .invite-publish { display: flex; align-items: center; gap: 6px; max-width: none; margin-top: 12px; color: var(--graphite); font-size: 13px; line-height: 18px; }
-.invite-publish .i { width: 16px; height: 16px; stroke-width: 1.875; color: var(--steel); }
+.invite-publish .i { width: 16px; height: 16px; stroke-width: 2.25; color: var(--steel); }
 
 /* Site style (design/shots/site-style.png). */
 .tray-head-title > div > h2 { font-size: 14px; line-height: 20px; font-weight: 600; }
@@ -1000,7 +1003,7 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .palette-hues button.palette-custom { background: var(--c, conic-gradient(from 90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)); }
 .checks { list-style: none; padding: 0; display: grid; gap: 3px; margin-top: 10px; }
 .checks li { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 16px; color: var(--graphite); }
-.checks .i { width: 16px; height: 16px; stroke-width: 2; flex: none; }
+.checks .i { width: 16px; height: 16px; stroke-width: 2.4; flex: none; }
 .checks .pass .i { color: var(--live); }
 .checks .fail .i { color: var(--warn); }
 .slot-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-left: 22px; }

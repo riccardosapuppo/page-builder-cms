@@ -1,10 +1,11 @@
-// The quote's tile: the approved design's w-quote symbol.
+// The quote's tile: Lucide's quote
+// (../../editor/lucide/quote.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "quote",
   shapes: [
-    ["path", { d: "M3.75 15.75H8a.75 .75 0 0 0 .75-.75V10.75H6c.1-2 .95-3.2 2.75-3.6V4.25C5.25 4.75 3 7.25 3 11.25V15a.75 .75 0 0 0 .75.75z" }],
-    ["path", { d: "M12 15.75h4.25a.75 .75 0 0 0 .75-.75V10.75h-2.75c.1-2 .95-3.2 2.75-3.6V4.25c-3.5.5-5.75 3-5.75 7V15a.75 .75 0 0 0 .75.75z" }],
+    ["path", { d: "M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" }],
+    ["path", { d: "M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" }],
   ],
 };

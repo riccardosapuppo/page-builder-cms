@@ -50,7 +50,7 @@
 .canvas .site .clamp > .clamp-head { width: auto; max-width: 228px; padding: 0 7px 0 6px; margin-right: 2px; background: var(--mark); color: var(--on-mark); }
 .canvas .site .clamp > .clamp-head:not(.clamp-head-static):hover { background: color-mix(in srgb, var(--mark) 86%, var(--white)); }
 .canvas .site .clamp > .clamp-head[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--graphite); }
-.clamp-head .i { width: 16px; height: 16px; stroke-width: 1.75; }
+.clamp-head .i { width: 16px; height: 16px; stroke-width: 2.1; }
 .clamp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .clamp-head .li-xs { width: 14px; height: 14px; margin-left: -2px; stroke-width: 2.25; }
 .canvas .site .clamp > button[aria-disabled="true"] { color: rgb(255 255 255 / .3); cursor: default; }

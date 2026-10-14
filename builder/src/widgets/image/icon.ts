@@ -1,11 +1,12 @@
-// The image's tile: the approved design's w-image symbol.
+// The image's tile: Lucide's image
+// (../../editor/lucide/image.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "image",
   shapes: [
-    ["rect", { x: "2.75", y: "3.75", width: "14.5", height: "12.5", rx: "1" }],
-    ["circle", { cx: "7.25", cy: "8", r: "1.5" }],
-    ["path", { d: "M2.75 14l4.5-3.75 3.5 3 2.5-2 4 3.25" }],
+    ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2" }],
+    ["circle", { cx: "9", cy: "9", r: "2" }],
+    ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" }],
   ],
 };

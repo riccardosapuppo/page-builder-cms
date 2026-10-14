@@ -1,10 +1,11 @@
-// The button's tile: the approved design's w-button symbol.
+// The button's tile: Lucide's square-mouse-pointer
+// (../../editor/lucide/square-mouse-pointer.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "square-mouse-pointer",
   shapes: [
-    ["rect", { x: "2.75", y: "6.25", width: "14.5", height: "7.5", rx: "3.75" }],
-    ["path", { d: "M7 10h6" }],
+    ["path", { d: "M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z" }],
+    ["path", { d: "M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" }],
   ],
 };

@@ -833,6 +833,6 @@ this README.
 
 MIT, see [LICENSE](LICENSE). Developed by Riccardo Sapuppo. The fonts in
 `design/fonts/` are under the SIL Open Font License, with each licence file
-next to its font. The icons of the editor's canvas toolbar
-(`builder/src/editor/lucide.tsx`) are Lucide's, under the ISC License, quoted
-in that file.
+next to its font. The editor's icons are Lucide's, under the ISC License:
+the files it draws them from are in `builder/src/editor/lucide/`, with the
+licence beside them, and it is quoted in `builder/src/editor/icons.tsx`.

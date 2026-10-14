@@ -1,11 +1,14 @@
-// The accordion's tile: the approved design's w-accordion symbol.
+// The accordion's tile: Lucide's list-collapse
+// (../../editor/lucide/list-collapse.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "list-collapse",
   shapes: [
-    ["rect", { x: "2.75", y: "2.75", width: "14.5", height: "4", rx: ".75" }],
-    ["rect", { x: "2.75", y: "8.75", width: "14.5", height: "8.5", rx: ".75" }],
-    ["path", { d: "M5.25 12h6M5.25 14.5h4M12.75 4.25l1.25 1 1.25-1" }],
+    ["path", { d: "m3 10 2.5-2.5L3 5" }],
+    ["path", { d: "m3 19 2.5-2.5L3 14" }],
+    ["path", { d: "M10 6h11" }],
+    ["path", { d: "M10 12h11" }],
+    ["path", { d: "M10 18h11" }],
   ],
 };

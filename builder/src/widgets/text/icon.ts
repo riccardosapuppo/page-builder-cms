@@ -1,7 +1,12 @@
-// The text's tile: the approved design's w-text symbol.
+// The text's tile: Lucide's text
+// (../../editor/lucide/text.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
-  shapes: [["path", { d: "M3.5 4.75h13M3.5 8.25h13M3.5 11.75h13M3.5 15.25H11" }]],
+  lucide: "text",
+  shapes: [
+    ["path", { d: "M17 6.1H3" }],
+    ["path", { d: "M21 12.1H3" }],
+    ["path", { d: "M15.1 18H3" }],
+  ],
 };

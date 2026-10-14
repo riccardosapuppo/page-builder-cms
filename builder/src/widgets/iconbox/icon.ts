@@ -1,10 +1,12 @@
-// The icon box's tile: the approved design's w-iconbox symbol.
+// The icon box's tile: Lucide's shapes
+// (../../editor/lucide/shapes.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "shapes",
   shapes: [
-    ["circle", { cx: "10", cy: "6.75", r: "3" }],
-    ["path", { d: "M4.75 12.75h10.5M6.5 16h7" }],
+    ["path", { d: "M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" }],
+    ["rect", { x: "3", y: "14", width: "7", height: "7", rx: "1" }],
+    ["circle", { cx: "17.5", cy: "17.5", r: "3.5" }],
   ],
 };

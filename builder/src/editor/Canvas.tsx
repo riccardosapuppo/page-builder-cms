@@ -71,7 +71,6 @@ import { isGhostId, withGhost } from "./drag/ghost.ts";
 import { containerMark, dragMarkOf, draggedOf, type DragMark } from "./drag/marks.ts";
 import { PAGE_TARGET, roleOf } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
-import { Lucide } from "./lucide.tsx";
 import { insertTarget, useInsert } from "./insert.ts";
 import { placeBeside, placeKey, placeWords } from "./insert-place.ts";
 import { closeInserter, InsertPicker, openInserter, PICKER_ID } from "./InsertPicker.tsx";
@@ -573,7 +572,7 @@ function Marks({ id, kind, type, name, relation, hovered, empty, mark, hug: hugs
               title={`Add a block after ${name} (${ADD_KEY})`}
               onClick={(event) => openInserter(env, after, event.currentTarget)}
             >
-              <Lucide name="plus" />
+              <Icon name="plus" className="li" />
             </button>
           )}
           {tools?.linkOpen && <LinkField tools={tools} />}
@@ -595,7 +594,7 @@ function EmptyPlus({ id, name }: { id: string; name: string }) {
   const place = { kind: "block", parentId: id, index: 0 } as const;
   return (
     <button className="ins-empty" type="button" tabIndex={-1} data-plus={placeKey(place)} aria-label={`Add a block to ${name}`} onClick={(event) => openInserter(env, place, event.currentTarget)}>
-      <span className="ins ins-big" aria-hidden="true"><Lucide name="plus" /></span>
+      <span className="ins ins-big" aria-hidden="true"><Icon name="plus" className="li" /></span>
       <span className="ins-empty-name">Add a block to {name}</span>
       <small>Or drag one here from Insert</small>
     </button>
@@ -630,7 +629,7 @@ function InsertSlot({ index }: { index: number }) {
   return (
     <div ref={ref} className="ins-slot-wrap">
       <div className="ins-slot" aria-hidden="true"><span className="ins-slot-line" /><span className="ins-slot-label">New block</span></div>
-      <button className="ins is-open" type="button" tabIndex={-1} aria-label={title} aria-expanded="true" aria-controls={PICKER_ID} onClick={() => closeInserter(env, true)}><Lucide name="plus" /></button>
+      <button className="ins is-open" type="button" tabIndex={-1} aria-label={title} aria-expanded="true" aria-controls={PICKER_ID} onClick={() => closeInserter(env, true)}><Icon name="plus" className="li" /></button>
     </div>
   );
 }
@@ -677,7 +676,7 @@ function InsertPoint({ index }: { index: number }) {
   return (
     <div ref={ref} className="ins-point" aria-hidden="true">
       <span className="ins-line" />
-      <span className="ins-label"><Lucide name="plus" className="li li-label" />A click in Insert lands here</span>
+      <span className="ins-label"><Icon name="plus" className="li li-label" />A click in Insert lands here</span>
     </div>
   );
 }
@@ -714,7 +713,7 @@ function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>
         title={label}
         onClick={(event) => (state === "open" ? closeInserter(env, true) : openInserter(env, place, event.currentTarget))}
       >
-        <Lucide name="plus" />
+        <Icon name="plus" className="li" />
       </button>
       {state === "hover" && <span ref={tipRef} className="seam-tip" data-edge={edge} aria-hidden="true">{label}</span>}
     </>
@@ -1242,7 +1241,7 @@ function Invite({ part }: { part?: PartKind }) {
       <div className="invite-zone">
         {/* The page's first seam, open: the section picker laid out on the page. */}
         <div className="invite-title">
-          <span className="ins ins-sec is-static" aria-hidden="true"><Lucide name="plus" /></span>
+          <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" className="li" /></span>
           <h2>Start this {name} with a section</h2>
         </div>
         <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : "A section is a band across the page. Pick its columns; you can change them later."}</p>
@@ -1270,7 +1269,7 @@ function Invite({ part }: { part?: PartKind }) {
             </button>
           ))}
         </div>
-        <p className="invite-alt"><Icon name="block" className="i i-xs" /><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span className="ins-glyph" role="img" aria-label="plus"><Lucide name="plus" /></span> that offers them.</span></p>
+        <p className="invite-alt"><Icon name="block" className="i i-xs" /><span>Blocks go inside a column, so the section comes first. Each empty column then shows a large <span className="ins-glyph" role="img" aria-label="plus"><Icon name="plus" className="li" /></span> that offers them.</span></p>
       </div>
       {picking && (
         <ImagePicker

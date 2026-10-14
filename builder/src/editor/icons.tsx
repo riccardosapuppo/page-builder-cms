@@ -1,98 +1,278 @@
-// The editor's own icons: the approved design's i-* symbols
-// (design/index.html), shape for shape, drawn inline with the renderer's
-// SVG drawer. One 20-unit grid; the chrome's stylesheet sets the stroke,
-// the fill and the size by class (.i, .i-xs). A group's fill and stroke
-// are written on each of its shapes. icons.test.ts holds every one to the
-// design's symbol of the same name, or, for the few the approved layout
-// adds, to the layout's.
+/*! Lucide icons (lucide.dev), from lucide-static 0.460.0, ISC License.
+ * Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as
+ * part of Feather (MIT). All other copyright (c) for Lucide are held by
+ * Lucide Contributors 2022.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+// The editor's icons, in its chrome and on the canvas's own keys: Lucide's
+// (the owner's choice of 14 October 2026, design/layout/NOTES.md), each
+// under the editor's name for what it means, with the Lucide icon it is.
+// Shape for shape its file in ./lucide/, as lucide-static
+// publishes it (icons.test.ts holds every one to its file): a 24-unit
+// grid, drawn with the renderer's SVG drawer and stroked round, as
+// Lucide draws them. The stylesheet sets the size and the stroke's
+// width by class (.i and .i-xs in the chrome, .li on the canvas's keys,
+// editor.css). The blocks' tiles are Lucide's too, each in its widget's
+// folder (../widgets/*/icon.ts).
 import { shapeElements, type Shape } from "../render/drawings.tsx";
 
 export interface IconShapes {
-  viewBox: string;
+  lucide: string;
   shapes: readonly Shape[];
 }
 
-const DOT = { fill: "currentColor", stroke: "none" } as const;
-
 export const ICONS = {
-  "chevron-down": { viewBox: "0 0 20 20", shapes: [["path", { d: "M6 8l4 4 4-4" }]] },
-  "chevron-right": { viewBox: "0 0 20 20", shapes: [["path", { d: "M8 6l4 4-4 4" }]] },
-  desktop: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "3.75", width: "14.5", height: "10", rx: "1" }], ["path", { d: "M7 16.75h6M10 13.75v3" }]] },
-  tablet: { viewBox: "0 0 20 20", shapes: [["rect", { x: "4.75", y: "2.75", width: "10.5", height: "14.5", rx: "1.5" }], ["path", { d: "M9 14.5h2" }]] },
-  phone: { viewBox: "0 0 20 20", shapes: [["rect", { x: "6.25", y: "3.25", width: "7.5", height: "13.5", rx: "1.5" }], ["path", { d: "M9.25 14.25h1.5" }]] },
-  undo: { viewBox: "0 0 20 20", shapes: [["path", { d: "M7 4.5L3.5 8 7 11.5" }], ["path", { d: "M3.5 8h8.25a4.25 4.25 0 0 1 0 8.5H9" }]] },
-  redo: { viewBox: "0 0 20 20", shapes: [["path", { d: "M13 4.5L16.5 8 13 11.5" }], ["path", { d: "M16.5 8H8.25a4.25 4.25 0 0 0 0 8.5H11" }]] },
-  history: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.75 10a6.25 6.25 0 1 0 1.83-4.42" }], ["path", { d: "M3.75 3v3.25H7" }], ["path", { d: "M10 6.5V10l2.5 2" }]] },
-  eye: { viewBox: "0 0 20 20", shapes: [["path", { d: "M2.5 10S5.25 5 10 5s7.5 5 7.5 5-2.75 5-7.5 5-7.5-5-7.5-5z" }], ["circle", { cx: "10", cy: "10", r: "2.25" }]] },
-  "eye-off": { viewBox: "0 0 20 20", shapes: [["path", { d: "M2.5 10S5.25 5 10 5s7.5 5 7.5 5-2.75 5-7.5 5-7.5-5-7.5-5z" }], ["circle", { cx: "10", cy: "10", r: "2.25" }], ["path", { d: "M4 3.5l12 13" }]] },
-  check: { viewBox: "0 0 20 20", shapes: [["path", { d: "M4.5 10.5l3.5 3.5 7.5-8" }]] },
-  grip: {
-    viewBox: "0 0 20 20",
+  "chevron-down": { lucide: "chevron-down", shapes: [["path", { d: "m6 9 6 6 6-6" }]] },
+  "chevron-right": { lucide: "chevron-right", shapes: [["path", { d: "m9 18 6-6-6-6" }]] },
+  desktop: {
+    lucide: "monitor",
     shapes: [
-      ["circle", { ...DOT, cx: "7.5", cy: "5", r: "1.25" }], ["circle", { ...DOT, cx: "12.5", cy: "5", r: "1.25" }],
-      ["circle", { ...DOT, cx: "7.5", cy: "10", r: "1.25" }], ["circle", { ...DOT, cx: "12.5", cy: "10", r: "1.25" }],
-      ["circle", { ...DOT, cx: "7.5", cy: "15", r: "1.25" }], ["circle", { ...DOT, cx: "12.5", cy: "15", r: "1.25" }],
+      ["rect", { width: "20", height: "14", x: "2", y: "3", rx: "2" }], ["line", { x1: "8", x2: "16", y1: "21", y2: "21" }],
+      ["line", { x1: "12", x2: "12", y1: "17", y2: "21" }],
     ],
   },
-  copy: { viewBox: "0 0 20 20", shapes: [["rect", { x: "7.25", y: "7.25", width: "9.5", height: "9.5", rx: "1" }], ["path", { d: "M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3" }]] },
-  duplicate: { viewBox: "0 0 20 20", shapes: [["rect", { x: "7.25", y: "7.25", width: "9.5", height: "9.5", rx: "1" }], ["path", { d: "M12.75 7.25v-3a1 1 0 0 0-1-1h-7.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h3M12 9.75v4.5M9.75 12h4.5" }]] },
-  trash: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 5.5h13M8 5.5v-2h4v2M5.25 5.5l.75 11h8l.75-11M8.5 8.5v5M11.5 8.5v5" }]] },
-  paste: { viewBox: "0 0 20 20", shapes: [["path", { d: "M7 4.25H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-2" }], ["rect", { x: "7", y: "2.75", width: "6", height: "3", rx: ".75" }]] },
-  close: { viewBox: "0 0 20 20", shapes: [["path", { d: "M5 5l10 10M15 5L5 15" }]] },
-  search: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "8.75", cy: "8.75", r: "5.25" }], ["path", { d: "M12.5 12.5L17 17" }]] },
-  plus: { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 4v12M4 10h12" }]] },
-  style: { viewBox: "0 0 20 20", shapes: [["rect", { x: "3.25", y: "3.25", width: "5.5", height: "5.5", rx: ".75" }], ["rect", { x: "11.25", y: "3.25", width: "5.5", height: "5.5", rx: ".75" }], ["rect", { x: "3.25", y: "11.25", width: "5.5", height: "5.5", rx: ".75" }], ["circle", { cx: "14", cy: "14", r: "2.75" }]] },
-  "align-left": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 5h13M3.5 8.5h8M3.5 12h13M3.5 15.5h8" }]] },
-  "align-center": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 5h13M6 8.5h8M3.5 12h13M6 15.5h8" }]] },
-  "align-right": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 5h13M8.5 8.5h8M3.5 12h13M8.5 15.5h8" }]] },
-  "valign-top": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 3.75h13" }], ["rect", { x: "6.25", y: "6.25", width: "7.5", height: "7", rx: ".75" }]] },
-  "valign-middle": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3 10h3.25M13.75 10H17" }], ["rect", { x: "6.25", y: "6.25", width: "7.5", height: "7.5", rx: ".75" }]] },
-  "valign-bottom": { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.5 16.25h13" }], ["rect", { x: "6.25", y: "6.75", width: "7.5", height: "7", rx: ".75" }]] },
-  link: { viewBox: "0 0 20 20", shapes: [["path", { d: "M8.5 11.5l3-3" }], ["path", { d: "M9.25 5.75l1.5-1.5a3 3 0 0 1 4.25 4.25l-1.5 1.5" }], ["path", { d: "M10.75 14.25l-1.5 1.5A3 3 0 0 1 5 11.5l1.5-1.5" }]] },
-  calendar: { viewBox: "0 0 20 20", shapes: [["rect", { x: "3.25", y: "4.25", width: "13.5", height: "12.5", rx: "1" }], ["path", { d: "M3.25 8.25h13.5M7 2.5V6M13 2.5V6" }]] },
-  clock: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M10 6.25V10l2.5 2" }]] },
-  globe: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["ellipse", { cx: "10", cy: "10", rx: "2.75", ry: "6.75" }], ["path", { d: "M3.25 10h13.5" }]] },
-  external: { viewBox: "0 0 20 20", shapes: [["path", { d: "M11.5 3.5h5v5M16.5 3.5l-7 7" }], ["path", { d: "M14 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" }]] },
-  warning: { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 3.25l7.25 13.25H2.75z" }], ["path", { d: "M10 8v4" }], ["circle", { cx: "10", cy: "14.25", r: ".9", ...DOT }]] },
-  error: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M10 6.25v4.5" }], ["circle", { cx: "10", cy: "13.4", r: ".9", ...DOT }]] },
-  info: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M10 9v4.75" }], ["circle", { cx: "10", cy: "6.6", r: ".9", ...DOT }]] },
-  upload: { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 13V3.75M6.5 7.25L10 3.75l3.5 3.5" }], ["path", { d: "M3.5 12.5v3a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-3" }]] },
-  restore: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.75 10a6.25 6.25 0 1 0 1.83-4.42" }], ["path", { d: "M3.75 3v3.25H7" }]] },
-  refresh: { viewBox: "0 0 20 20", shapes: [["path", { d: "M16.25 10a6.25 6.25 0 1 1-1.83-4.42" }], ["path", { d: "M16.25 3v3.25H13" }]] },
-  lock: { viewBox: "0 0 20 20", shapes: [["rect", { x: "4.25", y: "8.75", width: "11.5", height: "8", rx: "1" }], ["path", { d: "M7 8.75V6.5a3 3 0 0 1 6 0v2.25" }]] },
-  keyboard: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.25", y: "5.25", width: "15.5", height: "9.5", rx: "1" }], ["path", { d: "M5 8.25h1.5M8.5 8.25H10M12 8.25h1.5M6.5 11.75h7" }]] },
-  anchor: { viewBox: "0 0 20 20", shapes: [["path", { d: "M8 3.5L6.5 16.5M13.5 3.5L12 16.5M4.25 7.5h12.5M3.25 12.5h12.5" }]] },
-  "panel-right": { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "3.75", width: "14.5", height: "12.5", rx: "1" }], ["path", { d: "M12.25 3.75v12.5" }]] },
-  tree: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "2.75", width: "6", height: "4", rx: ".75" }], ["path", { d: "M5.75 6.75v8.5h5M5.75 10.25h5" }], ["rect", { x: "10.75", y: "8.25", width: "6.5", height: "4", rx: ".75" }], ["rect", { x: "10.75", y: "13.25", width: "6.5", height: "4", rx: ".75" }]] },
-  // The approved layout's (design/layout/index.html): the bottom line's
-  // Block edges, and the clamp's bold and italic while a text is written.
-  bold: { viewBox: "0 0 20 20", shapes: [["path", { d: "M6 3.75h4.5a3.13 3.13 0 0 1 0 6.25H6zM6 10h5.25a3.13 3.13 0 0 1 0 6.25H6z" }]] },
-  italic: { viewBox: "0 0 20 20", shapes: [["path", { d: "M8.75 3.75h6.5M4.75 16.25h6.5M12 3.75L8 16.25" }]] },
-  edges: { viewBox: "0 0 20 20", shapes: [["path", { d: "M3.25 6.5V3.25H6.5M13.5 3.25h3.25V6.5M16.75 13.5v3.25H13.5M6.5 16.75H3.25V13.5" }], ["path", { d: "M9 3.25h2M9 16.75h2M3.25 9v2M16.75 9v2" }]] },
-  section: { viewBox: "0 0 20 20", shapes: [["rect", { x: "2.75", y: "5.25", width: "14.5", height: "9.5", rx: "1" }]] },
-  column: { viewBox: "0 0 20 20", shapes: [["rect", { x: "6.25", y: "2.75", width: "7.5", height: "14.5", rx: "1" }]] },
-  question: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M8 8.25a2 2 0 1 1 2.75 1.85c-.45.2-.75.6-.75 1.1v.55" }], ["circle", { cx: "10", cy: "13.6", r: ".9", ...DOT }]] },
-  page: { viewBox: "0 0 20 20", shapes: [["path", { d: "M5 2.75h6.5L15 6.25v11H5z" }], ["path", { d: "M11.5 2.75v3.5H15" }]] },
-  bookmark: { viewBox: "0 0 20 20", shapes: [["path", { d: "M5.5 3h9v14l-4.5-3.5L5.5 17z" }]] },
-  play: { viewBox: "0 0 20 20", shapes: [["path", { d: "M7 5v10l8-5z", ...DOT }]] },
-  pin: { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 17.5s5.25-5 5.25-9.25a5.25 5.25 0 0 0-10.5 0C4.75 12.5 10 17.5 10 17.5z" }], ["circle", { cx: "10", cy: "8.25", r: "2" }]] },
-  more: { viewBox: "0 0 20 20", shapes: [["circle", { ...DOT, cx: "5", cy: "10", r: "1.25" }], ["circle", { ...DOT, cx: "10", cy: "10", r: "1.25" }], ["circle", { ...DOT, cx: "15", cy: "10", r: "1.25" }]] },
-  spinner: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.25", "stroke-opacity": ".3" }], ["path", { d: "M10 3.75A6.25 6.25 0 0 1 16.25 10" }]] },
-  "arrow-up": { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 16V4.5M5.5 9L10 4.5 14.5 9" }]] },
-  "arrow-down": { viewBox: "0 0 20 20", shapes: [["path", { d: "M10 4v11.5M5.5 11l4.5 4.5 4.5-4.5" }]] },
-  "arrow-left": { viewBox: "0 0 20 20", shapes: [["path", { d: "M16 10H4.5M9 5.5L4.5 10 9 14.5" }]] },
-  "arrow-right": { viewBox: "0 0 20 20", shapes: [["path", { d: "M4 10h11.5M11 5.5l4.5 4.5-4.5 4.5" }]] },
-  block: { viewBox: "0 0 20 20", shapes: [["circle", { cx: "10", cy: "10", r: "6.75" }], ["path", { d: "M5.25 14.75l9.5-9.5" }]] },
+  tablet: { lucide: "tablet", shapes: [["rect", { width: "16", height: "20", x: "4", y: "2", rx: "2", ry: "2" }], ["line", { x1: "12", x2: "12.01", y1: "18", y2: "18" }]] },
+  phone: { lucide: "smartphone", shapes: [["rect", { width: "14", height: "20", x: "5", y: "2", rx: "2", ry: "2" }], ["path", { d: "M12 18h.01" }]] },
+  undo: { lucide: "undo-2", shapes: [["path", { d: "M9 14 4 9l5-5" }], ["path", { d: "M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" }]] },
+  redo: { lucide: "redo-2", shapes: [["path", { d: "m15 14 5-5-5-5" }], ["path", { d: "M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" }]] },
+  history: { lucide: "history", shapes: [["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }], ["path", { d: "M3 3v5h5" }], ["path", { d: "M12 7v5l4 2" }]] },
+  eye: {
+    lucide: "eye",
+    shapes: [
+      ["path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }],
+      ["circle", { cx: "12", cy: "12", r: "3" }],
+    ],
+  },
+  "eye-off": {
+    lucide: "eye-off",
+    shapes: [
+      ["path", { d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" }],
+      ["path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242" }],
+      ["path", { d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" }], ["path", { d: "m2 2 20 20" }],
+    ],
+  },
+  check: { lucide: "check", shapes: [["path", { d: "M20 6 9 17l-5-5" }]] },
+  grip: {
+    lucide: "grip-vertical",
+    shapes: [
+      ["circle", { cx: "9", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "5", r: "1" }], ["circle", { cx: "9", cy: "19", r: "1" }],
+      ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "15", cy: "5", r: "1" }], ["circle", { cx: "15", cy: "19", r: "1" }],
+    ],
+  },
+  copy: {
+    lucide: "copy",
+    shapes: [
+      ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }],
+      ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }],
+    ],
+  },
+  duplicate: {
+    lucide: "copy-plus",
+    shapes: [
+      ["line", { x1: "15", x2: "15", y1: "12", y2: "18" }], ["line", { x1: "12", x2: "18", y1: "15", y2: "15" }],
+      ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }],
+      ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }],
+    ],
+  },
+  trash: {
+    lucide: "trash-2",
+    shapes: [
+      ["path", { d: "M3 6h18" }], ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }], ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }],
+      ["line", { x1: "10", x2: "10", y1: "11", y2: "17" }], ["line", { x1: "14", x2: "14", y1: "11", y2: "17" }],
+    ],
+  },
+  paste: {
+    lucide: "clipboard-paste",
+    shapes: [
+      ["path", { d: "M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z" }],
+      ["path", { d: "M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10" }], ["path", { d: "m17 10 4 4-4 4" }],
+    ],
+  },
+  close: { lucide: "x", shapes: [["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]] },
+  search: { lucide: "search", shapes: [["circle", { cx: "11", cy: "11", r: "8" }], ["path", { d: "m21 21-4.3-4.3" }]] },
+  plus: { lucide: "plus", shapes: [["path", { d: "M5 12h14" }], ["path", { d: "M12 5v14" }]] },
+  style: {
+    lucide: "palette",
+    shapes: [
+      ["circle", { cx: "13.5", cy: "6.5", r: ".5", fill: "currentColor" }], ["circle", { cx: "17.5", cy: "10.5", r: ".5", fill: "currentColor" }],
+      ["circle", { cx: "8.5", cy: "7.5", r: ".5", fill: "currentColor" }], ["circle", { cx: "6.5", cy: "12.5", r: ".5", fill: "currentColor" }],
+      ["path", { d: "M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" }],
+    ],
+  },
+  "align-left": { lucide: "align-left", shapes: [["path", { d: "M15 12H3" }], ["path", { d: "M17 18H3" }], ["path", { d: "M21 6H3" }]] },
+  "align-center": { lucide: "align-center", shapes: [["path", { d: "M17 12H7" }], ["path", { d: "M19 18H5" }], ["path", { d: "M21 6H3" }]] },
+  "align-right": { lucide: "align-right", shapes: [["path", { d: "M21 12H9" }], ["path", { d: "M21 18H7" }], ["path", { d: "M21 6H3" }]] },
+  "valign-top": {
+    lucide: "align-start-horizontal",
+    shapes: [
+      ["rect", { width: "6", height: "16", x: "4", y: "6", rx: "2" }], ["rect", { width: "6", height: "9", x: "14", y: "6", rx: "2" }],
+      ["path", { d: "M22 2H2" }],
+    ],
+  },
+  "valign-middle": {
+    lucide: "align-center-horizontal",
+    shapes: [
+      ["path", { d: "M2 12h20" }], ["path", { d: "M10 16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" }],
+      ["path", { d: "M10 8V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4" }], ["path", { d: "M20 16v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1" }],
+      ["path", { d: "M14 8V7c0-1.1.9-2 2-2h2a2 2 0 0 1 2 2v1" }],
+    ],
+  },
+  "valign-bottom": {
+    lucide: "align-end-horizontal",
+    shapes: [
+      ["rect", { width: "6", height: "16", x: "4", y: "2", rx: "2" }], ["rect", { width: "6", height: "9", x: "14", y: "9", rx: "2" }],
+      ["path", { d: "M22 22H2" }],
+    ],
+  },
+  link: {
+    lucide: "link",
+    shapes: [
+      ["path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }],
+      ["path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" }],
+    ],
+  },
+  calendar: {
+    lucide: "calendar",
+    shapes: [
+      ["path", { d: "M8 2v4" }], ["path", { d: "M16 2v4" }], ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2" }],
+      ["path", { d: "M3 10h18" }],
+    ],
+  },
+  clock: { lucide: "clock", shapes: [["circle", { cx: "12", cy: "12", r: "10" }], ["polyline", { points: "12 6 12 12 16 14" }]] },
+  globe: {
+    lucide: "globe",
+    shapes: [
+      ["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" }], ["path", { d: "M2 12h20" }],
+    ],
+  },
+  external: {
+    lucide: "external-link",
+    shapes: [
+      ["path", { d: "M15 3h6v6" }], ["path", { d: "M10 14 21 3" }], ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }],
+    ],
+  },
+  warning: {
+    lucide: "triangle-alert",
+    shapes: [
+      ["path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" }], ["path", { d: "M12 9v4" }],
+      ["path", { d: "M12 17h.01" }],
+    ],
+  },
+  error: {
+    lucide: "circle-alert",
+    shapes: [
+      ["circle", { cx: "12", cy: "12", r: "10" }], ["line", { x1: "12", x2: "12", y1: "8", y2: "12" }],
+      ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16" }],
+    ],
+  },
+  info: { lucide: "info", shapes: [["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 16v-4" }], ["path", { d: "M12 8h.01" }]] },
+  upload: {
+    lucide: "upload",
+    shapes: [
+      ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }], ["polyline", { points: "17 8 12 3 7 8" }],
+      ["line", { x1: "12", x2: "12", y1: "3", y2: "15" }],
+    ],
+  },
+  restore: { lucide: "rotate-ccw", shapes: [["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }], ["path", { d: "M3 3v5h5" }]] },
+  refresh: {
+    lucide: "refresh-cw",
+    shapes: [
+      ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" }], ["path", { d: "M21 3v5h-5" }],
+      ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" }], ["path", { d: "M8 16H3v5" }],
+    ],
+  },
+  lock: { lucide: "lock", shapes: [["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2" }], ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4" }]] },
+  keyboard: {
+    lucide: "keyboard",
+    shapes: [
+      ["path", { d: "M10 8h.01" }], ["path", { d: "M12 12h.01" }], ["path", { d: "M14 8h.01" }], ["path", { d: "M16 12h.01" }],
+      ["path", { d: "M18 8h.01" }], ["path", { d: "M6 8h.01" }], ["path", { d: "M7 16h10" }], ["path", { d: "M8 12h.01" }],
+      ["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }],
+    ],
+  },
+  anchor: {
+    lucide: "hash",
+    shapes: [
+      ["line", { x1: "4", x2: "20", y1: "9", y2: "9" }], ["line", { x1: "4", x2: "20", y1: "15", y2: "15" }],
+      ["line", { x1: "10", x2: "8", y1: "3", y2: "21" }], ["line", { x1: "16", x2: "14", y1: "3", y2: "21" }],
+    ],
+  },
+  code: {
+    lucide: "braces",
+    shapes: [
+      ["path", { d: "M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1" }],
+      ["path", { d: "M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1" }],
+    ],
+  },
+  "panel-right": { lucide: "panel-right", shapes: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }], ["path", { d: "M15 3v18" }]] },
+  tree: {
+    lucide: "list-tree",
+    shapes: [
+      ["path", { d: "M21 12h-8" }], ["path", { d: "M21 6H8" }], ["path", { d: "M21 18h-8" }], ["path", { d: "M3 6v4c0 1.1.9 2 2 2h3" }],
+      ["path", { d: "M3 10v6c0 1.1.9 2 2 2h3" }],
+    ],
+  },
+  bold: { lucide: "bold", shapes: [["path", { d: "M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" }]] },
+  italic: {
+    lucide: "italic",
+    shapes: [
+      ["line", { x1: "19", x2: "10", y1: "4", y2: "4" }], ["line", { x1: "14", x2: "5", y1: "20", y2: "20" }],
+      ["line", { x1: "15", x2: "9", y1: "4", y2: "20" }],
+    ],
+  },
+  edges: {
+    lucide: "square-dashed",
+    shapes: [
+      ["path", { d: "M5 3a2 2 0 0 0-2 2" }], ["path", { d: "M19 3a2 2 0 0 1 2 2" }], ["path", { d: "M21 19a2 2 0 0 1-2 2" }],
+      ["path", { d: "M5 21a2 2 0 0 1-2-2" }], ["path", { d: "M9 3h1" }], ["path", { d: "M9 21h1" }], ["path", { d: "M14 3h1" }],
+      ["path", { d: "M14 21h1" }], ["path", { d: "M3 9v1" }], ["path", { d: "M21 9v1" }], ["path", { d: "M3 14v1" }], ["path", { d: "M21 14v1" }],
+    ],
+  },
+  section: { lucide: "rectangle-horizontal", shapes: [["rect", { width: "20", height: "12", x: "2", y: "6", rx: "2" }]] },
+  column: { lucide: "rectangle-vertical", shapes: [["rect", { width: "12", height: "20", x: "6", y: "2", rx: "2" }]] },
+  question: {
+    lucide: "circle-help",
+    shapes: [
+      ["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }], ["path", { d: "M12 17h.01" }],
+    ],
+  },
+  page: { lucide: "file", shapes: [["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" }], ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4" }]] },
+  bookmark: { lucide: "bookmark", shapes: [["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" }]] },
+  play: { lucide: "play", shapes: [["polygon", { points: "6 3 20 12 6 21 6 3" }]] },
+  pin: {
+    lucide: "map-pin",
+    shapes: [
+      ["path", { d: "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" }],
+      ["circle", { cx: "12", cy: "10", r: "3" }],
+    ],
+  },
+  more: { lucide: "ellipsis", shapes: [["circle", { cx: "12", cy: "12", r: "1" }], ["circle", { cx: "19", cy: "12", r: "1" }], ["circle", { cx: "5", cy: "12", r: "1" }]] },
+  spinner: { lucide: "loader-circle", shapes: [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56" }]] },
+  "arrow-up": { lucide: "arrow-up", shapes: [["path", { d: "m5 12 7-7 7 7" }], ["path", { d: "M12 19V5" }]] },
+  "arrow-down": { lucide: "arrow-down", shapes: [["path", { d: "M12 5v14" }], ["path", { d: "m19 12-7 7-7-7" }]] },
+  "arrow-left": { lucide: "arrow-left", shapes: [["path", { d: "m12 19-7-7 7-7" }], ["path", { d: "M19 12H5" }]] },
+  "arrow-right": { lucide: "arrow-right", shapes: [["path", { d: "M5 12h14" }], ["path", { d: "m12 5 7 7-7 7" }]] },
+  block: { lucide: "ban", shapes: [["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "m4.9 4.9 14.2 14.2" }]] },
 } as const satisfies Record<string, IconShapes>;
 
 export type IconName = keyof typeof ICONS;
 
-// A chrome icon. Decorative: the control around it carries the name.
+// An icon. Decorative: the control around it carries the name.
 export function Icon({ name, className = "i" }: { name: IconName; className?: string }) {
-  const icon: IconShapes = ICONS[name];
   return (
-    <svg className={className} viewBox={icon.viewBox} aria-hidden="true" focusable="false">
-      {shapeElements(icon.shapes)}
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {shapeElements(ICONS[name].shapes)}
     </svg>
   );
 }

@@ -44,28 +44,26 @@ export function widgetDefinition(type: WidgetType): AnyWidgetDefinition {
 }
 
 // The panel's Layout group, which adds structure, not a widget: a section,
-// and the choice of how many columns it starts with. The approved design's
-// w-section and w-col-1 to w-col-4 symbols.
-const columnsIcon = (rects: ReadonlyArray<readonly [x: string, width: string]>, rx: string): IconData => ({
-  viewBox: "0 0 20 20",
-  shapes: rects.map(([x, width]) => ["rect", { x, y: "5.75", width, height: "8.5", rx }] as const),
-});
-
+// as the approved design names it, and the choice of how many columns it
+// starts with, each drawn as Lucide's frame of as many columns (square,
+// then columns-2 to columns-4, ../editor/lucide/).
 export const LAYOUT = {
-  section: {
-    label: "Section",
-    icon: {
-      viewBox: "0 0 20 20",
-      shapes: [
-        ["rect", { x: "2.75", y: "4.75", width: "14.5", height: "10.5", rx: "1" }],
-        ["path", { d: "M7.75 4.75v10.5M12.25 4.75v10.5", "stroke-dasharray": "1.5 1.5" }],
-      ],
-    } satisfies IconData,
-  },
+  section: { label: "Section" },
   columns: [
-    { count: 1, label: "1 column", icon: columnsIcon([["2.75", "14.5"]], ".75") },
-    { count: 2, label: "2 columns", icon: columnsIcon([["2.75", "6.625"], ["10.625", "6.625"]], ".75") },
-    { count: 3, label: "3 columns", icon: columnsIcon([["2.75", "4"], ["8", "4"], ["13.25", "4"]], ".75") },
-    { count: 4, label: "4 columns", icon: columnsIcon([["2.75", "2.875"], ["6.625", "2.875"], ["10.5", "2.875"], ["14.375", "2.875"]], ".5") },
+    { count: 1, label: "1 column", icon: { lucide: "square", shapes: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }]] } satisfies IconData },
+    { count: 2, label: "2 columns", icon: { lucide: "columns-2", shapes: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }], ["path", { d: "M12 3v18" }]] } satisfies IconData },
+    {
+      count: 3,
+      label: "3 columns",
+      icon: { lucide: "columns-3", shapes: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }], ["path", { d: "M9 3v18" }], ["path", { d: "M15 3v18" }]] } satisfies IconData,
+    },
+    {
+      count: 4,
+      label: "4 columns",
+      icon: {
+        lucide: "columns-4",
+        shapes: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }], ["path", { d: "M7.5 3v18" }], ["path", { d: "M12 3v18" }], ["path", { d: "M16.5 3v18" }]],
+      } satisfies IconData,
+    },
   ],
 } as const;

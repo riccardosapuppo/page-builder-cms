@@ -18,8 +18,9 @@ design's language; a page may hold them too. Each holds:
 - `render.tsx`: its React renderer, the twin of the server's partial,
   built on `../render`'s helpers and held to the partial by the render
   contract;
-- `icon.ts`: its tile, the approved design's `w-<type>` symbol
-  (`design/index.html`), shape for shape;
+- `icon.ts`: its tile, a Lucide icon, shape for shape its file in
+  `../editor/lucide/` (the owner's choice of 14 October 2026, in place
+  of the approved design's `w-<type>` symbol);
 - `panel.tsx`: its own group in the editor's sidebar, first in the Block
   tab and named after what it holds ("Text", "Button", "Questions"; none
   for a divider, whose one setting is its line's colour), and further
@@ -72,9 +73,10 @@ Three need something first, and their definition says which:
 ## Checks
 
 `registry.test.ts`: one definition for each widget type of the schema;
-the panel's groups, order and labels and every tile's icon equal to the
-approved design's (read from `design/index.html`), and drawn as that
-symbol's markup with no warning from React; every new widget a
+the panel's groups, order and labels equal to the approved design's
+(read from `design/index.html`); every tile's icon drawn as its shapes
+are held, with no warning from React (`../editor/icons.test.ts` holds
+the shapes to their Lucide files); every new widget a
 valid block, and a page holding one of each a valid page. The contract
 test checks each widget's traps exist, in a fixture, with its type, and
 the random-page agreement check saves one of each new widget to the CMS

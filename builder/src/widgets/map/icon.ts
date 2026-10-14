@@ -1,10 +1,12 @@
-// The map's tile: the approved design's w-map symbol.
+// The map's tile: Lucide's map
+// (../../editor/lucide/map.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "map",
   shapes: [
-    ["path", { d: "M2.75 5.25l4.75-2 5 2 4.75-2v11.5l-4.75 2-5-2-4.75 2z" }],
-    ["path", { d: "M7.5 3.25v11.5M12.5 5.25v11.5" }],
+    ["path", { d: "M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" }],
+    ["path", { d: "M15 5.764v15" }],
+    ["path", { d: "M9 3.236v15" }],
   ],
 };

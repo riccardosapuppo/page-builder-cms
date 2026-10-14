@@ -1,11 +1,12 @@
-// The divider's tile: the approved design's w-divider symbol.
+// The divider's tile: Lucide's separator-horizontal
+// (../../editor/lucide/separator-horizontal.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "separator-horizontal",
   shapes: [
-    ["rect", { x: "4.75", y: "3.25", width: "10.5", height: "3.5", rx: ".75" }],
-    ["path", { d: "M2.75 10h14.5" }],
-    ["rect", { x: "4.75", y: "13.25", width: "10.5", height: "3.5", rx: ".75" }],
+    ["line", { x1: "3", x2: "21", y1: "12", y2: "12" }],
+    ["polyline", { points: "8 8 12 4 16 8" }],
+    ["polyline", { points: "16 16 12 20 8 16" }],
   ],
 };

@@ -1,8 +1,9 @@
 // The widget registry against the schema and the approved design: one
 // definition for every widget type the schema has, in the design's
-// groups and order, named and drawn as the design's tiles are, and the
-// widgets made after it in a group of their own, drawn in its language;
-// and every new widget a valid block, on a valid page.
+// groups and order, named as the design's tiles are, and the widgets made
+// after it in a group of their own; each tile's icon drawn as it is held
+// (Lucide's, held to its file by ../editor/icons.test.ts); and every new
+// widget a valid block, on a valid page.
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,22 +43,11 @@ function designPanel(): Array<{ title: string; tiles: Array<{ label: string; sym
   });
 }
 
-// A symbol of the design's sprite as IconData.
-function designSymbol(id: string): IconData {
-  const symbol = all.find((e) => e.tagName === "symbol" && attr(e, "id") === id);
-  if (!symbol) throw new Error(`design/index.html has no symbol ${id}`);
-  return {
-    viewBox: attr(symbol, "viewBox")!,
-    shapes: elements(symbol).map((shape) => [shape.tagName, Object.fromEntries(shape.attrs.map((a) => [a.name, a.value]))] as const),
-  };
-}
-
 // The widgets made after the approved design, which drew the site's header
 // and footer as fixed parts of the theme: the blocks a header and a footer
 // are made of, in the last group, of their own.
 const AFTER_DESIGN: readonly WidgetType[] = ["logo", "menu"];
 const AFTER_DESIGN_GROUP = "site";
-const designed = WIDGETS.filter((w) => !AFTER_DESIGN.includes(w.type));
 
 test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
@@ -72,49 +62,28 @@ test("Insert's groups, order and labels are the approved design's widget tiles',
   expect(WIDGET_GROUPS.at(-1)?.id).toBe(AFTER_DESIGN_GROUP);
   expect(WIDGETS.filter((w) => w.group === AFTER_DESIGN_GROUP).map((w) => w.type)).toEqual(AFTER_DESIGN);
   for (const widget of WIDGETS) expect(widget.label).toBe(TYPE_NAMES[widget.type]);
-});
-
-test("each tile's icon is the design's symbol, shape for shape; the widgets after it are drawn in its language", () => {
-  for (const widget of designed) expect(widget.icon, widget.type).toEqual(designSymbol(`w-${widget.type}`));
-  // The design's language: its grid, and only the shapes and attributes its
-  // symbols use (the sprite sets the strokes on the svg).
-  const language = designed.map((w) => designSymbol(`w-${w.type}`));
-  const tags = new Set(language.flatMap((symbol) => symbol.shapes.map(([tag]) => tag)));
-  const names = new Set(language.flatMap((symbol) => symbol.shapes.flatMap(([, attributes]) => Object.keys(attributes))));
-  for (const widget of WIDGETS.filter((w) => AFTER_DESIGN.includes(w.type))) {
-    expect(widget.icon.viewBox, widget.type).toBe(language[0]!.viewBox);
-    for (const [tag, attributes] of widget.icon.shapes) {
-      expect(tags.has(tag), `${widget.type}: ${tag}`).toBe(true);
-      for (const name of Object.keys(attributes)) expect(names.has(name), `${widget.type}: ${tag} ${name}`).toBe(true);
-    }
-  }
-  expect(LAYOUT.section.icon).toEqual(designSymbol("w-section"));
-  for (const choice of LAYOUT.columns) expect(choice.icon, choice.label).toEqual(designSymbol(`w-col-${choice.count}`));
+  // The design's Layout group: the section, which Insert offers as the
+  // choice of its columns.
   const layout = designPanel().find((g) => g.title === "Layout")!;
   expect(layout.tiles).toEqual([{ label: LAYOUT.section.label, symbol: "w-section" }]);
 });
 
-test("each tile draws its shapes under their SVG names, as the design's symbol holds them", () => {
-  // React's development build says when a prop is no DOM property
-  // (stroke-dasharray handed over as it is written in SVG) and still
-  // writes it: the markup alone would not show the fault.
+test("each tile draws its icon's shapes under their SVG names, on Lucide's grid", () => {
+  // React's development build says when a prop is no DOM property (an
+  // attribute handed over as it is written in SVG) and still writes it:
+  // the markup alone would not show the fault.
   const said = vi.spyOn(console, "error").mockImplementation(() => {});
   onTestFinished(() => said.mockRestore());
-  // The design's symbol for each of its tiles; for a widget after it, its
-  // own shapes.
-  const icons: Array<[string, IconData, IconData["shapes"]]> = [
-    ...WIDGETS.map((w): [string, IconData, IconData["shapes"]] => [`w-${w.type}`, w.icon, AFTER_DESIGN.includes(w.type) ? w.icon.shapes : designSymbol(`w-${w.type}`).shapes]),
-    ["w-section", LAYOUT.section.icon, designSymbol("w-section").shapes],
-    ...LAYOUT.columns.map((c): [string, IconData, IconData["shapes"]] => [`w-col-${c.count}`, c.icon, designSymbol(`w-col-${c.count}`).shapes]),
+  const icons: Array<[string, IconData]> = [
+    ...WIDGETS.map((w): [string, IconData] => [w.type, w.icon]),
+    ...LAYOUT.columns.map((c): [string, IconData] => [c.label, c.icon]),
   ];
-  for (const [symbol, icon, shapes] of icons) {
+  for (const [what, icon] of icons) {
     const svg = elements(parseFragment(renderToStaticMarkup(createElement(WidgetIcon, { icon }))))[0]!;
-    expect(attr(svg, "viewBox"), symbol).toBe(icon.viewBox);
+    expect(attr(svg, "viewBox"), what).toBe("0 0 24 24");
     const drawn = elements(svg).map((shape) => [shape.tagName, Object.fromEntries(shape.attrs.map((a) => [a.name, a.value]))]);
-    expect(drawn, symbol).toEqual(shapes.map(([tag, attributes]) => [tag, { ...attributes }]));
+    expect(drawn, what).toEqual(icon.shapes.map(([tag, attributes]) => [tag, { ...attributes }]));
   }
-  // The section's dashes are the one hyphenated attribute among them.
-  expect(renderToStaticMarkup(createElement(WidgetIcon, { icon: LAYOUT.section.icon }))).toContain('stroke-dasharray="1.5 1.5"');
   expect(said.mock.calls.map((call) => String(call[0]))).toEqual([]);
 });
 

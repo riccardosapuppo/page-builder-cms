@@ -30,7 +30,7 @@ import { canvasUi } from "./canvas-ui.ts";
 import { placeToolbar, plusShift, toolbarBox, TOOLBAR_GAP, UNDER_PLUS, type Box, type ToolbarRoom } from "./clamp-place.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { ariaKeyShortcuts, entry, entryKeysText } from "./keymap.ts";
-import { Lucide } from "./lucide.tsx";
+import { Icon } from "./icons.tsx";
 import type { TextTools } from "./rich/tools.ts";
 
 export type ClampKind = "section" | "column" | "widget";
@@ -369,7 +369,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
   // first. Only the moves, whose keys the text takes, give their place.
   // Keyed, so the two clamps share these two elements as the text opens
   // and closes: a menu opened from More keeps its key to go back to.
-  const grip = (index: number) => <button key="grip" type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(index)}><Lucide name="grip-vertical" /></button>;
+  const grip = (index: number) => <button key="grip" type="button" className="clamp-grip" data-key="grip" data-grip aria-label={`Drag to move, or press ${PICK_UP} to pick up`} title="Drag to move" {...roving(index)}><Icon name="grip" className="li" /></button>;
   const more = (index: number) => (
     <button
       key="more"
@@ -382,7 +382,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       onClick={(event) => openClampMenu(env, event.currentTarget, "more")}
       {...roving(index)}
     >
-      <Lucide name="ellipsis" />
+      <Icon name="more" className="li" />
     </button>
   );
 
@@ -391,8 +391,8 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       <div ref={ref} className="clamp clamp-text" role="toolbar" aria-orientation="horizontal" aria-label="Text formatting" onKeyDown={onKeyDown}>
         <span key="head-static" className="clamp-head clamp-head-static" role="img" aria-label={`${name}, being written`} title={`${name}, being written. ${LEAVE} to finish`}><BlockIcon type={type} className="i" /><span className="clamp-name" aria-hidden="true">{name}</span></span>
         {grip(0)}
-        <button key="bold" type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(1)}><Lucide name="bold" /></button>
-        <button key="italic" type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(2)}><Lucide name="italic" /></button>
+        <button key="bold" type="button" data-key="bold" aria-label="Bold" aria-pressed={tools.bold} aria-keyshortcuts={ariaKeyShortcuts(entry("bold"))} title={`Bold (${entryKeysText(entry("bold"))})`} onMouseDown={keep} onClick={() => tools.run.toggleBold()} {...roving(1)}><Icon name="bold" className="li" /></button>
+        <button key="italic" type="button" data-key="italic" aria-label="Italic" aria-pressed={tools.italic} aria-keyshortcuts={ariaKeyShortcuts(entry("italic"))} title={`Italic (${entryKeysText(entry("italic"))})`} onMouseDown={keep} onClick={() => tools.run.toggleItalic()} {...roving(2)}><Icon name="italic" className="li" /></button>
         <button
           type="button"
           key="link"
@@ -406,7 +406,7 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
           onClick={() => (tools.linkOpen ? tools.run.closeLink(true) : tools.run.openLink())}
           {...roving(3)}
         >
-          <Lucide name="link" />
+          <Icon name="link" className="li" />
         </button>
         <hr key="rule" aria-hidden="true" />
         {more(4)}
@@ -431,11 +431,11 @@ export function Clamp({ id, kind, type, name, tools }: ClampProps) {
       >
         <BlockIcon type={type} className="i" />
         <span className="clamp-name" aria-hidden="true">{name}</span>
-        <Lucide name="chevron-down" className="li li-xs" />
+        <Icon name="chevron-down" className="li li-xs" />
       </button>
       {grip(1)}
-      <button key="back" type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Lucide name={moves.backIcon} /></button>
-      <button key="on" type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Lucide name={moves.onIcon} /></button>
+      <button key="back" type="button" data-key="back" aria-label={moves.back} aria-disabled={back ? true : undefined} title={back ?? moves.back} onClick={() => (back ? undefined : moveBlock(env, id, -1, "back"))} {...roving(2)}><Icon name={moves.backIcon} className="li" /></button>
+      <button key="on" type="button" data-key="on" aria-label={moves.on} aria-disabled={on ? true : undefined} title={on ?? moves.on} onClick={() => (on ? undefined : moveBlock(env, id, 1, "on"))} {...roving(3)}><Icon name={moves.onIcon} className="li" /></button>
       <hr key="rule" aria-hidden="true" />
       {more(4)}
     </div>

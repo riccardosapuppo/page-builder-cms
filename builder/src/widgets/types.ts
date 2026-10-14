@@ -18,10 +18,11 @@ export const WIDGET_GROUPS = [
 ] as const;
 export type WidgetGroup = (typeof WIDGET_GROUPS)[number]["id"];
 
-// An icon: an SVG viewBox and its shapes, each an element name and its
-// attributes as SVG writes them (stroke-dasharray, not strokeDasharray).
+// A tile's icon: the Lucide icon it is (its file in ../editor/lucide/) and
+// that file's shapes, each an element name and its attributes as SVG
+// writes them, on Lucide's 24-unit grid.
 export interface IconData {
-  viewBox: string;
+  lucide: string;
   shapes: readonly Shape[];
 }
 
@@ -59,7 +60,8 @@ export interface WidgetDefinition<T extends WidgetType> {
   group: WidgetGroup;
   // As Insert, the Outline and the history name it.
   label: string;
-  // Its key in Insert and in the picker, the approved design's tile.
+  // Its key's icon in Insert and in the picker: Lucide's, its file in
+  // ../editor/lucide/.
   icon: IconData;
   needs: Needs;
   // The props of a new one.

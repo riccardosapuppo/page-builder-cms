@@ -428,6 +428,19 @@ language of the layout's own controls. The panel of 9 October is gone,
 and the menu is a Menu block of the header, its links set in its panel;
 `builder/e2e/site-parts.spec.ts` drives the parts.
 
+**The owner's choice of 14 October 2026: Lucide's icons in the whole
+editor.** The floating toolbar took Lucide's icons for its keys the night
+before (section 4.2); every other icon followed: the chrome's, each
+block's tile in Insert, the choices of columns and the outline's rows.
+Each stands where the mock's own icon stood and says the same thing:
+the nearest Lucide icon (undo-2 for undo, monitor for Desktop,
+separator-horizontal for Divider, square for one column and columns-2
+to columns-4 beside it), drawn round as Lucide draws them, its stroke
+1.5 px in the chrome as the mock's was. The files and their licence
+are in `builder/src/editor/lucide/`, and
+`builder/src/editor/icons.test.ts` holds every icon to its file. The
+mock's sprites and shots stay as approved.
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every

@@ -1,12 +1,10 @@
-// The logo's tile, drawn after the approved design in its language (a
-// 20-unit grid, round strokes): the mark's disc and its waterline, and the
-// name beside it.
+// The logo's tile: Lucide's badge
+// (../../editor/lucide/badge.svg).
 import type { IconData } from "../types.ts";
 
 export const icon: IconData = {
-  viewBox: "0 0 20 20",
+  lucide: "badge",
   shapes: [
-    ["circle", { cx: "6.5", cy: "10", r: "3.75" }],
-    ["path", { d: "M2.75 10.75h7.5M12.75 10h4.5" }],
+    ["path", { d: "M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" }],
   ],
 };

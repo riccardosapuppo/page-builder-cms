@@ -26,9 +26,11 @@ editor (`shots-extra/accent-choice.png`).
 ## Two references: the identity and the layout
 
 - **The identity** comes from this folder's mock, the one approved on
-  1 October 2026, and it is unchanged: the palette, Tool yellow with its
-  graphite edges, the three typefaces, the mark, the icons, the controls,
-  the example site.
+  1 October 2026, and it is unchanged but for the editor's icons: the
+  palette, Tool yellow with its graphite edges, the three typefaces, the
+  mark, the controls, the example site. The editor has drawn Lucide's
+  icons in place of the mock's since 14 October 2026, the owner's choice
+  (`layout/NOTES.md`, section 9).
 - **The layout** comes from [`layout/`](layout/), approved on 3 October
   2026, which replaced the stage-0 mock's arrangement of the editor (the
   widget panel on the left, the navigator in a fixed column, the Content,
