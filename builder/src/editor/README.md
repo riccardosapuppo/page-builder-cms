@@ -77,7 +77,8 @@ owner to undo:
   (`layout-mode.ts`), the owner's choice of 14 October 2026
   (design/layout/NOTES.md, section 9). The bottom line, short of room,
   lets its hint go whole and then shortens the steps between the page and
-  the selection, then the page's width, then the devices' widths.
+  the selection; on a tablet, and in a line shorter than any desktop's, the
+  page's width goes too, then the devices' widths.
 - **"?" window:** the layout's three columns and its groups, with what
   the layout does not draw: under Text, while you write, a note on Ctrl+Z
   there, on Delete and Backspace deleting letters and on the keys that

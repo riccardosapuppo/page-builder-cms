@@ -439,15 +439,17 @@ body {
 .dev-w { margin-left: 1px; color: var(--steel); font-weight: 500; }
 .devices button[aria-checked="true"] .dev-w { color: var(--alloy); }
 .sb-width { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 168px; padding: 0 8px 0 6px; color: var(--graphite); font-size: 12px; font-weight: 500; white-space: nowrap; }
-/* A shorter line (a tablet's window, a small one beside the sidebar): the
-   page's width goes, kept for a screen reader, and then the devices'
-   widths, so the path keeps room. */
-@container statusbar (max-width: 899px) {
+/* A shorter line than any desktop's window draws (780 at the least, beside
+   the sidebar): the page's width goes, kept for a screen reader, and then
+   the devices' widths, so the path keeps room. On a tablet held with a
+   finger the width goes too, the room the path's. */
+@container statusbar (max-width: 759px) {
   .sb-width { position: absolute; width: 1px; height: 1px; min-width: 0; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 }
-@container statusbar (max-width: 699px) {
+@container statusbar (max-width: 619px) {
   .devices .dev-w { display: none; }
 }
+.app[data-layout="medium"] .sb-width { position: absolute; width: 1px; height: 1px; min-width: 0; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 
 .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .tray-head-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 8px 6px 16px; }
