@@ -55,33 +55,56 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
   const shown = rgbToHex(hsvToRgb(hsv));
   const kept = useRef<FreeColor>(value);
   const timer = useRef<unknown>(null);
-  // Lets go of the colour held while it waits.
+  // The colour waiting to be kept, after the arrows' pause or typed in the
+  // hex field, and what lets go of it: it is held with the page's other
+  // pending edits (./pending.ts), so a command, a preview, a publish or
+  // another page, asked for before it is kept (a shortcut, the field still
+  // in focus), keeps it first.
+  const waiting = useRef<FreeColor | null>(null);
   const release = useRef<(() => void) | null>(null);
   const dragging = useRef<"area" | "hue" | null>(null);
 
   // The colour changed from outside (another tab, undo): the picker
   // follows, unless the person is in the middle of picking.
   useEffect(() => {
-    if (dragging.current !== null || timer.current !== null || value === kept.current) return;
+    if (dragging.current !== null || waiting.current !== null || value === kept.current) return;
     kept.current = value;
     setHsv(rgbToHsv(hexToRgb(value)));
     setTyped(value);
     setRefused(null);
   }, [value]);
 
-  const commit = useCallback((color: FreeColor) => {
+  // Keeps a colour: true once the page has it, false when it refuses it.
+  // What waits is let go first, so the command it makes finds nothing of
+  // it left to hand over.
+  const commit = useCallback((color: FreeColor): boolean => {
     if (timer.current !== null) {
       clock.clearTimeout(timer.current);
       timer.current = null;
     }
     release.current?.();
     release.current = null;
+    waiting.current = null;
     if (color === kept.current) {
       onPreview?.(null);
-      return;
+      return true;
     }
-    if (onCommit(color)) kept.current = color;
+    const taken = onCommit(color);
+    if (taken) kept.current = color;
+    return taken;
   }, [clock, onCommit, onPreview]);
+
+  // A colour to keep later, held until then.
+  const hold = (color: FreeColor) => {
+    release.current?.();
+    waiting.current = color;
+    release.current = ui.getState().pending.hold(() => commit(color));
+  };
+  const letGo = () => {
+    release.current?.();
+    release.current = null;
+    waiting.current = null;
+  };
 
   // A new place, shown at once and kept now or after a pause.
   const move = (next: Hsv, keep: "now" | "pause" | "later") => {
@@ -93,8 +116,7 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     if (keep === "now") commit(color);
     else if (keep === "pause") {
       if (timer.current !== null) clock.clearTimeout(timer.current);
-      release.current?.();
-      release.current = ui.getState().pending.hold(() => commit(color));
+      hold(color);
       timer.current = clock.setTimeout(() => {
         timer.current = null;
         commit(color);
@@ -104,23 +126,22 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
 
   // Anything waiting is kept when the picker goes, and what the canvas
   // shows of the picking goes with it.
-  const latest = useRef({ shown, commit, onPreview });
+  const latest = useRef({ commit, onPreview });
   useLayoutEffect(() => {
-    latest.current = { shown, commit, onPreview };
+    latest.current = { commit, onPreview };
   });
   useEffect(() => () => {
-    if (timer.current !== null) latest.current.commit(latest.current.shown);
+    if (waiting.current !== null) latest.current.commit(waiting.current);
     release.current?.();
     latest.current.onPreview?.(null);
   }, []);
 
   useImperativeHandle(ref, () => ({
     discard: () => {
-      if (timer.current === null) return;
-      clock.clearTimeout(timer.current);
+      if (waiting.current === null) return;
+      if (timer.current !== null) clock.clearTimeout(timer.current);
       timer.current = null;
-      release.current?.();
-      release.current = null;
+      letGo();
       setHsv(rgbToHsv(hexToRgb(kept.current)));
       setTyped(kept.current);
       setRefused(null);
@@ -186,8 +207,9 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
   const fromTyped = (text: string, keep: boolean) => {
     const color = normalizeHex(text);
     if (color === null) {
-      // No colour yet: what is drawn is the one kept.
+      // No colour yet: what is drawn is the one kept, and nothing waits.
       onPreview?.(null);
+      letGo();
       if (keep) setRefused("Write a colour as six hex digits, like #1d4e6f.");
       return;
     }
@@ -197,7 +219,7 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     if (keep) {
       setTyped(color);
       commit(color);
-    }
+    } else hold(color);
   };
 
   const hueColor = rgbToHex(hsvToRgb({ h: hsv.h, s: 1, v: 1 }));

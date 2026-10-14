@@ -120,6 +120,40 @@ test("the picker going keeps the colour waiting and stops showing the picking", 
   expect(kept).toHaveLength(1);
 });
 
+test("a colour typed in the hex field waits with the page's other edits: a command, a preview or a publish asked for before Enter keeps it first; text that is no colour holds nothing", () => {
+  const { kit, kept, hide } = draw();
+  const pending = kit.ui.getState().pending;
+  const field = screen.getByLabelText("Primary: hex");
+  fireEvent.change(field, { target: { value: "#1d4e6f" } });
+  expect(pending.waiting).toBe(1);
+  // What a command hands over first (./act.ts), as a shortcut asks with the
+  // field still in focus.
+  let all = false;
+  act(() => {
+    all = pending.deliver();
+  });
+  expect([all, kept, pending.waiting]).toEqual([true, ["#1d4e6f"], 0]);
+  // Typed again, then made no colour: nothing waits.
+  fireEvent.change(field, { target: { value: "#2e5f80" } });
+  fireEvent.change(field, { target: { value: "#2e5f8" } });
+  expect(pending.waiting).toBe(0);
+  // Typed, and the picker goes before Enter: the colour is kept.
+  fireEvent.change(field, { target: { value: "#2e5f80" } });
+  hide();
+  expect([kept, pending.waiting]).toEqual([["#1d4e6f", "#2e5f80"], 0]);
+});
+
+test("a typed colour the page refuses as it is handed over says so: the hand-over answers false, and nothing is kept", () => {
+  const { kit, kept } = draw("#ff0000", [true]);
+  const pending = kit.ui.getState().pending;
+  fireEvent.change(screen.getByLabelText("Primary: hex"), { target: { value: "#1d4e6f" } });
+  let all = true;
+  act(() => {
+    all = pending.deliver();
+  });
+  expect([all, kept]).toEqual([false, []]);
+});
+
 test("a colour the page refuses is not taken as kept: the same colour, kept again, reaches the page", () => {
   const { kept } = draw("#ff0000", [true]);
   const field = screen.getByLabelText("Primary: hex");
