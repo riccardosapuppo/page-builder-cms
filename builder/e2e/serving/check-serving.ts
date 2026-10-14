@@ -43,6 +43,7 @@
 // when every check passes, 1 when one fails (a server that crashes at
 // boot or never answers included), 2 when it could not run (a port taken,
 // no way to see who listens).
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -149,12 +150,16 @@ async function demoChecks(root: string, vite: string, base: string, started: (se
   }
   // What a link to the demo previews with: the tags, each address
   // absolute on the demo's own host whatever host this copy is on, and the
-  // picture at the build's root under its own name.
-  const tag = (property: string) => new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(html)?.[1];
-  check(tag("og:url") === DEMO_SITE && tag("og:image") === `${DEMO_SITE}${DEMO_PREVIEW.file}` && tag("og:image:width") === String(DEMO_PREVIEW.width) && tag("og:image:height") === String(DEMO_PREVIEW.height), `${label}: the page says what a shared link to the demo previews with, at ${DEMO_SITE}`, `og:url ${tag("og:url")}, og:image ${tag("og:image")}`);
+  // picture at the build's root under its own name, its address carrying
+  // the fingerprint of the very picture served (?v=, the first 12 hex
+  // digits of its SHA-256): a site that keeps previews by address sees a
+  // new picture as a new address.
   const preview = await get(server.url, `${base}${DEMO_PREVIEW.file}`);
-  const previewBytes = (await preview.arrayBuffer()).byteLength;
-  check(preview.status === 200 && preview.headers.get("content-type") === "image/png" && previewBytes > 0 && previewBytes < 1_000_000, `${label}: the preview picture is at ${base}${DEMO_PREVIEW.file}, a PNG under 1 MB`, `${preview.status} ${preview.headers.get("content-type")}, ${previewBytes} bytes`);
+  const previewBytes = new Uint8Array(await preview.arrayBuffer());
+  const fingerprint = createHash("sha256").update(previewBytes).digest("hex").slice(0, 12);
+  const tag = (property: string) => new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(html)?.[1];
+  check(tag("og:url") === DEMO_SITE && tag("og:image") === `${DEMO_SITE}${DEMO_PREVIEW.file}?v=${fingerprint}` && tag("og:image:width") === String(DEMO_PREVIEW.width) && tag("og:image:height") === String(DEMO_PREVIEW.height), `${label}: the page says what a shared link to the demo previews with, at ${DEMO_SITE}, the picture's address carrying the served picture's fingerprint`, `og:url ${tag("og:url")}, og:image ${tag("og:image")}, the picture's fingerprint ${fingerprint}`);
+  check(preview.status === 200 && preview.headers.get("content-type") === "image/png" && previewBytes.byteLength > 0 && previewBytes.byteLength < 1_000_000, `${label}: the preview picture is at ${base}${DEMO_PREVIEW.file}, a PNG under 1 MB`, `${preview.status} ${preview.headers.get("content-type")}, ${previewBytes.byteLength} bytes`);
   if (script) {
     const asset = await get(server.url, script);
     await asset.arrayBuffer();
