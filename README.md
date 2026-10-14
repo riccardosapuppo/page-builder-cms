@@ -15,8 +15,10 @@ widget (heading, text, image, gallery, video, map, button, icon box, quote,
 accordion, divider, spacer, form, logo and menu), dragged into place on the
 page or in the Outline, where the page moves with the block as it goes;
 with rich text written where it stands on the canvas, undo and redo, a
-tablet's and a phone's own values, a media library and a form. It builds
-the site's header and footer the same way, from sections, columns and
+tablet's and a phone's own values, a media library and a form. It works
+on a tablet and on a phone too, with a finger: the page first, its panels
+floating over it on a tablet and rising from a bar at the foot on a phone.
+It builds the site's header and footer the same way, from sections, columns and
 blocks, parts of the site that every page shows once published, the header
 staying at the top of the window if asked. Site style sets the site's
 palette, colours of its own included, its type scale and its letter width;

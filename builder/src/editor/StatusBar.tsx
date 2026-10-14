@@ -21,6 +21,7 @@ import { dropSentence } from "./drag/DragLayer.tsx";
 import { draggedOf } from "./drag/marks.ts";
 import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText, type KeyAction } from "./keymap.ts";
+import { useCoarsePointer } from "./layout-mode.ts";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { PREVIEWS, type Preview, type UiStore } from "./ui-store.ts";
 
@@ -84,6 +85,7 @@ function Crumbs({ hints }: { hints: boolean }) {
   // The pointer over a seam between sections, and a text being written:
   // the line says what to do there.
   const seam = useCanvasUi((c) => c.seam !== null);
+  const touch = useCoarsePointer();
   const writing = useUi((u) => u.editingText !== null || u.textTools !== null);
   const last = path.at(-1);
   const kind = last === undefined ? null : locate(doc, last)?.block.type ?? null;
@@ -99,21 +101,23 @@ function Crumbs({ hints }: { hints: boolean }) {
       <ol>
         <li>
           <button type="button" className="crumb" aria-current={path.length === 0 ? "location" : undefined} title="The page: select nothing, and see the page's settings" onClick={() => choose(ui, select, null)}>
-            <Icon name="page" className="i i-xs" />Page
+            <Icon name="page" className="i i-xs" /><span className="crumb-name">Page</span>
           </button>
         </li>
         {path.map((id, index) => (
           <li key={id}>
             <Icon name="chevron-right" className="i i-xs crumb-sep" />
             <button type="button" className="crumb" aria-current={index === path.length - 1 ? "location" : undefined} onClick={() => choose(ui, select, id)}>
-              {blockName(doc, id)}
+              <span className="crumb-name">{blockName(doc, id)}</span>
             </button>
           </li>
         ))}
       </ol>
       {hints && selection === null && (seam
         ? <span className="crumbs-hint">Nothing selected. Point between two sections to add one there.</span>
-        : hint("Nothing selected. Click a block, or press", "selectNext", " on the page."))}
+        : touch
+          ? <span className="crumbs-hint">Nothing selected. Tap a block to select it.</span>
+          : hint("Nothing selected. Click a block, or press", "selectNext", " on the page."))}
       {hints && writing && hint("Writing.", "leaveText", " to finish")}
       {hints && !writing && (kind === "section" || kind === "column") && hint("Select inside:", "selectFirstChild")}
     </nav>
@@ -122,7 +126,7 @@ function Crumbs({ hints }: { hints: boolean }) {
 
 // Every block's edges drawn on the canvas, sections and columns too: a way
 // of looking at the page, as the device is.
-function BlockEdges() {
+export function BlockEdges() {
   const { ui } = useEnv();
   const on = useUi((u) => u.blockEdges);
   return (
@@ -136,7 +140,7 @@ function BlockEdges() {
 
 // The device, one click each: a radio group, one Tab stop, the arrows
 // moving the choice along it as a radio group's do.
-function Devices() {
+export function Devices() {
   const { ui } = useEnv();
   const preview = useUi((u) => u.preview);
   const set = (next: Preview) => ui.getState().setPreview(next);

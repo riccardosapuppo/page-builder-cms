@@ -3,6 +3,7 @@
 // move along the items, Escape or a click elsewhere closes it and gives the
 // focus back to its button or block.
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { coarsePointer } from "./layout-mode.ts";
 
 interface MenuProps {
   label: string;
@@ -29,9 +30,11 @@ export function Menu({ label, className, button, onClose, children, style }: Men
     // click the browser would not draw it, and the person would not see
     // that the arrows now move through the menu. The ring goes with the
     // focus.
+    // With a finger there are no arrows to move with: the first item takes
+    // the focus, for a screen reader, and shows no ring (./layout-mode.ts).
     const first = box.current?.querySelector<HTMLElement>(ITEMS);
     if (first) {
-      first.dataset.focusRing = "";
+      if (!coarsePointer()) first.dataset.focusRing = "";
       first.addEventListener("blur", () => delete first.dataset.focusRing, { once: true });
       first.focus();
     }

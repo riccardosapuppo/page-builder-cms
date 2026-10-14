@@ -15,6 +15,7 @@ import { useEditor, useEnv, useUi } from "./context.tsx";
 import { DRAWER_NAMES, toggleDrawer } from "./Drawer.tsx";
 import { Icon, Mark, type IconName } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText, type KeyEntry } from "./keymap.ts";
+import { useFinePointerToo } from "./layout-mode.ts";
 import { useMediaService } from "./library/context.tsx";
 import { MediaLibrary } from "./library/MediaLibrary.tsx";
 import { Menu } from "./Menu.tsx";
@@ -32,6 +33,9 @@ import type { Drawer } from "./ui-store.ts";
 export function TopBar() {
   const session = useSession();
   const { ui } = useEnv();
+  // Keyboard shortcuts, offered where a mouse or a trackpad is: a phone has
+  // no keys for them (./layout-mode.ts).
+  const keysToo = useFinePointerToo();
   const [menu, setMenu] = useState<"app" | "pages" | null>(null);
   // The media library opened from the menu, to look after it.
   const media = useMediaService();
@@ -91,10 +95,12 @@ export function TopBar() {
                 <BlockIcon type="form" className="i" /><span>Form responses</span>
               </button>
             )}
-            <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
-              <Icon name="keyboard" /><span>Keyboard shortcuts</span>
-              <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
-            </button>
+            {keysToo && (
+              <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-keyshortcuts={ariaKeyShortcuts(entry("showShortcuts"))} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setShortcutsOpen(true); }}>
+                <Icon name="keyboard" /><span>Keyboard shortcuts</span>
+                <span className="keys" aria-hidden="true"><KeyCaps caps={entryCaps(entry("showShortcuts"))} small /></span>
+              </button>
+            )}
             <hr className="menu-sep" />
             <button className="menu-item" role="menuitem" type="button" tabIndex={-1} onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setAboutOpen(true); }}>
               <Icon name="info" /><span>About Page Builder CMS</span>

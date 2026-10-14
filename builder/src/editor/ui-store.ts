@@ -98,6 +98,14 @@ export interface UiState {
   drawer: Drawer | null;
   // Every block's edges drawn on the canvas (the bottom line's Block edges).
   blockEdges: boolean;
+  // In a tablet's or a phone's window (./layout-mode.ts) the drawers and
+  // the sidebar stand over the canvas, and one at a time: the one opened
+  // last stays, the other closes, whichever way it opened.
+  onePanel: boolean;
+  // A phone's sheet made as tall as the window allows (./sheet-grip.tsx).
+  // A sheet opens at its own height: a drawer or the sidebar opening or
+  // closing lets it go.
+  sheetTall: boolean;
   pageView: PageView | null;
   media: ReadonlyMap<string, MediaItem>;
   // Images a page names that the library did not have, while it is read
@@ -171,6 +179,8 @@ export interface UiState {
   // history closes its name field too.
   setDrawer(drawer: Drawer | null): void;
   setBlockEdges(on: boolean): void;
+  setSheetTall(tall: boolean): void;
+  setOnePanel(on: boolean): void;
   setPageView(view: PageView | null): void;
   setMedia(items: readonly MediaItem[]): void;
   setSiteStyle(style: SiteStyle | null): void;
@@ -191,9 +201,9 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart" | "onePanel">> = {}): UiStore {
   const drawer = initial.drawer ?? null;
-  return createStore<UiState>()((set, get) => ({
+  const store = createStore<UiState>()((set, get) => ({
     hover: null,
     preview: initial.preview ?? "desktop",
     tray: initial.tray ?? "edit",
@@ -202,6 +212,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     sidebarOpen: initial.sidebarOpen ?? true,
     drawer,
     blockEdges: false,
+    sheetTall: false,
+    onePanel: initial.onePanel ?? false,
     pageView: null,
     media: new Map(),
     mediaLooking: new Set(),
@@ -234,9 +246,11 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setSideTab: (sideTab) => set({ sideTab }),
     // The same again changes nothing, so nothing is drawn or kept again.
     setGroupOpen: (owner, group, open) => set((state) => (state.openGroups[owner]?.[group] === open ? {} : { openGroups: { ...state.openGroups, [owner]: { ...state.openGroups[owner], [group]: open } } })),
-    setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-    setDrawer: (next) => set(next === "history" ? { drawer: next, historyOpen: true } : { drawer: next, historyOpen: false, namingVersion: false }),
+    setSidebarOpen: (sidebarOpen) => set({ sidebarOpen, sheetTall: false }),
+    setDrawer: (next) => set(next === "history" ? { drawer: next, historyOpen: true, sheetTall: false } : { drawer: next, historyOpen: false, namingVersion: false, sheetTall: false }),
     setBlockEdges: (blockEdges) => set({ blockEdges }),
+    setSheetTall: (sheetTall) => set({ sheetTall }),
+    setOnePanel: (onePanel) => set({ onePanel }),
     // The same width and scale again change nothing, so nothing redraws.
     setPageView: (pageView) => set((state) => (state.pageView?.width === pageView?.width && state.pageView?.scale === pageView?.scale ? {} : { pageView })),
     setMedia: (items) => set({ media: new Map(items.map((item) => [item.id, item])) }),
@@ -257,4 +271,13 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setNamingVersion: (namingVersion) => set({ namingVersion }),
     setBlockMenu: (blockMenu) => set({ blockMenu }),
   }));
+  // One panel at a time where they share the canvas: the sidebar shown
+  // while a drawer is open closes the drawer; a drawer opened, or the rule
+  // taking hold, closes the sidebar.
+  store.subscribe((state, before) => {
+    if (!state.onePanel || state.drawer === null || !state.sidebarOpen) return;
+    if (!before.sidebarOpen) store.setState({ drawer: null, historyOpen: false, namingVersion: false });
+    else store.setState({ sidebarOpen: false });
+  });
+  return store;
 }

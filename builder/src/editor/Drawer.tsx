@@ -12,9 +12,11 @@
 // way. A block that takes the focus entirely under Insert makes Insert give
 // way (closes it), so the focused block is seen.
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { afterRender } from "./act.ts";
+import { afterRender, shownElement } from "./act.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
+import { coarsePointer, TYPING } from "./layout-mode.ts";
+import { SheetGrip } from "./sheet-grip.tsx";
 import { pushes, type Drawer } from "./ui-store.ts";
 
 export const DRAWER_NAMES: Readonly<Record<Drawer, string>> = { insert: "Insert", outline: "Outline", history: "History" };
@@ -54,7 +56,7 @@ export function toggleDrawer(env: Env, which: Drawer): void {
 // would undo what was chosen in the drawer, the Outline's very job. The
 // focus then goes to the block chosen, or to the canvas when none is.
 function placeToReturn(env: Env, target: HTMLElement | null, which: Drawer): HTMLElement | null {
-  const top = document.querySelector<HTMLElement>(`.topbar [data-drawer="${which}"]`);
+  const top = shownElement(`[data-drawer="${which}"]`);
   if (!target?.isConnected) return top;
   const block = target.closest<HTMLElement>(".canvas [data-block-id]");
   if (!block) return target;
@@ -120,13 +122,16 @@ export function DrawerShell({ which, children, footer }: DrawerShellProps) {
   const name = DRAWER_NAMES[which];
 
   // After the drawer's own content: a field that took the focus for itself
-  // keeps it.
+  // keeps it. With a finger, no field to type in (./layout-mode.ts, TYPING).
   useLayoutEffect(() => {
     const element = box.current;
     if (!element || element.contains(document.activeElement)) return;
+    const touch = coarsePointer();
+    const typed = (key: Element | null) => touch && key !== null && key.matches(TYPING);
     // What the content marks, else its first key, else the close button.
-    const keys = [...element.querySelectorAll<HTMLElement>(FOCUSABLE)];
-    const first = element.querySelector<HTMLElement>("[data-autofocus]") ?? keys.find((key) => !key.closest(".drawer-head")) ?? keys[0];
+    const keys = [...element.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((key) => !typed(key));
+    const marked = element.querySelector<HTMLElement>("[data-autofocus]");
+    const first = (typed(marked) ? null : marked) ?? keys.find((key) => !key.closest(".drawer-head")) ?? keys[0];
     first?.focus({ preventScroll: true });
   }, []);
 
@@ -145,6 +150,7 @@ export function DrawerShell({ which, children, footer }: DrawerShellProps) {
         closeDrawer(env);
       }}
     >
+      <SheetGrip name={name} onClose={() => closeDrawer(env)} />
       <header className="drawer-head">
         <h2 id={`drawer_${which}_title`}>{name}</h2>
         <button className="ibtn" type="button" aria-label={`Close ${name}`} title="Close (Esc)" onClick={() => closeDrawer(env)}><Icon name="close" /></button>

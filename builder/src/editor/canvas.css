@@ -222,3 +222,19 @@
 @media (prefers-reduced-motion: reduce) {
   .clamp, .canvas .site .clamp > :is(button, .clamp-head), .canvas .site .ins, .invite .ins, .canvas .site .ins-empty { transition: none; }
 }
+
+/* ---------- 7. A finger ---------- */
+/* Where the pointer is coarse the toolbar's keys are 44 square, the
+   toolbar 52 high, and a "+" keeps its size but takes the presses around
+   it, out to 44: a finger finds them, and the page under them looks as it
+   did. The grip drags at a touch; everywhere else a finger scrolls the
+   canvas. */
+@media (pointer: coarse) {
+  .clamp { height: 52px; border-radius: 12px; }
+  .canvas .site .clamp > :is(button, .clamp-head) { width: 44px; height: 44px; border-radius: 8px; }
+  .canvas .site .clamp > .clamp-head { width: auto; padding: 0 10px 0 9px; }
+  .canvas .site .clamp > hr { height: 20px; }
+  .canvas .site .clamp > .clamp-grip { touch-action: none; }
+  .canvas .site :is(.ov-sel > .ins-after, .sec > .ins-sec, .ins-slot-wrap > .ins)::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+  .canvas .site .sec > .ins-sec::after { inset: -6px; }
+}

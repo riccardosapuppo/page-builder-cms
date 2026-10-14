@@ -66,6 +66,7 @@ import { openBlockMenu } from "./BlockMenu.tsx";
 import { canvasUi } from "./canvas-ui.ts";
 import "./canvas.css";
 import { Clamp, FRAME_MOVED } from "./Clamp.tsx";
+import { useCoarsePointer, useLayoutMode } from "./layout-mode.ts";
 import { withBlockPreview, withPalettePreview } from "./color-preview.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { deviceOf, ownValue, shownValue, type OverrideDevice } from "./device-style.ts";
@@ -668,6 +669,7 @@ const POINT_CLEAR = 26;
 // gap, off the next block's words.
 function InsertPoint({ index }: { index: number }) {
   const ref = useRef<HTMLDivElement>(null);
+  const touch = useCoarsePointer();
   useLayoutEffect(() => {
     const point = ref.current;
     const column = point?.parentElement;
@@ -696,7 +698,7 @@ function InsertPoint({ index }: { index: number }) {
   return (
     <div ref={ref} className="ins-point" aria-hidden="true">
       <span className="ins-line" />
-      <span className="ins-label"><Icon name="plus" className="li li-label" />A click in Insert lands here</span>
+      <span className="ins-label"><Icon name="plus" className="li li-label" />A {touch ? "tap" : "click"} in Insert lands here</span>
     </div>
   );
 }
@@ -870,23 +872,26 @@ function CanvasView() {
   // The context's hook must stay the same function: the library's lookup
   // is the only part that changes, and only when the library does.
   const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), useDecoration }), [media]);
-  const { width, scale } = fitPreview(preview, room);
+  const layout = useLayoutMode();
+  const { width, scale } = fitPreview(preview, room, layout === "narrow");
 
   // The room the canvas has for the page: its width inside its scrollbar's
   // gutter (kept whether or not the page scrolls, editor.css .canvas), less
-  // the page's margins (12 on the left beside a pushed drawer), so the page
-  // is as wide as the window allows and a page scaled to fit never makes the
+  // the page's margins (12 on the left beside a pushed drawer, none on a
+  // phone's window, where the page is the whole width), so the page is as
+  // wide as the window allows and a page scaled to fit never makes the
   // canvas scroll sideways.
-  const pushed = useUi((u) => pushes(u.drawer));
+  const pushed = useUi((u) => pushes(u.drawer)) && layout === "wide";
   useLayoutEffect(() => {
     const element = bench.current;
     if (!element) return undefined;
-    const measure = () => setRoom(element.clientWidth - (pushed ? FRAME_MARGIN_PUSHED : FRAME_MARGIN) - FRAME_MARGIN);
+    const margins = layout === "narrow" ? 0 : (pushed ? FRAME_MARGIN_PUSHED : FRAME_MARGIN) + FRAME_MARGIN;
+    const measure = () => setRoom(element.clientWidth - margins);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [pushed]);
+  }, [pushed, layout]);
 
   // The page's own width, as the bottom line names it, when it fills the
   // canvas: its layout width, which a scale would not change.

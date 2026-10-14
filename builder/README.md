@@ -103,6 +103,19 @@ into Menu on its own block's width where the published page does
 A section's columns may take what they hold (`fit:1`, `1:fit`,
 `fit:1:fit`), and stack on phones only or never.
 
+**Tablets and phones.** The editor in whatever window it has
+(`src/editor/layout-mode.ts`): the approved layout from 1100 wide, and
+with a mouse down to 700; in a tablet's window with a finger (700 to
+1099) the sidebar a panel over the canvas, shut
+at first, and the Outline and History floating as Insert does, one at a
+time, so the page keeps the window's width; in a phone's (under 700) the page at the
+phone's width, whole, a bar at the foot with Insert, Outline, Undo, Redo,
+Settings and More, and the drawers, the settings and the "+" picker
+rising from it as sheets, each with a grip that makes it tall or closes
+it. With a finger the keys are 44 square, a "+" takes the presses around
+it, Insert's keys are held still before they drag, and no field is
+focused for the person, so no keyboard opens unasked.
+
 ## Before you start
 
 - **Node** `^22.13.0 || ^24.0.0 || >=26.0.0` (`engines`, the narrowest of

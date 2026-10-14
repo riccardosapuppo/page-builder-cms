@@ -34,6 +34,7 @@ import { useEditor, useEnv, type EditorEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { openDrawer } from "./Drawer.tsx";
 import { Icon } from "./icons.tsx";
+import { useCoarsePointer, useLayoutMode } from "./layout-mode.ts";
 import { insertableWidgets, useInsert } from "./insert.ts";
 import { placeExists, placeKey, placeWords, type PlaceWords } from "./insert-place.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
@@ -187,11 +188,27 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
 
   // The search takes the focus once the picker stands beside its line
   // (hidden until then, it could not take it), and again when the window
-  // that asked for an image or a video closes without one.
+  // that asked for an image or a video closes without one. With a finger,
+  // the first key does (./layout-mode.ts, TYPING).
   const placed = position !== null;
+  const touch = useCoarsePointer();
   useEffect(() => {
-    if (placed && asking === null) search.current?.focus({ preventScroll: true });
-  }, [placed, asking]);
+    if (!placed || asking !== null) return;
+    const first = touch ? box.current?.querySelector<HTMLElement>('[data-key-index="0"]') : null;
+    (first ?? search.current)?.focus({ preventScroll: true });
+  }, [placed, asking, touch]);
+
+  // On a phone's window the picker is a sheet from the foot (editor.css):
+  // the line it adds at is brought near the canvas's top, above it.
+  const narrow = useLayoutMode() === "narrow";
+  useEffect(() => {
+    if (!placed || !narrow) return;
+    const canvas = box.current?.closest<HTMLElement>(".canvas");
+    const line = canvas?.querySelector<HTMLElement>(place.kind === "block" ? ".ins-slot" : ".seam-line");
+    if (!canvas || !line) return;
+    const room = canvas.getBoundingClientRect();
+    canvas.scrollTop += line.getBoundingClientRect().top - (room.top + 72);
+  }, [placed, narrow, place]);
 
   // Placed beside its line, and again as the canvas changes size.
   useLayoutEffect(() => {
@@ -393,6 +410,7 @@ function Picker({ place, dropped }: { place: InsertPlace; dropped: Asking | null
               setCurrent(0);
             }} />
           </label>
+          {narrow && <button className="ibtn picker-close" type="button" aria-label={`Close: ${words.title}`} title="Close (Esc)" onClick={() => closeInserter(env, true)}><Icon name="close" /></button>}
         </div>
         {groups.map((group) => group.to > group.from && (
           <div key={group.id}>

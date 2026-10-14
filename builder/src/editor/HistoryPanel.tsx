@@ -22,6 +22,7 @@ import { useEditor, useEnv, useUi, type EditorEnv } from "./context.tsx";
 import { draftLine, nameProblem, NAME_MAX, serverTime, stepTime, versionWords } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
+import { useCoarsePointer } from "./layout-mode.ts";
 import { changesNotLive } from "./Publish.tsx";
 import { thisTab, useSaveSnapshot } from "./SaveStatus.tsx";
 import { useScheduleLate } from "./schedule-late.ts";
@@ -109,6 +110,7 @@ export function HistoryPanel() {
   const session = useSession();
   const past = useEditor((s) => s.past);
   const future = useEditor((s) => s.future);
+  const touch = useCoarsePointer();
   const snapshot = useSaveSnapshot();
   const naming = useUi((u) => u.namingVersion);
   const zone = useUi((u) => u.site?.timeZone) ?? "UTC";
@@ -165,8 +167,8 @@ export function HistoryPanel() {
           </ol>
         )}
       <p className="hint hint-pad hint-keys">
-        Select an action to go back to it.<br />
-        <span className="keys-inline" aria-label={entryKeysText(undoKeys)}><KeyCaps caps={entryCaps(undoKeys)} small /></span> steps back one.
+        Select an action to go back to it.
+        {!touch && <><br /><span className="keys-inline" aria-label={entryKeysText(undoKeys)}><KeyCaps caps={entryCaps(undoKeys)} small /></span> steps back one.</>}
       </p>
 
       <div className="hist-versions-head">

@@ -60,13 +60,17 @@ export const SELECTION_SENSORS = [
 ];
 
 // A key of the Insert drawer or of a "+" picker is dragged with the mouse,
-// or picked up by the keymap's Space (pickUpTile) and moved with its keys,
-// as a block of the canvas is. Enter stays the button's own: it adds the
+// with a finger once it has been held still a quarter of a second (a
+// finger that moves at once scrolls the drawer, a sheet on a phone), or
+// picked up by the keymap's Space (pickUpTile) and moved with its keys, as
+// a block of the canvas is. Enter stays the button's own: it adds the
 // block where the drawer's sentence, or the picker's line, says.
 export const TILE_SENSORS = [
   PointerSensor.configure({
-    // A press that does not move is a click, however long it lasts.
-    activationConstraints: [new PointerActivationConstraints.Distance({ value: 5 })],
+    // A mouse's press that does not move is a click, however long it lasts.
+    activationConstraints: (event) => (event.pointerType === "touch"
+      ? [new PointerActivationConstraints.Delay({ value: 250, tolerance: 8 })]
+      : [new PointerActivationConstraints.Distance({ value: 5 })]),
   }),
   KeyboardSensor.configure({ keyboardCodes: sensorCodes() }),
 ];
@@ -102,16 +106,22 @@ export function collisionPriority(children: number): CollisionPriority | undefin
   return containerPriority(children) === "low" ? CollisionPriority.Low : undefined;
 }
 
-// Insert floats over the canvas (../Drawer.tsx), and the library measures
-// its targets' shapes, not what lies on top of them: a pointer over it
-// would land on the hidden block under it, and a key of Insert, picked up
-// there, would already be on its way into that block. Over a drawer, the
-// pointer is on nothing of the page (History holds none of its blocks;
-// the Outline's rows are targets of their own, for a row's drag:
-// useRowTarget).
+// Insert floats over the canvas (../Drawer.tsx), and so do every drawer
+// and the sidebar in a tablet's or a phone's window (../layout-mode.ts);
+// the library measures its targets' shapes, not what lies on top of them:
+// a pointer over one would land on the hidden block under it, and a key of
+// Insert, picked up there, would already be on its way into that block.
+// Over such a panel, the pointer is on nothing of the page (History holds
+// none of its blocks; the Outline's rows are targets of their own, for a
+// row's drag: useRowTarget). A panel that gives way while one of its keys
+// is dragged (Insert on a phone: unseen, out of the pointer's way) covers
+// nothing.
+const OVER_CANVAS = '.drawer, .app:is([data-layout="medium"], [data-layout="narrow"]) .sidebar';
+
 function overDrawer(point: { x: number; y: number }): boolean {
-  for (const drawer of document.querySelectorAll(".drawer")) {
-    const box = drawer.getBoundingClientRect();
+  for (const panel of document.querySelectorAll(OVER_CANVAS)) {
+    if (getComputedStyle(panel).pointerEvents === "none") continue;
+    const box = panel.getBoundingClientRect();
     if (point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom) return true;
   }
   return false;

@@ -66,6 +66,8 @@ import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
 import { StatusBar } from "./StatusBar.tsx";
+import { PhoneBar } from "./PhoneBar.tsx";
+import { useLayoutMode } from "./layout-mode.ts";
 import { TopBar } from "./TopBar.tsx";
 import { pushes } from "./ui-store.ts";
 
@@ -927,8 +929,15 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
-  // The Outline and History take their room from the canvas.
-  const pushed = pushes(drawer);
+  // The editor's own layout, from its window (./layout-mode.ts): on a
+  // tablet the sidebar and the drawers float over the canvas, on a phone
+  // they are sheets and the bar at the foot holds the keys. Only in the
+  // wide layout do the Outline and History take their room from the canvas.
+  const layout = useLayoutMode();
+  const pushed = layout === "wide" && pushes(drawer);
+  useLayoutEffect(() => {
+    env.ui.getState().setOnePanel(layout !== "wide");
+  }, [env, layout]);
 
   return (
     <EditorProvider env={env}>
@@ -939,7 +948,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
               {/* In the order the Tab key goes: the top bar, the drawer, the
                   canvas, the sidebar (Tab from the selection reaches its
                   settings), then the bottom line. The grid places each. */}
-              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}${foot ? " app-foot" : ""}`}>
+              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}${foot ? " app-foot" : ""}`} data-layout={layout}>
                 <TopBar />
                 <ConflictBanner />
                 {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}
@@ -948,6 +957,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
                 {status.kind === "ready" ? <Canvas /> : <Bench status={status} onRetry={() => setAttempt((n) => n + 1)} />}
                 <Sidebar />
                 <StatusBar />
+                {layout === "narrow" && status.kind === "ready" && <PhoneBar />}
                 {foot}
               </div>
             </DragLayer>

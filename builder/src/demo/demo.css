@@ -6,6 +6,8 @@
    window: the sidebar keeps to its rows above it. */
 .app-foot { grid-template-rows: var(--bar) auto minmax(0, 1fr) auto auto; }
 .app-foot > .demo-line { grid-column: 1 / -1; grid-row: 5; margin-top: -4px; padding: 0 13px 7px; }
+/* On a phone's window, between the canvas and the bar at the foot. */
+.app-foot[data-layout="narrow"] > .demo-line { grid-row: 4; margin-top: 0; padding: 6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left)); box-shadow: inset 0 1px 0 var(--alloy); }
 
 /* The toast of a save that did not go through stands above the bottom line
    by 57; with the demo's line under it, the bottom line is that much

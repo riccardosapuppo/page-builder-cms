@@ -462,6 +462,29 @@ with the block, which the mock's drag state (a line where it lands) does
 not show. Over the canvas, the canvas's own marks come back.
 `builder/e2e/outline-drag.spec.ts` drives it.
 
+**The owner's choice of 14 October 2026: the editor on a tablet and on a
+phone, the canvas first.** The mock draws windows of 1280 and wider; from
+1100 the layout is the mock's, and so it is with a mouse in a narrower
+desktop's window down to 700, the page drawn smaller as in 4.8. In a
+tablet's window, with a finger (700 to 1099), the top bar and the bottom
+line stay, the sidebar is a panel over the canvas's
+right, shut at first, and the Outline and History float over its left as
+Insert does, one panel at a time: the page keeps the window's width, and
+the top bar the page's name whole. In a phone's window
+(under 700) the page is drawn at the phone's width, whole; the top bar
+keeps the mark's menu, the page and Publish; a bar at the foot holds
+Insert, the Outline, Undo, Redo, Settings and More (Preview, History, the
+device, Block edges); the drawers, the settings and the "+" picker rise
+from it as sheets over the canvas, the window's width, each with a grip
+that makes it tall or, dragged down, closes it; and the bottom line shows
+only while a block moves. With a finger, in any window, the keys are 44
+square, the toolbar's on the canvas too, a "+" takes the presses around
+it, Insert's keys are held still before they drag (as the Outline's rows
+are), the grip drags at a touch, and no field is focused for the person,
+so no keyboard opens unasked; the words say tap, and teach no keys. The
+mock's shots stay as approved; `builder/src/editor/layout-mode.ts` holds
+the widths, and `builder/e2e/small-windows.spec.ts` drives them.
+
 ## 10. Known weak spots
 
 - **The Insert drawer covers the left of the page**: about 200 of every

@@ -23,6 +23,15 @@ import { useEnv, type EditorEnv } from "./context.tsx";
 // part of the editor. The panel keeps its own focus (its field).
 export type Region = "canvas" | "navigator" | "panel";
 
+// The first of the elements a selector finds that is drawn: a key the
+// wide top bar and a phone's bar both hold (data-drawer, data-sidebar) is
+// drawn in one of them only (./layout-mode.ts). With none drawn (a page
+// that draws nothing, as a test's), the first.
+export function shownElement(selector: string): HTMLElement | null {
+  const found = [...document.querySelectorAll<HTMLElement>(selector)];
+  return found.find((element) => element.getClientRects().length > 0) ?? found[0] ?? null;
+}
+
 export const afterRender = (run: () => void): void => {
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
   else setTimeout(run, 0);

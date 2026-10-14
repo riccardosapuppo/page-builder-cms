@@ -5,6 +5,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons.tsx";
+import { coarsePointer, TYPING } from "./layout-mode.ts";
 import { keepBeside } from "./place-dialog.ts";
 
 interface DialogProps {
@@ -58,7 +59,10 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const app = document.querySelector<HTMLElement>(".app");
     app?.setAttribute("inert", "");
-    const first = box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
+    // What the dialog marks, else its first key: with a finger, the first
+    // that takes no typing (./layout-mode.ts, TYPING).
+    const keys = [...(box.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
+    const first = box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? (coarsePointer() ? keys.find((key) => !key.matches(TYPING)) : keys[0]);
     first?.focus();
     // A focus that left the dialog for the page (the field it was in went
     // away): Esc still closes it, and Tab comes back into it.

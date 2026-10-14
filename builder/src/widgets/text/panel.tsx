@@ -7,6 +7,7 @@
 import { useId } from "react";
 import { useEnv, useUi } from "../../editor/context.tsx";
 import { entry, entryCaps, type KeyAction } from "../../editor/keymap.ts";
+import { useCoarsePointer } from "../../editor/layout-mode.ts";
 import { startEditing } from "../../editor/rich/tools.ts";
 import { KeyCaps } from "../../editor/ShortcutsDialog.tsx";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
@@ -17,6 +18,7 @@ function TextContent({ block }: ContentProps<"text">) {
   const env = useEnv();
   const id = useId();
   const writing = useUi((u) => u.editingText?.id === block.id);
+  const touch = useCoarsePointer();
   if (writing) {
     return (
       <div className="field">
@@ -35,7 +37,7 @@ function TextContent({ block }: ContentProps<"text">) {
       <button className="btn btn-small btn-secondary" type="button" aria-describedby={`${id}-hint`} onClick={() => startEditing(env, block.id, "end")}>
         Edit on the page
       </button>
-      <p className="hint" id={`${id}-hint`}>Or click the text on the page, or press Enter with it selected. Select words to make them bold, italic or a link; Esc leaves the text.</p>
+      <p className="hint" id={`${id}-hint`}>Or {touch ? "tap" : "click"} the text on the page, or press Enter with it selected. Select words to make them bold, italic or a link; Esc leaves the text.</p>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalSto
 import type { PageSummary } from "../storage/adapter.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
+import { coarsePointer } from "./layout-mode.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
 import { changesNotLive, siteAddress } from "./Publish.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
@@ -156,7 +157,8 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
   const shownParts = session.parts.filter((part) => matches(part, query));
 
   useEffect(() => {
-    search.current?.focus();
+    const open = coarsePointer() ? box.current?.querySelector<HTMLElement>(".page-row[aria-current]") : null;
+    (open ?? search.current)?.focus();
     const away = (event: PointerEvent) => {
       const target = event.target as Node;
       if (box.current?.contains(target) || button.current?.contains(target)) return;

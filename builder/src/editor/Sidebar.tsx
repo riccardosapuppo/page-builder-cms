@@ -16,12 +16,13 @@
 // and the canvas takes its room.
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { PART_KINDS, type PartKind } from "../storage/adapter.ts";
-import { afterRender } from "./act.ts";
+import { afterRender, shownElement } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { BlockPanel, MovingPanel, PagePanel, PartPanel } from "./panels/EditPanel.tsx";
 import { PART_NAMES, partOf, useOpenKind, useSession } from "./session.tsx";
 import { CustomCssPanel } from "./CustomCssPanel.tsx";
+import { SheetGrip } from "./sheet-grip.tsx";
 import { SiteStylePanel } from "./SiteStylePanel.tsx";
 import type { SideTab, UiStore } from "./ui-store.ts";
 
@@ -57,7 +58,7 @@ export function toggleSidebar(ui: UiStore): void {
   const inside = active instanceof Element && active.closest(".sidebar") !== null;
   ui.getState().setSidebarOpen(open);
   if (open) afterRender(() => document.querySelector<HTMLElement>(".sidebar [role=tab][aria-selected=true], .sidebar [data-autofocus]")?.focus());
-  else if (inside) afterRender(() => document.querySelector<HTMLElement>(".topbar [data-sidebar]")?.focus());
+  else if (inside) afterRender(() => shownElement("[data-sidebar]")?.focus());
 }
 
 export function Sidebar() {
@@ -68,6 +69,7 @@ export function Sidebar() {
   if (tray === "site-style") {
     return (
       <aside className="sidebar chrome" aria-label="Site style">
+        <SheetGrip name="Site style" onClose={() => toggleSidebar(ui)} />
         <SiteStylePanel onClose={() => backToPage(ui, store.getState().selection, "data-site-style")} onHide={() => toggleSidebar(ui)} />
       </aside>
     );
@@ -75,6 +77,7 @@ export function Sidebar() {
   if (tray === "custom-css") {
     return (
       <aside className="sidebar chrome" aria-label="Custom CSS">
+        <SheetGrip name="Custom CSS" onClose={() => toggleSidebar(ui)} />
         <CustomCssPanel onClose={() => backToPage(ui, store.getState().selection, "data-custom-css")} onHide={() => toggleSidebar(ui)} />
       </aside>
     );
@@ -108,6 +111,7 @@ function Settings() {
   };
   return (
     <aside className="sidebar chrome" aria-label="Settings">
+      <SheetGrip name="Settings" onClose={() => toggleSidebar(ui)} />
       <div className="sb-tabs">
         <div role="tablist" aria-label="Settings">
           {TABS.map((t, index) => (

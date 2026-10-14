@@ -21,6 +21,7 @@ import "../editor/editor.css";
 import "./demo.css";
 import { randomIds } from "../document/ids.ts";
 import { App, NO_PAGE } from "../editor/App.tsx";
+import { layoutStart } from "../editor/layout-mode.ts";
 import { keepOpenGroups, readOpenGroups } from "../editor/open-groups.ts";
 import { createUiStore } from "../editor/ui-store.ts";
 import { createBrowserAdapter } from "../storage/browser.ts";
@@ -55,7 +56,7 @@ if (view) {
 } else {
   const env = {
     store: createEditorStore({ document: NO_PAGE, now: () => systemClock.now() }),
-    ui: createUiStore({ openGroups: readOpenGroups() }),
+    ui: createUiStore({ openGroups: readOpenGroups(), ...layoutStart() }),
     clock: systemClock,
     newId: randomIds(),
   };

@@ -33,6 +33,7 @@ import { useEditor, useEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { Icon } from "./icons.tsx";
 import { insertableWidgets, insertTarget, useInsert } from "./insert.ts";
+import { useCoarsePointer } from "./layout-mode.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, PRESETS, type Preset } from "./presets.ts";
@@ -71,18 +72,21 @@ const NEW_SECTION = "New section, by number of columns";
 
 // Where a click puts a block, in words: after the selection, as a paste
 // goes; with nothing selected, at the end of the page's last column; a
-// section selected holds no block of its own.
-export function whereWords(doc: PageDocument, selection: string | null): ReactNode {
+// section selected holds no block of its own. With a finger, a tap, and a
+// key held before it is dragged (./drag/dnd.ts, TILE_SENSORS).
+export function whereWords(doc: PageDocument, selection: string | null, touch = false): ReactNode {
+  const drag = touch ? "hold a key and drag it to any column" : "drag to any column";
+  const press = touch ? "Tap" : "Click";
   const at = insertTarget(doc, "heading", selection);
   const column = at?.parentId ? locate(doc, at.parentId) : undefined;
   if (!at || !column || column.block.type !== "column" || column.parentId === null) {
-    return doc.sections.length === 0 ? "Blocks go inside a column: add a section first." : "Select a column, or a block in one, to add there; or drag to any column.";
+    return doc.sections.length === 0 ? "Blocks go inside a column: add a section first." : `Select a column, or a block in one, to add there; or ${drag}.`;
   }
   const place = `${blockName(doc, column.block.id)} of ${blockName(doc, column.parentId)}`;
   const before = column.block.children[at.index - 1];
-  if (selection === null) return <>Click to add at the end of {place}, or drag to any column.</>;
-  if (!before) return <>Click to add at the top of {place}, or drag to any column.</>;
-  return <>Click to add after <strong>{blockName(doc, before.id)}</strong> in {place}, or drag to any column.</>;
+  if (selection === null) return <>{press} to add at the end of {place}, or {drag}.</>;
+  if (!before) return <>{press} to add at the top of {place}, or {drag}.</>;
+  return <>{press} to add after <strong>{blockName(doc, before.id)}</strong> in {place}, or {drag}.</>;
 }
 
 export function Palette() {
@@ -91,6 +95,7 @@ export function Palette() {
   const doc = useEditor((s) => s.document);
   const selection = useEditor((s) => s.selection);
   const kind = useOpenKind();
+  const touch = useCoarsePointer();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("blocks");
   const [asking, setAsking] = useState<AnyWidgetDefinition | "picture" | null>(null);
@@ -166,7 +171,7 @@ export function Palette() {
             </button>
           ))}
         </div>
-        <p className="drawer-where">{tab === "blocks" ? whereWords(doc, selection) : "A ready-made section goes after the selection’s section, or at the end of the page."}</p>
+        <p className="drawer-where">{tab === "blocks" ? whereWords(doc, selection, touch) : "A ready-made section goes after the selection’s section, or at the end of the page."}</p>
       </div>
 
       <div className="drawer-body" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>

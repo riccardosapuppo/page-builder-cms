@@ -8,6 +8,7 @@ import { Dialog } from "./dialog.tsx";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { entryCaps, GROUP_NOTES, KEY_GROUPS, KEYMAP, type Cap, type KeyGroup } from "./keymap.ts";
+import { useCoarsePointer } from "./layout-mode.ts";
 
 // Which groups each column holds, top to bottom: every group once.
 export const KEY_COLUMNS: ReadonlyArray<readonly KeyGroup[]> = [
@@ -35,6 +36,9 @@ export function ShortcutsDialog() {
 
 function ShortcutsWindow() {
   const { ui } = useEnv();
+  // With a finger, the search is not focused for the person: a phone would
+  // open its keyboard over the list (./layout-mode.ts, TYPING).
+  const touch = useCoarsePointer();
   const [query, setQuery] = useState("");
   const searchId = useId();
   const wanted = query.trim().toLowerCase();
@@ -52,7 +56,7 @@ function ShortcutsWindow() {
       tools={(
         <label className="search search-inline search-keys" htmlFor={searchId}>
           <Icon name="search" />
-          <input id={searchId} type="search" placeholder="Find a shortcut" aria-label="Find a shortcut" data-autofocus value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input id={searchId} type="search" placeholder="Find a shortcut" aria-label="Find a shortcut" data-autofocus={touch ? undefined : ""} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
       )}
       note={<p className="hint">On a Mac, use Cmd where this list says Ctrl, and Option where it says Alt. The Alt and Shift keys go by the key’s place, so they work on any keyboard layout.</p>}

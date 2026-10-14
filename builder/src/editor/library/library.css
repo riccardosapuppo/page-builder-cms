@@ -73,3 +73,15 @@
 .md-confirm p { font-size: 12px; line-height: 16px; }
 .md-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .btn-danger { background: var(--err); color: var(--white); }
+
+/* On a phone's window the library is the window less a margin: the grid
+   two images wide, the chosen image's details under it, one scroll for
+   both, and the search the toolbar's width. */
+@media (max-width: 699px) {
+  .dlg-media { width: calc(100vw - 16px); height: calc(100dvh - 16px); }
+  .media-body { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding: 4px 12px 16px; }
+  .media-details { max-height: none; overflow: visible; margin: 0 12px 16px; }
+  .dlg-toolbar { flex-wrap: wrap; padding: 0 12px 12px; }
+  .dlg-toolbar .search { flex: 1 1 100%; width: auto; }
+}
