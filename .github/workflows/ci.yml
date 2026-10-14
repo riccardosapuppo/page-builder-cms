@@ -219,9 +219,9 @@ jobs:
       - run: npm run check:serving
         working-directory: builder
       # What the browser saw when a test failed (Playwright's snapshot of
-      # the page, error-context.md), kept a week: a run on GitHub is slower
-      # than the machine the tests were written on, and a race that shows
-      # only here can then be read, not guessed.
+      # the page, written beside each failed test), kept a week: a run on
+      # GitHub is slower than the machine the tests were written on, and a
+      # race that shows only here can then be read, not guessed.
       - name: Keep the failed browser tests' results
         if: failure()
         uses: actions/upload-artifact@v4
