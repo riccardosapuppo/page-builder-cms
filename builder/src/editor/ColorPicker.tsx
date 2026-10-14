@@ -94,13 +94,20 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     return taken;
   }, [clock, onCommit, onPreview]);
 
-  // A colour to keep later, held until then.
+  // A colour to keep later, held until then: it takes the place of the one
+  // waiting, the arrows' pause with it.
+  const stopPause = () => {
+    if (timer.current !== null) clock.clearTimeout(timer.current);
+    timer.current = null;
+  };
   const hold = (color: FreeColor) => {
+    stopPause();
     release.current?.();
     waiting.current = color;
     release.current = ui.getState().pending.hold(() => commit(color));
   };
   const letGo = () => {
+    stopPause();
     release.current?.();
     release.current = null;
     waiting.current = null;
@@ -115,7 +122,6 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     onPreview?.(color);
     if (keep === "now") commit(color);
     else if (keep === "pause") {
-      if (timer.current !== null) clock.clearTimeout(timer.current);
       hold(color);
       timer.current = clock.setTimeout(() => {
         timer.current = null;
@@ -124,14 +130,16 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
     }
   };
 
-  // Anything waiting is kept when the picker goes, and what the canvas
-  // shows of the picking goes with it.
-  const latest = useRef({ commit, onPreview });
+  // Anything waiting is kept when the picker goes, no pause outlives it,
+  // and what the canvas shows of the picking goes with it.
+  const latest = useRef({ commit, onPreview, clock });
   useLayoutEffect(() => {
-    latest.current = { commit, onPreview };
+    latest.current = { commit, onPreview, clock };
   });
   useEffect(() => () => {
     if (waiting.current !== null) latest.current.commit(waiting.current);
+    if (timer.current !== null) latest.current.clock.clearTimeout(timer.current);
+    timer.current = null;
     release.current?.();
     latest.current.onPreview?.(null);
   }, []);
@@ -141,7 +149,9 @@ export function ColorPicker({ label, value, onCommit, onPreview, ref }: ColorPic
       if (waiting.current === null) return;
       if (timer.current !== null) clock.clearTimeout(timer.current);
       timer.current = null;
-      letGo();
+      release.current?.();
+      release.current = null;
+      waiting.current = null;
       setHsv(rgbToHsv(hexToRgb(kept.current)));
       setTyped(kept.current);
       setRefused(null);

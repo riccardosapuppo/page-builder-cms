@@ -143,6 +143,27 @@ test("a colour typed in the hex field waits with the page's other edits: a comma
   expect([kept, pending.waiting]).toEqual([["#1d4e6f", "#2e5f80"], 0]);
 });
 
+test("a colour typed in the arrows' pause takes the place of the one waiting: the pause keeps nothing, and the typed colour waits, or nothing does", async () => {
+  const { kit, kept, hide } = draw("#808080");
+  const pending = kit.ui.getState().pending;
+  const area = screen.getByRole("slider", { name: "Primary: saturation and brightness" });
+  const field = screen.getByLabelText("Primary: hex");
+  fireEvent.keyDown(area, { key: "ArrowRight", shiftKey: true });
+  fireEvent.change(field, { target: { value: "#1d4e6f" } });
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect([kept, pending.waiting, (field as HTMLInputElement).value]).toEqual([[], 1, "#1d4e6f"]);
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(kept).toEqual(["#1d4e6f"]);
+  // Text that is no colour, typed in the pause: nothing waits, then or
+  // when the picker goes.
+  fireEvent.keyDown(area, { key: "ArrowRight", shiftKey: true });
+  fireEvent.change(field, { target: { value: "#1d4e6" } });
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  hide();
+  await act(() => kit.clock.advance(COMMIT_AFTER_MS));
+  expect([kept, pending.waiting]).toEqual([["#1d4e6f"], 0]);
+});
+
 test("a typed colour the page refuses as it is handed over says so: the hand-over answers false, and nothing is kept", () => {
   const { kit, kept } = draw("#ff0000", [true]);
   const pending = kit.ui.getState().pending;
