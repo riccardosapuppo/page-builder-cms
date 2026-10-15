@@ -7,12 +7,12 @@
 //   its right edge; under it, from its left, then its right (clear of a
 //   "+" on the frame's foot); and last, inside the frame's top left
 //   corner. The first one whole in the canvas's visible part, clear of the
-//   open Insert drawer (which floats over the canvas's left), that covers
-//   nothing is taken; where every place covers something, the one that
-//   covers least, weighed: the selected block's own words most (it is
-//   what is being worked on, and a click into it must land there), the
-//   other blocks' words next, other blocks with no words (a picture, a
-//   rule) a little.
+//   open Insert drawer where it floats over the canvas's left (a tablet's
+//   window), that covers nothing is taken; where every place covers
+//   something, the one that covers least, weighed: the selected block's
+//   own words most (it is what is being worked on, and a click into it
+//   must land there), the other blocks' words next, other blocks with no
+//   words (a picture, a rule) a little.
 // - A section's toolbar tries its inside corner first, in the section's
 //   padding, where its blocks' toolbars do not stand; its blocks' words
 //   count as other blocks' there.
@@ -39,7 +39,8 @@ export interface ToolbarRoom {
   frame: Box;
   // The canvas's visible edges.
   view: Box;
-  // What hides part of the canvas (the Insert drawer, when open).
+  // What hides part of the canvas (the Insert drawer, open over a tablet's
+  // canvas).
   covers: readonly Box[];
   // What the toolbar keeps off, near the frame: the lines of the other
   // blocks' words, the selected block's own lines, and the other blocks

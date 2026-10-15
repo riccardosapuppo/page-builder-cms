@@ -22,7 +22,7 @@
 //   moves with the line.
 import type { Locator, Page } from "@playwright/test";
 import { MARGIN } from "../src/editor/place-dialog.ts";
-import { block, moveOnto, pickUp, spot } from "./helpers/canvas.ts";
+import { block, moveOnto, pickUp } from "./helpers/canvas.ts";
 import { png } from "./helpers/images.ts";
 import { column, drawer, expect, heading, makePage, open, section, test, unique, widget } from "./helpers/site.ts";
 
@@ -314,23 +314,46 @@ for (const size of [{ width: 1366, height: 768 }, { width: 1280, height: 720 }])
   });
 }
 
+// The empty last column's own "+" picker, open at the column's line.
+async function pickerAtTheEmptyColumn(page: Page): Promise<Locator> {
+  await page.locator('.canvas [data-block-id="c4"] > .ins-empty').click();
+  const picker = page.getByRole("dialog", { name: "Add a block to Column 2" });
+  await expect(picker).toBeVisible();
+  return picker;
+}
+
+// The window one of its keys asks with, the key clicked: it stands beside
+// the column's line as a dropped key's does. A key dropped from Insert
+// comes with Insert open, which pushes the page aside on a desktop since
+// the owner's report of 15 October 2026 and draws it smaller; where a test
+// needs the line where the page puts it with no drawer open, the picker's
+// key gives the same window there.
+async function askedAtTheEmptyColumn(page: Page, key: "Image" | "Video"): Promise<Locator> {
+  const picker = await pickerAtTheEmptyColumn(page);
+  await picker.getByRole("button", { name: key, exact: true }).click();
+  await expect(key === "Image" ? library(page) : videoWindow(page)).toBeVisible();
+  return picker;
+}
+
 // A page of one section, lower than a 720-high window's canvas, so it does
 // not scroll: its empty column's line is where the library has room
-// neither over it nor under it.
+// neither over it nor under it. Asked from the column's "+": with Insert
+// open, the page drawn at 82% beside it, the line has room under it.
 const shortFixture = () => [section("s1", "Only", [column("c3", [heading("a", "Alpha"), widget("b", "quote", { text: "Bravo" })]), column("c4", [])])];
 
 test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   const view: Box = { x: 0, y: 0, width: 1280, height: 720 };
 
-  test("Image dropped in its empty column: the canvas is given room, the line goes near its top with the library under it, and the room goes when the library closes", async ({ page, request }) => {
+  test("Image asked for at its empty column: the canvas is given room, the line goes near its top with the library under it, and the room goes when the library closes", async ({ page, request }) => {
     const { id } = await makePage(request, "Short page", shortFixture());
     await open(page, id);
     const canvas = page.locator(".canvas");
-    // Measured with Insert open, as it stays.
-    await drawer(page, "Insert");
+    // Measured with the picker open, as it stays.
+    const picker = await pickerAtTheEmptyColumn(page);
     const before = await canvas.evaluate((element) => [element.scrollHeight, element.clientHeight]);
-    await dropped(page, "Basic", "Image", "c4", "middle");
+    await picker.getByRole("button", { name: "Image", exact: true }).click();
+    await expect(library(page)).toBeVisible();
 
     const found = await boxes(page, library(page), line(page, "c4"));
     expectLeavesTheLine(found, view);
@@ -340,8 +363,10 @@ test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", (
     expect(["the scrim", "the line"]).toContain(await lineSeen(line(page, "c4")));
     await expect(canvas).toHaveAttribute("data-room", /^[1-9]\d*$/);
 
+    // Cancel adds nothing: the picker is back at its line.
     await library(page).getByRole("button", { name: "Cancel" }).click();
     await expect(library(page)).toHaveCount(0);
+    await expect(picker).toBeVisible();
     await expect(canvas).not.toHaveAttribute("data-room");
     expect(await canvas.evaluate((element) => [element.style.paddingBottom, element.scrollHeight, element.clientHeight])).toEqual(["", ...before]);
     expect(await types(page, "c4")).toEqual([]);
@@ -350,7 +375,7 @@ test.describe("on a laptop's window, 1280 by 720, a page too short to scroll", (
   test("the library standing under the line moved near the canvas's top adds the image at that line, and the canvas's room goes", async ({ page, request }) => {
     const { id } = await makePage(request, "Short page, image added", shortFixture());
     await open(page, id);
-    await dropped(page, "Basic", "Image", "c4", "middle");
+    await askedAtTheEmptyColumn(page, "Image");
     await expect(page.locator(".canvas")).toHaveAttribute("data-room", /^[1-9]\d*$/);
 
     const name = `${unique("laptop")}.png`;
@@ -452,20 +477,16 @@ test.describe("while the window is open", () => {
       const view: Box = { x: 0, y: 0, width: 1024, height: 768 };
       const { id } = await makePage(request, "Video window grows", fixture());
       await open(page, id);
-      await drawer(page, "Insert");
-      // Onto the column where the page puts it, the canvas at its top: the
+      // At the column where the page puts it, the canvas at its top: the
       // line stands as low as the header and the first section over it say,
-      // with room over it for the window and more. moveOnto would bring it
-      // to the middle as far as the page scrolls, and the page ends with the
-      // site's footer: the taller the footer, the higher the line.
+      // with room over it for the window and more. Asked from the column's
+      // "+", with no drawer open: dropped from Insert, the page drawn at
+      // half its size beside it, the window would have room on the line's
+      // left.
       await page.locator(".canvas").evaluate((canvas) => {
         canvas.scrollTop = 0;
       });
-      await pickUp(page, await insertKey(page, "Media", "Video"));
-      const onto = await spot(block(page, "c4"));
-      await page.mouse.move(onto.x, onto.y, { steps: 12 });
-      await page.mouse.move(onto.x + 1, onto.y + 1, { steps: 2 });
-      await page.mouse.up();
+      await askedAtTheEmptyColumn(page, "Video");
       const shown = videoWindow(page);
       await expect(shown).toBeVisible();
       await twoFrames(page);

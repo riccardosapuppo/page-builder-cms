@@ -1,10 +1,11 @@
 // The interface's own store (./ui-store.ts): where the drawers and the
 // sidebar share the canvas (a tablet's and a phone's windows), one panel at
 // a time, the one opened last staying, whichever way it opened; in the
-// approved layout the two stand together.
+// approved layout the two stand together. Which drawers push the page
+// aside, in each layout.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { createUiStore } from "./ui-store.ts";
+import { createUiStore, DRAWERS, pushes } from "./ui-store.ts";
 
 const shown = (ui: ReturnType<typeof createUiStore>) => [ui.getState().drawer, ui.getState().sidebarOpen];
 
@@ -23,6 +24,14 @@ test("with one panel at a time, the panel opened last stays: a drawer closes the
   // Closing one opens nothing.
   ui.getState().setSidebarOpen(false);
   expect(shown(ui)).toEqual([null, false]);
+});
+
+test("in the wide layout every drawer pushes the page aside, Insert too (the owner's report of 15 October 2026); in a tablet's or a phone's window Insert floats", () => {
+  expect(DRAWERS.map((drawer) => [drawer, pushes(drawer, "wide")])).toEqual([["insert", true], ["outline", true], ["history", true], ["assistant", true]]);
+  for (const layout of ["medium", "narrow"] as const) {
+    expect(DRAWERS.map((drawer) => [drawer, pushes(drawer, layout)]), layout).toEqual([["insert", false], ["outline", true], ["history", true], ["assistant", true]]);
+  }
+  expect(pushes(null, "wide")).toBe(false);
 });
 
 test("in the approved layout the two stand together; the rule taking hold keeps the drawer open", () => {

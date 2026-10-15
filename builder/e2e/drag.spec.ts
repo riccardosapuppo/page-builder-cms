@@ -89,6 +89,36 @@ test.describe("on a page drawn smaller to fit a 1024 window", () => {
   });
 });
 
+// In a tablet's window, with a finger (src/editor/layout-mode.ts), Insert
+// floats over the canvas's left, the page going on under it; on a desktop
+// it pushes the page aside.
+test.describe("in a tablet's window, 820 by 1180, with a finger, where Insert floats over the page", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("over the drawer, a key of Insert is on nothing of the page under it", async ({ page, request }) => {
+    const { id } = await startPage(page, request, "Over the drawer");
+    const insert = await drawer(page, "Insert");
+    // Basic's first key, which stands level with Column 1 in this window.
+    const tile = insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Heading" });
+    await tile.scrollIntoViewIfNeeded();
+    // Where the pointer stops once the drag starts (./helpers/canvas.ts,
+    // pickUp), Column 1 runs under the drawer, well inside its edges: it
+    // could take a heading, were it not hidden.
+    const box = (await tile.boundingBox())!;
+    const column = (await block(page, "c1").boundingBox())!;
+    const at = { x: box.x + box.width / 2 + 8, y: box.y + box.height / 2 + 8 };
+    expect(at.x - column.x).toBeGreaterThan(8);
+    expect(at.y - column.y).toBeGreaterThan(8);
+    expect(column.y + column.height - at.y).toBeGreaterThan(8);
+    await pickUp(page, tile);
+    await expect(caption(page).locator("strong")).toHaveText("Nowhere to drop it here. Widgets go inside a column.");
+    await page.mouse.up();
+    await expect(caption(page)).toHaveText("Heading was not added: There is nowhere to drop it.");
+    await expect.poll(() => canvasShape(page)).toEqual(START);
+    expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
+  });
+});
+
 test.describe("with the mouse", () => {
   test("a widget moves down its column, as one command the CMS keeps", async ({ page, request }) => {
     const { id } = await startPage(page, request, "Reorder");
@@ -191,28 +221,6 @@ test.describe("with the mouse", () => {
     await expect.poll(() => canvasShape(page)).toEqual([["s1", [["c1", ["a", expect.any(String), "b", "c"]], ["c2", ["d"]]]], ["s2", [["c3", ["e"]], ["c4", []]]]]);
     await saved(page);
     expect((await draftOf(request, id)).document.sections[0]!.children[0]!.children.map((w) => w.type)).toEqual(["heading", "quote", "quote", "button"]);
-  });
-
-  test("over the drawer, which floats over the page, a key of Insert is on nothing of the page", async ({ page, request }) => {
-    const { id } = await startPage(page, request, "Over the drawer");
-    const insert = await drawer(page, "Insert");
-    const tile = insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" });
-    await tile.scrollIntoViewIfNeeded();
-    // Where the pointer stops once the drag starts (./helpers/canvas.ts,
-    // pickUp), Column 1 runs under the drawer, well inside its edges: it
-    // could take a divider, were it not hidden.
-    const box = (await tile.boundingBox())!;
-    const column = (await block(page, "c1").boundingBox())!;
-    const at = { x: box.x + box.width / 2 + 8, y: box.y + box.height / 2 + 8 };
-    expect(at.x - column.x).toBeGreaterThan(8);
-    expect(at.y - column.y).toBeGreaterThan(8);
-    expect(column.y + column.height - at.y).toBeGreaterThan(8);
-    await pickUp(page, tile);
-    await expect(caption(page).locator("strong")).toHaveText("Nowhere to drop it here. Widgets go inside a column.");
-    await page.mouse.up();
-    await expect(caption(page)).toHaveText("Divider was not added: There is nowhere to drop it.");
-    await expect.poll(() => canvasShape(page)).toEqual(START);
-    expect(shape((await draftOf(request, id)).document.sections)).toEqual(START);
   });
 
   test("a widget released where widgets cannot go stays where it was, and the editor says why", async ({ page, request }) => {

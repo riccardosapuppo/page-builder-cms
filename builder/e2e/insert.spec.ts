@@ -6,7 +6,10 @@
 // line at its place and a picker beside it with only what fits there,
 // which adds by one command, the new block focused, and closes with Esc,
 // giving the focus back. The "+" key opens it after the selection. While
-// Insert is open, its own yellow line marks where a click in it lands.
+// Insert is open, its own yellow line marks where a click in it lands, its
+// words in its middle on a desktop, where Insert stands beside the page,
+// and at its right end in a tablet's window, where Insert floats over the
+// line's left end.
 import type { Page } from "@playwright/test";
 import { block, childIds } from "./helpers/canvas.ts";
 import { column, draftOf, drawer, expect, heading, makePage, open, saved, section, test, widget } from "./helpers/site.ts";
@@ -222,7 +225,7 @@ test("the + key opens after the selection: a block after a widget, a section aft
   await expect(page.getByRole("group", { name: "Add a section" }).getByRole("button", { name: "1 column" })).toBeFocused();
 });
 
-test("while Insert is open, the block's + waits and Insert's yellow line marks where a click lands, its words at its right end under the drawer", async ({ page, request }) => {
+test("while Insert is open, the block's + waits and Insert's yellow line marks where a click lands, its words in its middle, the drawer beside the page", async ({ page, request }) => {
   const { id } = await makePage(request, "Insert line", fixture());
   await open(page, id);
   await block(page, "h").click();
@@ -237,11 +240,13 @@ test("while Insert is open, the block's + waits and Insert's yellow line marks w
   const line = (await point.boundingBox())!;
   expect(line.y).toBeGreaterThan(heading.y + heading.height);
   expect(line.y + line.height).toBeLessThan(button.y);
-  // The drawer covers the line's left end: its words stand at the right.
-  await expect(point).toHaveAttribute("data-label", "right");
+  // The drawer stands beside the page, over none of the line: its words
+  // stay in the line's middle.
+  await expect(point).not.toHaveAttribute("data-label");
   const words = (await point.locator(".ins-label").boundingBox())!;
-  const covered = (await insert.boundingBox())!;
-  expect(words.x).toBeGreaterThan(covered.x + covered.width);
+  const beside = (await insert.boundingBox())!;
+  expect(words.x).toBeGreaterThan(beside.x + beside.width);
+  expect(Math.abs(words.x + words.width / 2 - (line.x + line.width / 2))).toBeLessThan(1);
   // A click in Insert lands there, and the line follows the new block.
   await insert.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Divider" }).click();
   await expect.poll(() => types(page, "c1")).toEqual(["heading", "divider", "button"]);
@@ -258,6 +263,27 @@ test("while Insert is open, the block's + waits and Insert's yellow line marks w
   expect(caps.y - 3 - 1).toBeGreaterThanOrEqual(frame.y + frame.height);
   await insert.getByRole("button", { name: "Close Insert" }).click();
   await expect(point).toHaveCount(0);
+});
+
+// In a tablet's window, with a finger (src/editor/layout-mode.ts), Insert
+// floats over the canvas's left: a line whose left end it covers, in a
+// first column wider than it, has its words at its right end.
+test.describe("in a tablet's window, 820 by 1180, with a finger, where Insert floats over the page's left", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("Insert's yellow line, its left end under the drawer, has its words at its right end, clear of the drawer", async ({ page, request }) => {
+    const wide = { ...section("s1", "Hero", [column("c1", [heading("h", "Swim at slack water"), widget("b", "button", { label: "Join", href: "#" })]), column("c2", [])]), props: { label: "Hero", columnWidths: "2:1" } };
+    const { id } = await makePage(request, "Insert line under the drawer", [wide]);
+    await open(page, id);
+    await block(page, "h").click();
+    const insert = await drawer(page, "Insert");
+    const point = page.locator('.canvas [data-block-id="c1"] > .ins-point');
+    await expect(point).toContainText("A tap in Insert lands here");
+    const covered = (await insert.boundingBox())!;
+    expect((await point.boundingBox())!.x, "the line's left end under the drawer").toBeLessThan(covered.x + covered.width);
+    await expect(point).toHaveAttribute("data-label", "right");
+    expect((await point.locator(".ins-label").boundingBox())!.x).toBeGreaterThan(covered.x + covered.width);
+  });
 });
 
 test("Insert before and after, from the block menu, open the picker at that place; a section's open the section picker", async ({ page, request }) => {

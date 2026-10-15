@@ -106,8 +106,9 @@ export function collisionPriority(children: number): CollisionPriority | undefin
   return containerPriority(children) === "low" ? CollisionPriority.Low : undefined;
 }
 
-// Insert floats over the canvas (../Drawer.tsx), and so do every drawer
-// and the sidebar in a tablet's or a phone's window (../layout-mode.ts);
+// Every drawer and the sidebar float over the canvas in a tablet's or a
+// phone's window (../layout-mode.ts), Insert among them (../Drawer.tsx; on
+// a desktop each drawer stands beside the canvas, over none of it);
 // the library measures its targets' shapes, not what lies on top of them:
 // a pointer over one would land on the hidden block under it, and a key of
 // Insert, picked up there, would already be on its way into that block.

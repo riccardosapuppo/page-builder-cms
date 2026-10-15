@@ -126,6 +126,21 @@ states, `shots/`) and `node dir-mix/extra-shots.mjs` (18 extras,
    rules as on the left (`insert-col1`: the Hero heading, its clamp in the
    32 gutter beside the image). The yellow line's label moves to the line's
    right end.
+   > **The owner's choice of 15 October 2026: Insert pushes the page on a
+   > desktop.** Trying the live demo in a window 1527 wide, the owner
+   > found the page's left part, its logo, its headings and the blocks he
+   > had dragged there, under the open Insert drawer, which ran from 8 to
+   > 288 where the page began at 19. On a desktop Insert now pushes the
+   > page aside as the Outline and History do: it stands in the frame's
+   > first column, the canvas gives it its room, the page is narrower or
+   > drawn smaller by the same fit, and nothing of the page is under it.
+   > In a tablet's window it floats over the canvas's left as described
+   > here, as every drawer does there, and on a phone it is a sheet. This
+   > overrides what this item, the opening lines, 4.8 and sections 7 and 10
+   > say of Insert floating on a desktop; they stay as the record of the
+   > approved layout, and so do the mock's shots (`insert-drawer-1280`,
+   > `insert-col1`).
+   >
    > **Revised on 14 October 2026** (stage 8, at the owner's request: a
    > selection with the precision of the common design tools, the yellow
    > and graphite kept). The clamp described below became a **floating

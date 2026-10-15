@@ -6,7 +6,8 @@
 // smaller can leave no room there, and the tip was cut by the canvas's
 // edge or drawn under the toolbar. So it stands, in this order, wherever
 // it is whole inside the canvas's visible part and clear of the toolbar
-// and of the Insert drawer over the canvas:
+// and of the Insert drawer where it floats over the canvas (a tablet's
+// window):
 // - on the seam, right of the "+", 14 from it, as the layout draws it;
 // - on the seam, left of the "+";
 // - under the "+", 6 below it, from the "+"'s left, else ending at its
@@ -30,7 +31,7 @@ export interface TipRoom {
   // The canvas's visible part, inside its scrollbar.
   view: Box;
   // What the tip must not be drawn under or over: the selected block's
-  // clamp, the open Insert drawer.
+  // clamp, the open Insert drawer where it floats over the canvas.
   obstacles: readonly Box[];
 }
 

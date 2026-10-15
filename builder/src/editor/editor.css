@@ -112,13 +112,14 @@ body {
    the conflict banner (empty, so no height, while there is no conflict),
    the canvas, the bottom line; three columns, the pushed drawer's, the
    canvas's and the sidebar's, which runs from under the top bar to the
-   window's foot. The first column is empty (0 wide) until the Outline or
-   History opens: it then takes the drawer's room (--push) from the canvas,
-   as the layout draws it (structure, history, outline-col1), and the page
-   is narrower, or drawn smaller under 800. Insert is the one drawer that
-   floats: it shares the canvas's cell, over its left, and the page keeps
-   its width under it. With the sidebar hidden, its column is empty and
-   the canvas takes the room. */
+   window's foot. The first column is empty (0 wide) until a drawer opens:
+   it then takes the drawer's room (--push) from the canvas, as the layout
+   draws the Outline and History (structure, history, outline-col1), and
+   the page is narrower, or drawn smaller under 800. Insert, which the
+   layout floats over the canvas's left with the page keeping its width
+   under it, does the same since the owner's report of 15 October 2026 (the
+   page's left part was under it). With the sidebar hidden, its column is
+   empty and the canvas takes the room. */
 .app {
   display: grid;
   grid-template-columns: var(--push, 0px) minmax(0, 1fr) auto;
@@ -339,11 +340,14 @@ body {
 
 /* Drawers (design/layout/, section 4): Insert, Outline and History, one
    at a time, stopping above the bottom line so the breadcrumb stays
-   readable. Insert floats over the left of the canvas, in its cell, and the
-   page keeps its width under it. Outline and History push the page aside:
-   they stand in the column of their own the frame keeps for them, so what
-   is picked in them is never under them (WCAG 2.2, 2.4.11 Focus Not
-   Obscured), and lose their lift. */
+   readable. On a desktop each pushes the page aside (drawer-push): it
+   stands in the column of its own the frame keeps for it, so what is
+   picked in it is never under it (WCAG 2.2, 2.4.11 Focus Not Obscured),
+   and loses its lift; Insert too since the owner's report of 15 October
+   2026, where the layout floats it. In a tablet's window Insert floats
+   over the left of the canvas, in its cell (drawer-float), and the page
+   keeps its width under it, as the others do there (above); on a phone
+   every drawer is a sheet. */
 .drawer {
   grid-row: 3; z-index: 25; align-self: stretch; justify-self: start;
   display: flex; flex-direction: column; width: var(--drawer); min-height: 0; margin: 8px 0 0 8px;

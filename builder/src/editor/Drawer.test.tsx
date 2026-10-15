@@ -3,7 +3,9 @@
 // Esc in it, or its close button, closes it and gives the focus back to
 // where it was before it opened; a menu or a window opened from it keeps
 // its own Esc; the keymap's Alt+Shift chords open and close Insert and the
-// Outline the same way.
+// Outline the same way. On a desktop each pushes the page aside, Insert
+// too; in a tablet's window Insert floats over the canvas's left, and gives
+// way to a block wholly under it.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useLayoutEffect, useRef } from "react";
@@ -121,33 +123,68 @@ function lay(element: Element | null, [left, top, right, bottom]: readonly [numb
   element!.getBoundingClientRect = () => ({ left, top, right, bottom, width: right - left, height: bottom - top, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
 }
 
-test("a block that takes the focus wholly under Insert makes Insert give way; one only partly under it, or out of view, leaves it open", async () => {
-  const kit = editorKit({ document: page(), selection: "h1" });
-  kit.render(<div className="app"><Canvas /><Drawers /><EditorKeys /></div>);
-  act(() => toggleDrawer(kit.env, "insert"));
-  const insert = () => screen.queryByRole("complementary", { name: "Insert" });
-  lay(document.querySelector(".canvas"), [0, 52, 1126, 848]);
-  lay(insert(), [8, 60, 288, 848]);
+// A tablet's window, 820 wide, with a finger (./layout-mode.ts): its media
+// queries answered as a browser would; a browser with none is a desktop's.
+function tabletWindow(): () => void {
+  const kept = window.matchMedia;
+  window.matchMedia = ((query: string) => ({ matches: query !== "(min-width: 1100px)" && query !== "(any-pointer: fine)", media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = kept;
+  };
+}
 
-  // Partly under it: the clamp has moved to its other side, the block shows.
-  lay(block("h1"), [83, 264, 637, 400]);
-  act(() => block("h1").focus());
-  await new Promise((resolve) => setTimeout(resolve, 60));
-  expect(kit.ui.getState().drawer).toBe("insert");
+test("on a desktop each drawer pushes the page aside, Insert too; in a tablet's window Insert floats over the canvas's left, the others keeping their kind", () => {
+  const kinds = () => {
+    const kit = editorKit({ document: page() });
+    const { unmount } = kit.render(<div className="app"><Drawers /></div>);
+    const seen = (["insert", "outline", "history"] as const).map((which) => {
+      act(() => toggleDrawer(kit.env, which));
+      return document.querySelector(".drawer")!.classList.contains("drawer-push") ? "pushes" : "floats";
+    });
+    unmount();
+    return seen;
+  };
+  expect(kinds()).toEqual(["pushes", "pushes", "pushes"]);
+  const restore = tabletWindow();
+  try {
+    expect(kinds()).toEqual(["floats", "pushes", "pushes"]);
+  } finally {
+    restore();
+  }
+});
 
-  // Scrolled out of view: nothing of it to hide.
-  lay(block("t1"), [83, 1000, 247, 1100]);
-  act(() => block("t1").focus());
-  await new Promise((resolve) => setTimeout(resolve, 60));
-  expect(kit.ui.getState().drawer).toBe("insert");
+test("in a tablet's window, a block that takes the focus wholly under Insert makes Insert give way; one only partly under it, or out of view, leaves it open", async () => {
+  const restore = tabletWindow();
+  try {
+    const kit = editorKit({ document: page(), selection: "h1" });
+    kit.render(<div className="app"><Canvas /><Drawers /><EditorKeys /></div>);
+    act(() => toggleDrawer(kit.env, "insert"));
+    const insert = () => screen.queryByRole("complementary", { name: "Insert" });
+    lay(document.querySelector(".canvas"), [0, 52, 820, 1132]);
+    lay(insert(), [8, 60, 288, 1132]);
 
-  // Wholly under it: Insert closes, the focus stays on the block, and says so.
-  lay(block("b1"), [83, 420, 247, 474]);
-  act(() => block("b1").focus());
-  await waitFor(() => expect(kit.ui.getState().drawer).toBeNull());
-  expect(document.activeElement).toBe(block("b1"));
-  expect(kit.ui.getState().notice).toBe("Insert closed: it was covering the block.");
-  expect(kit.store.getState().selection).toBe("b1");
+    // Partly under it: the clamp has moved to its other side, the block shows.
+    lay(block("h1"), [50, 264, 394, 400]);
+    act(() => block("h1").focus());
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(kit.ui.getState().drawer).toBe("insert");
+
+    // Scrolled out of view: nothing of it to hide.
+    lay(block("t1"), [50, 1200, 206, 1300]);
+    act(() => block("t1").focus());
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(kit.ui.getState().drawer).toBe("insert");
+
+    // Wholly under it: Insert closes, the focus stays on the block, and says so.
+    lay(block("b1"), [50, 420, 206, 474]);
+    act(() => block("b1").focus());
+    await waitFor(() => expect(kit.ui.getState().drawer).toBeNull());
+    expect(document.activeElement).toBe(block("b1"));
+    expect(kit.ui.getState().notice).toBe("Insert closed: it was covering the block.");
+    expect(kit.store.getState().selection).toBe("b1");
+  } finally {
+    restore();
+  }
 });
 
 test("Alt+Shift+N and Alt+Shift+O open Insert and the Outline from the canvas, and close them again", async () => {

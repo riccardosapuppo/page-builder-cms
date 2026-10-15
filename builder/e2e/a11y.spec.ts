@@ -125,14 +125,14 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();
   await clean(page, "the Insert drawer's ready-made sections");
   await page.getByRole("button", { name: "Close Insert" }).click();
-  // A first column's block selected under Insert: its toolbar right of
-  // the drawer, Insert's yellow line where a click lands.
+  // A first column's block selected with Insert open beside the page: its
+  // toolbar right of the drawer, Insert's yellow line where a click lands.
   await block(page, "heading-0").click();
   await drawer(page, "Insert");
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Blocks" }).click();
-  const cover = (await page.locator(".drawer-float").boundingBox())!;
+  const cover = (await page.getByRole("complementary", { name: "Insert" }).boundingBox())!;
   await expect.poll(async () => (await page.locator(".canvas .clamp").boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
-  await clean(page, "Insert open over a first column's block, its toolbar right of it");
+  await clean(page, "Insert open beside a first column's block, its toolbar right of it");
   // A key of Insert picked up by the keyboard, the grey where it cannot
   // go; then dropped, the window it asks with open at the place.
   await page.getByRole("complementary", { name: "Insert" }).getByRole("group", { name: "Media" }).getByRole("button", { name: "Video", exact: true }).focus();

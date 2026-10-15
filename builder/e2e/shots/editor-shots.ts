@@ -322,9 +322,12 @@ async function photograph(browser: Browser, url: string, allowed: readonly strin
   await page.keyboard.press("Escape");
   await page.mouse.up();
 
-  // #insert-col1 (shots-extra): the hero's heading selected, Insert open
-  // over the left of the page: the heading's clamp on its right, in the
-  // gutter, and Insert's yellow line under it, its words at its right end.
+  // #insert-col1 (shots-extra): the hero's heading selected, Insert open,
+  // and Insert's yellow line under it. The layout floats Insert over the
+  // left of the page, the heading's clamp on its right and the line's
+  // words at its right end; on a desktop the editor has it push the page
+  // aside since the owner's report of 15 October 2026, so the clamp and
+  // the words stand where they would with the Outline open.
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
   await heading.click();
   await drawer(page, "Insert");

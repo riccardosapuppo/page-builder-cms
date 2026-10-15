@@ -113,7 +113,8 @@ export async function settledTextEditor(page: Page, id: string): Promise<Locator
 
 // What is wrong with where the selected block's toolbar stands
 // (design/layout/NOTES.md, section 4.2; ../../src/editor/clamp-place.ts):
-// past the canvas's visible part, under a drawer, over the selected
+// past the canvas's visible part, under a drawer (any: beside the canvas on
+// a desktop, Insert floating over its left on a tablet), over the selected
 // block's own words (a section's: its blocks' words), which a click into it
 // must reach, unless the block is taller than the canvas and the toolbar
 // keeps to the canvas's top inside it; its head hidden under something
@@ -136,7 +137,7 @@ export async function clampFaults(page: Page): Promise<string[]> {
       const left = bench.left + canvas.clientLeft;
       const top = bench.top + canvas.clientTop;
       if (box.left < left - 0.5 || box.right > left + canvas.clientWidth + 0.5 || box.top < top - 0.5 || box.bottom > top + canvas.clientHeight + 0.5) bad.push(`${name}: past the canvas's edge`);
-      for (const drawer of document.querySelectorAll(".drawer-float")) if (hit(box, r(drawer))) bad.push(`${name}: under a drawer`);
+      for (const drawer of document.querySelectorAll(".drawer")) if (hit(box, r(drawer))) bad.push(`${name}: under a drawer`);
       const tall = clamp.dataset.side === "inside" && r(own).height > canvas.clientHeight;
       if (!tall) {
         const walker = document.createTreeWalker(own, NodeFilter.SHOW_TEXT);

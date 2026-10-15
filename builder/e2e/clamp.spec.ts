@@ -1,11 +1,11 @@
 // The selected block's toolbar (design/layout/NOTES.md, section 4.2), in
 // Chromium: in every window and preview it stays whole inside the canvas,
 // over none of the page's words, its moves and its head in view; under the
-// open Insert drawer it moves right of it; a seam's "+" and its tip keep
-// clear of it; its head opens the block menu under it, its More the right
-// click's items, its moves are one step each. The rules themselves, on
-// the page's numbers, are clamp-place.test.ts's; marks.spec.ts checks the
-// places it takes.
+// open Insert drawer, where it floats over the canvas (a tablet's window),
+// it moves right of it; a seam's "+" and its tip keep clear of it; its head
+// opens the block menu under it, its More the right click's items, its
+// moves are one step each. The rules themselves, on the page's numbers,
+// are clamp-place.test.ts's; marks.spec.ts checks the places it takes.
 import { block, clampFaults, clampKeysCovered, clampOverWords, clampPlace } from "./helpers/canvas.ts";
 import { column, device, drawer, expect, heading, makePage, open, section, test, widget } from "./helpers/site.ts";
 
@@ -40,28 +40,35 @@ test("in every preview, and on a page drawn smaller, the toolbar stays in the ca
   }
 });
 
-test("under the open Insert drawer, the toolbar of a block it floats over moves right of it, and comes back when it closes", async ({ page, request }) => {
-  const { id } = await makePage(request, "Toolbar under Insert", page3());
-  await open(page, id);
-  await block(page, "hh").click();
-  await expect.poll(() => clampPlace(page)).toEqual({ side: "above", align: "start" });
-  const toolbar = page.locator(".canvas .clamp");
-  const frame = (await page.locator('.canvas [data-block-id="hh"] > .ov-sel').boundingBox())!;
-  expect(Math.abs((await toolbar.boundingBox())!.x - frame.x)).toBeLessThan(1);
-  expect(await clampOverWords(page)).toEqual([]);
-  await drawer(page, "Insert");
-  const cover = (await page.locator(".drawer-float").boundingBox())!;
-  await expect.poll(async () => (await toolbar.boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
-  expect(await clampFaults(page)).toEqual([]);
-  // A block clear of the drawer keeps its place.
-  await block(page, "hi").focus();
-  const right = (await page.locator('.canvas [data-block-id="hi"] > .ov-sel').boundingBox())!;
-  await expect.poll(async () => Math.abs((await toolbar.boundingBox())!.x - right.x) < 1).toBe(true);
-  expect(await clampFaults(page)).toEqual([]);
-  // The drawer closed: back on the frame's left edge.
-  await block(page, "hh").focus();
-  await page.getByRole("button", { name: "Close Insert" }).click();
-  await expect.poll(async () => Math.abs((await toolbar.boundingBox())!.x - frame.x) < 1).toBe(true);
+// Insert floats over the canvas's left in a tablet's window, with a finger
+// (src/editor/layout-mode.ts); on a desktop it pushes the page aside, and
+// no toolbar is under it.
+test.describe("in a tablet's window, 820 by 1180, with a finger", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("under the open Insert drawer, the toolbar of a block it floats over moves right of it, and comes back when it closes", async ({ page, request }) => {
+    const { id } = await makePage(request, "Toolbar under Insert", page3());
+    await open(page, id);
+    await block(page, "hh").click();
+    await expect.poll(() => clampPlace(page)).toEqual({ side: "above", align: "start" });
+    const toolbar = page.locator(".canvas .clamp");
+    const frame = (await page.locator('.canvas [data-block-id="hh"] > .ov-sel').boundingBox())!;
+    expect(Math.abs((await toolbar.boundingBox())!.x - frame.x)).toBeLessThan(1);
+    expect(await clampOverWords(page)).toEqual([]);
+    await drawer(page, "Insert");
+    const cover = (await page.locator(".drawer-float").boundingBox())!;
+    await expect.poll(async () => (await toolbar.boundingBox())!.x).toBeGreaterThanOrEqual(cover.x + cover.width);
+    expect(await clampFaults(page)).toEqual([]);
+    // A block clear of the drawer keeps its place.
+    await block(page, "hi").focus();
+    const right = (await page.locator('.canvas [data-block-id="hi"] > .ov-sel').boundingBox())!;
+    await expect.poll(async () => Math.abs((await toolbar.boundingBox())!.x - right.x) < 1).toBe(true);
+    expect(await clampFaults(page)).toEqual([]);
+    // The drawer closed: back on the frame's left edge.
+    await block(page, "hh").focus();
+    await page.getByRole("button", { name: "Close Insert" }).click();
+    await expect.poll(async () => Math.abs((await toolbar.boundingBox())!.x - frame.x) < 1).toBe(true);
+  });
 });
 
 // A dark band of two columns, as the example site's Notices page has: a

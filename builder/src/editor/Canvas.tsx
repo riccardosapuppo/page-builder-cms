@@ -535,12 +535,13 @@ interface MarksProps {
 const ADD_KEY = entryKeysText(entry("addHere"));
 
 // The note on a shaded section ("Widgets go inside a column."): at the
-// section's left, except under Insert, the one drawer that floats over the
-// page (the Outline and History push it aside). A key dragged out of Insert
-// is over a page whose left part the drawer covers, and the note at the
-// section's left was under it: it starts instead at the drawer's right
-// edge, in the part of the band that is seen. --note-from is that edge in
-// the section's own pixels (the page may be drawn smaller than its size).
+// section's left, except under Insert where it floats over the page (a
+// tablet's window; on a desktop every drawer pushes the page aside). A key
+// dragged out of Insert there is over a page whose left part the drawer
+// covers, and the note at the section's left was under it: it starts
+// instead at the drawer's right edge, in the part of the band that is
+// seen. --note-from is that edge in the section's own pixels (the page may
+// be drawn smaller than its size).
 function VeilNote({ note }: { note: string }) {
   const span = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
@@ -663,10 +664,11 @@ const POINT_CLEAR = 26;
 
 // Where a click in the Insert drawer lands (its drawer-where sentence
 // says it in words): the yellow line between the blocks around the place,
-// its words at its right end where the drawer covers its left end. Under
-// the selection, the last block of its column, it keeps off the
-// selection's frame; between two blocks it stays in the middle of their
-// gap, off the next block's words.
+// its words at its right end where the drawer, floating over the canvas (a
+// tablet's window), covers its left end; beside the page, on a desktop, it
+// covers none of it. Under the selection, the last block of its column, it
+// keeps off the selection's frame; between two blocks it stays in the
+// middle of their gap, off the next block's words.
 function InsertPoint({ index }: { index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const touch = useCoarsePointer();
@@ -686,7 +688,7 @@ function InsertPoint({ index }: { index: number }) {
             : column.clientHeight / 2;
       point.style.top = `${y}px`;
       const line = point.getBoundingClientRect();
-      const covered = [...document.querySelectorAll(".drawer")].some((drawer) => drawer.getBoundingClientRect().right > line.left + line.width / 2 - 120);
+      const covered = [...document.querySelectorAll(".drawer-float")].some((drawer) => drawer.getBoundingClientRect().right > line.left + line.width / 2 - 120);
       if (covered) point.dataset.label = "right";
       else delete point.dataset.label;
     };
@@ -743,11 +745,11 @@ function Seam({ at, state, edge }: { at: number; state: Exclude<SeamState, null>
 }
 
 // Lays a seam's tip where it is whole and clear of the clamp and of the
-// Insert drawer (./seam-tip.ts), in its section's own pixels (the page may
-// be drawn smaller: the tip is drawn back up to its size, canvas.css); and
-// again, while it shows, whenever its "+" moves along the seam, the canvas
-// scrolls or changes size, the page is drawn at a new scale or a drawer
-// opens or closes.
+// Insert drawer where it floats over the canvas (./seam-tip.ts), in its
+// section's own pixels (the page may be drawn smaller: the tip is drawn
+// back up to its size, canvas.css); and again, while it shows, whenever its
+// "+" moves along the seam, the canvas scrolls or changes size, the page is
+// drawn at a new scale or a drawer opens or closes.
 function useSeamTip(tipRef: { current: HTMLSpanElement | null }, plusRef: { current: HTMLButtonElement | null }, shown: boolean, label: string): void {
   const { ui } = useEnv();
   useLayoutEffect(() => {
@@ -881,7 +883,7 @@ function CanvasView() {
   // phone's window, where the page is the whole width), so the page is as
   // wide as the window allows and a page scaled to fit never makes the
   // canvas scroll sideways.
-  const pushed = useUi((u) => pushes(u.drawer)) && layout === "wide";
+  const pushed = useUi((u) => pushes(u.drawer, layout)) && layout === "wide";
   useLayoutEffect(() => {
     const element = bench.current;
     if (!element) return undefined;
@@ -1082,7 +1084,8 @@ function CanvasView() {
               const element = event.target;
               if (!(element instanceof HTMLElement) || element.dataset.blockId === undefined || store.getState().drag) return;
               if (store.getState().selection !== element.dataset.blockId) store.getState().select(element.dataset.blockId);
-              // A block wholly under the Insert drawer is not seen: Insert gives way.
+              // A block wholly under Insert, floating over the canvas, is not
+              // seen: Insert gives way.
               giveWayTo(env, element);
             }}
             onPointerOver={(event) => {
@@ -1242,7 +1245,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
 // The page's margin on each side of the canvas (editor.css, .frame-fit):
 // with a thin scrollbar showing, the page is 1088 wide in a 1440 window
 // and gets its desktop layout in a 1280 one (design/layout/NOTES.md,
-// section 4.8). Beside a pushed drawer (Outline, History) the left margin
+// section 4.8). Beside a pushed drawer (any, on a desktop) the left margin
 // is 12: the page is then 807 wide at 1440, still the desktop layout.
 const FRAME_MARGIN = 19;
 const FRAME_MARGIN_PUSHED = 12;

@@ -163,7 +163,8 @@ function coversNear(own: HTMLElement, frame: Box, width: number, height: number,
 
 // The room around the selection, measured on the page as it is drawn:
 // the frame (a button's hugs its pill), the canvas's visible part, the
-// drawer floating over it, the words near it.
+// drawer floating over it (Insert, on a tablet or a phone), the words near
+// it.
 function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): { room: ToolbarRoom; scale: number } | null {
   const canvas = own.closest<HTMLElement>(".canvas");
   const scaled = own.closest<HTMLElement>(".frame");
@@ -172,8 +173,8 @@ function roomOf(own: HTMLElement, kind: ClampKind, clamp: HTMLElement): { room: 
   const bench = canvas.getBoundingClientRect();
   const view: Box = { left: bench.left + canvas.clientLeft, top: bench.top + canvas.clientTop, right: bench.left + canvas.clientLeft + canvas.clientWidth, bottom: bench.top + canvas.clientTop + canvas.clientHeight };
   const frame = (own.querySelector(":scope > .ov-sel") ?? own).getBoundingClientRect();
-  // Only the floating drawer (Insert) is over the canvas; the pushed ones
-  // have a column of their own.
+  // Only a floating drawer (Insert, on a tablet or a phone) is kept clear
+  // of; on a desktop every drawer has a column of its own.
   const covers = [...document.querySelectorAll(".drawer-float")].map((drawer) => drawer.getBoundingClientRect());
   const width = clamp.offsetWidth;
   const height = clamp.offsetHeight;

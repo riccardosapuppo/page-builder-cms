@@ -1,7 +1,8 @@
 // The editor's shell, on the approved layout (design/layout/shots/
-// editor.png): the top bar; the drawer open (Insert floating over the left
-// of the canvas, Outline or History beside it, pushing the page aside); the
-// canvas, the page flush with its
+// editor.png): the top bar; the drawer open (Insert, Outline or History
+// beside the canvas, pushing the page aside, Insert since the owner's
+// report of 15 October 2026: the layout floats it over the canvas's left);
+// the canvas, the page flush with its
 // frame; the sidebar on the right, with its Page and Block tabs; the bottom
 // line under the canvas, with the selection's path, the devices and the
 // page's width. It holds the page being edited: it reads the site's pages,
@@ -943,9 +944,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // The editor's own layout, from its window (./layout-mode.ts): on a
   // tablet the sidebar and the drawers float over the canvas, on a phone
   // they are sheets and the bar at the foot holds the keys. Only in the
-  // wide layout do the Outline and History take their room from the canvas.
+  // wide layout does a drawer take its room from the canvas, Insert as the
+  // Outline and History do.
   const layout = useLayoutMode();
-  const pushed = layout === "wide" && pushes(drawer);
+  const pushed = layout === "wide" && pushes(drawer, layout);
   useLayoutEffect(() => {
     env.ui.getState().setOnePanel(layout !== "wide");
   }, [env, layout]);

@@ -93,7 +93,8 @@ test("never cut by the canvas's edges, and never under the open Insert drawer: m
   expect(placeToolbar(room({ frame: { left: -4, top: 300, right: 300, bottom: 400 } })).x).toBe(8);
   // Narrower than the toolbar at the right edge: in from it.
   expect(placeToolbar(room({ frame: { left: 1060, top: 300, right: 1120, bottom: 400 } })).x).toBe(1126 - 8 - 180);
-  // The Insert drawer over the canvas's left: right of it.
+  // The Insert drawer over the canvas's left, where it floats (a tablet's
+  // window): right of it.
   const drawer: Box = { left: 8, top: 60, right: 288, bottom: 848 };
   const place = placeToolbar(room({ covers: [drawer] }));
   expect(place.x).toBe(288 + 8);

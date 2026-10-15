@@ -16,6 +16,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import type { PageDocument } from "../shared/document.ts";
 import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
 import type { ColorPreview } from "./color-preview.ts";
+import type { LayoutMode } from "./layout-mode.ts";
 import { PendingText } from "./pending.ts";
 import type { TextEditing, TextTools } from "./rich/tools.ts";
 
@@ -57,15 +58,22 @@ export interface AroundPart {
   document: PageDocument;
 }
 
-// The top bar's drawers, one open at a time (./Drawer.tsx): Insert floats
-// over the left of the canvas; Outline, History and the Assistant push the
-// page aside.
+// The top bar's drawers, one open at a time (./Drawer.tsx): on a desktop
+// each pushes the page aside, Insert as the Outline, History and the
+// Assistant do.
 export const DRAWERS = ["insert", "outline", "history", "assistant"] as const;
 export type Drawer = (typeof DRAWERS)[number];
 
-// Whether a drawer takes its room from the canvas (the page is narrower, or
-// drawn smaller) rather than floating over it.
-export const pushes = (drawer: Drawer | null): boolean => drawer === "outline" || drawer === "history" || drawer === "assistant";
+// Whether a drawer is one that pushes the page aside, from a column of the
+// frame's own (drawer-push, editor.css), rather than one that floats over
+// the canvas's left (drawer-float). In the wide layout every drawer pushes,
+// and the canvas gives it its room (the page is narrower, or drawn
+// smaller): Insert too, since the owner's report of 15 October 2026 (the
+// page's left part was under it). In a tablet's or a phone's window Insert
+// floats, as it always has; there no drawer takes room from the canvas
+// (App.tsx), a tablet's drawing the others over it too, a phone's each as
+// a sheet.
+export const pushes = (drawer: Drawer | null, layout: LayoutMode): boolean => drawer !== null && (drawer !== "insert" || layout === "wide");
 
 // The page as the canvas lays it out: its width (its own, not the canvas's
 // when it is drawn smaller) and the scale it is drawn at, for the bottom

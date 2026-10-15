@@ -144,7 +144,8 @@
    and top. */
 .canvas .site .seam-tip[data-side] { bottom: auto; transform: none; }
 /* Where a click in the Insert drawer lands: the drop line's twin, its
-   words at its right end where the drawer covers its left end. */
+   words at its right end where the drawer, floating over a tablet's
+   canvas, covers its left end. */
 .canvas .site .ins-point { position: absolute; left: -8px; right: -8px; z-index: 8; height: 3px; max-width: none; margin: -1.5px 0 0; pointer-events: none; }
 .ins-line { top: 0; margin-top: 0; }
 .ins-point .ins-label { left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 5px; }

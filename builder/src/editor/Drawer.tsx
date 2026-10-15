@@ -1,21 +1,24 @@
 // The top bar's three drawers (the approved layout, design/layout/: Insert,
-// Outline and History): one open at a time. Insert floats over the left of
-// the canvas at every window width, so the page keeps its width under it;
-// Outline and History push the page aside, in a column of the frame's own
-// (editor.css, .app-pushed), so what is picked in them is never under them.
+// Outline and History): one open at a time. On a desktop each pushes the
+// page aside, in a column of the frame's own (editor.css, .app-pushed), so
+// what is picked in it is never under it; Insert too since the owner's
+// report of 15 October 2026, where the layout floats it (the page's left
+// part was under it). In a tablet's window Insert floats over the canvas's
+// left, as every drawer does there, and the page keeps its width under it;
+// on a phone it is a sheet.
 // A drawer takes the focus when it opens (what it marks data-autofocus: its
 // search, the selected row, Save version), unless something in it already
 // took it (Ctrl+S's name field); Esc in it, or its close button, closes it
 // and gives the focus back to where it was before it opened, or, when the
 // selection was changed while the drawer was open, to the block now
 // selected. Its top bar key, or its shortcut, opens and closes it the same
-// way. A block that takes the focus entirely under Insert makes Insert give
-// way (closes it), so the focused block is seen.
+// way. A block that takes the focus entirely under a floating Insert makes
+// Insert give way (closes it), so the focused block is seen.
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { afterRender, shownElement } from "./act.ts";
 import { useEnv, type EditorEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { coarsePointer, TYPING } from "./layout-mode.ts";
+import { coarsePointer, TYPING, useLayoutMode } from "./layout-mode.ts";
 import { SheetGrip } from "./sheet-grip.tsx";
 import { pushes, type Drawer } from "./ui-store.ts";
 
@@ -82,13 +85,15 @@ export function closeDrawer(env: Env): void {
   afterRender(() => placeToReturn(env, target, which)?.focus());
 }
 
-// Insert floats over the left of the canvas, so a block there may sit under
-// it: at the page's width a first column of four is wholly hidden. A block
-// that takes the focus with nothing of it in view would fail the person who
-// moved to it (WCAG 2.2, 2.4.11), so Insert gives way: it closes, the focus
-// staying on the block, and says so. One only partly under it stays, its
-// clamp having moved to its other side (./clamp-place.ts). Judged once the
-// block is where it will be (brought into view), not when it is focused.
+// Where Insert floats over the canvas (a tablet's window, over its left; a
+// phone's, as a sheet), a block may sit under it: on a tablet a first
+// column of four is wholly hidden. A block that takes the focus with
+// nothing of it in view would fail the person who moved to it (WCAG 2.2,
+// 2.4.11), so Insert gives way: it closes, the focus staying on the block,
+// and says so. One only partly under it stays, its clamp having moved to
+// its other side (./clamp-place.ts). Judged once the block is where it
+// will be (brought into view), not when it is focused. On a desktop Insert
+// pushes the page aside, and nothing of the page is under it.
 export function giveWayTo(env: Env, block: HTMLElement): void {
   if (env.ui.getState().drawer !== "insert") return;
   afterRender(() => {
@@ -120,6 +125,7 @@ export function DrawerShell({ which, children, footer }: DrawerShellProps) {
   const env = useEnv();
   const box = useRef<HTMLElement>(null);
   const name = DRAWER_NAMES[which];
+  const layout = useLayoutMode();
 
   // After the drawer's own content: a field that took the focus for itself
   // keeps it. With a finger, no field to type in (./layout-mode.ts, TYPING).
@@ -138,7 +144,7 @@ export function DrawerShell({ which, children, footer }: DrawerShellProps) {
   return (
     <aside
       ref={box}
-      className={`drawer drawer-${which} ${pushes(which) ? "drawer-push" : "drawer-float"} chrome`}
+      className={`drawer drawer-${which} ${pushes(which, layout) ? "drawer-push" : "drawer-float"} chrome`}
       id={`drawer_${which}`}
       aria-labelledby={`drawer_${which}_title`}
       onKeyDown={(event) => {
