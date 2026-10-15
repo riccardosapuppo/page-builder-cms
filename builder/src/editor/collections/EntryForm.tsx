@@ -5,7 +5,9 @@
 // the revision the form was opened at (saveEntry; createEntry for a new
 // one), so another tab's save meets a conflict instead of being saved
 // over; Publish saves what waits first, then puts it live at that
-// revision; Unpublish takes it off, the draft kept.
+// revision; Unpublish takes it off, the draft kept. Preview opens the
+// saved draft drawn with the template's draft, as its page would show it
+// (/preview/<template id>?entry=<entry id>, the demo's ?preview=...&entry=).
 //
 // What the form holds is checked as the storage checks it before it is
 // sent (validateEntry, ../../shared/validate.ts): a required field with
@@ -25,12 +27,14 @@ import type { EntryContent } from "../../shared/collection.ts";
 import { validateEntry } from "../../shared/validate.ts";
 import { isStorageError, type Collection, type Entry } from "../../storage/adapter.ts";
 import { defaultSaveId } from "../../storage/autosave.ts";
+import { cmsAddress } from "../../storage/config.ts";
 import { TextField } from "../controls.tsx";
 import { useEnv } from "../context.tsx";
 import { serverTime } from "../history-words.ts";
 import { Icon } from "../icons.tsx";
 import { coarsePointer } from "../layout-mode.ts";
-import { slugFrom } from "../session.tsx";
+import { slugFrom, useOptionalSession } from "../session.tsx";
+import { previewWithEntry } from "./content.ts";
 import type { CollectionsStorage } from "./context.ts";
 import { FieldInput, type ValueUpdate } from "./FieldInput.tsx";
 import { entryIssues, issueCount, NO_ENTRY_ISSUES, type EntryIssues, type Finding } from "./refusals.ts";
@@ -83,6 +87,7 @@ const describe = (error: unknown): string => (isStorageError(error) ? error.fail
 
 export function EntryForm({ storage, collection, entryId, livePages, refused, onBack, onChanged, onDirty }: EntryFormProps) {
   const { ui, clock } = useEnv();
+  const cmsOrigin = useOptionalSession()?.cmsOrigin ?? null;
   const id = useId();
   const fields = collection.fields;
   const [phase, setPhase] = useState<{ kind: "loading" } | { kind: "failed"; message: string } | { kind: "ready" }>(entryId === null ? { kind: "ready" } : { kind: "loading" });
@@ -429,6 +434,17 @@ export function EntryForm({ storage, collection, entryId, livePages, refused, on
           </p>
         </div>
         <div className="co-form-actions">
+          {entry && (
+            <a
+              className="btn btn-small btn-quiet co-preview"
+              href={cmsAddress(previewWithEntry(collection.template.links.preview, entry), cmsOrigin)}
+              target="_blank"
+              rel="noopener"
+              title={savable ? "The draft as last saved, in the template: save first to see these changes." : "The draft, in the template, as its page would show it."}
+            >
+              <Icon name="eye" />Preview
+            </a>
+          )}
           {entry?.published && <button className="btn btn-small btn-secondary" type="button" aria-disabled={off ? true : undefined} onClick={off ? undefined : () => void unpublish()}>{busy === "unpublishing" ? "Unpublishing…" : "Unpublish"}</button>}
           <button className="btn btn-small btn-dark" type="button" data-entry-save="" aria-disabled={off || saveWhy !== null ? true : undefined} title={saveWhy ?? undefined} onClick={off || saveWhy !== null ? undefined : () => void saveNow()}>{busy === "saving" ? "Saving…" : "Save"}</button>
           <button className={`btn btn-small${off || publishWhy !== null ? "" : " btn-primary"}`} type="button" aria-disabled={off || publishWhy !== null ? true : undefined} title={publishWhy ?? undefined} onClick={off || publishWhy !== null ? undefined : () => void publish()}>{busy === "publishing" ? "Publishing…" : "Publish"}</button>

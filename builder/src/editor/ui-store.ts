@@ -14,6 +14,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { PageDocument } from "../shared/document.ts";
 import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
+import type { PreviewChoice, SiteEntries } from "./collections/content.ts";
 import type { ColorPreview } from "./color-preview.ts";
 import type { LayoutMode } from "./layout-mode.ts";
 import { PendingText } from "./pending.ts";
@@ -153,6 +154,13 @@ export interface UiState {
   aboutOpen: boolean;
   // The Collections screen is open, and where; null while it is not.
   collections: CollectionsAt | null;
+  // The collections and their entries, which the canvas's lists and
+  // fields draw (./collections/content.ts); null until they are read, and
+  // with a storage that keeps none.
+  siteEntries: SiteEntries | null;
+  // The entry a template is drawn with on the canvas, picked in its Page
+  // tab, by its collection; null for the first published one.
+  previewEntry: { collectionId: number; choice: PreviewChoice } | null;
   // The drawer open is the history (./HistoryPanel.tsx), kept beside
   // `drawer` for the parts that ask only that; its "Save version" asks for
   // a name.
@@ -212,6 +220,8 @@ export interface UiState {
   setShortcutsOpen(open: boolean): void;
   setAboutOpen(open: boolean): void;
   setCollections(at: CollectionsAt | null): void;
+  setSiteEntries(entries: SiteEntries | null): void;
+  setPreviewEntry(choice: { collectionId: number; choice: PreviewChoice } | null): void;
   // The history's drawer opened, or closed if it is the one open.
   setHistoryOpen(open: boolean): void;
   setNamingVersion(naming: boolean): void;
@@ -220,7 +230,7 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart" | "onePanel">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart" | "onePanel" | "siteEntries">> = {}): UiStore {
   const drawer = initial.drawer ?? null;
   const store = createStore<UiState>()((set, get) => ({
     hover: null,
@@ -248,6 +258,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     shortcutsOpen: false,
     aboutOpen: false,
     collections: null,
+    siteEntries: initial.siteEntries ?? null,
+    previewEntry: null,
     historyOpen: drawer === "history",
     namingVersion: false,
     copied: null,
@@ -285,6 +297,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     setAboutOpen: (aboutOpen) => set({ aboutOpen }),
     setCollections: (collections) => set({ collections }),
+    setSiteEntries: (siteEntries) => set({ siteEntries }),
+    setPreviewEntry: (previewEntry) => set({ previewEntry }),
     setHistoryOpen: (open) => {
       if (open) get().setDrawer("history");
       else if (get().drawer === "history") get().setDrawer(null);

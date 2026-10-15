@@ -822,6 +822,90 @@
       }
     },
     {
+      "id": "news",
+      "type": "section",
+      "props": {
+        "anchor": "news"
+      },
+      "children": [
+        {
+          "id": "news-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "news-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "From the club"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "news-list",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "date",
+                  "direction": "desc"
+                },
+                "layout": "grid",
+                "columns": 3,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet.",
+                "filter": {
+                  "field": "level",
+                  "value": "Beginner"
+                },
+                "image": "image",
+                "date": "date",
+                "excerpt": "summary"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            },
+            {
+              "id": "news-title",
+              "type": "field",
+              "props": {
+                "field": "title",
+                "level": 3
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-3",
+                  "color": "accent"
+                },
+                "phone": {
+                  "align": "center"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
       "id": "join",
       "type": "section",
       "props": {

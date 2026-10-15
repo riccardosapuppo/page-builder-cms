@@ -16,7 +16,11 @@ const head = (name: string) => screen.getByRole("button", { name });
 const says = (name: string) => describedText(head(name));
 
 test("every style setting a type accepts is in exactly one of its groups, and every style group holds one", () => {
-  for (const type of BLOCK_TYPES) {
+  // A Field block takes the groups of the widget it draws as (groups.tsx,
+  // fieldStyleBlock): its settings are theirs, together.
+  const shapes = ["heading", "text", "image", "button"] as const;
+  expect([...STYLE_KEYS_BY_TYPE.field].sort()).toEqual([...new Set(shapes.flatMap((type) => STYLE_KEYS_BY_TYPE[type] as readonly string[]))].sort());
+  for (const type of BLOCK_TYPES.filter((one) => one !== "field")) {
     const groups = styleGroupKeys(type);
     const held = groups.flatMap((g) => g.keys);
     const accepted = (STYLE_KEYS_BY_TYPE[type] as readonly string[]).filter((key) => key !== "visibility");
@@ -47,7 +51,10 @@ test("each type's groups are named after what they hold, in the layout's order, 
     stats: ["Figures", "Text color", "Alignment", "Shown on", "Advanced"],
     steps: ["Steps", "Disc color", "Shown on", "Advanced"],
     pricing: ["Plans", "Highlight color", "Shown on", "Advanced"],
+    collectionList: ["Entries", "Cards", "Text color", "Shown on", "Advanced"],
     form: ["Fields", "Button and message", "Shown on", "Advanced"],
+    // The entry's title as a heading: a heading's groups, after its own.
+    field: ["Field", "Size and color", "Type", "Alignment", "Shown on", "Advanced"],
   };
   for (const [id, names] of Object.entries(expected)) {
     rerender(<BlockPanel id={id} />);

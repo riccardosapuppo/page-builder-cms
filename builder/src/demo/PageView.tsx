@@ -1,45 +1,83 @@
 // A page as the demo shows it in a tab of its own, where the full system's
-// CMS would serve it: the draft as it would be published (Preview), or the
-// page as it was published in this browser (Publish). The same renderer as
-// the canvas and the same markup as the CMS's page (../render/), inside the
-// site's header and footer as the CMS draws them: a published page inside
-// the parts published here (or the starters, for a part never published),
-// a preview inside the parts' drafts; and a part's own preview is the home
-// page's. The site style is this browser's, the images from the browser's
-// library, all read when the page is opened.
+// CMS would serve it: the draft as it would be published (Preview), the
+// page as it was published in this browser (Publish), or an entry of a
+// collection as it was published here, drawn with its collection's
+// published template (a Collection list's card leads there). The same
+// renderer as the canvas and the same markup as the CMS's page
+// (../render/), inside the site's header and footer as the CMS draws them:
+// a published page or entry inside the parts published here (or the
+// starters, for a part never published), a preview inside the parts'
+// drafts; a part's own preview is the home page's, and a template's is its
+// draft drawn with an entry's draft (the one its address names, else the
+// first published, else values made up from its fields' types). The site
+// style is this browser's, the images from the browser's library, the
+// collections and entries from its storage, all read when the page is
+// opened.
 //
 // The demo serves nothing, so the page says so in one line above it, and
 // what would leave for the server stays here:
 // - a form is not sent: under it, one line says what the full system does
 //   with its answers, and sending says it again;
 // - a link to another page of the site ("/winter-series", "/") opens that
-//   page as the demo draws it, published if it is, its draft if not; one
-//   to a page this browser does not have says so, rather than leave for an
-//   address the demo's host does not serve.
+//   page as the demo draws it, published if it is, its draft if not; a
+//   link to an entry ("/news/first-swim") opens it as published here; one
+//   to a page or an entry this browser does not have says so, rather than
+//   leave for an address the demo's host does not serve.
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { mediaResolver } from "../editor/media.ts";
 import { PUBLISHED_IN_BROWSER } from "../editor/App.tsx";
+import { collectionResolver, previewedEntry, readSiteEntries, sampleEntry, shownEntry, type SiteEntries } from "../editor/collections/content.ts";
 import { PageRoot } from "../render/page.tsx";
-import type { Decoration, RawBlock, RenderContext } from "../render/context.ts";
+import type { Decoration, ListedCollection, ListedEntry, RawBlock, RenderContext, ShownEntry } from "../render/context.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import type { SiteParts } from "../render/theme.tsx";
-import type { MediaItem, PageSummary, SiteStyle, StorageAdapter } from "../storage/adapter.ts";
+import type { Collection, Entry, MediaItem, PageSummary, SiteStyle, StorageAdapter } from "../storage/adapter.ts";
 import { isStorageError } from "../storage/adapter.ts";
 import { DemoLine } from "./DemoLine.tsx";
-import { previewAddress, publishedAddress, type View } from "./views.ts";
+import { entryAddress, previewAddress, publishedAddress, type View } from "./views.ts";
 
 export const PREVIEW_LINE = "The draft, as it would be published. In the full system, Rails draws this preview and never stores it.";
 export const NOT_PUBLISHED_LINE = "This page is not published in this browser yet: Publish in the editor shows it here.";
 export const NO_HOME_LINE = "This browser has no page to show the header and footer on yet: make one in the editor.";
 export const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 export const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
+export const NO_ENTRY_LINE = "This browser has no such entry: it may have been deleted.";
+export const ENTRY_NOT_PUBLISHED_LINE = "This entry is not published in this browser yet: Publish in Collections shows it here.";
+
+// The line above an entry as published here, and above a template's
+// preview.
+export const entryLine = (prefix: string, slug: string): string =>
+  `The entry as published in this browser. In the full system, Rails serves it at /${prefix}/${slug}, with the cache.`;
+export const templateNotPublished = (name: string): string =>
+  `The template of ${name} is not published in this browser yet: Publish it in the editor, and its entries show here.`;
 
 type Shown =
   | { kind: "loading" }
   | { kind: "failed"; message: string }
-  | { kind: "ready"; document: unknown; title: string; line: string; pages: readonly PageSummary[]; parts: SiteParts; style: SiteStyle; media: ReadonlyMap<string, MediaItem> };
+  | {
+    kind: "ready";
+    document: unknown;
+    title: string;
+    line: string;
+    pages: readonly PageSummary[];
+    parts: SiteParts;
+    style: SiteStyle;
+    media: ReadonlyMap<string, MediaItem>;
+    site: SiteEntries | null;
+    entry: ShownEntry | null;
+  };
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
+
+// The collection an entry is of, and the entry, among those of this
+// browser.
+function findEntry(site: SiteEntries | null, entryId: number): { collection: Collection; entry: Entry } | null {
+  for (const collection of site?.collections ?? []) {
+    const entry = site?.entries.get(collection.id)?.find((one) => one.id === entryId);
+    if (entry) return { collection, entry };
+  }
+  return null;
+}
 
 // The pages are listed first: in a browser that has none yet, the first
 // listing puts the example site in (withExampleSite), and the page asked
@@ -47,14 +85,15 @@ const describe = (error: unknown): string => (isStorageError(error) ? error.fail
 // otherwise read an empty store and say there is nothing there.
 export async function readShown(adapter: StorageAdapter, view: View): Promise<Shown> {
   const pages = await adapter.listPages();
-  const [opened, partList, style, media] = await Promise.all([
-    adapter.getPage(view.pageId), adapter.listParts(), adapter.getSiteStyle(), adapter.listMedia(),
+  const [partList, style, media, site] = await Promise.all([
+    adapter.listParts(), adapter.getSiteStyle(), adapter.listMedia(), adapter.capabilities.collections ? readSiteEntries(adapter) : Promise.resolve(null),
   ]);
   const library = new Map(media.map((item) => [item.id, item]));
+  const preview = view.kind === "preview";
   // The parts around the page: their drafts in a preview; published, what
   // each published, or its starter, as the CMS draws them.
   const partDocument = async (part: PageSummary): Promise<unknown> => {
-    if (view.kind === "preview") return (await adapter.getDraft(part.id)).document;
+    if (preview) return (await adapter.getDraft(part.id)).document;
     if (part.published) return (await adapter.getVersion(part.id, part.published.versionNumber)).document;
     return SITE_THEME.parts[part.kind === "footer" ? "footer" : "header"];
   };
@@ -63,15 +102,40 @@ export async function readShown(adapter: StorageAdapter, view: View): Promise<Sh
     return part ? partDocument(part) : Promise.resolve(SITE_THEME.parts[kind === "footer" ? "footer" : "header"]);
   }));
   const parts: SiteParts = { header, footer };
-  // A part has no page of its own: its preview is the home page's.
+  const ready = (document: unknown, title: string, line: string, entry: ShownEntry | null = null): Shown =>
+    ({ kind: "ready", document, title, line, pages, parts, style, media: library, site, entry });
+
+  // An entry as published here: its collection's published template, with
+  // what the entry published.
+  if (view.kind === "entry") {
+    const found = findEntry(site, view.entryId);
+    if (!found) return { kind: "failed", message: NO_ENTRY_LINE };
+    const live = found.entry.published;
+    if (!live) return { kind: "failed", message: ENTRY_NOT_PUBLISHED_LINE };
+    const template = found.collection.template;
+    if (!template.published) return { kind: "failed", message: templateNotPublished(found.collection.name) };
+    const version = await adapter.getVersion(template.id, template.published.versionNumber);
+    return ready(version.document, live.title, entryLine(found.collection.prefix, live.slug), shownEntry(found.collection, { ...live, id: found.entry.id }));
+  }
+
+  const opened = await adapter.getPage(view.pageId);
+  // A template's preview: its draft, with an entry's draft or made-up
+  // values.
+  if (opened.page.kind === "template" && preview) {
+    const collection = site?.collections.find((one) => one.template.id === opened.page.id);
+    const entries = collection ? (site?.entries.get(collection.id) ?? []) : [];
+    const picked = collection ? previewedEntry(collection, entries, view.entry ?? null) : null;
+    const entry = !collection ? null : picked ? shownEntry(collection, picked) : sampleEntry(collection, new Date());
+    return ready(opened.draft.document, `Preview: ${entry?.title ?? opened.draft.document.title}`, PREVIEW_LINE, entry);
+  }
+  // A part has no page of its own, nor a template: their published view
+  // is the home page's.
   const page = opened.page.kind === "page" ? opened : await homeOf(adapter, pages);
   if (!page) return { kind: "failed", message: NO_HOME_LINE };
-  if (view.kind === "preview") {
-    return { kind: "ready", document: page.draft.document, title: page.draft.document.title, line: PREVIEW_LINE, pages, parts, style, media: library };
-  }
+  if (preview) return ready(page.draft.document, page.draft.document.title, PREVIEW_LINE);
   if (!page.published) return { kind: "failed", message: NOT_PUBLISHED_LINE };
   const version = await adapter.getVersion(page.page.id, page.published.versionNumber);
-  return { kind: "ready", document: version.document, title: version.document.title, line: PUBLISHED_IN_BROWSER, pages, parts, style, media: library };
+  return ready(version.document, version.document.title, PUBLISHED_IN_BROWSER);
 }
 
 // The home page of this browser, or its first page.
@@ -102,6 +166,9 @@ function FormLine() {
 const FORM_DECORATION: Decoration = { after: <FormLine /> };
 const useDecoration = (block: RawBlock): Decoration | undefined => (block.type === "form" ? FORM_DECORATION : undefined);
 
+// A Collection list's card leads to the entry as the demo draws it.
+const entryHref = (_collection: ListedCollection, entry: ListedEntry): string => entryAddress(entry.id);
+
 // The page of the site a path names, as the site's links give it: "/" for
 // the home page, "/<slug>" for the others; a fragment or a query is left
 // out.
@@ -110,6 +177,14 @@ export function pageAt(pages: readonly PageSummary[], href: string): PageSummary
   if (path === "/" || path === "") return pages.find((page) => page.home) ?? null;
   const slug = path.replace(/^\/+|\/+$/g, "");
   return pages.find((page) => page.slug === slug || page.published?.slug === slug) ?? null;
+}
+
+// The entry an address of the site names, /<prefix>/<slug>, by its live
+// slug, among those published in this browser.
+export function entryAt(site: SiteEntries | null, href: string): Entry | null {
+  const found = /^\/([a-z0-9-]+)\/([a-z0-9-]+)\/?$/.exec(href.split(/[?#]/, 1)[0] ?? "");
+  const collection = found ? site?.collections.find((one) => one.prefix === found[1]) : undefined;
+  return (collection && site?.entries.get(collection.id)?.find((entry) => entry.published?.slug === found?.[2])) ?? null;
 }
 
 export function PageView({ adapter, view }: { adapter: StorageAdapter; view: View }) {
@@ -135,15 +210,23 @@ export function PageView({ adapter, view }: { adapter: StorageAdapter; view: Vie
     if (shown.kind === "ready") document.title = shown.title || "Untitled page";
   }, [shown]);
 
-  const ctx = useMemo<RenderContext | null>(() => (shown.kind === "ready" ? { media: mediaResolver(shown.media), useDecoration } : null), [shown]);
+  const ctx = useMemo<RenderContext | null>(() => (shown.kind === "ready"
+    ? { media: mediaResolver(shown.media), collections: collectionResolver(shown.site), entry: shown.entry, entryHref, useDecoration }
+    : null), [shown]);
 
-  // A link to a page of the site opens it as the demo draws it.
+  // A link to a page of the site, or to an entry, opens it as the demo
+  // draws it.
   const follow = (event: MouseEvent<HTMLElement>) => {
     if (shown.kind !== "ready" || event.defaultPrevented || event.button !== 0) return;
     const link = (event.target as Element).closest?.("a[href]");
     const href = link?.getAttribute("href") ?? "";
     if (!href.startsWith("/") || href.startsWith("//")) return;
     event.preventDefault();
+    const entry = entryAt(shown.site, href);
+    if (entry) {
+      window.location.assign(new URL(entryAddress(entry.id), window.location.href).href);
+      return;
+    }
     const page = pageAt(shown.pages, href);
     if (!page) {
       setSaid(`There is no page at ${href.split(/[?#]/, 1)[0]} in this browser.`);

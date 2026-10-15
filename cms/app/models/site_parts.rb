@@ -35,6 +35,12 @@ module SiteParts
     def document
       published? ? page.published_version.document : SiteParts.starter(kind)
     end
+
+    # The collections its Collection lists name, read from its row as its
+    # key is (Page#listed_collections); a starter names none.
+    def listed
+      published? ? page.listed_collections : []
+    end
   end
 
   # A part's draft, as previews and the editor's canvas draw it: the
@@ -44,6 +50,10 @@ module SiteParts
 
     def document
       page&.draft ? page.draft.document : SiteParts.starter(kind)
+    end
+
+    def listed
+      CollectionList.ids(document)
     end
   end
 
@@ -67,13 +77,15 @@ module SiteParts
   # The checks of a part's document: a page's (BlockDocument.check), then
   # the part's own rules: no form, and no anchor on any block, since the
   # header and footer are drawn in every page beside its own blocks, whose
-  # anchors their own are not checked against.
+  # anchors their own are not checked against; and, as a page, no Field
+  # block, which only a template holds (PageRules).
   def check(document)
     result = BlockDocument.check(document)
     return result unless result.ok?
 
     errors = forms(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", FORM) } +
-      anchors(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", ANCHOR) }
+      anchors(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", ANCHOR) } +
+      PageRules.fields(result.document).map { |pointer| BlockDocument::Error.at(pointer, "field", PageRules::FIELD) }
     errors.empty? ? result : BlockDocument::Result.new(document: nil, errors: errors)
   end
 

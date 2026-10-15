@@ -313,6 +313,10 @@ test.describe("from the picker a + opens", () => {
     await select(page, "b");
     await page.keyboard.press("+");
     await pickUp(page, page.getByRole("dialog", { name: "Add a block after Quote" }).getByRole("button", { name: "Divider", exact: true }));
+    // The way there from the picker's key crosses the top of e's column,
+    // whose line opens there first and pushes e down: aimed again at e's
+    // foot as it then stands.
+    await moveOnto(page, block(page, "e"), "bottom");
     await moveOnto(page, block(page, "e"), "bottom");
     await expect(caption(page).locator("strong")).toHaveText("Divider will be added to Column 1 in Second, after Spacer.");
     await page.mouse.up();

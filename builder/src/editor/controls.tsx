@@ -700,6 +700,33 @@ export function RadioField<T extends string | number>({ label, choices, value, i
   );
 }
 
+// One choice among more than a row of keys holds, in the browser's own
+// list (a Field block's field, a Collection list's collection or order):
+// the command's refusal, and the server's, on the field as a radio
+// field's are.
+interface SelectFieldProps<T extends string> {
+  label: string;
+  choices: ReadonlyArray<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => CommandError | null;
+  blockId?: string | null;
+  field: string;
+  hint?: ReactNode;
+  rules?: FieldRules;
+}
+
+export function SelectField<T extends string>({ label, choices, value, onChange, blockId, field, hint, rules }: SelectFieldProps<T>) {
+  const id = useId();
+  const { errors, choose } = useChoice(onChange, blockId, field, rules);
+  return (
+    <FieldFrame id={id} label={label} hint={hint} errors={errors}>
+      <select id={id} className="input" value={value} aria-invalid={errors.length > 0 ? true : undefined} aria-describedby={describedBy(id, hint, errors)} onChange={(event) => choose(event.target.value as T)}>
+        {choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+      </select>
+    </FieldFrame>
+  );
+}
+
 // Two settings under one label, side by side, each its own group with its
 // own name (the design's Alignment: vertical, then horizontal). Where the
 // two say the same of their values (both the theme's, both the

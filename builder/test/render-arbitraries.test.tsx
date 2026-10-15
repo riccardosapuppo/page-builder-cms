@@ -14,7 +14,7 @@ const resolver = (id: string) => (id === "lib-1" ? { src: "/rails/active_storage
 
 // 80 pages, drawn by React's development build: about 20 s on a busy
 // machine. The random-page agreement check is where the pages are many.
-test("80 generated pages are valid, hold every block type, and draw safely", () => {
+test("80 generated pages are valid, hold every block type a page holds, and draw safely", () => {
   const seen = new Set<string>();
   let maps = 0;
   fc.assert(
@@ -29,6 +29,7 @@ test("80 generated pages are valid, hold every block type, and draw safely", () 
     }),
     { seed: 20261002, numRuns: 80 },
   );
-  expect([...seen].sort()).toEqual([...BLOCK_TYPES].sort());
+  // Every type a page holds: a Field block only a template does.
+  expect([...seen].sort()).toEqual(BLOCK_TYPES.filter((type) => type !== "field").sort());
   expect(maps).toBeGreaterThan(10);
 }, 240_000);

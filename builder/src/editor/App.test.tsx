@@ -1,5 +1,9 @@
 // The shell on a storage adapter of the test's own: it opens the page the
-// address names (else the home page), its edits reach the adapter through
+// address names (a collection's template too, drawn with its entry, even
+// when the collections cannot be read, and given its collection once a
+// later read finds it; else the home page), the collections read again as
+// Collections closes, the latest read standing over a slower one; its
+// edits reach the adapter through
 // the autosave on the injected clock, a save the server refuses with a 422
 // puts each error on its block's field, and a new page is made and opened.
 // Publishing saves what waits first and publishes at that revision; the
@@ -15,6 +19,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { render } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { page } from "../../test/document-page.ts";
+import { newsCollection, newsEntry } from "../../test/site-entries.ts";
 import { describedText, openGroups } from "../../test/editor-kit.tsx";
 import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
@@ -31,6 +36,9 @@ const T = "2026-10-02T08:00:00.000Z";
 // The site's header and footer, by their ids.
 const HEADER = 101;
 const FOOTER = 102;
+// News's template, when the storage keeps collections: its entry's title
+// as its heading.
+const TEMPLATE = 90;
 const links =(id: number) => ({ self: `/api/pages/${id}`, draft: `/api/pages/${id}/draft`, versions: `/api/pages/${id}/versions`, publish: `/api/pages/${id}/publish`, schedules: `/api/pages/${id}/schedules`, preview: `/preview/${id}`, live: null });
 
 // The site style as the CMS answers it, from the tokens.
@@ -82,12 +90,29 @@ class FakeSite {
   // The storage's refusal of every read of the pages, while set: an editor
   // that cannot start.
   refuseStart: StorageError | null = null;
+  // Whether it keeps collections: News, with one entry published.
+  collections = false;
+  // The storage's refusal of every read of the collections and their
+  // entries, while set.
+  refuseCollections: StorageError | null = null;
+  // A refusal of the next read of a page, once.
+  refusePageOnce: StorageError | null = null;
+  // The title of News's one entry, as the next read of it finds it.
+  entryTitle = "Dawn swims";
+  // While set, the next read of the entries the canvas draws waits for it,
+  // with what it read when it was asked: a slow read. The reads of them
+  // asked for so far.
+  entriesGate: Promise<void> | null = null;
+  entriesReads = 0;
 
   constructor() {
     this.drafts.set(1, { kind: "page", title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
     this.drafts.set(2, { kind: "page", title: "Home", slug: "home", home: true, revision: 1, document: { schemaVersion: 1, title: "Home", sections: [] }, published: null });
     this.drafts.set(HEADER, { kind: "header", title: "Header", slug: null, home: false, revision: 0, document: structuredClone(SITE_THEME.parts.header) as PageDocument, published: null });
     this.drafts.set(FOOTER, { kind: "footer", title: "Footer", slug: null, home: false, revision: 0, document: structuredClone(SITE_THEME.parts.footer) as PageDocument, published: null });
+    const title = { id: "t", type: "field", props: { field: "title", level: 1 }, children: [], style: { base: {} } };
+    const entry = { id: "s", type: "section", props: {}, style: { base: {} }, children: [{ id: "c", type: "column", props: {}, style: { base: {} }, children: [title] }] };
+    this.drafts.set(TEMPLATE, { kind: "template", title: "News", slug: null, home: false, revision: 1, document: { schemaVersion: 1, title: "News", sections: [entry] } as unknown as PageDocument, published: null });
   }
 
   // A part has no address: it is seen on every page.
@@ -107,7 +132,7 @@ class FakeSite {
   }
 
   ids(kind: "page" | "part"): number[] {
-    return [...this.drafts.entries()].filter(([, d]) => (d.kind === "page") === (kind === "page")).map(([id]) => id);
+    return [...this.drafts.entries()].filter(([, d]) => (kind === "page" ? d.kind === "page" : d.kind === "header" || d.kind === "footer")).map(([id]) => id);
   }
 
   // The CMS's job, at the schedule's time: the scheduled revision goes live.
@@ -128,13 +153,36 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: false },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: this.collections },
+      listCollections: async () => {
+        if (this.refuseCollections) throw this.refuseCollections;
+        return [newsCollection({ template: this.summary(TEMPLATE) })];
+      },
+      listEntries: async (_id, options) => {
+        if (this.refuseCollections) throw this.refuseCollections;
+        const entries = [newsEntry(1, this.entryTitle, "2026-05-02")];
+        // The Collections screen asks with its search and order; the
+        // canvas's read asks for them all.
+        const gate = options === undefined ? this.entriesGate : null;
+        if (options === undefined) this.entriesReads += 1;
+        if (gate) {
+          this.entriesGate = null;
+          await gate;
+        }
+        return entries;
+      },
       listPages: async () => {
         if (this.refuseStart) throw this.refuseStart;
         return this.ids("page").map((id) => this.summary(id));
       },
       listParts: async () => this.ids("part").map((id) => this.summary(id)),
-      getPage: async (id) => this.page(id),
+      getPage: async (id) => {
+        const refused = this.refusePageOnce;
+        this.refusePageOnce = null;
+        if (refused) throw refused;
+        if (!this.drafts.has(id)) throw new StorageError({ kind: "not-found", message: "There is nothing at this address." });
+        return this.page(id);
+      },
       getDraft: async (id) => this.page(id).draft,
       listMedia: async () => [],
       getSiteStyle: async () => this.style,
@@ -217,13 +265,16 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; collections?: boolean; refuseCollections?: StorageError; refusePageOnce?: StorageError } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
   site.schedule = options.schedule ?? false;
   site.livePages = !options.demo;
   site.refuseStart = options.refuseStart ?? null;
+  site.collections = options.collections ?? false;
+  site.refuseCollections = options.refuseCollections ?? null;
+  site.refusePageOnce = options.refusePageOnce ?? null;
   const written: number[] = [];
   const address: PageAddress = { read: () => wanted, write: (id) => written.push(id) };
   // The tabs the editor opens: where each went, once it was told.
@@ -763,6 +814,84 @@ test("a part named by the address opens around the home page's draft; Insert off
   expect(screen.queryByRole("button", { name: "Form" })).toBeNull();
   expect(screen.getByRole("button", { name: "Menu" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Back to Home" })).toBeTruthy();
+});
+
+test("a collection's template named by the address opens again, drawn with its first published entry; with no collections kept, the home page opens", async () => {
+  const { written } = start(TEMPLATE, { collections: true });
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  expect(written).toEqual([TEMPLATE]);
+  expect(await screen.findByRole("heading", { level: 1, name: "Dawn swims" })).toBeTruthy();
+  cleanup();
+
+  start(TEMPLATE);
+  await screen.findByRole("button", { name: "Switch page. Open: Home" });
+});
+
+// No answer from the storage, as a dropped connection gives.
+const NO_ANSWER = new StorageError({ kind: "unknown", cause: "network", status: null, message: "The CMS did not answer." });
+
+test("a template named by the address opens though the collections cannot be read, and the notice says they could not be", async () => {
+  const { env, written } = start(TEMPLATE, { collections: true, refuseCollections: NO_ANSWER });
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  expect(written).toEqual([TEMPLATE]);
+  expect(env.ui.getState().notice).toBe("The collections could not be read (The CMS did not answer.): lists and Field blocks show what was read before, if anything, until Collections closes and reads them again.");
+});
+
+test("an address naming a page no longer there opens the home page; one that cannot be read now stops the start, and Try again opens it", async () => {
+  start(999, { collections: true });
+  await screen.findByRole("button", { name: "Switch page. Open: Home" });
+  cleanup();
+
+  const { written } = start(TEMPLATE, { collections: true, refusePageOnce: NO_ANSWER });
+  const alert = await screen.findByRole("alert");
+  expect(alert.querySelector("p")?.textContent).toBe("The editor could not start: The CMS did not answer.");
+  expect(written).toEqual([]);
+  fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  expect(written).toEqual([TEMPLATE]);
+});
+
+test("a template opened while the collections cannot be read finds its collection once Collections closes and reads them: its fields draw, its Page tab names it, and a preview entry chosen before is kept", async () => {
+  const { env, site } = start(TEMPLATE, { collections: true, refuseCollections: NO_ANSWER });
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  fireEvent.click(within(screen.getByRole("complementary", { name: "Settings" })).getByRole("tab", { name: "Page" }));
+  expect(screen.getByText("Template of its collection")).toBeTruthy();
+  expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  act(() => env.ui.getState().setPreviewEntry({ collectionId: 3, choice: "sample" }));
+
+  site.refuseCollections = null;
+  act(() => env.ui.getState().setCollections({ collectionId: 3, tab: "entries" }));
+  act(() => env.ui.getState().setCollections(null));
+  expect(await screen.findByRole("heading", { level: 1, name: "The title of an entry" })).toBeTruthy();
+  expect(screen.getByText("Template of News")).toBeTruthy();
+  expect(env.ui.getState().previewEntry).toEqual({ collectionId: 3, choice: "sample" });
+});
+
+test("of two reads of the collections, the later one asked for stands: a slow one that ends after it changes nothing", async () => {
+  const { env, site } = start(TEMPLATE, { collections: true });
+  expect(await screen.findByRole("heading", { level: 1, name: "Dawn swims" })).toBeTruthy();
+  const closeCollections = () => {
+    act(() => env.ui.getState().setCollections({ collectionId: 3, tab: "entries" }));
+    act(() => env.ui.getState().setCollections(null));
+  };
+  // The first read, slow, finds the entry as it is now.
+  let release = () => {};
+  site.entriesGate = new Promise<void>((done) => {
+    release = done;
+  });
+  const before = site.entriesReads;
+  closeCollections();
+  await waitFor(() => expect(site.entriesReads).toBe(before + 1));
+  // Renamed in Collections, which closes again: the second read is quick.
+  site.entryTitle = "Dawn swims, renamed";
+  closeCollections();
+  expect(await screen.findByRole("heading", { level: 1, name: "Dawn swims, renamed" })).toBeTruthy();
+  await act(async () => {
+    release();
+    await new Promise((done) => setTimeout(done, 0));
+  });
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Dawn swims, renamed");
+  expect(env.ui.getState().siteEntries?.entries.get(3)?.[0]?.title).toBe("Dawn swims, renamed");
 });
 
 test("in the browser demo, publishing a part opens the home page as published, the part on it", async () => {

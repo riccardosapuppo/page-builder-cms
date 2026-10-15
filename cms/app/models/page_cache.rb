@@ -22,18 +22,29 @@
 #   header's and footer's starters in config/parts, the schema's tokens
 #   and icons, its gems, and its secret, which signs the addresses of
 #   library images;
+# - the collections its Collection lists name, and those of the header's
+#   and footer's (SiteContent#keys): each its id, the count of the changes
+#   a visitor could see of it and when the last was made, which a publish,
+#   an unpublish or the delete of a live entry, and any change of the
+#   collection's definition, move (Collection#advance!);
 # - for one block, nothing but its own subtree, rendered through the
-#   partials of that release.
+#   partials of that release; and for a Collection list its collection's
+#   key, and for a Field block what it draws of its entry.
 #
 # So the browser's validator (the ETag) and the page's outer fragment are
-# keyed on the version, the site style, the header and footer and the
-# release; each block's fragment on a digest of its subtree and the
-# revision of the token CSS, under the release (PublicPage's
-# fragment_cache_key), the header's and the footer's blocks too: a new
-# header redraws only its blocks that changed, once, and every page finds
-# them, and its own blocks, where they were. The ETag's digest is made
-# here rather than by fresh_when, whose digest of the action's template
-# does not see the layout or the partials a helper renders.
+# keyed on the version, the site style, the header and footer, the
+# collections listed and the release; each block's fragment on a digest
+# of its subtree and the revision of the token CSS, under the release
+# (PublicPage's fragment_cache_key), the header's and the footer's blocks
+# too: a new header redraws only its blocks that changed, once, and every
+# page finds them, and its own blocks, where they were. The ETag's digest
+# is made here rather than by fresh_when, whose digest of the action's
+# template does not see the layout or the partials a helper renders.
+#
+# An entry's page (EntryPagesController) is the collection's published
+# template drawn with the entry's published values: it is keyed the same
+# way on the template's version, and on the entry as it went live and its
+# collection's fields, which say how each value is drawn (entry_key).
 module PageCache
   # The files of a release that can change what a page looks like, from
   # the app's root. Broad on purpose: a change that cannot alter a page
@@ -62,17 +73,37 @@ module PageCache
   module_function
 
   # The validators of a published page's ETag: what is served, in what
-  # colours, under which header and footer, by which release. A visitor's
-  # copy stays good until one of them changes.
-  def etag(page, site_style, parts)
-    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts), revision ]
+  # colours, under which header and footer, listing which collections as
+  # they are, by which release. A visitor's copy stays good until one of
+  # them changes.
+  def etag(page, site_style, parts, content = SiteContent::NONE)
+    [ *page_fragment(page, site_style, parts, content), revision ]
   end
 
   # The key of a published page's outer fragment, its whole HTML. The
   # release is not repeated here: every fragment key of the public pages
   # starts with it (PublicPage).
-  def page_fragment(page, site_style, parts)
-    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts) ]
+  def page_fragment(page, site_style, parts, content = SiteContent::NONE)
+    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts), content.keys ]
+  end
+
+  # The same for an entry's page: its entry and its collection's fields
+  # (entry_key), and the template drawn with them, named as a page is.
+  def entry_etag(collection, entry, template, site_style, parts, content)
+    [ *entry_fragment(collection, entry, template, site_style, parts, content), revision ]
+  end
+
+  def entry_fragment(collection, entry, template, site_style, parts, content)
+    [ "entry", *entry_key(collection, entry), *published_key(template), site_style_key(site_style), parts_key(parts), content.keys ]
+  end
+
+  # An entry as its page draws it: its id, and a digest of what it went
+  # live with (its title, its slug, its values) and of its collection's
+  # fields, by which each value is drawn. Both are on the rows the page
+  # reads to find the entry; equal digests draw equal pages, so a save of
+  # the draft, or a publish of the same values again, keeps the key.
+  def entry_key(collection, entry)
+    [ entry.id, ActiveSupport::Digest.hexdigest(JSON.generate([ entry.published_title, entry.published_slug, entry.published_field_values, collection.id, collection.fields ])) ]
   end
 
   # The published version's id, and when the page was put live, to the
@@ -80,7 +111,12 @@ module PageCache
   # the version's document is read. The id alone repeats whenever the
   # database is made anew; the moment does not.
   def published_key(page)
-    [ page.published_version_id, page.published_at&.utc&.strftime("%Y%m%dT%H%M%S.%6N") ]
+    [ page.published_version_id, moment(page.published_at) ]
+  end
+
+  # A moment as the keys write it, to the microsecond, in UTC.
+  def moment(time)
+    time&.utc&.strftime("%Y%m%dT%H%M%S.%6N")
   end
 
   # The site style as a short key: the tone of each slot, the type scale,
@@ -218,10 +254,17 @@ module PageCache
   # the block's subtree]. A digest is taken once per block, from the
   # block without its children and the digests of its children, so a
   # page's digests cost one pass over its document. Equal digests mean
-  # equal subtrees, and the partials draw a block from its subtree alone.
+  # equal subtrees, and the partials draw a block from its subtree alone,
+  # but for the two that draw from the render's content (SiteContent),
+  # whose digest holds what they draw from too: a Collection list its
+  # collection's key, which every change a visitor could see of it moves
+  # (Collection#advance!), and the entry it leaves out on that entry's
+  # page; a Field block what it draws of the entry (EntryField.drawing), so
+  # two entries with the same value share it.
   class BlockKeys
-    def initialize(token_css: PageCache.token_css_revision)
+    def initialize(token_css: PageCache.token_css_revision, content: SiteContent::NONE)
       @token_css = token_css
+      @content = content
       @digests = {}.compare_by_identity
     end
 
@@ -232,7 +275,20 @@ module PageCache
     def digest(block)
       @digests[block] ||= begin
         children = Array(block["children"]).map { |child| child.is_a?(Hash) ? digest(child) : child }
-        Digest::SHA256.hexdigest(JSON.generate([ block.except("children"), children ]))
+        Digest::SHA256.hexdigest(JSON.generate([ block.except("children"), children, *drawn_from(block) ]))
+      end
+    end
+
+    private
+
+    def drawn_from(block)
+      props = block["props"].is_a?(Hash) ? block["props"] : {}
+      case block["type"]
+      when "collectionList"
+        id = CollectionList.listed_id(props)
+        [ id && @content.collection_key(id), CollectionList.left_out(id, @content.entry) ]
+      when "field" then [ EntryField.drawing(props, @content.entry)&.to_h ]
+      else []
       end
     end
   end

@@ -8,6 +8,7 @@
 //
 // Plain data with type imports only, so the browser tests can read it
 // without the editor's build.
+import type { Field } from "../shared/collection.ts";
 import type { WidgetType } from "../shared/document.ts";
 
 // One thing a case exposes to assistive technology, found by its role
@@ -39,7 +40,26 @@ export interface A11yCase {
 export interface WidgetA11y {
   type: WidgetType;
   cases: readonly A11yCase[];
+  // What the cases draw from, made on the CMS before they are published:
+  // a collection with its fields and its entries, each published, whose id
+  // stands in the cases' props as A11Y_COLLECTION (a Collection list's).
+  collection?: A11yCollection;
+  // Drawn in that collection's template, on its first entry's page, rather
+  // than on a page of their own (a Field block's, which only a template
+  // holds), and on the canvas with that entry.
+  inTemplate?: true;
 }
+
+export interface A11yCollection {
+  name: string;
+  fields: readonly Field[];
+  // In the order they are made and published.
+  entries: ReadonlyArray<{ title: string; slug: string; values: Readonly<Record<string, unknown>> }>;
+}
+
+// The id a case names its collection by, which the browser test replaces
+// with the one the CMS made.
+export const A11Y_COLLECTION = 1;
 
 // The images the cases show "from another site": the browser tests answer
 // these addresses themselves, so nothing leaves the machine.

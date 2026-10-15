@@ -1,6 +1,7 @@
 // What every block renderer receives besides its block: how to find a
-// library image, and, on the canvas only, what the editor adds to a block's
-// root element.
+// library image, a collection's published entries and the entry a
+// template is drawn with, and, on the canvas only, what the editor adds to
+// a block's root element.
 import { createContext, type ReactNode, type Ref } from "react";
 
 // A block as the renderer meets it: an object with a type the tree allows
@@ -26,6 +27,51 @@ export interface MediaImage {
 // runs: the media library on the CMS, a stub in the contract tests, whose
 // goldens must not depend on the app's secret (signed ids).
 export type MediaResolver = (mediaId: string) => MediaImage | null | undefined;
+
+// A collection as a Collection list draws it: the prefix of its entries'
+// addresses, its fields (each a key, a label and a type), and its
+// published entries, in any order (the list puts them in its own). The
+// storage's data on the canvas (the CMS's, or the browser's), the
+// database's on the server (SiteContent), a fixture's in the contract
+// (cms/test/support/contract_content.rb), so each member is read
+// defensively, as a block's are.
+export interface ListedCollection {
+  id: number;
+  prefix: string;
+  fields: readonly unknown[];
+  entries: readonly ListedEntry[];
+}
+
+// One published entry: the title, slug and values it went live with, and
+// when, in ISO 8601 to the millisecond as the API writes it.
+export interface ListedEntry {
+  id: number;
+  title: string;
+  slug: string;
+  values: unknown;
+  publishedAt: string;
+}
+
+// Answers a collection's id with the collection, or null for one the
+// storage does not have (deleted, or never there): the list then says its
+// empty words, as on the server.
+export type CollectionResolver = (collectionId: number) => ListedCollection | null | undefined;
+
+// The entry a collection's template is drawn with, which its Field blocks
+// draw: its collection's fields, its title, its slug and its values. On
+// the site, what it went live with; on the canvas and in the preview, its
+// draft, or values made up from the fields' types when the collection has
+// no entry yet. Its id and its collection's, for an entry that is one
+// (made-up values are none): a Collection list of that collection, on its
+// page, leaves it out.
+export interface ShownEntry {
+  id?: number | null;
+  collectionId?: number | null;
+  fields: readonly unknown[];
+  title: string;
+  slug: string;
+  values: unknown;
+}
 
 // What the canvas adds to one block's root element, and only there: the
 // preview and the contract render without it, and the page never has it.
@@ -54,6 +100,15 @@ export const OwnClassPrefix = createContext("");
 
 export interface RenderContext {
   media: MediaResolver;
+  // The collections Collection lists draw; absent, every list is empty.
+  collections?: CollectionResolver;
+  // The entry a template is drawn with; absent or null on any other page,
+  // where a Field block draws nothing.
+  entry?: ShownEntry | null;
+  // Where a list's card links, for a storage that serves no entry's page
+  // at its address: the browser demo's own view of it. Absent, the
+  // entry's address on the site, /<prefix>/<slug>.
+  entryHref?: (collection: ListedCollection, entry: ListedEntry) => string;
   // A hook, called once in every block's render, so each block can follow
   // the editor's state for itself (its selection, a drag over it) and only
   // the blocks whose answer changed draw again. It must be the same

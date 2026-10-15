@@ -10,9 +10,10 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 [The Rails application](cms/README.md) ·
 [The editor](builder/README.md)
 
-The editor builds a page from sections, columns and eighteen kinds of
+The editor builds a page from sections, columns and twenty kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
-accordion, stats, steps, pricing, divider, spacer, form, logo and menu),
+accordion, stats, steps, pricing, divider, spacer, form, logo, menu,
+collection list and field),
 dragged into place on the page or in the Outline, where the page moves
 with the block as it goes; with rich text written where it stands on the
 canvas, undo and redo, a tablet's and a phone's own values, a media
@@ -329,9 +330,13 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   against them by rules written in TypeScript and in Ruby, held to one
   verdict by a corpus of 124 cases; an entry has a draft saved at a
   revision and what is live, and the template its entries are drawn with
-  is a page of kind `template`. Cost: another pair of twins to keep in
-  step, a definition changed without a revision, and a list of entries
-  read whole. [The note](docs/decisions/collections-are-typed-entries.md).
+  is a page of kind `template`. A Collection list draws a collection's
+  published entries on any page, Field blocks draw an entry's values in
+  its template, and the CMS serves each entry at `/<prefix>/<slug>`,
+  cached by keys that name the collection's changes. Cost: another pair
+  of twins to keep in step, a definition changed without a revision, a
+  list of entries read whole, and a page listing a collection drawn
+  again at every publish of its entries. [The note](docs/decisions/collections-are-typed-entries.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
   adds up letter widths measured once in the site's typeface and names the
@@ -430,7 +435,7 @@ Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
 
 The server's and the editor's measurements work on one page,
 `contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns and
-414 widgets of twelve of the eighteen kinds (no stats, steps, pricing, form, logo or menu), which the
+414 widgets of twelve of the twenty kinds (no stats, steps, pricing, form, logo, menu, collection list or field), which the
 server renders to 211 KB of HTML. Its nine library images are the example
 site's pictures, uploaded to the run's own library as the editor uploads an
 image, with the library's ids in place of the fixture's own; the rest is the
@@ -506,6 +511,17 @@ visit after a start 569, warm 5.01, a 304 2.95. What changed is what is
 cached: a page also draws the header's and footer's 12 blocks around its
 own, each a fragment, so a cold visit asks for and writes 513 fragments in
 97 reads and 97 writes, and one heading changed asks for 39 and finds 35.
+
+A run of 15 October 2026 (from 22:58 UTC, the machine 1% then 1% busy, no
+run thrown away, `RESULT: 38 checks passed`) measured the collections'
+pages too. An entry's page, its collection's template the same 500 blocks
+with the entry's title and summary drawn in two of them: cold 425 ms
+(389 to 498), warm 6.61 (5.48 to 11.5), and the first visit to another
+entry 29.3 (23.6 to 48.5), which draws only its two fields, their column,
+their section and its page, 5 fragments, and reads the rest back. A page
+holding a Collection list of twelve entries, after one of them is renamed
+and published: 15.8 ms (11.3 to 36.4), the list, its column, its section
+and the page drawn again, 4 fragments.
 
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
   the preview does, and also makes the 501 keys, asks for them in 88 reads

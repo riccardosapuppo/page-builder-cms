@@ -9,8 +9,8 @@ import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
-  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
-  MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PRICING_BUTTON_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
+  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES,
+  LIST_COLUMNS, LIST_DIRECTIONS, LIST_FILTER_KEYS, LIST_LAYOUTS, LIST_ORDER_KEYS, MARK_TYPES, MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PRICING_BUTTON_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
   SPACE_TOKENS, STACK_TOKENS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
@@ -67,6 +67,14 @@ describe("the document's types match the schema", () => {
     ];
     for (const [ours, name] of pairs) expect([...ours], name).toEqual(enumOf(def(name)));
     expect([...ICON_NAMES]).toEqual(enumOf(properties(branch("iconbox").props).icon as Node));
+    // A collection list's layouts, its order's two ways, and a grid's columns.
+    const list = properties(branch("collectionList").props);
+    expect([...LIST_LAYOUTS]).toEqual(enumOf(list.layout as Node));
+    expect([...LIST_DIRECTIONS]).toEqual(enumOf(properties(deref(list.order as Node)).direction as Node));
+    const columns = list.columns as Node;
+    expect([...LIST_COLUMNS]).toEqual([1, 2, 3, 4, 5].filter((n) => n >= (columns.minimum as number) && n <= (columns.maximum as number)));
+    // A field drawn as a heading takes a heading's levels.
+    expect(properties(branch("field").props).level).toMatchObject({ minimum: 1, maximum: HEADING_LEVELS.length });
     expect([...VIDEO_PROVIDERS]).toEqual(enumOf(properties(branch("video").props).provider as Node));
     const level = properties(branch("heading").props).level as Node;
     expect([...HEADING_LEVELS]).toEqual([1, 2, 3, 4].filter((n) => n >= (level.minimum as number) && n <= (level.maximum as number)));
@@ -143,6 +151,9 @@ describe("the document's types match the schema", () => {
     expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
     const menuItems = properties(branch("menu").props).items as Node;
     expect(sorted(MENU_LINK_KEYS)).toEqual(sorted(keyTable(deref(menuItems.items as Node))));
+    const list = properties(branch("collectionList").props);
+    expect(sorted(LIST_ORDER_KEYS)).toEqual(sorted(keyTable(deref(list.order as Node))));
+    expect(sorted(LIST_FILTER_KEYS)).toEqual(sorted(keyTable(deref(list.filter as Node))));
     expect(sorted(DOCUMENT_KEYS)).toEqual(sorted(keyTable(schema)));
     expect(properties(schema).schemaVersion?.const).toBe(SCHEMA_VERSION);
   });

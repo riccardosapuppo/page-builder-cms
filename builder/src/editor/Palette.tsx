@@ -12,8 +12,10 @@
 //
 // At its foot, a sentence says the page's own "+" add where they sit
 // (./InsertPicker.tsx): the drawer is the catalogue, the "+" the way. A
-// header or a footer holds no form, so neither offers one there
-// (./insert.ts, insertableWidgets).
+// header or a footer holds no form, so neither offers one there; only a
+// collection's template is offered This entry, its Field block; and a
+// Collection list only where the storage keeps collections, naming the
+// first of them as it comes (./insert.ts, insertableWidgets, widgetInput).
 //
 // Three widgets need something first (an image, images, a video), and so
 // does the ready-made section with a picture: their key asks for it, then
@@ -32,12 +34,12 @@ import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type InputOf } from
 import { useEditor, useEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { Icon } from "./icons.tsx";
-import { insertableWidgets, insertTarget, useInsert } from "./insert.ts";
+import { insertableWidgets, insertTarget, useInsert, widgetInput } from "./insert.ts";
 import { useCoarsePointer } from "./layout-mode.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, PRESETS, type Preset } from "./presets.ts";
-import { useOpenKind } from "./session.tsx";
+import { useOpenKind, useOptionalSession } from "./session.tsx";
 import { DRAG_WORDS, presetTile, sectionTile, widgetTile, type TileSource } from "./tiles.ts";
 
 // A key of the catalogue: a button, and the source of a drag.
@@ -90,11 +92,12 @@ export function whereWords(doc: PageDocument, selection: string | null, touch = 
 }
 
 export function Palette() {
-  const { store, newId } = useEnv();
+  const { store, ui, newId } = useEnv();
   const { insertBlock, insertMade } = useInsert();
   const doc = useEditor((s) => s.document);
   const selection = useEditor((s) => s.selection);
   const kind = useOpenKind();
+  const collections = useOptionalSession()?.capabilities.collections ?? false;
   const touch = useCoarsePointer();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("blocks");
@@ -112,7 +115,7 @@ export function Palette() {
       setAsking(definition);
       return;
     }
-    insertBlock(make(definition, undefined));
+    insertBlock(make(definition, widgetInput(definition, ui.getState().siteEntries)));
   };
   // Where a key picked up by the keyboard starts: where Enter would add
   // its block, by the selection as it is when the drag begins.
@@ -131,7 +134,7 @@ export function Palette() {
   const layoutShown = query.trim() === "" || matches(NEW_SECTION, query) || /^\s*[1-4]\s*$/.test(query);
   const groups = WIDGET_GROUPS.map((group) => ({
     ...group,
-    widgets: insertableWidgets(kind).filter((w) => w.group === group.id && (query.trim() === "" || matches(w.label, query) || matches(group.label, query))),
+    widgets: insertableWidgets(kind, collections).filter((w) => w.group === group.id && (query.trim() === "" || matches(w.label, query) || matches(group.label, query))),
   })).filter((group) => group.widgets.length > 0);
   const presets = PRESETS.filter((preset) => query.trim() === "" || matches(PRESET_LABELS[preset], query) || matches("Ready-made section", query));
   const blocksFound = layoutShown || groups.length > 0;
@@ -198,7 +201,7 @@ export function Palette() {
                   id={`tile:${definition.type}`}
                   className="bitem"
                   popup={definition.needs !== null}
-                  tile={widgetTile(definition, newId, widgetStart(definition))}
+                  tile={widgetTile(definition, newId, widgetStart(definition), () => widgetInput(definition, ui.getState().siteEntries))}
                   describedBy={`${id}-drag`}
                   onClick={() => addWidget(definition)}
                 >

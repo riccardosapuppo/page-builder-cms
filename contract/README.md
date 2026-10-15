@@ -68,6 +68,25 @@ the server writes for them. The editor's half is
     decimal, numbers and sizes of the wrong kind, and free type on a column
     and a button, which take none. A refused value is no attribute, and is
     not in `data-style`.
+  - `collections.json`: Collection lists of every layout, order and
+    filter, with the collections they draw from: entries ordered by a
+    day, a number, a title (a fullwidth letter and an emoji, where code
+    points and UTF-16 units disagree) and a field no order follows,
+    filtered by a toggle and by a choice; card fields of the wrong type;
+    a collection that is not there, and none chosen; entries whose words
+    hold markup, whose slug makes an address the URL policy refuses,
+    whose values are of other types than their fields, and entries no
+    list can draw; props the schema does not list; and a Field block on a
+    page that is no template, which draws nothing.
+  - `template.json`: a collection's template drawn with an entry: its
+    title as a heading of every level and as a paragraph, a field of
+    every type drawn as its type draws it, values holding markup and
+    refused addresses, a value the entry does not have, values of other
+    types than their fields (a day that does not exist, a number with
+    three decimals), a key no field has, a level out of range, a field
+    with every setting of every widget it may draw as, and a Collection
+    list of the entry's own collection beside them, which leaves the
+    entry out.
   - `edge.json`: the smallest values, every icon, an empty section, a block
     with no props and no style, spaces at both ends of a text.
   - `empty.json`: a page with no sections.
@@ -146,6 +165,22 @@ valid, and a test says so.
   three of them, one in a fixture's own video title.
 - The tree is strict: sections hold columns, columns hold widgets; a block
   anywhere else, or of an unknown type, is not rendered.
+- A fixture may carry, beside its document, what a page is drawn with:
+  `collections`, the collections its Collection lists name, each its id,
+  prefix, fields and published entries; and `entry`, the entry its Field
+  blocks draw (its collection's fields, its title, slug and values, and
+  its id and its collection's, by which a list leaves it out). The
+  server reads them through `ContractContent`
+  (`cms/test/support/contract_content.rb`), as `SiteContent` gives them
+  on a real page, and the editor through `contractContext`
+  (`builder/src/render/contract.ts`), as the canvas gives them. A
+  fixture with neither draws every list's empty words and no field.
+- A day is written from a table of month names, not a locale's
+  (`Oct 15, 2026`), and a number with its thousands grouped and no zero
+  ending its decimals (`1,250.5`): `EntryWords` and
+  `builder/src/render/entry-words.ts`. Entries are ordered by
+  `EntryOrder` and `builder/src/shared/entry-order.ts`: ties by when each
+  entry was made, a title by its code points.
 - Library images resolve through a stub, never signed ids (which depend on
   the app's secret): every `mediaId` is `/media/<id>.png`, 800 by 600,
   except an id starting with `missing`, which has no image
@@ -162,7 +197,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 20 block types
+fixture, when there are fewer than 6 fixtures or one of the 22 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

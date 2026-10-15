@@ -1,3 +1,3 @@
 <%# One block of a cached level (BlocksHelper#render_blocks), drawn by its type's partial; the blocks inside a section or a column are cached in turn. The dependency below puts every partial of this folder into this one's digest, which every block fragment's key holds: a changed partial, or a new type's, is a new key. -%>
 <%# Template Dependency: blocks/* -%>
-<%= render(partial: "blocks/#{block['type']}", locals: { block: block, media: media, cached: true }) -%>
+<%= render(partial: "blocks/#{block['type']}", locals: { block: block, media: media, content: content, cached: true }) -%>

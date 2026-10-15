@@ -58,7 +58,7 @@ module SiteHelper
 
     sticky = element == :header ? RenderPolicy.sticky_rows(document) : nil
     content_tag(element, class: "sw-#{element}", data: { sticky: sticky }) do
-      render_document(document, media: MediaResolver.for_document(document), cached: @cache_blocks)
+      render_document(document, media: MediaResolver.for_document(document), content: (@content || SiteContent::NONE).without_entry, cached: @cache_blocks)
     end
   end
 end

@@ -26,14 +26,21 @@
 // - its line unregisters a service worker left in the demo's own path,
 //   and, on Pages, leaves the other project's, in Chromium;
 // - a missing file, or an address of the site the demo draws but does not
-//   serve, is a 404, never the demo's page, and the build has no 404.html;
+//   serve (a page's, an entry's), is a 404, never the demo's page, and the
+//   build has no 404.html; an entry's page as the demo draws it
+//   (?entry=1) is the demo's page;
 // - the demo's files hold no CMS adapter and no CMS address, and in
 //   Chromium the demo asks nothing outside its own path.
 // The published pages, the declared exception: no JavaScript (no script
 // element, a Content-Security-Policy with script-src 'none'), no service
 // worker (none served, none registered once a visitor's browser has loaded
 // the page), and validators on purpose: an ETag, and a 304 when it is sent
-// back. The draft's preview is never stored.
+// back. The draft's preview is never stored. An entry's page
+// (/<prefix>/<slug>) is served as a page is: no script, an ETag and its
+// 304; a draft's address is a 404, an address the entry had answers 301
+// to the one it has now; a page holding a Collection list gets a new ETag
+// when an entry is published; a template's preview, drawn with an entry,
+// is never stored either.
 //
 // Starts a CMS and the editor's servers of its own (e2e/harness), on
 // E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), and the Pages-like
@@ -172,7 +179,9 @@ async function demoChecks(root: string, vite: string, base: string, started: (se
   }
   const viewed = await get(server.url, `${base}?preview=1`);
   check(viewed.status === 200 && (await viewed.text()).includes('<div id="editor_root">'), `${label}: ${base}?preview=1, a page the demo draws, is the demo's page`, `status ${viewed.status}`);
-  for (const path of ["no-such-file.js", "no-such-page", "assets/no-such-file.js", "404.html", "winter-series"]) {
+  const entryView = await get(server.url, `${base}?entry=1`);
+  check(entryView.status === 200 && (await entryView.text()).includes('<div id="editor_root">'), `${label}: ${base}?entry=1, an entry's page the demo draws, is the demo's page`, `status ${entryView.status}`);
+  for (const path of ["no-such-file.js", "no-such-page", "assets/no-such-file.js", "404.html", "winter-series", "news/first-swim"]) {
     const missing = await get(server.url, base + path);
     const body = await missing.text();
     check(missing.status === 404 && !body.includes('<div id="editor_root">'), `${label}: ${base}${path} is a 404, not the demo's page`, `status ${missing.status}`);
@@ -215,10 +224,10 @@ async function demoChecks(root: string, vite: string, base: string, started: (se
 
 // The published pages and the preview, on the CMS.
 async function publishedChecks(base: string): Promise<void> {
-  const api = async (method: string, path: string, body: unknown) => {
+  const api = async <T = { page: { id: number } }>(method: string, path: string, body: unknown) => {
     const response = await fetch(base + path, { method, headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(body) });
     if (!response.ok) throw new Error(`${method} ${path} answered ${response.status}: ${await response.text()}`);
-    return response.json() as Promise<{ page: { id: number } }>;
+    return response.json() as Promise<T>;
   };
   const title = "Served as published";
   const created = await api("POST", "/api/pages", { title, slug: "served" });
@@ -249,6 +258,8 @@ async function publishedChecks(base: string): Promise<void> {
   await preview.arrayBuffer();
   check(preview.status === 200 && preview.headers.get("cache-control") === "no-store" && preview.headers.get("x-robots-tag") === "noindex", "published: the draft's preview is never stored, never indexed", `${preview.status} ${preview.headers.get("cache-control")} ${preview.headers.get("x-robots-tag")}`);
 
+  await entryChecks(base, api);
+
   // As a visitor's browser has it once the page has loaded.
   const browser = await chromium.launch({ headless: true });
   try {
@@ -264,6 +275,65 @@ async function publishedChecks(base: string): Promise<void> {
   } finally {
     await browser.close();
   }
+}
+
+// An entry's page, and a page holding a Collection list, on the CMS: a
+// collection whose template draws the entry's title, an entry published,
+// another a draft.
+type Api = <T = { page: { id: number } }>(method: string, path: string, body: unknown) => Promise<T>;
+async function entryChecks(base: string, api: Api): Promise<void> {
+  const node = (id: string, type: string, props: Record<string, unknown>, children: unknown[] = []) => ({ id, type, props, style: { base: {} }, children });
+  const sectionOf = (...widgets: unknown[]) => [node("s", "section", {}, [node("c", "column", {}, widgets)])];
+  const fields = [{ key: "summary", label: "Summary", type: "paragraph", required: false }];
+  const collection = await api<{ id: number; template: { id: number } }>("POST", "/api/collections", { name: "Served news", prefix: "served-news", fields, sort: { by: "updatedAt", direction: "desc" } });
+  const template = collection.template.id;
+  await api("PUT", `/api/pages/${template}/draft`, { revision: 0, document: { schemaVersion: 1, title: "Served news", sections: sectionOf(node("t", "field", { field: "title", level: 1 })) }, saveId: "serving-template" });
+  await api("POST", `/api/pages/${template}/publish`, {});
+  const entries = `/api/collections/${collection.id}/entries`;
+  const entry = await api<{ id: number; revision: number }>("POST", entries, { title: "An entry served", slug: "served-entry", values: { summary: "Its words." } });
+  await api("POST", `${entries}/${entry.id}/publish`, {});
+  const draft = await api<{ id: number }>("POST", entries, { title: "A draft entry", slug: "draft-entry", values: {} });
+  const listed = await api("POST", "/api/pages", { title: "Served list", slug: "served-list" });
+  const list = node("list", "collectionList", { collection: collection.id, count: 3, order: { by: "publishedAt", direction: "desc" }, layout: "list", columns: 3, linkLabel: "Read more", emptyText: "Nothing yet." });
+  await api("PUT", `/api/pages/${listed.page.id}/draft`, { revision: 0, document: { schemaVersion: 1, title: "Served list", sections: sectionOf(list) }, saveId: "serving-list" });
+  await api("POST", `/api/pages/${listed.page.id}/publish`, {});
+
+  const page = await get(base, "/served-news/served-entry");
+  const html = await page.text();
+  check(page.status === 200 && html.includes("<h1>An entry served</h1>") && html.includes("<title>An entry served</title>"), "entry: /served-news/served-entry is its published template drawn with its values, under its title", `status ${page.status}`);
+  check(!/<script\b/i.test(html) && (page.headers.get("content-security-policy") ?? "").includes("script-src 'none'"), "entry: the page has no script element, and its Content-Security-Policy runs none", page.headers.get("content-security-policy") ?? "none");
+  const etag = page.headers.get("etag");
+  const directives = (page.headers.get("cache-control") ?? "").split(",").map((one) => one.trim()).sort().join(", ");
+  check(etag !== null && directives === "max-age=0, must-revalidate, public", "entry: the page carries an ETag, kept by a visitor's browser and asked about again", `${etag} ${page.headers.get("cache-control")}`);
+  if (etag) {
+    const revalidated = await get(base, "/served-news/served-entry", { "if-none-match": etag });
+    await revalidated.arrayBuffer();
+    check(revalidated.status === 304, "entry: sent back, the ETag gets a 304", `status ${revalidated.status}`);
+  }
+  for (const path of ["/served-news/draft-entry", "/served-news/no-such-entry", "/no-such-prefix/served-entry"]) {
+    const missing = await get(base, path);
+    await missing.arrayBuffer();
+    check(missing.status === 404, `entry: ${path}, which no published entry has, is a 404`, `status ${missing.status}`);
+  }
+  const preview = await get(base, `/preview/${template}?entry=${draft.id}`);
+  const previewed = await preview.text();
+  check(preview.status === 200 && previewed.includes("<h1>A draft entry</h1>") && preview.headers.get("cache-control") === "no-store" && preview.headers.get("x-robots-tag") === "noindex", "entry: the template's preview, drawn with a draft entry, is never stored, never indexed", `${preview.status} ${preview.headers.get("cache-control")} ${preview.headers.get("x-robots-tag")}`);
+
+  // The list's page: a new ETag once another entry is published.
+  const before = await get(base, "/served-list");
+  const listedHtml = await before.text();
+  check(before.status === 200 && listedHtml.includes('href="/served-news/served-entry"'), "list: /served-list links the published entry's page", `status ${before.status}`);
+  await api("POST", `${entries}/${draft.id}/publish`, {});
+  const after = await get(base, "/served-list", { "if-none-match": before.headers.get("etag") ?? "" });
+  const afterHtml = await after.text();
+  check(after.status === 200 && after.headers.get("etag") !== before.headers.get("etag") && afterHtml.includes('href="/served-news/draft-entry"'), "list: once another entry is published, the old ETag gets the new page, not a 304", `status ${after.status}`);
+
+  // A slug changed and published: the old address answers 301.
+  await api("PUT", `${entries}/${entry.id}`, { revision: entry.revision, saveId: "serving-moved", title: "An entry served", slug: "served-entry-moved", values: { summary: "Its words." } });
+  await api("POST", `${entries}/${entry.id}/publish`, {});
+  const moved = await get(base, "/served-news/served-entry");
+  await moved.arrayBuffer();
+  check(moved.status === 301 && new URL(moved.headers.get("location") ?? "", base).pathname === "/served-news/served-entry-moved", "entry: the address it had answers 301 to the one it has now", `${moved.status} ${moved.headers.get("location")}`);
 }
 
 let cms: Server | null = null;

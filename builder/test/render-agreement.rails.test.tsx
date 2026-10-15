@@ -35,6 +35,10 @@ import { servedWithStyle } from "./style-served.ts";
 import { parse } from "parse5";
 
 const cms = inject("cmsUrl");
+// Every widget a page holds: all but the Field block, which only a
+// collection's template holds, and the CMS refuses on a page (the render
+// contract draws it, in contract/fixtures/template.json).
+const PAGE_WIDGETS = WIDGETS.filter((widget) => widget.type !== "field");
 const RUNS = wholeNumberFromEnv("AGREEMENT_RUNS", 60, 1);
 const SEED = wholeNumberFromEnv("AGREEMENT_SEED", 20261002);
 let cmsPage: Agreement;
@@ -69,7 +73,7 @@ test("every widget as Insert makes it draws on the CMS as in React", async () =>
     gallery: [{ mediaId: shore!.id, alt: "The shore" }, { url: "https://images.example.org/two.jpg", decorative: true }, { mediaId: pier!.id, decorative: true }],
     video: { provider: "youtube", videoId: "M7lc1UVf-VE" },
   };
-  const widgets = WIDGETS.map((widget, index) => newWidget(widget as WidgetDefinition<WidgetType>, `w${index}`, inputs[widget.type] as never));
+  const widgets = PAGE_WIDGETS.map((widget, index) => newWidget(widget as WidgetDefinition<WidgetType>, `w${index}`, inputs[widget.type] as never));
   const document = checked(oneColumn(widgets));
   await cmsPage.save(document);
   const { nodes } = await cmsPage.agree(document);
@@ -98,7 +102,7 @@ test(`the agreement check: ${RUNS} random valid pages draw on the CMS as in Reac
 }, 20 * 60_000);
 
 test("the published page draws as React does", async () => {
-  const document = checked(oneColumn(WIDGETS.filter((w) => w.needs === null).map((widget, index) => newWidget(widget as WidgetDefinition<WidgetType>, `p${index}`, undefined as never))));
+  const document = checked(oneColumn(PAGE_WIDGETS.filter((w) => w.needs === null).map((widget, index) => newWidget(widget as WidgetDefinition<WidgetType>, `p${index}`, undefined as never))));
   await cmsPage.save(document);
   const live = await cmsPage.publish();
   expect(live).toBe(`/${cmsPage.slug}`);

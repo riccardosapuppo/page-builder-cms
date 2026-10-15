@@ -51,7 +51,11 @@ function designPanel(): Array<{ title: string; tiles: Array<{ label: string; sym
 // design's own tiles.
 const AFTER_DESIGN: readonly WidgetType[] = ["logo", "menu"];
 const AFTER_DESIGN_GROUP = "site";
-const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats", "steps", "pricing"] };
+const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats", "steps", "pricing", "collectionList"] };
+// And before the design's groups, the one only a collection's template is
+// offered: the block that draws its entry's values.
+const TEMPLATE_GROUP = "entry";
+const TEMPLATE_WIDGETS: readonly WidgetType[] = ["field"];
 
 test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
@@ -59,7 +63,7 @@ test("one definition for every widget type of the schema, each once", () => {
 
 test("Insert's groups, order and labels are the approved design's widget tiles', and the widgets after it come last, in their group or in a group of their own", () => {
   const panel = designPanel().filter((group) => group.title !== "Layout");
-  const groups = WIDGET_GROUPS.filter((g) => g.id !== AFTER_DESIGN_GROUP);
+  const groups = WIDGET_GROUPS.filter((g) => g.id !== AFTER_DESIGN_GROUP && g.id !== TEMPLATE_GROUP);
   expect(groups.map((g) => g.label)).toEqual(panel.map((g) => g.title));
   const after = (group: WidgetGroup): readonly WidgetType[] => AFTER_DESIGN_IN_GROUP[group] ?? [];
   const designs = groups.map((g) => ({
@@ -73,6 +77,8 @@ test("Insert's groups, order and labels are the approved design's widget tiles',
   }
   expect(WIDGET_GROUPS.at(-1)?.id).toBe(AFTER_DESIGN_GROUP);
   expect(WIDGETS.filter((w) => w.group === AFTER_DESIGN_GROUP).map((w) => w.type)).toEqual(AFTER_DESIGN);
+  expect(WIDGET_GROUPS[0]?.id).toBe(TEMPLATE_GROUP);
+  expect(WIDGETS.filter((w) => w.group === TEMPLATE_GROUP).map((w) => w.type)).toEqual(TEMPLATE_WIDGETS);
   for (const widget of WIDGETS) expect(widget.label).toBe(TYPE_NAMES[widget.type]);
   // The design's Layout group: the section, which Insert offers as the
   // choice of its columns.
@@ -105,7 +111,9 @@ const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorat
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
   heading: [undefined], text: [undefined], button: [undefined], divider: [undefined], spacer: [undefined],
   map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], stats: [undefined], steps: [undefined], pricing: [undefined], form: [undefined],
-  logo: [undefined], menu: [undefined],
+  logo: [undefined], menu: [undefined], field: [undefined],
+  // None chosen, and the collection Insert found first, in its order.
+  collectionList: [undefined, null, { collection: 3, order: { by: "date", direction: "desc" } }],
   image: [library, external],
   gallery: [[library], [library, external]],
   video: [{ provider: "youtube", videoId: "M7lc1UVf-VE" }, { provider: "vimeo", videoId: "76979871" }],

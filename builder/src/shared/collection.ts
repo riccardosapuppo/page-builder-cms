@@ -13,8 +13,11 @@ import type { ImageText, RichTextDoc } from "./document.ts";
 import { FIELD_TYPES, type FieldType } from "../../../schema/tools/collection-rules.ts";
 
 // The types of field, and what an order may follow besides a field, from
-// the collection rules themselves (schema/tools/collection-rules.ts).
-export { FIELD_TYPES, SORT_BUILT_INS, SORTABLE_TYPES, VALUE_DEFS, type FieldType } from "../../../schema/tools/collection-rules.ts";
+// the collection rules themselves (schema/tools/collection-rules.ts); and
+// what a day and a number of an entry are held to there, which the page's
+// renderer reads values by too (../render/entry-words.ts).
+export { dayExists, FIELD_TYPES, NUMBER_LIMIT, SORT_BUILT_INS, SORTABLE_TYPES, VALUE_DEFS, type FieldType } from "../../../schema/tools/collection-rules.ts";
+export { hundredthsText, twoDecimals } from "../../../schema/tools/rules.ts";
 
 export const SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];

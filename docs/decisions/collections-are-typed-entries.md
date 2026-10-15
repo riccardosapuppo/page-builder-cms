@@ -3,8 +3,9 @@
 Decided on 15 October 2026, with stage 13, collections first and a shop
 built on them later: its first phase, the model on both sides, the CMS's
 tables and API, the editor's storage on both adapters. The editor's
-screen, the widgets and the entries' pages on the site come in the
-phases after it.
+screen came in the second phase; the two widgets, the template drawn
+with an entry and the entries' pages on the site in the third, the same
+day (below, "On the page and on the site").
 
 ## The question
 
@@ -75,8 +76,9 @@ schema can describe.
   collection: every publish, unpublish and delete of a live entry moves
   it, and so does every change of the definition, whose prefix the
   entries' links start with and whose fields a list of entries draws. A
-  save does not. The pages that list a collection's entries will be
-  cached by it ([published-pages-cached-by-key.md](published-pages-cached-by-key.md)).
+  save does not. The pages that list a collection's entries are cached
+  by it, with the moment it last moved ([published-pages-cached-by-key.md](published-pages-cached-by-key.md),
+  and below).
 - **Both storages keep collections**, behind the same interface and
   held by the same battery ([storage-behind-an-adapter.md](storage-behind-an-adapter.md)):
   the CMS's JSON API, and the browser's IndexedDB, whose layout's third
@@ -84,6 +86,69 @@ schema can describe.
   `collections`, says a storage keeps them, as `responses` says it keeps
   form answers. An image an entry shows, in its draft or in what is live,
   is in use: not deleted, not purged, and the refusal names the entry.
+
+## On the page and on the site
+
+- **Two widgets, written twice and held by the render contract.** A
+  Collection list draws a collection's published entries as cards,
+  each linking to its entry's page; a Field block draws one value of the
+  entry a template is drawn with, as the widget its type draws as (a
+  heading of a level or a text for the title and a text field, an image,
+  a link as a button by the button's URL policy, a day in the site's
+  words), with that widget's markup and style keys, so it looks and is
+  set as that widget is. What they draw from is the render's content,
+  given beside the page (`SiteContent` on the server; the renderer's
+  `collections` and `entry`), never written into the document: a page
+  names a collection by its id, and its entries change without the page
+  being saved. The contract's fixtures carry their content in members of
+  their own (`collections`, `entry`), which both sides read. On an
+  entry's page a list of its collection leaves the entry out: a "More
+  news" list never lists the story above it.
+- **A Field block goes only in a template.** Insert offers it there
+  alone, in a group of its own, This entry, first; Paste refuses it
+  elsewhere, and so does the storage, at the block, keyword `field`, on
+  a page's draft and a part's. On a page it would draw nothing, so it is
+  refused rather than drawn empty.
+- **Published entries only, on the canvas as on the site.** The canvas
+  reads every collection and every entry when the editor starts and when
+  the Collections screen closes, and a list draws what each entry went
+  live with; its panel says how many drafts it leaves out and leads to
+  them. A template is drawn with an entry's draft: the one its Page tab
+  picks, by default the first published in the collection's own order,
+  else the first; values made up from the fields' types when the
+  collection has none (no image, which none could make up), as the CMS's
+  preview makes them (`CollectionTemplate.sample`). A value an entry does
+  not have draws nothing, and the canvas alone says so, faintly.
+- **An entry's page is `/<prefix>/<slug>`**: the published template drawn
+  with what the entry went live with, under its title, its description
+  the entry's first paragraph field with a value, else its first text
+  field, on one line and cut at a word within a page description's 160
+  characters, else the template's own. A draft, an unknown slug or prefix
+  is the 404 page, and so is an entry whose template has nothing live:
+  no design is made up for it. An old slug answers 301, as a page's does.
+- **The preview of a template is the preview of an entry's draft**:
+  `/preview/<template id>?entry=<entry id>`, or `?entry=sample` for the
+  made-up values, the address the Preview button opens with what the
+  canvas draws, and the entry's form's Preview. The demo's are
+  `?preview=<template id>&entry=...`, and an entry as published in the
+  browser is `?entry=<entry id>`, where its cards lead.
+- **Cached by keys, as pages are.** A page's keys name every collection
+  that a Collection list of the page, of its header or of its footer
+  lists: each by its id, its
+  `publishedRevision` and the moment that last moved (`revised_at`), so
+  a database made anew, whose counters start again, never meets an old
+  key. The collections a version lists are written on the page's row as
+  it is published, so a 304 is still answered before a document is read.
+  A list's fragment holds its collection's key, so an entry's publish
+  redraws the list, its column, its section and the page. An entry's
+  page is keyed on a digest of what the entry went live with and its
+  collection's fields, not on a counter: a save of the draft, or a
+  publish of the same values, keeps it, and the template's blocks are
+  shared by every entry, a Field block's keyed on what it draws.
+- **One order, written twice**: the entries in a list's order, ties by
+  when they were made, a title by its code points as Ruby compares
+  strings, those with nothing to order by last (`EntryOrder` and
+  `shared/entry-order.ts`), the order the API's list of entries uses too.
 
 ## What it costs
 
@@ -110,6 +175,23 @@ schema can describe.
 - **Two tables rebuilt**: `pages` (a check, a column and its foreign key)
   and `media_usages` (a third owner), without the migration's
   transaction, as the parts' migration did.
+- **A page listing a collection is drawn again at every change of it**,
+  even a publish of an entry its list does not show (past its count, or
+  left out by its filter): the key is the collection's, not the list's.
+  A list in the header or footer does it to every page.
+- **A new prefix moves every entry and leaves no redirect**: the old
+  addresses are 404s, where a page's old slug answers 301.
+- **No entry's page without a published template**: an entry published
+  before its template is a 404 until the template is.
+- **The canvas reads every entry of every collection**, whole, at the
+  start and when the Collections screen closes, as the screen reads a
+  collection's.
+- **A whole number written as a float** (`1.0`) in a document reads as
+  one in JavaScript and as no integer in Ruby: a level, a count or a
+  collection's id written so would draw differently. Both storages
+  normalise it before they keep a document or an entry, so only a
+  document made by hand could hold one, and the contract's fixtures hold
+  none.
 
 ## The proof
 
@@ -147,3 +229,31 @@ save that did not look at the revision, a publish that did not move the
 counter. `npm test` holds the editor's checks to the collection corpus
 (`src/shared/collection.test.ts`) and the adapter's types to
 `cms/openapi.yaml` (`src/storage/openapi.test.ts`).
+
+For the third phase, on 16 October 2026: from `cms/`, `ruby bin/rails
+test` (530 runs, none failing) holds the entries' pages, their redirects,
+the previews and the lists (`test/integration/entry_pages_test.rb`), their
+cache (`collection_cache_test.rb`), the two partials
+(`test/views/blocks_test.rb`) and the render contract's goldens, among
+them `collections.json` and `template.json`. Planted one at a time, each
+of these faults failed them: an entry found by its draft's slug, the
+redirect taken out, a Field block let onto a page, the draft's values
+drawn on the live page, the drafts listed, a page's keys without its
+lists, a page row without `listed_collections`, a list's fragment keyed
+without its collection or without the entry it leaves out, a field's
+without what it draws, an entry keyed by its id alone,
+`Collection#advance!` without `revised_at`, a list keeping the entry its
+page is drawn with. From `builder/`, `npm test` (1333 tests in 169 files)
+holds the two widgets' rules, the canvas, their panels, Insert and Paste,
+the start on a template's address and the demo's entry view, each of ten
+behaviours planted out failing its test; `npm run test:rails` and
+`npm run e2e:browser` (97 passed, 7 skipped) the battery's new case on
+both adapters, each failing with its rule taken out; `npm run e2e` (294
+passed) `collection-pages.spec.ts`, which failed with the list's page
+keyed without its collections, with the redirect taken out, with drafts
+on the canvas and with the canvas's note hidden, and the two widgets'
+accessibility cases; `npm run e2e:demo` (14 passed) the demo's entry
+view; `npm run check:serving` (`RESULT: 99 checks passed`) an entry's
+page, its 304, its redirect and a list's page; and `npm run
+measure:server` (`RESULT: 38 checks passed`) the fragments an entry's
+page and a list's page write, given in the README's measurements.

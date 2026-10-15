@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "title": "Fields",
+  "sections": [
+    {
+      "id": "fd",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "fd-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "fd-title-1",
+              "type": "field",
+              "props": {
+                "field": "title",
+                "level": 1
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fd-title-2",
+              "type": "field",
+              "props": {
+                "field": "title",
+                "level": 2
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fd-title-3",
+              "type": "field",
+              "props": {
+                "field": "title",
+                "level": 3
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fd-title-4",
+              "type": "field",
+              "props": {
+                "field": "title",
+                "level": 4
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "fd-paragraph",
+              "type": "field",
+              "props": {
+                "field": "place"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "large",
+                  "typeface": "heading",
+                  "fontWeight": 600,
+                  "letterSpacing": 0.02,
+                  "color": "muted",
+                  "align": "right"
+                }
+              }
+            },
+            {
+              "id": "fd-image",
+              "type": "field",
+              "props": {
+                "field": "image"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "aspect": "16:9"
+                },
+                "tablet": {
+                  "aspect": "1:1"
+                },
+                "phone": {
+                  "aspect": "original",
+                  "visibility": "hidden"
+                }
+              }
+            },
+            {
+              "id": "fd-link",
+              "type": "field",
+              "props": {
+                "field": "read-more"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "accent",
+                  "color": "text",
+                  "align": "center"
+                },
+                "phone": {
+                  "background": "#1d4e6f"
+                }
+              }
+            },
+            {
+              "id": "fd-long",
+              "type": "field",
+              "props": {
+                "field": "keeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                "level": 2
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontSize": "6vw",
+                  "lineHeight": 1.1,
+                  "letterWidth": 87.5
+                },
+                "tablet": {
+                  "fontSize": "48px"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

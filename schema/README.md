@@ -90,7 +90,8 @@ schema of a collection and its entries.
   column names none: the schema refuses it there.
 - **Widgets:** heading, text (rich text), image, button, divider, spacer,
   gallery, video, map, icon box, quote, accordion, stats, steps, pricing,
-  form, logo, menu. The last two are what a header is made of: the logo
+  collection list, form, logo, menu, field. Logo and menu are what a
+  header is made of: the logo
   is the theme's mark with the site's name beside it, at most 40
   characters, or the mark alone; a menu is its name for a screen reader,
   at most 40 characters, and 1 to 12 links, each a label of at most 40
@@ -120,6 +121,25 @@ schema of a collection and its entries.
   always there and may be empty, never blank: `lineOrEmpty` and
   `paragraphOrEmpty` are `line` and `paragraph` with `^$`, the empty
   value, let in, and nothing else changed.
+- **A Collection list names its collection by id** (`collection`, a
+  positive integer; absent until one is chosen) and says how it lists
+  it: `count`, 1 to 24; `order`, `{by, direction}`, by `publishedAt`,
+  `title` or a date or number field's key, `asc` or `desc`; an optional
+  `filter`, `{field, value}`, a toggle's `true` or `false` or a choice's
+  option; `layout`, `list`, `grid` (with `columns`, 2 to 4) or `compact`;
+  the fields a card shows, `image`, `date` and `excerpt`, each a field's
+  key; `linkLabel`, the words at a card's foot (empty for none), and
+  `emptyText`, what it says with nothing to list. Its entries are the
+  CMS's data, never stored in the page: the renderers are given them.
+  Whether a key names a field of the right type is data too, so a card
+  draws a field of the wrong type as nothing, not as an error.
+- **A Field block names one value of an entry**: `field`, `title` or a
+  field's key, and for a text drawn as a heading its `level`, 1 to 4
+  (none for a paragraph). Its style keys are the union of those of the
+  widgets it may draw as (a heading, a text, an image, a button), each
+  drawn by the one it draws as. Only a collection's template holds one:
+  an application rule of the editor and the CMS (keyword `field`), not of
+  the schema, which cannot see what kind of page holds a document.
 - **Style is by token name**, but for a colour of the site's own and a
   heading's, a text's or a quote's own type (below). `style.base` applies
   on every device; `style.tablet` and `style.phone` hold only what differs
@@ -457,7 +477,7 @@ The first six were run on 8 October 2026 on the corpus as it stood then,
 - **Dispatch.** Wherever if/then branches dispatch on a property's const,
   every value of that property's enum has exactly one branch, every branch
   is for a value of the enum, and every `if` requires the property, so a
-  block without a type runs no branch. That covers the 20 block types, the
+  block without a type runs no branch. That covers the 22 block types, the
   video providers, the kinds of a form's field, the rich-text nodes and
   the marks.
 - **Marks:** every mark type of the enum has exactly one entry in the rule

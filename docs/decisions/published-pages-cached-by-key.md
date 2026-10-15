@@ -54,6 +54,16 @@ of the header or the footer every page around its blocks and the part's
 own blocks that changed; a deploy finds nothing of the release before. Nothing calls a
 cache to clear it, so no publishing path can forget to.
 
+Since 15 October 2026 a page can list a collection's entries, and a
+collection's entries have pages of their own. The same rule names them
+([collections-are-typed-entries.md](collections-are-typed-entries.md)):
+a page's keys, the ETag's included, name each collection its lists and
+its parts' list by the count of the changes a visitor could see of it
+and the moment of the last, and a list's fragment holds that key too, so
+a publish of an entry redraws the list and what holds it, and nothing
+else; an entry's page is keyed as a page is, on its template's published
+version, and on a digest of what the entry went live with.
+
 The other ways, and why not:
 - **Deleting on change**: every path that changes a page (publish,
   scheduled publish, site style, a publish of the header or the footer, a

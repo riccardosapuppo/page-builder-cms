@@ -11,18 +11,22 @@ class MediaResolver
   # One query for every image the document names, files included, made at
   # the first image the renderer asks for: on a cached page, the blocks
   # read from the cache ask nothing, and when every block is read, the
-  # query is never made.
+  # query is never made. An image the document does not name, which an
+  # entry's values do (a Collection list's card, a template's Field
+  # block), is looked up on its own the first time it is asked for.
   def self.for_document(document)
-    new do
+    new(lookup: true) do
       ids = BlockDocument.media_refs(document).map(&:last).uniq
       MediaItem.where(public_id: ids).includes(file_attachment: :blob).index_by(&:public_id)
     end
   end
 
-  # items_by_public_id, or a block that returns them when first needed.
-  def initialize(items_by_public_id = nil, &load)
+  # items_by_public_id, or a block that returns them when first needed;
+  # lookup: whether an id they do not hold is looked up in the library.
+  def initialize(items_by_public_id = nil, lookup: false, &load)
     @items = items_by_public_id
     @load = load
+    @lookup = lookup
   end
 
   # Served through the app (Active Storage's proxy route), not by a
@@ -32,7 +36,11 @@ class MediaResolver
   # leaves the image out.
   def call(media_id)
     @items ||= @load.call
-    item = @items[media_id]
+    item = if @lookup && !@items.key?(media_id)
+      @items[media_id] = MediaItem.includes(file_attachment: :blob).find_by(public_id: media_id)
+    else
+      @items[media_id]
+    end
     return nil unless item&.file&.attached?
 
     src = Rails.application.routes.url_helpers.rails_storage_proxy_path(item.file.blob, only_path: true)

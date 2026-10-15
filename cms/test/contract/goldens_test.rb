@@ -24,27 +24,36 @@ class ContractGoldensTest < ActiveSupport::TestCase
     cms/app/helpers/blocks_helper.rb
     cms/app/helpers/rich_text_helper.rb
     cms/app/models/block_style.rb
+    cms/app/models/collection_list.rb
+    cms/app/models/entry_field.rb
+    cms/app/models/entry_order.rb
+    cms/app/models/entry_words.rb
     cms/app/models/form_block.rb
     cms/app/models/free_colors.rb
     cms/app/models/free_type.rb
     cms/app/models/render_policy.rb
     cms/app/models/site_icons.rb
     cms/lib/block_document/rules.rb
+    cms/lib/collection_document/rules.rb
     cms/lib/site_theme/token_css.rb
+    cms/test/support/contract_content.rb
     cms/test/support/contract_media.rb
     schema/icons.svg
     schema/block-document.schema.json
   ].freeze
 
-  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu].freeze
+  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field].freeze
 
   def self.fixture_names
     Dir.children(FIXTURES).select { |name| name.end_with?(".json") }.sort
   end
 
+  # A fixture's document, drawn with what its lists and fields draw from:
+  # its own collections and entry (ContractContent).
   def render_fixture(name)
     document = JSON.parse(FIXTURES.join(name).read)
-    ApplicationController.render(inline: "<%= render_document(document, media: media) %>", locals: { document: document, media: ContractMedia })
+    ApplicationController.render(inline: "<%= render_document(document, media: media, content: content) %>",
+                                 locals: { document: document, media: ContractMedia, content: ContractContent.new(document) })
   end
 
   def golden_name(fixture) = fixture.delete_suffix(".json") + ".html"

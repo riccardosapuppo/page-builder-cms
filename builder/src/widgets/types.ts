@@ -3,11 +3,15 @@
 import type { ComponentType } from "react";
 import type { BlockRenderProps } from "../render/context.ts";
 import type { Shape } from "../render/drawings.tsx";
-import type { BlockOfType, ImageRef, PropsOf, VideoProvider, WidgetType } from "../shared/document.ts";
+import type { BlockOfType, ImageRef, ListOrder, PropsOf, VideoProvider, WidgetType } from "../shared/document.ts";
 
 // The Insert drawer's and the picker's groups, in the approved design's
 // order.
 export const WIDGET_GROUPS = [
+  // Before the design's groups, and only in a collection's template (../
+  // editor/insert.ts): the blocks that draw the entry the template is
+  // drawn with, which is what a template is made for.
+  { id: "entry", label: "This entry" },
   { id: "basic", label: "Basic" },
   { id: "media", label: "Media" },
   { id: "content", label: "Content" },
@@ -32,10 +36,19 @@ export interface VideoInput {
   videoId: string;
 }
 
+// What a new Collection list starts from, when Insert knows the site's
+// collections: the first of them, and the order it lists its entries in
+// when a list can follow it (../editor/insert.ts, listStart).
+export interface ListStart {
+  collection: number;
+  order: ListOrder;
+}
+
 // What Insert or a "+" must have before it can add a widget: nothing, one
 // image (from the library or another site), at least one image, or a video.
 // A new block is a valid block from the moment it exists, and an image
-// cannot be valid without its source.
+// cannot be valid without its source. A Collection list takes what Insert
+// knows of the collections, and starts with none chosen when it knows none.
 export interface InputOf {
   heading: void;
   text: void;
@@ -52,9 +65,11 @@ export interface InputOf {
   stats: void;
   steps: void;
   pricing: void;
+  collectionList: ListStart | null | undefined;
   form: void;
   logo: void;
   menu: void;
+  field: void;
 }
 export type Needs = null | "image" | "images" | "video";
 

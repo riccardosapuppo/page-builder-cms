@@ -63,6 +63,35 @@ class CollectionTest < ActiveSupport::TestCase
     assert_equal [ 4, 2 ], [ collection.reload.fields.size, collection.published_revision ]
   end
 
+  # The pages that list a collection are cached by its count and the moment
+  # of its last change (SiteContent#keys): the count alone repeats in a
+  # database made anew, or restored from a backup.
+  test "every change a visitor could see moves the count and the moment it was made; a save of a draft moves neither" do
+    at = Time.utc(2026, 10, 15, 9, 0, 0, 123_456)
+    collection = Collection.create_with_template!(news_definition, at: at)
+    assert_equal [ 0, at ], [ collection.published_revision, collection.revised_at ]
+    entry = Entry.create_checked!(collection, news_entry)
+    moments = []
+
+    entry.publish!(at: at + 1)
+    moments << collection.reload.revised_at
+    Entry.save_checked!(collection, entry.id, revision: 0, save_id: "s1", entry: news_entry(title: "A draft"), at: at + 2)
+    moments << collection.reload.revised_at
+    entry.reload.unpublish!(at: at + 3)
+    moments << collection.reload.revised_at
+    entry.reload.publish!(at: at + 4)
+    entry.reload.delete_entry!(at: at + 5)
+    moments << collection.reload.revised_at
+    collection.update_definition!({ "name" => "Newsroom" }, at: at + 6)
+    moments << collection.reload.revised_at
+
+    assert_equal [ at + 1, at + 1, at + 3, at + 5, at + 6 ], moments
+    assert_equal 5, collection.published_revision
+    assert_equal [ [ collection.id, 5, "20261015T090006.123456" ] ], SiteContent.new(ids: [ collection.id ]).keys
+    collection.destroy!
+    assert_equal [ [ collection.id, nil ] ], SiteContent.new(ids: [ collection.id ]).keys, "a collection gone is a key of its own"
+  end
+
   # Two requests that load one collection: one changes its fields, the
   # other only its name. The second merges its change into the definition
   # as it is when its transaction runs, not as it was loaded, so neither

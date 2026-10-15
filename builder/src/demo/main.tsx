@@ -8,9 +8,10 @@
 //   visit to a build of a newer edition, the new one, unless the visitor
 //   worked on the site, which is kept and offered the new one in the
 //   demo's line.
-// - The editor's address with ?preview=<id> or ?published=<id> is a page
-//   the demo draws itself (./PageView.tsx), where the full system's CMS
-//   would serve it: Preview opens the first, Publish the second.
+// - The editor's address with ?preview=<id>, ?published=<id> or
+//   ?entry=<id> is a page the demo draws itself (./PageView.tsx), where
+//   the full system's CMS would serve it: Preview opens the first, Publish
+//   the second, a Collection list's card the third.
 // - Under the editor's bottom line, and under every page it draws, the
 //   demo's line (./DemoLine.tsx).
 import { StrictMode } from "react";

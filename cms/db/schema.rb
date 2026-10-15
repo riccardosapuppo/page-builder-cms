@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_090200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_090300) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -47,6 +47,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_090200) do
     t.integer "published_revision", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "revised_at"
     t.index ["prefix"], name: "index_collections_on_prefix", unique: true
   end
 
@@ -145,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_090200) do
     t.integer "published_revision"
     t.string "kind", default: "page", null: false
     t.integer "collection_id"
+    t.json "listed_collections", default: [], null: false
     t.index ["collection_id"], name: "index_pages_on_collection_id", unique: true
     t.index ["home"], name: "index_pages_one_home", unique: true, where: "home"
     t.index ["kind"], name: "index_pages_one_part_of_each_kind", unique: true, where: "kind IN ('header', 'footer')"

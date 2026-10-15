@@ -15,6 +15,7 @@ import type { CommandError } from "../document/check.ts";
 import { makePaste } from "../document/commands.ts";
 import { blockName } from "../document/labels.ts";
 import type { Block } from "../shared/document.ts";
+import { FIELD_OUTSIDE } from "../shared/validate.ts";
 import { isPartKind, type PageKind } from "../storage/adapter.ts";
 import { runCommand, type Region } from "./act.ts";
 import type { EditorEnv } from "./context.tsx";
@@ -45,10 +46,21 @@ export function pasteText(env: Env, text: string, region: Region, kind: PageKind
     env.ui.getState().say(read.error.message);
     return read.error;
   }
+  // A Field block draws a value of a template's entry: pasted anywhere
+  // else, it is refused here, as the storage would refuse the page.
+  if (kind !== "template" && holdsField(read.block)) {
+    env.ui.getState().say(FIELD_OUTSIDE);
+    return { reason: "nesting", message: FIELD_OUTSIDE };
+  }
   const selection = env.store.getState().selection;
   // A part's blocks take no anchor; a page's and a template's do.
   const block = isPartKind(kind) ? withoutAnchor(read.block) : read.block;
   return runCommand(env, (doc) => makePaste(doc, block, selection, env.newId), region);
+}
+
+// Whether a block is a Field block, or holds one.
+function holdsField(block: Block): boolean {
+  return block.type === "field" || (block.children as readonly Block[]).some(holdsField);
 }
 
 // A header's or footer's block takes no anchor (PART_ANCHOR,

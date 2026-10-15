@@ -84,4 +84,12 @@ Rails.application.routes.draw do
   post "preview/:page_id", to: "submissions#preview", constraints: { page_id: /[0-9]+/ }, format: false
   get "sent/:form", to: "submissions#show", constraints: { form: /[A-Za-z0-9_-]{1,64}/ }, format: false
   get ":slug/sent/:form", to: "submissions#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/, form: /[A-Za-z0-9_-]{1,64}/ }, format: false
+
+  # The page of an entry of a collection: /<prefix>/<entry slug>, two parts
+  # in a slug's form, last, after every address of two parts the
+  # application answers itself (a form's confirmation, /sent/<form>, the
+  # preview, /preview/<id>), whose first part no collection may take as
+  # its prefix (Collection::RESERVED_PREFIXES, Slug::RESERVED). A page's
+  # address is one part; a collection's prefix is never one (Collection).
+  get ":prefix/:slug", to: "entry_pages#show", constraints: { prefix: /[a-z0-9]+(?:-[a-z0-9]+)*/, slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :entry_page
 end

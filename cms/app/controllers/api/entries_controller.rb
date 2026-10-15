@@ -128,20 +128,16 @@ module Api
       [ key, asked.start_with?("-") ]
     end
 
-    # The entries in order: by the value of key, the ones without one last;
-    # each run of one value by id; reversed, the ones without a value
-    # apart, for a descending order. A time is compared as the API writes
-    # it, to the millisecond, a title by its characters' code points (its
-    # UTF-8 bytes), a date field's value as the text it is, a number
-    # field's as a number. A value of another kind, one an entry kept from
-    # before its field changed, counts as none.
+    # The entries in order (EntryOrder): by the value of key, the ones
+    # without one last; each run of one value by id; reversed, the ones
+    # without a value apart, for a descending order. A time is compared as
+    # the API writes it, to the millisecond, a title by its characters'
+    # code points (its UTF-8 bytes), a date field's value as the text it
+    # is, a number field's as a number. A value of another kind, one an
+    # entry kept from before its field changed, counts as none.
     def ordered(collection, entries, key, descending)
       type = collection.fields.find { |field| field["key"] == key }&.fetch("type")
-      value = ->(entry) { sort_value(entry, key, type) }
-      valued, valueless = entries.partition { |entry| !value.call(entry).nil? }
-      sorted = valued.sort_by { |entry| [ value.call(entry), entry.id ] }
-      rest = valueless.sort_by(&:id)
-      descending ? sorted.reverse + rest.reverse : sorted + rest
+      EntryOrder.ordered(entries, descending: descending) { |entry| sort_value(entry, key, type) }
     end
 
     def sort_value(entry, key, type)

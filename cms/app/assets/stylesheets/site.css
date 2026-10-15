@@ -560,6 +560,80 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-pricing[data-phone-line] { --badge-ink: initial; }
 }
 
+/* ---------- Collection list ---------- */
+/* A collection's published entries, each a card: its image (cropped to
+   3:2 alike for every card, the radius of a page's images), then its
+   words: its title in the headings' face and colour, the link to its
+   page, which a layer over the whole card stretches so the card takes the
+   click (the focus ring goes round the card, the hover underlines the
+   title); its day, small and muted as a caption; its excerpt, the body's,
+   four lines at most; and the words at its foot in the button's face,
+   after an arrow. The block's own colour is its words', titles included.
+   - grid: cards side by side, as many to a row as its columns say and
+     fewer where a card would be under 220 px, each keeping its width when
+     the row has room to spare;
+   - list: one card under another between hairlines, its image beside its
+     words, a third of the row at most, above them on a phone;
+   - compact: a title and its day a line, between hairlines, the day at the
+     line's end, under the title where the line is too narrow.
+   A list with nothing to show says so, muted. */
+.w-collectionList { --entry-columns: 3; }
+.w-collectionList[data-columns="2"] { --entry-columns: 2; }
+.w-collectionList[data-columns="4"] { --entry-columns: 4; }
+.w-collectionList:is(.fg-text, .fg-background, .fg-primary, .fg-accent, .fg-soft, .fg-muted, [data-fg]) { --entry-title: currentColor; }
+@container site (560px <= width < 800px) {
+  .w-collectionList:is(.tablet-fg-text, .tablet-fg-background, .tablet-fg-primary, .tablet-fg-accent, .tablet-fg-soft, .tablet-fg-muted, [data-tablet-fg]) { --entry-title: currentColor; }
+}
+@container site (width < 560px) {
+  .w-collectionList:is(.phone-fg-text, .phone-fg-background, .phone-fg-primary, .phone-fg-accent, .phone-fg-soft, .phone-fg-muted, [data-phone-fg]) { --entry-title: currentColor; }
+}
+.sw-entries { display: grid; margin: 0; padding: 0; list-style: none; }
+.sw-entry { position: relative; display: flex; flex-direction: column; gap: var(--space-m); min-width: 0; }
+.sw-entry-image img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 12px; }
+.sw-entry-text { display: flex; flex-direction: column; gap: var(--space-s); min-width: 0; }
+.sw-entry-text > p { margin-inline: 0; }
+.sw-entry-title {
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-large); line-height: 1.3; font-weight: 650; font-stretch: var(--stretch-display, 100%); letter-spacing: -.01em;
+  color: var(--entry-title, var(--heading-color, var(--sw-primary))); text-wrap: balance;
+}
+.sw-entry-title a { text-decoration: none; }
+.sw-entry-title a::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.sw-entry-title a:focus-visible { outline: none; }
+.sw-entry:has(.sw-entry-title a:focus-visible) { outline: 3px solid var(--ring-color, var(--sw-text)); outline-offset: 6px; border-radius: 12px; }
+.sw-entry:hover .sw-entry-title a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .14em; }
+.sw-entry-date { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--caption-color, var(--sw-muted)); font-variant-numeric: lining-nums; }
+.sw-entry-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.sw-entry-more {
+  margin-top: var(--space-xs); color: var(--entry-title, var(--link-color, var(--sw-primary)));
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; line-height: 1.3; font-weight: 650; font-stretch: var(--stretch-strong, 100%); letter-spacing: .01em;
+}
+.sw-entry-more::after { content: "\2009\2192"; }
+.sw-entries-empty { color: var(--caption-color, var(--sw-muted)); }
+/* A grid's cards as tall as the row's tallest, the words at each card's
+   foot on one line across the row. */
+.w-collectionList[data-layout="grid"] .sw-entries {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(220px, calc(100% / var(--entry-columns) - var(--space-l)))), 1fr));
+  gap: var(--space-xxl) var(--space-l);
+}
+.w-collectionList[data-layout="grid"] .sw-entry-text { flex: 1 1 auto; }
+.w-collectionList[data-layout="grid"] .sw-entry-more { margin-top: auto; padding-top: var(--space-xs); }
+.w-collectionList[data-layout="list"] .sw-entry,
+.w-collectionList[data-layout="compact"] .sw-entry { padding-block: var(--space-l); border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.w-collectionList[data-layout="list"] .sw-entry:first-child,
+.w-collectionList[data-layout="compact"] .sw-entry:first-child { padding-top: 0; border-top: 0; }
+.w-collectionList[data-layout="list"] .sw-entry:last-child,
+.w-collectionList[data-layout="compact"] .sw-entry:last-child { padding-bottom: 0; }
+.w-collectionList[data-layout="list"] .sw-entry { flex-direction: row; align-items: flex-start; gap: var(--space-l); }
+.w-collectionList[data-layout="list"] .sw-entry-image { flex: 0 0 min(33%, 320px); }
+.w-collectionList[data-layout="list"] .sw-entry-text { flex: 1 1 0; }
+.w-collectionList[data-layout="list"] .sw-entry-title { font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); }
+.w-collectionList[data-layout="compact"] .sw-entry { padding-block: var(--space-m); }
+/* A compact row: the title, which wraps in its own room, and the day on
+   its first line at the right, on every width alike. */
+.w-collectionList[data-layout="compact"] .sw-entry-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-xs) var(--space-m); }
+.w-collectionList[data-layout="compact"] .sw-entry-title { font-size: var(--fs-body); line-height: 1.4; font-weight: 600; }
+.w-collectionList[data-layout="compact"] .sw-entry-date { white-space: nowrap; }
+
 /* ---------- Form ---------- */
 /* The mock's form. A field's own colours (paper, ink, a muted border) go
    with it onto any band; its label takes the band's text colour. The
@@ -650,6 +724,11 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-gallery img { border-radius: 8px; }
   .sw-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-m); }
   .sw-pricing > ul { grid-template-columns: minmax(0, 1fr); }
+  .w-collectionList[data-layout="list"] .sw-entry { flex-direction: column; gap: var(--space-m); }
+  .w-collectionList[data-layout="list"] .sw-entry-image { flex: none; align-self: stretch; }
+  .w-collectionList[data-layout="list"] .sw-entry-text { flex: none; }
+  .w-collectionList[data-layout="list"] .sw-entry-title { font-size: var(--fs-large); line-height: 1.3; }
+  .sw-entry-image img { border-radius: 8px; }
   .sw-embed-bar { padding: 12px 14px 14px; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
   .sw-embed-bar small { font-size: 14px; }

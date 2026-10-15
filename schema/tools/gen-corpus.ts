@@ -73,6 +73,11 @@ const field = (name: string, kind: string, label: string, required: boolean, max
 const logo = (id: string, name?: string, style: Style = plain()): J => block(id, "logo", name === undefined ? {} : { name }, [], style);
 const menu = (id: string, label: string, items: J[], style: Style = plain()): J => block(id, "menu", { label, items }, [], style);
 const menuLink = (label: string, href: string): J => ({ label, href });
+// A collection list as Insert makes one, with what `props` changes.
+const collectionList = (id: string, props: J = {}, style: Style = plain()): J => block(id, "collectionList", {
+  collection: 1, count: 3, order: { by: "publishedAt", direction: "desc" }, layout: "grid", columns: 3, linkLabel: "Read more", emptyText: "Nothing here yet.", ...props,
+}, [], style);
+const entryField = (id: string, props: J, style: Style = plain()): J => block(id, "field", props, [], style);
 
 // --- rich text ------------------------------------------------------------------
 const t = (s: string, marks?: J[]): J => (marks ? { type: "text", text: s, marks } : { type: "text", text: s });
@@ -172,6 +177,15 @@ function landing(): J {
         ], { base: { color: "accent" }, phone: { color: "primary" } }),
       ]),
     ], { anchor: "prices" }),
+    section("news", [
+      column("news-1", [
+        heading("news-heading", 2, "From the club"),
+        collectionList("news-list", {
+          order: { by: "date", direction: "desc" }, filter: { field: "level", value: "Beginner" }, image: "image", date: "date", excerpt: "summary",
+        }, { base: { color: "primary" }, phone: { visibility: "hidden" } }),
+        entryField("news-title", { field: "title", level: 3 }, { base: { textSize: "heading-3", color: "accent" }, phone: { align: "center" } }),
+      ]),
+    ], { anchor: "news" }),
     section("join", [
       column("join-1", [
         divider("join-divider"),
@@ -241,6 +255,8 @@ const ACC = P("questions-list");
 const STATS = P("gallery-stats");
 const STEPS = P("questions-steps");
 const PRICING = P("prices-plans");
+const ENTRIES = P("news-list");
+const FIELD_BLOCK = P("news-title");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
@@ -579,6 +595,31 @@ valid("pricing-plans", "a pricing block of one plan, the fewest, and one of four
       plan("Call", "€5", "a call", "", ["One"], "Call", "tel:+44-20-7946-0958"),
       plan("Top", "Free", "", "", [], "Back to the top", "#top", true),
     ], { base: { color: "#1d4e6f" }, tablet: { color: "accent" }, phone: { visibility: "hidden" } }),
+  ])]),
+]));
+valid("collection-lists", "collection lists of every layout, one entry and twenty-four, the most; no collection chosen yet; every order, by when an entry went live, by title and by a field's key, both ways; a filter by a toggle, on and off, and by a choice's option of 60 characters, in code points too; a card with no field of its own, and one with an image, a day and an excerpt; no words at a card's foot, and 40; an empty list's words of 200; two columns and four; a colour of the site's own, a slot's on tablets, hidden on phones", doc("Collection lists", [
+  section("cl", [column("cl-1", [
+    collectionList("cl-list", { layout: "list", count: 1, order: { by: "title", direction: "asc" }, linkLabel: "" }),
+    collectionList("cl-grid", {
+      count: 24, columns: 4, order: { by: "publishedAt", direction: "asc" }, filter: { field: "featured", value: true }, image: "image", date: "date", excerpt: "summary",
+      linkLabel: "R".repeat(40), emptyText: "E".repeat(200),
+    }, { base: { color: "#1d4e6f" }, tablet: { color: "accent" }, phone: { visibility: "hidden" } }),
+    collectionList("cl-compact", { layout: "compact", columns: 2, order: { by: "water-temperature", direction: "desc" }, filter: { field: "members-only", value: false }, date: "day" }),
+    collectionList("cl-choice", { order: { by: "date", direction: "asc" }, filter: { field: "level", value: cp(0x1f30a).repeat(60) } }),
+    (() => {
+      const unchosen = collectionList("cl-unchosen");
+      delete unchosen.props.collection;
+      return unchosen;
+    })(),
+  ])]),
+]));
+valid("fields", "the entry's title and a field by its key, a text drawn as a heading of every level and as a paragraph; every setting a field drawn as a heading, a text, an image or a button takes, free type included, on every device; a key of 64 characters", doc("Fields", [
+  section("fd", [column("fd-1", [
+    ...[1, 2, 3, 4].map((level) => entryField(`fd-title-${level}`, { field: "title", level })),
+    entryField("fd-paragraph", { field: "place" }, { base: { textSize: "large", typeface: "heading", fontWeight: 600, letterSpacing: 0.02, color: "muted", align: "right" } }),
+    entryField("fd-image", { field: "image" }, { base: { aspect: "16:9" }, tablet: { aspect: "1:1" }, phone: { aspect: "original", visibility: "hidden" } }),
+    entryField("fd-link", { field: "read-more" }, { base: { background: "accent", color: "text", align: "center" }, phone: { background: "#1d4e6f" } }),
+    entryField("fd-long", { field: `k${"e".repeat(63)}`, level: 2 }, { base: { fontSize: "6vw", lineHeight: 1.1, letterWidth: 87.5 }, tablet: { fontSize: "48px" } }),
   ])]),
 ]));
 valid("text-inner-nbsp", "a no-break space inside text with visible letters is fine; only all-blank text is refused", doc("Nbsp", [
@@ -1073,6 +1114,49 @@ invalid("pricing-badge-too-long", "a badge has at most 30 characters", `${PLAN(1
 invalid("pricing-style-align", "the plans stand where their column puts them", `${PRICING}/style/base/align`, "additionalProperties", (d) => { at(d, PRICING).style.base.align = "center"; });
 invalid("pricing-style-background", "a pricing block takes the band's background: each plan draws its own card", `${PRICING}/style/phone/background`, "additionalProperties", (d) => { at(d, PRICING).style.phone.background = "soft"; });
 invalid("pricing-with-children", "a pricing block holds no blocks", `${PRICING}/children`, "maxItems", (d) => { at(d, PRICING).children.push(button("in-pricing", "In the pricing", "/")); });
+
+// =============================== INVALID: collection list =======================
+const listProps = (d: J): J => at(d, ENTRIES).props;
+invalid("list-collection-zero", "a collection's id is a whole number from 1", `${ENTRIES}/props/collection`, "minimum", (d) => { listProps(d).collection = 0; });
+invalid("list-collection-prefix", "a list names its collection by id, never by its prefix, which may change", `${ENTRIES}/props/collection`, "type", (d) => { listProps(d).collection = "news"; });
+invalid("list-count-zero", "a list shows at least one entry", `${ENTRIES}/props/count`, "minimum", (d) => { listProps(d).count = 0; });
+invalid("list-count-25", "a list shows at most twenty-four entries", `${ENTRIES}/props/count`, "maximum", (d) => { listProps(d).count = 25; });
+invalid("list-count-fraction", "a count is a whole number", `${ENTRIES}/props/count`, "type", (d) => { listProps(d).count = 2.5; });
+invalid("list-count-missing", "a list says how many entries it shows", `${ENTRIES}/props`, "required", (d) => { delete listProps(d).count; });
+invalid("list-order-missing", "a list says its order", `${ENTRIES}/props`, "required", (d) => { delete listProps(d).order; });
+invalid("list-order-updated-at", "a list orders by when an entry went live, by title or by a field: never by its last save, which a visitor does not see", `${ENTRIES}/props/order/by`, "pattern", (d) => { listProps(d).order.by = "updatedAt"; });
+invalid("list-order-by-label", "a field is named by its key, never its label", `${ENTRIES}/props/order/by`, "pattern", (d) => { listProps(d).order.by = "Water temperature"; });
+invalid("list-order-direction-up", "an order goes ascending or descending", `${ENTRIES}/props/order/direction`, "enum", (d) => { listProps(d).order.direction = "up"; });
+invalid("list-order-extra-member", "an order is what it follows and which way, nothing else", `${ENTRIES}/props/order/then`, "additionalProperties", (d) => { listProps(d).order.then = "title"; });
+invalid("list-filter-value-number", "a filter's value is a toggle's true or false, or a choice's option, never a number", `${ENTRIES}/props/filter/value`, "type", (d) => { listProps(d).filter.value = 3; });
+invalid("list-filter-value-blank", "a choice's option has a visible character", `${ENTRIES}/props/filter/value`, "pattern", (d) => { listProps(d).filter.value = NBSP; });
+invalid("list-filter-value-too-long", "a choice's option has at most 60 characters", `${ENTRIES}/props/filter/value`, "maxLength", (d) => { listProps(d).filter.value = "o".repeat(61); });
+invalid("list-filter-field-missing", "a filter names its field", `${ENTRIES}/props/filter`, "required", (d) => { delete listProps(d).filter.field; });
+invalid("list-filter-field-upper-case", "a field's key is lowercase letters, digits and hyphens", `${ENTRIES}/props/filter/field`, "pattern", (d) => { listProps(d).filter.field = "Level"; });
+invalid("list-layout-unknown", "a list is laid out as a list, a grid or a compact list", `${ENTRIES}/props/layout`, "enum", (d) => { listProps(d).layout = "carousel"; });
+invalid("list-columns-one", "a grid has two columns at least: one is a list", `${ENTRIES}/props/columns`, "minimum", (d) => { listProps(d).columns = 1; });
+invalid("list-columns-five", "a grid has four columns at most", `${ENTRIES}/props/columns`, "maximum", (d) => { listProps(d).columns = 5; });
+invalid("list-image-key-path", "a card's image is a field's key, never an address", `${ENTRIES}/props/image`, "pattern", (d) => { listProps(d).image = "/media/swim.png"; });
+invalid("list-excerpt-key-newline", "^...$ must not let a trailing newline through in a key", `${ENTRIES}/props/excerpt`, "pattern", (d) => { listProps(d).excerpt = `summary${NEWLINE}`; });
+invalid("list-link-label-blank", "the words at a card's foot are empty or have a visible character, never blank", `${ENTRIES}/props/linkLabel`, "pattern", (d) => { listProps(d).linkLabel = " "; });
+invalid("list-link-label-too-long", "the words at a card's foot have at most 40 characters", `${ENTRIES}/props/linkLabel`, "maxLength", (d) => { listProps(d).linkLabel = "R".repeat(41); });
+invalid("list-empty-text-empty", "an empty list says something: its words are never empty", `${ENTRIES}/props/emptyText`, "pattern", (d) => { listProps(d).emptyText = ""; });
+invalid("list-empty-text-newline", "an empty list's words are one line", `${ENTRIES}/props/emptyText`, "not", (d) => { listProps(d).emptyText = `Nothing${NEWLINE}yet`; });
+invalid("list-entries-stored", "the entries a list shows are the CMS's, read as the page is drawn: never kept in the page", `${ENTRIES}/props/entries`, "additionalProperties", (d) => { listProps(d).entries = [{ title: "First swim", slug: "first-swim" }]; });
+invalid("list-style-background", "a list takes the band's background: its cards draw their own", `${ENTRIES}/style/base/background`, "additionalProperties", (d) => { at(d, ENTRIES).style.base.background = "soft"; });
+invalid("list-style-text-size", "a list's cards keep the theme's sizes", `${ENTRIES}/style/phone/textSize`, "additionalProperties", (d) => { at(d, ENTRIES).style.phone.textSize = "small"; });
+invalid("list-with-children", "a collection list holds no blocks", `${ENTRIES}/children`, "maxItems", (d) => { at(d, ENTRIES).children.push(heading("in-list", 2, "In the list")); });
+
+// =============================== INVALID: field =================================
+invalid("field-key-missing", "a field block names the field it draws", `${FIELD_BLOCK}/props`, "required", (d) => { delete at(d, FIELD_BLOCK).props.field; });
+invalid("field-key-label", "a field is named by its key, never its label", `${FIELD_BLOCK}/props/field`, "pattern", (d) => { at(d, FIELD_BLOCK).props.field = "Summary"; });
+invalid("field-key-number", "a field's key is text", `${FIELD_BLOCK}/props/field`, "type", (d) => { at(d, FIELD_BLOCK).props.field = 1; });
+invalid("field-level-five", "a heading's level goes from 1 to 4, as a heading block's", `${FIELD_BLOCK}/props/level`, "maximum", (d) => { at(d, FIELD_BLOCK).props.level = 5; });
+invalid("field-level-zero", "nor below 1", `${FIELD_BLOCK}/props/level`, "minimum", (d) => { at(d, FIELD_BLOCK).props.level = 0; });
+invalid("field-value-stored", "the value is the entry's, read as the entry's page is drawn: never kept in the template", `${FIELD_BLOCK}/props/value`, "additionalProperties", (d) => { at(d, FIELD_BLOCK).props.value = "First swim"; });
+invalid("field-style-space", "a field takes the settings of the widgets it draws as, and no column's", `${FIELD_BLOCK}/style/base/spaceInside`, "additionalProperties", (d) => { at(d, FIELD_BLOCK).style.base.spaceInside = "l"; });
+invalid("field-style-unknown-aspect", "an image it draws is cropped to one of the image widget's shapes", `${FIELD_BLOCK}/style/phone/aspect`, "enum", (d) => { at(d, FIELD_BLOCK).style.phone.aspect = "2:1"; });
+invalid("field-with-children", "a field block holds no blocks", `${FIELD_BLOCK}/children`, "maxItems", (d) => { at(d, FIELD_BLOCK).children.push(heading("in-field", 2, "In the field")); });
 
 // =============================== INVALID: form ==================================
 const FIELD = (k: number): string => `${FORM}/props/items/${k}`;

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "title": "Template",
+  "description": "A collection's template drawn with an entry: its title as a heading of every kind and as a paragraph, and a field of every type, each drawn as its type draws it; values holding markup and refused addresses; a value the entry has not, values of other types than their fields (a day that does not exist, a number with three decimals), a key no field has, a key that is no text, a level out of range; a field with every setting of every widget it may draw as; and a Collection list of the entry's own collection in the template, beside it, which leaves the entry out.",
+  "sections": [
+    {
+      "id": "tf-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "tf-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "tf-title-h1", "type": "field", "props": { "field": "title", "level": 1 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-title-plain", "type": "field", "props": { "field": "title" }, "style": { "base": { "textSize": "small" } }, "children": [] },
+            { "id": "tf-text-heading", "type": "field", "props": { "field": "place", "level": 4 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-paragraph", "type": "field", "props": { "field": "summary" }, "style": { "base": { "textSize": "large" } }, "children": [] },
+            { "id": "tf-rich", "type": "field", "props": { "field": "body", "level": 2 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-date", "type": "field", "props": { "field": "date" }, "style": { "base": { "color": "muted" } }, "children": [] },
+            { "id": "tf-date-bad", "type": "field", "props": { "field": "day-bad" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-number", "type": "field", "props": { "field": "water" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-number-bad", "type": "field", "props": { "field": "depth" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-toggle-on", "type": "field", "props": { "field": "featured" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-toggle-off", "type": "field", "props": { "field": "members-only" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-choice", "type": "field", "props": { "field": "level", "level": 3 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-image", "type": "field", "props": { "field": "image" }, "style": { "base": { "aspect": "16:9" }, "phone": { "aspect": "1:1" } }, "children": [] },
+            { "id": "tf-image-decorative", "type": "field", "props": { "field": "wave" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-image-missing", "type": "field", "props": { "field": "cover" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-link", "type": "field", "props": { "field": "more" }, "style": { "base": { "background": "accent", "color": "text", "align": "center" }, "phone": { "background": "#1d4e6f" } }, "children": [] },
+            { "id": "tf-link-javascript", "type": "field", "props": { "field": "bad-link" }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-missing", "type": "field", "props": { "field": "gone" }, "style": { "base": { "textSize": "display" } }, "children": [] },
+            { "id": "tf-wrong-type", "type": "field", "props": { "field": "subtitle", "level": 2 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-markup", "type": "field", "props": { "field": "markup" }, "style": { "base": {} }, "children": [] },
+            {
+              "id": "tf-styled", "type": "field", "props": { "field": "title", "level": 2, "className": "entry-title", "anchor": "title" },
+              "style": {
+                "base": { "textSize": "display", "typeface": "body", "fontSize": "6vw", "fontWeight": 800, "letterSpacing": -0.02, "lineHeight": 0.95, "letterWidth": 80, "color": "primary", "align": "center", "aspect": "1:1", "background": "soft" },
+                "tablet": { "fontSize": "48px", "color": "#1d4e6f" },
+                "phone": { "textSize": "heading-1", "visibility": "hidden" }
+              },
+              "children": []
+            },
+            { "id": "tf-level-out-of-range", "type": "field", "props": { "field": "title", "level": 7 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-not-a-key", "type": "field", "props": { "field": 3, "level": 1 }, "style": { "base": {} }, "children": [] },
+            { "id": "tf-list-in-template", "type": "collectionList", "props": { "collection": 1, "count": 2, "order": { "by": "publishedAt", "direction": "desc" }, "layout": "compact", "columns": 3, "date": "date", "linkLabel": "Read more", "emptyText": "Nothing else yet." }, "style": { "base": {} }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 1,
+      "prefix": "news",
+      "fields": [{ "key": "date", "label": "Date", "type": "date", "required": false }],
+      "entries": [
+        { "id": 1, "title": "First swim of the season", "slug": "first-swim", "publishedAt": "2026-05-03T07:00:00.000Z", "values": { "date": "2026-05-02" } },
+        { "id": 2, "title": "Winter series opens", "slug": "winter-series-opens", "publishedAt": "2026-10-20T08:30:00.000Z", "values": { "date": "2026-11-01" } },
+        { "id": 3, "title": "Tide tables", "slug": "tide-tables", "publishedAt": "2026-07-15T12:00:00.000Z", "values": {} }
+      ]
+    }
+  ],
+  "entry": {
+    "id": 2,
+    "collectionId": 1,
+    "fields": [
+      { "key": "place", "label": "Place", "type": "text", "required": false },
+      { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+      { "key": "body", "label": "Body", "type": "richText", "required": false },
+      { "key": "date", "label": "Date", "type": "date", "required": false },
+      { "key": "day-bad", "label": "Another day", "type": "date", "required": false },
+      { "key": "water", "label": "Water temperature", "type": "number", "required": false },
+      { "key": "depth", "label": "Depth", "type": "number", "required": false },
+      { "key": "featured", "label": "Featured <swim>", "type": "toggle", "required": false },
+      { "key": "members-only", "label": "Members only", "type": "toggle", "required": false },
+      { "key": "level", "label": "Level", "type": "choice", "required": false, "options": ["Beginner", "Strong <b>"] },
+      { "key": "image", "label": "Image", "type": "image", "required": false },
+      { "key": "wave", "label": "Wave", "type": "image", "required": false },
+      { "key": "cover", "label": "Cover", "type": "image", "required": false },
+      { "key": "more", "label": "Read more", "type": "link", "required": false },
+      { "key": "bad-link", "label": "Bad link", "type": "link", "required": false },
+      { "key": "subtitle", "label": "Subtitle", "type": "text", "required": false },
+      { "key": "markup", "label": "Markup", "type": "text", "required": false }
+    ],
+    "title": "First swim <of> the \"season\" & more",
+    "slug": "first-swim",
+    "values": {
+      "place": "The slipway, north end",
+      "summary": "Cold water,\nwarm hearts.\n\n\nThen <tea> & cake.",
+      "body": { "type": "doc", "content": [
+        { "type": "paragraph", "content": [ { "type": "text", "text": "We met at " }, { "type": "text", "text": "dawn", "marks": [ { "type": "bold" } ] }, { "type": "text", "text": "; see the " }, { "type": "text", "text": "tide tables", "marks": [ { "type": "link", "attrs": { "href": "/news/tide-tables" } } ] }, { "type": "text", "text": " or " }, { "type": "text", "text": "this", "marks": [ { "type": "link", "attrs": { "href": "javascript:alert(1)" } } ] }, { "type": "text", "text": "." } ] },
+        { "type": "bulletList", "content": [ { "type": "listItem", "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "A bright cap" } ] } ] } ] }
+      ] },
+      "date": "2026-10-15",
+      "day-bad": "2026-02-30",
+      "water": 1250.5,
+      "depth": 0.125,
+      "featured": true,
+      "members-only": false,
+      "level": "Strong <b>",
+      "image": { "mediaId": "first-swim", "alt": "Swimmers at dawn, \"cold\" & bright" },
+      "wave": { "mediaId": "wave", "decorative": true },
+      "cover": { "mediaId": "missing-cover", "alt": "Gone from the library" },
+      "more": { "label": "Book <now> & \"go\"", "href": "/join?plan=season&from=news" },
+      "bad-link": { "label": "Click", "href": "javascript:alert(1)" },
+      "subtitle": 42,
+      "markup": "<script>alert(\"x\")</script> & 'more'",
+      "gone-field-value": "Kept from a field since deleted"
+    }
+  }
+}

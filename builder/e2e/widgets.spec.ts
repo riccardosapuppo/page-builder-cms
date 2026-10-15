@@ -5,12 +5,17 @@
 // required, and the words the tree reads in a paragraph), a hidden one
 // exposes nothing, and axe finds nothing serious or critical in the widget;
 // on the editor's canvas, each case that is not hidden exposes the same,
-// and the same blocks pass axe too.
-import type { Locator, Page } from "@playwright/test";
+// and the same blocks pass axe too. A widget whose cases draw from a
+// collection (a Collection list's) has it made first, its entries
+// published; one that only a template holds (a Field block) has its cases
+// in that collection's template, published, and is read on its first
+// entry's page, and on the canvas with that entry.
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
-import type { A11yCase } from "../src/widgets/a11y.ts";
+import { A11Y_COLLECTION, type A11yCase, type WidgetA11y } from "../src/widgets/a11y.ts";
 import { axProperties, axTexts } from "./helpers/ax.ts";
 import { axe } from "./helpers/axe.ts";
+import { makeCollection, makeEntry, publishPage, saveDocument } from "./helpers/collections.ts";
 import { cms, column, expect, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -26,21 +31,45 @@ async function exposes(page: Page, root: Locator, c: A11yCase, where: string): P
     const found = exposed.text === undefined ? named : named.filter({ hasText: exposed.text });
     const what = `${where}, ${c.name}: ${exposed.role}${exposed.name ? ` "${exposed.name}"` : ""}${exposed.text ? ` reading "${exposed.text}"` : ""}`;
     await expect(found, what).toHaveCount(exposed.count ?? 1);
-    if (exposed.text !== undefined) for (const one of await found.all()) expect((await axTexts(page, one)).join(""), what).toBe(exposed.text);
+    // A text's paragraph ends with an empty character (site.css, .w-text
+    // p::after), which the tree keeps and no screen reader says.
+    if (exposed.text !== undefined) for (const one of await found.all()) expect((await axTexts(page, one)).join("").replaceAll("\u200b", ""), what).toBe(exposed.text);
     if (exposed.required === undefined) continue;
     for (const one of await found.all()) expect((await axProperties(page, one)).get("required") ?? false, `${what} is required`).toBe(exposed.required);
   }
 }
 
+// Where the cases are published and opened: a page of their own, or the
+// template of their collection, read on its first entry's page.
+async function publishCases(request: APIRequestContext, widgetTest: WidgetA11y, blocks: (collection: number | null) => unknown[]): Promise<{ address: string; opened: number }> {
+  const title = `The ${widgetTest.type}`;
+  if (!widgetTest.collection) {
+    const made = await makePage(request, title, [section("s", "Cases", [column("c", blocks(null))])]);
+    await publishPage(request, made.id);
+    return { address: `${cms()}/${made.slug}`, opened: made.id };
+  }
+  const collection = await makeCollection(request, widgetTest.collection.name, widgetTest.collection.fields);
+  for (const entry of widgetTest.collection.entries) await makeEntry(request, collection, entry);
+  const sections = [section("s", "Cases", [column("c", blocks(collection.id))])];
+  if (widgetTest.inTemplate) {
+    await saveDocument(request, collection.templateId, title, sections);
+    return { address: `${cms()}/${collection.prefix}/${widgetTest.collection.entries[0]!.slug}`, opened: collection.templateId };
+  }
+  const made = await makePage(request, title, sections);
+  await publishPage(request, made.id);
+  return { address: `${cms()}/${made.slug}`, opened: made.id };
+}
+
 for (const widgetTest of WIDGET_A11Y) {
   test(`the ${widgetTest.type}'s accessibility test: ${widgetTest.cases.map((c) => c.name).join("; ")}`, { tag: "@a11y" }, async ({ page, request }) => {
     const id = (index: number) => `${widgetTest.type}-${index}`;
-    const blocks = widgetTest.cases.map((c, index) => widget(id(index), widgetTest.type, c.props));
-    const made = await makePage(request, `The ${widgetTest.type}`, [section("s", "Cases", [column("c", blocks)])]);
-    expect((await request.post(`${cms()}/api/pages/${made.id}/publish`, { data: {} })).status()).toBe(200);
+    // The collection the CMS made stands where the cases name theirs.
+    const blocks = (collection: number | null) => widgetTest.cases.map((c, index) =>
+      widget(id(index), widgetTest.type, collection !== null && c.props.collection === A11Y_COLLECTION ? { ...c.props, collection } : c.props));
+    const made = await publishCases(request, widgetTest, blocks);
 
     // The published page, as a visitor's browser has it.
-    await page.goto(`${cms()}/${made.slug}`);
+    await page.goto(made.address);
     for (const [index, c] of widgetTest.cases.entries()) {
       const root = page.locator(`[data-block-id="${id(index)}"]`);
       await expect(root, c.name).toHaveCount(1);
@@ -58,7 +87,7 @@ for (const widgetTest of WIDGET_A11Y) {
     expect(published.serious, "the published page").toEqual([]);
 
     // The editor's canvas, where a hidden block stays drawn to be edited.
-    await open(page, made.id);
+    await open(page, made.opened);
     for (const [index, c] of widgetTest.cases.entries()) {
       if (!c.hidden) await exposes(page, page.locator(`.canvas [data-block-id="${id(index)}"]`), c, "the canvas");
     }

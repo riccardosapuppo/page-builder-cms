@@ -11,8 +11,10 @@ import type { BlockFieldError, FieldError, PartKind } from "../../storage/adapte
 import { MAX_ITEMS } from "../../widgets/menu/panel.tsx";
 import { widgetDefinition } from "../../widgets/registry.ts";
 import { WidgetIcon } from "../../widgets/icon.tsx";
-import { describedBy, ErrorList, TextField, Toggle, useFieldClaims } from "../controls.tsx";
+import { describedBy, ErrorList, SelectField, TextField, Toggle, useFieldClaims } from "../controls.tsx";
 import { runCommand } from "../act.ts";
+import { inOrder, previewedEntry } from "../collections/content.ts";
+import { useSiteCollection } from "../collections/use-content.ts";
 import { useEditor, useEnv, useRun, useUi, type EditorEnv } from "../context.tsx";
 import { deviceOf } from "../device-style.ts";
 import { explain } from "../errors.ts";
@@ -96,8 +98,9 @@ export function TemplatePanel({ after }: { after?: ReactNode }) {
         <div><strong>Template of {of}</strong><span>{published ? "For every entry, published" : "For every entry, not published yet"}</span></div>
       </div>
       <div className="sb-body sb-body-pad part-panel">
-        <p>{`${live ? "Every" : "In the full system, every"} entry of ${of} is drawn with this template at its own address${owner ? `, /${owner.prefix}/<slug>` : ""}, between the site’s header and footer.`} Build it as you build a page: sections, columns and blocks.</p>
+        <p>{`${live ? "Every" : "In the full system, every"} entry of ${of} is drawn with this template at its own address${owner ? `, /${owner.prefix}/<slug>` : ""}, between the site’s header and footer.`} Build it as you build a page: sections, columns and blocks; the entry’s own values are Field blocks, in Insert under This entry.</p>
         <p>{live ? "Publish puts it to use for every entry at once." : "Publish keeps it as published in this browser."}</p>
+        {owner && <PreviewEntry collectionId={owner.id} name={owner.name} />}
         {owner && (
           <button className="btn btn-secondary btn-block" type="button" data-template-collection="" onClick={() => ui.getState().setCollections({ collectionId: owner.id, tab: "settings" })}>
             <Icon name="collection" />{owner.name} in Collections
@@ -118,6 +121,37 @@ export function TemplatePanel({ after }: { after?: ReactNode }) {
         {after}
       </div>
     </>
+  );
+}
+
+// The entry the template is drawn with on the canvas and in its preview:
+// any of its collection's, in the collection's own order, a draft too, or
+// values made up from the fields' types; the first published one until
+// another is picked, and the made-up values while the collection has
+// none. What visitors see is each entry's own page.
+function PreviewEntry({ collectionId, name }: { collectionId: number; name: string }) {
+  const { ui } = useEnv();
+  const shown = useSiteCollection(collectionId);
+  const picked = useUi((u) => u.previewEntry);
+  if (!shown) return null;
+  const choice = picked?.collectionId === collectionId ? picked.choice : null;
+  const entry = previewedEntry(shown.collection, shown.entries, choice);
+  const choices = [
+    ...inOrder(shown.collection, shown.entries).map((one) => ({ value: String(one.id), label: one.published ? one.title : `${one.title} (draft)` })),
+    { value: "sample", label: "Sample values" },
+  ];
+  return (
+    <SelectField
+      label="Preview with"
+      choices={choices}
+      value={entry ? String(entry.id) : "sample"}
+      field="/preview-entry"
+      hint={shown.entries.length === 0 ? `${name} has no entry yet: the canvas draws values made up from each field’s type.` : "Its draft, on the canvas and in Preview. Each entry’s own page shows what that entry published."}
+      onChange={(value) => {
+        ui.getState().setPreviewEntry({ collectionId, choice: value === "sample" ? "sample" : Number(value) });
+        return null;
+      }}
+    />
   );
 }
 

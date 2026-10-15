@@ -182,6 +182,20 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   }),
   logo: fc.option(line, { nil: undefined }).map((name) => compact({ name })),
   menu: fc.record({ label: line, items: fc.array(fc.record({ label: line, href }), { minLength: 1, maxLength: 4 }) }),
+  collectionList: fc.record({
+    collection: fc.option(fc.integer({ min: 1, max: 40 }), { nil: undefined }),
+    count: fc.integer({ min: 1, max: 24 }),
+    order: fc.record({ by: fc.constantFrom("publishedAt", "title", "date", "price"), direction: fc.constantFrom("asc", "desc") }),
+    filter: fc.option(fc.oneof(fc.record({ field: fc.constant("featured"), value: fc.boolean() }), fc.record({ field: fc.constant("level"), value: line })), { nil: undefined }),
+    layout: fc.constantFrom("list", "grid", "compact"),
+    columns: fc.integer({ min: 2, max: 4 }),
+    image: fc.option(fc.constant("image"), { nil: undefined }),
+    date: fc.option(fc.constant("date"), { nil: undefined }),
+    excerpt: fc.option(fc.constant("summary"), { nil: undefined }),
+    linkLabel: fc.oneof(fc.constant(""), line),
+    emptyText: line,
+  }).map(compact),
+  field: fc.record({ field: fc.constantFrom("title", "summary", "image", "date"), level: fc.option(fc.integer({ min: 1, max: 4 }), { nil: undefined }) }).map(compact),
 };
 
 // The tokens each style key takes, or for free type values it takes.

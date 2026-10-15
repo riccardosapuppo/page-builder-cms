@@ -18,18 +18,20 @@ export const SCHEMA_VERSION = 1;
 export const BLOCK_TYPES = [
   "section", "column",
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
   "form",
   "logo", "menu",
+  "field",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
 // What a column may hold: every block type but section and column.
 export const WIDGET_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
   "form",
   "logo", "menu",
+  "field",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -179,8 +181,13 @@ export const STYLE_KEYS_BY_TYPE = {
   stats: ["color", "align", "visibility"],
   steps: ["color", "visibility"],
   pricing: ["color", "visibility"],
+  collectionList: ["color", "visibility"],
   logo: NAV_STYLE,
   menu: NAV_STYLE,
+  // What every widget a field draws as takes: a heading's and a text's,
+  // an image's crop, a button's colours. The panel offers those of the one
+  // it draws as (../widgets/field/), and the renderers read only those.
+  field: ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "aspect", "background", "visibility"],
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
 
 export type StyleKeyOf<T extends BlockType> = (typeof STYLE_KEYS_BY_TYPE)[T][number];
@@ -381,6 +388,48 @@ export interface PricingProps extends BlockAttributes {
   // The plans, in the order the page shows them.
   plans: PricingPlan[];
 }
+// The order a collection list puts its entries in: by when they went live,
+// by title, or by the key of a date or number field of its collection.
+export const LIST_DIRECTIONS = ["asc", "desc"] as const;
+export interface ListOrder {
+  by: string;
+  direction: (typeof LIST_DIRECTIONS)[number];
+}
+// Only the entries whose choice field holds an option, or whose toggle
+// field is on or off.
+export interface ListFilter {
+  field: string;
+  value: string | boolean;
+}
+export const LIST_LAYOUTS = ["list", "grid", "compact"] as const;
+export type ListLayout = (typeof LIST_LAYOUTS)[number];
+export const LIST_COLUMNS = [2, 3, 4] as const;
+// The published entries of a collection, each a card linking to its page:
+// the collection by its id (absent until one is chosen), how many at most,
+// their order, a filter, the layout and a grid's columns, the fields a card
+// shows by their keys, the words at a card's foot ("" for none) and what
+// the list says when it has nothing to show. The entries are the storage's,
+// never the page's.
+export interface CollectionListProps extends BlockAttributes {
+  collection?: number;
+  count: number;
+  order: ListOrder;
+  filter?: ListFilter;
+  layout: ListLayout;
+  columns: (typeof LIST_COLUMNS)[number];
+  image?: string;
+  date?: string;
+  excerpt?: string;
+  linkLabel: string;
+  emptyText: string;
+}
+// A value of the entry a template is drawn with: the field by its key, or
+// "title" for the entry's own; a text drawn as a heading of `level`, or
+// without one as a paragraph.
+export interface FieldProps extends BlockAttributes {
+  field: string;
+  level?: HeadingLevel;
+}
 // One field of a form. name is the key its answers are kept under, made by
 // the editor and never shown; unique in its form (an application rule).
 // maxLength is there for the two kinds of text and only for them.
@@ -447,14 +496,16 @@ export type AccordionBlock = BlockOf<"accordion", AccordionProps, NoChildren>;
 export type StatsBlock = BlockOf<"stats", StatsProps, NoChildren>;
 export type StepsBlock = BlockOf<"steps", StepsProps, NoChildren>;
 export type PricingBlock = BlockOf<"pricing", PricingProps, NoChildren>;
+export type CollectionListBlock = BlockOf<"collectionList", CollectionListProps, NoChildren>;
 export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
 export type LogoBlock = BlockOf<"logo", LogoProps, NoChildren>;
 export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
+export type FieldBlock = BlockOf<"field", FieldProps, NoChildren>;
 
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
   | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
-  | StatsBlock | StepsBlock | PricingBlock | FormBlock | LogoBlock | MenuBlock;
+  | StatsBlock | StepsBlock | PricingBlock | CollectionListBlock | FormBlock | LogoBlock | MenuBlock | FieldBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -501,10 +552,18 @@ export const PROP_KEYS = {
   stats: { items: "required", ...OWN },
   steps: { items: "required", ...OWN },
   pricing: { plans: "required", ...OWN },
+  collectionList: {
+    collection: "optional", count: "required", order: "required", filter: "optional", layout: "required", columns: "required",
+    image: "optional", date: "optional", excerpt: "optional", linkLabel: "required", emptyText: "required", ...OWN,
+  },
   form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
   logo: { name: "optional", ...OWN },
   menu: { label: "required", items: "required", ...OWN },
+  field: { field: "required", level: "optional", ...OWN },
 } as const satisfies { [T in Exclude<BlockType, "image">]: KeyTable<PropsOf<T>> };
+
+export const LIST_ORDER_KEYS = { by: "required", direction: "required" } as const satisfies KeyTable<ListOrder>;
+export const LIST_FILTER_KEYS = { field: "required", value: "required" } as const satisfies KeyTable<ListFilter>;
 
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
 export const STATS_ITEM_KEYS = { value: "required", label: "required" } as const satisfies KeyTable<StatsItem>;

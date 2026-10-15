@@ -77,6 +77,12 @@ export function excerpt(block: Block): string {
       return block.props.name ?? "Mark only";
     case "menu":
       return `${block.props.items.length} ${block.props.items.length === 1 ? "link" : "links"}`;
+    case "collectionList":
+      // How many entries it lists at most: "Up to 3 entries".
+      return `Up to ${block.props.count} ${block.props.count === 1 ? "entry" : "entries"}`;
+    case "field":
+      // The value it draws, by its field's key: "Title", "summary".
+      return block.props.field === "title" ? "Title" : block.props.field;
     case "spacer":
       return tokenName(block.props.size);
     case "divider":

@@ -18,8 +18,10 @@
 # collection: every publish, unpublish and delete of a live entry (a live
 # entry's new address is a publish), and every change of the definition,
 # whose prefix the entries' links start with and whose fields a list of
-# entries draws. The pages that list a collection's entries are cached by
-# a key that holds it.
+# entries draws; revised_at is when the last of them was made. The pages
+# that list a collection's entries are cached by a key that holds both
+# (SiteContent#keys): the count alone could name two lists alike in a
+# database made anew, or restored from a backup.
 class Collection < ApplicationRecord
   # Addresses the application answers below a first part a prefix could
   # take: /sent/<form> is the home page's form confirmed (config/routes.rb).
@@ -40,7 +42,7 @@ class Collection < ApplicationRecord
   def self.create_with_template!(definition, at: Time.current)
     checked = CollectionDocument.check_collection!(definition)
     transaction do
-      collection = create!(name: checked["name"], prefix: checked["prefix"], fields: checked["fields"], default_sort: checked["sort"], created_at: at, updated_at: at)
+      collection = create!(name: checked["name"], prefix: checked["prefix"], fields: checked["fields"], default_sort: checked["sort"], created_at: at, updated_at: at, revised_at: at)
       template = Page.create!(kind: "template", collection: collection, created_at: at, updated_at: at)
       template.create_draft!(document: CollectionTemplate.starter(collection.name), slug: nil)
       collection
@@ -68,15 +70,17 @@ class Collection < ApplicationRecord
       if changed?
         self.published_revision += 1
         self.updated_at = at
+        self.revised_at = at
         save!
       end
     end
     self
   end
 
-  # One more change a visitor could see, in the transaction that makes it.
-  def advance!
-    self.class.where(id: id).update_all("published_revision = published_revision + 1")
+  # One more change a visitor could see, made at, in the transaction that
+  # makes it.
+  def advance!(at: Time.current)
+    self.class.where(id: id).update_all([ "published_revision = published_revision + 1, revised_at = ?", at ])
   end
 
   # The fields an order may follow, besides the title and the two times.

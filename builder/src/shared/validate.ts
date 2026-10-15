@@ -119,12 +119,31 @@ export function partAnchors(document: PageDocument): string[] {
   return found;
 }
 
+// What a page and a part are refused for that a template is not: a Field
+// block, which draws a value of the entry a collection's template is drawn
+// with, and so goes only in a template (../widgets/field/). The server's
+// words (PageRules::FIELD).
+export const FIELD_OUTSIDE = "A Field block draws a value of a collection's entry: it goes only in the collection's template.";
+
+// The pointer of every Field block of a document, in page order, as the
+// server's PageRules.fields finds them.
+export function fieldBlocks(document: PageDocument): string[] {
+  return document.sections.flatMap((section, s) => section.children.flatMap((column, c) =>
+    column.children.flatMap((block, w) => (block.type === "field" ? [`/sections/${s}/children/${c}/children/${w}`] : []))));
+}
+
+// Every fault of a page's own rule (PageRules.check): its Field blocks.
+export function pageFaults(document: PageDocument): Array<{ pointer: string; keyword: "field"; message: string }> {
+  return fieldBlocks(document).map((pointer) => ({ pointer, keyword: "field" as const, message: FIELD_OUTSIDE }));
+}
+
 // Every fault of a part's own rules, in the server's order (SiteParts.check):
-// its forms, then its anchors.
-export function partFaults(document: PageDocument): Array<{ pointer: string; keyword: "part"; message: string }> {
+// its forms, then its anchors, then its Field blocks, as a page's.
+export function partFaults(document: PageDocument): Array<{ pointer: string; keyword: "part" | "field"; message: string }> {
   return [
     ...partForms(document).map((pointer) => ({ pointer, keyword: "part" as const, message: PART_FORM })),
     ...partAnchors(document).map((pointer) => ({ pointer, keyword: "part" as const, message: PART_ANCHOR })),
+    ...pageFaults(document),
   ];
 }
 

@@ -65,6 +65,8 @@ test("every type of field, written and saved in one call with its values; then p
   const fake = new FakeCollections();
   fake.add({ ...NEWS, fields: EVERY, sort: { by: "updatedAt", direction: "desc" } });
   const { form, dialog } = await newEntry(fake);
+  // Nothing saved, nothing to preview.
+  expect(within(form).queryByRole("link", { name: "Preview" })).toBeNull();
   await type(field(form, /^Title/), "First swim");
   await type(field(form, /^Summary/), "Cold water,\nwarm hearts.");
   await type(field(form, /^Place/), "North slipway");
@@ -92,6 +94,10 @@ test("every type of field, written and saved in one call with its values; then p
   expect(form.querySelector(".co-said")?.textContent).toMatch(/^Saved, Today, /);
   expect(within(form).getByRole("heading", { name: "First swim" })).toBeTruthy();
   expect(form.querySelector(".co-form-state")?.textContent).toMatch(/^Draft·Updated Today, /);
+  // Saved, its draft has a preview: in the template, on the CMS.
+  const preview = within(form).getByRole("link", { name: "Preview" });
+  expect(preview.getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/preview\/101\?entry=1$/);
+  expect(preview.getAttribute("target")).toBe("_blank");
 
   await press(within(form).getByRole("button", { name: "Publish" }));
   expect(fake.calls.filter((c) => c.startsWith("publishEntry"))).toEqual(["publishEntry 1 1 r0"]);

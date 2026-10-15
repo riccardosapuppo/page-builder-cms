@@ -20,14 +20,14 @@ import { safetyProblems } from "../../test/render-safety.ts";
 import { BLOCK_TYPES } from "../shared/document.ts";
 import { WIDGETS } from "../widgets/registry.ts";
 import { PageSections } from "./blocks.tsx";
-import { contractMedia } from "./media.tsx";
+import { contractContext } from "./contract.ts";
 
 const contract = readContractFiles(repoRoot);
 const fixtureText = (name: string) => readFileSync(join(repoRoot, "contract", "fixtures", name), "utf8");
 const golden = (name: string) => readFileSync(join(repoRoot, "contract", "rendered", goldenName(name)), "utf8");
-const ctx = { media: contractMedia };
-
-export function renderFixture(document: unknown): string {
+// A fixture drawn as the server draws its golden: its document, with the
+// media stub and the collections and entry it holds (./contract.ts).
+export function renderFixture(document: unknown, ctx = contractContext(document)): string {
   return renderToStaticMarkup(<PageSections document={document} ctx={ctx} />);
 }
 
@@ -91,12 +91,13 @@ test("the fixtures hold every block type, and every widget's traps, of that widg
 test("the 500-block page: React matches the server's render, and its time", { timeout: 120_000 }, () => {
   const document: unknown = JSON.parse(fixtureText("large-500.json"));
   const rounds = 30;
-  for (let i = 0; i < 5; i += 1) renderFixture(document);
+  const ctx = contractContext(document);
+  for (let i = 0; i < 5; i += 1) renderFixture(document, ctx);
   const times: number[] = [];
   let html = "";
   for (let i = 0; i < rounds; i += 1) {
     const started = performance.now();
-    html = renderFixture(document);
+    html = renderFixture(document, ctx);
     times.push(performance.now() - started);
   }
   times.sort((a, b) => a - b);

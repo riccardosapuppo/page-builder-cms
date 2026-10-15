@@ -25,7 +25,7 @@
   },
   "invalid/block-anchor-duplicate-section-second.json": {
     "rule": "the second in document order is refused: a section's anchor after a heading's",
-    "pointer": "/sections/7/props/anchor",
+    "pointer": "/sections/8/props/anchor",
     "keyword": "uniqueAnchor",
     "layer": "rules"
   },
@@ -37,7 +37,7 @@
   },
   "invalid/block-children-null.json": {
     "rule": "children is an array",
-    "pointer": "/sections/7/children/0/children/0/children",
+    "pointer": "/sections/8/children/0/children/0/children",
     "keyword": "type",
     "layer": "schema"
   },
@@ -61,7 +61,7 @@
   },
   "invalid/block-id-duplicate.json": {
     "rule": "block ids are unique across the page (a rule: the schema cannot say it)",
-    "pointer": "/sections/7/children/0/children/1/id",
+    "pointer": "/sections/8/children/0/children/1/id",
     "keyword": "uniqueId",
     "layer": "rules"
   },
@@ -115,7 +115,7 @@
   },
   "invalid/block-missing-props.json": {
     "rule": "props is required on every block",
-    "pointer": "/sections/7/children/0/children/0",
+    "pointer": "/sections/8/children/0/children/0",
     "keyword": "required",
     "layer": "schema"
   },
@@ -127,25 +127,25 @@
   },
   "invalid/block-props-null.json": {
     "rule": "props is an object",
-    "pointer": "/sections/7/children/0/children/0/props",
+    "pointer": "/sections/8/children/0/children/0/props",
     "keyword": "type",
     "layer": "schema"
   },
   "invalid/block-type-missing.json": {
     "rule": "type is required",
-    "pointer": "/sections/7/children/0/children/0",
+    "pointer": "/sections/8/children/0/children/0",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/block-type-number.json": {
     "rule": "type is a string from the list",
-    "pointer": "/sections/7/children/0/children/0/type",
+    "pointer": "/sections/8/children/0/children/0/type",
     "keyword": "enum",
     "layer": "schema"
   },
   "invalid/block-type-unknown.json": {
     "rule": "type is one of the known block types",
-    "pointer": "/sections/7/children/0/children/0/type",
+    "pointer": "/sections/8/children/0/children/0/type",
     "keyword": "enum",
     "layer": "schema"
   },
@@ -301,13 +301,13 @@
   },
   "invalid/divider-children.json": {
     "rule": "a divider holds no blocks",
-    "pointer": "/sections/7/children/0/children/0/children",
+    "pointer": "/sections/8/children/0/children/0/children",
     "keyword": "maxItems",
     "layer": "schema"
   },
   "invalid/divider-unknown-prop.json": {
     "rule": "a divider has no props",
-    "pointer": "/sections/7/children/0/children/0/props/variant",
+    "pointer": "/sections/8/children/0/children/0/props/variant",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
@@ -407,207 +407,261 @@
     "keyword": "duplicateKey",
     "layer": "rules"
   },
+  "invalid/field-key-label.json": {
+    "rule": "a field is named by its key, never its label",
+    "pointer": "/sections/7/children/0/children/2/props/field",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-key-missing.json": {
+    "rule": "a field block names the field it draws",
+    "pointer": "/sections/7/children/0/children/2/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/field-key-number.json": {
+    "rule": "a field's key is text",
+    "pointer": "/sections/7/children/0/children/2/props/field",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/field-level-five.json": {
+    "rule": "a heading's level goes from 1 to 4, as a heading block's",
+    "pointer": "/sections/7/children/0/children/2/props/level",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/field-level-zero.json": {
+    "rule": "nor below 1",
+    "pointer": "/sections/7/children/0/children/2/props/level",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/field-style-space.json": {
+    "rule": "a field takes the settings of the widgets it draws as, and no column's",
+    "pointer": "/sections/7/children/0/children/2/style/base/spaceInside",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/field-style-unknown-aspect.json": {
+    "rule": "an image it draws is cropped to one of the image widget's shapes",
+    "pointer": "/sections/7/children/0/children/2/style/phone/aspect",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/field-value-stored.json": {
+    "rule": "the value is the entry's, read as the entry's page is drawn: never kept in the template",
+    "pointer": "/sections/7/children/0/children/2/props/value",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/field-with-children.json": {
+    "rule": "a field block holds no blocks",
+    "pointer": "/sections/7/children/0/children/2/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/form-21-fields.json": {
     "rule": "a form has at most twenty fields",
-    "pointer": "/sections/7/children/0/children/3/props/items",
+    "pointer": "/sections/8/children/0/children/3/props/items",
     "keyword": "maxItems",
     "layer": "schema"
   },
   "invalid/form-action-prop.json": {
     "rule": "a form's address is the page's own: none is stored",
-    "pointer": "/sections/7/children/0/children/3/props/action",
+    "pointer": "/sections/8/children/0/children/3/props/action",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/form-checkbox-with-limit.json": {
     "rule": "a checkbox has no text to limit",
-    "pointer": "/sections/7/children/0/children/3/props/items/3",
+    "pointer": "/sections/8/children/0/children/3/props/items/3",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/form-confirmation-bell.json": {
     "rule": "no control characters in the message",
-    "pointer": "/sections/7/children/0/children/3/props/confirmation",
+    "pointer": "/sections/8/children/0/children/3/props/confirmation",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/form-confirmation-missing.json": {
     "rule": "a form says what happens once it is sent",
-    "pointer": "/sections/7/children/0/children/3/props",
+    "pointer": "/sections/8/children/0/children/3/props",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/form-confirmation-too-long.json": {
     "rule": "the message has at most 500 characters",
-    "pointer": "/sections/7/children/0/children/3/props/confirmation",
+    "pointer": "/sections/8/children/0/children/3/props/confirmation",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/form-email-with-limit.json": {
     "rule": "an email address takes the standard's length: no limit of its own",
-    "pointer": "/sections/7/children/0/children/3/props/items/1",
+    "pointer": "/sections/8/children/0/children/3/props/items/1",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/form-field-extra-key.json": {
     "rule": "fields are closed: no placeholder or default value",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/placeholder",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/placeholder",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/form-kind-file.json": {
     "rule": "no file uploads",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/kind",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/kind",
     "keyword": "enum",
     "layer": "schema"
   },
   "invalid/form-kind-unknown.json": {
     "rule": "the kinds are text, email, textarea and checkbox: no hidden fields",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/kind",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/kind",
     "keyword": "enum",
     "layer": "schema"
   },
   "invalid/form-label-blank.json": {
     "rule": "a label has a visible character",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/label",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/label",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-label-newline.json": {
     "rule": "a label is one line",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/label",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/label",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/form-label-too-long.json": {
     "rule": "a label has at most 200 characters",
-    "pointer": "/sections/7/children/0/children/3/props/items/3/label",
+    "pointer": "/sections/8/children/0/children/3/props/items/3/label",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/form-limit-fraction.json": {
     "rule": "a limit is a whole number of characters",
-    "pointer": "/sections/7/children/0/children/3/props/items/2/maxLength",
+    "pointer": "/sections/8/children/0/children/3/props/items/2/maxLength",
     "keyword": "type",
     "layer": "schema"
   },
   "invalid/form-limit-zero.json": {
     "rule": "a limit is at least one character",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/maxLength",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/maxLength",
     "keyword": "minimum",
     "layer": "schema"
   },
   "invalid/form-name-bracket.json": {
     "rule": "a field name has no brackets, which would nest the answer in the request",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-name-duplicate-first-changed.json": {
     "rule": "the second field with a name, in order, is the one refused, whichever of the two was changed",
-    "pointer": "/sections/7/children/0/children/3/props/items/2/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/2/name",
     "keyword": "uniqueFieldName",
     "layer": "rules"
   },
   "invalid/form-name-duplicate.json": {
     "rule": "field names are unique in a form (a rule: uniqueItems would compare whole fields): two fields with one name would write over each other's answers",
-    "pointer": "/sections/7/children/0/children/3/props/items/1/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/1/name",
     "keyword": "uniqueFieldName",
     "layer": "rules"
   },
   "invalid/form-name-missing.json": {
     "rule": "every field has a name",
-    "pointer": "/sections/7/children/0/children/3/props/items/0",
+    "pointer": "/sections/8/children/0/children/3/props/items/0",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/form-name-space.json": {
     "rule": "a field name has no spaces",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-name-too-long.json": {
     "rule": "a field name has at most 40 characters",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-name-trailing-newline.json": {
     "rule": "^...$ must not let a trailing newline through in a field name",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-name-uppercase.json": {
     "rule": "a field name is lowercase letters, digits and hyphens, starting with a letter",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/name",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-no-fields.json": {
     "rule": "a form has at least one field",
-    "pointer": "/sections/7/children/0/children/3/props/items",
+    "pointer": "/sections/8/children/0/children/3/props/items",
     "keyword": "minItems",
     "layer": "schema"
   },
   "invalid/form-required-missing.json": {
     "rule": "whether a field must be filled in is always said",
-    "pointer": "/sections/7/children/0/children/3/props/items/1",
+    "pointer": "/sections/8/children/0/children/3/props/items/1",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/form-required-string.json": {
     "rule": "required is true or false",
-    "pointer": "/sections/7/children/0/children/3/props/items/1/required",
+    "pointer": "/sections/8/children/0/children/3/props/items/1/required",
     "keyword": "type",
     "layer": "schema"
   },
   "invalid/form-style-color.json": {
     "rule": "a form can only be hidden per device: it takes the theme's colours",
-    "pointer": "/sections/7/children/0/children/3/style/base/color",
+    "pointer": "/sections/8/children/0/children/3/style/base/color",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/form-submit-label-blank.json": {
     "rule": "the button's text has a visible character",
-    "pointer": "/sections/7/children/0/children/3/props/submitLabel",
+    "pointer": "/sections/8/children/0/children/3/props/submitLabel",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/form-submit-label-too-long.json": {
     "rule": "the button's text has at most 60 characters",
-    "pointer": "/sections/7/children/0/children/3/props/submitLabel",
+    "pointer": "/sections/8/children/0/children/3/props/submitLabel",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/form-text-limit-over.json": {
     "rule": "a line of text takes at most 300 characters",
-    "pointer": "/sections/7/children/0/children/3/props/items/0/maxLength",
+    "pointer": "/sections/8/children/0/children/3/props/items/0/maxLength",
     "keyword": "maximum",
     "layer": "schema"
   },
   "invalid/form-text-without-limit.json": {
     "rule": "a line of text says how long an answer may be",
-    "pointer": "/sections/7/children/0/children/3/props/items/0",
+    "pointer": "/sections/8/children/0/children/3/props/items/0",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/form-textarea-limit-over.json": {
     "rule": "a longer text takes at most 5000 characters",
-    "pointer": "/sections/7/children/0/children/3/props/items/2/maxLength",
+    "pointer": "/sections/8/children/0/children/3/props/items/2/maxLength",
     "keyword": "maximum",
     "layer": "schema"
   },
   "invalid/form-textarea-without-limit.json": {
     "rule": "a longer text says how long an answer may be",
-    "pointer": "/sections/7/children/0/children/3/props/items/2",
+    "pointer": "/sections/8/children/0/children/3/props/items/2",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/form-with-children.json": {
     "rule": "a form holds no blocks",
-    "pointer": "/sections/7/children/0/children/3/children",
+    "pointer": "/sections/8/children/0/children/3/children",
     "keyword": "maxItems",
     "layer": "schema"
   },
@@ -1217,51 +1271,225 @@
     "keyword": "parse",
     "layer": "rules"
   },
+  "invalid/list-collection-prefix.json": {
+    "rule": "a list names its collection by id, never by its prefix, which may change",
+    "pointer": "/sections/7/children/0/children/1/props/collection",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/list-collection-zero.json": {
+    "rule": "a collection's id is a whole number from 1",
+    "pointer": "/sections/7/children/0/children/1/props/collection",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/list-columns-five.json": {
+    "rule": "a grid has four columns at most",
+    "pointer": "/sections/7/children/0/children/1/props/columns",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/list-columns-one.json": {
+    "rule": "a grid has two columns at least: one is a list",
+    "pointer": "/sections/7/children/0/children/1/props/columns",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/list-count-25.json": {
+    "rule": "a list shows at most twenty-four entries",
+    "pointer": "/sections/7/children/0/children/1/props/count",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/list-count-fraction.json": {
+    "rule": "a count is a whole number",
+    "pointer": "/sections/7/children/0/children/1/props/count",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/list-count-missing.json": {
+    "rule": "a list says how many entries it shows",
+    "pointer": "/sections/7/children/0/children/1/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/list-count-zero.json": {
+    "rule": "a list shows at least one entry",
+    "pointer": "/sections/7/children/0/children/1/props/count",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/list-empty-text-empty.json": {
+    "rule": "an empty list says something: its words are never empty",
+    "pointer": "/sections/7/children/0/children/1/props/emptyText",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-empty-text-newline.json": {
+    "rule": "an empty list's words are one line",
+    "pointer": "/sections/7/children/0/children/1/props/emptyText",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/list-entries-stored.json": {
+    "rule": "the entries a list shows are the CMS's, read as the page is drawn: never kept in the page",
+    "pointer": "/sections/7/children/0/children/1/props/entries",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/list-excerpt-key-newline.json": {
+    "rule": "^...$ must not let a trailing newline through in a key",
+    "pointer": "/sections/7/children/0/children/1/props/excerpt",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-filter-field-missing.json": {
+    "rule": "a filter names its field",
+    "pointer": "/sections/7/children/0/children/1/props/filter",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/list-filter-field-upper-case.json": {
+    "rule": "a field's key is lowercase letters, digits and hyphens",
+    "pointer": "/sections/7/children/0/children/1/props/filter/field",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-filter-value-blank.json": {
+    "rule": "a choice's option has a visible character",
+    "pointer": "/sections/7/children/0/children/1/props/filter/value",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-filter-value-number.json": {
+    "rule": "a filter's value is a toggle's true or false, or a choice's option, never a number",
+    "pointer": "/sections/7/children/0/children/1/props/filter/value",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/list-filter-value-too-long.json": {
+    "rule": "a choice's option has at most 60 characters",
+    "pointer": "/sections/7/children/0/children/1/props/filter/value",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/list-image-key-path.json": {
+    "rule": "a card's image is a field's key, never an address",
+    "pointer": "/sections/7/children/0/children/1/props/image",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-layout-unknown.json": {
+    "rule": "a list is laid out as a list, a grid or a compact list",
+    "pointer": "/sections/7/children/0/children/1/props/layout",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/list-link-label-blank.json": {
+    "rule": "the words at a card's foot are empty or have a visible character, never blank",
+    "pointer": "/sections/7/children/0/children/1/props/linkLabel",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-link-label-too-long.json": {
+    "rule": "the words at a card's foot have at most 40 characters",
+    "pointer": "/sections/7/children/0/children/1/props/linkLabel",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/list-order-by-label.json": {
+    "rule": "a field is named by its key, never its label",
+    "pointer": "/sections/7/children/0/children/1/props/order/by",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-order-direction-up.json": {
+    "rule": "an order goes ascending or descending",
+    "pointer": "/sections/7/children/0/children/1/props/order/direction",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/list-order-extra-member.json": {
+    "rule": "an order is what it follows and which way, nothing else",
+    "pointer": "/sections/7/children/0/children/1/props/order/then",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/list-order-missing.json": {
+    "rule": "a list says its order",
+    "pointer": "/sections/7/children/0/children/1/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/list-order-updated-at.json": {
+    "rule": "a list orders by when an entry went live, by title or by a field: never by its last save, which a visitor does not see",
+    "pointer": "/sections/7/children/0/children/1/props/order/by",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-style-background.json": {
+    "rule": "a list takes the band's background: its cards draw their own",
+    "pointer": "/sections/7/children/0/children/1/style/base/background",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/list-style-text-size.json": {
+    "rule": "a list's cards keep the theme's sizes",
+    "pointer": "/sections/7/children/0/children/1/style/phone/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/list-with-children.json": {
+    "rule": "a collection list holds no blocks",
+    "pointer": "/sections/7/children/0/children/1/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/logo-href.json": {
     "rule": "a logo with a name goes to the home page: no address is stored",
-    "pointer": "/sections/8/children/0/children/0/props/href",
+    "pointer": "/sections/9/children/0/children/0/props/href",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/logo-image.json": {
     "rule": "the mark is the theme's drawing, never an image of the library",
-    "pointer": "/sections/8/children/0/children/0/props/mediaId",
+    "pointer": "/sections/9/children/0/children/0/props/mediaId",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/logo-name-blank.json": {
     "rule": "a name has a visible character: a logo without one leaves the name out",
-    "pointer": "/sections/8/children/0/children/0/props/name",
+    "pointer": "/sections/9/children/0/children/0/props/name",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/logo-name-newline.json": {
     "rule": "a name is one line",
-    "pointer": "/sections/8/children/0/children/0/props/name",
+    "pointer": "/sections/9/children/0/children/0/props/name",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/logo-name-number.json": {
     "rule": "a name is text",
-    "pointer": "/sections/8/children/0/children/0/props/name",
+    "pointer": "/sections/9/children/0/children/0/props/name",
     "keyword": "type",
     "layer": "schema"
   },
   "invalid/logo-name-too-long.json": {
     "rule": "a logo's name has at most 40 characters",
-    "pointer": "/sections/8/children/0/children/0/props/name",
+    "pointer": "/sections/9/children/0/children/0/props/name",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/logo-style-text-size.json": {
     "rule": "a logo's size is the theme's",
-    "pointer": "/sections/8/children/0/children/0/style/base/textSize",
+    "pointer": "/sections/9/children/0/children/0/style/base/textSize",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/logo-with-children.json": {
     "rule": "a logo holds no blocks",
-    "pointer": "/sections/8/children/0/children/0/children",
+    "pointer": "/sections/9/children/0/children/0/children",
     "keyword": "maxItems",
     "layer": "schema"
   },
@@ -1321,103 +1549,103 @@
   },
   "invalid/menu-13-links.json": {
     "rule": "a menu has at most twelve links",
-    "pointer": "/sections/8/children/1/children/0/props/items",
+    "pointer": "/sections/9/children/1/children/0/props/items",
     "keyword": "maxItems",
     "layer": "schema"
   },
   "invalid/menu-label-blank.json": {
     "rule": "a menu's name has a visible character",
-    "pointer": "/sections/8/children/1/children/0/props/label",
+    "pointer": "/sections/9/children/1/children/0/props/label",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/menu-label-missing.json": {
     "rule": "a menu has a name for a screen reader",
-    "pointer": "/sections/8/children/1/children/0/props",
+    "pointer": "/sections/9/children/1/children/0/props",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/menu-label-too-long.json": {
     "rule": "a menu's name has at most 40 characters",
-    "pointer": "/sections/8/children/1/children/0/props/label",
+    "pointer": "/sections/9/children/1/children/0/props/label",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/menu-link-extra-member.json": {
     "rule": "a link has a label and an address, nothing else: the page decides how it opens",
-    "pointer": "/sections/8/children/1/children/0/props/items/0/target",
+    "pointer": "/sections/9/children/1/children/0/props/items/0/target",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/menu-link-href-javascript.json": {
     "rule": "a menu's link follows a page's link rules",
-    "pointer": "/sections/8/children/1/children/0/props/items/2/href",
+    "pointer": "/sections/9/children/1/children/0/props/items/2/href",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/menu-link-href-newline-then-https.json": {
     "rule": "the line-anchor trap",
-    "pointer": "/sections/8/children/1/children/0/props/items/2/href",
+    "pointer": "/sections/9/children/1/children/0/props/items/2/href",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/menu-link-href-protocol-relative.json": {
     "rule": "no //host address",
-    "pointer": "/sections/8/children/1/children/0/props/items/2/href",
+    "pointer": "/sections/9/children/1/children/0/props/items/2/href",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/menu-link-label-ideographic-space.json": {
     "rule": "an ideographic space is blank",
-    "pointer": "/sections/8/children/1/children/0/props/items/1/label",
+    "pointer": "/sections/9/children/1/children/0/props/items/1/label",
     "keyword": "pattern",
     "layer": "schema"
   },
   "invalid/menu-link-label-tab.json": {
     "rule": "a link's label is one line",
-    "pointer": "/sections/8/children/1/children/0/props/items/1/label",
+    "pointer": "/sections/9/children/1/children/0/props/items/1/label",
     "keyword": "not",
     "layer": "schema"
   },
   "invalid/menu-link-label-too-long.json": {
     "rule": "a link's label has at most 40 characters",
-    "pointer": "/sections/8/children/1/children/0/props/items/1/label",
+    "pointer": "/sections/9/children/1/children/0/props/items/1/label",
     "keyword": "maxLength",
     "layer": "schema"
   },
   "invalid/menu-link-no-address.json": {
     "rule": "a link has an address",
-    "pointer": "/sections/8/children/1/children/0/props/items/0",
+    "pointer": "/sections/9/children/1/children/0/props/items/0",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/menu-link-null.json": {
     "rule": "a link of a menu is a link",
-    "pointer": "/sections/8/children/1/children/0/props/items/0",
+    "pointer": "/sections/9/children/1/children/0/props/items/0",
     "keyword": "type",
     "layer": "schema"
   },
   "invalid/menu-no-links.json": {
     "rule": "a menu has at least one link",
-    "pointer": "/sections/8/children/1/children/0/props/items",
+    "pointer": "/sections/9/children/1/children/0/props/items",
     "keyword": "minItems",
     "layer": "schema"
   },
   "invalid/menu-style-background.json": {
     "rule": "a menu takes the band's background",
-    "pointer": "/sections/8/children/1/children/0/style/base/background",
+    "pointer": "/sections/9/children/1/children/0/style/base/background",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/menu-style-text-size.json": {
     "rule": "a menu's size is the theme's: its fold is worked out at that size",
-    "pointer": "/sections/8/children/1/children/0/style/tablet/textSize",
+    "pointer": "/sections/9/children/1/children/0/style/tablet/textSize",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
   "invalid/menu-with-children.json": {
     "rule": "a menu holds no blocks",
-    "pointer": "/sections/8/children/1/children/0/children",
+    "pointer": "/sections/9/children/1/children/0/children",
     "keyword": "maxItems",
     "layer": "schema"
   },
@@ -1681,25 +1909,25 @@
   },
   "invalid/section-anchor-duplicate-first-changed.json": {
     "rule": "the second section with an anchor, in page order, is the one refused, whichever of the two was changed",
-    "pointer": "/sections/7/props/anchor",
+    "pointer": "/sections/8/props/anchor",
     "keyword": "uniqueAnchor",
     "layer": "rules"
   },
   "invalid/section-anchor-duplicate.json": {
     "rule": "section anchors are unique on the page (a rule: the schema cannot say it): a link to #top would never reach a second section with it",
-    "pointer": "/sections/7/props/anchor",
+    "pointer": "/sections/8/props/anchor",
     "keyword": "uniqueAnchor",
     "layer": "rules"
   },
   "invalid/section-stack-boolean.json": {
     "rule": "where to stack is a name, not true or false",
-    "pointer": "/sections/8/props/stack",
+    "pointer": "/sections/9/props/stack",
     "keyword": "enum",
     "layer": "schema"
   },
   "invalid/section-stack-in-style.json": {
     "rule": "where columns stack is the section's, one setting for every device, not a style per device",
-    "pointer": "/sections/8/style/phone/stack",
+    "pointer": "/sections/9/style/phone/stack",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
@@ -1717,19 +1945,19 @@
   },
   "invalid/spacer-size-missing.json": {
     "rule": "a spacer has a size",
-    "pointer": "/sections/7/children/0/children/1/props",
+    "pointer": "/sections/8/children/0/children/1/props",
     "keyword": "required",
     "layer": "schema"
   },
   "invalid/spacer-size-pixels.json": {
     "rule": "the size is a spacing step, not pixels",
-    "pointer": "/sections/7/children/0/children/1/props/size",
+    "pointer": "/sections/8/children/0/children/1/props/size",
     "keyword": "enum",
     "layer": "schema"
   },
   "invalid/spacer-size-unknown.json": {
     "rule": "the size is a spacing step",
-    "pointer": "/sections/7/children/0/children/1/props/size",
+    "pointer": "/sections/8/children/0/children/1/props/size",
     "keyword": "enum",
     "layer": "schema"
   },
@@ -1927,7 +2155,7 @@
   },
   "invalid/style-key-not-for-type.json": {
     "rule": "a divider has no text size",
-    "pointer": "/sections/7/children/0/children/0/style/base/textSize",
+    "pointer": "/sections/8/children/0/children/0/style/base/textSize",
     "keyword": "additionalProperties",
     "layer": "schema"
   },
@@ -2131,7 +2359,7 @@
   },
   "invalid/tree-section-at-column-level.json": {
     "rule": "the page holds sections only",
-    "pointer": "/sections/9/type",
+    "pointer": "/sections/10/type",
     "keyword": "const",
     "layer": "schema"
   },
@@ -2179,7 +2407,7 @@
   },
   "invalid/tree-section-widths-fit-for-two-on-three.json": {
     "rule": "a fit preset of two parts on a section of three columns",
-    "pointer": "/sections/8/props/columnWidths",
+    "pointer": "/sections/9/props/columnWidths",
     "keyword": "enum",
     "layer": "schema"
   },
@@ -2276,6 +2504,9 @@
   "valid/classes-and-anchors.json": {
     "rule": "every block may have classes of the site's own and an anchor: a section, a column and every kind of widget; eight names at most, each up to 40 characters, upper case and underscores too; an image's beside its image, a gallery's items with neither"
   },
+  "valid/collection-lists.json": {
+    "rule": "collection lists of every layout, one entry and twenty-four, the most; no collection chosen yet; every order, by when an entry went live, by title and by a field's key, both ways; a filter by a toggle, on and off, and by a choice's option of 60 characters, in code points too; a card with no field of its own, and one with an image, a day and an excerpt; no words at a card's foot, and 40; an empty list's words of 200; two columns and four; a colour of the site's own, a slot's on tablets, hidden on phones"
+  },
   "valid/columns-one-to-four.json": {
     "rule": "sections with one, two, three and four columns, and an empty column"
   },
@@ -2287,6 +2518,9 @@
   },
   "valid/every-icon-and-provider.json": {
     "rule": "every icon name, both video providers, map extremes"
+  },
+  "valid/fields.json": {
+    "rule": "the entry's title and a field by its key, a text drawn as a heading of every level and as a paragraph; every setting a field drawn as a heading, a text, an image or a button takes, free type included, on every device; a key of 64 characters"
   },
   "valid/form-fields-every-kind.json": {
     "rule": "every kind of field, required and not; a line of text limited to 1 and to 300 characters, a longer text to 5000; names of one letter and of 40 characters, with digits and hyphens; twenty fields, the most a form holds; and a second form using the same names, since names are unique in a form, not on the page"

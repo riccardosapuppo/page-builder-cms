@@ -24,8 +24,9 @@
 module FreeType
   KEYS = %w[fontSize fontWeight letterSpacing lineHeight letterWidth].freeze
   # The block types that take free type: those that take a type step and a
-  # typeface (the schema's textStyle).
-  BLOCKS = %w[heading text quote].freeze
+  # typeface (the schema's textStyle), and a field, which may draw as a
+  # heading or a text.
+  BLOCKS = %w[heading text quote field].freeze
   DEVICES = %w[base tablet phone].freeze
   WEIGHTS = [ 100, 200, 300, 400, 500, 600, 700, 800, 900 ].freeze
   # How far letter spacing, a line height and a letter width go: the

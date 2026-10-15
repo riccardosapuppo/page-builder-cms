@@ -50,8 +50,9 @@ interface BlockRootProps {
   classes: ReadonlyArray<string | null | undefined | false | readonly string[]>;
   // data-<name>, by name without the prefix.
   data?: Readonly<Record<string, string | number | null | undefined>>;
-  // Other attributes of the root (a spacer's aria-hidden).
-  attributes?: Readonly<Record<string, string | null | undefined>>;
+  // Other attributes of the root (a spacer's aria-hidden, a field's
+  // hidden, true for a boolean attribute that is there).
+  attributes?: Readonly<Record<string, string | true | null | undefined>>;
   decoration: Decoration | undefined;
   children?: ReactNode;
 }

@@ -58,6 +58,7 @@ import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { MediaProvider } from "./library/context.tsx";
 import { ResponsesProvider, responsesOf } from "./responses/context.ts";
+import { previewAddressOf, readSiteEntries } from "./collections/content.ts";
 import { CollectionsProvider, collectionsOf } from "./collections/context.ts";
 import { CollectionsScreen } from "./collections/CollectionsScreen.tsx";
 import { Navigator } from "./Navigator.tsx";
@@ -83,6 +84,19 @@ import { pushes } from "./ui-store.ts";
 export interface PageAddress {
   read(): number | null;
   write(id: number): void;
+}
+
+// A collection's template by its id, as the address names it: null for an
+// id that is no template, or that the storage no longer has. Any other
+// failure is thrown, for the start to say.
+async function templateNamed(adapter: StorageAdapter, id: number): Promise<{ id: number } | null> {
+  if (!adapter.capabilities.collections) return null;
+  try {
+    return (await adapter.getPage(id)).page.kind === "template" ? { id } : null;
+  } catch (error) {
+    if (isStorageError(error) && error.failure.kind === "not-found") return null;
+    throw error;
+  }
 }
 
 export const locationAddress: PageAddress = {
@@ -216,6 +230,46 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     setParts(partList);
     return list;
   }, [adapter]);
+
+  // The collections and their entries, which the canvas's lists and a
+  // template's fields draw (./collections/content.ts), read again: as the
+  // editor starts, and each time the Collections screen closes, where they
+  // change. A storage that keeps none has none; a read that fails leaves
+  // the canvas what it had, and answers why, for the notice to say: as
+  // the screen closes, at once; as the editor starts, once the page is
+  // open, since opening one clears the notice. The latest read asked for
+  // wins, as a page's opening does: one that ends after a later one was
+  // asked for changes nothing, and its failure is not said.
+  const entriesReads = useRef(0);
+  const refreshEntries = useCallback(async (): Promise<string | null> => {
+    const storage = collectionsOf(adapter);
+    if (!storage) return null;
+    const ticket = ++entriesReads.current;
+    try {
+      const site = await readSiteEntries(storage);
+      if (entriesReads.current !== ticket) return null;
+      ui.getState().setSiteEntries(site);
+      // A template opened while the collections could not be read was
+      // named by none: its collection, read now, names it, and its fields
+      // draw the entry; the entry its Page tab picked is kept.
+      setCurrent((open) => {
+        if (open?.kind !== "template" || open.collection) return open;
+        const owner = site.collections.find((collection) => collection.template.id === open.id);
+        return owner ? { ...open, collection: { id: owner.id, name: owner.name, prefix: owner.prefix } } : open;
+      });
+      return null;
+    } catch (error) {
+      if (entriesReads.current !== ticket) return null;
+      return `The collections could not be read (${describe(error)}): lists and Field blocks show what was read before, if anything, until Collections closes and reads them again.`;
+    }
+  }, [adapter, ui]);
+  useEffect(() => ui.subscribe((state, before) => {
+    if (before.collections !== null && state.collections === null) {
+      void refreshEntries().then((why) => {
+        if (why) ui.getState().say(why);
+      });
+    }
+  }), [ui, refreshEntries]);
 
   // A part's draft as the canvas draws it around a page, read again.
   const readPart = useCallback(async (part: PageSummary) => {
@@ -364,7 +418,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       setStatus({ kind: "loading" });
       try {
         const [list, partList, media, style, site] = await Promise.all([adapter.listPages(), adapter.listParts(), adapter.listMedia(), adapter.getSiteStyle(), adapter.getSite()]);
-        await Promise.all(partList.map(readPart));
+        const [entriesWhy] = await Promise.all([refreshEntries(), ...partList.map(readPart)]);
         if (cancelled) return;
         setPages(list);
         setParts(partList);
@@ -372,13 +426,22 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         ui.getState().setSiteStyle(style);
         ui.getState().setSite(site);
         const wanted = address.read();
-        const first = [...list, ...partList].find((p) => p.id === wanted) ?? list.find((p) => p.home) ?? list[0];
+        // The page the address names: one the lists hold, or a
+        // collection's template, which the address names once it is
+        // opened (Edit the template) and a reload opens again. A template
+        // is asked for by its id, whether the collections could be read
+        // or not; an id no longer there leaves the home page to open, and
+        // any other failure stops the start, which Try again takes up.
+        const named = wanted === null ? undefined : ([...list, ...partList].find((p) => p.id === wanted) ?? (await templateNamed(adapter, wanted)));
+        if (cancelled) return;
+        const first = named ?? list.find((p) => p.home) ?? list[0];
         if (!first) {
           setStatus({ kind: "no-pages" });
           return;
         }
         const why = await openPage(first.id);
         if (!cancelled && why) setStatus({ kind: "failed", message: why });
+        else if (!cancelled && entriesWhy) ui.getState().say(entriesWhy);
       } catch (error) {
         // The storage's own words say where it failed: the CMS out of
         // reach, or the browser's storage refused.
@@ -388,7 +451,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     return () => {
       cancelled = true;
     };
-  }, [adapter, address, attempt, openPage, readPart, ui]);
+  }, [adapter, address, attempt, openPage, readPart, refreshEntries, ui]);
 
   useEffect(() => () => {
     live.current.unsubscribe();
@@ -449,11 +512,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // The draft as the CMS would serve it, in a new tab, once the edits
   // waiting are on the server; if they cannot be, the preview shows the
   // last saved draft and the notice says so.
+  // A template's preview is drawn with what the canvas draws it with: the
+  // entry its Page tab picked, or the made-up values.
   const preview = useCallback(() => {
     const page = opened.current;
     const saving = live.current.autosave;
     if (!page) return;
-    const href = cmsAddress(page.links.preview, cmsOrigin);
+    const href = cmsAddress(previewAddressOf(page, ui.getState().siteEntries, ui.getState().previewEntry), cmsOrigin);
     const ready = (async () => {
       const refused = held();
       if (refused) ui.getState().say(`The preview shows the last saved draft. ${refused}`);

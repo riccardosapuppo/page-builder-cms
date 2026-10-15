@@ -15,6 +15,7 @@ import { counter, page } from "../../test/document-page.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { WIDGETS } from "../widgets/registry.ts";
 import { Canvas } from "./Canvas.tsx";
+import { insertableWidgets } from "./insert.ts";
 import { beginDrag, DragLayer } from "./drag/DragLayer.tsx";
 import { closeInserter, openInserter } from "./InsertPicker.tsx";
 import { Palette } from "./Palette.tsx";
@@ -24,13 +25,17 @@ import { DRAG_WORDS, placeOfDrop, presetTile, widgetTile } from "./tiles.ts";
 const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-block-id="${id}"]`)!;
 const described = (key: HTMLElement) => document.getElementById(key.getAttribute("aria-describedby") ?? "")?.textContent;
 const asking = WIDGETS.filter((w) => w.needs !== null);
+// What Insert offers on a page of a storage that keeps no collection:
+// every widget but a template's Field and the Collection list.
+const offered = insertableWidgets("page", false);
 
 test("every key of Insert, the ones that ask first included, is a drag source, described for the keyboard", () => {
   const kit = editorKit({ document: page(), selection: "h1" });
   kit.render(<Palette />);
   expect(asking.map((w) => w.label)).toEqual(["Image", "Gallery", "Video"]);
   const blocks = [...document.querySelectorAll<HTMLElement>(".drawer-body button")];
-  expect(blocks).toHaveLength(4 + WIDGETS.length);
+  expect(offered.map((w) => w.type)).toEqual(WIDGETS.map((w) => w.type).filter((type) => type !== "field" && type !== "collectionList"));
+  expect(blocks).toHaveLength(4 + offered.length);
   fireEvent.click(screen.getByRole("tab", { name: "Sections" }));
   const sections = [...document.querySelectorAll<HTMLElement>(".drawer-body button")];
   expect(sections.map((key) => key.textContent)).toEqual(["Heading and intro", "Picture beside text", "Three icon boxes"]);
@@ -46,7 +51,7 @@ test("every key of a picker is a drag source too, described for the keyboard", (
   kit.render(<Canvas />);
   fireEvent.click(screen.getByRole("button", { name: "Add a block after Heading" }));
   const keys = within(screen.getByRole("dialog", { name: "Add a block after Heading" })).getAllByRole("button").filter((key) => key.classList.contains("pkey"));
-  expect(keys).toHaveLength(WIDGETS.length);
+  expect(keys).toHaveLength(offered.length);
   for (const key of keys) {
     expect(key.hasAttribute("data-draggable")).toBe(true);
     expect(described(key)).toBe(DRAG_WORDS);

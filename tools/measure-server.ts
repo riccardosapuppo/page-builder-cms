@@ -22,7 +22,13 @@
 //   visit, which redraws that heading, its column, its section and the
 //   page and reads the rest back;
 // - the site style changed: the page's key changes, none of its blocks';
-// - a 304: the validator sent back, no body.
+// - a 304: the validator sent back, no body;
+// - an entry's page, its collection's template the same 500 blocks with
+//   the entry's title and summary in two of them: cold and warm, and the
+//   first visit to another entry, which draws only its two fields and
+//   what holds them;
+// - a page holding a Collection list, after an entry is renamed and
+//   published: the list, its column, its section and the page drawn again.
 // Each is timed twice, as the server says it (X-Runtime, the time the
 // application took) and as the client sees it (until the last byte). How
 // many fragments a visit reads, finds and writes is counted apart, as the
@@ -59,7 +65,7 @@ import { fileURLToPath } from "node:url";
 import { banner, busyRange, discardedWords, kib, ms, newTally, quietRun, runsFrom, summary, waitForQuiet, type Summary, type Tally } from "./lib/measure.ts";
 import { clearBuildLeftBehind } from "./lib/build-left-behind.ts";
 import { clearRunsLeftBehind, runName } from "./lib/runs-left-behind.ts";
-import { api, countBlocks, headings, publishLargePage, starterBlocks, withHeadingText, type Document } from "./lib/measure-site.ts";
+import { api, countBlocks, headings, publishLargePage, publishNews, publishNewsList, republishEntry, starterBlocks, withHeadingText, type Document } from "./lib/measure-site.ts";
 import { CouldNotRun, heldByTree, listeners, startTree, stopTree } from "./lib/processes.ts";
 
 // The experimental-feature notice node:sqlite prints is the only warning
@@ -429,6 +435,43 @@ try {
   }, cache);
   check(styled.runs.every((v) => v.status === 200 && v.blocks === 500), "each visit after a style change answers 200 with the 500 blocks");
   check(styled.rows.every(([a, b]) => b - a === 1), "a style change writes one fragment, the page's, and no block", `new rows per run: ${seen(styled.rows.map(([a, b]) => b - a))}`);
+
+  // --- An entry's page -------------------------------------------------------------------
+  // The same 500 blocks as News's template, its first heading and text
+  // drawn from the entry (tools/lib/measure-site.ts, publishNews), at
+  // /news/<entry>: cold and warm as the page is; then each run the first
+  // visit to another entry, whose fragments are the first entry's but for
+  // its two fields and what holds them. Ten entries are kept back for runs
+  // thrown away and taken again.
+  const others = runsFrom("MEASURE_RUNS_ENTRY", 15);
+  const news = await publishNews(BASE, page.document, others + 11);
+  const entryPath = (index: number) => `/news/${news.slugs[index]}`;
+  for (let i = 0; i < 3; i++) await visit(entryPath(0));
+  const entryCold = await phase("entry page, cold", "an entry's page, its template the same 500 blocks: Solid Cache emptied, then one visit", runsFrom("MEASURE_RUNS_COLD", 15), async () => {
+    cache!.clear();
+    return visit(entryPath(0));
+  }, cache);
+  check(entryCold.runs.every((v) => v.status === 200 && v.blocks === 500), "a cold visit to an entry's page answers 200 with the 500 blocks, every time", `status/blocks: ${seen(entryCold.runs.map((v) => `${v.status}/${v.blocks}`))}`);
+  check(entryCold.rows.every(([, after]) => after === fragments), `a cold visit to an entry's page writes ${fragments} fragments, as the page's does`, `${seen(entryCold.rows.map(([, after]) => after))} rows after`);
+  const entryWarm = await phase("entry page, warm", "an entry's page read whole from Solid Cache", runsFrom("MEASURE_RUNS_WARM", 100), () => visit(entryPath(0)), cache, false);
+  check(entryWarm.runs.every((v) => v.status === 200 && v.blocks === 500 && v.etag !== null && v.hash === entryCold.runs[0]!.hash), "a warm visit to an entry's page answers 200 with the cold one's bytes and an ETag, every time");
+  check(entryWarm.rows.every(([a, b]) => a === b), "a warm visit to an entry's page writes nothing", `rows before and after: ${seen(entryWarm.rows.map((r) => r.join(" to ")))}`);
+  const another = await phase("entry page, another entry", "the first visit to another entry: its two fields, their column, their section and its page drawn, the rest read back", others, (attempt) => visit(entryPath(attempt)), cache);
+  check(another.runs.every((v) => v.status === 200 && v.blocks === 500), "another entry's first visit answers 200 with the 500 blocks, every time");
+  check(another.rows.every(([a, b]) => b - a === 5), "another entry's first visit writes 5 fragments: its two fields, their column, their section and its page", `new rows per run: ${seen(another.rows.map(([a, b]) => b - a))}`);
+
+  // --- A page holding a Collection list --------------------------------------------------
+  // Each run renames the latest entry and publishes it, which moves News's
+  // key, then visits the page of its twelve latest entries.
+  await publishNewsList(BASE, news);
+  for (let i = 0; i < 3; i++) await visit("/news-list");
+  const latest = news.slugs.length - 1;
+  const listed = await phase("list page, an entry published", "a page holding a Collection list of 12 entries: the latest entry renamed and published, then one visit", runsFrom("MEASURE_RUNS_LIST", 15), async (attempt) => {
+    await republishEntry(BASE, news, latest, `Entry ${latest + 1}, take ${attempt}`);
+    return visit("/news-list");
+  }, cache);
+  check(listed.runs.every((v, i) => v.status === 200 && (i === 0 || v.hash !== listed.runs[i - 1]!.hash)), "each visit after an entry's publish answers 200 with new bytes");
+  check(listed.rows.every(([a, b]) => b - a === 4), "an entry published writes 4 fragments on the list's page: the list, its column, its section and the page", `new rows per run: ${seen(listed.rows.map(([a, b]) => b - a))}`);
 
   // --- The first visit after a start ---------------------------------------------------
   // What a deploy costs the first visitor, which "cold" above does not: a

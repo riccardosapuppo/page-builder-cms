@@ -16,6 +16,7 @@ import type { PageKind } from "../storage/adapter.ts";
 import { WIDGETS } from "../widgets/registry.ts";
 import type { AnyWidgetDefinition } from "../widgets/types.ts";
 import { focusBlock } from "./act.ts";
+import { listStart, type SiteEntries } from "./collections/content.ts";
 import { runMade, useEnv } from "./context.tsx";
 
 export function insertTarget(doc: PageDocument, type: BlockType, selection: string | null): Position | null {
@@ -26,10 +27,25 @@ export function insertTarget(doc: PageDocument, type: BlockType, selection: stri
 }
 
 // The widgets what is open takes: a header or a footer holds no form
-// (../shared/validate.ts, PART_FORM), so neither the drawer nor a "+"
-// offers one there.
-export function insertableWidgets(kind: PageKind): readonly AnyWidgetDefinition[] {
-  return kind === "page" ? WIDGETS : WIDGETS.filter((widget) => widget.type !== "form");
+// (../shared/validate.ts, PART_FORM), nor does a template (TEMPLATE_FORM),
+// so neither the drawer nor a "+" offers one there; a Field block draws
+// the entry a template is drawn with, and only a template holds one
+// (FIELD_OUTSIDE); a Collection list is offered where the storage keeps
+// collections.
+export function insertableWidgets(kind: PageKind, collections = true): readonly AnyWidgetDefinition[] {
+  return WIDGETS.filter((widget) => {
+    if (widget.type === "form") return kind === "page";
+    if (widget.type === "field") return kind === "template";
+    if (widget.type === "collectionList") return collections;
+    return true;
+  });
+}
+
+// What Insert hands a new widget that needs nothing first: a Collection
+// list, the first collection and its order (./collections/content.ts,
+// listStart), or none chosen when there is none.
+export function widgetInput(definition: AnyWidgetDefinition, site: SiteEntries | null): unknown {
+  return definition.type === "collectionList" ? listStart(site) : undefined;
 }
 
 // Why a block has nowhere to go: for a widget on a page with no section,

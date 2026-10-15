@@ -346,6 +346,26 @@ had made one pool, and none was connected).
   test environment sets it, `csrf_meta_tags` writes nothing, and a call to
   it planted in the layout passed; with it on, the plant failed the test
   with the session cookie it set.
+- **The entries' pages**
+  ([test/integration/entry_pages_test.rb](test/integration/entry_pages_test.rb)):
+  the published template drawn with what the entry went live with,
+  under its title and the description its values give; a draft, an
+  unknown slug or prefix and a template with nothing live, 404; an old
+  slug, 301; a page's Collection list and its cards' links; a Field block
+  refused on a page and a header; the template's preview with an entry's
+  draft, or made-up values. And their cache
+  ([test/integration/collection_cache_test.rb](test/integration/collection_cache_test.rb)):
+  a page listing a collection is new at every change a visitor could see
+  of it and at none other, an entry's publish redraws the list, its
+  column, its section and the page, and an entry's page is new when it is
+  published with other values, when its template is published or its
+  collection's fields change, never at a save of its draft. Each of
+  these was shown to fail with the rule it holds taken out: the draft's
+  slug looked up, the redirect or `PageRules` gone, the draft's values
+  drawn, the drafts listed, the lists left out of a page's keys, a page
+  row with no `listed_collections`, a list's fragment keyed without its
+  collection, a field's without what it draws, an entry keyed by its id
+  alone, `Collection#advance!` without `revised_at`.
 - **The block partials** ([test/views/blocks_test.rb](test/views/blocks_test.rb)):
   every root names its id and type, styles become classes, markup typed in
   any text stays text (a heading planted to skip escaping failed it), the
@@ -386,13 +406,15 @@ no warnings, the same morning).
 | `/` | the page marked as home (`PATCH /api/pages/:id {home: true}`), its last published version; the 404 page while there is none |
 | `/<slug>` | any other published page; an address it had before answers 301 to where it is now, and the home page's own slug answers 301 to `/` |
 | `/preview/<page id>` | the page's draft, through the same layout and partials, with `Cache-Control: no-store`, `X-Robots-Tag: noindex` and a robots meta tag |
+| `/<prefix>/<entry slug>` | an entry of a collection: the collection's published template drawn with what the entry went live with, under its title; an address it had before answers 301 to where it is now; a draft, an unknown slug or prefix, and an entry whose template has nothing live are the 404 page |
+| `/preview/<template id>?entry=<entry id>` | a collection's template, its draft, drawn with an entry's draft (the one named, else the first published in the collection's own order, else its first), or with values made up from the fields' types (`?entry=sample`, and for a collection with no entry); the preview of an entry's draft too; `no-store` and `noindex` as a page's preview |
 | anything else shaped like a slug | the 404 page, a document of its own rendered in the site's look, with status 404 |
 | `POST /`, `POST /<slug>` | a form of that page, sent by a visitor ([Forms a visitor sends](#forms-a-visitor-sends)) |
 | `/sent/<form id>`, `/<slug>/sent/<form id>` | what the form says once its answers are kept, after the 303; `no-store` and `noindex` |
 | `POST /preview/<page id>` | a form sent from the draft preview: 403, a page saying forms are sent from the published page, and nothing kept |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
-  twenty in all, walked by `BlocksHelper#render_document`. Every block
+  twenty-two in all, walked by `BlocksHelper#render_document`. Every block
   root carries `data-block-id` and `data-block-type`, and `data-style`
   repeats the stored style for the contract with the editor's renderer.
 - **Style is by class.** [BlockStyle](app/models/block_style.rb) turns each
@@ -459,6 +481,40 @@ no warnings, the same morning).
   part's draft holds no form and no anchor. A publish of a part
   reaches every published page at its next visit (see how the pages are
   cached, below); the preview draws the parts' drafts.
+- **Collections on the page.** A Collection list
+  ([_collectionList.html.erb](app/views/blocks/_collectionList.html.erb),
+  [CollectionList](app/models/collection_list.rb)) draws its collection's
+  published entries, in its order ([EntryOrder](app/models/entry_order.rb),
+  ties by when each entry was made), those its filter keeps, as many as
+  its count: one list, each card an item whose title is a heading of
+  level 3 and the one link to the entry's page, stretched over the card
+  by `site.css`; its day in the site's words, its excerpt, its image. On
+  an entry's page, a list of the entry's collection leaves it out
+  (`CollectionList.left_out`). A
+  Field block ([_field.html.erb](app/views/blocks/_field.html.erb),
+  [EntryField](app/models/entry_field.rb)) draws a value of the entry a
+  template is drawn with, as the widget its type draws as: with that
+  widget's markup, classes and settings, the title or a text field as a
+  heading of its level, a link as a button by the button's URL policy, a
+  day in the site's words ([EntryWords](app/models/entry_words.rb)); a
+  value the entry does not have, or of another type, leaves its root empty
+  and hidden. What both draw from is the page's content
+  ([SiteContent](app/models/site_content.rb)): the collections the page
+  and its parts list, read once each, and the entry. A page, a header or a
+  footer holds no Field block, refused at the block, keyword `field`
+  ([PageRules](app/models/page_rules.rb), `SiteParts.check`); a template
+  holds no form (`CollectionTemplate.check`).
+- **An entry's page**
+  ([EntryPagesController](app/controllers/entry_pages_controller.rb)) is
+  drawn as a page is, inside the published header and footer, under the
+  entry's title; its description, for search engines, is the entry's
+  first paragraph field with a value, else its first text field, on one
+  line and cut at a word within 160 characters (`Entry#description`),
+  else the template's own. The route takes two parts in a slug's form, so
+  it is never a page's address (one part) nor one of the application's: a
+  prefix is never a page's slug nor a reserved address, and a page's slug
+  is never a prefix. A new prefix moves every entry and leaves no
+  redirect behind: an old prefix is a 404.
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -612,15 +668,21 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   304 with no body, answered before the version's document is read, and a
   publish shows at the very next request. The ETag is a digest of the
   published version, the site style, the header's and footer's published
-  versions (a part that has published nothing is named as its starter)
-  and the release; `fresh_when` is not used, because its digest of the action's
+  versions (a part that has published nothing is named as its starter),
+  the collections the page's Collection lists and its parts' name (each
+  by its id, the count of the changes a visitor could see of it and the
+  moment of the last, `Collection#advance!`) and the release; `fresh_when`
+  is not used, because its digest of the action's
   template sees neither the layout nor the partials a helper renders.
   The version is named by its id and by the moment the page was put
   live, to the microsecond, both on the page's row: ids start again
   whenever a database is made anew (`db:drop` then `db:prepare`, a backup
   restored), so a browser that held page 1, version 3 of the old database
   must not be told its copy is good for the new database's page 1,
-  version 3.
+  version 3. The collections a version lists are written on the page's
+  row as it is published (`listed_collections`), and a collection's two
+  numbers are on its own row, so the 304 is still decided before a
+  document is read.
 - **The whole page in Solid Cache,** one entry per version, site style
   and parts' published versions, under the same name of the version: a visit
   after the first is one read, and a cache database that outlives the
@@ -633,7 +695,21 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   then one for the widgets of each column it missed, and one
   `write_multi` per level for what it drew. Blocks are shared by every
   page that holds the same ones, and the header's and footer's are cached
-  as a page's are, once for every page.
+  as a page's are, once for every page. A Collection list's digest holds
+  its collection's key too, so a publish of an entry redraws the list and
+  what holds it, and on an entry's page the entry it leaves out; a Field
+  block's holds what it draws of the entry.
+
+An **entry's page** is cached the same way: its ETag and its whole page
+keyed on the entry as it went live (a digest of its published title,
+slug and values and of its collection's fields, by which each value is
+drawn: a save of its draft, or a publish of the same values again,
+keeps the key), the template's published version named as a page's,
+the site style, the parts, the collections listed and the release. The
+template's blocks are shared by every entry: the first visit to another
+entry draws only its Field blocks and the column, section and page that
+hold them (on the 500-block template of `npm run measure:server`, 5
+fragments of 514).
 
 Every fragment key also starts with the release, so a deploy finds none
 of the old fragments. The release is a digest of `app/`, `config/`,
@@ -664,6 +740,9 @@ restart, since a running server draws with what it read then.
 | the site style | new ETag | new entry | all read back |
 | a publish of the header or the footer, on every page | new ETag | new entry | the page's read back; the part's changed blocks drawn once for every page |
 | the release | new ETag | new entry | all drawn again |
+| a publish, an unpublish, a new slug or the delete of a live entry, or a change of its collection's definition, on every page listing the collection | new ETag | new entry | the list, its column, its section |
+| an entry published with new values, on its own page | new ETag | new entry | its Field blocks that draw something new, and the column and section around each |
+| a template published, on every entry's page | new ETag | new entry | as a page's publish |
 
 On the test page of 2 sections, 4 columns and 12 widgets
 ([test/integration/page_cache_test.rb](test/integration/page_cache_test.rb)):
@@ -677,8 +756,8 @@ and the next page that holds the same header finds them. The bytes
 are those the partials draw with no cache at all, on the 500-block
 fixture too.
 
-Not cached: the preview (`no-store`), the 404 page and the redirects
-(`no-cache`, Rails' default). No answer sets a cookie, from a drawn page,
+Not cached: the preview, a template's with its entry too (`no-store`),
+the 404 page and the redirects (`no-cache`, Rails' default). No answer sets a cookie, from a drawn page,
 a cached one or a 304, even to a visitor who brings cookies (a browser
 sends 127.0.0.1's cookies to every port), and the layout has no CSRF
 meta tag.
@@ -1049,15 +1128,22 @@ restored, scheduled and published by the page routes, by its id, as a
 part is. It has no address and is never home (`PATCH` refused at the
 member, keyword `template`), and holds no form (refused at the form
 block, keyword `template`): a form's answers are kept with a page and its
-published version, and an entry is no page. `GET /api/pages` does not
-list it; its collection's answer does, as `template`.
+published version, and an entry is no page. It is the one document that
+holds Field blocks: a page's draft or a part's holding one is refused at
+the block, keyword `field`. `GET /api/pages` does not list it; its
+collection's answer does, as `template`. Its published version draws
+every entry's page, `/<prefix>/<entry slug>` (see the pages a visitor
+sees).
 
 `publishedRevision` counts the changes a visitor could see of a
 collection: every publish, every unpublish and every delete of a live
 entry (a live entry's new address is a publish), and every change of its
 definition, whose prefix the entries' links start with and whose fields a
 list of entries draws. A save does not move it, nor a change that changes
-nothing. The list of entries searches the titles for `q` (ASCII letters
+nothing. The moment of its last move is kept beside it (`revised_at`):
+the two name the collection in the keys of every page that lists it, so
+a number the database counts again from zero, once it is made anew,
+never meets an old key. The list of entries searches the titles for `q` (ASCII letters
 without their case; any other letter keeps it) and orders by `title` (by
 code point), `updatedAt`, `publishedAt`, `createdAt` or a date or number
 field's key, `-` for descending; an entry with nothing to order by comes
@@ -1218,12 +1304,19 @@ sweep above does the same for a schedule that is more than a minute late.
   checks of a definition and an entry: the rules of
   [`lib/collection_document/rules.rb`](lib/collection_document/rules.rb),
   the twin of the editor's, with the collection schema read by
-  `CollectionDocument::Schema`).
+  `CollectionDocument::Schema`); for the collections on the site,
+  `SiteContent` (what a render draws them from: the collections a page
+  lists, read once each, and the entry), `CollectionList`, `EntryField`,
+  `EntryWords` and `EntryOrder` (the twins of the editor's
+  `widgets/collectionList/cards.ts`, `widgets/field/drawing.ts`,
+  `render/entry-words.ts` and `shared/entry-order.ts`), and `PageRules`
+  (a page's checks: no Field block).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
   `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
   recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.
-- `app/controllers/pages_controller.rb`, `previews_controller.rb` and
-  `concerns/public_page.rb`: the pages a visitor sees, their layout
+- `app/controllers/pages_controller.rb`, `entry_pages_controller.rb`,
+  `previews_controller.rb` and `concerns/public_page.rb`: the pages a
+  visitor sees, the entries' among them, their layout
   (`app/views/layouts/public.html.erb`) and their policy;
   `submissions_controller.rb`: the forms visitors send from them.
 - `app/views/blocks/`: one partial per block type; `app/helpers/`:

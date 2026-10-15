@@ -1,8 +1,13 @@
 // axe on the editor in each of its states, and on the page the CMS
 // publishes, in Chromium: no serious or critical finding anywhere. The
 // page holds every widget, with every case of their accessibility tests
-// (src/widgets/<widget>/a11y.ts), in two sections. Findings of lesser
-// impact are listed in the test's output.
+// (src/widgets/<widget>/a11y.ts), in two sections: every widget a page
+// holds, that is, all but the Field block, which only a collection's
+// template holds (its own test, e2e/widgets.spec.ts, publishes one). Its
+// Collection lists name the id their own test stands in for a collection
+// it makes, which this page does not: they draw whatever the run's CMS
+// holds under it, or their empty words. Findings of lesser impact are
+// listed in the test's output.
 import type { Page } from "@playwright/test";
 import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import { axe } from "./helpers/axe.ts";
@@ -20,7 +25,7 @@ test.use({
 // Every case of every widget, half in each of two sections; and a
 // heading hidden on phones.
 function everyWidget() {
-  const blocks = WIDGET_A11Y.flatMap((test) => test.cases.map((c, index) => widget(`${test.type}-${index}`, test.type, c.props)));
+  const blocks = WIDGET_A11Y.filter((test) => !test.inTemplate).flatMap((test) => test.cases.map((c, index) => widget(`${test.type}-${index}`, test.type, c.props)));
   const half = Math.ceil(blocks.length / 2);
   const wide = { ...widget("wide-only", "heading", { level: 2, text: "Only on wider screens" }), style: { base: {}, phone: { visibility: "hidden" } } };
   return [

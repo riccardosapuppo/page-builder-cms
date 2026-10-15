@@ -51,10 +51,12 @@ import { useShallow } from "zustand/react/shallow";
 import { makeInsert, makeInsertSection } from "../document/commands.ts";
 import { blockName, blockWithPlace, plural, tokenName } from "../document/labels.ts";
 import { locate } from "../document/tree.ts";
-import { OwnClassPrefix, type Decoration, type RawBlock, type RenderContext } from "../render/context.ts";
+import { OwnClassPrefix, type Decoration, type RawBlock, type RenderContext, type ShownEntry } from "../render/context.ts";
+import { fieldOf } from "../render/entry-words.ts";
+import { fieldDrawing, TITLE } from "../widgets/field/drawing.ts";
 import { CANVAS_CLASS_PREFIX } from "../shared/custom-css.ts";
 import { PageSections } from "../render/blocks.tsx";
-import { CustomCssStyle, FreeColorsStyle, FreeTypeStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { CustomCssStyle, FreeColorsStyle, FreeTypeStyle, PageRoot, partContext, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SitePart, stickyHeader } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import { isPartKind, type PartKind } from "../storage/adapter.ts";
@@ -80,6 +82,7 @@ import { insertTarget, useInsert } from "./insert.ts";
 import { placeBeside, placeKey, placeWords } from "./insert-place.ts";
 import { closeInserter, InsertPicker, openInserter, PICKER_ID } from "./InsertPicker.tsx";
 import { entry, entryKeysText } from "./keymap.ts";
+import { collectionResolver, templateEntry } from "./collections/content.ts";
 import { mediaResolver } from "./media.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
@@ -179,6 +182,29 @@ function priorityOf(state: EditorState, id: string | null): ReturnType<typeof co
   return collisionPriority(children);
 }
 
+// The entry the open template is drawn with, for the note a Field block
+// with nothing to draw shows on the canvas; null on any other page.
+const EntryShown = createContext<{ entry: ShownEntry | null; template: boolean }>({ entry: null, template: false });
+
+// What a Field block with nothing to draw says on the canvas, where its
+// root, hidden on the page, is drawn faintly so it can be selected and
+// moved: the field it names, so that two such blocks one under the other
+// are told apart; a toggle that is off draws nothing by design, and says
+// so. Null for one that draws its value.
+export function fieldNote(block: RawBlock, entry: ShownEntry | null, template: boolean): string | null {
+  if (block.type !== "field") return null;
+  const props = block.props && typeof block.props === "object" ? (block.props as Record<string, unknown>) : {};
+  if (fieldDrawing(props, entry) !== null) return null;
+  if (!template) return "A field draws an entry’s value: only a template has one";
+  if (entry === null) return "No value yet";
+  const key = props.field;
+  if (key === TITLE) return "No title in this entry";
+  const field = fieldOf(entry.fields, key);
+  if (!field) return `No field “${typeof key === "string" ? key : ""}” in this collection`;
+  if (field.type === "toggle") return `“${field.label}” is off in this entry`;
+  return `No “${field.label}” in this entry`;
+}
+
 // The copy of a widget left where it stood while it is dragged (./drag/
 // ghost.ts): dimmed, inert, out of every lookup, and with the "Moving" chip.
 const GHOST: Decoration = {
@@ -223,6 +249,8 @@ function useDecoration(block: RawBlock): Decoration | undefined {
     if (isText && relation === "selected") preloadTextEditor();
   }, [isText, relation]);
   const pluses = usePluses(block, id, relation);
+  const shown = useContext(EntryShown);
+  const note = fieldNote(block, shown.entry, shown.template);
 
   if (ghost) return GHOST;
   if (id === null) return undefined;
@@ -246,7 +274,12 @@ function useDecoration(block: RawBlock): Decoration | undefined {
       ? <DropIndicator mode={slot.mode} label={slot.label} />
       : moving
         ? <MovingFrame label={moving.label} />
-        : <Marks id={id} kind={kind} type={block.type as BlockType} name={name} relation={relation} hovered={hovered && mark === null} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} pluses={pluses} />,
+        : (
+          <>
+            {note !== null && <span className="field-none chrome">{note}</span>}
+            <Marks id={id} kind={kind} type={block.type as BlockType} name={name} relation={relation} hovered={hovered && mark === null} empty={empty} mark={mark} hug={block.type === "button"} dimension={dimension} tools={relation === "selected" ? tools : null} pluses={pluses} />
+          </>
+        ),
     // While a drag lasts nothing is selected (relation null), so the
     // editor gives way to the page's drawing of the text.
     ...(editing && relation === "selected"
@@ -871,9 +904,22 @@ function CanvasView() {
     page.ref(element);
   }, [page]);
 
-  // The context's hook must stay the same function: the library's lookup
-  // is the only part that changes, and only when the library does.
-  const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), useDecoration }), [media]);
+  // What the page's lists and a template's fields draw from: the
+  // storage's collections, and for a template the entry its Page tab
+  // picks, its draft, or values made up when its collection has none
+  // (./collections/content.ts).
+  const siteEntries = useUi((u) => u.siteEntries);
+  const previewEntry = useUi((u) => u.previewEntry);
+  const templateId = kind === "template" ? (opened?.current?.collection?.id ?? null) : null;
+  const entry = useMemo(
+    () => (templateId === null ? null : templateEntry(siteEntries, templateId, previewEntry?.collectionId === templateId ? previewEntry.choice : null, new Date(env.clock.now()))),
+    [siteEntries, templateId, previewEntry, env.clock],
+  );
+  // The context's hook must stay the same function: the library's lookup,
+  // the collections and the entry are the parts that change, and only
+  // when they do.
+  const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), collections: collectionResolver(siteEntries), entry, useDecoration }), [media, siteEntries, entry]);
+  const entryShown = useMemo(() => ({ entry, template: kind === "template" }), [entry, kind]);
   const layout = useLayoutMode();
   const { width, scale } = fitPreview(preview, room, layout === "narrow");
 
@@ -1034,6 +1080,7 @@ function CanvasView() {
           sections their anchors as ids, and an ARIA reference takes the
           first element with its id. */}
       <p id="canvas_keys" hidden>Arrow keys select the next or previous block. Space picks the selected block up to move it. Question mark lists every shortcut.</p>
+      <EntryShown.Provider value={entryShown}>
       <SourceRef.Provider value={source.ref}>
         <div ref={fit} className={`frame-fit${width !== undefined ? " frame-fixed" : ""}`} style={width === undefined ? undefined : { width: `${width * scale}px` }}>
           <div
@@ -1124,6 +1171,7 @@ function CanvasView() {
           <FitNow frame={frame} scale={scale} />
         </div>
       </SourceRef.Provider>
+      </EntryShown.Provider>
       {/* Outside the page, which may be drawn smaller: at the editor's own
           size, and scrolling with the page. */}
       <InsertPicker />
@@ -1208,7 +1256,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
 }) {
   // The page around and the other part are drawn with nothing of the
   // editor's: no selection, no "+", no drop target.
-  const quiet = useMemo<RenderContext>(() => ({ media: ctx.media }), [ctx.media]);
+  const quiet = useMemo<RenderContext>(() => partContext(ctx, false), [ctx]);
   const sized = width === undefined ? undefined : { width: `${width}px` };
   const Element = kind;
   const editing = document.sections.length === 0
@@ -1301,7 +1349,7 @@ function Invite({ part }: { part?: PartKind }) {
           <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" className="li" /></span>
           <h2>Start this {name} with a section</h2>
         </div>
-        <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : template ? "A section is a band across the template, on every entry’s page. Pick its columns; you can change them later." : "A section is a band across the page. Pick its columns; you can change them later."}</p>
+        <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : template ? "A section is a band across the template, on every entry’s page. Pick its columns; you can change them later. The entry’s own title and fields are in Insert, under This entry." : "A section is a band across the page. Pick its columns; you can change them later."}</p>
         {canPublish && !part && !template && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
         {canPublish && part && <p className="invite-publish"><Icon name="info" className="i i-xs" />Published empty, the site has no {name}.</p>}
         <div className="invite-layouts" role="group" aria-label="Add a section">

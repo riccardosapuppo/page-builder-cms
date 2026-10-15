@@ -82,7 +82,10 @@ unpublish and delete of a live entry and every change of the definition
 move, and its `template`: a page of kind `template`, with no address,
 never home and with no form (each refused with the keyword `template`),
 read, saved, versioned and published by the page operations by its id,
-as a part is, and listed neither with the pages nor with the parts.
+as a part is, and listed neither with the pages nor with the parts. It
+alone holds Field blocks: a page's draft or a part's holding one is
+refused at the block, keyword `field` (`pageFaults` and `partFaults` of
+`../shared/validate.ts`, `PageRules` and `SiteParts` on the CMS).
 Entries: `listEntries(collectionId, { q, order })` (the titles that hold
 `q`, ASCII letters without their case; in `order`, `title`, `updatedAt`,
 `publishedAt`, `createdAt` or a date or number field's key, `-` before
@@ -260,7 +263,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the
-  end. It first checks the battery holds its 71 cases (at least 50),
+  end. It first checks the battery holds its 72 cases (at least 50),
   each named once, and that the Rails adapter skips none of them (with
   `publish` planted as absent in its capabilities, that check failed). A
   visitor's form is sent by the runner as a browser sends it from the
@@ -393,8 +396,9 @@ refused by a field made required since, an unpublish; the list searched
 and ordered every way, an order refused; an entry found only under its
 collection, deleted, and a collection deleted with its entries and its
 template; the template saved, versioned and published as a part, with no
-address, no home and no form; an image an entry shows kept, and one the
-library has not refused), every optional operation called
+address, no home and no form; a Field block refused on a page and a
+part, at the block, and kept in the template; an image an entry shows
+kept, and one the library has not refused), every optional operation called
 so that it changes nothing, on a page that does not exist (refused as
 unsupported when the capabilities declare it absent; not found when
 they declare it present),

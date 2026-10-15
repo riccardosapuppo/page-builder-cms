@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "title": "Collection lists",
+  "description": "Collection lists of every layout, order and filter, with the collections they draw from: entries ordered by a day, by a number, by title (a fullwidth letter and an emoji, where code points and UTF-16 units disagree), by a field no order follows; filtered by a toggle (one without a value is off) and by a choice; card fields of the wrong type; a collection that is not there and none chosen; entries whose words hold markup, whose slug makes an address the URL policy refuses, whose values are of other types than their fields, and entries no list can draw; props the schema does not list; and a field block on a page that is no template, which draws nothing.",
+  "sections": [
+    {
+      "id": "c-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "c-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "c-list-grid", "type": "collectionList", "props": { "collection": 1, "count": 3, "order": { "by": "date", "direction": "desc" }, "layout": "grid", "columns": 3, "image": "image", "date": "date", "excerpt": "summary", "linkLabel": "Read more", "emptyText": "Nothing here yet." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-list", "type": "collectionList", "props": { "collection": 1, "count": 24, "order": { "by": "title", "direction": "asc" }, "filter": { "field": "featured", "value": false }, "layout": "list", "columns": 2, "image": "image", "excerpt": "summary", "linkLabel": "", "emptyText": "No news." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-compact", "type": "collectionList", "props": { "collection": 1, "count": 2, "order": { "by": "water", "direction": "desc" }, "filter": { "field": "level", "value": "Strong" }, "layout": "compact", "columns": 4, "image": "image", "date": "date", "excerpt": "summary", "linkLabel": "Read more", "emptyText": "No strong swims." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-markup", "type": "collectionList", "props": { "collection": 3, "count": 24, "order": { "by": "publishedAt", "direction": "asc" }, "layout": "grid", "columns": 2, "image": "image", "date": "date", "excerpt": "summary", "linkLabel": "Read <more> & \"on\"", "emptyText": "Nothing." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-missing", "type": "collectionList", "props": { "collection": 99, "count": 3, "order": { "by": "publishedAt", "direction": "desc" }, "layout": "grid", "columns": 3, "linkLabel": "Read more", "emptyText": "The collection is not there." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-unchosen", "type": "collectionList", "props": { "count": 3, "order": { "by": "publishedAt", "direction": "desc" }, "layout": "list", "columns": 3, "linkLabel": "Read more", "emptyText": "No collection chosen." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-no-field", "type": "collectionList", "props": { "collection": 1, "count": 3, "order": { "by": "summary", "direction": "desc" }, "layout": "list", "columns": 3, "image": "summary", "date": "water", "excerpt": "date", "linkLabel": "More", "emptyText": "Nothing." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-filter-gone", "type": "collectionList", "props": { "collection": 1, "count": 3, "order": { "by": "publishedAt", "direction": "desc" }, "filter": { "field": "gone", "value": true }, "layout": "grid", "columns": 3, "linkLabel": "More", "emptyText": "No entry has that field." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-bad-filter", "type": "collectionList", "props": { "collection": 1, "count": 3, "order": { "by": "publishedAt", "direction": "desc" }, "filter": "featured", "layout": "grid", "columns": 3, "linkLabel": "More", "emptyText": "<em>Nothing</em> & more" }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-bad-props", "type": "collectionList", "props": { "collection": "1", "count": 0, "order": "newest", "layout": "carousel", "columns": 9, "linkLabel": 7, "emptyText": 8 }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-bad-values", "type": "collectionList", "props": { "collection": 1, "count": 25, "order": { "by": 7, "direction": "up" }, "layout": "carousel", "columns": 1, "date": "date", "linkLabel": "Read more", "emptyText": "Nothing." }, "style": { "base": {} }, "children": [] },
+            { "id": "c-list-styled", "type": "collectionList", "props": { "collection": 1, "count": 1, "order": { "by": "publishedAt", "direction": "desc" }, "layout": "list", "columns": 3, "date": "date", "linkLabel": "Read more", "emptyText": "Nothing.", "className": "news latest", "anchor": "latest" }, "style": { "base": { "color": "accent" }, "tablet": { "color": "#1d4e6f" }, "phone": { "visibility": "hidden" } }, "children": [] },
+            { "id": "c-field-on-page", "type": "field", "props": { "field": "title", "level": 2 }, "style": { "base": { "textSize": "display" } }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 1,
+      "prefix": "news",
+      "fields": [
+        { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+        { "key": "image", "label": "Image", "type": "image", "required": false },
+        { "key": "date", "label": "Date", "type": "date", "required": false },
+        { "key": "featured", "label": "Featured", "type": "toggle", "required": false },
+        { "key": "level", "label": "Level", "type": "choice", "required": false, "options": ["Beginner", "Strong"] },
+        { "key": "water", "label": "Water temperature", "type": "number", "required": false }
+      ],
+      "entries": [
+        { "id": 1, "title": "First swim of the season", "slug": "first-swim", "publishedAt": "2026-05-03T07:00:00.000Z", "values": { "summary": "Cold water,\nwarm hearts.", "image": { "mediaId": "first-swim", "alt": "Swimmers at dawn" }, "date": "2026-05-02", "featured": true, "level": "Beginner", "water": 12.5 } },
+        { "id": 2, "title": "Winter series opens", "slug": "winter-series-opens", "publishedAt": "2026-10-20T08:30:00.000Z", "values": { "summary": "Ten swims from November to March.\n\nTea after each.", "image": { "mediaId": "winter", "decorative": true }, "date": "2026-11-01", "featured": false, "level": "Strong", "water": 9 } },
+        { "id": 3, "title": "Ångström and émigrés", "slug": "angstrom", "publishedAt": "2026-07-15T12:00:00.000Z", "values": { "summary": "", "date": "2026-07-14", "level": "Beginner", "water": -2.25 } },
+        { "id": 4, "title": "🌊 Tide tables", "slug": "tide-tables", "publishedAt": "2026-07-15T12:00:00.000Z", "values": { "summary": "Line one\nline two\n\nLine four", "image": { "mediaId": "missing-tides", "alt": "Gone from the library" }, "level": "Strong", "water": 1250.5 } },
+        { "id": 5, "title": "Zebra crossing", "slug": "zebra", "publishedAt": "2026-01-01T00:00:00.000Z", "values": { "date": "2025-12-31", "water": 1000000000 } },
+        { "id": 6, "title": "Ａquarium night", "slug": "aquarium", "publishedAt": "2026-09-01T18:00:00.000Z", "values": { "featured": false, "date": "2026-09-01", "water": 0.05 } }
+      ]
+    },
+    {
+      "id": 3,
+      "prefix": "traps",
+      "fields": [
+        { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+        { "key": "image", "label": "Image", "type": "image", "required": false },
+        { "key": "date", "label": "Date", "type": "date", "required": false },
+        { "key": "kind", "label": "Kind" },
+        "not a field"
+      ],
+      "entries": [
+        { "id": 10, "title": "<script>alert(1)</script>", "slug": "script", "publishedAt": "2026-01-01T00:00:00.000Z", "values": { "summary": "<b>bold?</b> & <a href=\"javascript:alert(1)\">x</a>", "image": { "mediaId": "markup", "alt": "\"><img src=x onerror=alert(1)>" }, "date": "2026-02-30" } },
+        { "id": 11, "title": "\"Quotes\" & 'apostrophes'", "slug": "x\"><script>alert(1)</script>", "publishedAt": "2026-01-02T00:00:00.000Z", "values": { "summary": { "type": "doc" }, "image": "first-swim", "date": 20261015 } },
+        { "id": 12, "title": "Path of its own", "slug": "javascript:alert(1)", "publishedAt": "2026-01-03T00:00:00.000Z", "values": { "image": { "url": "https://images.example.org/elsewhere.png", "alt": "From elsewhere" }, "date": "2026-1-5" } },
+        { "id": 13, "title": "Values not an object", "slug": "values", "publishedAt": "2026-01-04T00:00:00.000Z", "values": ["summary"] },
+        "not an entry",
+        { "id": 14, "title": "No slug", "publishedAt": "2026-01-05T00:00:00.000Z", "values": {} },
+        { "id": 15, "title": "Live at no time", "slug": "never", "publishedAt": 20260106, "values": {} },
+        { "id": "16", "title": "An id that is text", "slug": "text-id", "publishedAt": "2026-01-07T00:00:00.000Z", "values": {} }
+      ]
+    }
+  ]
+}

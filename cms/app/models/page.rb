@@ -21,13 +21,13 @@ class Page < ApplicationRecord
   PARTS = %w[header footer].freeze
 
   # The checks a draft of each kind is held to: a part's (SiteParts), a
-  # template's (CollectionTemplate), or a page's (BlockDocument), each with
-  # a check(document) that answers a BlockDocument::Result.
+  # template's (CollectionTemplate), or a page's (PageRules), each with a
+  # check(document) that answers a BlockDocument::Result.
   def self.checks_for(kind)
     case kind
     when *PARTS then SiteParts
     when "template" then CollectionTemplate
-    else BlockDocument
+    else PageRules
     end
   end
 
@@ -272,13 +272,16 @@ class Page < ApplicationRecord
   # Every publish, now or scheduled, ends here: a new "publish" version of
   # document, served from now on at slug. revision is the draft revision
   # document was taken from: the draft's saves after it are what is not
-  # live yet.
+  # live yet. The row keeps which collections the version's lists name
+  # (listed_collections), which the page's cache keys hold without reading
+  # the version (PageCache).
   def put_live!(document, revision:, slug:, at:)
     version = PageVersion.record!(page_id: id, document: document, reason: "publish", at: at)
     previous_slug = self.slug
     self.slug = slug
     self.published_version = version
     self.published_revision = revision
+    self.listed_collections = CollectionList.ids(document)
     # Never earlier than the last publish, even if the clock went back.
     self.published_at = [ published_at, at ].compact.max
     # A live page wins over a redirect: the address is this page's now.

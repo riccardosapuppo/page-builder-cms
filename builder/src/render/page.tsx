@@ -91,6 +91,18 @@ export const CustomCssStyle = memo(function CustomCssStyle({ css, leave }: { css
   return scoped === "" ? null : <style data-custom-css="">{scoped}</style>;
 });
 
+// The context the site's header and footer are drawn with around a page:
+// the page's images and collections, never its entry (a part holds no
+// Field block), and the editor's marks only where `decorated` says.
+export function partContext(ctx: RenderContext, decorated: boolean): RenderContext {
+  return {
+    media: ctx.media,
+    ...(ctx.collections ? { collections: ctx.collections } : {}),
+    ...(ctx.entryHref ? { entryHref: ctx.entryHref } : {}),
+    ...(decorated && ctx.useDecoration ? { useDecoration: ctx.useDecoration } : {}),
+  };
+}
+
 interface PageRootProps {
   document: unknown;
   ctx: RenderContext;
@@ -112,8 +124,9 @@ interface PageRootProps {
 
 export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false, editorControls }: PageRootProps) {
   const sections = <PageSections document={document} ctx={ctx} />;
-  const quiet = useMemo<RenderContext>(() => ({ media: ctx.media }), [ctx.media]);
-  const partCtx = lockedParts ? quiet : ctx;
+  // The header and footer are drawn without the page's entry, which only
+  // a template's own blocks draw; locked, without the editor's marks too.
+  const partCtx = useMemo<RenderContext>(() => partContext(ctx, !lockedParts), [ctx, lockedParts]);
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={width === undefined ? undefined : { width: `${width}px` }}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={[document, parts?.header, parts?.footer]} />

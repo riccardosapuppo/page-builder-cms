@@ -28,8 +28,9 @@ export const FREE_TYPE_KEYS = ["fontSize", "fontWeight", "letterSpacing", "lineH
 export type FreeTypeKey = (typeof FREE_TYPE_KEYS)[number];
 
 // The block types that take free type: those that take a type step and a
-// typeface (the schema's textStyle).
-export const FREE_TYPE_BLOCKS = ["heading", "text", "quote"] as const;
+// typeface (the schema's textStyle), and a field, which may draw as a
+// heading or a text.
+export const FREE_TYPE_BLOCKS = ["heading", "text", "quote", "field"] as const;
 
 export function isFreeTypeKey(key: unknown): key is FreeTypeKey {
   return typeof key === "string" && (FREE_TYPE_KEYS as readonly string[]).includes(key);

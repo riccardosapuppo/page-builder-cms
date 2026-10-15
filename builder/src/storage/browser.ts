@@ -112,7 +112,7 @@ import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document
 import { SORTABLE_TYPES, type CollectionDefinition, type EntryContent, type EntryValues } from "../shared/collection.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
-import { isLine, partFaults, templateFaults, validateCollection, validateDocument, validateEntry, type DocumentError } from "../shared/validate.ts";
+import { isLine, pageFaults, partFaults, templateFaults, validateCollection, validateDocument, validateEntry, type DocumentError } from "../shared/validate.ts";
 
 export const BROWSER_CAPABILITIES: Capabilities = {
   // A publish is kept as a version, with the page's published state, for
@@ -657,11 +657,12 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   }
 
   // A part's own rules (SiteParts.check): no form, refused at each form
-  // block, and no section anchor, refused at each anchor; and a template's
-  // (CollectionTemplate.check): no form.
+  // block, no section anchor, refused at each anchor, and no Field block;
+  // a template's (CollectionTemplate.check): no form; and a page's
+  // (PageRules.check): no Field block, which only a template holds.
   function partRefusal(record: PageRecord, document: PageDocument): { ok: false; problem: Invalid } | null {
     const kind = kindOf(record);
-    const faults = kind === "page" ? [] : kind === "template" ? templateFaults(document) : partFaults(document);
+    const faults = kind === "page" ? pageFaults(document) : kind === "template" ? templateFaults(document) : partFaults(document);
     return faults.length > 0 ? invalid("invalid_document", faults.map(underDocument)) : null;
   }
 

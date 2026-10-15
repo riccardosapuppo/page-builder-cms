@@ -155,6 +155,66 @@ export async function publishSmallPage(base: string, slug = "four-blocks"): Prom
   return { id, slug };
 }
 
+// News, a collection whose template is the large page's 500 blocks, the
+// first heading and the first text of its first column drawn from the
+// entry instead (its title as a heading of level 1, its summary), so an
+// entry's page has the page's blocks; and `count` entries, published one
+// after the other, entry-1 the earliest day and the last the latest.
+export interface News {
+  id: number;
+  templateId: number;
+  // The entries' slugs, and their ids, in the order they were made.
+  slugs: string[];
+  ids: number[];
+}
+
+export async function publishNews(base: string, document: Document, count: number): Promise<News> {
+  const fields = [
+    { key: "summary", label: "Summary", type: "paragraph", required: false },
+    { key: "day", label: "Day", type: "date", required: false },
+  ];
+  const made = await api(base, "POST", "/api/collections", { name: "News", prefix: "news", fields, sort: { by: "day", direction: "desc" } });
+  const template = JSON.parse(JSON.stringify(document)) as Document;
+  const first = template.sections[0]!.children[0]!.children;
+  const at = (type: string) => first.findIndex((block) => block.type === type);
+  const [heading, text] = [at("heading"), at("text")];
+  if (heading < 0 || text < 0) throw new Error("the fixture's first column has no heading and text to draw the entry with");
+  first[heading] = { ...first[heading]!, type: "field", props: { field: "title", level: 1 } };
+  first[text] = { ...first[text]!, type: "field", props: { field: "summary" } };
+  if (countBlocks(template.sections) !== 500) throw new Error(`the template has ${countBlocks(template.sections)} blocks, not 500`);
+  const draft = await api(base, "GET", `/api/pages/${made.template.id}/draft`);
+  await api(base, "PUT", `/api/pages/${made.template.id}/draft`, { revision: draft.revision, document: template, saveId: "measure-template" });
+  await api(base, "POST", `/api/pages/${made.template.id}/publish`, {});
+  const news: News = { id: made.id as number, templateId: made.template.id as number, slugs: [], ids: [] };
+  for (let n = 1; n <= count; n++) {
+    const day = new Date(Date.UTC(2026, 0, n)).toISOString().slice(0, 10);
+    const entry = await api(base, "POST", `/api/collections/${news.id}/entries`, { title: `Entry ${n}`, slug: `entry-${n}`, values: { summary: `What entry ${n} says, in a line or two.`, day } });
+    await api(base, "POST", `/api/collections/${news.id}/entries/${entry.id}/publish`, {});
+    news.slugs.push(`entry-${n}`);
+    news.ids.push(entry.id as number);
+  }
+  return news;
+}
+
+// A page of News's twelve latest entries, a Collection list in a grid of
+// three, each card with its day and its summary.
+export async function publishNewsList(base: string, news: News, slug = "news-list"): Promise<void> {
+  const list = { id: "list", type: "collectionList", props: { collection: news.id, count: 12, order: { by: "day", direction: "desc" }, layout: "grid", columns: 3, date: "day", excerpt: "summary", linkLabel: "Read more", emptyText: "Nothing yet." }, children: [], style: { base: {} } };
+  const document = { schemaVersion: 1, title: "News", sections: [{ id: "s1", type: "section", props: { label: "News" }, style: { base: {} }, children: [{ id: "s1c1", type: "column", props: {}, style: { base: {} }, children: [list] }] }] };
+  const created = await api(base, "POST", "/api/pages", { title: "News", slug });
+  const draft = await api(base, "GET", `/api/pages/${created.page.id}/draft`);
+  await api(base, "PUT", `/api/pages/${created.page.id}/draft`, { revision: draft.revision, document, saveId: "measure-list" });
+  await api(base, "POST", `/api/pages/${created.page.id}/publish`, {});
+}
+
+// One of News's entries renamed, saved and published again.
+export async function republishEntry(base: string, news: News, index: number, title: string): Promise<void> {
+  const path = `/api/collections/${news.id}/entries/${news.ids[index]}`;
+  const entry = await api(base, "GET", path);
+  await api(base, "PUT", path, { revision: entry.revision, saveId: `measure-entry-${Date.now().toString(36)}`, title, slug: entry.slug, values: entry.values });
+  await api(base, "POST", `${path}/publish`, {});
+}
+
 // The ids of the widgets of the document, in page order, each with the
 // text a change to it can be seen by: headings only, so that one edit is
 // one word.

@@ -15,6 +15,9 @@
 //   form says what the full system does instead of sending; a link to the
 //   site's other page opens it as the demo draws it; Preview shows the
 //   draft;
+// - a collection made here, its first entry and its template published: a
+//   Collection list on the home page shows the entry, and its card opens
+//   the entry's page as the demo draws it;
 // - the header and footer changed from their panel, opened by a click on
 //   the canvas's header: the canvas draws them as they are typed; saved,
 //   the pages published in this browser show them with nothing published
@@ -383,6 +386,69 @@ test("Publish opens the page as published, with its line; the form says what the
   await expect(preview.getByRole("heading", { level: 1, name: "A draft not published yet" })).toBeVisible();
   await shoot(preview, "demo-preview");
   await noSeriousFinding(preview, "the draft's preview");
+});
+
+test("a collection's entry and template, published here: a Collection list on the home page shows the entry, and its card opens the entry's page as the demo draws it", async ({ page, context, baseURL }) => {
+  const found: string[] = [];
+  await openDemo(page);
+  // A collection from the Articles preset, and its first entry, published.
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Collections" }).click();
+  const collections = page.getByRole("dialog", { name: "Collections" });
+  await collections.getByRole("button", { name: "New collection" }).first().click();
+  await collections.getByRole("textbox", { name: /^Name/ }).fill("News");
+  await collections.getByRole("textbox", { name: /^Name/ }).press("Tab");
+  await collections.getByRole("button", { name: "Create collection" }).click();
+  await collections.getByRole("button", { name: "Write the first entry" }).click();
+  const form = collections.locator(".co-form");
+  await form.getByRole("textbox", { name: /^Title/ }).fill("First swim of the season");
+  await form.getByRole("textbox", { name: /^Summary/ }).fill("Cold water, warm hearts.");
+  await form.getByLabel(/^Date/).fill("2026-05-02");
+  await form.getByRole("button", { name: "Publish" }).click();
+  await expect(form.locator(".co-said")).toHaveText("Published in this browser. In the full system, visitors find it at /news/first-swim-of-the-season.");
+
+  // Its template: a section, the entry's title in it, published here.
+  await collections.getByRole("tab", { name: "Settings" }).click();
+  await collections.getByRole("button", { name: "Edit the template" }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: News" })).toBeVisible();
+  await page.locator(".topbar").getByRole("button", { name: "Insert", exact: true }).click();
+  const insert = page.getByRole("complementary", { name: "Insert", exact: true });
+  await insert.getByRole("button", { name: "1 column" }).click();
+  await page.locator(".canvas").getByRole("button", { name: "Add a block to Column 1" }).click();
+  await page.getByRole("dialog", { name: /^Add a block/ }).getByRole("button", { name: "Field" }).click();
+  await expect(page.locator('.canvas [data-block-type="field"] h1')).toHaveText("First swim of the season");
+  const sidebar = page.getByRole("complementary", { name: "Settings" });
+  await sidebar.getByRole("tab", { name: "Page" }).click();
+  await promisesNothing(page, "the template's Page tab", found);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(notice(page)).toContainText("Published in this browser. In the full system, every entry of News is drawn with this template.");
+  await promisesNothing(page, "the notice after the template's publish", found);
+
+  // Back on the home page: a Collection list after the hero's heading,
+  // which names the one collection; published, its card leads to the
+  // entry's page.
+  await sidebar.getByRole("button", { name: "Back to Slack Water" }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
+  await block(page, "hero-heading").click();
+  await insert.getByRole("group", { name: "Content" }).getByRole("button", { name: "Collection list" }).click();
+  await expect(page.locator('.canvas [data-block-type="collectionList"] .sw-entry-title')).toHaveText(["First swim of the season"]);
+  await promisesNothing(page, "the Collection list's panel", found);
+  await saved(page);
+  const opened = context.waitForEvent("page");
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  const view = await opened;
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
+  const card = view.locator('[data-block-type="collectionList"] .sw-entry-title a');
+  await expect(card).toHaveText("First swim of the season");
+  await expect(card).toHaveAttribute("href", /^\?entry=[1-9][0-9]*$/);
+  await card.click();
+  await view.waitForURL((url) => url.pathname === new URL(`${baseURL}${DEMO_BASE}`).pathname && /^\?entry=[1-9][0-9]*$/.test(url.search));
+  await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText("The entry as published in this browser. In the full system, Rails serves it at /news/first-swim-of-the-season, with the cache.");
+  await expect(view.locator('[data-block-type="field"] h1')).toHaveText("First swim of the season");
+  await expect(view).toHaveTitle("First swim of the season");
+  await shoot(view, "demo-entry");
+  await noSeriousFinding(view, "an entry's page");
+  expect(found, "what the screens say that only the full system does").toEqual([]);
 });
 
 // A click on what the selector finds, brought into view first: in its

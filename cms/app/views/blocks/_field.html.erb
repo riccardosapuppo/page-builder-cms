@@ -1,0 +1,19 @@
+<%# A value of the entry the template is drawn with (EntryField), drawn as the widget its type draws as, with that widget's classes and settings, in a root of its own (w-field, data-field): a heading, a text, an image or a button, each with the markup of that widget's partial. A value the entry has not, and a field on a page that is no template, leave the root empty and hidden, so it takes no room in its column. -%>
+<%- props = block_props(block) -%>
+<%- style = block_style(block) -%>
+<%- drawing = EntryField.drawing(props, local_assigns.fetch(:content, SiteContent::NONE).entry) -%>
+<%- field = { field: (props["field"] if props["field"].is_a?(String)) } -%>
+<%- text_data = { **field, **BlockStyle.free_color_data(style, "color"), **BlockStyle.free_type_data(style) } -%>
+<%- case drawing&.shape -%>
+<%- when "heading" -%>
+<%= tag.div(**block_root(block, [ "w", "w-field", "w-heading", BlockStyle.classes(style, "textSize", default: %w[heading-1 heading-2 heading-3 large][drawing.level - 1]), %w[typeface color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: text_data)) do %><%= content_tag("h#{drawing.level}", drawing.text) %><% end %>
+<%- when "text" -%>
+<%= tag.div(**block_root(block, [ "w", "w-field", "w-text", %w[textSize typeface color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: text_data)) do %><%= if drawing.doc then rich_text(drawing.doc) elsif drawing.day then tag.p(tag.time(drawing.words, datetime: drawing.day)) else safe_join(drawing.paragraphs.map { |paragraph| tag.p(text_with_breaks(paragraph)) }) end %><% end %>
+<%- when "image" -%>
+<%- image = block_img(drawing.item, media) -%>
+<%= tag.div(**block_root(block, [ "w", "w-field", "w-image", BlockStyle.classes(style, "aspect"), BlockStyle.visibility_classes(style) ], data: { **field, media_id: drawing.item["mediaId"] })) do %><%= tag.figure(image, class: "sw-figure") if image %><% end %>
+<%- when "button" -%>
+<%= tag.div(**block_root(block, [ "w", "w-field", "w-button", BlockStyle.classes(style, "align"), BlockStyle.visibility_classes(style) ], data: field)) do %><%= content_tag(:a, drawing.label, class: [ "sw-btn", BlockStyle.classes(style, "background"), BlockStyle.classes(style, "color") ].flatten, href: RenderPolicy.link_href(drawing.href), data: { **BlockStyle.free_color_data(style, "background"), **BlockStyle.free_color_data(style, "color") }) %><% end %>
+<%- else -%>
+<%= tag.div(**block_root(block, [ "w", "w-field" ], data: field, hidden: true)) %>
+<%- end -%>

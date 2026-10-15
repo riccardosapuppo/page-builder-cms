@@ -44,18 +44,20 @@
       "enum": [
         "section", "column",
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
         "form",
-        "logo", "menu"
+        "logo", "menu",
+        "field"
       ]
     },
     "widgetType": {
       "description": "The block types a column may hold: every block type except section and column.",
       "enum": [
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
         "form",
-        "logo", "menu"
+        "logo", "menu",
+        "field"
       ]
     },
     "block": {
@@ -88,9 +90,11 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "stats" } } }, "then": { "$ref": "#/$defs/statsBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "steps" } } }, "then": { "$ref": "#/$defs/stepsBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "pricing" } } }, "then": { "$ref": "#/$defs/pricingBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "collectionList" } } }, "then": { "$ref": "#/$defs/collectionListBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "logo" } } }, "then": { "$ref": "#/$defs/logoBlock" } },
-        { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } }
+        { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "field" } } }, "then": { "$ref": "#/$defs/fieldBlock" } }
       ]
     },
 
@@ -576,6 +580,85 @@
         "style": { "$ref": "#/$defs/navStyle" }
       }
     },
+    "collectionListBlock": {
+      "description": "The published entries of a collection, each a card that links to its entry's page: as many as count, in an order, those whose choice or toggle field holds a value when it filters, laid out as a list, a grid or a compact list, each card showing its title and the fields it names. Which entries those are is data of the CMS's: the renderers are given them. A collection that is not there, or one with nothing to list, draws what emptyText says.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["count", "order", "layout", "columns", "linkLabel", "emptyText"],
+          "additionalProperties": false,
+          "properties": {
+            "collection": {
+              "description": "The collection, by its id; absent until one is chosen.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "count": { "description": "The most entries it lists.", "type": "integer", "minimum": 1, "maximum": 24 },
+            "order": { "$ref": "#/$defs/listOrder" },
+            "filter": { "$ref": "#/$defs/listFilter" },
+            "layout": {
+              "description": "list: one card under another, its image beside its words; grid: cards side by side, as many as columns, its image above; compact: a title and a day a line, no image, no excerpt.",
+              "enum": ["list", "grid", "compact"]
+            },
+            "columns": { "description": "How many cards a row of the grid holds at most; read by the grid only.", "type": "integer", "minimum": 2, "maximum": 4 },
+            "image": { "description": "The image field a card shows, by its key.", "$ref": "#/$defs/fieldKey" },
+            "date": { "description": "The date field a card shows, by its key.", "$ref": "#/$defs/fieldKey" },
+            "excerpt": { "description": "The text or paragraph field a card shows under its title, by its key.", "$ref": "#/$defs/fieldKey" },
+            "linkLabel": { "description": "The words at a card's foot (Read more), or none.", "$ref": "#/$defs/lineOrEmpty", "type": "string", "maxLength": 40 },
+            "emptyText": { "description": "What the list says when it has no entry to show.", "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/collectionListStyle" }
+      }
+    },
+    "fieldBlock": {
+      "description": "A value of the entry a collection's template is drawn with: its title, or one of its collection's fields by its key, drawn as the field's type draws it (a text as a heading of level when it names one, else as a paragraph; a paragraph's lines; the rich text; the image; the day; a link as a button; a toggle that is on as its field's label; a choice's option; a number as written). Only a template holds one, an application rule of the editor and the CMS outside this file; anywhere else, and for a value the entry has not, it draws nothing.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["field"],
+          "additionalProperties": false,
+          "properties": {
+            "field": { "description": "The field's key, or title for the entry's own title.", "$ref": "#/$defs/anchor" },
+            "level": { "description": "A text drawn as a heading, of this level; absent, as a paragraph. Read for a text and the title only.", "type": "integer", "minimum": 1, "maximum": 4 },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/fieldStyle" }
+      }
+    },
+    "listOrder": {
+      "description": "The order a collection list puts its entries in: by when they went live (publishedAt), by title, or by the key of one of its collection's date or number fields; ascending or descending. An entry with nothing to order by comes last.",
+      "type": "object",
+      "required": ["by", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "by": { "type": "string", "pattern": "^(?:publishedAt|[a-z][a-z0-9-]{0,63})$" },
+        "direction": { "enum": ["asc", "desc"] }
+      }
+    },
+    "listFilter": {
+      "description": "Only the entries whose choice field holds this option, or whose toggle field is on or off: the field by its key, and the value.",
+      "type": "object",
+      "required": ["field", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "$ref": "#/$defs/fieldKey" },
+        "value": { "anyOf": [{ "type": "boolean" }, { "$ref": "#/$defs/line", "type": "string", "maxLength": 60 }] }
+      }
+    },
+    "fieldKey": {
+      "description": "A field of a collection, by the key its values are kept under: lowercase letters, digits and hyphens, starting with a letter, as an anchor (collection.schema.json's fieldKey, which is never title or slug).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
     "pricingPlan": {
       "description": "One plan of a pricing block. Its price is text, written as it is shown (with its currency, or Free), never a number the page would format, and its period says what the price is for (a month), or is empty. Its text, its period and its badge are always there and may be empty; its features are lines, none to twelve; its button is a button block's words and link, by a button block's own rules. Its badge is drawn only while it is featured.",
       "type": "object",
@@ -998,6 +1081,37 @@
       "type": "object",
       "additionalProperties": false,
       "properties": { "color": true, "visibility": true }
+    },
+    "collectionListStyle": {
+      "description": "Collection list: the colour of its cards' words, and whether it is shown.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/collectionListStyleKeys" },
+        "tablet": { "$ref": "#/$defs/collectionListStyleKeys" },
+        "phone": { "$ref": "#/$defs/collectionListStyleKeys" }
+      }
+    },
+    "collectionListStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "visibility": true }
+    },
+    "fieldStyle": {
+      "description": "Field: the settings of the widget it draws as, a heading's or a text's for words (their step, typeface, free type, colour and alignment), an image's crop, a button's colours and alignment, and whether it is shown. Each is read only while the field draws as that widget, and kept while it does not.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/fieldStyleKeys" },
+        "tablet": { "$ref": "#/$defs/fieldStyleKeys" },
+        "phone": { "$ref": "#/$defs/fieldStyleKeys" }
+      }
+    },
+    "fieldStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "textSize": true, "typeface": true, "fontSize": true, "fontWeight": true, "letterSpacing": true, "lineHeight": true, "letterWidth": true,
+        "color": true, "align": true, "aspect": true, "background": true, "visibility": true
+      }
     },
     "navStyle": {
       "description": "Logo and menu: the colour of their words, where they sit in their column, and whether they are shown.",

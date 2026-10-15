@@ -21,6 +21,7 @@ import { FREE_TYPE_KEYS, isFreeTypeKey } from "../../shared/free-type.ts";
 import type { Block, BlockType, PaletteSlot, WidgetBlock } from "../../shared/document.ts";
 import { slotTone } from "../../shared/site-tokens.ts";
 import type { BlockFieldError } from "../../storage/adapter.ts";
+import { fieldStyleBlock, useFieldShape } from "../../widgets/field/panel.tsx";
 import { WIDGET_PANELS } from "../../widgets/panels.ts";
 import { useEnv, useUi } from "../context.tsx";
 import { deviceOf, OVERRIDE_DEVICES, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
@@ -94,9 +95,13 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   stats: ["content", "text-color", "alignment", "shown", "advanced"],
   steps: ["content", "disc-color", "shown", "advanced"],
   pricing: ["content", "highlight-color", "shown", "advanced"],
+  collectionList: ["content", "text-color", "shown", "advanced"],
   form: ["content", "shown", "advanced"],
   logo: ["content", "text-color", "alignment", "shown", "advanced"],
   menu: ["content", "text-color", "alignment", "shown", "advanced"],
+  // A field takes the groups of the widget it draws as (fieldStyleBlock);
+  // these are a field's whose field the template's collection has not.
+  field: ["content", "shown", "advanced"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -243,13 +248,18 @@ function contentWords(block: WidgetBlock): string {
 
 // ------------------------------------------------------------ the specs
 
-// The selected block's groups, in order, each with what it holds.
+// The selected block's groups, in order, each with what it holds. A Field
+// block's style groups are those of the widget it draws as, set on the
+// field (../../widgets/field/panel.tsx, fieldStyleBlock).
 export function useBlockGroups(block: Block): GroupSpec[] {
   const preview = useUi((u) => u.preview);
   const siteStyle = useUi((u) => u.siteStyle);
   const columnStyle = useColumnStyle(block.id);
-  const context: WordsContext = { block, device: deviceOf(preview), palette: siteStyle?.palette, columnStyle };
-  return GROUPS_BY_TYPE[block.type].flatMap((id): GroupSpec[] => {
+  const shape = useFieldShape(block);
+  const styled = block.type === "field" && shape !== null ? fieldStyleBlock(block, shape) : block;
+  const context: WordsContext = { block: styled, device: deviceOf(preview), palette: siteStyle?.palette, columnStyle };
+  const ids = styled === block ? GROUPS_BY_TYPE[block.type] : GROUPS_BY_TYPE[styled.type];
+  return ids.flatMap((id): GroupSpec[] => {
     switch (id) {
       case "content": {
         if (block.type === "section" || block.type === "column") return [];
@@ -288,7 +298,7 @@ export function useBlockGroups(block: Block): GroupSpec[] {
           body: <BlockAdvanced block={block} />,
         }];
       default: {
-        const keys = acceptedKeys(block.type, STYLE_GROUPS[id].keys);
+        const keys = acceptedKeys(styled.type, STYLE_GROUPS[id].keys);
         if (keys.length === 0) return [];
         const { words, dot } = styleWords(id, keys, context);
         return [{
@@ -298,7 +308,7 @@ export function useBlockGroups(block: Block): GroupSpec[] {
           holds: (field) => (keys as readonly string[]).includes(styleKeyOf(field) ?? ""),
           summary: words,
           dot,
-          body: <StyleFields block={block} keys={keys} />,
+          body: <StyleFields block={styled} keys={keys} />,
         }];
       }
     }

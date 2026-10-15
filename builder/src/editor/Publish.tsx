@@ -13,6 +13,7 @@
 // pressable.
 import { useId, useRef, useState } from "react";
 import { cmsAddress } from "../storage/config.ts";
+import { previewAddressOf } from "./collections/content.ts";
 import type { SaveSnapshot } from "../storage/autosave.ts";
 import { useEditor, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
@@ -66,9 +67,12 @@ export function siteAddress(path: string, cmsOrigin: string | null): string {
 
 export function PreviewButton() {
   const session = useSession();
+  const site = useUi((u) => u.siteEntries);
+  const picked = useUi((u) => u.previewEntry);
   const page = session.current;
   if (!page) return null;
-  const href = cmsAddress(page.links.preview, session.cmsOrigin);
+  // A template's names the entry the canvas draws it with, as a click's.
+  const href = cmsAddress(previewAddressOf(page, site, picked), session.cmsOrigin);
   const keys = entry("preview");
   return (
     <a

@@ -174,6 +174,9 @@ const formField = fc.record({
 
 // A line or a paragraph that may be empty: empty as often as not.
 const lineOrEmpty = (max: number) => fc.oneof(fc.constant(""), line(max));
+
+// A collection's field, by a key the schema takes.
+const fieldKey = fc.stringMatching(/^[a-z][a-z0-9-]{0,63}$/);
 const paragraphOrEmpty = (max: number) => fc.oneof(fc.constant(""), paragraph(max));
 
 // A pricing block's plan: any name and price the schema takes, its period,
@@ -220,6 +223,25 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
       label: line(40),
       items: fc.array(fc.record({ label: line(40), href }), { minLength: 1, maxLength: 12 }),
     });
+    // A list of a collection no CMS of the run has made (ids past any a
+    // test reaches), or of none chosen: both renderers draw its empty
+    // words, its every key read as the schema allows it.
+    case "collectionList": return fc.record({
+      collection: fc.option(fc.integer({ min: 900_000_000, max: 900_009_999 }), { nil: undefined }),
+      count: fc.integer({ min: 1, max: 24 }),
+      order: fc.record({ by: fc.oneof(fc.constantFrom("publishedAt", "title"), fieldKey), direction: fc.constantFrom("asc", "desc") }),
+      filter: fc.option(fc.record({ field: fieldKey, value: fc.oneof(fc.boolean(), line(60)) }), { nil: undefined }),
+      layout: fc.constantFrom("list", "grid", "compact"),
+      columns: fc.integer({ min: 2, max: 4 }),
+      image: fc.option(fieldKey, { nil: undefined }),
+      date: fc.option(fieldKey, { nil: undefined }),
+      excerpt: fc.option(fieldKey, { nil: undefined }),
+      linkLabel: lineOrEmpty(40),
+      emptyText: line(200),
+    }).map(compact);
+    // Never on a page (PageRules): the contract's template fixture holds
+    // its traps.
+    case "field": return fc.record({ field: fieldKey, level: fc.option(fc.integer({ min: 1, max: 4 }), { nil: undefined }) }).map(compact);
   }
 }
 
@@ -239,8 +261,13 @@ function style(type: BlockType): fc.Arbitrary<AnyObject> {
 
 // ---------------------------------------------------------------- pages
 
+// Every widget a page holds: all but a Field block, which only a
+// collection's template takes (PageRules), and the agreement check saves
+// pages.
+const PAGE_WIDGETS = WIDGET_TYPES.filter((type) => type !== "field");
+
 function widget(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
-  return fc.constantFrom(...WIDGET_TYPES).chain((type) =>
+  return fc.constantFrom(...PAGE_WIDGETS).chain((type) =>
     fc.record({ props: props(type, mediaIds), style: style(type) }).map(({ props: p, style: s }) => ({ id: "", type, props: p, children: [], style: s })));
 }
 

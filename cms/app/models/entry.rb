@@ -94,6 +94,29 @@ class Entry < ApplicationRecord
     { "title" => title, "slug" => slug, "values" => field_values }
   end
 
+  # The most a page's description holds (block-document.schema.json).
+  DESCRIPTION_LENGTH = 160
+
+  # What its page tells search engines it holds, from what it went live
+  # with: the value of its collection's first paragraph field it has a
+  # value of, else of its first text field, on one line, cut at a word
+  # within DESCRIPTION_LENGTH characters; nil when it has neither, and the
+  # page takes its template's own description, if any.
+  def description
+    return nil unless published?
+
+    text = %w[paragraph text].lazy.filter_map do |type|
+      collection.fields.filter_map { |field| published_field_values[field["key"]] if field["type"] == type }.find { |value| value.is_a?(String) && !value.strip.empty? }
+    end.first
+    return nil unless text
+
+    line = text.split.join(" ")
+    return line if line.length <= DESCRIPTION_LENGTH
+
+    cut = line[0, DESCRIPTION_LENGTH - 1]
+    "#{cut.include?(' ') ? cut[0, cut.rindex(' ')] : cut}…"
+  end
+
   # Puts live what the draft holds now, checked again against the
   # collection's fields as they are now (a field may have become required
   # since the last save). expected_revision, when given, is the revision the
@@ -116,7 +139,7 @@ class Entry < ApplicationRecord
               published_at: published_at || at, updated_at: at)
       redirects.create!(collection_id: collection_id, from_slug: previous) if previous && previous != slug
       MediaUsage.index_entry!(self, at: at)
-      collection.advance!
+      collection.advance!(at: at)
       self
     end
   end
@@ -131,18 +154,18 @@ class Entry < ApplicationRecord
 
       update!(published_title: nil, published_slug: nil, published_field_values: nil, published_revision: nil, published_at: nil, updated_at: at)
       MediaUsage.index_entry!(self, at: at)
-      collection.advance!
+      collection.advance!(at: at)
       self
     end
   end
 
   # Deletes the entry, its redirects and the record of the images it used.
-  def delete_entry!
+  def delete_entry!(at: Time.current)
     transaction do
       reload
       live = published?
       destroy!
-      collection.advance! if live
+      collection.advance!(at: at) if live
     end
   end
 

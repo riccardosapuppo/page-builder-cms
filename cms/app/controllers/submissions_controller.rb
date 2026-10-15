@@ -166,13 +166,15 @@ class SubmissionsController < ApplicationController
 
   # The page as the visitor sent it, with what they wrote and, by each
   # field refused, why; above the page, the same list with links to the
-  # fields. Never cached (BlocksHelper#render_blocks refuses to).
+  # fields; its Collection lists as the page draws them. Never cached
+  # (BlocksHelper#render_blocks refuses to).
   def draw_again(document, form, answers)
     @answers = { form.id => { "values" => answers.values, "errors" => answers.errors } }
     @form_errors = form.fields.filter_map do |field|
       { id: "#{form.id}:#{field.name}", label: field.label, message: answers.errors[field.name] } if answers.errors.key?(field.name)
     end
-    render_document(document, status: :unprocessable_content, title: "Error: #{document['title']}")
+    content = SiteContent.new(ids: CollectionList.ids(document) + site_parts.values.flat_map(&:listed))
+    render_document(document, status: :unprocessable_content, title: "Error: #{document['title']}", content: content)
   end
 
   def refuse(status, text, heading: "Not sent")

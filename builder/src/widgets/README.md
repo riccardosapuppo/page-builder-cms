@@ -3,12 +3,16 @@
 One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
 `map/`, `iconbox/`, `quote/`, `accordion/`, `stats/`, `steps/`,
-`pricing/`, `form/`, `logo/`, `menu/`. The last two are the blocks a
-header and a footer are made of, in Insert's Site group, after the
-approved design's groups, their tiles drawn in the design's language; a
-page may hold them too. Stats, steps and pricing came after the design
-too, widgets of a kind it has a group for: they stand last in Content,
-after the design's own tiles, in the order they were made. Each holds:
+`pricing/`, `collectionList/`, `form/`, `logo/`, `menu/`, `field/`.
+Logo and menu are the blocks a header and a footer are made of, in
+Insert's Site group, after the approved design's groups, their tiles
+drawn in the design's language; a page may hold them too. Stats, steps,
+pricing and the Collection list came after the design too, widgets of a
+kind it has a group for: they stand last in Content, after the design's
+own tiles, in the order they were made, the Collection list only where
+the storage keeps collections. The Field block goes only in a
+collection's template, in a group of its own, This entry, first there
+(below, "Widgets that draw a collection"). Each holds:
 
 - `definition.ts`: the type, its group and label in the Insert drawer and
   the "+"'s picker (the
@@ -76,12 +80,60 @@ Three need something first, and their definition says which:
 | Gallery | `"images"` | at least one image, the same way |
 | Video | `"video"` | `{provider, videoId}`: an id made up here would point at somebody's video |
 
+A Collection list needs nothing, but takes what Insert hands it: the
+first collection and its own order (`widgetInput` of
+`../editor/insert.ts`, `listStart` of `../editor/collections/content.ts`),
+by when its entries went live where the collection goes by the last
+save; with no collection yet it starts with none chosen, and draws its
+empty words.
+
+## Widgets that draw a collection
+
+Two widgets draw from what the page is drawn with rather than from their
+props alone: the render's content (`../render/context.ts`,
+`ctx.collections` and `ctx.entry`), which the canvas fills from the
+storage (`../editor/collections/content.ts`), the demo from the browser's
+storage, and the server from its database (`SiteContent`).
+
+- **Collection list** (`collectionList/`): `cards.ts` says which entries
+  and what each card shows, the twin of `CollectionList`
+  (`cms/app/models/collection_list.rb`): the collection's published
+  entries in the list's order (shared with the Collections screen,
+  `../shared/entry-order.ts`), those its filter keeps, as many as its
+  count, each card's image, day and excerpt only from a field of the
+  right type, and its link to `/<prefix>/<slug>` (the demo's own,
+  `?entry=<id>`, through `ctx.entryHref`). On an entry's page, a list of
+  that entry's collection leaves the entry out (`leftOut`: by the id and
+  collection id `ctx.entry` carries), so a "More news" list never lists
+  the story above it. The canvas never draws a draft in it; its panel
+  says how many drafts it leaves out, and leads to them in Collections.
+- **Field** (`field/`): `drawing.ts` says what it draws, the twin of
+  `EntryField` (`cms/app/models/entry_field.rb`): the title, or the field
+  its key names, drawn as the widget its type draws as (a heading of the
+  level given, or a text, for the title and a text field; a text for the
+  others, the rich text as the text widget draws it; an image as an
+  image; a link as a button, by the button's URL policy), with that
+  widget's markup and classes, and its style keys, which the panel draws
+  as that widget's groups (`fieldStyleBlock`). A value the entry does not
+  have, or of another type, draws nothing: the root is there, hidden, and
+  the canvas alone notes it faintly (`fieldNote` of
+  `../editor/Canvas.tsx`). Insert offers it only on a template, the
+  storage refuses it anywhere else (`pageFaults` and `partFaults` of
+  `../shared/validate.ts`, `PageRules` and `SiteParts` on the server),
+  and so does Paste.
+
+Their accessibility tests say what they draw from: a collection made on
+the CMS before the cases are published (`collection` in `a11y.ts`, its
+id where the cases name `A11Y_COLLECTION`), and, for the Field block, the
+collection's template, read on its first entry's page (`inTemplate`).
+
 ## Checks
 
 `registry.test.ts`: one definition for each widget type of the schema;
 the panel's groups, order and labels equal to the approved design's
 (read from `design/index.html`), with the widgets made after it last in
-their group (stats, steps, pricing) or in a group of their own (Site);
+their group (stats, steps, pricing, the Collection list) or in a group of
+their own (Site, and This entry, first in a template);
 every tile's icon drawn as its shapes are held, with no warning from React
 (`../editor/icons.test.ts` holds the shapes to their Lucide files); every
 new widget a valid block, and a page holding one of each a valid page.
@@ -131,8 +183,8 @@ alone, after the twelve others, and its commit holds every place below.
   first (`InputOf`) and, for a new group of the design's Insert, the group;
   and in `registry.test.ts`, its input there, and for a widget the
   approved design did not draw, its place among those made after it
-  (stats, steps and pricing are three: last in Content, after the
-  design's tiles, in the order they were made).
+  (stats, steps, pricing and the Collection list are four: last in
+  Content, after the design's tiles, in the order they were made).
 - **The browser tests**: the widget's own, `e2e/<type>.spec.ts` (the
   form's is `e2e/form.spec.ts`: its tile in Insert and in the picker, a
   published form sent by the browser). What its accessibility test says a

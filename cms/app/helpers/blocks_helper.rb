@@ -8,13 +8,15 @@
 # not pass the schema: a page holds sections, a section columns, a column
 # widgets, and a block of any other type, or in any other place, is left
 # out. A library image is looked up through media, which answers
-# call(media_id) with a MediaResolver::Image or nil.
+# call(media_id) with a MediaResolver::Image or nil; a collection's
+# published entries, and the entry a template is drawn with, through
+# content (SiteContent), which answers collection(id) and entry.
 module BlocksHelper
-  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu].freeze
+  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field].freeze
 
-  def render_document(document, media:, cached: false, answers: nil)
+  def render_document(document, media:, content: SiteContent::NONE, cached: false, answers: nil)
     sections = document.is_a?(Hash) ? document["sections"] : nil
-    render_blocks(sections, allow: %w[section], media: media, cached: cached, answers: answers)
+    render_blocks(sections, allow: %w[section], media: media, content: content, cached: cached, answers: answers)
   end
 
   # The blocks of one level (a page's sections, a section's columns, a
@@ -26,24 +28,27 @@ module BlocksHelper
   # write_multi. Rails caches a collection through a single partial, so
   # blocks/_block hands each block to its type's partial. The published
   # pages are cached; the preview, the 404 page and the contract goldens
-  # are not.
+  # are not. A block that draws from content is keyed on what it draws
+  # from too: a list on its collection's key, a field on what it draws.
   #
   # answers: what a visitor sent, by form block id, when a page is drawn
   # again for a form the server refused (SubmissionsController); that form
   # gets its own as the partial's answer, with the values kept and each
   # refusal by its field. Such a page is never cached, since a fragment
   # holds what every visitor sees.
-  def render_blocks(blocks, allow:, media:, cached: false, answers: nil)
+  def render_blocks(blocks, allow:, media:, content: SiteContent::NONE, cached: false, answers: nil)
     raise ArgumentError, "a page drawn with a visitor's answers is never cached" if cached && answers
 
     blocks = Array(blocks).select { |block| block.is_a?(Hash) && allow.include?(block["type"]) }
     if cached
-      @block_keys ||= PageCache::BlockKeys.new
-      keys = @block_keys
-      render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media }, cached: ->(block) { keys.call(block) }) || "".html_safe
+      # One table of digests for each content a render draws with: a part
+      # around an entry's page is drawn without its entry.
+      @block_keys ||= {}.compare_by_identity
+      keys = @block_keys[content] ||= PageCache::BlockKeys.new(content: content)
+      render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media, content: content }, cached: ->(block) { keys.call(block) }) || "".html_safe
     else
       safe_join(blocks.map do |block|
-        locals = { block: block, media: media }
+        locals = { block: block, media: media, content: content }
         locals.merge!(answers: answers, answer: answers[block["id"]]) if answers
         render(partial: "blocks/#{block['type']}", locals: locals)
       end)

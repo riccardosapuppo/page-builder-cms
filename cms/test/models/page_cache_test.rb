@@ -165,7 +165,8 @@ class PageCacheModelTest < ActiveSupport::TestCase
     parts = SiteParts.live
 
     assert_equal [ 7, "20261004T180045.451234" ], PageCache.published_key(page)
-    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style), [ [ "header", "starter" ], [ "footer", "starter" ] ] ], PageCache.page_fragment(page, style, parts)
+    # Last, the collections its lists name, as they are: none here.
+    assert_equal [ "page", 7, "20261004T180045.451234", PageCache.site_style_key(style), [ [ "header", "starter" ], [ "footer", "starter" ] ], [] ], PageCache.page_fragment(page, style, parts)
     assert_not_equal PageCache.page_fragment(page, style, parts), PageCache.page_fragment(other, style, parts)
     assert_not_equal PageCache.etag(page, style, parts), PageCache.etag(other, style, parts)
   end

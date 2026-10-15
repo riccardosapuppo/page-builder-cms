@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "title": "Collection lists",
+  "sections": [
+    {
+      "id": "cl",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "cl-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "cl-list",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 1,
+                "order": {
+                  "by": "title",
+                  "direction": "asc"
+                },
+                "layout": "list",
+                "columns": 3,
+                "linkLabel": "",
+                "emptyText": "Nothing here yet."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "cl-grid",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 24,
+                "order": {
+                  "by": "publishedAt",
+                  "direction": "asc"
+                },
+                "layout": "grid",
+                "columns": 4,
+                "linkLabel": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+                "emptyText": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+                "filter": {
+                  "field": "featured",
+                  "value": true
+                },
+                "image": "image",
+                "date": "date",
+                "excerpt": "summary"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "#1d4e6f"
+                },
+                "tablet": {
+                  "color": "accent"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            },
+            {
+              "id": "cl-compact",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "water-temperature",
+                  "direction": "desc"
+                },
+                "layout": "compact",
+                "columns": 2,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet.",
+                "filter": {
+                  "field": "members-only",
+                  "value": false
+                },
+                "date": "day"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "cl-choice",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "date",
+                  "direction": "asc"
+                },
+                "layout": "grid",
+                "columns": 3,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet.",
+                "filter": {
+                  "field": "level",
+                  "value": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊"
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "cl-unchosen",
+              "type": "collectionList",
+              "props": {
+                "count": 3,
+                "order": {
+                  "by": "publishedAt",
+                  "direction": "desc"
+                },
+                "layout": "grid",
+                "columns": 3,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

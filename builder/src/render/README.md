@@ -22,7 +22,9 @@ widgets import its helpers. Nothing here talks to a server.
 | `rich-text.tsx` | Rich text, through TipTap's static renderer | `RichTextHelper` |
 | `media.tsx` | Images of image blocks and gallery items, and the contract's media stub | `block_img`, `ContractMedia` |
 | `drawings.tsx` | The icon box's icons (`virtual:site-icons`, read from `schema/icons.svg` by `../../build/site-icons.ts`), the theme's drawings, text with line breaks | `site_icon`, `theme_svg`, `text_with_breaks` |
-| `context.ts` | What a renderer receives: the media resolver, the decoration hook | |
+| `context.ts` | What a renderer receives: the media resolver, the collections the Collection lists name and the entry a template is drawn with, a card's address, the decoration hook | `SiteContent` |
+| `entry-words.ts` | An entry's values as a page writes them, for the Collection list and the Field block: a field by its key, a day that exists in the editor's words for one ("Oct 15, 2026"), a number with its thousands grouped and nothing for one no number field keeps | `EntryWords` |
+| `contract.ts` | The render contract's content for a fixture: its top-level `collections` and `entry`, as the renderer's (`contractContext`) | `ContractContent` (`cms/test/support/contract_content.rb`) |
 
 ## Using it
 
@@ -47,6 +49,24 @@ widgets import its helpers. Nothing here talks to a server.
   place while it is written on the canvas, which only the text widget's
   renderer calls (given the page's drawing, shown while the editor
   loads). Without it, the render is the page's.
+- **`ctx.collections(id)`** answers a Collection list's collection id
+  with the collection as a list draws it (`ListedCollection`): its
+  prefix, its fields and its published entries, as each went live, or
+  `null` for one there is not, and the list says its empty words. The
+  canvas answers from the storage (`../editor/collections/content.ts`),
+  the demo from the browser's, the server from its database
+  (`SiteContent`, read once per collection a page lists).
+- **`ctx.entry`**, the entry a collection's template is drawn with
+  (`ShownEntry`): the collection's fields, the entry's title, slug and
+  values, and its id and its collection's (none for made-up values), by
+  which a list of that collection leaves it out; on the site what it went live with, on the canvas and in the
+  preview its draft, or values made up from the fields' types. A Field
+  block draws nothing without it. The header and footer are drawn
+  without it (`partContext` of `page.tsx`), with the page's images and
+  collections: a part holds no Field block.
+- **`ctx.entryHref(collection, entry)`**, a card's address:
+  `/<prefix>/<slug>` when not given, by the URL policy; the demo gives its
+  own view of the entry (`?entry=<id>`).
 - **`width`** sets the page root's width: the editor's previews,
   `PREVIEW_WIDTHS` of `../shared/preview-widths.ts` (from
   `schema/tokens.json`), lay it out as a tablet at 768 and as a phone at
@@ -83,6 +103,12 @@ widgets import its helpers. Nothing here talks to a server.
   their content, unknown marks and refused links leave and their text
   stays, a line break carries no marks, a link keeps its href alone. Marks
   nest in the order they are stored, the first innermost.
+- **A list and a field written as the server writes them**: the entries
+  in the list's order, ties by when they were made and a title compared
+  by its code points, as Ruby compares strings (`../shared/entry-order.ts`,
+  `EntryOrder`); a day and a number in the same words from the same
+  table (`entry-words.ts`); a value of the wrong type, or a field the
+  collection no longer has, drawn as nothing on both sides.
 - **A change redraws only its path**: pages are never changed in place
   (`../document`), every block is memoised on its object, and a text block
   keeps its rendered text for as long as its document object is the same;

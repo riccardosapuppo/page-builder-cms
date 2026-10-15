@@ -42,7 +42,10 @@ class BlocksTest < ActionView::TestCase
       block("w-pricing", "pricing", { "plans" => [ plan("Season", "€60", button: { "label" => "Join", "href" => "/join" }, featured: true, badge: "Most chosen") ] }),
       block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }),
       block("w-logo", "logo", { "name" => "Slack Water" }),
-      block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] })
+      block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] }),
+      block("w-list", "collectionList", { "collection" => 7, "count" => 3, "order" => { "by" => "publishedAt", "direction" => "desc" }, "layout" => "grid", "columns" => 3,
+                                         "linkLabel" => "Read more", "emptyText" => "Nothing yet." }),
+      block("w-field", "field", { "field" => "title", "level" => 2 })
     ]
   end
 
@@ -77,7 +80,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu collectionList field], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -448,5 +451,98 @@ class BlocksTest < ActionView::TestCase
     html = render_document(page(*every_widget), media: MEDIA)
 
     assert_no_match(/\sstyle=/, html)
+  end
+
+  # ---------------------------------------------------------- entries
+
+  # A collection as SiteContent reads it, with two published entries, and
+  # the entry a template is drawn with: the contract's fixtures' shape
+  # (ContractContent).
+  NEWS = {
+    "id" => 7, "prefix" => "news",
+    "fields" => [
+      { "key" => "summary", "label" => "Summary", "type" => "paragraph", "required" => false },
+      { "key" => "picture", "label" => "Picture", "type" => "image", "required" => false },
+      { "key" => "day", "label" => "Day", "type" => "date", "required" => false },
+      { "key" => "booking", "label" => "Booking", "type" => "link", "required" => false },
+      { "key" => "members-only", "label" => "Members only", "type" => "toggle", "required" => false }
+    ],
+    "entries" => [
+      { "id" => 1, "title" => "Dawn swims", "slug" => "dawn-swims", "publishedAt" => "2026-05-03T07:00:00.000Z",
+        "values" => { "summary" => "Twice a week.\nAt first light.", "picture" => { "mediaId" => "dawn", "alt" => "The bay at dawn" }, "day" => "2026-05-02" } },
+      { "id" => 2, "title" => "Winter series", "slug" => "winter-series", "publishedAt" => "2026-10-20T08:30:00.000Z",
+        "values" => { "summary" => "Ten swims.", "day" => "2026-11-01", "members-only" => true } }
+    ]
+  }.freeze
+
+  def list(id, **props)
+    block(id, "collectionList", { "collection" => 7, "count" => 3, "order" => { "by" => "day", "direction" => "desc" }, "layout" => "grid", "columns" => 3,
+                                  "image" => "picture", "date" => "day", "excerpt" => "summary", "linkLabel" => "Read more", "emptyText" => "Nothing yet." }.merge(props.transform_keys(&:to_s)))
+  end
+
+  def html_with(document, content)
+    Nokogiri::HTML5.fragment(render_document(document, media: MEDIA, content: content))
+  end
+
+  def content(entry: nil)
+    ContractContent.new({ "collections" => [ NEWS ], "entry" => entry })
+  end
+
+  test "a collection list is one list of its published entries in its order, each card its image, its title linking to the entry's page, its day, its excerpt, and the words at its foot hidden from a screen reader" do
+    html = html_with(page(list("l")), content)
+    cards = html.css("[data-block-id=l] ul.sw-entries > li.sw-entry")
+
+    assert_equal [ "7", "grid", "3" ], attributes(html.at_css("[data-block-id=l]"), "data-collection", "data-layout", "data-columns")
+    assert_equal [ [ "Winter series", "/news/winter-series" ], [ "Dawn swims", "/news/dawn-swims" ] ], cards.map { |li| [ li.at_css("h3.sw-entry-title a").text, li.at_css("h3 a")["href"] ] }
+    assert_equal [ [ "2026-11-01", "Nov 1, 2026" ], [ "2026-05-02", "May 2, 2026" ] ], cards.map { |li| [ li.at_css("time")["datetime"], li.at_css("time").text ] }
+    assert_equal [ nil, "/media/dawn.png" ], cards.map { |li| li.at_css("figure.sw-entry-image img")&.[]("src") }
+    assert_equal "The bay at dawn", cards[1].at_css("img")["alt"]
+    assert_equal 1, cards[1].css(".sw-entry-excerpt br").size
+    assert_equal [ "true", "Read more" ], [ cards[0].at_css(".sw-entry-more")["aria-hidden"], cards[0].at_css(".sw-entry-more").text ]
+  end
+
+  test "a compact list is each title and its day alone; a list keeps the entries its filter keeps; one with nothing to show, or of a collection not there, or of none, says its empty words" do
+    html = html_with(page(list("compact", "layout" => "compact"), list("members", "filter" => { "field" => "members-only", "value" => false }),
+                          list("gone", "collection" => 99), list("none").tap { |b| b["props"].delete("collection") }), content)
+
+    compact = html.at_css("[data-block-id=compact]")
+    assert_nil compact["data-columns"]
+    assert_empty compact.css("img, .sw-entry-excerpt, .sw-entry-more")
+    assert_equal [ "Winter series", "Dawn swims" ], compact.css(".sw-entry-title").map(&:text)
+    assert_equal [ "Dawn swims" ], html.css("[data-block-id=members] .sw-entry-title").map(&:text), "a toggle with no value is off"
+    %w[gone none].each do |id|
+      assert_equal "Nothing yet.", html.at_css("[data-block-id=#{id}] p.sw-entries-empty").text, id
+      assert_empty html.css("[data-block-id=#{id}] ul"), id
+    end
+  end
+
+  test "a field draws its entry's value as the widget its type draws as: a heading of its level, paragraphs, a day, an image, a button, a toggle's label" do
+    entry = { "fields" => NEWS["fields"], "title" => "Dawn <swims>", "slug" => "dawn-swims",
+              "values" => NEWS["entries"][0]["values"].merge("booking" => { "label" => "Book", "href" => "/join" }, "members-only" => true) }
+    html = html_with(page(block("t", "field", { "field" => "title", "level" => 1 }), block("s", "field", { "field" => "summary" }), block("d", "field", { "field" => "day" }),
+                          block("p", "field", { "field" => "picture" }, style: { "base" => { "aspect" => "16:9" } }), block("b", "field", { "field" => "booking" }),
+                          block("m", "field", { "field" => "members-only" })), content(entry: entry))
+
+    assert_equal [ "w-heading", "Dawn <swims>" ], [ html.at_css("[data-block-id=t]")["class"].split.third, html.at_css("[data-block-id=t] h1").text ]
+    assert_equal "title", html.at_css("[data-block-id=t]")["data-field"]
+    assert_equal [ "Twice a week.At first light." ], html.css("[data-block-id=s].w-text p").map(&:text)
+    assert_equal "May 2, 2026", html.at_css("[data-block-id=d] p time[datetime='2026-05-02']").text
+    assert_equal [ "dawn", "/media/dawn.png", "The bay at dawn" ], [ html.at_css("[data-block-id=p]")["data-media-id"], html.at_css("[data-block-id=p] img")["src"], html.at_css("[data-block-id=p] img")["alt"] ]
+    assert_includes html.at_css("[data-block-id=p]")["class"].split, "aspect-16-9"
+    assert_equal [ "Book", "/join" ], [ html.at_css("[data-block-id=b].w-button a.sw-btn").text, html.at_css("[data-block-id=b] a")["href"] ]
+    assert_equal "Members only", html.at_css("[data-block-id=m] p").text
+    assert_empty html.css("[hidden]")
+  end
+
+  test "a field draws nothing, its root hidden, for a value the entry has not, one of another type, a key no field has, and on a page with no entry" do
+    entry = { "fields" => NEWS["fields"], "title" => "Dawn swims", "slug" => "dawn-swims", "values" => { "summary" => 42, "day" => "2026-02-30", "members-only" => false } }
+    document = page(block("s", "field", { "field" => "summary" }), block("d", "field", { "field" => "day" }), block("m", "field", { "field" => "members-only" }),
+                    block("b", "field", { "field" => "booking" }), block("x", "field", { "field" => "gone" }))
+
+    [ html_with(document, content(entry: entry)), html_of(document) ].each do |html|
+      roots = html.css("[data-block-type=field]")
+      assert_equal %w[s d m b x], roots.map { |root| root["data-block-id"] }
+      assert(roots.all? { |root| root.key?("hidden") && root.children.empty? && root["class"] == "w w-field" })
+    end
   end
 end

@@ -1443,6 +1443,27 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a Field block goes only in a template: a page's draft and a part's holding one are refused at the block, keyword field, and the template takes the same document",
+    needs: ["collections"],
+    async run(env) {
+      const field: WidgetBlock = { id: id("t"), type: "field", props: { field: "title", level: 1 }, children: [], style: { base: {} } };
+      const withField = documentOf("News", section(heading("An entry"), field));
+      const page = await newPage(env, "field-page");
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      for (const [what, pageId, revision] of [["a page", page.id, page.revision], ["the footer", footer.id, before.revision]] as const) {
+        const problem = refusal(await env.adapter.saveDraft(pageId, { revision, document: withField, saveId: "field-outside" }), `a Field block in ${what}`);
+        if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+        env.expect([problem.code, ...pointers(problem)], what).toEqual(["invalid_document", "/document/sections/0/children/0/children/1 field"]);
+        env.expect(errorsByBlock(withField, problem.errors).map((e) => [e.blockId, e.field, e.keyword]), what).toEqual([[field.id, "", "field"]]);
+      }
+      env.expect(await env.adapter.getDraft(footer.id), "the footer, untouched").toEqual(before);
+
+      const collection = await newCollection(env);
+      await saved(env.adapter, collection.templateId, { revision: 0, document: withField, saveId: "field-template" }, "the same document in the template");
+    },
+  },
+  {
     name: "an image an entry shows is not deleted, the refusal naming the entry, and neither once only what is live shows it; an entry naming an image the library does not have is refused at that image",
     needs: ["collections"],
     async run(env) {

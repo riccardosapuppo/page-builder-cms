@@ -54,12 +54,13 @@ export function asksOf(definition: AnyWidgetDefinition): Asking | null {
   return definition.needs === null ? null : { kind: "widget", type: definition.type };
 }
 
-export function widgetTile(definition: AnyWidgetDefinition, newId: NewId, start: TileSource["start"]): TileSource {
-  const input = definition.needs === null ? undefined : PLACING[definition.needs];
+// A widget that needs nothing first may still take what Insert knows
+// (./insert.ts, widgetInput): `input` gives it when the block is made.
+export function widgetTile(definition: AnyWidgetDefinition, newId: NewId, start: TileSource["start"], input: () => unknown = () => undefined): TileSource {
   return {
     kind: "tile",
     type: definition.type,
-    make: (page) => newWidget(definition as never, idDraw(page, newId)(), input as never) as WidgetBlock,
+    make: (page) => newWidget(definition as never, idDraw(page, newId)(), (definition.needs === null ? input() : PLACING[definition.needs]) as never) as WidgetBlock,
     start,
     asks: asksOf(definition),
   };
