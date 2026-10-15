@@ -46,11 +46,14 @@ export function pageQuestion(model: string, brief: string, site: SiteWords): Que
     "- Three to seven sections. Open with what the page is for, in its one level 1 heading (display: true); end with what the reader can do next.",
     `- ${FACTS}`,
     "- Words for people: short sentences, concrete, nothing to fill space, no placeholder text.",
-    "- Headings: level 1 once, first; level 2 for each section; level 3 below.",
-    "- A button leads to a section of this plan (#its-anchor), to one of the site's pages (its path), or to an address the person gives. Nothing else.",
+    "- Headings: level 1 once, first; level 2 for each section; level 3 below. Steps and plans are titled at level 3: give their section its level 2 heading first.",
+    "- A button, a plan's too, leads to a section of this plan (#its-anchor), to one of the site's pages (its path), or to an address the person gives. Nothing else.",
     "- At most one form, with only the fields its purpose needs, and only if the page asks the reader to send something.",
+    "- Stats only for a few key figures the brief gives, each its value and what it counts; never a figure the brief does not hold.",
+    "- Steps for a process the reader goes through, in order, each a title and a short text.",
+    "- Pricing only when the brief gives prices: its plans, each with its price and period as the brief writes them, what it includes and a button; one plan featured at most. Never a plan, a price or a feature the brief does not hold.",
     "- One to four columns in a section: two or three for things side by side; widths with as many parts as there are columns, or equal.",
-    "- Backgrounds: mostly none or background; soft or muted to set a section apart; primary, accent or text for one section that must stand out. Buttons are drawn in the accent colour and a form's send key in the primary one: never put a button on accent, or a form on primary.",
+    "- Backgrounds: mostly none or background; soft or muted to set a section apart; primary, accent or text for one section that must stand out. Buttons, a plan's too, are drawn in the accent colour and a form's send key in the primary one: never put a button or pricing on accent, or a form on primary.",
   ].join("\n");
   return { model, system, text: `The page the person wants:\n\n${brief.trim()}`, schema: PLAN_SCHEMA, name: "page_plan", maxTokens: 32000, effort: "medium" };
 }

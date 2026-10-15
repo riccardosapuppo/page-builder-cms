@@ -2,12 +2,13 @@
 // real editor store with makeInsert, as the Assistant puts it in, so the
 // page's schema and rules decide; and what a model may get wrong is shown
 // left out or mended: headings out of order, links of its own invention,
-// images the library does not have, words too long, forms twice.
+// images the library does not have, words too long, forms twice, more
+// figures, steps, plans or features than a widget takes, or too few.
 import { expect, test } from "vitest";
 import { makeInsert } from "../document/commands.ts";
 import { idDraw } from "../document/ids.ts";
 import { createEditorStore } from "../store/editor-store.ts";
-import type { HeadingBlock, PageDocument, SectionBlock } from "../shared/document.ts";
+import type { HeadingBlock, PageDocument, PricingPlan, SectionBlock, StatsItem, StepsItem, WidgetBlock } from "../shared/document.ts";
 import { line, PlanBuilder, type SiteFacts } from "./build.ts";
 
 const FACTS: SiteFacts = {
@@ -48,6 +49,11 @@ function fill(sections: unknown[], facts: SiteFacts = FACTS) {
 const column = (blocks: unknown[], align = "left") => ({ align, blocks });
 const section = (label: string, columns: unknown[], more: Record<string, unknown> = {}) => ({ label, anchor: "", background: "none", widths: "equal", columns, ...more });
 const headings = (doc: PageDocument) => doc.sections.flatMap((s) => s.children.flatMap((c) => c.children)).filter((b): b is HeadingBlock => b.type === "heading");
+// A plan of a pricing block as a model writes it, and a block's own lists.
+const offer = (name: string, more: Record<string, unknown> = {}) => ({ name, price: "€5", period: "", text: "", features: [], buttonLabel: "Book", buttonTarget: "/", featured: false, badge: "", ...more });
+const figuresOf = (block: WidgetBlock | undefined) => (block!.props as { items: StatsItem[] }).items;
+const stepsOf = (block: WidgetBlock | undefined) => (block!.props as { items: StepsItem[] }).items;
+const plansOf = (block: WidgetBlock | undefined) => (block!.props as { plans: PricingPlan[] }).plans;
 
 test("a whole plan goes in, section by section, and the store takes every block", () => {
   const { doc, builder, refused } = fill([
@@ -186,16 +192,128 @@ test("columns: empty ones go, four at most, and widths only where they fit the c
   ]);
 });
 
-test("a section's background is never the colour of its keys: a form on primary, a button on accent, take soft", () => {
+test("a section's background is never the colour of its keys: a form on primary, a button or a plan's on accent, take soft", () => {
   const { doc, builder } = fill([
     section("Book", [column([{ kind: "form", fields: [{ type: "email", label: "Email", required: true }], submitLabel: "Book", confirmation: "Thanks." }])], { background: "primary" }),
     section("Go", [column([{ kind: "button", label: "Go", target: "/" }])], { background: "accent" }),
     section("Fine", [column([{ kind: "button", label: "Go", target: "/" }])], { background: "primary" }),
+    section("Plans", [column([{ kind: "pricing", plans: [offer("Plus")] }])], { background: "accent" }),
+    section("Plans too", [column([{ kind: "pricing", plans: [offer("Plus")] }])], { background: "primary" }),
   ]);
-  expect(doc.sections.map((s) => s.style.base.background)).toEqual(["soft", "soft", "primary"]);
+  expect(doc.sections.map((s) => s.style.base.background)).toEqual(["soft", "soft", "primary", "soft", "primary"]);
   expect(builder.notes).toEqual([
     "Gave the section “Book” the soft background: its form's send key would not show on the primary one.",
     "Gave the section “Go” the soft background: its buttons would not show on the accent one.",
+    "Gave the section “Plans” the soft background: its plans' buttons would not show on the accent one.",
+  ]);
+});
+
+test("stats, steps and pricing go in as their blocks, and the store takes each", () => {
+  const { doc, builder, refused } = fill([
+    section("Numbers", [column([
+      { kind: "heading", level: 1, text: "The club in numbers", display: true },
+      { kind: "stats", figures: [{ value: "120", label: "Members" }, { value: "1987", label: "Swimming since" }] },
+    ])]),
+    section("How to join", [column([{ kind: "steps", steps: [{ title: "Come along", text: "Any Saturday at eight." }, { title: "Swim with a coach", text: "Close to the shore,\nat your pace." }] }])]),
+    section("Membership", [column([{ kind: "pricing", plans: [
+      offer("Swimmer", { price: "€20", period: "a month", features: ["Two swims a week", "A coach on Saturdays"], buttonLabel: "Join", buttonTarget: "#join" }),
+      offer("Family", { price: "€45", text: "Two adults and their children.", buttonLabel: "Join as a family", buttonTarget: "/winter-series", featured: true, badge: "For families" }),
+    ] }])]),
+    section("Join", [column([{ kind: "text", paragraphs: ["Write to hello@slackwater.example."] }])], { anchor: "join" }),
+  ]);
+  expect(refused).toEqual([]);
+  expect(builder.notes).toEqual([]);
+  const last = doc.sections.map((s) => s.children[0]!.children.at(-1));
+  expect(last.map((block) => block?.type)).toEqual(["stats", "steps", "pricing", "text"]);
+  expect(figuresOf(last[0])).toEqual([{ value: "120", label: "Members" }, { value: "1987", label: "Swimming since" }]);
+  expect(stepsOf(last[1])).toEqual([{ title: "Come along", text: "Any Saturday at eight." }, { title: "Swim with a coach", text: "Close to the shore, at your pace." }]);
+  expect(plansOf(last[2])).toEqual([
+    { name: "Swimmer", price: "€20", period: "a month", text: "", features: ["Two swims a week", "A coach on Saturdays"], button: { label: "Join", href: "#join" }, featured: false, badge: "" },
+    { name: "Family", price: "€45", period: "", text: "Two adults and their children.", features: [], button: { label: "Join as a family", href: "/winter-series" }, featured: true, badge: "For families" },
+  ]);
+  expect(builder.unmet(doc)).toEqual([]);
+});
+
+test("their counts are held: the first 8 figures, 10 steps, 4 plans and 12 features a plan, said; with fewer than a widget takes, it goes, said", () => {
+  const figure = (n: number) => ({ value: String(n), label: `Figure ${n}` });
+  const step = (n: number) => ({ title: `Step ${n}`, text: `Then ${n}.` });
+  const count = (n: number, word: string) => Array.from({ length: n }, (_, index) => `${word} ${index + 1}`);
+  const { doc, builder, refused } = fill([section("Many", [column([
+    // Kept: figures and steps with words, plans with a name and a price.
+    { kind: "stats", figures: [{ value: "", label: "No value" }, ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map(figure)] },
+    { kind: "steps", steps: [...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(step), { title: "", text: "No title." }] },
+    { kind: "pricing", plans: [offer(""), offer("A", { features: [...count(14, "Feature"), " "] }), offer("B"), offer("C", { price: " " }), offer("D"), offer("E"), offer("F")] },
+    // Left out: too few.
+    { kind: "stats", figures: [{ value: "12", label: "\u200b" }] },
+    { kind: "steps", steps: [step(1), { title: "Two", text: "" }] },
+    { kind: "pricing", plans: [offer("Free", { price: "" })] },
+  ])])]);
+  expect(refused).toEqual([]);
+  const blocks = doc.sections[0]!.children[0]!.children;
+  expect(blocks.map((block) => block.type)).toEqual(["stats", "steps", "pricing"]);
+  expect(figuresOf(blocks[0])).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map(figure));
+  expect(stepsOf(blocks[1])).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(step));
+  expect(plansOf(blocks[2]).map((plan) => [plan.name, plan.features.length])).toEqual([["A", 12], ["B", 0], ["D", 0], ["E", 0]]);
+  expect(plansOf(blocks[2])[0]!.features).toEqual(count(12, "Feature"));
+  expect(builder.notes).toEqual([
+    "Kept the first 8 figures: a stats block has at most 8.",
+    "Kept the first 10 steps: a steps block has at most 10.",
+    "Kept the first 4 plans: a pricing block has at most 4.",
+    "Kept the first 12 features of the plan “A”: a plan has at most 12.",
+    "Left out a stats block with no figures.",
+    "Left out a steps block with fewer than two steps.",
+    "Left out a pricing block with no plans.",
+  ]);
+});
+
+test("their words are cut at a word to the page's lengths; a plan's period, text and badge may be empty, and a button with no words takes the plan's", () => {
+  const long = (words: number) => "word ".repeat(words);
+  const { doc, builder, refused } = fill([section("Long", [column([
+    { kind: "stats", figures: [{ value: "1,000,000 swims and counting", label: long(30) }] },
+    { kind: "steps", steps: [{ title: long(40), text: long(300) }, { title: "Two", text: "Then this." }] },
+    { kind: "pricing", plans: [
+      offer(long(30), { price: "€ 1 000 000 000 000 000 000", period: long(20), text: long(100), features: [long(40)], buttonLabel: long(30), buttonTarget: "/", featured: true, badge: long(10) }),
+      offer("Plain", { price: "Free", period: " ", text: "\n", buttonLabel: "", buttonTarget: "/", badge: "\u00a0" }),
+    ] },
+  ])])]);
+  expect(refused).toEqual([]);
+  expect(builder.notes).toEqual([]);
+  const [stats, steps, pricing] = doc.sections[0]!.children[0]!.children;
+  const within = (text: string, max: number) => [...text].length <= max && text.endsWith("…");
+  const [figure] = figuresOf(stats);
+  expect(figure!.value).toBe("1,000,000 swims and…");
+  expect(within(figure!.label, 80)).toBe(true);
+  const [first] = stepsOf(steps);
+  expect([within(first!.title, 120), within(first!.text, 1000)]).toEqual([true, true]);
+  const [long30, plain] = plansOf(pricing);
+  expect([
+    within(long30!.name, 80), within(long30!.price, 24), within(long30!.period, 40), within(long30!.text, 400),
+    within(long30!.features[0]!, 120), within(long30!.button.label, 80), within(long30!.badge, 30),
+  ]).toEqual([true, true, true, true, true, true, true]);
+  expect(plain).toEqual({ name: "Plain", price: "Free", period: "", text: "", features: [], button: { label: "Choose Plain", href: "/" }, featured: false, badge: "" });
+});
+
+test("a plan's button leads where a button may; elsewhere it keeps its words and leads to the top of the page, said; a section it names that never comes is said with its plan", () => {
+  const to = (name: string, target: string) => offer(name, { buttonLabel: "Book", buttonTarget: target });
+  const { doc, builder } = fill([section("Plans", [column([
+    { kind: "pricing", plans: [to("Series", "/winter-series/"), to("Tickets", "https://tickets.example.org/open-day"), to("Write", "mailto:hello@slackwater.example"), to("Call", "tel:+441632960123")] },
+    { kind: "pricing", plans: [to("Invented", "https://slackwater.example/book"), to("No page", "/prices"), to("Later", "#prices"), to("Again", "#prices")] },
+    { kind: "pricing", plans: [to("Nowhere", ""), to("Bad", "#Not An Anchor")] },
+  ])])]);
+  const [first, second, third] = doc.sections[0]!.children[0]!.children;
+  expect(plansOf(first).map((plan) => plan.button.href)).toEqual(["/winter-series", "https://tickets.example.org/open-day", "mailto:hello@slackwater.example", "tel:+441632960123"]);
+  expect(plansOf(second).map((plan) => plan.button)).toEqual([{ label: "Book", href: "#" }, { label: "Book", href: "#" }, { label: "Book", href: "#prices" }, { label: "Book", href: "#prices" }]);
+  expect(plansOf(third).map((plan) => plan.button.href)).toEqual(["#", "#"]);
+  expect(builder.notes).toEqual([
+    "Left out the link of the button “Book” of the plan “Invented”: it would lead to an address the brief does not give.",
+    "Left out the link of the button “Book” of the plan “No page”: it would lead to an address the brief does not give.",
+    "Left out the link of the button “Book” of the plan “Nowhere”: it would lead to an address the brief does not give.",
+    "Left out the link of the button “Book” of the plan “Bad”: it would lead to an address the brief does not give.",
+  ]);
+  // The section #prices never came: each plan whose button leads there, once.
+  expect(builder.unmet(doc)).toEqual([
+    { id: second!.id, label: "Book", plan: { index: 2, name: "Later" } },
+    { id: second!.id, label: "Book", plan: { index: 3, name: "Again" } },
   ]);
 });
 

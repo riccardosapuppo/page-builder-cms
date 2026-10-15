@@ -1,8 +1,9 @@
 // A page written from a brief (./write.ts), on a real editor store and an
 // answer of the test's own that comes in pieces: the page is made from the
 // plan's title, each section goes in as a command of the Assistant's, a
-// button whose section never came goes, and a stop, a failure or another
-// page opened midway keep what is in and add nothing more.
+// button whose section never came goes (a plan's loses its link), and a
+// stop, a failure or another page opened midway keep what is in and add
+// nothing more.
 import { expect, test } from "vitest";
 import type { Made } from "../document/commands.ts";
 import { createEditorStore, type EditorStore } from "../store/editor-store.ts";
@@ -175,6 +176,36 @@ test("stopped while the new page is still being made: the sections that had come
   opened();
   expect((await result).phase).toBe("stopped");
   expect(page()!.getState().document.sections).toEqual([]);
+});
+
+test("stats, steps and pricing stream in like the others; a plan's button whose section never came keeps its plan and loses its link, as the Assistant's step", async () => {
+  const { hooks, page } = editor();
+  const plan = (name: string, target: string) => ({ name, price: "€20", period: "a month", text: "", features: ["Two swims a week"], buttonLabel: "Join", buttonTarget: target, featured: false, badge: "" });
+  const text = JSON.stringify({
+    title: "Membership",
+    description: "",
+    sections: [
+      section("Club", [
+        { kind: "heading", level: 1, text: "Membership", display: true },
+        { kind: "stats", figures: [{ value: "120", label: "Members" }] },
+        { kind: "steps", steps: [{ title: "Come along", text: "Any Saturday." }, { title: "Join", text: "If it suits you." }] },
+        { kind: "pricing", plans: [plan("Swimmer", "#join"), plan("Family", "#welcome")] },
+      ]),
+      section("Welcome", [words("Come along on Saturday.")], "welcome"),
+    ],
+  });
+  const result = await writePage({ ask: answer(text, 5), facts: FACTS, newId, hooks, tell: () => undefined });
+  const state = page()!.getState();
+  const club = state.document.sections[0]!.children[0]!.children;
+  expect(club.map((block) => block.type)).toEqual(["heading", "stats", "steps", "pricing"]);
+  expect(club[3]!.props).toMatchObject({ plans: [{ name: "Swimmer", button: { label: "Join", href: "#" } }, { name: "Family", button: { label: "Join", href: "#welcome" } }] });
+  expect(result).toMatchObject({ phase: "done", sections: [{ label: "Club", kept: true }, { label: "Welcome", kept: true }] });
+  expect(result.notes).toEqual(["Took the link out of the button “Join” of the plan “Swimmer”: the section it leads to was not written."]);
+  expect(state.past.map((entry) => entry.command.label)).toEqual([
+    "Assistant added section Club",
+    "Assistant added section Welcome",
+    "Assistant changed plan 1 in Pricing in Club",
+  ]);
 });
 
 test("an answer that fails after a button's section was named but never written: the button still goes, as at a whole answer's end", async () => {

@@ -1,7 +1,7 @@
 // The sample written by hand (./sample.ts): it goes through the same steps
-// as a model's answer and the page takes every section of it, with the
-// library's first image or without one; it streams on the clock, and stops
-// when asked.
+// as a model's answer and the page takes every section of it, its steps to
+// book among them, with the library's first image or without one; it
+// streams on the clock, and stops when asked.
 import { expect, test } from "vitest";
 import type { Made } from "../document/commands.ts";
 import { createEditorStore, type EditorStore } from "../store/editor-store.ts";
@@ -49,6 +49,10 @@ test("with the library's first image: every section of the sample goes in, nothi
   expect(doc.sections.map((s) => s.props.label)).toEqual(["Opening", "The morning", "Questions", "Book"]);
   expect(doc.sections[0]!.props.columnWidths).toBe("3:2");
   expect(doc.sections[0]!.children[1]!.children[0]!.props).toEqual({ mediaId: "m1", alt: "Swimmers at the slipway" });
+  // How to book, in three steps, before the form.
+  const book = doc.sections[3]!.children[0]!.children;
+  expect(book.map((block) => block.type)).toEqual(["heading", "steps", "form"]);
+  expect((book[1]!.props as { items: Array<{ title: string }> }).items.map((step) => step.title)).toEqual(["Fill in the form", "Hear back from us", "Come to the slipway"]);
 });
 
 test("with an empty library: one column to open with, still nothing left out", async () => {

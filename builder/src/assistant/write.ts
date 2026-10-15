@@ -8,9 +8,11 @@
 // A stop, a refusal or a fault keeps what is already on the page, and a
 // stop lets nothing more land, not even sections that had come while the
 // page was being made. However the answer ends, a button that leads to a
-// section the page does not have is taken out, while the page is open. The page is left alone once another one is opened
-// in its place: nothing written for it lands on another page.
-import { makeDelete, makeInsert, makeSetPage, type Made } from "../document/commands.ts";
+// section the page does not have is taken out (a plan's button loses its
+// link instead), while the page is open. The page is left alone once
+// another one is opened in its place: nothing written for it lands on
+// another page.
+import { makeDelete, makeInsert, makeSetItem, makeSetPage, type Made } from "../document/commands.ts";
 import { idDraw, type NewId } from "../document/ids.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { PlanBuilder, type SiteFacts } from "./build.ts";
@@ -116,9 +118,15 @@ export async function writePage(options: {
 
   // The buttons whose section never came go, however the answer ended:
   // once the steps waiting are through, while the page made is the one open.
+  // A plan's button stays with its plan and leads to the top of the page.
   const tidy = async (): Promise<void> => {
     if (opening === null || lost !== null || (await opening) !== null || !hooks.still()) return;
     for (const button of builder.unmet(hooks.document())) {
+      if (button.plan) {
+        hooks.apply(asAssistants(makeSetItem(hooks.document(), button.id, button.plan.index, { button: { label: button.label, href: "#" } })));
+        builder.notes.push(`Took the link out of the button “${button.label}” of the plan “${button.plan.name}”: the section it leads to was not written.`);
+        continue;
+      }
       hooks.apply(asAssistants(makeDelete(hooks.document(), button.id)));
       builder.notes.push(`Took out the button “${button.label}”: the section it leads to was not written.`);
     }

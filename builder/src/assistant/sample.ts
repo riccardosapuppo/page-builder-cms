@@ -37,7 +37,11 @@ export function samplePlan(media: ReadonlyArray<{ id: string; alt: string }>): s
         ] }] },
       ]),
       section("Book", "book", "muted", "equal", [
-        { align: "left", blocks: [heading(2, "Book a place"), words("Tell us when you would like to come. We write back to confirm your time."), { kind: "form", fields: [
+        { align: "left", blocks: [heading(2, "Book a place"), { kind: "steps", steps: [
+          { title: "Fill in the form", text: "Tell us below when you would like to swim." },
+          { title: "Hear back from us", text: "We write to confirm your time." },
+          { title: "Come to the slipway", text: "Saturday 12 April, at your time between 8 and 11. A coach swims beside you, and hot drinks wait after." },
+        ] }, { kind: "form", fields: [
           { type: "text", label: "Your name", required: true },
           { type: "email", label: "Email", required: true },
           { type: "text", label: "When you would like to swim", required: false },

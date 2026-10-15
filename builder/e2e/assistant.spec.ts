@@ -3,7 +3,9 @@
 // machine. A key is checked with its provider and kept; a brief becomes a
 // new page, section by section, each a step of the Assistant's in History;
 // the key goes to its provider and nowhere else, is found in no storage of
-// the browser's, and a reload forgets it. A key the provider refuses is
+// the browser's, and a reload forgets it. Stats, steps and pricing land as
+// blocks of their own, a plan's button whose address the brief does not
+// give leading to the top of the page, said. A key the provider refuses is
 // said and not kept; Forget key forgets it; with no key, the sample builds
 // its page the same way; the drawer passes axe. In a block's panel, a
 // heading is written again and an image of the library described, each
@@ -29,6 +31,27 @@ const PLAN = JSON.stringify({
     { label: "Book", anchor: "book", background: "primary", widths: "equal", columns: [{ align: "left", blocks: [{ kind: "heading", level: 2, text: "Book a place", display: false }, { kind: "form", fields: [{ type: "text", label: "Your name", required: true }, { type: "email", label: "Email", required: true }], submitLabel: "Book", confirmation: "See you there." }] }] },
   ],
 });
+// A page of the club's figures, the steps to join and its plans: the
+// Family plan's button leads to an address the brief does not give.
+const offer = (name: string, price: string, features: string[], target: string, featured = false) => ({ name, price, period: "a month", text: "", features, buttonLabel: "Join", buttonTarget: target, featured, badge: featured ? "For families" : "" });
+const WIDGETS_PLAN = JSON.stringify({
+  title: "Membership",
+  description: "Join the swimming club: two plans, from €20 a month.",
+  sections: [
+    { label: "Club", anchor: "", background: "soft", widths: "equal", columns: [{ align: "left", blocks: [
+      { kind: "heading", level: 1, text: "Swim with the club", display: true },
+      { kind: "stats", figures: [{ value: "120", label: "Members" }, { value: "1987", label: "Swimming since" }] },
+    ] }] },
+    { label: "How to join", anchor: "how-to-join", background: "none", widths: "equal", columns: [{ align: "left", blocks: [
+      { kind: "heading", level: 2, text: "How to join", display: false },
+      { kind: "steps", steps: [{ title: "Come along", text: "Any Saturday at eight." }, { title: "Swim with a coach", text: "Close to the shore, at your pace." }, { title: "Join", text: "Choose a plan below." }] },
+    ] }] },
+    { label: "Plans", anchor: "", background: "none", widths: "equal", columns: [{ align: "left", blocks: [
+      { kind: "heading", level: 2, text: "Membership", display: false },
+      { kind: "pricing", plans: [offer("Swimmer", "€20", ["Two swims a week"], "#how-to-join"), offer("Family", "€45", ["Two adults and their children"], "https://club.example/join", true)] },
+    ] }] },
+  ],
+});
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, POST, OPTIONS" };
 const sse = (events: Array<[string | null, unknown]>) => events.map(([event, data]) => `${event ? `event: ${event}\n` : ""}data: ${typeof data === "string" ? data : JSON.stringify(data)}\n\n`).join("");
@@ -42,17 +65,17 @@ interface Asked {
 
 // The answer to a question, by the schema it asks for: a page's plan, a
 // heading written again, an image described.
-function answerTo(body: { output_config?: { format?: { schema?: { required?: string[] } } } }): string {
+function answerTo(body: { output_config?: { format?: { schema?: { required?: string[] } } } }, plan = PLAN): string {
   const asked = body.output_config?.format?.schema?.required ?? [];
-  if (asked.includes("sections")) return PLAN;
+  if (asked.includes("sections")) return plan;
   if (asked.includes("decorative")) return JSON.stringify({ decorative: false, alt: "A small green and sand picture, split down the middle" });
   return JSON.stringify({ text: "Swim at first light" });
 }
 
 // Anthropic's API answered here: the models a key may use, and one answer
-// streamed as server-sent events; a key other than `key` refused, as the
-// API refuses it.
-async function anthropic(page: Page, key = ANTHROPIC_KEY): Promise<Asked[]> {
+// streamed as server-sent events, a page's being `plan`; a key other than
+// `key` refused, as the API refuses it.
+async function anthropic(page: Page, key = ANTHROPIC_KEY, plan = PLAN): Promise<Asked[]> {
   const asked: Asked[] = [];
   await page.route("https://api.anthropic.com/**", async (route: Route) => {
     const request = route.request();
@@ -73,7 +96,7 @@ async function anthropic(page: Page, key = ANTHROPIC_KEY): Promise<Asked[]> {
     return route.fulfill({ headers: { ...CORS, "content-type": "text/event-stream" }, body: sse([
       ["message_start", { type: "message_start", message: { id: "msg_e2e", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1234, output_tokens: 1 } } }],
       ["content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }],
-      ...pieces(answerTo(request.postDataJSON() as Parameters<typeof answerTo>[0])).map((text): [string, unknown] => ["content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } }]),
+      ...pieces(answerTo(request.postDataJSON() as Parameters<typeof answerTo>[0], plan)).map((text): [string, unknown] => ["content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } }]),
       ["content_block_stop", { type: "content_block_stop", index: 0 }],
       ["message_delta", { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 567 } }],
       ["message_stop", { type: "message_stop" }],
@@ -185,6 +208,35 @@ test("a key kept in this tab's memory writes a page from a brief, each section a
   const again = await assistant(page);
   await expect(again.getByLabel("Your Anthropic key")).toBeVisible();
   await expect(again.getByText(/key …/)).toHaveCount(0);
+});
+
+test("stats, steps and pricing land as blocks of their own; a plan's button whose address the brief does not give keeps its words, leads to the top of the page, and is said", async ({ page, request }) => {
+  await anthropic(page, ANTHROPIC_KEY, WIDGETS_PLAN);
+  await startOn(page, request, "Before the widgets");
+  const box = await assistant(page);
+  await box.getByLabel("Your Anthropic key").fill(ANTHROPIC_KEY);
+  await box.getByRole("button", { name: "Connect Anthropic" }).click();
+  await expect(box.getByText("key …a1b2")).toBeVisible();
+  await box.getByLabel("What is the page for?").fill("Membership of the swimming club: 120 members, swimming since 1987. Swimmer €20 a month, Family €45 a month for two adults and their children. Come along any Saturday at eight.");
+  await box.getByRole("button", { name: "Write the page" }).click();
+  await expect(box.getByRole("status").filter({ hasText: "3 sections on “Membership”" })).toBeVisible();
+  await expect(box.getByRole("listitem")).toHaveText(["Club", "How to join", "Plans"]);
+
+  const canvas = page.locator(".canvas");
+  await expect(canvas.locator("[data-block-type='stats'] dd")).toHaveText(["120", "1987"]);
+  await expect(canvas.locator("[data-block-type='stats'] dt")).toHaveText(["Members", "Swimming since"]);
+  await expect(canvas.locator("[data-block-type='steps'] li > h3")).toHaveText(["Come along", "Swim with a coach", "Join"]);
+  const pricing = canvas.locator("[data-block-type='pricing']");
+  await expect(pricing.locator("li.sw-plan > h3")).toHaveText(["Swimmer", "Family"]);
+  await expect(pricing.locator(".sw-plan-price strong")).toHaveText(["€20", "€45"]);
+  await expect(pricing.locator("li.sw-plan[data-featured] > .sw-plan-badge")).toHaveText("For families");
+  const buttons = pricing.locator(".sw-plan-action > a.sw-btn");
+  await expect(buttons).toHaveText(["Join", "Join"]);
+  await expect(buttons.nth(0)).toHaveAttribute("href", "#how-to-join");
+  await expect(buttons.nth(1)).toHaveAttribute("href", "#");
+
+  await box.getByText("One thing was left out").click();
+  await expect(box.getByText("Left out the link of the button “Join” of the plan “Family”: it would lead to an address the brief does not give.")).toBeVisible();
 });
 
 test("OpenAI: the same page, asked with a strict schema; models it cannot use are not offered", async ({ page, request }) => {

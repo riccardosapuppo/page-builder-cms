@@ -1,6 +1,7 @@
 // A plan read as it streams (./plan-stream.ts): the same answer cut into
 // pieces anywhere gives the same events in the same order, whatever its
-// strings hold (braces, brackets, quotes, escapes, a key's name), and an
+// strings hold (braces, brackets, quotes, escapes, a key's name) and however
+// deep its blocks go (a pricing block's plans and their features), and an
 // answer that stops halfway is said at its end.
 import { expect, test } from "vitest";
 import { PlanStream } from "./plan-stream.ts";
@@ -10,7 +11,12 @@ const PLAN = {
   description: "Swim, then tea: \\ and \n and é.",
   sections: [
     { label: "Hero", anchor: "top", background: "soft", widths: "3:2", columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: "sections: [{\"x\"}]", display: true }] }, { align: "center", blocks: [] }] },
-    { label: "Join", anchor: "join", background: "none", widths: "equal", columns: [{ align: "left", blocks: [{ kind: "list", ordered: false, items: ["a", "}", "]"] }] }] },
+    { label: "Join", anchor: "join", background: "none", widths: "equal", columns: [{ align: "left", blocks: [
+      { kind: "list", ordered: false, items: ["a", "}", "]"] },
+      { kind: "stats", figures: [{ value: "98%", label: "{figures}: [x]" }] },
+      { kind: "steps", steps: [{ title: "[1]", text: "\"Then\" }" }, { title: "Two", text: "]]" }] },
+      { kind: "pricing", plans: [{ name: "Plus {", price: "€19", period: "a month", text: "", features: ["{", "]", "\\"], buttonLabel: "Book }", buttonTarget: "#join", featured: true, badge: "}{" }] },
+    ] }] },
   ],
 };
 const TEXT = JSON.stringify(PLAN, null, 1);
@@ -62,6 +68,18 @@ test("a section is handed on as soon as it closes, before the rest has come", ()
   expect(events).toEqual([0]);
   stream.push(TEXT.slice(end));
   expect(events).toEqual([0, 1]);
+});
+
+test("a plan of a pricing block, an object deep in its section, closes nothing but itself: the section is handed on at its own close, whole", () => {
+  const events: Array<[number, unknown]> = [];
+  const stream = new PlanStream({ head: () => undefined, section: (value, index) => events.push([index, value]) });
+  // Up to the brace that closes the plan, past its badge's own braces.
+  const badge = "\"badge\": \"}{\"";
+  const end = TEXT.indexOf("}", TEXT.indexOf(badge) + badge.length) + 1;
+  stream.push(TEXT.slice(0, end));
+  expect(events.map(([index]) => index)).toEqual([0]);
+  stream.push(TEXT.slice(end));
+  expect(events).toEqual([[0, PLAN.sections[0]], [1, PLAN.sections[1]]]);
 });
 
 test("keys elsewhere named title or sections, and values that look like them, change nothing", () => {

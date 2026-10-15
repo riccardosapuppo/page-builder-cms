@@ -10,11 +10,14 @@
 // response_format): every object closed and every key required, enums of
 // one value where a constant is meant, no counts or patterns, no
 // references. What it cannot say, the reader below and ./build.ts check.
+// No object of it is deeper than a form's field, five objects down from
+// the plan: what a block holds in more depth is flattened into it.
 //
 // Blocks a model would have to invent the facts of are not in it: a video
 // (its id), a map (its coordinates), a gallery of pictures the site may
 // not have; nor the header's and footer's logo and menu, which are parts
-// of the site, not of a page. Images come from the site's library, by id.
+// of the site, not of a page. Images come from the site's library, by id;
+// figures and prices only from the brief, which the question says.
 import { ICON_NAMES, type IconName } from "../shared/document.ts";
 
 export const PLAN_WIDTHS = ["equal", "3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"] as const;
@@ -36,9 +39,27 @@ export type PlanBlock =
   | { kind: "iconbox"; icon: IconName; title: string; text: string }
   | { kind: "quote"; text: string; attribution: string }
   | { kind: "questions"; items: Array<{ question: string; answer: string }> }
+  | { kind: "stats"; figures: Array<{ value: string; label: string }> }
+  | { kind: "steps"; steps: Array<{ title: string; text: string }> }
+  | { kind: "pricing"; plans: PlanOffer[] }
   | { kind: "form"; fields: Array<{ type: PlanFieldType; label: string; required: boolean }>; submitLabel: string; confirmation: string }
   | { kind: "divider" };
 export type PlanBlockKind = PlanBlock["kind"];
+
+// One plan of a pricing block, as a model writes it. Its button is two of
+// its keys, not an object of its own, so the plan nests no deeper than a
+// form's field; it leads where a button block's may (./build.ts).
+export interface PlanOffer {
+  name: string;
+  price: string;
+  period: string;
+  text: string;
+  features: string[];
+  buttonLabel: string;
+  buttonTarget: string;
+  featured: boolean;
+  badge: string;
+}
 
 export interface PlanColumn {
   align: PlanAlign;
@@ -102,6 +123,31 @@ const BLOCK: Schema = {
       items: list(closed({ question: text("Up to 120 characters."), answer: text("Up to 600 characters.") }), "Two to eight questions and their answers."),
     }, "Questions and answers, each opening on its own."),
     closed({
+      kind: kind("stats"),
+      figures: list(closed({
+        value: text("The figure as the brief gives it, written as it is shown (12, 300+, 98%), up to 16 characters."),
+        label: text("What it counts, up to 60 characters."),
+      }), "Two to four figures, each one the brief gives."),
+    }, "Key figures side by side, each a value and what it counts: only figures the brief gives."),
+    closed({
+      kind: kind("steps"),
+      steps: list(closed({ title: text("Up to 60 characters."), text: text("What the step means, up to 300 characters.") }), "Two to six steps, in order."),
+    }, "Numbered steps of a process the reader goes through, in order."),
+    closed({
+      kind: kind("pricing"),
+      plans: list(closed({
+        name: text("The plan's name, up to 40 characters."),
+        price: text("Its price as the brief writes it, with its currency, or Free, up to 16 characters."),
+        period: text("What the price is for (a month, a session), up to 30 characters; empty when the brief says none."),
+        text: text("A sentence on the plan, from what the brief says of it, up to 200 characters; empty when it says nothing more."),
+        features: list(text("One thing the plan includes, up to 80 characters."), "What the plan includes, as the brief says it: up to eight, or none."),
+        buttonLabel: text("What the plan's button does, in two to four words."),
+        buttonTarget: text("Where the plan's button goes, as a button's: #anchor of a section of this plan, the path of a page of the site listed, or an address the brief gives. Nothing else."),
+        featured: flag("true for the one plan the brief puts forward, if it puts one forward."),
+        badge: text("A few words on the featured plan's card, up to 20 characters, only as the brief says them; empty otherwise."),
+      }), "One to four plans, as the brief gives them."),
+    }, "Plans side by side with their prices: only when the brief gives the prices."),
+    closed({
       kind: kind("form"),
       fields: list(closed({ type: choice(PLAN_FIELD_TYPES, "text: a line; email; longtext: a message; checkbox: a yes the visitor ticks."), label: text("Up to 80 characters."), required: flag("true when the answer is needed.") }), "One to six fields."),
       submitLabel: text("The send button's words, up to 30 characters."),
@@ -160,6 +206,24 @@ export function readBlock(value: unknown): PlanBlock | null {
       return {
         kind: "questions",
         items: items(block.items).map(record).filter((item) => item !== null).map((item) => ({ question: word(item.question), answer: word(item.answer) })),
+      };
+    case "stats":
+      return {
+        kind: "stats",
+        figures: items(block.figures).map(record).filter((figure) => figure !== null).map((figure) => ({ value: word(figure.value), label: word(figure.label) })),
+      };
+    case "steps":
+      return {
+        kind: "steps",
+        steps: items(block.steps).map(record).filter((step) => step !== null).map((step) => ({ title: word(step.title), text: word(step.text) })),
+      };
+    case "pricing":
+      return {
+        kind: "pricing",
+        plans: items(block.plans).map(record).filter((plan) => plan !== null).map((plan) => ({
+          name: word(plan.name), price: word(plan.price), period: word(plan.period), text: word(plan.text), features: items(plan.features).filter(isText),
+          buttonLabel: word(plan.buttonLabel), buttonTarget: word(plan.buttonTarget), featured: plan.featured === true, badge: word(plan.badge),
+        })),
       };
     case "form":
       return {

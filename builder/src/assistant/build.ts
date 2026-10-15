@@ -16,23 +16,30 @@
 //   site, or to an address, an email or a phone number the person's own
 //   brief gives; never to one the model made up. A section it names that
 //   is not on the page once the plan ends is said (unmet), and its buttons
-//   go too.
+//   go too. A plan's button, in a pricing block, leads by the same rules
+//   but cannot go without its plan: where its address cannot be kept, or
+//   its section never comes, it keeps its words and leads to the top of
+//   the page (#), as a new button does, and the note says so.
 // - An image is one of the library's, by id; an empty alt text means the
 //   image only decorates.
+// - Stats, steps and pricing keep the first of their figures, steps, plans
+//   and features, as many as the page's schema takes, and the note says
+//   what was cut; with fewer than it asks for (a figure, two steps, a
+//   plan), the block goes.
 // - A form's fields get names from their labels, the page at most one form.
 // - A section's background is never the colour of the keys it holds: a
-//   button is drawn in the accent colour, a form's send key in the primary
-//   one (site.css, .sw-btn and .sw-btn-primary); such a section takes the
-//   soft background instead, and the note says so.
+//   button, a plan's too, is drawn in the accent colour, a form's send key
+//   in the primary one (site.css, .sw-btn and .sw-btn-primary); such a
+//   section takes the soft background instead, and the note says so.
 import {
   COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type FormField, type HeadingLevel, type ImageProps, type PageDocument, type Paragraph,
-  type RichTextBlock, type SectionBlock, type WidgetBlock,
+  type PricingPlan, type RichTextBlock, type SectionBlock, type WidgetBlock,
 } from "../shared/document.ts";
 import { allBlocks } from "../document/tree.ts";
 import { isLine } from "../shared/validate.ts";
 import { checkLink } from "../editor/rich/link-check.ts";
 import type { MediaItem } from "../storage/adapter.ts";
-import { readSection, type PlanBlock, type PlanColumn, type PlanSection } from "./plan.ts";
+import { readSection, type PlanBlock, type PlanColumn, type PlanOffer, type PlanSection } from "./plan.ts";
 
 export interface SiteFacts {
   // The site's library: an image block names one of these.
@@ -44,14 +51,24 @@ export interface SiteFacts {
   brief: string;
 }
 
+// A button whose section never came: a button block, or a plan's button,
+// with the plan's place in its pricing block and its name.
+export interface Unmet {
+  id: string;
+  label: string;
+  plan?: { index: number; name: string };
+}
+
 // The schema's lengths (schema/block-document.schema.json), in code points.
 const MAX = {
   title: 120, description: 160, label: 60, heading: 200, paragraph: 2000, item: 300, button: 80,
   iconTitle: 80, iconText: 300, quote: 500, attribution: 120, question: 200, answer: 2000,
+  figureValue: 24, figureLabel: 80, stepTitle: 120, stepText: 1000,
+  planName: 80, price: 24, period: 40, planText: 400, feature: 120, badge: 30,
   fieldLabel: 200, submit: 60, confirmation: 500, alt: 300,
 } as const;
 // How much of each a page takes from a plan.
-const MOST = { columns: 4, blocks: 12, paragraphs: 12, items: 20, questions: 30, fields: 20 } as const;
+const MOST = { columns: 4, blocks: 12, paragraphs: 12, items: 20, questions: 30, figures: 8, steps: 10, plans: 4, features: 12, fields: 20 } as const;
 const ANCHOR = /^[a-z][a-z0-9-]{0,63}$/;
 const FIELD_NAME = /^[a-z][a-z0-9-]{0,39}$/;
 // The schema's line controls ($defs/lineControls): C0, DEL and C1, and the
@@ -131,12 +148,23 @@ export class PlanBuilder {
 
   // The buttons on the page that lead to a section of this plan the page
   // does not have once the plan has ended (it never came, or was refused):
-  // they go, since a link must lead somewhere.
-  unmet(doc: PageDocument): Array<{ id: string; label: string }> {
+  // they go, since a link must lead somewhere. A plan's button is said
+  // with its plan, which it cannot leave: it loses its link instead.
+  unmet(doc: PageDocument): Unmet[] {
     const blocks = [...allBlocks(doc)].map((located) => located.block);
     const anchors = new Set(blocks.map((block) => (block.props as { anchor?: string }).anchor).filter((anchor) => anchor !== undefined));
-    const ids = new Set(blocks.map((block) => block.id));
-    return this.links.filter((link) => ids.has(link.id) && !anchors.has(link.anchor)).map(({ id, label }) => ({ id, label }));
+    const byId = new Map(blocks.map((block) => [block.id, block]));
+    const said = new Set<string>();
+    return this.links.flatMap((link): Unmet[] => {
+      const block = byId.get(link.id);
+      if (!block || anchors.has(link.anchor)) return [];
+      if (block.type !== "pricing") return [{ id: link.id, label: link.label }];
+      // Every plan of the block that still leads there, once.
+      const href = `#${link.anchor}`;
+      if (said.has(`${link.id} ${href}`)) return [];
+      said.add(`${link.id} ${href}`);
+      return block.props.plans.flatMap((plan, index) => (plan.button.href === href ? [{ id: link.id, label: plan.button.label, plan: { index, name: plan.name } }] : []));
+    });
   }
 
   // The plan's background, or soft where the plan's would hide the keys
@@ -145,6 +173,7 @@ export class PlanBuilder {
     const types = new Set(columns.flatMap((column) => column.children.map((block) => block.type)));
     const hidden = plan.background === "primary" && types.has("form") ? "its form's send key"
       : plan.background === "accent" && types.has("button") ? "its buttons"
+      : plan.background === "accent" && types.has("pricing") ? "its plans' buttons"
       : null;
     if (hidden === null) return plan.background;
     this.notes.push(`Gave ${this.called(plan)} the soft background: ${hidden} would not show on the ${plan.background} one.`);
@@ -261,6 +290,23 @@ export class PlanBuilder {
         if (items.length === 0) return this.leave("questions with no answers");
         return widget({ type: "accordion", props: { items } });
       }
+      case "stats": {
+        const figures = plan.figures.map((figure) => ({ value: line(figure.value, MAX.figureValue), label: line(figure.label, MAX.figureLabel) }))
+          .filter((figure) => figure.value !== "" && figure.label !== "");
+        if (figures.length === 0) return this.leave("a stats block with no figures");
+        return widget({ type: "stats", props: { items: this.first(figures, MOST.figures, "figures", "a stats block") } });
+      }
+      case "steps": {
+        const steps = plan.steps.map((step) => ({ title: line(step.title, MAX.stepTitle), text: line(step.text, MAX.stepText) }))
+          .filter((step) => step.title !== "" && step.text !== "");
+        if (steps.length < 2) return this.leave("a steps block with fewer than two steps");
+        return widget({ type: "steps", props: { items: this.first(steps, MOST.steps, "steps", "a steps block") } });
+      }
+      case "pricing": {
+        const offers = plan.plans.filter((offer) => line(offer.name, MAX.planName) !== "" && line(offer.price, MAX.price) !== "");
+        if (offers.length === 0) return this.leave("a pricing block with no plans");
+        return widget({ type: "pricing", props: { plans: this.first(offers, MOST.plans, "plans", "a pricing block").map((offer) => this.offer(offer, id)) } });
+      }
       case "form": {
         if (this.forms > 0) return this.leave("a second form: a page takes one");
         const taken = new Set<string>();
@@ -283,6 +329,29 @@ export class PlanBuilder {
       case "divider":
         return widget({ type: "divider", props: {} });
     }
+  }
+
+  // A plan of a pricing block `id`, its name and price there. Its button
+  // has words of its own, or else "Choose" and the plan's name; where its
+  // address cannot be kept, it leads to the top of the page, as a new
+  // button does.
+  private offer(offer: PlanOffer, id: string): PricingPlan {
+    const name = line(offer.name, MAX.planName);
+    const features = offer.features.map((feature) => line(feature, MAX.feature)).filter((feature) => feature !== "");
+    const kept = this.first(features, MOST.features, `features of the plan “${name}”`, "a plan");
+    const label = line(offer.buttonLabel, MAX.button) || line(`Choose ${name}`, MAX.button);
+    const href = this.target(offer.buttonTarget, id, label);
+    if (href === null) this.notes.push(`Left out the link of the button “${label}” of the plan “${name}”: it would lead to an address the brief does not give.`);
+    return {
+      name, price: line(offer.price, MAX.price), period: line(offer.period, MAX.period), text: line(offer.text, MAX.planText),
+      features: kept, button: { label, href: href ?? "#" }, featured: offer.featured, badge: line(offer.badge, MAX.badge),
+    };
+  }
+
+  // The first `most` of a block's items, and a note when there were more.
+  private first<T>(kept: T[], most: number, what: string, holder: string): T[] {
+    if (kept.length > most) this.notes.push(`Kept the first ${most} ${what}: ${holder} has at most ${most}.`);
+    return kept.slice(0, most);
   }
 
   // Whether the brief gives an address: as written, an email's address

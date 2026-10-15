@@ -40,8 +40,9 @@ guarantee that holds.
    its library of images, its pages and its icons.
    - **What the model writes.** The plan names only the blocks a model can
      fill without inventing facts: headings, text, lists, buttons, the
-     library's images, icon boxes, quotations, questions and answers, one
-     form, dividers.
+     library's images, icon boxes, quotations, questions and answers,
+     steps, one form, dividers. Stats and pricing too, but their figures
+     and prices only as the brief gives them, which the question says.
    - **What it leaves out.** No videos, maps or galleries, because their
      ids and coordinates would be made up. No logo or menu either: those
      belong to the site's header and footer.
@@ -59,15 +60,21 @@ guarantee that holds.
    - **Headings in order.** There is one level 1, and no level is skipped.
    - **Links.** A button leads only to a section of the plan, a page of the
      site, or an address, email or phone number written in the person's own
-     brief.
+     brief. A plan's button in a pricing block follows the same rules, but
+     stays with its plan: where its address cannot be kept, it keeps its
+     words and leads to the top of the page (`#`), as a new button does.
    - **Images and forms.** An image is the library's, by id. A form's
      fields get names from their labels, and a page takes one form.
+   - **Lists of a widget's own.** Stats keep their first eight figures,
+     steps their first ten, and pricing its first four plans, each with
+     its first twelve features. Stats with no figure, steps with fewer than
+     two, or pricing with no plan are left out.
    - **Notes.** What cannot be made to fit is left out and said in a note.
 4. **The end.** However the answer ends, any button whose section never
-   came is taken out, while the page made is the one open. A stop, a
-   refusal or another page opened midway keeps what is already in, and a
-   stop lets nothing more land, not even sections that came while the page
-   was being made.
+   came is taken out, and a plan's button loses its link, while the page
+   made is the one open. A stop, a refusal or another page opened midway
+   keeps what is already in, and a stop lets nothing more land, not even
+   sections that came while the page was being made.
 
 ## The providers
 
