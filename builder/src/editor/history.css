@@ -42,7 +42,7 @@
 .ver > div { min-width: 0; }
 /* The draft: the selection's corner brackets, as the design marks it. */
 .ver-draft { position: relative; display: block; padding: 10px 12px; background: var(--key); }
-.ver-draft::before, .ver-draft::after { content: ""; position: absolute; width: 12px; height: 12px; border: 0 solid var(--mark-line); }
+.ver-draft::before, .ver-draft::after { content: ""; position: absolute; width: 12px; height: 12px; border: 0 solid var(--mark-rule); }
 .ver-draft::before { left: 0; top: 0; border-width: 2px 0 0 2px; border-top-left-radius: var(--r-control); }
 .ver-draft::after { right: 0; bottom: 0; border-width: 0 2px 2px 0; border-bottom-right-radius: var(--r-control); }
 .ver-kind { display: flex; align-items: center; gap: 6px; font-weight: 600; }
