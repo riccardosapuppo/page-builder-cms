@@ -355,6 +355,31 @@ test.describe("with the mouse", () => {
     await page.mouse.up();
   });
 
+  // A band dark on a desktop may be light on a tablet, its words dark
+  // there: the columns take the colour the band is drawn with at the width
+  // the page is previewed at.
+  test("a band dark on a desktop and light on a tablet: previewed at the tablet's width, the columns take the tablet's colour while a widget moves, and their words stay legible", async ({ page, request }) => {
+    const turning = { ...section("s1", "Turning", [column("c1", [heading("a", "Alpha"), widget("b", "quote", { text: "Bravo" })]), column("c2", [widget("d", "divider", {})])]), style: { base: { background: "text" }, tablet: { background: "background" } } };
+    await startPage(page, request, "Turning band", [turning]);
+    await page.getByRole("radiogroup", { name: "Look at the page on" }).getByRole("radio", { name: /^Tablet/ }).click();
+    await expect(page.locator(".statusbar .sb-width")).toHaveText("Page 768 wide, tablet layout");
+    const light = await page.evaluate(() => getComputedStyle(document.querySelector('.canvas [data-block-id="s1"]')!).backgroundColor);
+    await select(page, "d");
+    await pickUp(page, grip(page));
+    await moveOnto(page, block(page, "b"), "bottom");
+    await expect(caption(page).locator("strong")).toContainText("Divider will move to Column 1 in Turning");
+    const drawn = await page.evaluate(() => ({
+      fill: getComputedStyle(document.querySelector('.canvas [data-block-id="c1"] > .ov-drop-target')!).backgroundColor,
+      open: getComputedStyle(document.querySelector('.canvas [data-block-id="c2"]')!).backgroundColor,
+      words: getComputedStyle(document.querySelector('.canvas [data-block-id="a"] h2')!).color,
+    }));
+    expect(drawn.open, "the other column on the band's tablet colour").toBe(light);
+    expect(drawn.fill, "the band's tablet colour under the target's tint").toBe(light);
+    expect(contrast(rgb(drawn.words), rgb(drawn.fill)), `${drawn.words} on ${drawn.fill}`).toBeGreaterThanOrEqual(4.5);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
   test("a column refused by a section that holds four already", async ({ page, request }) => {
     const full = section("s3", "Four", [0, 1, 2, 3].map((n) => column(`k${n}`, [widget(`w${n}`, "divider", {})])));
     const { id } = await startPage(page, request, "Full", [...fixture(), full]);

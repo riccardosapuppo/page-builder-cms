@@ -954,6 +954,31 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 .canvas .site .bg-accent { --sec-bg: var(--sw-accent); }
 .canvas .site .bg-soft { --sec-bg: var(--sw-soft); }
 .canvas .site .bg-muted { --sec-bg: var(--sw-muted); }
+/* A tablet's and a phone's own background, a slot's or a free one, at the
+   width the page is drawn at, as tokens.css and the free colours' rules
+   switch the band there: a band dark on a desktop may be light on a phone,
+   its words dark, and its columns follow. "None" is the band's or the
+   site's colour again. */
+@container site (560px <= width < 800px) {
+  .canvas .site :is(.sec, .col)[data-tablet-bg], .canvas .site .sec.tablet-bg-none { --sec-bg: var(--mark-line, var(--sw-background)); }
+  .canvas .site .col.tablet-bg-none { --sec-bg: inherit; }
+  .canvas .site :is(.sec, .col).tablet-bg-text { --sec-bg: var(--sw-text); }
+  .canvas .site :is(.sec, .col).tablet-bg-background { --sec-bg: var(--sw-background); }
+  .canvas .site :is(.sec, .col).tablet-bg-primary { --sec-bg: var(--sw-primary); }
+  .canvas .site :is(.sec, .col).tablet-bg-accent { --sec-bg: var(--sw-accent); }
+  .canvas .site :is(.sec, .col).tablet-bg-soft { --sec-bg: var(--sw-soft); }
+  .canvas .site :is(.sec, .col).tablet-bg-muted { --sec-bg: var(--sw-muted); }
+}
+@container site (width < 560px) {
+  .canvas .site :is(.sec, .col)[data-phone-bg], .canvas .site .sec.phone-bg-none { --sec-bg: var(--mark-line, var(--sw-background)); }
+  .canvas .site .col.phone-bg-none { --sec-bg: inherit; }
+  .canvas .site :is(.sec, .col).phone-bg-text { --sec-bg: var(--sw-text); }
+  .canvas .site :is(.sec, .col).phone-bg-background { --sec-bg: var(--sw-background); }
+  .canvas .site :is(.sec, .col).phone-bg-primary { --sec-bg: var(--sw-primary); }
+  .canvas .site :is(.sec, .col).phone-bg-accent { --sec-bg: var(--sw-accent); }
+  .canvas .site :is(.sec, .col).phone-bg-soft { --sec-bg: var(--sw-soft); }
+  .canvas .site :is(.sec, .col).phone-bg-muted { --sec-bg: var(--sw-muted); }
+}
 .canvas-drag-widget .site .col { z-index: 2; background-color: var(--sec-bg); }
 .canvas-drag-widget .site .w { z-index: 3; }
 .ov-veil { inset: 0; z-index: 1; background: var(--shut); }
