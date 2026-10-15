@@ -63,7 +63,14 @@ const zoom = fc.oneof(fc.integer({ min: -1, max: 21 }), fc.constantFrom(5.5, "15
 // shapes no schema would let through.
 const stackValue = fc.oneof(fc.constantFrom("phone", "never", "tablet", "Phone"), anyJson);
 const sizeStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("display", "heading-1", "heading-2", "heading-3", "large", "body", "small") }, { weight: 1, arbitrary: fc.constantFrom("Display", "huge", "valueOf", "", 2) }, { weight: 1, arbitrary: anyJson });
-const sizeSides = fc.oneof({ weight: 5, arbitrary: fc.record({ textSize: sizeStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
+// A heading's or a text's own size and line height: in every unit, near
+// and past each range's ends, and of the wrong kind.
+const freeSize = fc.oneof(
+  { weight: 4, arbitrary: fc.tuple(fc.integer({ min: 1, max: 34000 }), fc.constantFrom("px", "rem", "vw")).map(([hundredths, unit]) => `${Math.floor(hundredths / 100)}${hundredths % 100 === 0 ? "" : `.${String(hundredths % 100).padStart(2, "0").replace(/0$/, "")}`}${unit}`) },
+  { weight: 1, arbitrary: fc.constantFrom("48PX", "48.50px", "3em", "1px;color:red", 48, null) },
+);
+const freeHeight = fc.oneof({ weight: 4, arbitrary: fc.integer({ min: 70, max: 320 }).map((n) => n / 100) }, { weight: 1, arbitrary: fc.constantFrom(1.125, "1.5", 0, -1) });
+const sizeSides = fc.oneof({ weight: 5, arbitrary: fc.record({ textSize: sizeStep, fontSize: freeSize, lineHeight: freeHeight }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const sizeStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: sizeSides, tablet: sizeSides, phone: sizeSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const headerBlock = fc.oneof(
   { weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "Image", "") }) },

@@ -1,4 +1,5 @@
 import type { FreeColor } from "./free-colors.ts";
+import type { FontSize, FontWeight, FreeTypeKey } from "./free-type.ts";
 // The page document as TypeScript types, written from
 // schema/block-document.schema.json, the one schema the editor and the
 // server validate with. The schema decides; these types follow it, and
@@ -104,8 +105,8 @@ export const EMAIL_MAX_LENGTH = 254;
 
 // ----------------------------------------------------------------- style
 
-// Every style setting, by token name. A block type accepts only some of
-// them (STYLE_KEYS_BY_TYPE).
+// Every style setting, by token name, but a free colour and free type. A
+// block type accepts only some of them (STYLE_KEYS_BY_TYPE).
 export interface StyleTokens {
   spaceInside?: SpaceToken;
   spaceBetween?: SpaceToken;
@@ -117,16 +118,26 @@ export interface StyleTokens {
   color?: PaletteSlot | FreeColor;
   textSize?: TypeStep;
   typeface?: TypefaceToken;
+  // Free type of the block's own, each over its step's and its face's
+  // (./free-type.ts): free values, not tokens.
+  fontSize?: FontSize;
+  fontWeight?: FontWeight;
+  letterSpacing?: number;
+  lineHeight?: number;
+  letterWidth?: number;
   align?: AlignToken;
   verticalAlign?: VerticalAlignToken;
   visibility?: VisibilityToken;
 }
 export const STYLE_TOKEN_KEYS = [
   "spaceInside", "spaceBetween", "spaceAbove", "spaceBelow", "aspect", "background",
-  "color", "textSize", "typeface", "align", "verticalAlign", "visibility",
+  "color", "textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "align", "verticalAlign", "visibility",
 ] as const satisfies readonly (keyof StyleTokens)[];
 
-// The tokens each style setting takes: the enum its key refers to in the
+// The settings that take a token: every one but free type's.
+export type TokenStyleKey = Exclude<keyof StyleTokens, FreeTypeKey>;
+
+// The tokens each such setting takes: the enum its key refers to in the
 // schema's $defs/styleTokens. The renderer turns only these into classes,
 // the Style panel offers them, and the tests' random pages draw from them.
 export const STYLE_TOKENS = {
@@ -142,9 +153,9 @@ export const STYLE_TOKENS = {
   align: ALIGN_TOKENS,
   verticalAlign: VERTICAL_ALIGN_TOKENS,
   visibility: VISIBILITY_TOKENS,
-} as const satisfies { readonly [K in keyof StyleTokens]-?: readonly NonNullable<StyleTokens[K]>[] };
+} as const satisfies { readonly [K in TokenStyleKey]-?: readonly NonNullable<StyleTokens[K]>[] };
 
-const TEXT_STYLE = ["textSize", "typeface", "color", "align", "visibility"] as const;
+const TEXT_STYLE = ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "visibility"] as const;
 const LINE_STYLE = ["color", "visibility"] as const;
 const PLAIN_STYLE = ["visibility"] as const;
 const NAV_STYLE = ["color", "align", "visibility"] as const;

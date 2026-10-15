@@ -16,6 +16,7 @@ import { canvasCss, checkCustomCss, scopedCss } from "../shared/custom-css.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
 import { PageSections } from "./blocks.tsx";
 import { freeColorsCss, freeColorsFor } from "./free-colors-css.ts";
+import { freeTypeCss, freeTypeFor } from "./free-type-css.ts";
 import { SitePart, type SiteParts } from "./theme.tsx";
 
 // The parts of the site style the page root carries, as the API gives them
@@ -63,12 +64,26 @@ export const FreeColorsStyle = memo(
   (a, b) => a.palette === b.palette && a.documents.length === b.documents.length && a.documents.every((document, at) => document === b.documents[at]),
 );
 
+// The rules of the free type the documents of a page root draw
+// (./free-type-css.ts), in a style element after the free colours';
+// nothing when they draw none. The published page links the CMS's
+// stylesheet of them instead (FreeType). Drawn again only when a document
+// changes.
+export const FreeTypeStyle = memo(
+  function FreeTypeStyle({ documents }: { documents: readonly unknown[] }) {
+    const css = freeTypeCss(freeTypeFor(documents));
+    return css === "" ? null : <style data-free-type="">{css}</style>;
+  },
+  (a, b) => a.documents.length === b.documents.length && a.documents.every((document, at) => document === b.documents[at]),
+);
+
 // The site's own stylesheet (../shared/custom-css.ts), inside the site,
-// after the free colours; nothing when there is none, or when it does not
-// keep to the site. The published page links the CMS's /custom.css
-// instead. On the canvas, its classes renamed as the canvas names them
-// (OwnClassPrefix), and `leave`: the editor's own controls drawn in the
-// page, which the rules must not reach (@scope's lower boundary).
+// after the free colours and the free type; nothing when there is none,
+// or when it does not keep to the site. The published page links the
+// CMS's /custom.css instead. On the canvas, its classes renamed as the
+// canvas names them (OwnClassPrefix), and `leave`: the editor's own
+// controls drawn in the page, which the rules must not reach (@scope's
+// lower boundary).
 export const CustomCssStyle = memo(function CustomCssStyle({ css, leave }: { css: string | undefined; leave?: string | undefined }) {
   const prefix = useContext(OwnClassPrefix);
   if (!css || checkCustomCss(css) !== null) return null;
@@ -102,6 +117,7 @@ export function PageRoot({ document, ctx, siteStyle, width, landmark = true, par
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={width === undefined ? undefined : { width: `${width}px` }}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={[document, parts?.header, parts?.footer]} />
+      <FreeTypeStyle documents={[document, parts?.header, parts?.footer]} />
       <CustomCssStyle css={siteStyle?.customCss} leave={editorControls} />
       <div className="sw">
         {parts && <SitePart kind="header" document={parts.header} ctx={partCtx} locked={lockedParts} />}

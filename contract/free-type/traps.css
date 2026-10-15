@@ -1,0 +1,9 @@
+/* Free type of this page: the sizes, weights, letter spacing, line heights and letter widths its headings, texts and quotes set. */
+.w[data-font-size="48px"] { font-size: 48px; }
+.w[data-font-weight="700"] { font-weight: 700; }
+.w[data-letter-spacing="0"] { letter-spacing: 0em; }
+.w[data-letter-spacing="0.02"] { letter-spacing: 0.02em; }
+.w[data-line-height="1.5"] { line-height: 1.5; }
+.w[data-line-height="2"] { line-height: 2; }
+.w[data-font-stretch="100"] { font-stretch: 100%; }
+.w[data-font-stretch="87.5"] { font-stretch: 87.5%; }

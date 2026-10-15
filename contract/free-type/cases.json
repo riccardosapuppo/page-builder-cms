@@ -1,0 +1,44 @@
+{
+  "about": "Inputs of the free type's stylesheet (cms/app/models/free_type.rb, builder/src/render/free-type-css.ts): on each device, the values each key takes there, as documents hold them. `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_type_test.rb` from cms/ writes <name>.css beside this file; both sides must give those bytes. See contract/README.md.",
+  "cases": {
+    "none": {},
+    "blocks": {
+      "base": {
+        "fontSize": ["6vw", "48px", "2.25rem", "6vw", "99.99px", "0.5rem"],
+        "fontWeight": [800, 400, 800, 100],
+        "letterSpacing": [-0.02, 0.1, 0, -0.1],
+        "lineHeight": [0.95, 1.2, 3],
+        "letterWidth": [80, 62.5, 125]
+      },
+      "tablet": {
+        "fontSize": ["4vw"],
+        "fontWeight": [700],
+        "lineHeight": [1]
+      },
+      "phone": {
+        "fontSize": ["32px", "25vw"],
+        "letterSpacing": [0.5],
+        "letterWidth": [112.5]
+      }
+    },
+    "phone-only": {
+      "phone": {
+        "fontSize": ["8px", "320px"],
+        "fontWeight": [900]
+      }
+    },
+    "traps": {
+      "base": {
+        "fontSize": ["1px;color:red", "calc(1px + 2vw)", "url(https://example.com/x.css)", "48PX", "48.50px", "08px", ".5rem", "3em", "321px", "7.99px", "0px", "26vw", "\"] { color: red } [x=\"", "48px\n", 48, null, true, ["48px"], "48px", "48px"],
+        "fontWeight": [850, "800", "bold", 1000, 0, -100, 700.0, 700.5, null],
+        "letterSpacing": [0.025, -0.11, 0.51, "0.02em", 0.02, null, 1e400, -0.0],
+        "lineHeight": [1.125, 0.79, 3.01, "1.5", 1.5, 2.00],
+        "letterWidth": [87.555, 62.4, 125.5, "80%", 87.5, 1e2],
+        "fontFamily": ["Archivo"]
+      },
+      "tablet": "junk",
+      "phone": { "fontSize": "not a list", "fontWeight": 700 },
+      "desktop": { "fontSize": ["48px"] }
+    }
+  }
+}

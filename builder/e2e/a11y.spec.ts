@@ -49,7 +49,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
 
   await block(page, "heading-0").click();
   await clean(page, "a heading selected, its first group open, the others closed with their values");
-  for (const name of ["Size and color", "Alignment", "Shown on", "Advanced"]) await openGroup(page, name);
+  for (const name of ["Size and color", "Type", "Alignment", "Shown on", "Advanced"]) await openGroup(page, name);
   await clean(page, "every group of the heading open");
   // Its toolbar's block menu; the "+" on its edge, its yellow line and the
   // picker beside it; the seam's "+" below its section, and its picker.

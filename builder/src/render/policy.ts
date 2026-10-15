@@ -14,6 +14,7 @@
 import tokens from "../../../schema/tokens.json";
 import { reservedClass } from "../../../schema/tools/rules.ts";
 import { isObject } from "../document/json.ts";
+import { fontSizeOf, freeNumberOf } from "../shared/free-type.ts";
 import { FRAME_ORIGINS, MAP_ORIGIN, VIDEO_ORIGINS } from "./frames.ts";
 
 export { FRAME_ORIGINS };
@@ -131,8 +132,11 @@ function columnHeight(column: unknown, device: number): number {
 // holds (the row less the header's space above and below), on one line: a
 // heading at its own type step, else its level's (h1 heading-1 to h4
 // large, as ../widgets/heading/render.tsx draws it); a text at its own,
-// else its column's, else body. A text that wraps is taller still; the page
-// has no script to measure it.
+// else its column's, else body. A size or a line height of its own (free
+// type, ownType) counts in place of the step's: its own size times the
+// step's line height, the step's size times its own line height, or its
+// own two. A text that wraps is taller still; the page has no script to
+// measure it.
 function textOver(block: unknown, column: Record<string, unknown>, device: number): number {
   if (!isObject(block)) return 0;
   let size: string | null = null;
@@ -142,7 +146,33 @@ function textOver(block: unknown, column: Record<string, unknown>, device: numbe
   } else if (block.type === "text") {
     size = named(block, "textSize", device) ?? named(column, "textSize", device) ?? "body";
   }
-  return size === null ? 0 : Math.max(0, TEXT_LINE[size]![device]! - (STICKY_ROW[device]! - 2 * HEADER_SPACE[device]!));
+  if (size === null) return 0;
+  const own = ownType(block, device);
+  const line = own.size === null && own.height === null ? TEXT_LINE[size]![device]! : Math.ceil((own.size ?? TEXT_SIZE[size]![device]!) * (own.height ?? TEXT_HEIGHT[size]![device]!));
+  return Math.max(0, line - (STICKY_ROW[device]! - 2 * HEADER_SPACE[device]!));
+}
+
+// The widest page that lays out as a desktop, a tablet and a phone, for a
+// size in vw, a hundredth of the page's width: a tablet's and a phone's
+// widths end at the next device's (site.css's container queries), and a
+// desktop's is counted at 1920, past which a heading sized in vw in a
+// sticky header grows past the rows counted for it.
+export const STICKY_WIDEST: readonly number[] = [1920, 800, 560];
+
+// A heading's or a text's own size, in pixels, and line height on a
+// device, as the page's stylesheet of free type applies them (the device's
+// own where it is one the schema and the rules take, else the base's, a
+// phone's never the tablet's): a rem counted at 16 pixels, the browser's
+// own, and a vw at a hundredth of the widest page of the device
+// (STICKY_WIDEST). Null where the block has none of its own.
+function ownType(block: Record<string, unknown>, device: number): { size: number | null; height: number | null } {
+  const style = isObject(block.style) ? block.style : {};
+  const own = device === 1 ? style.tablet : device === 2 ? style.phone : undefined;
+  const parts = [own, style.base].filter(isObject);
+  const size = parts.map((part) => fontSizeOf(part.fontSize)).find((found) => found !== null) ?? null;
+  const height = parts.map((part) => freeNumberOf("lineHeight", part.lineHeight)).find((found) => found !== null) ?? null;
+  const pixels = size === null ? null : size.unit === "px" ? size.hundredths / 100 : size.unit === "rem" ? (size.hundredths * 16) / 100 : (size.hundredths * STICKY_WIDEST[device]!) / 10000;
+  return { size: pixels, height };
 }
 
 // A block's own type step for a style key on a device, as the page's
@@ -198,6 +228,18 @@ const TEXT_LINE: Readonly<Record<string, readonly number[]>> = Object.fromEntrie
     const [size, height] = scale[name]![device]! as [number, number];
     return Math.ceil(size * height);
   }))),
+]));
+// Of the three type scales, the largest size of each step on a desktop, a
+// tablet and a phone, and its line height, which the three share: what a
+// size or a line height of a block's own is counted with when it sets only
+// the other one (textOver).
+const TEXT_SIZE: Readonly<Record<string, readonly number[]>> = Object.fromEntries(Object.keys(TEXT_LINE).map((name) => [
+  name,
+  ["desktop", "tablet", "phone"].map((device) => Math.max(...SCALES.map((scale) => scale[name]![device]![0]!))),
+]));
+const TEXT_HEIGHT: Readonly<Record<string, readonly number[]>> = Object.fromEntries(Object.keys(TEXT_LINE).map((name) => [
+  name,
+  ["desktop", "tablet", "phone"].map((device) => Math.max(...SCALES.map((scale) => scale[name]![device]![1]!))),
 ]));
 const LEVEL_STEPS = ["heading-1", "heading-2", "heading-3", "large"] as const;
 

@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "title": "Free type",
+  "sections": [
+    {
+      "id": "ft",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "ft-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "ft-h",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Swim at slack water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display",
+                  "fontSize": "6vw",
+                  "fontWeight": 800,
+                  "letterSpacing": -0.02,
+                  "lineHeight": 0.95,
+                  "letterWidth": 80
+                },
+                "tablet": {
+                  "fontSize": "48px",
+                  "fontWeight": 700,
+                  "letterSpacing": 0,
+                  "lineHeight": 1,
+                  "letterWidth": 100
+                },
+                "phone": {
+                  "typeface": "body",
+                  "fontSize": "2.25rem",
+                  "fontWeight": 900,
+                  "letterSpacing": 0.5,
+                  "lineHeight": 3,
+                  "letterWidth": 125
+                }
+              }
+            },
+            {
+              "id": "ft-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims at the slipway"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "large",
+                  "fontSize": "8px",
+                  "fontWeight": 200,
+                  "letterSpacing": -0.1,
+                  "lineHeight": 0.8,
+                  "letterWidth": 62.5
+                },
+                "tablet": {
+                  "fontSize": "320px",
+                  "letterSpacing": 0.07
+                },
+                "phone": {
+                  "fontSize": "0.5rem",
+                  "lineHeight": 1.33
+                }
+              }
+            },
+            {
+              "id": "ft-q",
+              "type": "quote",
+              "props": {
+                "text": "Cold water, warm tea.",
+                "attribution": "A member"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "typeface": "heading",
+                  "fontSize": "20rem",
+                  "fontWeight": 100,
+                  "letterWidth": 112.5
+                },
+                "tablet": {
+                  "fontSize": "0.5vw",
+                  "lineHeight": 1.25
+                },
+                "phone": {
+                  "fontSize": "25vw",
+                  "letterWidth": 87.55
+                }
+              }
+            },
+            {
+              "id": "ft-w-300",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Weight 300"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontWeight": 300,
+                  "fontSize": "99.99px"
+                }
+              }
+            },
+            {
+              "id": "ft-w-400",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Weight 400"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontWeight": 400,
+                  "fontSize": "99.99px"
+                }
+              }
+            },
+            {
+              "id": "ft-w-500",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Weight 500"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontWeight": 500,
+                  "fontSize": "99.99px"
+                }
+              }
+            },
+            {
+              "id": "ft-w-600",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Weight 600"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontWeight": 600,
+                  "fontSize": "99.99px"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

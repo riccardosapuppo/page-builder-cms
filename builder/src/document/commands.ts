@@ -20,7 +20,7 @@ import { checkNesting, nestingMessage, refusal, type CommandError } from "./chec
 import { idDraw, reidentify, type NewId } from "./ids.ts";
 import { copyJson, isObject, keyIndex, sameJson, withKey, withoutKey, type Json } from "./json.ts";
 import {
-  blockName, blockWithPlace, containerName, FIELD_NAMES, ITEM_NAMES, onDevice, placeOf, plural, STYLE_KEY_NAMES, tokenName, TYPE_NAMES,
+  blockName, blockWithPlace, containerName, FIELD_NAMES, ITEM_NAMES, onDevice, placeOf, plural, settingWords, STYLE_KEY_NAMES, TYPE_NAMES,
 } from "./labels.ts";
 import { canContain } from "./nesting.ts";
 import { invertOp, type Op, type Path } from "./ops.ts";
@@ -376,14 +376,14 @@ export function makeSetStyle(doc: PageDocument, id: string, device: Device, upda
 }
 
 function styleLabel(doc: PageDocument, id: string, device: Device, updates: StyleUpdates): string {
-  const entries = Object.entries(updates) as Array<[keyof StyleTokens, string | typeof REMOVE]>;
+  const entries = Object.entries(updates) as Array<[keyof StyleTokens, string | number | typeof REMOVE]>;
   const where = blockWithPlace(doc, id);
   const [first] = entries;
   if (entries.length === 1 && first) {
     const [key, value] = first;
     return value === REMOVE
       ? `Cleared ${STYLE_KEY_NAMES[key]}${onDevice(device)}, ${where}`
-      : `Set ${STYLE_KEY_NAMES[key]} to ${tokenName(value)}${onDevice(device)}, ${where}`;
+      : `Set ${STYLE_KEY_NAMES[key]} to ${settingWords(key, value)}${onDevice(device)}, ${where}`;
   }
   return `Changed the style${onDevice(device)} of ${where}`;
 }

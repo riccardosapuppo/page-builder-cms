@@ -3,6 +3,7 @@
 // page as it is then ("Deleted Divider in Hero"), so the history reads the
 // same after the section is renamed or moved.
 import type { BlockType, Device, PageDocument, StyleTokens } from "../shared/document.ts";
+import { freeTypeText, isFreeTypeKey, type FreeTypeKey } from "../shared/free-type.ts";
 import type { ContainerType } from "./nesting.ts";
 import { locate, type ParentId } from "./tree.ts";
 
@@ -102,6 +103,11 @@ export const STYLE_KEY_NAMES: Readonly<Record<keyof StyleTokens, string>> = {
   color: "Color",
   textSize: "Text size",
   typeface: "Typeface",
+  fontSize: "Type size",
+  fontWeight: "Weight",
+  letterSpacing: "Letter spacing",
+  lineHeight: "Line height",
+  letterWidth: "Letter width",
   align: "Alignment",
   verticalAlign: "Vertical alignment",
   visibility: "Visibility",
@@ -123,6 +129,31 @@ const TOKEN_NAMES: Readonly<Record<string, string>> = {
 // A token as the style panel shows it: "L", "Heading 1", "16:9".
 export function tokenName(token: string): string {
   return TOKEN_NAMES[token] ?? token;
+}
+
+// A value of free type as the panel and the history say it, from the text
+// the page writes ("6vw", "-0.02"): "6 vw", "800", "0.02 em" after a minus
+// sign or a plus (none for no spacing at all), "0.95", "80 %".
+export function freeTypeWords(key: FreeTypeKey, text: string): string {
+  switch (key) {
+    case "fontSize":
+      return text.replace(/(px|rem|vw)$/, " $1");
+    case "letterSpacing":
+      return `${text.startsWith("-") ? `\u2212${text.slice(1)}` : text === "0" ? text : `+${text}`} em`;
+    case "letterWidth":
+      return `${text} %`;
+    default:
+      return text;
+  }
+}
+
+// A setting's value as the history and the panel say it: a token by its
+// name ("Heading 1"), a value of free type in its words ("6 vw"), stored
+// (800) or as the page writes it ("800").
+export function settingWords(key: keyof StyleTokens, value: string | number): string {
+  if (!isFreeTypeKey(key)) return tokenName(String(value));
+  const text = freeTypeText(key, key !== "fontSize" && typeof value === "string" ? Number(value) : value);
+  return text === null ? String(value) : freeTypeWords(key, text);
 }
 
 // "" for every device (base), " on tablet", " on phone".

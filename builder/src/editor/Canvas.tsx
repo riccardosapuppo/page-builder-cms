@@ -54,7 +54,7 @@ import { locate } from "../document/tree.ts";
 import { OwnClassPrefix, type Decoration, type RawBlock, type RenderContext } from "../render/context.ts";
 import { CANVAS_CLASS_PREFIX } from "../shared/custom-css.ts";
 import { PageSections } from "../render/blocks.tsx";
-import { CustomCssStyle, FreeColorsStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
+import { CustomCssStyle, FreeColorsStyle, FreeTypeStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SitePart, stickyHeader } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
 import type { PartKind } from "../storage/adapter.ts";
@@ -1159,11 +1159,12 @@ function seamAt(frame: Element, x: number, y: number): number | null {
 // A page root around the site's header or footer alone, with the site's
 // style, for the empty page: the invitation to add a section sits between
 // them, outside the page's stylesheets' reach. The documents are those it
-// draws, for their free colours.
+// draws, for their free colours and their free type.
 function ThemeAround({ siteStyle, documents, children }: { siteStyle: SiteStyleChoice | null; documents: readonly unknown[]; children: ReactNode }) {
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={documents} />
+      <FreeTypeStyle documents={documents} />
       <CustomCssStyle css={siteStyle?.customCss} leave={IN_PAGE_CONTROLS} />
       <div className="sw">{children}</div>
     </div>
@@ -1232,6 +1233,7 @@ function PartRoot({ kind, document, ctx, siteStyle, parts, around, aroundTitle, 
   return (
     <div className="site" {...siteStyleAttributes(siteStyle)} style={sized}>
       <FreeColorsStyle palette={siteStyle?.palette} documents={[document, around, otherDocument]} />
+      <FreeTypeStyle documents={[document, around, otherDocument]} />
       <CustomCssStyle css={siteStyle?.customCss} leave={IN_PAGE_CONTROLS} />
       <div className="sw">
         {kind === "header" ? editing : other}

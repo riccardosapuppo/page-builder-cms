@@ -4,6 +4,7 @@
 // added to, removed from or renamed in the schema fails here until the
 // types follow.
 import { FREE_COLOR_PATTERN } from "./free-colors.ts";
+import { FONT_SIZE_PATTERN, FONT_WEIGHTS, FREE_NUMBER_RANGES, FREE_TYPE_BLOCKS, FREE_TYPE_KEYS } from "./free-type.ts";
 import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
@@ -89,10 +90,11 @@ describe("the document's types match the schema", () => {
   test("the style settings, and which ones each block type takes", () => {
     expect([...STYLE_TOKEN_KEYS].sort()).toEqual(Object.keys(properties(def("styleTokens"))).sort());
     // Each setting's tokens are the enum its key refers to; a background and
-    // a colour may name a free colour instead (freeColor).
+    // a colour may name a free colour instead (freeColor). Free type takes
+    // no token (below).
     const settings = properties(def("styleTokens"));
-    expect(Object.keys(STYLE_TOKENS).sort()).toEqual([...STYLE_TOKEN_KEYS].sort());
-    for (const key of STYLE_TOKEN_KEYS) {
+    expect(Object.keys(STYLE_TOKENS).sort()).toEqual(STYLE_TOKEN_KEYS.filter((key) => !(FREE_TYPE_KEYS as readonly string[]).includes(key)).sort());
+    for (const key of Object.keys(STYLE_TOKENS) as Array<keyof typeof STYLE_TOKENS>) {
       const setting = settings[key] as Node;
       const either = setting.anyOf as Node[] | undefined;
       const tokens = either ? either.find((branch) => branch.$ref !== "#/$defs/freeColor")! : setting;
@@ -100,6 +102,17 @@ describe("the document's types match the schema", () => {
       expect(either?.some((branch) => branch.$ref === "#/$defs/freeColor") ?? false, key).toBe(key === "background" || key === "color");
     }
     expect(def("freeColor").pattern).toBe(FREE_COLOR_PATTERN);
+    // Free type: each key its definition of the same name; the size's
+    // pattern, the weights, and each number's range as the rules read it.
+    for (const key of FREE_TYPE_KEYS) expect((settings[key] as Node).$ref, key).toBe(`#/$defs/${key}`);
+    expect(def("fontSize").pattern).toBe(FONT_SIZE_PATTERN);
+    expect(def("fontWeight").enum).toEqual([...FONT_WEIGHTS]);
+    for (const [key, range] of Object.entries(FREE_NUMBER_RANGES)) {
+      expect({ type: def(key).type, min: def(key).minimum, max: def(key).maximum }, key).toEqual({ type: "number", min: range.min, max: range.max });
+    }
+    // The block types that take it are those that take a typeface.
+    expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes("fontSize"))).toEqual([...FREE_TYPE_BLOCKS]);
+    expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes("typeface"))).toEqual([...FREE_TYPE_BLOCKS]);
     for (const type of BLOCK_TYPES) {
       const style = branch(type).style;
       // Each device of a type's style refers to the same list of keys.

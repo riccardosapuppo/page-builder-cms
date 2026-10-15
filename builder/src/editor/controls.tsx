@@ -13,6 +13,7 @@ import {
   type CSSProperties, type KeyboardEvent, type ReactNode,
 } from "react";
 import type { CommandError } from "../document/check.ts";
+import { numberText, typedNumber } from "../shared/free-type.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { explain, refusalAt, serverErrorsAt, type FieldRules } from "./errors.ts";
 import { Icon, type IconName } from "./icons.tsx";
@@ -141,34 +142,21 @@ export function describedBy(id: string, hint: unknown, errors: readonly string[]
 
 // ---------------------------------------------------------- text
 
-interface TextFieldProps {
+interface TypedOptions {
   label: string;
   value: string;
-  // Hands the text over; null when the page took it, the refusal otherwise.
   onCommit: (value: string) => CommandError | null;
-  // Where the value is: the block (null for the page itself) and the
-  // field's pointer inside it ("/props/text"), for the errors.
   blockId: string | null;
   field: string;
-  rules?: FieldRules;
-  multiline?: boolean;
-  // A text area for a value of one line (a heading's text): Enter hands
-  // the text over instead of starting a new line.
-  oneLine?: boolean;
-  rows?: number;
-  placeholder?: string;
-  hint?: ReactNode;
-  icon?: IconName;
-  prefix?: string;
-  autoFocus?: boolean;
-  disabled?: boolean;
-  // Values to choose from as the person types (a one-line field): the
-  // browser's own list, each value with its name (a page's address, its
-  // title). Anything else can still be typed.
-  suggestions?: ReadonlyArray<{ value: string; label: string }>;
+  rules?: FieldRules | undefined;
 }
 
-export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled, suggestions }: TextFieldProps) {
+// What a field typed into does with its text (TextField's, and the size
+// field's number): the text as typed, handed over when the person pauses
+// (on the injected clock), leaves the field or presses Enter, and held
+// with the page's other pending edits until then (./pending.ts); the
+// refusal, if any, with the server's errors at the field.
+function useTyped({ label, value, onCommit, blockId, field, rules }: TypedOptions) {
   const { clock, ui } = useEnv();
   const id = useId();
   const [draft, setDraft] = useState(value);
@@ -178,6 +166,9 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
   // over first (./pending.ts): this lets go of that hold.
   const release = useRef<(() => void) | null>(null);
   const focused = useRef(false);
+  // The next value is the field's own making (a size's unit chosen beside
+  // it): shown in the box even while the person is in it.
+  const following = useRef(false);
   const sent = useRef(value);
   // What a commit hands over when it runs later (a timer, a blur, the panel
   // going away): this render's text and handler, not the first one's.
@@ -201,7 +192,12 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
     release.current?.();
     release.current = null;
     const { draft: text, onCommit: hand, rules: r, field: f, label: name } = latest.current;
-    if (text === sent.current) return true;
+    // The text the page has (a refused one typed back as it was): nothing
+    // to hand over, and nothing refused any more.
+    if (text === sent.current) {
+      setRefusal(null);
+      return true;
+    }
     const error = hand(text);
     // A text that is the page's own once its caller has made it so (a link
     // trimmed to the one kept: "That would change nothing") is handed over
@@ -221,7 +217,8 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
   // The page changed under the field (another field, a reload): show it,
   // unless the person is typing here. A refused text it replaces is let go.
   useEffect(() => {
-    if (focused.current || timer.current !== null) return;
+    if (!following.current && (focused.current || timer.current !== null)) return;
+    following.current = false;
     setDraft(value);
     sent.current = value;
     setRefusal(null);
@@ -238,15 +235,34 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
     release.current = null;
   }, [commit]);
 
+  // A new text, typed or stepped by the arrows: kept after the pause.
+  const change = (text: string) => {
+    // The text handed over by a command elsewhere is this render's, so
+    // the latest is set at once, not after the next render.
+    latest.current = { ...latest.current, draft: text };
+    setDraft(text);
+    if (timer.current !== null) clock.clearTimeout(timer.current);
+    release.current ??= ui.getState().pending.hold(() => commit(true));
+    timer.current = clock.setTimeout(() => {
+      timer.current = null;
+      commit();
+    }, COMMIT_AFTER_MS);
+  };
+
   const errors = refusal ? [refusal, ...server.filter((m) => m !== refusal)] : server;
-  const common = {
+  return {
     id,
-    value: draft,
-    placeholder,
-    autoFocus,
-    disabled,
-    "aria-invalid": errors.length > 0 ? true : undefined,
-    "aria-describedby": describedBy(id, hint, errors),
+    draft,
+    latest,
+    errors,
+    commit,
+    change,
+    // A refusal of the field's own, said there (the size's unit), or none.
+    refuse: setRefusal,
+    // Whether the next value is the field's own making, to show at once.
+    follow: (on: boolean) => {
+      following.current = on;
+    },
     onFocus: () => {
       focused.current = true;
     },
@@ -254,18 +270,59 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       focused.current = false;
       commit();
     },
-    onChange: (event: { target: { value: string } }) => {
-      // The text handed over by a command elsewhere is this render's, so
-      // the latest is set at once, not after the next render.
-      latest.current = { ...latest.current, draft: event.target.value };
-      setDraft(event.target.value);
-      if (timer.current !== null) clock.clearTimeout(timer.current);
-      release.current ??= ui.getState().pending.hold(() => commit(true));
-      timer.current = clock.setTimeout(() => {
-        timer.current = null;
-        commit();
-      }, COMMIT_AFTER_MS);
-    },
+  };
+}
+
+interface TextFieldProps extends ScopeProps {
+  label: string;
+  value: string;
+  // Hands the text over; null when the page took it, the refusal otherwise.
+  onCommit: (value: string) => CommandError | null;
+  // Where the value is: the block (null for the page itself) and the
+  // field's pointer inside it ("/props/text"), for the errors.
+  blockId: string | null;
+  field: string;
+  rules?: FieldRules;
+  multiline?: boolean;
+  // A text area for a value of one line (a heading's text): Enter hands
+  // the text over instead of starting a new line.
+  oneLine?: boolean;
+  rows?: number;
+  placeholder?: string | undefined;
+  hint?: ReactNode;
+  icon?: IconName;
+  prefix?: string;
+  autoFocus?: boolean;
+  disabled?: boolean;
+  // Values to choose from as the person types (a one-line field): the
+  // browser's own list, each value with its name (a page's address, its
+  // title). Anything else can still be typed.
+  suggestions?: ReadonlyArray<{ value: string; label: string }>;
+  // A unit after the text, in its box ("em"), which describes the field.
+  suffix?: string | undefined;
+  // The keyboard a touch screen offers for it ("decimal").
+  inputMode?: "decimal" | "text";
+  // What the up and down arrows make of the text (Shift: a bigger step),
+  // or null to leave it: a number they step.
+  stepBy?: (draft: string, by: 1 | -1, big: boolean) => string | null;
+}
+
+export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled, suggestions, suffix, inputMode, stepBy, scope, scopeDevice, scopeTitle, note }: TextFieldProps) {
+  const typed = useTyped({ label, value, onCommit, blockId, field, rules });
+  const { id, draft, errors, commit } = typed;
+  const unitId = suffix ? `${id}-unit` : null;
+  const common = {
+    id,
+    value: draft,
+    placeholder,
+    autoFocus,
+    disabled,
+    inputMode,
+    "aria-invalid": errors.length > 0 ? true : undefined,
+    "aria-describedby": [unitId, describedBy(id, hint, errors, note)].filter(Boolean).join(" ") || undefined,
+    onFocus: typed.onFocus,
+    onBlur: typed.onBlur,
+    onChange: (event: { target: { value: string } }) => typed.change(event.target.value),
   };
   let control: ReactNode;
   if (multiline) {
@@ -285,23 +342,29 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
     const input = (
       <input
         type="text"
-        className={icon || prefix ? undefined : "input"}
+        className={icon || prefix || suffix ? undefined : "input"}
         spellCheck={rules?.kind === "href" || rules?.kind === "anchor" || rules?.kind === "classes" || rules?.kind === "slug" ? false : undefined}
         list={suggestions && suggestions.length > 0 ? `${id}-list` : undefined}
         {...common}
         onKeyDown={(event) => {
           if (event.key === "Enter") commit();
+          else if (stepBy && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+            const next = stepBy(typed.latest.current.draft, event.key === "ArrowUp" ? 1 : -1, event.shiftKey);
+            if (next === null) return;
+            event.preventDefault();
+            typed.change(next);
+          }
         }}
       />
     );
     const listed = suggestions && suggestions.length > 0
       ? <datalist id={`${id}-list`}>{suggestions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</datalist>
       : null;
-    control = icon || prefix
-      ? <div className="input input-icon">{icon && <Icon name={icon} />}{prefix && <span className="input-prefix" aria-hidden="true">{prefix}</span>}{input}{listed}</div>
+    control = icon || prefix || suffix
+      ? <div className="input input-icon">{icon && <Icon name={icon} />}{prefix && <span className="input-prefix" aria-hidden="true">{prefix}</span>}{input}{suffix && <span className="input-suffix" id={unitId ?? undefined}>{suffix}</span>}{listed}</div>
       : <>{input}{listed}</>;
   }
-  return <FieldFrame id={id} label={label} hint={hint} errors={errors}>{control}</FieldFrame>;
+  return <FieldFrame id={id} label={label} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>{control}</FieldFrame>;
 }
 
 // A number, handed over like text; what is not a number is refused here.
@@ -327,6 +390,142 @@ export function NumberField({ value, onCommit, integer = false, rules, ...rest }
         return onCommit(parsed);
       }}
     />
+  );
+}
+
+// A number with two decimals at most, from what is typed: a decimal point
+// or a comma, no third decimal. What the arrows step from: the number
+// typed, else the one in use (the placeholder).
+const TWO_DECIMALS = "Write a number, with two decimals at most.";
+
+function stepNumber(draft: string, placeholder: string | undefined, by: 1 | -1, big: boolean, step: number, min: number, max: number): string | null {
+  const from = draft.trim() !== "" ? typedNumber(draft) : placeholder !== undefined && placeholder !== "" ? Number(placeholder) : null;
+  if (from === null || !Number.isFinite(from)) return null;
+  // A number between two hundredths (the theme's -0.015) goes to the one
+  // on the arrow's side first: up from -0.015 is -0.01, down -0.02.
+  const start = (by > 0 ? Math.floor(from * 100 + 1e-9) : Math.ceil(from * 100 - 1e-9)) / 100;
+  const next = Math.round((start + by * step * (big ? 10 : 1)) * 100) / 100;
+  return numberText(Math.min(max, Math.max(min, next)));
+}
+
+// A number with its unit (letter spacing in em, a line height, a letter
+// width in %), typed: handed over as text is, when the person pauses,
+// leaves the field or presses Enter, so a number typed is one change. The
+// arrows step it, by `step` (Shift: ten steps), within min and max.
+// Empty, the field shows the value in use as its placeholder; emptied, it
+// hands over null, which takes the value away.
+interface MeasureFieldProps extends ScopeProps {
+  label: string;
+  // The number as the page writes it ("-0.02"), or null for none.
+  value: string | null;
+  placeholder?: string | undefined;
+  unit?: string | undefined;
+  step: number;
+  min: number;
+  max: number;
+  onCommit: (value: number | null) => CommandError | null;
+  blockId: string | null;
+  field: string;
+  hint?: ReactNode;
+}
+
+export function MeasureField({ value, placeholder, unit, step, min, max, onCommit, ...rest }: MeasureFieldProps) {
+  return (
+    <TextField
+      {...rest}
+      rules={{ kind: "number", minimum: min, maximum: max }}
+      value={value ?? ""}
+      placeholder={placeholder}
+      suffix={unit}
+      inputMode="decimal"
+      stepBy={(draft, by, big) => stepNumber(draft, placeholder, by, big, step, min, max)}
+      onCommit={(text) => {
+        if (text.trim() === "") return onCommit(null);
+        const number = typedNumber(text);
+        return number === null ? { reason: "invalid", message: TWO_DECIMALS } : onCommit(number);
+      }}
+    />
+  );
+}
+
+// A size: its number, typed as a measure is, and its unit, chosen beside
+// it. The number keeps the unit chosen; a unit chosen hands over the size
+// in that unit (onUnit: the panel converts it, from the number in the box,
+// kept first if it waits, else from the one in use), one change. Both are
+// one field: one label, one place for what is refused.
+interface SizeFieldProps extends ScopeProps {
+  label: string;
+  // The size's number as the page writes it ("6"), or null for none.
+  value: string | null;
+  // The unit of the size, or the one in use with none.
+  unit: string;
+  units: ReadonlyArray<{ value: string; label: string; title: string }>;
+  placeholder?: string | undefined;
+  step: number;
+  min: number;
+  max: number;
+  onCommit: (value: number | null) => CommandError | null;
+  // The unit chosen, and the number in the box (null: none, the one in use).
+  onUnit: (unit: string, from: number | null) => CommandError | null;
+  blockId: string | null;
+  field: string;
+  hint?: ReactNode;
+}
+
+export function SizeField({ label, value, unit, units, placeholder, step, min, max, onCommit, onUnit, blockId, field, hint, scope, scopeDevice, scopeTitle, note }: SizeFieldProps) {
+  const typed = useTyped({
+    label,
+    value: value ?? "",
+    blockId,
+    field,
+    rules: { kind: "number" },
+    onCommit: (text) => {
+      if (text.trim() === "") return onCommit(null);
+      const number = typedNumber(text);
+      return number === null ? { reason: "invalid", message: TWO_DECIMALS } : onCommit(number);
+    },
+  });
+  const { id, draft, errors, commit } = typed;
+  const choose = (next: string) => {
+    // What waits in the box is kept first, in the unit it was typed in,
+    // and converted from: this drawing's own handler knows the size before.
+    if (!commit()) return;
+    typed.follow(true);
+    const error = onUnit(next, typedNumber(typed.latest.current.draft));
+    const refused = error !== null && error.reason !== "nothing";
+    if (refused) typed.follow(false);
+    typed.refuse(refused ? refusalAt(error, field) : null);
+  };
+  const described = describedBy(id, hint, errors, note);
+  return (
+    <FieldFrame id={id} label={label} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
+      <div className="measure">
+        <input
+          type="text"
+          className="input"
+          id={id}
+          value={draft}
+          placeholder={placeholder}
+          inputMode="decimal"
+          aria-invalid={errors.length > 0 ? true : undefined}
+          aria-describedby={[`${id}-units`, described].filter(Boolean).join(" ")}
+          onFocus={typed.onFocus}
+          onBlur={typed.onBlur}
+          onChange={(event) => typed.change(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commit();
+            else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              const next = stepNumber(typed.latest.current.draft, placeholder, event.key === "ArrowUp" ? 1 : -1, event.shiftKey, step, min, max);
+              if (next === null) return;
+              event.preventDefault();
+              typed.change(next);
+            }
+          }}
+        />
+        <span className="visually-hidden" id={`${id}-units`}>{units.find((u) => u.value === unit)?.title ?? unit}</span>
+        <RadioGroup choices={units} value={unit} choose={choose} look="seg" label={`${label}: unit`} describedBy={described} invalid={errors.length > 0} />
+      </div>
+    </FieldFrame>
   );
 }
 
@@ -378,18 +577,20 @@ interface RadioGroupProps<T extends string | number> {
   inUse?: T | null | undefined;
   choose: (value: T) => void;
   look: RadioLook;
-  labelledBy: string;
+  // What names the group: the id of its label, or its own words.
+  labelledBy?: string;
+  label?: string;
   describedBy?: string | undefined;
   invalid: boolean;
 }
 
 // One radio group, its keys a native group's: the arrows move the choice.
-function RadioGroup<T extends string | number>({ choices, value, inUse = null, choose, look, labelledBy, describedBy: described, invalid }: RadioGroupProps<T>) {
+function RadioGroup<T extends string | number>({ choices, value, inUse = null, choose, look, labelledBy, label, describedBy: described, invalid }: RadioGroupProps<T>) {
   const shown = value ?? inUse;
   const { refs, onKeyDown, tabStop } = useRadioKeys(choices, shown, choose);
   const className = look === "seg" ? "seg seg-text" : look === "seg-icons" ? "seg seg-icons" : look;
   return (
-    <div className={className} role="radiogroup" aria-labelledby={labelledBy} aria-describedby={described} aria-invalid={invalid ? true : undefined}>
+    <div className={className} role="radiogroup" aria-labelledby={labelledBy} aria-label={labelledBy === undefined ? label : undefined} aria-describedby={described} aria-invalid={invalid ? true : undefined}>
       {choices.map((choice, index) => {
         const checked = choice.value === shown;
         const iconOnly = choice.icon !== undefined && (look === "seg-icons");
@@ -539,11 +740,14 @@ interface RulerFieldProps extends ScopeProps {
   // The desktop's step, marked with a ring, while a device's own value
   // is shown (design/shots/style.png).
   ring?: string | null;
+  // What the theme's step is said as ("the theme’s default"; a weight's
+  // "the preset’s").
+  themeWords?: string;
 }
 
 // A spacing scale, None to XXL, as a slider: arrows step along it, a click
 // takes the nearest step.
-export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, theme = null, ring = null, unsetText = "Theme default" }: RulerFieldProps) {
+export function RulerField({ label, steps, value, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, theme = null, ring = null, unsetText = "Theme default", themeWords = "the theme’s default" }: RulerFieldProps) {
   const id = useId();
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
@@ -561,12 +765,16 @@ export function RulerField({ label, steps, value, onChange, blockId, field, hint
     setRefusal(error ? refusalAt(error, field) : null);
   };
   const current = index >= 0 ? steps[index] : undefined;
-  const valueText = !current ? unsetText : set >= 0 ? current.name : `${current.name}, the theme’s default`;
+  const valueText = !current ? unsetText : set >= 0 ? current.name : `${current.name}, ${themeWords}`;
   const ringAt = ring === null ? -1 : steps.findIndex((s) => s.value === ring);
+  // More than seven steps print their names smaller; names of one word
+  // each (a weight's 100 to 900) never take a second line.
+  const wide = steps.length > 7;
+  const oneLine = wide && steps.every((s) => !s.label.includes(" "));
   return (
     <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
       <div
-        className={`ruler${steps.length > 7 ? " ruler-wide" : ""}`}
+        className={`ruler${wide ? " ruler-wide" : ""}${oneLine ? " ruler-one-line" : ""}`}
         role="slider"
         tabIndex={0}
         aria-labelledby={`${id}-label`}

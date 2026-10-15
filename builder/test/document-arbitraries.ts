@@ -17,11 +17,12 @@
 import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
-  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
+  COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE,
   WIDGET_TYPES, itemsKey, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
 import { wholeNumberFromEnv } from "./env.ts";
+import { STYLE_VALUES } from "./style-values.ts";
 import type * as Clipboard from "../src/document/clipboard.ts";
 import type * as Commands from "../src/document/commands.ts";
 import type { Json } from "../src/document/json.ts";
@@ -183,8 +184,8 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   menu: fc.record({ label: line, items: fc.array(fc.record({ label: line, href }), { minLength: 1, maxLength: 4 }) }),
 };
 
-// The tokens each style key takes.
-const TOKENS: Readonly<Record<keyof StyleTokens, readonly string[]>> = STYLE_TOKENS;
+// The tokens each style key takes, or for free type values it takes.
+const TOKENS: Readonly<Record<keyof StyleTokens, readonly (string | number)[]>> = STYLE_VALUES;
 
 function stylePart(type: BlockType, minKeys: number): fc.Arbitrary<AnyObject> {
   const keys = STYLE_KEYS_BY_TYPE[type] as readonly (keyof StyleTokens)[];
@@ -385,7 +386,7 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       const keys = STYLE_KEYS_BY_TYPE[picked.block.type] as readonly (keyof StyleTokens)[];
       const key = at(keys, wish.key);
       if (!key) return null;
-      const value = wish.remove ? c.REMOVE : (at(TOKENS[key], wish.token) as string);
+      const value = wish.remove ? c.REMOVE : (at(TOKENS[key], wish.token) as string | number);
       return { made: c.makeSetStyle(doc, picked.block.id, wish.device, { [key]: value } as Commands.StyleUpdates), mustAccept: true };
     }
     case "widths": {

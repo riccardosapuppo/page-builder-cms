@@ -1,9 +1,11 @@
 // A block's style settings, drawn in the Block tab's groups
 // (./groups.tsx): each group hands the keys it holds, of those the type
-// accepts (STYLE_KEYS_BY_TYPE), each from the site's tokens only, never a
-// free value: space on the spacing scale, colours from the site's palette
-// slots, sizes from its type scale. Visibility is the Shown on group's
-// (./ShownOn.tsx).
+// accepts (STYLE_KEYS_BY_TYPE), each from the site's tokens: space on the
+// spacing scale, colours from the site's palette slots (or a colour of the
+// site's own, picked), sizes from its type scale. A heading's, a text's
+// and a quote's own type is the free values of the Type group, each over
+// its preset, the step's and the face's (./type.ts), typed or stepped.
+// Visibility is the Shown on group's (./ShownOn.tsx).
 //
 // The settings edit the device the canvas previews (design/shots/style.png).
 // On the desktop they write the style's base, which every device shows
@@ -14,9 +16,9 @@
 // Remove that takes the device's key out, so the device follows the
 // desktop again (./device-style.ts, backToDesktop: never the desktop's
 // value written in its place).
-import { Fragment, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { Fragment, useId, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { REMOVE } from "../../document/commands.ts";
-import { STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
+import { settingWords, STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
   ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS,
   type Block, type BlockType, type Device, type PaletteSlot, type StyleTokens,
@@ -24,18 +26,21 @@ import {
 import { locate } from "../../document/tree.ts";
 import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
 import { DARK_SLOTS, isFreeColor, normalizeHex, wordsOn, type FreeColor } from "../../shared/free-colors.ts";
-import { COLUMN_GAP_DEFAULT, contrastRatio, letterWidth, slotLabel, slotTone } from "../../shared/site-tokens.ts";
+import { FACE_AXES, fontSizeOf, FREE_NUMBER_RANGES, hundredthsText, isFreeTypeKey, numberText, WEIGHT_NAMES, type FontSizeUnit, type FontWeight, type FreeNumberKey } from "../../shared/free-type.ts";
+import { PREVIEW_WIDTHS } from "../../shared/preview-widths.ts";
+import { COLUMN_GAP_DEFAULT, contrastRatio, letterWidth, slotLabel, slotTone, type TypeStep } from "../../shared/site-tokens.ts";
 import { ColorPalette } from "../ColorPalette.tsx";
 import { ColorPicker, type ColorPickerHandle } from "../ColorPicker.tsx";
 import { previewedStyle } from "../color-preview.ts";
 import { afterRender } from "../act.ts";
-import { RadioField, RadioPairField, RulerField, type Choice, type ScopeProps } from "../controls.tsx";
+import { FieldFrame, MeasureField, RadioField, RadioPairField, RulerField, SizeField, type Choice, type ScopeProps } from "../controls.tsx";
 import { useEditor, useEnv, useUi } from "../context.tsx";
 import { backToDesktop, deviceOf, ownValue, shownValue, type OverrideDevice } from "../device-style.ts";
 import { Icon } from "../icons.tsx";
 import { contrastWords } from "../SiteStylePanel.tsx";
 import { useBlockCommands } from "./hooks.ts";
 import { spaceSteps } from "./steps.ts";
+import { convertSize, FACE_FONTS, FACE_WEIGHT, faceOn, presetText, SIZE_STEP, SIZE_UNITS, sizeRange, typePreset, weightSteps, type TypePreset } from "./type.ts";
 
 export type StyleKey = Exclude<keyof StyleTokens, "visibility">;
 
@@ -46,6 +51,8 @@ export function labelOf(type: BlockType, key: StyleKey): string {
   if (key === "textSize") return type === "column" ? "Text size in this column" : "Text size";
   if (key === "verticalAlign") return "Vertical alignment";
   if (key === "align") return "Alignment";
+  // In the Type group, the type's size is its Size.
+  if (key === "fontSize") return "Size";
   return STYLE_KEY_NAMES[key];
 }
 
@@ -64,8 +71,13 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
 // Alignment): space first, then colour, then type, then placement.
 // Alignment, a column's two in one field, vertical first; then the text
 // colour, which the design does not draw. The typeface, which the design
-// does not draw either, goes with the text size.
-const DISPLAY_ORDER: readonly StyleKey[] = ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "typeface", "verticalAlign", "align", "color", "aspect"];
+// does not draw either, goes with the text size, and free type after it,
+// in the order type is set in: size, weight, the space between the
+// letters and the lines, and how wide the letters are.
+const DISPLAY_ORDER: readonly StyleKey[] = [
+  "spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "typeface",
+  "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "verticalAlign", "align", "color", "aspect",
+];
 
 // The keys of `keys` the block's type accepts, in that order.
 export function acceptedKeys(type: BlockType, keys: readonly StyleKey[]): StyleKey[] {
@@ -85,7 +97,9 @@ export const DEVICE_WORDS: Readonly<Record<OverrideDevice, { name: string; plura
   phone: { name: "Phone", plural: "phones", other: "tablet" },
 };
 
-const valueWord = (value: string | null) => (value === null ? "the theme’s default" : tokenName(value));
+// A value as the panel says it: a token by its name, free type in its
+// words; none, the theme's default, or for free type the preset.
+const valueWord = (key: StyleKey, value: string | null) => (value === null ? (isFreeTypeKey(key) ? "the preset" : "the theme’s default") : settingWords(key, value));
 
 // The theme's own step where a block sets none, for the settings the
 // published page's stylesheet gives one value on every width (site.css):
@@ -104,9 +118,9 @@ function overrideWords(key: StyleKey, device: OverrideDevice, own: string, deskt
   const words = DEVICE_WORDS[device];
   const ring = RULERS.has(key) && desktop !== null ? ", marked with a ring" : "";
   const rest = other === null
-    ? `Desktop and ${words.other} use ${valueWord(desktop)}${ring}.`
-    : `Desktop uses ${valueWord(desktop)}${ring}; ${DEVICE_WORDS[words.other].plural} have their own, ${tokenName(other)}.`;
-  return <><strong>{words.name} override: {tokenName(own)}</strong>{key === "spaceInside" ? " on all four sides" : ""}. {rest}</>;
+    ? `Desktop and ${words.other} use ${valueWord(key, desktop)}${ring}.`
+    : `Desktop uses ${valueWord(key, desktop)}${ring}; ${DEVICE_WORDS[words.other].plural} have their own, ${settingWords(key, other)}.`;
+  return <><strong>{words.name} override: {settingWords(key, own)}</strong>{key === "spaceInside" ? " on all four sides" : ""}. {rest}</>;
 }
 
 // On the desktop, the values a block has of its own elsewhere: "Tablets
@@ -114,13 +128,14 @@ function overrideWords(key: StyleKey, device: OverrideDevice, own: string, deskt
 function elsewhereWords(style: unknown, key: StyleKey): string | undefined {
   const own = (["tablet", "phone"] as const).flatMap((device) => {
     const value = ownValue(style, device, key);
-    return value === null ? [] : [`${DEVICE_WORDS[device].name}s have their own: ${tokenName(value)}.`];
+    return value === null ? [] : [`${DEVICE_WORDS[device].name}s have their own: ${settingWords(key, value)}.`];
   });
   return own.length > 0 ? own.join(" ") : undefined;
 }
 
 // The control of the field a click came from, for the focus to go back to
-// once the button it came from is gone: the ruler, or the radio chosen.
+// once the button it came from is gone: the ruler, the box typed in, or
+// the radio chosen.
 // A field drawn anew (two alignments joined into one) is found again by
 // its label.
 function focusFieldOf(event: MouseEvent<HTMLElement>): void {
@@ -129,7 +144,7 @@ function focusFieldOf(event: MouseEvent<HTMLElement>): void {
   const tray = field?.closest(".sidebar") ?? document;
   afterRender(() => {
     const now = field?.isConnected ? field : [...tray.querySelectorAll(".field")].find((f) => f.querySelector(":scope > .label, :scope > .label-row > .label")?.textContent === label);
-    now?.querySelector<HTMLElement>("[role=slider], [role=radio][tabindex='0']")?.focus();
+    now?.querySelector<HTMLElement>("[role=slider], input, [role=radio][tabindex='0']")?.focus();
   });
 }
 
@@ -178,7 +193,7 @@ interface Setting {
   label: string;
   value: string | null;
   field: string;
-  set: (next: string) => ReturnType<ReturnType<typeof useBlockCommands>["setStyle"]>;
+  set: (next: string | number) => ReturnType<ReturnType<typeof useBlockCommands>["setStyle"]>;
   scoping: ScopeProps;
   hint: ReactNode;
   ring: string | null;
@@ -210,6 +225,14 @@ function useBackdrop(id: string, device: ReturnType<typeof deviceOf>): string | 
   });
 }
 
+// A setting the block's face does nothing with (a letter width in a face
+// drawn at one width): its name, where its value comes from, and why there
+// is nothing to set, in place of a control.
+function NothingToSet({ label, hint, ...scoping }: { label: string; hint: ReactNode } & ScopeProps) {
+  const id = useId();
+  return <FieldFrame id={id} label={label} labelFor={false} hint={hint} {...scoping} errors={[]}>{null}</FieldFrame>;
+}
+
 // The block's settings of `keys`, those its type accepts.
 export function StyleFields({ block, keys: wanted }: { block: Block; keys: readonly StyleKey[] }) {
   const commands = useBlockCommands(block.id);
@@ -231,6 +254,15 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
   const replacing = (key: StyleKey) => {
     if (picking?.id === block.id && picking.key === key) picker.current?.discard();
   };
+  // The page's width on the device previewed, for a size in vw and the
+  // desktop's type, which grows with it: the canvas's, else the preview's.
+  const pageView = useUi((u) => u.pageView);
+  const pageWidth = pageView && pageView.width > 0 ? pageView.width : device === "base" ? 1280 : PREVIEW_WIDTHS[device];
+  // What the block's type is with none of its own, on the device: the
+  // Type group's preset (./type.ts).
+  const preset: TypePreset | null = keys.some(isFreeTypeKey)
+    ? typePreset(block, device, (shownValue(style, device, "textSize") ?? inUseOf(block, "textSize", device, columnStyle) ?? "body") as TypeStep, siteStyle, pageWidth)
+    : null;
   // A slot's tone or a free colour, as a colour.
   const hexOf = (value: string): string => (isFreeColor(value) ? value : slotTone(value as PaletteSlot, siteStyle?.palette).hex);
   const site = { text: slotTone("text", siteStyle?.palette).hex, background: slotTone("background", siteStyle?.palette).hex };
@@ -263,26 +295,29 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
     const base = shownValue(style, "base", key);
     const value = shownValue(style, device, key);
     const field = `/style/${device}/${key}`;
-    const set = (next: string) => commands.setStyle(device, { [key]: next } as Parameters<typeof commands.setStyle>[1]);
+    const set = (next: string | number) => commands.setStyle(device, { [key]: next } as Parameters<typeof commands.setStyle>[1]);
     if (device === "base") {
+      // Free type over its preset: unset, it is the preset, and its way
+      // back is to the preset.
+      const free = isFreeTypeKey(key);
       return {
         label, value, field, set, ring: null, hint: elsewhereWords(style, key),
         scoping: {
           // Reset goes once the value does: the focus goes back to the
           // setting, as after Remove.
           scope: base === null
-            ? "Theme default"
+            ? (free ? "Preset" : "Theme default")
             : (
               <button
                 className="btn btn-small btn-quiet"
                 type="button"
-                aria-label={`Reset ${label}`}
+                aria-label={free ? `Back to the preset for ${label}` : `Reset ${label}`}
                 onClick={(event) => {
                   replacing(key);
                   if (commands.setStyle("base", { [key]: REMOVE }) === null) focusFieldOf(event);
                 }}
               >
-                Reset
+                {free ? "Back to the preset" : "Reset"}
               </button>
             ),
         },
@@ -463,6 +498,90 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
                 onChange={set}
               />
             );
+          case "fontSize": {
+            // The box holds the device's own size; with none, what is in
+            // use shows as its placeholder: the desktop's on a device,
+            // else the step's, in the unit in use.
+            const own = fontSizeOf(device === "base" ? value : ownValue(style, device, key));
+            const shown = fontSizeOf(value);
+            const unit: FontSizeUnit = own?.unit ?? shown?.unit ?? "px";
+            const range = sizeRange(unit);
+            const inUseSize = shown?.number ?? convertSize(preset!.size, "px", unit, pageWidth);
+            const clear = () => commands.setStyle(device, { fontSize: REMOVE });
+            return (
+              <SizeField
+                key={key}
+                {...common}
+                hint={hint ?? "A rem is 16 px, or the visitor’s own text size. A vw is 1% of the page’s width."}
+                value={own === null ? null : hundredthsText(own.hundredths)}
+                unit={unit}
+                units={SIZE_UNITS}
+                placeholder={own === null ? (shown !== null ? hundredthsText(shown.hundredths) : presetText(inUseSize)) : undefined}
+                step={SIZE_STEP[unit]}
+                min={range.min}
+                max={range.max}
+                onCommit={(number) => (number === null ? clear() : set(`${numberText(number)}${unit}`))}
+                onUnit={(next, from) => set(`${numberText(convertSize(from ?? inUseSize, unit, next as FontSizeUnit, pageWidth))}${next}`)}
+              />
+            );
+          }
+          case "fontWeight": {
+            const face = preset!.face;
+            const drawn = FACE_AXES[face].weights as readonly number[];
+            const shownWeight = value === null ? null : Number(value);
+            const steps = weightSteps(face, shownWeight);
+            const lightest = drawn[0] as FontWeight;
+            // A weight the face does not draw, kept from another face.
+            const undrawn = shownWeight !== null && !drawn.includes(shownWeight)
+              ? `${FACE_FONTS[face]} draws from ${WEIGHT_NAMES[lightest]}, ${lightest}: ${WEIGHT_NAMES[shownWeight as FontWeight]} is drawn as ${WEIGHT_NAMES[lightest]}.`
+              : null;
+            // On a device's own weight, the desktop's is ringed: its own,
+            // else its face's.
+            const desktopWeight = ring ?? (device === "base" ? null : String(FACE_WEIGHT[faceOn(block, "base")]));
+            return (
+              <RulerField
+                key={key}
+                {...common}
+                hint={undrawn ?? hint}
+                steps={steps}
+                value={value}
+                theme={String(preset!.weight)}
+                themeWords="the preset’s"
+                unsetText="Preset"
+                ring={device !== "base" && ownValue(style, device, key) !== null ? desktopWeight : null}
+                onChange={(next) => set(Number(next))}
+              />
+            );
+          }
+          case "letterSpacing":
+          case "lineHeight":
+          case "letterWidth": {
+            const own = device === "base" ? value : ownValue(style, device, key);
+            const range = FREE_NUMBER_RANGES[key as FreeNumberKey];
+            const presetNumber = key === "letterSpacing" ? preset!.letterSpacing : key === "lineHeight" ? preset!.lineHeight : preset!.letterWidth;
+            // A face drawn at one width: no control that would do nothing,
+            // but what is so, and the way back for a width kept from
+            // another face.
+            if (key === "letterWidth" && presetNumber === null) {
+              const why = `${FACE_FONTS.body}, the body’s typeface, is drawn at one width. Set the block in the Headings typeface to draw its letters narrower or wider${value !== null ? `; it keeps ${settingWords(key, value)} for that` : ""}.`;
+              // What a change here would do is nothing: only a device's own
+              // value, and its way back, are said.
+              return <NothingToSet key={key} label={label} hint={why} {...scoping} note={scoping.note?.kind === "override" ? scoping.note : undefined} />;
+            }
+            return (
+              <MeasureField
+                key={key}
+                {...common}
+                value={own}
+                placeholder={own === null ? (value ?? presetText(presetNumber ?? 0)) : undefined}
+                unit={key === "letterSpacing" ? "em" : key === "letterWidth" ? "%" : undefined}
+                step={key === "letterWidth" ? 0.5 : key === "lineHeight" ? 0.05 : 0.01}
+                min={range.min}
+                max={range.max}
+                onCommit={(number) => (number === null ? commands.setStyle(device, { [key]: REMOVE }) : set(number))}
+              />
+            );
+          }
           case "align":
             return <RadioField key={key} {...common} look="seg-icons" choices={ALIGN_CHOICES} value={value} inUse={inUse} onChange={set} />;
           case "verticalAlign":

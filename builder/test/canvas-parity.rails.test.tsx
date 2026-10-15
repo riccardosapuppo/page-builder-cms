@@ -39,7 +39,9 @@ const WIDTHS = [1280, 900, PREVIEW_WIDTHS.tablet, PREVIEW_WIDTHS.phone] as const
 const CANVAS = "http://canvas.test";
 
 // A page whose settings change with the device: sizes, spaces, alignment,
-// backgrounds, visibility, column widths, crops.
+// backgrounds, visibility, column widths, crops, and type of a block's own
+// (a size in vw, which only the page root's width may decide, on the
+// canvas as on the page).
 const block = (id: string, type: string, props: object, style: object = { base: {} }) => ({ id, type, props, children: [], style });
 const responsive = checked({
   schemaVersion: 1,
@@ -54,6 +56,11 @@ const responsive = checked({
           style: { base: { spaceInside: "l", spaceBetween: "m", align: "center", verticalAlign: "middle", textSize: "large" }, tablet: { spaceInside: "s", align: "left" }, phone: { spaceInside: "none", verticalAlign: "top" } },
           children: [
             block("h1", "heading", { level: 1, text: "Swim at slack water" }, { base: { textSize: "display", color: "primary" }, tablet: { textSize: "heading-2", align: "right" }, phone: { textSize: "large" } }),
+            block("h-free", "heading", { level: 2, text: "At the slipway" }, {
+              base: { textSize: "display", fontSize: "6vw", fontWeight: 800, letterSpacing: -0.02, lineHeight: 0.95, letterWidth: 80 },
+              tablet: { fontSize: "4.5vw", typeface: "body" },
+              phone: { fontSize: "32px", lineHeight: 1.1 },
+            }),
             block("t1", "text", { doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Dawn swims, " }, { type: "text", text: "beginners", marks: [{ type: "bold" }] }, { type: "hardBreak" }, { type: "text", text: "and a long word: Pneumonoultramicroscopicsilicovolcanoconiosis" }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Caps on" }] }] }] }] } }, { base: { textSize: "small" }, phone: { textSize: "body", align: "center" } }),
             block("b1", "button", { label: "Join the club", href: "/join" }, { base: { background: "accent", color: "text", align: "left" }, phone: { align: "center", background: "primary", color: "background" } }),
           ],
@@ -74,7 +81,7 @@ const responsive = checked({
         id: `three-${name}`, type: "column", props: {}, style: { base: { spaceBetween: "s" } },
         children: [
           block(`ib-${name}`, "iconbox", { icon: ["sunrise", "buoys", "cup"][index], title: `Box ${name}`, text: "Short.\nTwo lines." }, { base: { align: "center" }, phone: { align: "left" } }),
-          block(`q-${name}`, "quote", { text: "Cold water,\nwarm tea.", attribution: "A member" }, { base: { textSize: "heading-2" }, tablet: { textSize: "body" } }),
+          block(`q-${name}`, "quote", { text: "Cold water,\nwarm tea.", attribution: "A member" }, { base: { textSize: "heading-2", letterSpacing: 0.05 }, tablet: { textSize: "body", fontSize: "1.25rem" } }),
         ],
       })),
     },
@@ -118,7 +125,7 @@ const responsive = checked({
 
 // What the stylesheets set, read on every element.
 const PROPERTIES = [
-  "display", "position", "font-family", "font-size", "line-height", "font-weight", "font-style", "font-stretch", "color", "background-color",
+  "display", "position", "font-family", "font-size", "line-height", "font-weight", "font-style", "font-stretch", "letter-spacing", "color", "background-color",
   "padding-top", "padding-right", "padding-bottom", "padding-left", "margin-top", "margin-right", "margin-bottom", "margin-left",
   "text-align", "column-gap", "row-gap", "grid-template-columns", "justify-content", "align-items", "aspect-ratio", "object-fit",
   "border-top-width", "border-top-color", "stroke", "fill", "white-space",

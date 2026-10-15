@@ -581,6 +581,12 @@ textarea.input { resize: vertical; }
 .input-icon:focus-within { outline: 2px solid var(--graphite); outline-offset: 2px; }
 .input-icon input:focus-visible { outline: none; }
 .input-prefix { color: var(--steel); }
+/* A measure's unit, after its number in the box (em, %). */
+.input-suffix { color: var(--steel); white-space: nowrap; }
+/* A size: its number's box, and its units beside it, on one row. */
+.measure { display: flex; align-items: center; gap: 8px; }
+.measure > .input { flex: 1; min-width: 0; }
+.measure > .seg { flex: none; }
 .hint { margin-top: 6px; color: var(--steel); font-size: 12px; line-height: 16px; }
 .hint-pad { padding: 0 8px; }
 .field-error .input, .input[aria-invalid="true"] { border-color: var(--err); box-shadow: 0 0 0 1px var(--err); }
@@ -614,6 +620,9 @@ textarea.input { resize: vertical; }
 .ruler-wide { height: 60px; }
 .ruler-wide .ruler-nums { font-size: 11px; line-height: 13px; }
 .ruler-wide .ruler-nums b { white-space: normal; text-align: center; }
+/* A weight's nine steps, 100 to 900, each a word: one line, and the
+   ruler's own height. */
+.ruler-wide.ruler-one-line { height: 46px; }
 
 /* A colour's choices (StyleFields.tsx, ColorPalette.tsx): round tiles, ten
    to a row, the site's colours above the palette so the two rows line up.

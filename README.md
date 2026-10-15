@@ -22,7 +22,9 @@ rising from a bar at the foot on a phone.
 It builds the site's header and footer the same way, from sections, columns and
 blocks, parts of the site that every page shows once published, the header
 staying at the top of the window if asked. Site style sets the site's
-palette, colours of its own included, its type scale and its letter width;
+palette, colours of its own included, its type scale and its letter width,
+over which a heading, a text or a quote may set its own size (in px, rem
+or vw), weight, letter spacing, line height and letter width;
 any block may take CSS classes and an anchor of its own, which the site's
 custom CSS styles, inside the site and nowhere else. Rails keeps each page
 as one JSON document that a single schema describes, with one draft and
@@ -751,7 +753,13 @@ Each of these is a choice, and the reason is given with it.
   and a letter width, set once in Site style). A colour of the site's own,
   `#rrggbb`, is one such value: a palette slot or a block may name one,
   and the page draws it from a stylesheet the CMS writes for the colours
-  it names (`/colors/<digest>.css`), never from an inline style. What the
+  it names (`/colors/<digest>.css`), never from an inline style. So is
+  a heading's, a text's or a quote's own type (`/type/<digest>.css`): a
+  size in px, rem or vw, a vw drawn as a hundredth of the page's own
+  width so the canvas shows it as the page does, a weight, letter
+  spacing, a line height and a letter width, each within the ranges the
+  schema and its rules hold
+  ([the decision](docs/decisions/free-type-by-attribute.md)). What the
   tokens leave out, the site's custom CSS gives (the owner's decision, 14
   October 2026): one stylesheet, written in the editor beside Site style,
   drawn on every page after the theme's inside an `@scope (.site)` rule
@@ -759,7 +767,7 @@ Each of these is a choice, and the reason is given with it.
   the block's Advanced group gives it. It is checked to keep to the site
   (no rule left open, no brace that closes nothing, no `@import`), the
   theme's own class names are refused to a block, and on the canvas its
-  rules stop at the editor's controls. A block's own settings stay
+  rules stop at the editor's controls. A block's other settings stay
   tokens.
 - **No plugins, no translation of the interface, no live co-editing.** The
   interface is in one language, en-US. Two tabs get a conflict to settle, not

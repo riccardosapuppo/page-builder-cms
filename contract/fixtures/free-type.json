@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "title": "Free type",
+  "description": "Type of a block's own on every heading, text and quote, every key on every device, beside a step and a typeface, written with integral floats too; and the values the renderers refuse: sizes out of their unit's range, units the schema does not list, a declaration, a rule, calc(), url() and markup in a size, a third decimal, numbers and sizes of the wrong kind, and free type on a column and a button, which take none.",
+  "sections": [
+    {
+      "id": "type-band",
+      "type": "section",
+      "props": {
+        "label": "Type"
+      },
+      "style": {
+        "base": {}
+      },
+      "children": [
+        {
+          "id": "type-band-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "h-type",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Swim at slack water"
+              },
+              "style": {
+                "base": {
+                  "textSize": "display",
+                  "fontSize": "6vw",
+                  "fontWeight": 800,
+                  "letterSpacing": -0.02,
+                  "lineHeight": 0.95,
+                  "letterWidth": 80,
+                  "color": "primary"
+                },
+                "tablet": {
+                  "fontSize": "48px",
+                  "fontWeight": 700,
+                  "letterSpacing": 0,
+                  "lineHeight": 1,
+                  "letterWidth": 100
+                },
+                "phone": {
+                  "typeface": "body",
+                  "fontSize": "2.25rem",
+                  "fontWeight": 900,
+                  "letterSpacing": 0.5,
+                  "lineHeight": 3,
+                  "letterWidth": 125
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "t-type",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims, twice a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {
+                  "fontSize": "8px",
+                  "fontWeight": 200,
+                  "letterSpacing": -0.1,
+                  "lineHeight": 0.8,
+                  "letterWidth": 62.5
+                },
+                "tablet": {
+                  "fontSize": "320px",
+                  "letterSpacing": 0.07
+                },
+                "phone": {
+                  "fontSize": "0.5rem",
+                  "lineHeight": 1.33
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "q-type",
+              "type": "quote",
+              "props": {
+                "text": "Cold water, warm tea.",
+                "attribution": "A member"
+              },
+              "style": {
+                "base": {
+                  "typeface": "heading",
+                  "fontSize": "20rem",
+                  "fontWeight": 100,
+                  "letterWidth": 112.5
+                },
+                "tablet": {
+                  "fontSize": "0.5vw",
+                  "lineHeight": 1.25
+                },
+                "phone": {
+                  "fontSize": "25vw",
+                  "letterWidth": 87.55
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "h-floats",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Written as floats"
+              },
+              "style": {
+                "base": {
+                  "fontWeight": 700.0,
+                  "letterWidth": 1e2,
+                  "lineHeight": 2.00,
+                  "letterSpacing": -0.0
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "type-traps",
+      "type": "section",
+      "props": {
+        "label": "Refused type"
+      },
+      "style": {
+        "base": {}
+      },
+      "children": [
+        {
+          "id": "type-traps-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "fontSize": "48px",
+              "fontWeight": 700
+            }
+          },
+          "children": [
+            {
+              "id": "h-trap-text",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Values as CSS"
+              },
+              "style": {
+                "base": {
+                  "fontSize": "1px;color:red",
+                  "fontWeight": "800",
+                  "letterSpacing": "0.02em",
+                  "lineHeight": "1.5",
+                  "letterWidth": "80%"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "h-trap-css",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "CSS in a size"
+              },
+              "style": {
+                "base": {
+                  "fontSize": "calc(1px + 2vw)"
+                },
+                "tablet": {
+                  "fontSize": "url(https://example.com/x.css)"
+                },
+                "phone": {
+                  "fontSize": "\"><script>alert(1)</script>"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "h-trap-rule",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "A rule in a size"
+              },
+              "style": {
+                "base": {
+                  "fontSize": "1px}body{display:none"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "t-trap-range",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Dawn swims, twice a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {
+                  "fontSize": "321px",
+                  "fontWeight": 850,
+                  "letterSpacing": 0.51,
+                  "lineHeight": 0.79,
+                  "letterWidth": 125.5
+                },
+                "tablet": {
+                  "fontSize": "7.99px",
+                  "letterSpacing": 0.025,
+                  "lineHeight": 1.125,
+                  "letterWidth": 87.555
+                },
+                "phone": {
+                  "fontSize": "26vw",
+                  "fontWeight": 1000
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "q-trap-form",
+              "type": "quote",
+              "props": {
+                "text": "Written another way."
+              },
+              "style": {
+                "base": {
+                  "fontSize": "48PX",
+                  "fontWeight": null
+                },
+                "tablet": {
+                  "fontSize": "48.50px"
+                },
+                "phone": {
+                  "fontSize": ".5rem",
+                  "lineHeight": -1
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "h-trap-kinds",
+              "type": "heading",
+              "props": {
+                "level": 4,
+                "text": "Of the wrong kind"
+              },
+              "style": {
+                "base": {
+                  "fontSize": 48,
+                  "fontWeight": true,
+                  "letterSpacing": [
+                    0.02
+                  ],
+                  "lineHeight": {
+                    "value": 1.5
+                  },
+                  "letterWidth": null
+                },
+                "tablet": {
+                  "fontSize": "3em",
+                  "fontWeight": 750
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "b-type",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "/join"
+              },
+              "style": {
+                "base": {
+                  "fontSize": "48px",
+                  "fontWeight": 700,
+                  "letterSpacing": 0.1
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

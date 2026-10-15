@@ -15,6 +15,7 @@ require "action_view"
 
 cms = File.expand_path("../../../cms", __dir__)
 require File.join(cms, "lib/block_document/rules")
+require File.join(cms, "app/models/free_type")
 require File.join(cms, "app/models/render_policy")
 require File.join(cms, "app/helpers/rich_text_helper")
 

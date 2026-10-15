@@ -21,7 +21,9 @@ same file.
 
 What a schema cannot say (a block id used once on the page, a depth limit,
 finite numbers, integers that JavaScript can hold exactly, strings that
-are well formed, no repeated member name, a form's field names used once)
+are well formed, no repeated member name, a form's field names used once,
+and since 15 October a block's own type size within its unit's range and
+its own type's numbers with two decimals at most)
 is written as **application rules**, once in TypeScript
 (`schema/tools/rules.ts`) and once in Ruby
 (`cms/lib/block_document/rules.rb`), and run before the schema on both

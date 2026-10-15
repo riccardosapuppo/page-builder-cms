@@ -59,6 +59,15 @@ the server writes for them. The editor's half is
     block that takes a background or a colour, on every device, beside
     slots, and the values the renderers refuse (upper case, three digits, a
     colour's name, markup): a refused one draws nothing.
+  - `free-type.json`: type of a block's own on a heading, a text and a
+    quote, every key on every device at both ends of its range, beside a
+    step and a typeface, some written as integral floats (`700.0`, `1e2`,
+    `-0.0`); and the values the renderers refuse: a size past its unit's
+    range or written another way (`48PX`, `48.50px`, `.5rem`, `3em`), a
+    declaration, a rule, `calc(`, `url(` or markup in a size, a third
+    decimal, numbers and sizes of the wrong kind, and free type on a column
+    and a button, which take none. A refused value is no attribute, and is
+    not in `data-style`.
   - `edge.json`: the smallest values, every icon, an empty section, a block
     with no props and no style, spaces at both ends of a text.
   - `empty.json`: a page with no sections.
@@ -74,6 +83,12 @@ the server writes for them. The editor's half is
   of `cases.json`: `<case>.css`, written by
   `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_colors_test.rb`,
   the bytes the editor's `free-colors-css.ts` must give too.
+- [`free-type/`](free-type): the stylesheet of a page's free type
+  (`/type/<digest>.css` on the CMS, a style element on the canvas), the
+  same way: for each case of `cases.json` (the values each key takes on
+  each device, the traps among them), `<case>.css`, written by
+  `UPDATE_GOLDEN=1 ruby bin/rails test test/models/free_type_test.rb`, the
+  bytes the editor's `free-type-css.ts` must give too.
 - [`rendered/`](rendered): for each fixture, the HTML the server renders
   for it (`<name>.html`, the page's sections, without the layout), and
   `manifest.json`, with the sha256 of every fixture, every golden and every
@@ -94,7 +109,12 @@ valid, and a test says so.
   `data-icon`, a library image `data-media-id`, a video `data-provider`.
 - `data-style` repeats the block's stored style, canonically:
   `base.textSize=display;phone.textSize=heading-1`, devices in the order
-  base, tablet, phone, keys sorted, only values the schema's enums list.
+  base, tablet, phone, keys sorted, only values the schema's enums list, a
+  colour of the site's own, and free type as the page writes it
+  (`base.fontWeight=800;base.letterSpacing=-0.02`), from the number read.
+  Free type is carried by `data-font-size`, `data-font-weight`,
+  `data-letter-spacing`, `data-line-height` and `data-font-stretch`, and
+  their `tablet-` and `phone-` forms, as free colours are by `data-bg`.
   The classes the style becomes (`size-display phone-size-heading-1`) are
   for the CSS; the comparison reads `data-style`.
 - Addresses go through RenderPolicy (`cms/app/models/render_policy.rb`):

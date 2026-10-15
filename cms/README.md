@@ -872,10 +872,13 @@ no script to measure the header, so its height is reckoned from its
 document. A column is a row for each block, three for a tall one, with
 the space it sets inside and between its blocks past the theme's, and
 each heading's and text's line past what a row holds, at the tallest of
-the three type scales; a section is its tallest column, or all of them
-where they stack, with the space it sets above and below past the
-header's. A text is counted on one line: one that wraps in a sticky
-header can still reach over an anchor's first line.
+the three type scales, or at its own size and line height where it has
+them (free type, below: a rem at 16 pixels, a vw at the widest page of
+the device, 1920 for a desktop); a section is its tallest column, or all
+of them where they stack, with the space it sets above and below past
+the header's. A text is counted on one line: one that wraps in a sticky
+header can still reach over an anchor's first line, and so can a heading
+sized in vw in a window wider than 1920.
 
 **Custom CSS** (`app/models/custom_css.rb`). The site style holds the
 site's own stylesheet, `custom_css` (`customCss` in the API, "" for
@@ -910,7 +913,45 @@ with the curated tones, and a tablet's or a phone's own background brings
 its colour over the desktop's own colour. The editor
 writes the same bytes for its canvas (`builder/src/render/free-colors-css.ts`):
 `test/models/free_colors_test.rb` and the editor's
-`free-colors.contract.test.ts` hold both to `../contract/free-colors/`. The choice reaches the
+`free-colors.contract.test.ts` hold both to `../contract/free-colors/`.
+
+**Free type** (`app/models/free_type.rb`). A heading, a text or a
+quote may set its own size, weight, letter spacing, line height and
+letter width (the schema's `fontSize`, `fontWeight`, `letterSpacing`,
+`lineHeight` and `letterWidth`), per device as every style key is, each
+over its own property of the type step and the typeface only. A size is
+one string, a number with two decimals at most and its unit, `px` (8 to
+320), `rem` (0.5 to 20) or `vw` (0.5 to 25); a weight one of 100 to 900
+in hundreds; letter spacing -0.1 to 0.5 em, a line height 0.8 to 3, a
+letter width 62.5 to 125 (%), each with two decimals at most. How far a
+size goes in its unit, and the decimals, are application rules
+(`sizeRange`, `decimals` in `lib/block_document/rules.rb`); `FreeType`
+reads a value by the same tables, so the page draws only what both
+validators take. The block's root carries each value as a data
+attribute, `data-font-size`, `data-font-weight`, `data-letter-spacing`,
+`data-line-height` and `data-font-stretch`, with their `tablet-` and
+`phone-` forms, never an inline style. The layout links
+`/type/<digest>.css` after the free colours' stylesheet when the page,
+its header or its footer sets some; its rules are written from the
+numbers read and a unit of a closed list, never from a document's text,
+and kept as the colours' are (`ColorSheet`, beside them; each address
+serves only its own kind, by the sheet's first line).
+`FreeTypeController` serves them with the same `Cache-Control`. A size
+in vw is written in `cqw`, a hundredth of the width of the page root
+(`.site`, the container every query of the page asks): the page's
+width, which on the editor's canvas is the previewed page's, 768 or 390,
+where vw would measure the editor's window. A desktop's rule weighs two
+(`.w[data-font-weight="800"]`) and comes after `tokens.css`, so a
+block's own value wins over its step's and its face's on every device; a
+device's weighs three, so it wins over the desktop's. The editor writes
+the same bytes for its canvas (`builder/src/render/free-type-css.ts`):
+`test/models/free_type_test.rb` and `free-type.contract.test.ts` hold
+both to `../contract/free-type/`, and
+`test/integration/free_type_test.rb` the page that links them. A
+quote's caption keeps its own letter spacing (`site.css`): the quote's,
+made at the quote's size, would reach it.
+
+The type-scale choice reaches the
 page as `data-type-scale` on `.site`, and `tokens.css` sizes every step of
 Gentle and Strong under that attribute (Balanced, the default, is the
 plain `.sw`). From the repository root, with the server running,

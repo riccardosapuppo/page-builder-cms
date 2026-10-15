@@ -16,7 +16,8 @@
 // by hand; closed, it says it holds one.
 import { isFreeColor } from "../../shared/free-colors.ts";
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
-import { tokenName } from "../../document/labels.ts";
+import { freeTypeWords, tokenName } from "../../document/labels.ts";
+import { FREE_TYPE_KEYS, isFreeTypeKey } from "../../shared/free-type.ts";
 import type { Block, BlockType, PaletteSlot, WidgetBlock } from "../../shared/document.ts";
 import { slotTone } from "../../shared/site-tokens.ts";
 import type { BlockFieldError } from "../../storage/adapter.ts";
@@ -52,9 +53,12 @@ export interface GroupSpec {
 // The style groups each type has, by the keys they hold, in the layout's
 // order around the widget's own content and Shown on. Every key a type
 // accepts is in exactly one of its groups (groups.test.tsx holds it).
-type StyleGroupId = "size" | "type" | "colors" | "text-color" | "line-color" | "disc-color" | "highlight-color" | "shape" | "spacing" | "background" | "alignment";
+type StyleGroupId = "size" | "free-type" | "type" | "colors" | "text-color" | "line-color" | "disc-color" | "highlight-color" | "shape" | "spacing" | "background" | "alignment";
 const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly StyleKey[] }>> = {
   size: { name: "Size and color", keys: ["textSize", "typeface", "color"] },
+  // A heading's, a text's or a quote's own type, over the step's and the
+  // face's (./type.ts).
+  "free-type": { name: "Type", keys: FREE_TYPE_KEYS },
   type: { name: "Text size and color", keys: ["textSize", "color"] },
   colors: { name: "Colors", keys: ["background", "color"] },
   "text-color": { name: "Text color", keys: ["color"] },
@@ -71,7 +75,7 @@ const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly
 // group (its folder's panel), "columns" and "name" a section's, "shown"
 // every block's.
 type GroupId = StyleGroupId | "content" | "columns" | "name" | "shown" | "advanced";
-const TEXT: readonly GroupId[] = ["content", "size", "alignment", "shown", "advanced"];
+const TEXT: readonly GroupId[] = ["content", "size", "free-type", "alignment", "shown", "advanced"];
 export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   section: ["columns", "background", "spacing", "shown", "name", "advanced"],
   column: ["spacing", "background", "type", "alignment", "shown", "advanced"],
@@ -158,6 +162,16 @@ function styleWords(id: StyleGroupId, keys: readonly StyleKey[], { block, device
       }
       const text = shown("color");
       words = `${backgroundWord}, ${text === null ? "theme text" : `${tone(text, palette).label} text`}`;
+      break;
+    }
+    // The values of its own the block's type has, in the group's order:
+    // "48 px, 700, +0.02 em"; none, the preset.
+    case "free-type": {
+      const set = keys.flatMap((key) => {
+        const value = isFreeTypeKey(key) ? shown(key) : null;
+        return value === null || !isFreeTypeKey(key) ? [] : [freeTypeWords(key, value)];
+      });
+      words = set.length === 0 ? "Preset" : set.join(", ");
       break;
     }
     case "text-color":

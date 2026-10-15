@@ -4,7 +4,9 @@
 // spaces, invisible characters, emoji, combining marks and right-to-left
 // script; the addresses use every form and character the schema allows;
 // the map's numbers fall on and near the points where a sixth decimal is
-// half way; every style key of a type takes every token on every device;
+// half way; every style key of a type takes every token on every device,
+// and free type any value its range holds, in every unit, with two
+// decimals, one and none;
 // rich text nests lists, puts up to all three marks on one run of text in
 // any order, and puts marks on line breaks. The widgets the panel makes
 // (../src/widgets) are among them.
@@ -16,12 +18,25 @@ import {
   COLUMN_WIDTHS_BY_COUNT, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS, WIDGET_TYPES,
   type BlockType, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
+import { FONT_SIZE_RANGES, FONT_SIZE_UNITS, FONT_WEIGHTS, FREE_NUMBER_RANGES, hundredthsText, isFreeTypeKey, type FreeTypeKey } from "../src/shared/free-type.ts";
 import { validateDocument } from "../src/shared/validate.ts";
 
 type AnyObject = Record<string, unknown>;
 
 // The tokens each style key takes.
-const TOKENS: Readonly<Record<keyof StyleTokens, readonly string[]>> = STYLE_TOKENS;
+const TOKENS: Readonly<Record<Exclude<keyof StyleTokens, FreeTypeKey>, readonly string[]>> = STYLE_TOKENS;
+
+// Any value of free type its range holds, counted in hundredths: a size in
+// any unit, from one end of its range to the other, and every number of
+// letter spacing, line height and letter width there is.
+const hundredths = (range: { min: number; max: number }) => fc.integer({ min: Math.round(range.min * 100), max: Math.round(range.max * 100) });
+const FREE_TYPE: Readonly<Record<FreeTypeKey, fc.Arbitrary<string | number>>> = {
+  fontSize: fc.constantFrom(...FONT_SIZE_UNITS).chain((unit) => fc.integer(FONT_SIZE_RANGES[unit]).map((size) => `${hundredthsText(size)}${unit}`)),
+  fontWeight: fc.constantFrom(...FONT_WEIGHTS),
+  letterSpacing: hundredths(FREE_NUMBER_RANGES.letterSpacing).map((n) => n / 100),
+  lineHeight: hundredths(FREE_NUMBER_RANGES.lineHeight).map((n) => n / 100),
+  letterWidth: hundredths(FREE_NUMBER_RANGES.letterWidth).map((n) => n / 100),
+};
 
 function compact<T extends AnyObject>(object: T): T {
   return Object.fromEntries(Object.entries(object).filter(([, v]) => v !== undefined)) as T;
@@ -213,7 +228,7 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
 function stylePart(type: BlockType, minKeys: number): fc.Arbitrary<AnyObject> {
   const keys = STYLE_KEYS_BY_TYPE[type] as readonly (keyof StyleTokens)[];
   return fc.subarray([...keys], { minLength: Math.min(minKeys, keys.length) })
-    .chain((chosen) => fc.tuple(...chosen.map((key) => fc.constantFrom(...TOKENS[key]).map((token) => [key, token] as const))))
+    .chain((chosen) => fc.tuple(...chosen.map((key) => (isFreeTypeKey(key) ? FREE_TYPE[key] : fc.constantFrom(...TOKENS[key])).map((value) => [key, value] as const))))
     .map((pairs) => Object.fromEntries(pairs));
 }
 

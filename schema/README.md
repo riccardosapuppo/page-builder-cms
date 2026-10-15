@@ -116,12 +116,13 @@ The page document's one schema, and the design tokens it names.
   always there and may be empty, never blank: `lineOrEmpty` and
   `paragraphOrEmpty` are `line` and `paragraph` with `^$`, the empty
   value, let in, and nothing else changed.
-- **Style is by token name.** `style.base` applies on every device;
-  `style.tablet` and `style.phone` hold only what differs there. A key that
-  is absent means "as in base"; nothing is ever `null`, and an empty
-  override object is not stored, so removing the last override removes the
-  object. Each block type accepts only the settings that mean something for
-  it (a divider has no text size).
+- **Style is by token name**, but for a colour of the site's own and a
+  heading's, a text's or a quote's own type (below). `style.base` applies
+  on every device; `style.tablet` and `style.phone` hold only what differs
+  there. A key that is absent means "as in base"; nothing is ever `null`,
+  and an empty override object is not stored, so removing the last override
+  removes the object. Each block type accepts only the settings that mean
+  something for it (a divider has no text size).
 - **Images** come from the media library (`{mediaId, alt}`) or from another
   site (`{url, alt}`), never both. Alt text is required unless the image is
   marked `"decorative": true`, and then it has none.
@@ -151,6 +152,11 @@ The page document's one schema, and the design tokens it names.
 | `typeface` (headings, texts and quotes) | `body` `heading`: the face the words are set in, the body's or the headings'; absent, a heading's own is the headings', a text's and a quote's the body's | the theme's two faces, in `site.css` |
 | `color` | `text` `background` `primary` `accent` `soft` `muted`, or a colour of the site's own (`freeColor`, `#rrggbb` in lower case) | the six palette slots, `site-tones` in `tokens.json` (see below) |
 | `background` | `none`, a palette slot or a `freeColor` | as above |
+| `fontSize` (headings, texts and quotes) | a size of the block's own, over its step's: a number with two decimals at most and its unit, as one string written one way (`48px`, `2.5rem`, `6vw`; never `48.50px`, `08px` or `.5rem`); 8 to 320 px, 0.5 to 20 rem, 0.5 to 25 vw (an application rule, `sizeRange`) | a vw is drawn as a hundredth of the page root's width (`cqw`), so the canvas draws it as the page does |
+| `fontWeight` (the same) | `100` to `900` in hundreds, a number | the headings' face, Archivo, draws every one; the body's, Source Serif 4, from 200 |
+| `letterSpacing` (the same) | -0.1 to 0.5, in em, two decimals at most (`decimals`) | |
+| `lineHeight` (the same) | 0.8 to 3, a multiple of the size, two decimals at most | |
+| `letterWidth` (the same) | 62.5 to 125, a percentage of the face's width axis, two decimals at most | Archivo's axis (62% to 125%); the body's face has none, and draws one width |
 | `align` | `left` `center` `right` | |
 | `verticalAlign` | `top` `middle` `bottom` | |
 | `visibility` | `visible` `hidden` | |
@@ -160,7 +166,11 @@ tone of each slot (Signal, Sea, Harbour...), and every block that uses the
 slot follows. Since 14 October 2026 a block may also name a colour of the
 site's own (`freeColor`, `#rrggbb`), which follows nothing, and a slot
 may take one in Site style; the renderers draw it by data attribute and a
-stylesheet written for it (`cms/README.md`, "Free colours"). `site-tones` in `tokens.json` lists the six slots of the
+stylesheet written for it (`cms/README.md`, "Free colours"). Since 15
+October 2026 a heading, a text or a quote may also set type of its own,
+each key over its own property of the step and the typeface only (an
+unset key is the preset's), drawn the same way (`cms/README.md`, "Free
+type"). `site-tones` in `tokens.json` lists the six slots of the
 approved mock, each with the tones the site owner may choose from (curated,
 never a free colour) and the tone a new site starts with; `site-type-scale`
 lists a choice of the site style, Gentle, Balanced or Strong, each naming
@@ -233,6 +243,8 @@ before the schema, identically in the editor and on the server.
 | Anchors are unique on the page | Same reason as block ids: an anchor is a field of each block, and the blocks are many items in a tree | application rules: `uniqueAnchor`, at the second block in document order (a section, then its columns and their widgets). An anchor is the block's element id on the page, and a link reaches only the first element with an id |
 | A block's classes are not the theme's | The pattern says what a class name is; which names the theme's stylesheets use is a list, and in any case | application rules: `reservedClass`, at the block's `className`: none of `col`, `cols`, `fill`, `line`, `sec`, `site`, `sun`, `sw`, `w`, and none starting with `align-`, `aspect-`, `bg-`, `cols-`, `desktop-`, `face-`, `fg-`, `gap-`, `hide-`, `line-`, `pad-`, `phone-`, `size-`, `space-`, `spacer-`, `stack-`, `sw-`, `tablet-`, `valign-`, `w-` or `widths-`, which the theme's rules would reach |
 | A form's field names are unique in the form | `uniqueItems` compares whole fields, and two fields that differ only in their label would pass it; their answers would then be kept under one key | application rules: `uniqueFieldName`, at the second field in order. Two forms of one page may use the same names |
+| A size of free type is within its unit's range | The size is a string (`48px`): the pattern says what it is written as, not how far its number goes in each unit | application rules: `sizeRange`, at the size, on a block of any type, counted in hundredths so the two languages compare the same integers |
+| Free type's numbers have two decimals at most | Only a fractional `multipleOf` (0.01) would say it, and the two engines read one differently; the lint refuses it | application rules: `decimals`, at the number, only where the schema's own minimum and maximum hold it (one out of range is the schema's to refuse) |
 | The video id exists at the provider | Only the provider knows | not checked: the player shows the provider's own error |
 | Older documents | Each `schemaVersion` has its own shape | upgrade functions, run when a document is read (none exist for version 1) |
 | Text length as people count it | `maxLength` counts code points in both engines: an emoji is 1, an accented letter written as letter plus accent is 2 | the editor counts code points too, never UTF-16 units or graphemes |
@@ -274,7 +286,9 @@ So every pattern here:
   blocks, rich text nested to the depth limit, every token, every link
   form, every icon and video provider, every kind of form field, stats
   of one figure and of eight, steps of two and of ten, pricing tables of
-  one plan and of four, non-ASCII text, escapes, integral floats.
+  one plan and of four, free type with every key on every device at both
+  ends of each range (and written as integral floats), non-ASCII text,
+  escapes, integral floats.
 - `invalid/`: documents both must refuse. Each is the base page with **one**
   change.
 - `upgrade/`: documents of an older `schemaVersion`. Empty, because version
@@ -295,6 +309,11 @@ There are traps for every widget, and these, which tell engines apart:
 - digits of other scripts (Arabic-Indic, fullwidth) in ids and in `tel:`;
 - 200 emoji against a `maxLength` of 200, and letters written as letter
   plus combining accent;
+- free type a hundredth past each end of its range, a third decimal, a
+  size written another way (`48.50px`, `08px`, `.5rem`, `48PX`), in a unit
+  the schema does not list (`3em`, `120%`), or holding CSS of its own
+  (`1px;color:red`, a rule, `calc(`, `url(`), a newline after a size, and
+  free type on a button and a column, which take none;
 - `2.0`, `1.2e1`, `3.000`, `-0.0` and `1e-400` where an integer is
   expected, and `5.0` above a maximum of 4;
 - `1e400`, `-1e400`, `1e300` and a 20-digit integer;
@@ -352,21 +371,29 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 12 October 2026, with the logo, the menu, the columns that fit
-what they hold and the section's stacking (Windows 10, Node 24.19.0, Ruby
-3.4.11):
+The run of 15 October 2026, with free type (Windows 10, Node 24.19.0,
+Ruby 3.4.11). The two sets that differ are the free colours' (14 October):
+where a background or a colour is neither a slot nor a free colour, ajv
+also reports the `anyOf` that holds both at the value, beside the `enum`
+both report.
 
 ```
-corpus:  ../corpus: 283 files (27 valid, 256 invalid, 0 upgrade); the manifest lists 283
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 283 results in 1.1 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 283 results in 15.0 s
+corpus:  ../corpus: 413 files (34 valid, 379 invalid, 0 upgrade); the manifest lists 413
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 413 results in 1.3 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 413 results in 22.9 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 283; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 256/256, json_schemer 256/256
-identical {pointer, keyword} sets: 256/256 invalid files (refused by the rules: 30/30; by the schema: 226/226)
-errors on the invalid files: ajv 908, json_schemer 283; normalised: 624 ajv "if" errors dropped, 31 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 14, json_schemer 13
-normalised documents with the same numbers and values: 253/253
-RESULT: PASS (283 files, 0 disagreements, 0 exceptions)
+verdicts compared: 413; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 379/379, json_schemer 379/379
+identical {pointer, keyword} sets: 377/379 invalid files (refused by the rules: 44/44; by the schema: 333/335)
+errors on the invalid files: ajv 1330, json_schemer 412; normalised: 915 ajv "if" errors dropped, 44 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 17, json_schemer 16
+  DIFFERENT SET invalid/style-null-value.json
+      only ajv:          /sections/0/style/base/background anyOf
+      only json_schemer: -
+  DIFFERENT SET invalid/style-tone-not-slot.json
+      only ajv:          /sections/0/children/0/children/0/style/base/color anyOf
+      only json_schemer: -
+normalised documents with the same numbers and values: 369/369
+RESULT: PASS (413 files, 0 disagreements, 0 exceptions)
 ```
 
 **The example site's pages**, which live once in
@@ -454,18 +481,19 @@ The first six were run on 8 October 2026 on the corpus as it stood then,
 - **The schema** is valid draft 2020-12 to both engines, and the example at
   the top of this README is the corpus file `valid/readme-example.json`.
 
-The run of 5 October 2026, with the form:
+The run of 15 October 2026, with free type, whose size is the
+seventeenth pattern:
 
 ```
-pattern style: 12/12 patterns in the portable subset
-pattern compile: 12/12 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.11)
-pattern probes: 25847 probes over 12 patterns, 10349 matched by both, 0 patterns with a disagreement
-keywords: 422 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
-dispatch: #/$defs/block on type: 15 values, 15 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/formField on kind: 4 values, 4 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
+pattern style: 17/17 patterns in the portable subset
+pattern compile: 17/17 patterns compile in both engines (json_schemer 2.5.0, ruby 3.4.11)
+pattern probes: 38653 probes over 17 patterns, 16712 matched by both, 0 patterns with a disagreement
+keywords: 585 subschemas, 0 forbidden keyword(s) (oneOf, discriminator, unevaluatedProperties, unevaluatedItems, format, uniqueItems, fractional multipleOf)
+dispatch: #/$defs/block on type: 20 values, 20 branches; #/$defs/videoBlock/properties/props on provider: 2 values, 2 branches; #/$defs/formField on kind: 4 values, 4 branches; #/$defs/pmBlockNode on type: 3 values, 3 branches; #/$defs/pmInlineNode on type: 2 values, 2 branches; #/$defs/pmMark on type: 3 values, 3 branches
 marks: 3 mark types, 3 of them at most once on a node
-hierarchy: page > section (1-4 columns) > column > 13 widget types, 13 of them with no children
-column widths: 1 column: no preset(s), 2 columns: 4 preset(s), 3 columns: 3 preset(s), 4 columns: no preset(s); 7/7 presets offered
-tokens: spaceToken = 7 names, sectionSpaceToken = 9 names, typeStep = 7 names, aspectToken = 6 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 12 tones over 6 slots, 3 type-scale choices, 3 of them drawn
+hierarchy: page > section (1-4 columns) > column > 18 widget types, 18 of them with no children
+column widths: 1 column: no preset(s), 2 columns: 6 preset(s), 3 columns: 4 preset(s), 4 columns: no preset(s); 10/10 presets offered; stack named from 2 columns
+tokens: spaceToken = 7 names, sectionSpaceToken = 9 names, typeStep = 7 names, aspectToken = 6 names, paletteSlot = 6 names, backgroundToken = 7 names from tokens.json; 14 tones over 6 slots, 3 type-scale choices, 3 of them drawn, 4 letter widths
 schema: compiled by ajv, 0 meta-schema error(s) from json_schemer; README example compared with the corpus
 RESULT: PASS
 ```
@@ -498,7 +526,11 @@ on desktop (76)`.
 
 The application rules (`rules.ts`, `rules.rb`) were not touched by the
 column widths, crops and section spacing: they check the whole document
-(ids, depth, numbers, strings, keys), never a style key.
+(ids, depth, numbers, strings, keys). Free type is the first style a rule
+reads: a block's size within its unit's range (`sizeRange`) and its
+numbers' two decimals (`decimals`), which the schema cannot hold; the
+editor's renderer and its panel read the same tables and tests from
+`rules.ts`, and the CMS's from `rules.rb`.
 
 ## Versions
 

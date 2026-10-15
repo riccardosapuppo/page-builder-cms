@@ -4,4 +4,4 @@
 <%- level = props["level"].is_a?(Integer) && props["level"].between?(1, 4) ? props["level"] : 2 -%>
 <%- href = props.key?("href") ? RenderPolicy.link_href(props["href"]) : nil -%>
 <%- text = prop_text(props, "text") -%>
-<%= tag.div(**block_root(block, [ "w", "w-heading", BlockStyle.classes(style, "textSize", default: %w[heading-1 heading-2 heading-3 large][level - 1]), %w[typeface color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: BlockStyle.free_color_data(style, "color"))) do %><%= content_tag("h#{level}", href ? content_tag(:a, text, href: href) : text) %><% end %>
+<%= tag.div(**block_root(block, [ "w", "w-heading", BlockStyle.classes(style, "textSize", default: %w[heading-1 heading-2 heading-3 large][level - 1]), %w[typeface color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: { **BlockStyle.free_color_data(style, "color"), **BlockStyle.free_type_data(style) })) do %><%= content_tag("h#{level}", href ? content_tag(:a, text, href: href) : text) %><% end %>

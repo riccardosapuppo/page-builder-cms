@@ -87,6 +87,10 @@ class RenderPolicyTest < ActiveSupport::TestCase
     assert_equal SiteTokens.site_space, RenderPolicy::SITE_SPACE
     assert_equal SiteTokens.section_space, RenderPolicy::SECTION_SPACE
     assert_equal SiteTokens.text_lines, RenderPolicy::TEXT_LINE
+    scales = %w[site-gentle site site-strong].map { |name| SiteTokens.read.fetch("type").fetch(name) }
+    largest = ->(at) { RenderPolicy::TEXT_LINE.keys.to_h { |step| [ step, %w[desktop tablet phone].map { |device| scales.map { |scale| scale.fetch(step).fetch(device)[at] }.max } ] } }
+    assert_equal largest.(0), RenderPolicy::TEXT_SIZE
+    assert_equal largest.(1), RenderPolicy::TEXT_HEIGHT
   end
 
   test "a sticky header's rows count a heading's and a text's line at its type step, past what a row holds" do
@@ -101,6 +105,24 @@ class RenderPolicyTest < ActiveSupport::TestCase
     assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "style" => { "base" => { "textSize" => "display" } }, "children" => [ { "type" => "text", "style" => { "base" => { "textSize" => "small" } } } ] }))
     # A step that is not one, or a level out of range: the level's, else h2's.
     assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "children" => [ heading.(9, { "base" => { "textSize" => "huge" } }) ] }))
+  end
+
+  test "a sticky header's rows count a heading's and a text's own size and line height, each over the step's" do
+    heading = ->(style) { { "type" => "heading", "props" => { "level" => 2 }, "style" => style } }
+    header = ->(column) { { "sticky" => true, "sections" => [ { "props" => { "stack" => "never" }, "children" => [ column ] } ] } }
+    rows = ->(style) { RenderPolicy.sticky_rows(header.({ "children" => [ heading.(style) ] })) }
+    # Its own size at the step's line height; a vw at the widest page of
+    # each device, a rem at 16 pixels.
+    assert_equal "2 2 3", rows.({ "base" => { "fontSize" => "120px" } })
+    assert_equal "2 1 1", rows.({ "base" => { "fontSize" => "6vw" } })
+    assert_equal "2 2 3", rows.({ "base" => { "fontSize" => "7.5rem" } })
+    # The step's largest size at its own line height.
+    assert_equal "3 2 2", rows.({ "base" => { "lineHeight" => 3 } })
+    # A phone's own, never the tablet's; a value refused counts as none.
+    assert_equal "2 2 1", rows.({ "base" => { "fontSize" => "120px" }, "phone" => { "fontSize" => "2rem" } })
+    assert_equal "1 1 1", rows.({ "base" => { "fontSize" => "400px", "lineHeight" => 1.125 } })
+    # A text smaller than its column's step counts at its own size.
+    assert_equal "1 1 1", RenderPolicy.sticky_rows(header.({ "style" => { "base" => { "textSize" => "display" } }, "children" => [ { "type" => "text", "style" => { "base" => { "fontSize" => "48px" } } } ] }))
   end
 
   test "a sticky header's rows count a column's own space inside and between its blocks, past the theme's" do

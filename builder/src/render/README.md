@@ -16,7 +16,8 @@ widgets import its helpers. Nothing here talks to a server.
 | `theme.tsx` | `SitePart`, the site's header or footer around every page: the part's sections in its own element, and nothing at all for a part with no section; locked on the canvas | the layout's `<header>` and `<footer>`, `site_part` |
 | `header-fit.ts` | The width a menu's row of links needs, from the letter widths of `schema/header-metrics.json`, added as Ruby adds floats (the compensated sum), and the `data-fold` step it names | `HeaderFit` |
 | `block-root.tsx` | `BlockRoot`, every block's root element: classes, `data-block-id`, `data-block-type`, `data-style`, the type's data; and the defensive reading of props | `block_root`, `block_props`, `prop_text` |
-| `style.ts` | A style as classes (`pad-l`, `tablet-pad-l`, `hide-phone`) and as `data-style` | `BlockStyle` |
+| `style.ts` | A style as classes (`pad-l`, `tablet-pad-l`, `hide-phone`) and as `data-style`; a free colour and free type as data attributes (`data-bg`, `data-font-size`, `data-tablet-font-weight`) | `BlockStyle` |
+| `free-type-css.ts` | The stylesheet of a page's free type, in a style element of the page root (`FreeTypeStyle`, `page.tsx`): a rule on each data attribute a heading, a text or a quote carries its own type by, per device, written from the number read; a vw as a cqw, a hundredth of the page root's width, so the canvas's tablet and phone draw it as the page does | `FreeType`, `/type/<digest>.css` |
 | `policy.ts` | The URL policy: links, images, players, maps, anchors | `RenderPolicy` |
 | `rich-text.tsx` | Rich text, through TipTap's static renderer | `RichTextHelper` |
 | `media.tsx` | Images of image blocks and gallery items, and the contract's media stub | `block_img`, `ContractMedia` |

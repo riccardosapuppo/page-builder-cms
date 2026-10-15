@@ -16,7 +16,9 @@
 //      ("finite"), exact integers ("safeInteger"), unique block ids
 //      ("uniqueId"), unique anchors ("uniqueAnchor"), unique field names
 //      in a form ("uniqueFieldName"), classes of the site's own that are
-//      not the theme's ("reservedClass")
+//      not the theme's ("reservedClass"), a block's free type sizes within
+//      their unit's range ("sizeRange") and its free type numbers with two
+//      decimals at most ("decimals")
 //   5. normalisation: an integral number becomes an integer (2.0 -> 2)
 // Then the schema runs on the normalised document.
 
@@ -34,7 +36,9 @@ export type RuleKeyword =
   | "uniqueId"
   | "uniqueAnchor"
   | "uniqueFieldName"
-  | "reservedClass";
+  | "reservedClass"
+  | "sizeRange"
+  | "decimals";
 
 export interface RuleError {
   pointer: string;
@@ -353,6 +357,99 @@ export function reservedClass(className: unknown): string | null {
   return null;
 }
 
+// Free type, a heading's, a text's or a quote's own size, weight, letter
+// spacing, line height and letter width (the schema's fontSize to
+// letterWidth): what the schema cannot hold of it. A size is a string, so
+// how far each unit goes is a rule; and a number has two decimals at most,
+// which only a fractional multipleOf would say, and the two engines would
+// read one differently (lint.ts refuses it). The editor's renderer and its
+// panel read the same tables and the same tests from here
+// (builder/src/shared/free-type.ts); cms/lib/block_document/rules.rb holds
+// them too.
+export const FONT_SIZE_UNITS = ["px", "rem", "vw"] as const;
+export type FontSizeUnit = (typeof FONT_SIZE_UNITS)[number];
+
+// How far a size goes in each unit, in hundredths, so a size is compared
+// exactly: 8 to 320 px, 0.5 to 20 rem, 0.5 to 25 vw.
+export const FONT_SIZE_RANGES: Readonly<Record<FontSizeUnit, { min: number; max: number }>> = {
+  px: { min: 800, max: 32000 },
+  rem: { min: 50, max: 2000 },
+  vw: { min: 50, max: 2500 },
+};
+
+// The schema's minimum and maximum of each number of free type, for the
+// rule on its decimals, which reads only a number the schema would take.
+export const FREE_NUMBER_RANGES = {
+  letterSpacing: { min: -0.1, max: 0.5 },
+  lineHeight: { min: 0.8, max: 3 },
+  letterWidth: { min: 62.5, max: 125 },
+} as const;
+export type FreeNumberKey = keyof typeof FREE_NUMBER_RANGES;
+const FREE_NUMBER_KEYS = Object.keys(FREE_NUMBER_RANGES) as FreeNumberKey[];
+
+// The schema's fontSize pattern, its number and its unit taken apart.
+const FONT_SIZE = /^((?:0|[1-9][0-9]{0,2})(?:[.][0-9]?[1-9])?)(px|rem|vw)$/;
+
+// A size as the schema's pattern writes it, as its number in hundredths
+// (48.5px is 4850, counted exactly) and its unit; null for any other value.
+export function fontSizeParts(value: unknown): { hundredths: number; unit: FontSizeUnit } | null {
+  if (typeof value !== "string") return null;
+  const found = FONT_SIZE.exec(value);
+  if (!found) return null;
+  const [whole = "", decimals = ""] = (found[1] as string).split(".");
+  return { hundredths: Number(whole) * 100 + Number(decimals.padEnd(2, "0")), unit: found[2] as FontSizeUnit };
+}
+
+export function fontSizeInRange(parts: { hundredths: number; unit: FontSizeUnit }): boolean {
+  const range = FONT_SIZE_RANGES[parts.unit];
+  return parts.hundredths >= range.min && parts.hundredths <= range.max;
+}
+
+// A number with two decimals at most: a hundred times it, rounded, and a
+// hundredth of that, is the number again. Only a number with a third
+// decimal or more is not; one half way between two hundredths is neither
+// way round, so JavaScript's rounding and Ruby's answer alike.
+export function twoDecimals(value: number): boolean {
+  return Math.round(value * 100) / 100 === value;
+}
+
+// A number of hundredths as the page writes it: no zero ending its
+// decimals, none before it but the one before a point (4850 is "48.5",
+// 50 is "0.5", -2 is "-0.02").
+export function hundredthsText(hundredths: number): string {
+  const sign = hundredths < 0 ? "-" : "";
+  const size = Math.abs(hundredths);
+  const whole = Math.floor(size / 100);
+  const part = size % 100;
+  if (part === 0) return `${sign}${whole}`;
+  return `${sign}${whole}.${part < 10 ? `0${part}` : part % 10 === 0 ? part / 10 : part}`;
+}
+
+// A block's free type, on each device: a size beyond its unit's range
+// (sizeRange), a number within its range with a third decimal (decimals).
+// A value of the wrong kind, a size the pattern does not read and a
+// number out of its range are the schema's to refuse.
+function freeTypeRules(style: Record<string, unknown>, pointer: string): RuleError[] {
+  const errors: RuleError[] = [];
+  for (const device of ["base", "tablet", "phone"]) {
+    const part = style[device];
+    if (!isObject(part)) continue;
+    const size = fontSizeParts(part.fontSize);
+    if (size !== null && !fontSizeInRange(size)) {
+      const range = FONT_SIZE_RANGES[size.unit];
+      errors.push({ pointer: `${pointer}/style/${device}/fontSize`, keyword: "sizeRange", message: `From ${hundredthsText(range.min)} to ${hundredthsText(range.max)} ${size.unit}.` });
+    }
+    for (const key of FREE_NUMBER_KEYS) {
+      const value = part[key];
+      const range = FREE_NUMBER_RANGES[key];
+      if (typeof value === "number" && value >= range.min && value <= range.max && !twoDecimals(value)) {
+        errors.push({ pointer: `${pointer}/style/${device}/${key}`, keyword: "decimals", message: "Two decimals at most." });
+      }
+    }
+  }
+  return errors;
+}
+
 export function checkTree(document: unknown): RuleError[] {
   const errors: RuleError[] = [];
 
@@ -383,6 +480,7 @@ export function checkTree(document: unknown): RuleError[] {
           const reserved = reservedClass(value.props.className);
           if (reserved !== null) errors.push({ pointer: `${pointer}/props/className`, keyword: "reservedClass", message: `The class "${reserved}" is one the theme uses: give the block a name of the site's own.` });
         }
+        if (typeof value.type === "string" && isObject(value.style)) errors.push(...freeTypeRules(value.style, pointer));
         for (const [key, child] of Object.entries(value)) {
           if (!key.isWellFormed()) {
             errors.push({ pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair." });

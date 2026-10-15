@@ -14,6 +14,12 @@ it holds.
 - [A page is drawn twice, by the server and by the editor, and both are held to the same output](pages-drawn-twice-one-contract.md)
   (1 October 2026): fixtures, goldens written by Rails and a manifest of
   hashes; every widget is written twice.
+- [A block's own type is drawn by data attribute, and a vw is the page's width](free-type-by-attribute.md)
+  (15 October 2026): five style keys over the preset, held by the schema
+  and two application rules; a stylesheet written from the numbers read,
+  at `/type/<digest>.css` and on the canvas alike; a vw written as a
+  hundredth of the page root's width, so the canvas's tablet draws it as
+  a tablet does.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

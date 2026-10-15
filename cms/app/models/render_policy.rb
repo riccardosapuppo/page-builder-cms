@@ -142,7 +142,36 @@ module RenderPolicy
     when "text"
       named(block, "textSize", device) || named(column, "textSize", device) || "body"
     end
-    size.nil? ? 0 : [ TEXT_LINE.fetch(size)[device] - (STICKY_ROW[device] - (2 * HEADER_SPACE[device])), 0 ].max
+    return 0 if size.nil?
+
+    own_size, own_height = own_type(block, device)
+    line = own_size.nil? && own_height.nil? ? TEXT_LINE.fetch(size)[device] : ((own_size || TEXT_SIZE.fetch(size)[device]) * (own_height || TEXT_HEIGHT.fetch(size)[device])).ceil
+    [ line - (STICKY_ROW[device] - (2 * HEADER_SPACE[device])), 0 ].max
+  end
+
+  # The widest page that lays out as a desktop, a tablet and a phone, for a
+  # size in vw: a tablet's and a phone's end at the next device's, and a
+  # desktop's is counted at 1920, past which a heading sized in vw in a
+  # sticky header grows past the rows counted for it.
+  STICKY_WIDEST = [ 1920, 800, 560 ].freeze
+
+  # A heading's or a text's own size, in pixels, and line height on a
+  # device, as the page's stylesheet of free type applies them (the
+  # device's own where it is one the schema and the rules take, else the
+  # base's, a phone's never the tablet's): a rem counted at 16 pixels, a vw
+  # at a hundredth of the widest page of the device. nil where the block has
+  # none of its own.
+  def own_type(block, device)
+    style = block["style"].is_a?(Hash) ? block["style"] : {}
+    parts = [ style[[ nil, "tablet", "phone" ][device]], style["base"] ].select { |part| part.is_a?(Hash) }
+    size = parts.lazy.map { |part| FreeType.size(part["fontSize"]) }.find { |found| !found.nil? }
+    height = parts.lazy.map { |part| FreeType.number("lineHeight", part["lineHeight"]) }.find { |found| !found.nil? }
+    pixels = size && case size[1]
+                     when "px" then size[0] / 100.0
+                     when "rem" then (size[0] * 16) / 100.0
+                     else (size[0] * STICKY_WIDEST[device]) / 10_000.0
+                     end
+    [ pixels, height ]
   end
 
   # A block's own type step for a style key on a device, as the page's
@@ -193,6 +222,19 @@ module RenderPolicy
   TEXT_LINE = {
     "display" => [ 102, 68, 51 ], "heading-1" => [ 76, 54, 43 ], "heading-2" => [ 57, 43, 36 ], "heading-3" => [ 45, 37, 33 ],
     "large" => [ 37, 32, 30 ], "body" => [ 29, 28, 26 ], "small" => [ 23, 23, 21 ]
+  }.freeze
+  # Of the three type scales, the largest size of each step on a desktop, a
+  # tablet and a phone, and its line height, which the three share: what a
+  # size or a line height of a block's own is counted with when it sets
+  # only the other one (text_over). render_policy_test.rb holds both to
+  # tokens.json.
+  TEXT_SIZE = {
+    "display" => [ 102, 66, 48 ], "heading-1" => [ 72, 50, 39 ], "heading-2" => [ 51, 38, 31 ], "heading-3" => [ 36, 29, 25 ],
+    "large" => [ 25, 22, 20 ], "body" => [ 18, 17, 16 ], "small" => [ 15, 15, 14 ]
+  }.freeze
+  TEXT_HEIGHT = {
+    "display" => [ 1, 1.02, 1.05 ], "heading-1" => [ 1.05, 1.08, 1.1 ], "heading-2" => [ 1.1, 1.12, 1.15 ], "heading-3" => [ 1.25, 1.25, 1.3 ],
+    "large" => [ 1.45, 1.45, 1.5 ], "body" => [ 1.6, 1.6, 1.6 ], "small" => [ 1.5, 1.5, 1.5 ]
   }.freeze
   LEVEL_STEPS = %w[heading-1 heading-2 heading-3 large].freeze
 

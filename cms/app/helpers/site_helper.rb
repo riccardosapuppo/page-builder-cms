@@ -27,8 +27,19 @@ module SiteHelper
     tag.link(rel: "stylesheet", href: path) if path
   end
 
-  # The site's own stylesheet (CustomCss), after the theme's and the free
-  # colours', or nothing when it has none: its address names its version.
+  # The stylesheet of the free type the page draws (FreeType), after the
+  # free colours', or nothing when it has none: the sizes, weights, letter
+  # spacing, line heights and letter widths the page's headings, texts and
+  # quotes set, and those of its header and footer.
+  def free_type_link
+    documents = [ @document, *%w[header footer].map { |kind| site_parts.fetch(kind)&.document } ]
+    path = FreeType.path(documents)
+    tag.link(rel: "stylesheet", href: path) if path
+  end
+
+  # The site's own stylesheet (CustomCss), after the theme's, the free
+  # colours' and the free type's, or nothing when it has none: its address
+  # names its version.
   def custom_css_link(style = site_style)
     css = CustomCss.scoped(style.custom_css)
     tag.link(rel: "stylesheet", href: "/custom.css?v=#{CustomCss.digest(css)}") unless css.empty?

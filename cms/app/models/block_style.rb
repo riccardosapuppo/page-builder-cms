@@ -14,7 +14,9 @@
 # write a class of its own choosing. A free colour a background or a colour
 # names (the schema's freeColor, "#1d4e6f") is no class: it is a data
 # attribute (free_color_data), which the stylesheet of the page's free
-# colours reads (FreeColors). data-style repeats the stored style,
+# colours reads (FreeColors); so is free type (free_type_data), which the
+# stylesheet of the page's free type reads (FreeType). data-style repeats
+# the stored style,
 # canonically, for the contract between this renderer and the editor's: it
 # compares settings that would otherwise exist only as classes and CSS.
 module BlockStyle
@@ -113,6 +115,27 @@ module BlockStyle
     end
   end
 
+  # The value of free type a key holds on a device, as the page writes it
+  # ("6vw", "800", "-0.02"), or nil when it holds none the schema and the
+  # rules take.
+  def free_type(style, device, key)
+    return nil unless FreeType::KEYS.include?(key) && style.is_a?(Hash) && style[device].is_a?(Hash) && style[device].key?(key)
+
+    FreeType.text(key, style[device][key])
+  end
+
+  # A block's free type as data attributes, named by the key's family and
+  # the device's prefix as a class is ({ "font-size" => "6vw",
+  # "tablet-font-size" => "4vw" }).
+  def free_type_data(style)
+    FreeType::KEYS.each_with_object({}) do |key, data|
+      DEVICES.each do |device|
+        text = free_type(style, device, key)
+        data[device == "base" ? FreeType::FAMILY.fetch(key) : "#{device}-#{FreeType::FAMILY.fetch(key)}"] = text if text
+      end
+    end
+  end
+
   # hide-desktop, hide-tablet and hide-phone where the block is hidden. A
   # device without an override shows what base says.
   def visibility_classes(style)
@@ -125,15 +148,15 @@ module BlockStyle
   end
 
   # "base.textSize=display;phone.textSize=heading-1": every stored setting
-  # (a free colour too), devices in this order and keys sorted, or nil when
-  # there is none.
+  # (a free colour and free type too, as the page writes them), devices in
+  # this order and keys sorted, or nil when there is none.
   def data_attribute(style)
     pairs = DEVICES.flat_map do |device|
       part = style.is_a?(Hash) ? style[device] : nil
       next [] unless part.is_a?(Hash)
 
       part.keys.sort.filter_map do |key|
-        value = value(style, device, key) || free_color(style, device, key)
+        value = value(style, device, key) || free_color(style, device, key) || free_type(style, device, key)
         "#{device}.#{key}=#{value}" unless value.nil?
       end
     end

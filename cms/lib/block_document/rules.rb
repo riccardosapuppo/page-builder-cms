@@ -23,7 +23,9 @@ require "json"
 #      ("finite"), exact integers ("safeInteger"), unique block ids
 #      ("uniqueId"), unique anchors ("uniqueAnchor"), unique field names
 #      in a form ("uniqueFieldName"), classes of the site's own that are
-#      not the theme's ("reservedClass")
+#      not the theme's ("reservedClass"), a block's free type sizes within
+#      their unit's range ("sizeRange") and its free type numbers with two
+#      decimals at most ("decimals")
 #   5. normalisation: an integral Float becomes an Integer (2.0 -> 2)
 # Then the schema runs on the normalised document.
 module BlockDocument
@@ -41,6 +43,19 @@ module BlockDocument
       align- aspect- bg- cols- desktop- face- fg- gap- hide- line- pad- phone-
       size- space- spacer- stack- sw- tablet- valign- w- widths-
     ].freeze
+
+    # Free type, a heading's, a text's or a quote's own size, weight, letter
+    # spacing, line height and letter width: what the schema cannot hold of
+    # it. How far a size goes in each unit, in hundredths, so a size is
+    # compared exactly (8 to 320 px, 0.5 to 20 rem, 0.5 to 25 vw); the
+    # schema's minimum and maximum of each number, for the rule on its
+    # decimals, which reads only a number the schema would take; and the
+    # schema's fontSize pattern, its number and its unit taken apart.
+    # schema/tools/rules.ts holds the same tables, and FreeType draws by
+    # them.
+    FONT_SIZE_RANGES = { "px" => [ 800, 32_000 ], "rem" => [ 50, 2000 ], "vw" => [ 50, 2500 ] }.freeze
+    FREE_NUMBER_RANGES = { "letterSpacing" => [ -0.1, 0.5 ], "lineHeight" => [ 0.8, 3 ], "letterWidth" => [ 62.5, 125 ] }.freeze
+    FONT_SIZE = /\A((?:0|[1-9][0-9]{0,2})(?:[.][0-9]?[1-9])?)(px|rem|vw)\z/
 
     Error = Data.define(:pointer, :keyword, :message)
 
@@ -130,6 +145,7 @@ module BlockDocument
             if value["type"].is_a?(String) && value["props"].is_a?(Hash) && (reserved = reserved_class(value["props"]["className"]))
               errors << Error.new(pointer: "#{pointer}/props/className", keyword: "reservedClass", message: "The class \"#{reserved}\" is one the theme uses: give the block a name of the site's own.")
             end
+            errors.concat(free_type_rules(value["style"], pointer)) if value["type"].is_a?(String) && value["style"].is_a?(Hash)
             value.each do |key, child|
               unless key.is_a?(String) && well_formed?(key)
                 errors << Error.new(pointer: pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair.")
@@ -241,6 +257,63 @@ module BlockDocument
       class_name.split(/ /, -1).find do |name|
         lower = name.downcase(:ascii)
         RESERVED_CLASS_NAMES.include?(lower) || RESERVED_CLASS_PREFIXES.any? { |prefix| lower.start_with?(prefix) }
+      end
+    end
+
+    # A size as the schema's pattern writes it, as its number in hundredths
+    # (48.5px is 4850, counted exactly) and its unit; nil for any other
+    # value.
+    def font_size_parts(value)
+      return nil unless value.is_a?(String) && well_formed?(value) && (found = FONT_SIZE.match(value))
+
+      whole, decimals = found[1].split(".")
+      [ (Integer(whole, 10) * 100) + Integer((decimals || "").ljust(2, "0"), 10), found[2] ]
+    end
+
+    def font_size_in_range?(hundredths, unit)
+      low, high = FONT_SIZE_RANGES.fetch(unit)
+      hundredths.between?(low, high)
+    end
+
+    # A number with two decimals at most: a hundred times it, rounded, and a
+    # hundredth of that, is the number again. A number written as an
+    # integer has none; one half way between two hundredths is neither way
+    # round, so Ruby's rounding and JavaScript's answer alike.
+    def two_decimals?(value)
+      value.is_a?(Integer) || (value * 100).round / 100.0 == value
+    end
+
+    # A number of hundredths as the page writes it: no zero ending its
+    # decimals, none before it but the one before a point (4850 is "48.5",
+    # 50 is "0.5", -2 is "-0.02").
+    def hundredths_text(hundredths)
+      sign = hundredths.negative? ? "-" : ""
+      whole, part = hundredths.abs.divmod(100)
+      return "#{sign}#{whole}" if part.zero?
+
+      "#{sign}#{whole}.#{format('%02d', part).delete_suffix('0')}"
+    end
+
+    # A block's free type, on each device: a size beyond its unit's range
+    # (sizeRange), a number within its range with a third decimal
+    # (decimals). A value of the wrong kind, a size the pattern does not
+    # read and a number out of its range are the schema's to refuse.
+    def free_type_rules(style, pointer)
+      %w[base tablet phone].each_with_object([]) do |device, errors|
+        part = style[device]
+        next unless part.is_a?(Hash)
+
+        size = font_size_parts(part["fontSize"])
+        if size && !font_size_in_range?(*size)
+          low, high = FONT_SIZE_RANGES.fetch(size[1])
+          errors << Error.new(pointer: "#{pointer}/style/#{device}/fontSize", keyword: "sizeRange", message: "From #{hundredths_text(low)} to #{hundredths_text(high)} #{size[1]}.")
+        end
+        FREE_NUMBER_RANGES.each do |key, (low, high)|
+          value = part[key]
+          next unless (value.is_a?(Integer) || (value.is_a?(Float) && value.finite?)) && value.between?(low, high) && !two_decimals?(value)
+
+          errors << Error.new(pointer: "#{pointer}/style/#{device}/#{key}", keyword: "decimals", message: "Two decimals at most.")
+        end
       end
     end
 

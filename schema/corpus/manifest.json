@@ -611,6 +611,258 @@
     "keyword": "maxItems",
     "layer": "schema"
   },
+  "invalid/free-type-line-height-above.json": {
+    "rule": "and up to 3",
+    "pointer": "/sections/0/children/0/children/0/style/base/lineHeight",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/free-type-line-height-below.json": {
+    "rule": "a line height goes down to 0.8",
+    "pointer": "/sections/0/children/0/children/0/style/base/lineHeight",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/free-type-line-height-string.json": {
+    "rule": "a line height is a number, with no unit",
+    "pointer": "/sections/0/children/0/children/0/style/base/lineHeight",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/free-type-line-height-three-decimals.json": {
+    "rule": "two decimals at most (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/lineHeight",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
+  "invalid/free-type-on-button.json": {
+    "rule": "a button's type is the theme's",
+    "pointer": "/sections/0/children/0/children/2/style/base/fontSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/free-type-on-column.json": {
+    "rule": "a column takes a text size for what it holds, never free type",
+    "pointer": "/sections/0/children/0/style/base/fontWeight",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-above-range.json": {
+    "rule": "a size in px goes up to 320 (a rule: the schema reads the string, not how far its number goes)",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-size-below-range.json": {
+    "rule": "a size in px goes down to 8 (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-size-calc.json": {
+    "rule": "no calc(), whatever it adds up",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-declaration.json": {
+    "rule": "a size is a number and a unit and nothing after them: no declaration of its own",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-em.json": {
+    "rule": "a size is in px, rem or vw: an em would follow the column's size",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-leading-zero.json": {
+    "rule": "written one way: 8px, never 08px",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-negative.json": {
+    "rule": "a size is never below nothing",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-no-unit.json": {
+    "rule": "a size names its unit",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-null.json": {
+    "rule": "an absent key means the step's size; null is none",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-number.json": {
+    "rule": "a size is a string, its number and its unit",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-percent.json": {
+    "rule": "nor a percentage of the column's size",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-point-first.json": {
+    "rule": "written one way: 0.5rem, never .5rem",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-rem-above-range.json": {
+    "rule": "a size in rem goes up to 20 (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-size-rule.json": {
+    "rule": "nor a rule of its own",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-space.json": {
+    "rule": "no space between the number and its unit",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-tablet-above-range.json": {
+    "rule": "on a tablet too: a size in vw goes up to 25 (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/tablet/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-size-three-decimals.json": {
+    "rule": "two decimals at most",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-trailing-newline.json": {
+    "rule": "^...$ must not let a trailing newline through",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-trailing-zero.json": {
+    "rule": "written one way: 48.5px, never 48.50px",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-unit-upper-case.json": {
+    "rule": "a unit is written in lower case, the one way",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-url.json": {
+    "rule": "no url(), which would load something",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/free-type-size-vw-below-range.json": {
+    "rule": "a size in vw goes down to 0.5 (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-size-zero.json": {
+    "rule": "a size of nothing is no size (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontSize",
+    "keyword": "sizeRange",
+    "layer": "rules"
+  },
+  "invalid/free-type-spacing-above.json": {
+    "rule": "and up to 0.5 em",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterSpacing",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/free-type-spacing-below.json": {
+    "rule": "letter spacing goes down to -0.1 em",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterSpacing",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/free-type-spacing-three-decimals.json": {
+    "rule": "two decimals at most (a rule: a fractional multipleOf, which would say it, is read apart by the two engines)",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterSpacing",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
+  "invalid/free-type-spacing-with-unit.json": {
+    "rule": "letter spacing is a number of em, not a length written out",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterSpacing",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/free-type-text-phone-three-decimals.json": {
+    "rule": "on a text, on a phone, as on a heading's desktop (a rule)",
+    "pointer": "/sections/0/children/0/children/1/style/phone/lineHeight",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
+  "invalid/free-type-weight-above.json": {
+    "rule": "900, Black, is the heaviest",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontWeight",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/free-type-weight-between-steps.json": {
+    "rule": "weights go in steps of 100",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontWeight",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/free-type-weight-name.json": {
+    "rule": "a weight is a number, not a name",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontWeight",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/free-type-weight-string.json": {
+    "rule": "a weight is a number",
+    "pointer": "/sections/0/children/0/children/0/style/base/fontWeight",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/free-type-width-above.json": {
+    "rule": "and up to 125",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterWidth",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/free-type-width-below.json": {
+    "rule": "a letter width goes down to 62.5",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterWidth",
+    "keyword": "minimum",
+    "layer": "schema"
+  },
+  "invalid/free-type-width-percent.json": {
+    "rule": "a letter width is a number, not a percentage written out",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterWidth",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/free-type-width-three-decimals.json": {
+    "rule": "two decimals at most (a rule)",
+    "pointer": "/sections/0/children/0/children/0/style/base/letterWidth",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
   "invalid/gallery-item-class.json": {
     "rule": "a gallery's items are images alone: a class is the gallery's",
     "pointer": "/sections/2/children/0/children/1/props/items/0/className",
@@ -2038,6 +2290,12 @@
   },
   "valid/form-fields-every-kind.json": {
     "rule": "every kind of field, required and not; a line of text limited to 1 and to 300 characters, a longer text to 5000; names of one letter and of 40 characters, with digits and hyphens; twenty fields, the most a form holds; and a second form using the same names, since names are unique in a form, not on the page"
+  },
+  "valid/free-type-every-key.json": {
+    "rule": "a heading's, a text's and a quote's own type, beside a step and a typeface: every key on every device; each unit of a size at both ends of its range, with two decimals, one and none; every weight; letter spacing, line height and letter width at both ends of their ranges, negative, zero and fractional"
+  },
+  "valid/free-type-integral-floats.json": {
+    "rule": "free type written 700.0, 1e2, 2.00 and -0.0 is the weight 700, the width 100, the line height 2 and the spacing 0 to both engines, after the rules make them integers"
   },
   "valid/header-sticky.json": {
     "rule": "the site's header may stay at the top of the window: sticky is true, or absent"

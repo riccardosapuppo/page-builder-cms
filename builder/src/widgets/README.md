@@ -20,7 +20,10 @@ after the design's own tiles, in the order they were made. Each holds:
   not list);
 - `render.tsx`: its React renderer, the twin of the server's partial,
   built on `../render`'s helpers and held to the partial by the render
-  contract;
+  contract. A widget whose words take a type step and a typeface (a
+  heading, a text, a quote: the schema's `textStyle`) takes free type
+  too, and its root carries it as its partial's does
+  (`freeTypeData`, `BlockStyle.free_type_data`);
 - `icon.ts`: its tile, a Lucide icon, shape for shape its file in
   `../editor/lucide/` (the owner's choice of 14 October 2026, in place
   of the approved design's `w-<type>` symbol);

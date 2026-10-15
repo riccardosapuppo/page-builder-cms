@@ -423,7 +423,7 @@ test.describe("with the mouse", () => {
     await expect(panel.locator(".ed-title")).toContainText("Moving, from First, column 1");
     await expect(panel.getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeVisible();
     // Its groups closed, with their values; none a key or a field.
-    await expect(panel.locator(".grp .grp-name")).toHaveText(["Quote", "Size and color", "Alignment", "Shown on", "Advanced"]);
+    await expect(panel.locator(".grp .grp-name")).toHaveText(["Quote", "Size and color", "Type", "Alignment", "Shown on", "Advanced"]);
     await expect(panel.getByRole("textbox")).toHaveCount(0);
     await expect(panel.getByRole("button")).toHaveCount(0);
     // Where it stood, between the heading and the button: a dimmed copy,

@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { MAX_NESTING } from "./rules.ts";
 
 const CORPUS = join(dirname(fileURLToPath(import.meta.url)), "..", "corpus");
-const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor", "uniqueFieldName", "reservedClass"]);
+const RULE_KEYWORDS = new Set(["encoding", "parse", "duplicateKey", "maxNesting", "wellFormed", "finite", "safeInteger", "uniqueId", "uniqueAnchor", "uniqueFieldName", "reservedClass", "sizeRange", "decimals"]);
 
 // The corpus is built by mutation, so the tree is handled as plain JSON.
 type J = any;
@@ -438,6 +438,43 @@ valid("styles-every-token", "every style key and token value, with tablet and ph
     ].map((w: J) => ({ ...w, style: { base: { visibility: "visible" } } }))),
   ], {}, { base: { background: "primary", spaceAbove: "section-s", spaceBelow: "section-l", spaceBetween: "m" }, tablet: { background: "muted", spaceBelow: "m" }, phone: { visibility: "hidden" } }),
 ]));
+valid("free-type-every-key", "a heading's, a text's and a quote's own type, beside a step and a typeface: every key on every device; each unit of a size at both ends of its range, with two decimals, one and none; every weight; letter spacing, line height and letter width at both ends of their ranges, negative, zero and fractional", doc("Free type", [
+  section("ft", [column("ft-1", [
+    heading("ft-h", 1, "Swim at slack water", {
+      base: { textSize: "display", fontSize: "6vw", fontWeight: 800, letterSpacing: -0.02, lineHeight: 0.95, letterWidth: 80 },
+      tablet: { fontSize: "48px", fontWeight: 700, letterSpacing: 0, lineHeight: 1, letterWidth: 100 },
+      phone: { typeface: "body", fontSize: "2.25rem", fontWeight: 900, letterSpacing: 0.5, lineHeight: 3, letterWidth: 125 },
+    }),
+    text("ft-t", rich(p(t("Dawn swims at the slipway"))), {
+      base: { textSize: "large", fontSize: "8px", fontWeight: 200, letterSpacing: -0.1, lineHeight: 0.8, letterWidth: 62.5 },
+      tablet: { fontSize: "320px", letterSpacing: 0.07 },
+      phone: { fontSize: "0.5rem", lineHeight: 1.33 },
+    }),
+    { ...quote("ft-q", "Cold water, warm tea.", "A member"), style: {
+      base: { typeface: "heading", fontSize: "20rem", fontWeight: 100, letterWidth: 112.5 },
+      tablet: { fontSize: "0.5vw", lineHeight: 1.25 },
+      phone: { fontSize: "25vw", letterWidth: 87.55 },
+    } },
+    ...[300, 400, 500, 600].map((weight) => heading(`ft-w-${weight}`, 3, `Weight ${weight}`, { base: { fontWeight: weight, fontSize: "99.99px" } })),
+  ])]),
+]));
+{
+  // Free type written with integral floats and a negative zero: the
+  // numbers both engines read as integers, and -0.0 as 0.
+  const d = doc("Free type in floats", [
+    section("ff", [column("ff-1", [heading("ff-h", 2, "Weight written as 700.0", { base: { fontWeight: 700, letterWidth: 100, lineHeight: 2, letterSpacing: 0 } })])]),
+  ]);
+  let s = serialise(d);
+  for (const [from, to] of [
+    ['"fontWeight": 700', '"fontWeight": 700.0'],
+    ['"letterWidth": 100', '"letterWidth": 1e2'],
+    ['"lineHeight": 2', '"lineHeight": 2.00'],
+    ['"letterSpacing": 0', '"letterSpacing": -0.0'],
+  ] as const) s = replaceOnce(s, from, to, "free-type-integral-floats");
+  add("valid/free-type-integral-floats.json", encoder.encode(s), {
+    rule: "free type written 700.0, 1e2, 2.00 and -0.0 is the weight 700, the width 100, the line height 2 and the spacing 0 to both engines, after the rules make them integers",
+  });
+}
 valid("section-space-every-step", "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides", doc("Section space", [
   "none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l",
 ].map((step, k, all) => section(`space-${k}`, [column(`space-${k}-1`, [])], {}, {
@@ -728,6 +765,54 @@ invalid("style-section-space-retired", "sectionSpace became spaceAbove and space
 });
 invalid("style-space-above-unknown", "the space above a section is a spacing step or a section step", `${HERO}/style/phone/spaceAbove`, "enum", (d) => { at(d, HERO).style.phone.spaceAbove = "section-m"; });
 invalid("style-space-below-on-column", "only a section has space above and below", `${COL}/style/base/spaceBelow`, "additionalProperties", (d) => { at(d, COL).style.base.spaceBelow = "l"; });
+
+// =============================== INVALID: free type =============================
+// The hero's heading (a step of its own and a colour), with one value of
+// free type changed; the button, the column and the text where said.
+const FT = `${H}/style/base`;
+const freeType = (key: string, value: J) => (d: J): void => { at(d, H).style.base[key] = value; };
+invalid("free-type-size-above-range", "a size in px goes up to 320 (a rule: the schema reads the string, not how far its number goes)", `${FT}/fontSize`, "sizeRange", freeType("fontSize", "320.01px"));
+invalid("free-type-size-below-range", "a size in px goes down to 8 (a rule)", `${FT}/fontSize`, "sizeRange", freeType("fontSize", "7.99px"));
+invalid("free-type-size-zero", "a size of nothing is no size (a rule)", `${FT}/fontSize`, "sizeRange", freeType("fontSize", "0px"));
+invalid("free-type-size-rem-above-range", "a size in rem goes up to 20 (a rule)", `${FT}/fontSize`, "sizeRange", freeType("fontSize", "20.5rem"));
+invalid("free-type-size-vw-below-range", "a size in vw goes down to 0.5 (a rule)", `${FT}/fontSize`, "sizeRange", freeType("fontSize", "0.49vw"));
+invalid("free-type-size-tablet-above-range", "on a tablet too: a size in vw goes up to 25 (a rule)", `${H}/style/tablet/fontSize`, "sizeRange", (d) => { at(d, H).style.tablet = { fontSize: "26vw" }; });
+invalid("free-type-size-em", "a size is in px, rem or vw: an em would follow the column's size", `${FT}/fontSize`, "pattern", freeType("fontSize", "3em"));
+invalid("free-type-size-percent", "nor a percentage of the column's size", `${FT}/fontSize`, "pattern", freeType("fontSize", "120%"));
+invalid("free-type-size-unit-upper-case", "a unit is written in lower case, the one way", `${FT}/fontSize`, "pattern", freeType("fontSize", "48PX"));
+invalid("free-type-size-no-unit", "a size names its unit", `${FT}/fontSize`, "pattern", freeType("fontSize", "48"));
+invalid("free-type-size-number", "a size is a string, its number and its unit", `${FT}/fontSize`, "type", freeType("fontSize", 48));
+invalid("free-type-size-three-decimals", "two decimals at most", `${FT}/fontSize`, "pattern", freeType("fontSize", "12.125px"));
+invalid("free-type-size-trailing-zero", "written one way: 48.5px, never 48.50px", `${FT}/fontSize`, "pattern", freeType("fontSize", "48.50px"));
+invalid("free-type-size-leading-zero", "written one way: 8px, never 08px", `${FT}/fontSize`, "pattern", freeType("fontSize", "08px"));
+invalid("free-type-size-point-first", "written one way: 0.5rem, never .5rem", `${FT}/fontSize`, "pattern", freeType("fontSize", ".5rem"));
+invalid("free-type-size-space", "no space between the number and its unit", `${FT}/fontSize`, "pattern", freeType("fontSize", "48 px"));
+invalid("free-type-size-negative", "a size is never below nothing", `${FT}/fontSize`, "pattern", freeType("fontSize", "-4px"));
+invalid("free-type-size-declaration", "a size is a number and a unit and nothing after them: no declaration of its own", `${FT}/fontSize`, "pattern", freeType("fontSize", "1px;color:red"));
+invalid("free-type-size-rule", "nor a rule of its own", `${FT}/fontSize`, "pattern", freeType("fontSize", "1px}body{display:none"));
+invalid("free-type-size-calc", "no calc(), whatever it adds up", `${FT}/fontSize`, "pattern", freeType("fontSize", "calc(1px + 2vw)"));
+invalid("free-type-size-url", "no url(), which would load something", `${FT}/fontSize`, "pattern", freeType("fontSize", "url(https://example.com/x.css)"));
+invalid("free-type-size-trailing-newline", "^...$ must not let a trailing newline through", `${FT}/fontSize`, "pattern", freeType("fontSize", `48px${NEWLINE}`));
+invalid("free-type-size-null", "an absent key means the step's size; null is none", `${FT}/fontSize`, "type", freeType("fontSize", null));
+invalid("free-type-weight-between-steps", "weights go in steps of 100", `${FT}/fontWeight`, "enum", freeType("fontWeight", 850));
+invalid("free-type-weight-above", "900, Black, is the heaviest", `${FT}/fontWeight`, "enum", freeType("fontWeight", 1000));
+invalid("free-type-weight-string", "a weight is a number", `${FT}/fontWeight`, "enum", freeType("fontWeight", "800"));
+invalid("free-type-weight-name", "a weight is a number, not a name", `${FT}/fontWeight`, "enum", freeType("fontWeight", "bold"));
+invalid("free-type-spacing-below", "letter spacing goes down to -0.1 em", `${FT}/letterSpacing`, "minimum", freeType("letterSpacing", -0.11));
+invalid("free-type-spacing-above", "and up to 0.5 em", `${FT}/letterSpacing`, "maximum", freeType("letterSpacing", 0.51));
+invalid("free-type-spacing-three-decimals", "two decimals at most (a rule: a fractional multipleOf, which would say it, is read apart by the two engines)", `${FT}/letterSpacing`, "decimals", freeType("letterSpacing", 0.025));
+invalid("free-type-spacing-with-unit", "letter spacing is a number of em, not a length written out", `${FT}/letterSpacing`, "type", freeType("letterSpacing", "0.02em"));
+invalid("free-type-line-height-below", "a line height goes down to 0.8", `${FT}/lineHeight`, "minimum", freeType("lineHeight", 0.79));
+invalid("free-type-line-height-above", "and up to 3", `${FT}/lineHeight`, "maximum", freeType("lineHeight", 3.01));
+invalid("free-type-line-height-three-decimals", "two decimals at most (a rule)", `${FT}/lineHeight`, "decimals", freeType("lineHeight", 1.125));
+invalid("free-type-line-height-string", "a line height is a number, with no unit", `${FT}/lineHeight`, "type", freeType("lineHeight", "1.5"));
+invalid("free-type-width-below", "a letter width goes down to 62.5", `${FT}/letterWidth`, "minimum", freeType("letterWidth", 62.4));
+invalid("free-type-width-above", "and up to 125", `${FT}/letterWidth`, "maximum", freeType("letterWidth", 125.5));
+invalid("free-type-width-three-decimals", "two decimals at most (a rule)", `${FT}/letterWidth`, "decimals", freeType("letterWidth", 87.555));
+invalid("free-type-width-percent", "a letter width is a number, not a percentage written out", `${FT}/letterWidth`, "type", freeType("letterWidth", "80%"));
+invalid("free-type-text-phone-three-decimals", "on a text, on a phone, as on a heading's desktop (a rule)", `${TXT}/style/phone/lineHeight`, "decimals", (d) => { at(d, TXT).style.phone = { lineHeight: 1.333 }; });
+invalid("free-type-on-button", "a button's type is the theme's", `${BTN}/style/base/fontSize`, "additionalProperties", (d) => { at(d, BTN).style.base.fontSize = "48px"; });
+invalid("free-type-on-column", "a column takes a text size for what it holds, never free type", `${COL}/style/base/fontWeight`, "additionalProperties", (d) => { at(d, COL).style.base.fontWeight = 700; });
 
 // =============================== INVALID: heading ===============================
 invalid("heading-level-5", "levels are 1 to 4", `${H}/props/level`, "maximum", (d) => { at(d, H).props.level = 5; });

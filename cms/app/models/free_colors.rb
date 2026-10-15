@@ -20,6 +20,9 @@
 module FreeColors
   PATTERN = /\A#[0-9a-f]{6}\z/
 
+  # The first line of every sheet, which names what it holds.
+  HEAD = "/* Free colours of this page: Site style's own tones, then the colours its blocks name. */"
+
   module_function
 
   def color?(value)
@@ -93,7 +96,7 @@ module FreeColors
     free_slots = SLOTS.select { |slot| color?(slots[slot]) }
     return "" if colors.empty? && free_slots.empty?
 
-    out = [ "/* Free colours of this page: Site style's own tones, then the colours its blocks name. */" ]
+    out = [ HEAD ]
     free_slots.each { |slot| out << %(.site[data-#{slot}="#{slots[slot]}"] { --sw-#{slot}: #{slots[slot]}; }) }
     unless colors.empty?
       site = { text: text, background: background }

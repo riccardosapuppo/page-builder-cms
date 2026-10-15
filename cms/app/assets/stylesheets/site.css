@@ -413,8 +413,11 @@ a.sw-btn:not([href]) { cursor: default; }
    serif italic; set in the headings' face, which has no italic, upright
    (Typeface, tokens.css). */
 .sw-quote blockquote p { font-style: italic; max-width: 20em; }
-/* The caption takes the body's line height, as in the mock, not the quote's step's. */
-.sw-quote figcaption { font-size: 16px; line-height: var(--lh-body); font-weight: 500; font-stretch: var(--stretch-ui, 100%); font-style: normal; color: var(--caption-color, var(--sw-muted)); }
+/* The caption takes the body's line height, as in the mock, not the quote's step's.
+   It keeps its own letters too: a quote's letter spacing, its face's or its
+   own (free type), is the quote's, and would reach the caption as a length
+   made at the quote's size. */
+.sw-quote figcaption { font-size: 16px; line-height: var(--lh-body); font-weight: 500; font-stretch: var(--stretch-ui, 100%); font-style: normal; letter-spacing: normal; color: var(--caption-color, var(--sw-muted)); }
 
 /* ---------- Accordion ---------- */
 .sw-accordion details { border-top: 1px solid var(--line-color, var(--sw-muted)); }

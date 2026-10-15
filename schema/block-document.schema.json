@@ -821,9 +821,36 @@
       "description": "The face a heading, a text or a quote is set in: the body's or the headings'. Unset, a heading takes the headings' face, a text and a quote the body's.",
       "enum": ["body", "heading"]
     },
+    "fontSize": {
+      "description": "A heading's, a text's or a quote's own type size, over its step's: the number and its unit as one string, in px, rem or vw, with two decimals at most and written one way only, no zero before the number but the one before a point and none ending its decimals (48px, 2.5rem, 0.75vw). How far each unit goes is an application rule (sizeRange): 8 to 320 px, 0.5 to 20 rem, 0.5 to 25 vw. A vw is a hundredth of the page's width, which the renderers write as a hundredth of the page root's (cqw), so the canvas draws it as the page does.",
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,2})(?:[.][0-9]?[1-9])?(?:px|rem|vw)$"
+    },
+    "fontWeight": {
+      "description": "Its own weight, over its typeface's: 100 (Thin) to 900 (Black), in steps of 100. The headings' face draws every one; the body's goes from 200, and draws 100 as 200.",
+      "enum": [100, 200, 300, 400, 500, 600, 700, 800, 900]
+    },
+    "letterSpacing": {
+      "description": "Its own letter spacing, in em, from -0.1 to 0.5, with two decimals at most (an application rule, decimals).",
+      "type": "number",
+      "minimum": -0.1,
+      "maximum": 0.5
+    },
+    "lineHeight": {
+      "description": "Its own line height, a multiple of its size, from 0.8 to 3, with two decimals at most (decimals).",
+      "type": "number",
+      "minimum": 0.8,
+      "maximum": 3
+    },
+    "letterWidth": {
+      "description": "How wide its letters are drawn, a percentage of the typeface's width axis, from 62.5 to 125, with two decimals at most (decimals). Only the headings' face, Archivo, has that axis: in the body's it changes nothing.",
+      "type": "number",
+      "minimum": 62.5,
+      "maximum": 125
+    },
 
     "styleTokens": {
-      "description": "Every style setting, by token name. In tablet and phone an absent key means 'as on desktop' (base); there is no null.",
+      "description": "Every style setting: a token name, or a free colour (freeColor) for a background or a colour, or a free value for type (fontSize, fontWeight, letterSpacing, lineHeight, letterWidth), each over what the tokens give. In tablet and phone an absent key means 'as on desktop' (base); there is no null.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -836,6 +863,11 @@
         "color": { "anyOf": [{ "$ref": "#/$defs/paletteSlot" }, { "$ref": "#/$defs/freeColor" }] },
         "textSize": { "$ref": "#/$defs/typeStep" },
         "typeface": { "$ref": "#/$defs/typefaceToken" },
+        "fontSize": { "$ref": "#/$defs/fontSize" },
+        "fontWeight": { "$ref": "#/$defs/fontWeight" },
+        "letterSpacing": { "$ref": "#/$defs/letterSpacing" },
+        "lineHeight": { "$ref": "#/$defs/lineHeight" },
+        "letterWidth": { "$ref": "#/$defs/letterWidth" },
         "align": { "$ref": "#/$defs/alignToken" },
         "verticalAlign": { "$ref": "#/$defs/verticalAlignToken" },
         "visibility": { "$ref": "#/$defs/visibilityToken" }
@@ -883,7 +915,7 @@
       }
     },
     "textStyle": {
-      "description": "Heading, text and quote.",
+      "description": "Heading, text and quote: their step of the type scale and their typeface, and over those, free type of their own (a size, a weight, letter spacing, a line height, a letter width), each key over the step's or the face's on its own; their colour, where they stand, and whether they are shown.",
       "type": "object",
       "properties": {
         "base": { "$ref": "#/$defs/textStyleKeys" },
@@ -894,7 +926,10 @@
     "textStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "textSize": true, "typeface": true, "color": true, "align": true, "visibility": true }
+      "properties": {
+        "textSize": true, "typeface": true, "fontSize": true, "fontWeight": true, "letterSpacing": true, "lineHeight": true, "letterWidth": true,
+        "color": true, "align": true, "visibility": true
+      }
     },
     "buttonStyle": {
       "type": "object",

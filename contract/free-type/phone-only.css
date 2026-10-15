@@ -1,0 +1,6 @@
+/* Free type of this page: the sizes, weights, letter spacing, line heights and letter widths its headings, texts and quotes set. */
+@container site (width < 560px) {
+  .w[data-phone-font-size="320px"][data-phone-font-size] { font-size: 320px; }
+  .w[data-phone-font-size="8px"][data-phone-font-size] { font-size: 8px; }
+  .w[data-phone-font-weight="900"][data-phone-font-weight] { font-weight: 900; }
+}

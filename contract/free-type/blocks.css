@@ -1,0 +1,30 @@
+/* Free type of this page: the sizes, weights, letter spacing, line heights and letter widths its headings, texts and quotes set. */
+.w[data-font-size="0.5rem"] { font-size: 0.5rem; }
+.w[data-font-size="2.25rem"] { font-size: 2.25rem; }
+.w[data-font-size="48px"] { font-size: 48px; }
+.w[data-font-size="6vw"] { font-size: 6cqw; }
+.w[data-font-size="99.99px"] { font-size: 99.99px; }
+.w[data-font-weight="100"] { font-weight: 100; }
+.w[data-font-weight="400"] { font-weight: 400; }
+.w[data-font-weight="800"] { font-weight: 800; }
+.w[data-letter-spacing="-0.02"] { letter-spacing: -0.02em; }
+.w[data-letter-spacing="-0.1"] { letter-spacing: -0.1em; }
+.w[data-letter-spacing="0"] { letter-spacing: 0em; }
+.w[data-letter-spacing="0.1"] { letter-spacing: 0.1em; }
+.w[data-line-height="0.95"] { line-height: 0.95; }
+.w[data-line-height="1.2"] { line-height: 1.2; }
+.w[data-line-height="3"] { line-height: 3; }
+.w[data-font-stretch="125"] { font-stretch: 125%; }
+.w[data-font-stretch="62.5"] { font-stretch: 62.5%; }
+.w[data-font-stretch="80"] { font-stretch: 80%; }
+@container site (560px <= width < 800px) {
+  .w[data-tablet-font-size="4vw"][data-tablet-font-size] { font-size: 4cqw; }
+  .w[data-tablet-font-weight="700"][data-tablet-font-weight] { font-weight: 700; }
+  .w[data-tablet-line-height="1"][data-tablet-line-height] { line-height: 1; }
+}
+@container site (width < 560px) {
+  .w[data-phone-font-size="25vw"][data-phone-font-size] { font-size: 25cqw; }
+  .w[data-phone-font-size="32px"][data-phone-font-size] { font-size: 32px; }
+  .w[data-phone-letter-spacing="0.5"][data-phone-letter-spacing] { letter-spacing: 0.5em; }
+  .w[data-phone-font-stretch="112.5"][data-phone-font-stretch] { font-stretch: 112.5%; }
+}

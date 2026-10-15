@@ -11,15 +11,17 @@
 // ../shared/document.ts, which document.test.ts holds to the schema. A free
 // colour a background or a colour names (../shared/free-colors.ts) is no
 // class: it is a data attribute (freeColorData), which the stylesheet of
-// the page's free colours reads.
+// the page's free colours reads; so is free type (../shared/free-type.ts,
+// freeTypeData), which the stylesheet of the page's free type reads.
 import { isObject } from "../document/json.ts";
 import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STACK_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
 import { isFreeColor, type FreeColor } from "../shared/free-colors.ts";
+import { FREE_TYPE_KEYS, freeTypeText, isFreeTypeKey, type FreeTypeKey } from "../shared/free-type.ts";
 
 export type StyleKey = keyof StyleTokens;
 
 // The class family of each key that becomes a class of its own.
-const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility">, string>> = {
+const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility" | FreeTypeKey>, string>> = {
   spaceInside: "pad",
   spaceBetween: "gap",
   spaceAbove: "space-above",
@@ -65,11 +67,47 @@ export function freeColorOf(style: unknown, device: string, key: "background" | 
   return isFreeColor(value) ? value : null;
 }
 
+// The value of free type a key holds on a device, as the page writes it
+// ("6vw", "800", "-0.02"), or null when it holds none the schema and the
+// rules take.
+export function freeTypeOf(style: unknown, device: string, key: FreeTypeKey): string | null {
+  if (!isObject(style)) return null;
+  const part = Object.hasOwn(style, device) ? style[device] : undefined;
+  if (!isObject(part) || !Object.hasOwn(part, key)) return null;
+  return freeTypeText(key, part[key]);
+}
+
 // What a setting holds that the schema allows: a token, or for a
-// background or a colour a free colour too; null otherwise.
+// background or a colour a free colour too, or for free type its value as
+// the page writes it; null otherwise.
 export function settingValue(style: unknown, device: string, key: string): string | null {
   if (key === "background" || key === "color") return styleValue(style, device, key) ?? freeColorOf(style, device, key);
+  if (isFreeTypeKey(key)) return freeTypeOf(style, device, key);
   return styleValue(style, device, key);
+}
+
+// The data attribute each key of free type is carried by, named after the
+// property it sets: a letter width is the face's stretch.
+export const FREE_TYPE_FAMILY: Readonly<Record<FreeTypeKey, string>> = {
+  fontSize: "font-size",
+  fontWeight: "font-weight",
+  letterSpacing: "letter-spacing",
+  lineHeight: "line-height",
+  letterWidth: "font-stretch",
+};
+
+// A block's free type as data attributes for BlockRoot's data, named by the
+// key's family and the device's prefix as a class is ({ "font-size": "6vw",
+// "tablet-font-size": "4vw" }).
+export function freeTypeData(style: unknown): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const key of FREE_TYPE_KEYS) {
+    for (const device of DEVICES) {
+      const value = freeTypeOf(style, device, key);
+      if (value !== null) data[device === "base" ? FREE_TYPE_FAMILY[key] : `${device}-${FREE_TYPE_FAMILY[key]}`] = value;
+    }
+  }
+  return data;
 }
 
 // The free colours of a background or a colour as data attributes for
@@ -97,7 +135,7 @@ interface ClassOptions {
 
 // The classes for one key: the base value (or the fallback), then the
 // tablet and phone overrides with their prefix.
-export function styleClasses(style: unknown, key: Exclude<StyleKey, "visibility">, options: ClassOptions = {}): string[] {
+export function styleClasses(style: unknown, key: Exclude<StyleKey, "visibility" | FreeTypeKey>, options: ClassOptions = {}): string[] {
   const family = options.family ?? FAMILY[key];
   const classes: string[] = [];
   for (const device of DEVICES) {
@@ -123,8 +161,8 @@ export function visibilityClasses(style: unknown): string[] {
 }
 
 // "base.textSize=display;phone.textSize=heading-1": every stored setting the
-// schema allows (a free colour too), devices in this order and keys sorted, or null when there
-// is none. Keys are sorted by code unit, Ruby by byte; every key that can
+// schema allows (a free colour and free type too, as the page writes them),
+// devices in this order and keys sorted, or null when there is none. Keys are sorted by code unit, Ruby by byte; every key that can
 // be written is ASCII, where the two orders are the same.
 export function dataStyle(style: unknown): string | null {
   const pairs: string[] = [];

@@ -9,9 +9,11 @@ import { expect, test } from "vitest";
 import { invertCommand, makeSetStyle, type StyleUpdates } from "../document/commands.ts";
 import { applyCommand } from "../document/reducer.ts";
 import { allBlocks, locate, replaceAtPath } from "../document/tree.ts";
-import { STYLE_KEYS_BY_TYPE, STYLE_TOKENS, type PageDocument, type StyleTokens } from "../shared/document.ts";
+import { settingValue } from "../render/style.ts";
+import { STYLE_KEYS_BY_TYPE, type PageDocument, type StyleTokens } from "../shared/document.ts";
 import { validateDocument } from "../shared/validate.ts";
 import { page } from "../../test/document-page.ts";
+import { STYLE_VALUES } from "../../test/style-values.ts";
 import { backToDesktop, deviceOf, overriddenOn, shownValue, type OverrideDevice } from "./device-style.ts";
 
 test("a tablet and a phone each show their own value, else the base's; a phone never the tablet's", () => {
@@ -52,7 +54,8 @@ const caseOf = fc.record({
 });
 
 // The page with the picked block given a style of the case's making, from
-// the keys and tokens its type takes; a device left with nothing is absent.
+// the keys its type takes and their tokens, or values of free type; a
+// device left with nothing is absent.
 function pageOf(c: Case): { doc: PageDocument; id: string; key: keyof StyleTokens } {
   let doc = page();
   const id = BLOCKS[c.pick]!;
@@ -60,8 +63,8 @@ function pageOf(c: Case): { doc: PageDocument; id: string; key: keyof StyleToken
   const keys = STYLE_KEYS_BY_TYPE[found.block.type] as readonly (keyof StyleTokens)[];
   const part = (pairs: Array<[number, number]>) => Object.fromEntries(pairs.map(([k, v]) => {
     const key = keys[k % keys.length]!;
-    const tokens = STYLE_TOKENS[key] as readonly string[];
-    return [key, tokens[v % tokens.length]!];
+    const values = STYLE_VALUES[key];
+    return [key, values[v % values.length]!];
   }));
   const style: Record<string, unknown> = { base: part(c.parts.base) };
   for (const device of ["tablet", "phone"] as const) {
@@ -107,12 +110,12 @@ function broken(back: Back, c: Case): string | null {
   if (JSON.stringify(after.base) !== JSON.stringify(before.base) || JSON.stringify(after[other]) !== JSON.stringify(before[other])) return "another device's values changed";
   // From then on the device follows the desktop: a new desktop value is
   // the device's too.
-  const tokens = STYLE_TOKENS[key] as readonly string[];
-  const next = tokens[c.next % tokens.length]!;
-  const moved = makeSetStyle(applied.document, id, "base", { [key]: next });
+  const values = STYLE_VALUES[key];
+  const next = values[c.next % values.length]!;
+  const moved = makeSetStyle(applied.document, id, "base", { [key]: next } as StyleUpdates);
   if (moved.ok) {
     const later = applyCommand(applied.document, moved.command);
-    if (later.ok && shownValue(styleOf(later.document, id), c.device, key) !== next) return `${c.device} kept its own ${key} when the desktop's changed to ${next}`;
+    if (later.ok && shownValue(styleOf(later.document, id), c.device, key) !== settingValue({ base: { [key]: next } }, "base", key)) return `${c.device} kept its own ${key} when the desktop's changed to ${next}`;
   }
   // And undone, the override is back as it was, byte for byte.
   const undone = applyCommand(applied.document, invertCommand(made.command));

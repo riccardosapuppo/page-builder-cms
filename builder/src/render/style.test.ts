@@ -2,7 +2,7 @@
 // cms/app/models/block_style.rb, on the cases its rules are about.
 // @vitest-environment node
 import { expect, test } from "vitest";
-import { classValue, columnWidths, dataStyle, freeColorData, styleClasses, styleValue, visibilityClasses } from "./style.ts";
+import { classValue, columnWidths, dataStyle, freeColorData, freeTypeData, settingValue, styleClasses, styleValue, visibilityClasses } from "./style.ts";
 
 const style = {
   base: { background: "soft", spaceAbove: "section-s", spaceBelow: "l", spaceBetween: "xl" },
@@ -63,6 +63,29 @@ test("a free colour is no class: it is a data attribute named by the key's famil
   expect(dataStyle(style)).toBe("base.background=#1d4e6f;base.color=primary;tablet.background=soft;tablet.color=#c2352b");
   // Written another way, it is no colour the schema allows.
   expect(freeColorData({ base: { background: "#1D4E6F" } }, "background")).toEqual({});
+});
+
+test("free type is no class either: a data attribute named after the property it sets and the device, written as the page writes it, and data-style holds it", () => {
+  const style = {
+    base: { textSize: "display", fontSize: "6vw", fontWeight: 800, letterSpacing: -0.02, lineHeight: 0.95, letterWidth: 80 },
+    tablet: { fontSize: "4vw" },
+    phone: { fontWeight: 700, lineHeight: 1.125, letterSpacing: 0.5 },
+  };
+  expect(freeTypeData(style)).toEqual({
+    "font-size": "6vw", "tablet-font-size": "4vw", "font-weight": "800", "phone-font-weight": "700", "letter-spacing": "-0.02", "phone-letter-spacing": "0.5",
+    "line-height": "0.95", "font-stretch": "80",
+  });
+  // The keys in their order, then the devices: as the CMS writes them.
+  expect(Object.keys(freeTypeData(style))).toEqual(["font-size", "tablet-font-size", "font-weight", "phone-font-weight", "letter-spacing", "phone-letter-spacing", "line-height", "font-stretch"]);
+  expect(dataStyle(style)).toBe("base.fontSize=6vw;base.fontWeight=800;base.letterSpacing=-0.02;base.letterWidth=80;base.lineHeight=0.95;base.textSize=display;tablet.fontSize=4vw;phone.fontWeight=700;phone.letterSpacing=0.5");
+  expect(settingValue(style, "base", "letterSpacing")).toBe("-0.02");
+  expect(settingValue(style, "phone", "lineHeight")).toBeNull();
+  // A value the schema or the rules refuse is no attribute, and is not in
+  // data-style.
+  const hostile = { base: { fontSize: "1px;color:red", fontWeight: "800", letterSpacing: 0.025, lineHeight: "1.5", letterWidth: 200 }, tablet: { fontSize: "\"><b>" } };
+  expect(freeTypeData(hostile)).toEqual({});
+  expect(dataStyle(hostile)).toBeNull();
+  expect(freeTypeData("junk")).toEqual({});
 });
 
 test("column widths apply only with one part per column", () => {

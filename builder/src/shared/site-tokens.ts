@@ -106,6 +106,22 @@ type StepSizes = Record<TypeStep, { desktop: readonly [number, number] }>;
 const SCALES = tokens["site-type-scale"];
 const TYPE: Readonly<Record<string, unknown>> = tokens.type;
 
+// What a step of a type scale ("balanced"; the default's for a name the
+// tokens do not have) draws on a device, as tokens.css gives it: its size
+// in pixels and its line height. A desktop's size grows in a straight line
+// from the tablet's to its own between pages 800 and 1280 wide
+// (type.site.desktop-fluid), so it is read at the page's width.
+export function stepType(scale: string | null | undefined, step: TypeStep, device: "desktop" | "tablet" | "phone", pageWidth: number): { size: number; lineHeight: number } {
+  const choice = SCALES.choices.find((c) => c.name === scale) ?? SCALES.choices.find((c) => c.name === SCALES.default)!;
+  const sizes = (TYPE[choice.steps] as Record<TypeStep, Record<"desktop" | "tablet" | "phone", readonly [number, number]>>)[step];
+  if (device !== "desktop") return { size: sizes[device][0], lineHeight: sizes[device][1] };
+  const fluid = tokens.type.site["desktop-fluid"];
+  const [high, lineHeight] = sizes.desktop;
+  const low = sizes.tablet[0];
+  const share = Math.min(1, Math.max(0, (pageWidth - fluid["from-page"]) / (fluid["to-page"] - fluid["from-page"])));
+  return { size: low + (high - low) * share, lineHeight };
+}
+
 // A type scale's steps in a wide window (size and line height in pixels),
 // and how much larger each step is than the next, from the scale's name
 // ("balanced"); null for a name the tokens do not have.

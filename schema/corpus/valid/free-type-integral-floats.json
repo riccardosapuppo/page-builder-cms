@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "title": "Free type in floats",
+  "sections": [
+    {
+      "id": "ff",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "ff-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "ff-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Weight written as 700.0"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "fontWeight": 700.0,
+                  "letterWidth": 1e2,
+                  "lineHeight": 2.00,
+                  "letterSpacing": -0.0
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

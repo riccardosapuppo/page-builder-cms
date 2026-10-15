@@ -164,6 +164,22 @@ describe("a sticky header's rows", () => {
     // A step that is not one, or a level out of range: the level's, else h2's.
     expect(stickyRows(header({ children: [heading(9, { base: { textSize: "huge" } })] }))).toBe("1 1 1");
   });
+  test("a heading's and a text's own size and line height count, each over the step's", () => {
+    const header = (column: unknown) => ({ sticky: true, sections: [{ props: { stack: "never" }, children: [column] }] });
+    const rows = (style: unknown) => stickyRows(header({ children: [{ type: "heading", props: { level: 2 }, style }] }));
+    // Its own size at the step's line height; a vw at the widest page of
+    // each device, a rem at 16 pixels.
+    expect(rows({ base: { fontSize: "120px" } })).toBe("2 2 3");
+    expect(rows({ base: { fontSize: "6vw" } })).toBe("2 1 1");
+    expect(rows({ base: { fontSize: "7.5rem" } })).toBe("2 2 3");
+    // The step's largest size at its own line height.
+    expect(rows({ base: { lineHeight: 3 } })).toBe("3 2 2");
+    // A phone's own, never the tablet's; a value refused counts as none.
+    expect(rows({ base: { fontSize: "120px" }, phone: { fontSize: "2rem" } })).toBe("2 2 1");
+    expect(rows({ base: { fontSize: "400px", lineHeight: 1.125 } })).toBe("1 1 1");
+    // A text smaller than its column's step counts at its own size.
+    expect(stickyRows(header({ style: { base: { textSize: "display" } }, children: [{ type: "text", style: { base: { fontSize: "48px" } } }] }))).toBe("1 1 1");
+  });
   test("the row, the header's space and the spare it counts with are the published page's own (site.css)", () => {
     const css = readFileSync(new URL("../../../cms/app/assets/stylesheets/site.css", import.meta.url), "utf8");
     expect(css).toContain(`--sticky-row: ${STICKY_ROW[0]}px`);
