@@ -935,7 +935,15 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
    cursor over it and the bottom line's sentence, so it is never told by
    its colour alone. A widget's columns stand above their section's wash,
    on the band's own colour, outlined. */
-.canvas .site .sec, .canvas .site .col { --sec-bg: var(--sw-background); }
+/* The band's colour (--sec-bg) the columns stand on: a section's own,
+   which a column with none of its own inherits, or a column's own. A dark
+   band, curated or free, names its colour in --mark-line (the logo's
+   waterline there: tokens.css and the free colours' rules); a light one
+   is the site's background, or its slot just below. (Each column once
+   set the site's background itself: on a dark band the columns turned
+   white while a widget moved, and the band's words with them, the
+   owner's report of 15 October 2026.) */
+.canvas .site .sec, .canvas .site .col[data-bg] { --sec-bg: var(--mark-line, var(--sw-background)); }
 .canvas .site .bg-text { --sec-bg: var(--sw-text); }
 .canvas .site .bg-background { --sec-bg: var(--sw-background); }
 .canvas .site .bg-primary { --sec-bg: var(--sw-primary); }
@@ -959,7 +967,11 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 :root[data-drop-refused], :root[data-drop-refused] * { cursor: no-drop !important; }
 .ov-drop { inset: -8px; z-index: 0; border: 1.5px dashed rgb(27 31 36 / .38); border-radius: 6px; background: var(--sec-bg); }
 .ov-drop-target { border: 2px solid var(--mark); box-shadow: 0 0 0 1px var(--sel-edge); }
-.col > .ov-drop-target { background: var(--white); }
+/* The column it would land in keeps its band's colour under a tenth of
+   the mark's yellow: a white fill (the mock's, on a light band) made
+   a dark band's words, white too, vanish while a block moved over them
+   (the owner's report of 15 October 2026). */
+.col > .ov-drop-target { --drop-tint: color-mix(in srgb, var(--mark) 10%, transparent); background: linear-gradient(var(--drop-tint), var(--drop-tint)), var(--sec-bg); }
 .ov-drop-target > .ov-label { left: -2px; top: auto; bottom: calc(100% + 4px); }
 .sec > .ov-drop, .sec > .ov-drop-target { inset: 0; background: none; z-index: 6; }
 .sec > .ov-drop-target > .ov-label { top: 4px; bottom: auto; left: 8px; }

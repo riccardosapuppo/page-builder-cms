@@ -323,6 +323,30 @@ test.describe("with the mouse", () => {
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).cursor)).toBe("auto");
   });
 
+  // The owner's report of 15 October 2026: on a dark band the column a
+  // widget would land in was filled white, and the band's words, white
+  // too, were gone while the block moved over them.
+  test("over a dark band, every column keeps the band's colour while a widget moves, the one it would land in tinted, and their words stay as legible as before the drag", async ({ page, request }) => {
+    const dark = { ...section("s1", "Dark", [column("c1", [heading("a", "Alpha"), widget("b", "quote", { text: "Bravo" })]), column("c2", [widget("d", "divider", {})])]), style: { base: { background: "text" } } };
+    await startPage(page, request, "Dark band", [dark]);
+    const band = await page.evaluate(() => getComputedStyle(document.querySelector('.canvas [data-block-id="s1"]')!).backgroundColor);
+    await select(page, "d");
+    await pickUp(page, grip(page));
+    await moveOnto(page, block(page, "b"), "bottom");
+    await expect(caption(page).locator("strong")).toContainText("Divider will move to Column 1 in Dark");
+    const drawn = await page.evaluate(() => {
+      const target = getComputedStyle(document.querySelector('.canvas [data-block-id="c1"] > .ov-drop-target')!);
+      const open = getComputedStyle(document.querySelector('.canvas [data-block-id="c2"]')!);
+      return { fill: target.backgroundColor, tint: target.backgroundImage, open: open.backgroundColor, words: getComputedStyle(document.querySelector('.canvas [data-block-id="a"] h2')!).color };
+    });
+    expect(drawn.open, "the other column on the band's own colour").toBe(band);
+    expect(drawn.fill, "the band's own colour under the target's tint").toBe(band);
+    expect(drawn.tint).toContain("linear-gradient");
+    expect(contrast(rgb(drawn.words), rgb(drawn.fill)), `${drawn.words} on ${drawn.fill}`).toBeGreaterThanOrEqual(4.5);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
   test("a column refused by a section that holds four already", async ({ page, request }) => {
     const full = section("s3", "Four", [0, 1, 2, 3].map((n) => column(`k${n}`, [widget(`w${n}`, "divider", {})])));
     const { id } = await startPage(page, request, "Full", [...fixture(), full]);
