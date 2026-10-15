@@ -22,7 +22,13 @@ same three pages.
     then the beginners' course, its four marks on one waterline, when the
     club swims (at slack water, with two days of tide drawn), the winter
     series, the pictures, the bay, the questions and a close.
-  - `winter-series.json`: a content page.
+  - `winter-series.json`, at `/winter-series`: the winter series. Its
+    title in the first band, beside the jetty in winter; then what to
+    bring, beside the tea; when and where, three facts each under a rule;
+    a winter Sunday, its three steps numbered (a steps block); entry,
+    three figures (stats) above two plans (pricing), one Sunday or the
+    whole series, whose buttons go to the trial swim's form (`/#join`);
+    and a quote, with the way back to the club.
   - `notices.json`: a page that breaks assumptions on purpose: four
     columns, a word too long for any line, emoji, right-to-left text, nested
     lists, a long alt text, a dark band, a heading hidden on phones.

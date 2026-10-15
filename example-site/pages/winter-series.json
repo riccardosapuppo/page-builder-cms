@@ -577,6 +577,186 @@
       }
     },
     {
+      "id": "sunday",
+      "type": "section",
+      "props": {
+        "label": "A winter Sunday"
+      },
+      "children": [
+        {
+          "id": "sunday-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "sunday-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "A winter Sunday"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-1",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "sunday-steps",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Meet at the slipway",
+                    "text": "At the north end of the beach, twenty minutes before slack water."
+                  },
+                  {
+                    "title": "Swim one loop",
+                    "text": "Two hundred metres round the buoys, in groups of four, with a coach in the boat."
+                  },
+                  {
+                    "title": "Warm up slowly",
+                    "text": "Dry, dress and walk before you sit down. The tea is very hot."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "xl"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "entry",
+      "type": "section",
+      "props": {
+        "label": "Entry"
+      },
+      "children": [
+        {
+          "id": "entry-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "entry-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Entry"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-1",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "entry-stats",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "200 m",
+                    "label": "One loop of the buoys"
+                  },
+                  {
+                    "value": "10 min",
+                    "label": "In the water, never more"
+                  },
+                  {
+                    "value": "1",
+                    "label": "Pot of very hot tea, after"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "entry-pricing",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "One Sunday",
+                    "price": "€6",
+                    "period": "a swim",
+                    "text": "Come when the bay suits you.",
+                    "features": [
+                      "A place in a group of four",
+                      "A coach in the boat",
+                      "Tea after"
+                    ],
+                    "button": {
+                      "label": "Ask about a Sunday",
+                      "href": "/#join"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  },
+                  {
+                    "name": "The series",
+                    "price": "€40",
+                    "period": "November to March",
+                    "text": "Every Sunday of the winter.",
+                    "features": [
+                      "Every Sunday at slack water",
+                      "A coach in the boat",
+                      "Tea after, every time",
+                      "A finisher’s cap"
+                    ],
+                    "button": {
+                      "label": "Join the series",
+                      "href": "/#join"
+                    },
+                    "featured": true,
+                    "badge": "Most chosen"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "xl"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "soft",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
       "id": "words",
       "type": "section",
       "props": {
