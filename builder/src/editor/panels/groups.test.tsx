@@ -44,6 +44,7 @@ test("each type's groups are named after what they hold, in the layout's order, 
     map: ["Map", "Shown on", "Advanced"],
     gallery: ["Images", "Spacing", "Shown on", "Advanced"],
     iconbox: ["Icon box", "Text color", "Alignment", "Shown on", "Advanced"],
+    stats: ["Figures", "Text color", "Alignment", "Shown on", "Advanced"],
     form: ["Fields", "Button and message", "Shown on", "Advanced"],
   };
   for (const [id, names] of Object.entries(expected)) {

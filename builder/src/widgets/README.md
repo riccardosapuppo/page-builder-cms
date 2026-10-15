@@ -2,10 +2,12 @@
 
 One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
-`map/`, `iconbox/`, `quote/`, `accordion/`, `form/`, `logo/`, `menu/`. The
-last two are the blocks a header and a footer are made of, in Insert's
-Site group, after the approved design's groups, their tiles drawn in the
-design's language; a page may hold them too. Each holds:
+`map/`, `iconbox/`, `quote/`, `accordion/`, `stats/`, `form/`, `logo/`,
+`menu/`. The last two are the blocks a header and a footer are made of,
+in Insert's Site group, after the approved design's groups, their tiles
+drawn in the design's language; a page may hold them too. Stats came
+after the design too, a widget of a kind it has a group for: it stands
+last in Content, after the design's own tiles. Each holds:
 
 - `definition.ts`: the type, its group and label in the Insert drawer and
   the "+"'s picker (the
@@ -74,13 +76,14 @@ Three need something first, and their definition says which:
 
 `registry.test.ts`: one definition for each widget type of the schema;
 the panel's groups, order and labels equal to the approved design's
-(read from `design/index.html`); every tile's icon drawn as its shapes
-are held, with no warning from React (`../editor/icons.test.ts` holds
-the shapes to their Lucide files); every new widget a
-valid block, and a page holding one of each a valid page. The contract
-test checks each widget's traps exist, in a fixture, with its type, and
-the random-page agreement check saves one of each new widget to the CMS
-and compares the page it serves with React's.
+(read from `design/index.html`), with the widgets made after it last in
+their group (stats) or in a group of their own (Site); every tile's icon
+drawn as its shapes are held, with no warning from React
+(`../editor/icons.test.ts` holds the shapes to their Lucide files); every
+new widget a valid block, and a page holding one of each a valid page.
+The contract test checks each widget's traps exist, in a fixture, with
+its type, and the random-page agreement check saves one of each new
+widget to the CMS and compares the page it serves with React's.
 
 ## Adding a widget
 
@@ -114,7 +117,10 @@ alone, after the twelve others, and its commit holds every place below.
 - **This folder**: `<type>/` with its definition, icon, renderer, panel
   and its test, and accessibility test; a line in `registry.ts`,
   `panels.ts` and `a11y-all.ts`; in `types.ts`, what Insert must hand it
-  first (`InputOf`) and, for a new group of the design's Insert, the group.
+  first (`InputOf`) and, for a new group of the design's Insert, the group;
+  and in `registry.test.ts`, its input there, and for a widget the
+  approved design did not draw, its place among those made after it
+  (stats is one: last in Content, after the design's tiles).
 - **The browser tests**: the widget's own, `e2e/<type>.spec.ts` (the
   form's is `e2e/form.spec.ts`: its tile in Insert and in the picker, a
   published form sent by the browser). What its accessibility test says a

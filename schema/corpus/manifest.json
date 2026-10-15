@@ -1259,6 +1259,96 @@
     "keyword": "enum",
     "layer": "schema"
   },
+  "invalid/stats-9-figures.json": {
+    "rule": "a stats block has at most eight figures",
+    "pointer": "/sections/2/children/0/children/2/props/items",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/stats-figure-extra-key.json": {
+    "rule": "a figure is a value and a label, nothing else: no link, no icon",
+    "pointer": "/sections/2/children/0/children/2/props/items/0/href",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/stats-figure-null.json": {
+    "rule": "a figure is an object",
+    "pointer": "/sections/2/children/0/children/2/props/items/0",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/stats-label-missing.json": {
+    "rule": "every figure says what it counts: a number alone tells a reader nothing",
+    "pointer": "/sections/2/children/0/children/2/props/items/2",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/stats-label-tab.json": {
+    "rule": "a label is one line",
+    "pointer": "/sections/2/children/0/children/2/props/items/2/label",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/stats-label-too-long.json": {
+    "rule": "a label has at most 80 characters",
+    "pointer": "/sections/2/children/0/children/2/props/items/0/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/stats-no-figures.json": {
+    "rule": "a stats block has at least one figure",
+    "pointer": "/sections/2/children/0/children/2/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/stats-style-background.json": {
+    "rule": "a stats block takes the band's background",
+    "pointer": "/sections/2/children/0/children/2/style/phone/background",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/stats-style-text-size.json": {
+    "rule": "the figures' size is the theme's",
+    "pointer": "/sections/2/children/0/children/2/style/base/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/stats-value-blank.json": {
+    "rule": "a value has a visible character",
+    "pointer": "/sections/2/children/0/children/2/props/items/1/value",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/stats-value-missing.json": {
+    "rule": "every figure has a value",
+    "pointer": "/sections/2/children/0/children/2/props/items/1",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/stats-value-newline.json": {
+    "rule": "a value is one line",
+    "pointer": "/sections/2/children/0/children/2/props/items/1/value",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/stats-value-number.json": {
+    "rule": "a value is text, written as it is shown (300+, 98%), never a number to format",
+    "pointer": "/sections/2/children/0/children/2/props/items/0/value",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/stats-value-too-long.json": {
+    "rule": "a value has at most 24 characters",
+    "pointer": "/sections/2/children/0/children/2/props/items/2/value",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/stats-with-children.json": {
+    "rule": "a stats block holds no blocks",
+    "pointer": "/sections/2/children/0/children/2/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/style-desktop-key.json": {
     "rule": "desktop is base: there is no desktop key",
     "pointer": "/sections/0/children/0/children/0/style/desktop",
@@ -1687,6 +1777,9 @@
   },
   "valid/section-space-every-step.json": {
     "rule": "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides"
+  },
+  "valid/stats-figures.json": {
+    "rule": "a stats block of one figure and one of eight, the most it holds; a value of one character and of 24, in code points too, a label of one character and of 80; values written with signs and units as they are shown; a colour of the site's own and a figure's words aligned per device"
   },
   "valid/string-escapes.json": {
     "rule": "JSON escapes: quote, backslash, slash, a letter and an accented letter as u-escapes, an emoji as a surrogate pair of two escapes, and the member name type spelled with an escaped t"

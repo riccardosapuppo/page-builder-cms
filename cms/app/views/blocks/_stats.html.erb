@@ -1,0 +1,4 @@
+<%# Figures side by side, each a value and the label that says what it counts: one description list, each figure a div of its term (the label) and its definition (the value), so a screen reader reads what a number counts before the number; site.css draws the value above the label. The colour is the colour of the values. An item that is not an object is left out. -%>
+<%- style = block_style(block) -%>
+<%- items = Array(block_props(block)["items"]).select { |item| item.is_a?(Hash) } -%>
+<%= tag.div(**block_root(block, [ "w", "w-stats", "sw-stats", %w[color align].map { |key| BlockStyle.classes(style, key) }, BlockStyle.visibility_classes(style) ], data: BlockStyle.free_color_data(style, "color"))) do %><%= tag.dl(safe_join(items.map { |item| tag.div(safe_join([ tag.dt(prop_text(item, "label")), tag.dd(prop_text(item, "value")) ])) })) %><% end %>

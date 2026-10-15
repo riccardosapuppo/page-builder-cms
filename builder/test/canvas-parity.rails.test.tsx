@@ -90,6 +90,12 @@ const responsive = checked({
           block("v1", "video", { provider: "vimeo", videoId: "76979871", title: "The same swim" }),
           block("m1", "map", { latitude: 54.5, longitude: -3.25, zoom: 13, label: "Meeting point" }),
           block("a1", "accordion", { items: [{ question: "Is it cold?", answer: "Yes.\nVery." }, { question: "Towels?", answer: "Bring two." }] }, { base: { color: "primary" } }),
+          block("st1", "stats", {
+            items: [
+              { value: "12", label: "Years on the water" }, { value: "300+", label: "Swimmers each season" }, { value: "98%", label: "Who would come back" },
+              { value: "1,200 m", label: "From the slipway to the buoy line" }, { value: "6", label: "Coaches" },
+            ],
+          }, { base: { color: "accent", align: "center" }, phone: { align: "left" } }),
           block("g1", "gallery", { items: [{ url: "/media/one.png", alt: "One" }, { url: "/media/two.png", decorative: true }, { url: "https://images.example.org/three.jpg", alt: "Three" }] }, { base: { spaceBetween: "l" }, phone: { spaceBetween: "xs" } }),
         ],
       }],

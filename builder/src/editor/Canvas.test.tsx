@@ -198,7 +198,7 @@ test("a + opens its yellow line and the picker beside it, which offers only what
   expect(within(slot as HTMLElement).getByRole("button", { name: "Add a block after Heading" }).getAttribute("aria-expanded")).toBe("true");
   // Widgets only, all of them.
   expect(within(picker).getAllByRole("button").filter((key) => key.classList.contains("pkey")).map((key) => key.textContent)).toEqual([
-    "Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion", "Form", "Logo", "Menu",
+    "Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion", "Stats", "Form", "Logo", "Menu",
   ]);
   expect(picker.textContent).toContain("Lands on the yellow line, after Heading.");
   // The search narrows them; Enter adds the first.

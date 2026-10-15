@@ -10,7 +10,7 @@ import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
   COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
   MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
-  SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
+  SPACE_TOKENS, STACK_TOKENS, STATS_ITEM_KEYS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
 
@@ -118,6 +118,8 @@ describe("the document's types match the schema", () => {
     }
     const accordionItems = properties(branch("accordion").props).items as Node;
     expect(sorted(ACCORDION_ITEM_KEYS)).toEqual(sorted(keyTable(deref(accordionItems.items as Node))));
+    const statsItems = properties(branch("stats").props).items as Node;
+    expect(sorted(STATS_ITEM_KEYS)).toEqual(sorted(keyTable(deref(statsItems.items as Node))));
     const formItems = properties(branch("form").props).items as Node;
     expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
     const menuItems = properties(branch("menu").props).items as Node;

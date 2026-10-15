@@ -13,11 +13,12 @@ the server writes for them. The editor's half is
 ## What is here
 
 - [`fixtures/`](fixtures): page documents, as JSON.
-  - `traps-text.json`: headings, rich text, buttons, icon boxes, quotes and
-    accordions whose text holds markup, entities, quotes and line breaks,
-    with `javascript:`, `data:`, `//host` and backslash links in every place
-    a link can be, and unicode (combining marks, emoji sequences,
-    right-to-left text, a no-break space, repeated spaces).
+  - `traps-text.json`: headings, rich text, buttons, icon boxes, quotes,
+    accordions and stats whose text holds markup, entities, quotes and line
+    breaks, with `javascript:`, `data:`, `//host` and backslash links in
+    every place a link can be, and unicode (combining marks, emoji
+    sequences, right-to-left text, a no-break space, repeated spaces); and
+    stats whose figures are no object, or whose list is none.
   - `traps-media.json`: images from the library, from another site, a site
     path, decorative, deleted, and with `javascript:`, `data:` and `http:`
     sources; a gallery mixing all of them; videos from both providers, an
@@ -137,7 +138,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 17 block types
+fixture, when there are fewer than 6 fixtures or one of the 18 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

@@ -123,6 +123,30 @@
                 }
               },
               "children": []
+            },
+            {
+              "id": "st-free",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "12",
+                    "label": "Years on the water"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "color": "#00695c"
+                },
+                "tablet": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "color": "#c2352b"
+                }
+              },
+              "children": []
             }
           ]
         },

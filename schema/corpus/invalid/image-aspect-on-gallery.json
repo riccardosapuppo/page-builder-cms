@@ -302,6 +302,36 @@
                   "aspect": "1:1"
                 }
               }
+            },
+            {
+              "id": "gallery-stats",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "12",
+                    "label": "Years on the water"
+                  },
+                  {
+                    "value": "300+",
+                    "label": "Swimmers each season"
+                  },
+                  {
+                    "value": "98%",
+                    "label": "Who would come back"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary",
+                  "align": "center"
+                },
+                "phone": {
+                  "align": "left"
+                }
+              }
             }
           ],
           "style": {

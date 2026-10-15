@@ -12,7 +12,7 @@ the code that talks to the server, the test harness; the page as data
 and every change to it as a command with its inverse (`src/document/`),
 the store with undo, redo and drag and drop (`src/store/`); the storage
 adapter for the CMS's API and the autosave (`src/storage/`); the React
-renderer and the fifteen widgets' definitions, held to the server's pages
+renderer and the sixteen widgets' definitions, held to the server's pages
 (`src/render/`, `src/widgets/`). On those, the editor's interface
 (`src/editor/`), in the approved design's identity: the shell, the page
 switch, the blocks to add (the Insert drawer since stage 3 bis), the

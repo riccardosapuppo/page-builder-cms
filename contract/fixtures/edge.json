@@ -28,6 +28,7 @@
             { "id": "e-iconbox-every-icon-7", "type": "iconbox", "props": { "icon": "globe", "title": "globe", "text": "g" }, "style": { "base": {} }, "children": [] },
             { "id": "e-iconbox-every-icon-8", "type": "iconbox", "props": { "icon": "info", "title": "info", "text": "i" }, "style": { "base": {} }, "children": [] },
             { "id": "e-accordion-one", "type": "accordion", "props": { "items": [ { "question": "Only one?", "answer": "Only one, and open." } ] }, "style": { "base": {} }, "children": [] },
+            { "id": "e-stats-one", "type": "stats", "props": { "items": [ { "value": "1", "label": "x" } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-quote-lines", "type": "quote", "props": { "text": "One\n\nTwo after an empty line" }, "style": { "base": {} }, "children": [] }
           ]
         }

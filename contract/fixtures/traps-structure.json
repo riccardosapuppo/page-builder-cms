@@ -41,6 +41,16 @@
               "style": { "base": { "color": "text", "align": "center" } }
             },
             {
+              "id": "s-stats-styled", "type": "stats", "children": [],
+              "props": { "items": [ { "value": "12", "label": "Centred, values in Accent" }, { "value": "300+", "label": "On the right on tablets, in Text" } ] },
+              "style": { "base": { "color": "accent", "align": "center", "visibility": "visible" }, "tablet": { "color": "text", "align": "right" }, "phone": { "align": "left", "visibility": "hidden" } }
+            },
+            {
+              "id": "s-stats-unlisted", "type": "stats", "children": [],
+              "props": { "items": [ { "value": "0", "label": "Values the schema does not list, and keys a stats block does not take" } ] },
+              "style": { "base": { "color": "#00FF00", "align": "justify\" onclick=\"alert(1)", "textSize": "display", "background": "primary" }, "tablet": { "color": "accent onclick", "align": 1 }, "phone": { "spaceInside": "xl" } }
+            },
+            {
               "id": "s-quote-styled", "type": "quote", "children": [],
               "props": { "text": "Smaller than a quote's usual step.", "attribution": "Style" },
               "style": { "base": { "textSize": "body", "typeface": "heading" } }

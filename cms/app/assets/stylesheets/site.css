@@ -427,6 +427,22 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-accordion details[open] summary::after { background: linear-gradient(var(--icon-color, var(--sw-primary)), var(--icon-color, var(--sw-primary))) center / 14px 2px no-repeat; }
 .sw-accordion details p { padding-bottom: 20px; }
 
+/* ---------- Stats ---------- */
+/* Figures side by side, as many to a row as the block holds at 140 px
+   each and four at most (a track is never narrower than a quarter of the
+   row less one gap, nor wider than the row), two to a row on a phone.
+   Each figure is its label then its value in the markup, as a screen
+   reader reads them, and runs upwards: the value above, in the headings'
+   face at the Heading 2 step, in the theme's primary unless the block
+   names a colour (the colour classes and the free colours set the block's
+   own, as a heading's); the label below, in the body's text, muted as a
+   quote's caption is. A long value breaks rather than widens its figure. */
+.sw-stats { color: var(--heading-color, var(--sw-primary)); }
+.sw-stats dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, max(140px, calc(25% - var(--space-l)))), 1fr)); gap: var(--space-xl) var(--space-l); align-items: start; margin: 0; }
+.sw-stats dl > div { display: flex; flex-direction: column-reverse; gap: var(--space-xs); min-width: 0; }
+.sw-stats dd { margin: 0; font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-2); line-height: var(--lh-heading-2); font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); }
+.sw-stats dt { color: var(--caption-color, var(--sw-muted)); }
+
 /* ---------- Form ---------- */
 /* The mock's form. A field's own colours (paper, ink, a muted border) go
    with it onto any band; its label takes the band's text colour. The
@@ -509,6 +525,7 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-icon { width: 40px; height: 40px; }
   .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
   .sw-gallery img { border-radius: 8px; }
+  .sw-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-m); }
   .sw-embed-bar { padding: 12px 14px 14px; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
   .sw-embed-bar small { font-size: 14px; }

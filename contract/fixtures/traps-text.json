@@ -159,6 +159,27 @@
               "style": { "base": {} }
             },
             {
+              "id": "t-stats", "type": "stats", "children": [],
+              "props": {
+                "items": [
+                  { "value": "<b>12</b>", "label": "Years </dt><script>alert(1)</script> & counting" },
+                  "300+",
+                  null,
+                  [ { "value": "In a list", "label": "is no figure" } ],
+                  { "value": "\"98%\" & 'more'", "label": "Who would come back &amp; say so" },
+                  { "value": 42, "label": [ "not text" ] },
+                  { "label": "No value" },
+                  { "value": "  1  000  ", "label": " Spaces at both ends " }
+                ]
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-stats-no-list", "type": "stats", "children": [],
+              "props": { "items": { "value": "1", "label": "An object where the list goes" } },
+              "style": { "base": {} }
+            },
+            {
               "id": "t-divider", "type": "divider", "children": [], "props": {},
               "style": { "base": { "color": "accent\" onmouseover=\"alert(1)" } }
             },

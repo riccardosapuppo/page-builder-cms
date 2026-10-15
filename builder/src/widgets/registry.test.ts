@@ -1,9 +1,10 @@
 // The widget registry against the schema and the approved design: one
 // definition for every widget type the schema has, in the design's
 // groups and order, named as the design's tiles are, and the widgets made
-// after it in a group of their own; each tile's icon drawn as it is held
-// (Lucide's, held to its file by ../editor/icons.test.ts); and every new
-// widget a valid block, on a valid page.
+// after it last in their group, or in a group of their own; each tile's
+// icon drawn as it is held (Lucide's, held to its file by
+// ../editor/icons.test.ts); and every new widget a valid block, on a
+// valid page.
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,7 +19,7 @@ import { validateBlockSchema, validateDocument } from "../shared/validate.ts";
 import { WidgetIcon } from "./icon.tsx";
 import { WIDGET_A11Y } from "./a11y-all.ts";
 import { LAYOUT, WIDGETS } from "./registry.ts";
-import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type IconData, type InputOf, type WidgetDefinition } from "./types.ts";
+import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type IconData, type InputOf, type WidgetDefinition, type WidgetGroup } from "./types.ts";
 
 type Element = DefaultTreeAdapterMap["element"];
 const design = parseFragment(readFileSync(join(repoRoot, "design", "index.html"), "utf8"));
@@ -43,22 +44,33 @@ function designPanel(): Array<{ title: string; tiles: Array<{ label: string; sym
   });
 }
 
-// The widgets made after the approved design, which drew the site's header
-// and footer as fixed parts of the theme: the blocks a header and a footer
-// are made of, in the last group, of their own.
+// The widgets made after the approved design. The design drew the site's
+// header and footer as fixed parts of the theme, so the blocks a header and
+// a footer are made of are in the last group, of their own; a widget of a
+// kind the design has a group for stands last in that group, after the
+// design's own tiles.
 const AFTER_DESIGN: readonly WidgetType[] = ["logo", "menu"];
 const AFTER_DESIGN_GROUP = "site";
+const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats"] };
 
 test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
 });
 
-test("Insert's groups, order and labels are the approved design's widget tiles', and the widgets after it come last, in a group of their own", () => {
+test("Insert's groups, order and labels are the approved design's widget tiles', and the widgets after it come last, in their group or in a group of their own", () => {
   const panel = designPanel().filter((group) => group.title !== "Layout");
   const groups = WIDGET_GROUPS.filter((g) => g.id !== AFTER_DESIGN_GROUP);
   expect(groups.map((g) => g.label)).toEqual(panel.map((g) => g.title));
-  const ours = groups.map((g) => ({ title: g.label, tiles: WIDGETS.filter((w) => w.group === g.id).map((w) => ({ label: w.label, symbol: `w-${w.type}` })) }));
-  expect(ours).toEqual(panel);
+  const after = (group: WidgetGroup): readonly WidgetType[] => AFTER_DESIGN_IN_GROUP[group] ?? [];
+  const designs = groups.map((g) => ({
+    title: g.label,
+    tiles: WIDGETS.filter((w) => w.group === g.id && !after(g.id).includes(w.type)).map((w) => ({ label: w.label, symbol: `w-${w.type}` })),
+  }));
+  expect(designs).toEqual(panel);
+  for (const g of groups) {
+    const types = WIDGETS.filter((w) => w.group === g.id).map((w) => w.type);
+    expect(types.slice(types.length - after(g.id).length), g.id).toEqual(after(g.id));
+  }
   expect(WIDGET_GROUPS.at(-1)?.id).toBe(AFTER_DESIGN_GROUP);
   expect(WIDGETS.filter((w) => w.group === AFTER_DESIGN_GROUP).map((w) => w.type)).toEqual(AFTER_DESIGN);
   for (const widget of WIDGETS) expect(widget.label).toBe(TYPE_NAMES[widget.type]);
@@ -92,7 +104,7 @@ const library: ImageRef = { mediaId: "m1", alt: "The bay at dawn" };
 const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorative: true };
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
   heading: [undefined], text: [undefined], button: [undefined], divider: [undefined], spacer: [undefined],
-  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], form: [undefined],
+  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], stats: [undefined], form: [undefined],
   logo: [undefined], menu: [undefined],
   image: [library, external],
   gallery: [[library], [library, external]],

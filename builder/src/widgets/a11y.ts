@@ -14,8 +14,10 @@ import type { WidgetType } from "../shared/document.ts";
 // inside the block: count of them (1 when not said), with this accessible
 // name and, for a heading, level; for a form's field, whether the
 // accessibility tree says it is required, which a screen reader announces.
+// A stats block's figures are the terms and definitions of a description
+// list.
 export interface Exposed {
-  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button" | "navigation";
+  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button" | "navigation" | "term" | "definition";
   name?: string;
   level?: number;
   count?: number;

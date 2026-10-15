@@ -22,6 +22,7 @@ export const TYPE_NAMES: Readonly<Record<BlockType, string>> = {
   iconbox: "Icon box",
   quote: "Quote",
   accordion: "Accordion",
+  stats: "Stats",
   form: "Form",
   logo: "Logo",
   menu: "Menu",
@@ -43,6 +44,7 @@ const PLURALS: Readonly<Record<ContainerType, string>> = {
   iconbox: "icon boxes",
   quote: "quotes",
   accordion: "accordions",
+  stats: "stats blocks",
   form: "forms",
   logo: "logos",
   menu: "menus",
@@ -145,10 +147,11 @@ export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<str
 };
 
 // What one item of a list is called: an image of a gallery, a question of
-// an accordion, a field of a form.
+// an accordion, a figure of a stats block, a field of a form.
 export const ITEM_NAMES: Readonly<Partial<Record<BlockType, { one: string; many: string }>>> = {
   gallery: { one: "image", many: "images" },
   accordion: { one: "question", many: "questions" },
+  stats: { one: "figure", many: "figures" },
   form: { one: "field", many: "fields" },
   menu: { one: "link", many: "links" },
 };

@@ -47,6 +47,8 @@ type AnyObject = Record<string, unknown>;
 const LINES = ["Winter series", "Short, cold swims", "Café on the jetty", "Tide tables 2026", "日本語 🎉 swims", "Slack water"] as const;
 const PARAGRAPHS = [...LINES, "Meet at the slipway.\nBring a cap."] as const;
 const HREFS = ["https://swims.example.org/join", "/pricing", "#join", "mailto:club@example.org", "tel:+44-20-7946-0958", "?season=winter"] as const;
+// A stats block's values: text written as it is shown.
+const FIGURES = ["12", "300+", "98%", "-2 °C", "1/2", "日本 3"] as const;
 const IMAGE_URLS = ["https://images.example.org/swim.jpg", "/media/pier.png"] as const;
 const MEDIA_IDS = ["m1", "m2", "abc_DEF-9"] as const;
 
@@ -155,6 +157,7 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   iconbox: fc.record({ icon: fc.constantFrom(...ICON_NAMES), title: line, text: paragraph }),
   quote: fc.record({ text: paragraph, attribution: fc.option(line, { nil: undefined }) }).map(compact),
   accordion: fc.array(fc.record({ question: line, answer: paragraph }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
+  stats: fc.array(fc.record({ value: fc.constantFrom(...FIGURES), label: line }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
   form: fc.record({
     items: fc.uniqueArray(formField, { minLength: 1, maxLength: 4, selector: (field) => field.name }),
     submitLabel: line,
@@ -414,21 +417,23 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: c.makeSetItem(doc, picked.block.id, index, formFieldUpdates(c.REMOVE, items[index] as AnyObject, edit, wish.value)), mustAccept: true };
     }
     case "items": {
-      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "form" || b.block.type === "menu");
+      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "stats" || b.block.type === "form" || b.block.type === "menu");
       const picked = at(lists, wish.pick);
       if (!picked) return null;
       const items = (picked.block.props as { items: AnyObject[] }).items;
       const gallery = picked.block.type === "gallery";
       const form = picked.block.type === "form";
       const menu = picked.block.type === "menu";
+      const stats = picked.block.type === "stats";
       // A form's new field may take a name the form has: the page must
       // refuse it then, by the rule on a form's field names.
       const fieldName = at(["name", "email", "notes", "field-4", "a", "added"], wish.item) as string;
       const newItem = gallery ? { mediaId: at(MEDIA_IDS, wish.item) as string, alt: "Added picture" }
         : form ? { name: fieldName, kind: "checkbox", label: "Added box", required: false }
           : menu ? { label: at(LINES, wish.item) as string, href: at(HREFS, wish.item) as string }
-            : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
-      const max = gallery ? 24 : form ? 20 : menu ? 12 : 30;
+            : stats ? { value: at(FIGURES, wish.item) as string, label: "Added figure" }
+              : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
+      const max = gallery ? 24 : form ? 20 : menu ? 12 : stats ? 8 : 30;
       const free = !form || !items.some((item) => item.name === fieldName);
       switch (wish.action) {
         case "insert":
@@ -442,7 +447,8 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
             ? (wish.other % 2 === 0 ? { alt: at(LINES, wish.item) as string, decorative: c.REMOVE } : { decorative: true, alt: c.REMOVE })
             : form ? formFieldUpdates(c.REMOVE, items[wish.index % items.length] as AnyObject, wish.other, wish.item)
               : menu ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { href: at(HREFS, wish.item) as string })
-                : { question: at(LINES, wish.item) as string };
+                : stats ? (wish.other % 2 === 0 ? { value: at(FIGURES, wish.item) as string } : { label: at(LINES, wish.item) as string })
+                  : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
       }

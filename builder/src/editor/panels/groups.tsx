@@ -85,6 +85,7 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   map: ["content", "shown", "advanced"],
   gallery: ["content", "spacing", "shown", "advanced"],
   iconbox: ["content", "text-color", "alignment", "shown", "advanced"],
+  stats: ["content", "text-color", "alignment", "shown", "advanced"],
   form: ["content", "shown", "advanced"],
   logo: ["content", "text-color", "alignment", "shown", "advanced"],
   menu: ["content", "text-color", "alignment", "shown", "advanced"],
@@ -197,6 +198,10 @@ function contentWords(block: WidgetBlock): string {
   if (block.type === "accordion") {
     const count = block.props.items.length;
     return `${count} ${count === 1 ? "question" : "questions"}, the first open`;
+  }
+  if (block.type === "stats") {
+    const count = block.props.items.length;
+    return `${count} ${count === 1 ? "figure" : "figures"}`;
   }
   if (block.type === "image" && block.props.decorative !== true && !block.props.alt) return "No alt text";
   if (block.type === "form") {

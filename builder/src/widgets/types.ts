@@ -49,6 +49,7 @@ export interface InputOf {
   iconbox: void;
   quote: void;
   accordion: void;
+  stats: void;
   form: void;
   logo: void;
   menu: void;

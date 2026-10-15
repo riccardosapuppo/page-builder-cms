@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "title": "Stats",
+  "sections": [
+    {
+      "id": "sf",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "sf-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "sf-one",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "1",
+                    "label": "x"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "sf-eight",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "12",
+                    "label": "Years on the water"
+                  },
+                  {
+                    "value": "300+",
+                    "label": "Swimmers each season"
+                  },
+                  {
+                    "value": "98%",
+                    "label": "Who would come back"
+                  },
+                  {
+                    "value": "1,200 m",
+                    "label": "From the slipway to the buoy line"
+                  },
+                  {
+                    "value": "-2 °C",
+                    "label": "The coldest swim"
+                  },
+                  {
+                    "value": "999999999999999999999999",
+                    "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+                  },
+                  {
+                    "value": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊",
+                    "label": "Twenty-four waves: 24 code points, 48 UTF-16 units"
+                  },
+                  {
+                    "value": "1/2",
+                    "label": "Half of us swim all winter"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "#1d4e6f",
+                  "align": "center"
+                },
+                "tablet": {
+                  "align": "right"
+                },
+                "phone": {
+                  "color": "accent",
+                  "align": "left",
+                  "visibility": "hidden"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

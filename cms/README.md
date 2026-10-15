@@ -392,7 +392,7 @@ no warnings, the same morning).
 | `POST /preview/<page id>` | a form sent from the draft preview: 403, a page saying forms are sent from the published page, and nothing kept |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
-  fifteen in all, walked by `BlocksHelper#render_document`. Every block
+  eighteen in all, walked by `BlocksHelper#render_document`. Every block
   root carries `data-block-id` and `data-block-type`, and `data-style`
   repeats the stored style for the contract with the editor's renderer.
 - **Style is by class.** [BlockStyle](app/models/block_style.rb) turns each
@@ -932,14 +932,14 @@ The letter width is how wide the Headings typeface, Archivo, is drawn:
 Narrow, Normal, Wide or Widest, from `site-letter-width`, Normal for a
 new site. Each choice gives three widths of Archivo's width axis, custom
 properties of `tokens.css` on the attribute `data-letter-width`: one
-for headings, the logo and an icon box's title, one for buttons and an
-accordion's question, one for a form's labels and a quote's caption. A
-menu keeps its own width, 110%, the one its letters are measured at for
-its fold (`schema/header-metrics.json`), so a change of width moves no
-fold. `PUT /api/site-style` takes `letterWidth` when it is given and
-keeps the style's own when it is not; a style kept before the choice
-existed took Normal. A change of it alone is a new page for every
-browser, as a tone's is.
+for headings, the logo, an icon box's title and a stats block's values,
+one for buttons and an accordion's question, one for a form's labels and
+a quote's caption. A menu keeps its own width, 110%, the one its letters
+are measured at for its fold (`schema/header-metrics.json`), so a change
+of width moves no fold. `PUT /api/site-style` takes `letterWidth` when
+it is given and keeps the style's own when it is not; a style kept before
+the choice existed took Normal. A change of it alone is a new page for
+every browser, as a tone's is.
 
 **Header and footer.** The site's parts are pages of their own kind
 (`kind`: `header` or `footer`, at most one of each), read, saved,

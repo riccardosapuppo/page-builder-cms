@@ -111,6 +111,26 @@
               }
             },
             {
+              "id": "uni-st",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "٣٤٥ €",
+                    "label": "Größe des Vereins"
+                  },
+                  {
+                    "value": "約 40 分",
+                    "label": "潮が止まる時間"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
               "id": "uni-ib",
               "type": "iconbox",
               "props": {

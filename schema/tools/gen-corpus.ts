@@ -57,6 +57,8 @@ const iconbox = (id: string, icon: string, title: string, body: string): J => bl
 const quote = (id: string, body: string, attribution?: string): J =>
   block(id, "quote", attribution === undefined ? { text: body } : { text: body, attribution });
 const accordion = (id: string, items: J[]): J => block(id, "accordion", { items });
+const stats = (id: string, items: J[], style: Style = plain()): J => block(id, "stats", { items }, [], style);
+const figure = (value: string, label: string): J => ({ value, label });
 const form = (id: string, items: J[], submitLabel: string, confirmation: string): J => block(id, "form", { items, submitLabel, confirmation });
 const field = (name: string, kind: string, label: string, required: boolean, maxLength?: number): J =>
   (maxLength === undefined ? { name, kind, label, required } : { name, kind, label, required, maxLength });
@@ -110,6 +112,11 @@ function landing(): J {
           { url: "https://images.example.org/bay/buoys.jpg", alt: "The buoy line across the bay" },
           { mediaId: "g-wake", decorative: true },
         ]),
+        stats("gallery-stats", [
+          figure("12", "Years on the water"),
+          figure("300+", "Swimmers each season"),
+          figure("98%", "Who would come back"),
+        ], { base: { color: "primary", align: "center" }, phone: { align: "left" } }),
       ]),
     ], { anchor: "gallery" }),
     section("meet", [
@@ -208,6 +215,7 @@ const MAP = P("meet-map");
 const QUOTE = P("quote-text");
 const QIMG = P("quote-image");
 const ACC = P("questions-list");
+const STATS = P("gallery-stats");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
@@ -435,6 +443,7 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     button("uni-b", "Più info", "/info"),
     quote("uni-q", `«Il mare d’inverno»${NEWLINE}non è un concetto.`, "Anonimo"),
     accordion("uni-a", [{ question: "¿Qué?", answer: "Ça va." }]),
+    stats("uni-st", [figure("٣٤٥ €", "Größe des Vereins"), figure("約 40 分", "潮が止まる時間")]),
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
     form("uni-f", [field("nom", "text", "Prénom et nom", true, 80), field("accord", "checkbox", "J’accepte d’être rappelé·e ☎", false)], "Envoyer ✉", `Merci ! À bientôt.${NEWLINE}— Le club`),
@@ -463,6 +472,21 @@ valid("form-fields-every-kind", "every kind of field, required and not; a line o
       ...Array.from({ length: 11 }, (_, k) => field(`field-${k + 10}`, "text", `Field ${k + 10}`, false, 100)),
     ], "Send", "Sent."),
     form("fm-again", [field("a", "text", "The same name as the first form's", true, 10)], "Send this one", "This one is sent too."),
+  ])]),
+]));
+valid("stats-figures", "a stats block of one figure and one of eight, the most it holds; a value of one character and of 24, in code points too, a label of one character and of 80; values written with signs and units as they are shown; a colour of the site's own and a figure's words aligned per device", doc("Stats", [
+  section("sf", [column("sf-1", [
+    stats("sf-one", [figure("1", "x")]),
+    stats("sf-eight", [
+      figure("12", "Years on the water"),
+      figure("300+", "Swimmers each season"),
+      figure("98%", "Who would come back"),
+      figure("1,200 m", "From the slipway to the buoy line"),
+      figure("-2 °C", "The coldest swim"),
+      figure("9".repeat(24), "L".repeat(80)),
+      figure(cp(0x1f30a).repeat(24), "Twenty-four waves: 24 code points, 48 UTF-16 units"),
+      figure("1/2", "Half of us swim all winter"),
+    ], { base: { color: "#1d4e6f", align: "center" }, tablet: { align: "right" }, phone: { color: "accent", align: "left", visibility: "hidden" } }),
   ])]),
 ]));
 valid("text-inner-nbsp", "a no-break space inside text with visible letters is fine; only all-blank text is refused", doc("Nbsp", [
@@ -824,6 +848,26 @@ invalid("accordion-no-items", "an accordion has at least one item", `${ACC}/prop
 invalid("accordion-item-missing-answer", "every question has an answer", `${ACC}/props/items/0`, "required", (d) => { delete at(d, ACC).props.items[0].answer; });
 invalid("accordion-item-extra-key", "items are closed: which one is open is not stored", `${ACC}/props/items/0/open`, "additionalProperties", (d) => { at(d, ACC).props.items[0].open = true; });
 invalid("accordion-question-blank", "a question has a visible character", `${ACC}/props/items/1/question`, "pattern", (d) => { at(d, ACC).props.items[1].question = IDEOGRAPHIC_SPACE; });
+
+// =============================== INVALID: stats =================================
+const FIGURE = (k: number): string => `${STATS}/props/items/${k}`;
+invalid("stats-no-figures", "a stats block has at least one figure", `${STATS}/props/items`, "minItems", (d) => { at(d, STATS).props.items = []; });
+invalid("stats-9-figures", "a stats block has at most eight figures", `${STATS}/props/items`, "maxItems", (d) => {
+  at(d, STATS).props.items.push(...Array.from({ length: 6 }, (_, k) => figure(`${k + 1}`, `More ${k + 1}`)));
+});
+invalid("stats-figure-null", "a figure is an object", FIGURE(0), "type", (d) => { at(d, STATS).props.items[0] = null; });
+invalid("stats-value-missing", "every figure has a value", FIGURE(1), "required", (d) => { delete at(d, STATS).props.items[1].value; });
+invalid("stats-label-missing", "every figure says what it counts: a number alone tells a reader nothing", FIGURE(2), "required", (d) => { delete at(d, STATS).props.items[2].label; });
+invalid("stats-figure-extra-key", "a figure is a value and a label, nothing else: no link, no icon", `${FIGURE(0)}/href`, "additionalProperties", (d) => { at(d, STATS).props.items[0].href = "/about"; });
+invalid("stats-value-number", "a value is text, written as it is shown (300+, 98%), never a number to format", `${FIGURE(0)}/value`, "type", (d) => { at(d, STATS).props.items[0].value = 12; });
+invalid("stats-value-blank", "a value has a visible character", `${FIGURE(1)}/value`, "pattern", (d) => { at(d, STATS).props.items[1].value = `${NBSP}${ZERO_WIDTH_SPACE}`; });
+invalid("stats-value-newline", "a value is one line", `${FIGURE(1)}/value`, "not", (d) => { at(d, STATS).props.items[1].value = `300${NEWLINE}+`; });
+invalid("stats-value-too-long", "a value has at most 24 characters", `${FIGURE(2)}/value`, "maxLength", (d) => { at(d, STATS).props.items[2].value = "9".repeat(25); });
+invalid("stats-label-too-long", "a label has at most 80 characters", `${FIGURE(0)}/label`, "maxLength", (d) => { at(d, STATS).props.items[0].label = "x".repeat(81); });
+invalid("stats-label-tab", "a label is one line", `${FIGURE(2)}/label`, "not", (d) => { at(d, STATS).props.items[2].label = `Who would${TAB}come back`; });
+invalid("stats-style-text-size", "the figures' size is the theme's", `${STATS}/style/base/textSize`, "additionalProperties", (d) => { at(d, STATS).style.base.textSize = "display"; });
+invalid("stats-style-background", "a stats block takes the band's background", `${STATS}/style/phone/background`, "additionalProperties", (d) => { at(d, STATS).style.phone.background = "soft"; });
+invalid("stats-with-children", "a stats block holds no blocks", `${STATS}/children`, "maxItems", (d) => { at(d, STATS).children.push(heading("in-stats", 2, "In the stats")); });
 
 // =============================== INVALID: form ==================================
 const FIELD = (k: number): string => `${FORM}/props/items/${k}`;

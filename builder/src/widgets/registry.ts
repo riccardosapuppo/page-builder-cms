@@ -1,6 +1,7 @@
 // Every widget, in the Insert drawer's order (the approved design's: Basic,
-// Media, Content, Forms; then Site, the header's and footer's blocks), and
-// the renderer of each type. registry.test.ts
+// Media, Content, Forms; then Site, the header's and footer's blocks; a
+// widget made after the design last in its group, as stats is in
+// Content), and the renderer of each type. registry.test.ts
 // holds the list to the schema's widget types, one definition each.
 //
 // Adding a widget is one commit: the schema's branch, its folder here
@@ -23,6 +24,7 @@ import { map } from "./map/definition.ts";
 import { menu } from "./menu/definition.ts";
 import { quote } from "./quote/definition.ts";
 import { spacer } from "./spacer/definition.ts";
+import { stats } from "./stats/definition.ts";
 import { text } from "./text/definition.ts";
 import type { AnyWidgetDefinition, IconData } from "./types.ts";
 import { video } from "./video/definition.ts";
@@ -30,7 +32,7 @@ import { video } from "./video/definition.ts";
 export const WIDGETS: readonly AnyWidgetDefinition[] = [
   heading, text, image, button, divider, spacer,
   gallery, video, map,
-  iconbox, quote, accordion,
+  iconbox, quote, accordion, stats,
   form,
   logo, menu,
 ];

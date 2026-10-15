@@ -14,8 +14,9 @@ import { A11Y as map } from "./map/a11y.ts";
 import { A11Y as iconbox } from "./iconbox/a11y.ts";
 import { A11Y as quote } from "./quote/a11y.ts";
 import { A11Y as accordion } from "./accordion/a11y.ts";
+import { A11Y as stats } from "./stats/a11y.ts";
 import { A11Y as form } from "./form/a11y.ts";
 import { A11Y as logo } from "./logo/a11y.ts";
 import { A11Y as menu } from "./menu/a11y.ts";
 
-export const WIDGET_A11Y: readonly WidgetA11y[] = [heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, form, logo, menu];
+export const WIDGET_A11Y: readonly WidgetA11y[] = [heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, stats, form, logo, menu];

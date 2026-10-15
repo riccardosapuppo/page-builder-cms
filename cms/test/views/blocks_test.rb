@@ -37,6 +37,7 @@ class BlocksTest < ActionView::TestCase
       block("w-iconbox", "iconbox", { "icon" => "sunrise", "title" => "Dawn swims", "text" => "Twice a week." }),
       block("w-quote", "quote", { "text" => "Cold water, hot tea.", "attribution" => "A member" }),
       block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] }),
+      block("w-stats", "stats", { "items" => [ { "value" => "12", "label" => "Years on the water" }, { "value" => "300+", "label" => "Swimmers each season" } ] }),
       block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }),
       block("w-logo", "logo", { "name" => "Slack Water" }),
       block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] })
@@ -69,7 +70,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion form logo menu], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats form logo menu], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -201,6 +202,21 @@ class BlocksTest < ActionView::TestCase
     details = html.css("[data-block-type=accordion] details")
     assert_equal [ "How cold?", "Wetsuit?" ], details.map { |d| d.at_css("summary").text }
     assert_equal [ true, false ], details.map { |d| d.key?("open") }
+    assert_empty html.css("script")
+  end
+
+  test "the stats are one description list, each figure its label then its value, and an item that is no object is left out" do
+    items = [ { "value" => "12", "label" => "Years on the water" }, "300+", nil, { "value" => "98%", "label" => "Who would come back" }, { "value" => 7 } ]
+    style = { "base" => { "color" => "#1d4e6f", "align" => "center" }, "phone" => { "color" => "accent", "align" => "left", "visibility" => "hidden" } }
+    html = html_of(page(block("st", "stats", { "items" => items }, style: style)))
+
+    root = html.at_css("[data-block-id=st]")
+    assert_equal %w[w w-stats sw-stats phone-fg-accent align-center phone-align-left hide-phone], root["class"].split
+    assert_equal "#1d4e6f", root["data-fg"]
+    assert_equal %w[dl], root.element_children.map(&:name)
+    figures = root.css("dl > div")
+    assert_equal [ %w[dt dd] ] * 3, figures.map { |figure| figure.element_children.map(&:name) }
+    assert_equal [ [ "Years on the water", "12" ], [ "Who would come back", "98%" ], [ "", "" ] ], figures.map { |figure| [ figure.at_css("dt").text, figure.at_css("dd").text ] }
     assert_empty html.css("script")
   end
 
@@ -349,6 +365,7 @@ class BlocksTest < ActionView::TestCase
       block("i", "iconbox", { "icon" => "cup", "title" => trap, "text" => trap }),
       block("q", "quote", { "text" => trap, "attribution" => trap }),
       block("a", "accordion", { "items" => [ { "question" => trap, "answer" => trap } ] }),
+      block("s", "stats", { "items" => [ { "value" => trap, "label" => trap } ] }),
       block("v", "video", { "provider" => "vimeo", "videoId" => "76979871", "title" => trap }),
       block("m", "map", { "latitude" => 1, "longitude" => 2, "zoom" => 3, "label" => trap }),
       block("p", "image", { "mediaId" => "hero", "alt" => trap }),
@@ -357,7 +374,7 @@ class BlocksTest < ActionView::TestCase
 
     assert_empty html.css("b, [onerror]")
     assert_equal [ "hero.png" ], html.css("img").map { |img| img["src"].split("/").last }
-    %w[h t b i q a v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    %w[h t b i q a s v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
     assert_equal trap, html.at_css("[data-block-id=p] img")["alt"]
   end
 

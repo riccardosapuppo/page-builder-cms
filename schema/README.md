@@ -85,8 +85,8 @@ The page document's one schema, and the design tokens it names.
   every device, as the site's header keeps its row. A section of one
   column names none: the schema refuses it there.
 - **Widgets:** heading, text (rich text), image, button, divider, spacer,
-  gallery, video, map, icon box, quote, accordion, form, logo, menu. The
-  last two are what a header is made of: the logo is the theme's mark
+  gallery, video, map, icon box, quote, accordion, stats, form, logo, menu.
+  The last two are what a header is made of: the logo is the theme's mark
   with the site's name beside it, at most 40 characters, or the mark
   alone; a menu is its name for a screen reader, at most 40 characters,
   and 1 to 12 links, each a label of at most 40 characters and an `href`.
@@ -98,6 +98,10 @@ The page document's one schema, and the design tokens it names.
   has a `name`, the key its answers are kept under, made by the editor
   and never shown, so a label can change and the answers still line up.
   The form stores no address to send to: it is sent to the page's own.
+- **Stats are one to eight figures**, each a value of at most 24
+  characters and the label that says what it counts, of at most 80, both
+  one line. The value is text, written as it is shown (`300+`, `98%`,
+  `1,200 m`), never a number the page would format.
 - **Style is by token name.** `style.base` applies on every device;
   `style.tablet` and `style.phone` hold only what differs there. A key that
   is absent means "as in base"; nothing is ever `null`, and an empty
@@ -254,9 +258,8 @@ So every pattern here:
 - `valid/`: documents both must accept. The base page with every widget
   and overrides on every device, the smallest page, a page of exactly 500
   blocks, rich text nested to the depth limit, every token, every link
-  form, every icon and video provider, every kind of form field,
-  non-ASCII text, escapes, integral
-  floats.
+  form, every icon and video provider, every kind of form field, stats
+  of one figure and of eight, non-ASCII text, escapes, integral floats.
 - `invalid/`: documents both must refuse. Each is the base page with **one**
   change.
 - `upgrade/`: documents of an older `schemaVersion`. Empty, because version
@@ -408,7 +411,7 @@ The first six were run on 8 October 2026 on the corpus as it stood then,
 - **Dispatch.** Wherever if/then branches dispatch on a property's const,
   every value of that property's enum has exactly one branch, every branch
   is for a value of the enum, and every `if` requires the property, so a
-  block without a type runs no branch. That covers the 15 block types, the
+  block without a type runs no branch. That covers the 18 block types, the
   video providers, the kinds of a form's field, the rich-text nodes and
   the marks.
 - **Marks:** every mark type of the enum has exactly one entry in the rule
