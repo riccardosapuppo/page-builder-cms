@@ -175,6 +175,7 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
     case "quote": return fc.record({ text: paragraph(500), attribution: fc.option(line(120), { nil: undefined }) }).map(compact);
     case "accordion": return fc.array(fc.record({ question: line(200), answer: paragraph(2000) }), { minLength: 1, maxLength: 4 }).map((items) => ({ items }));
     case "stats": return fc.array(fc.record({ value: line(24), label: line(80) }), { minLength: 1, maxLength: 8 }).map((items) => ({ items }));
+    case "steps": return fc.array(fc.record({ title: line(120), text: paragraph(1000) }), { minLength: 2, maxLength: 10 }).map((items) => ({ items }));
     case "form": return fc.record({
       items: fc.uniqueArray(formField, { minLength: 1, maxLength: 5, selector: (field) => field.name }),
       submitLabel: line(60),

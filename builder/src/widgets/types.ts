@@ -50,6 +50,7 @@ export interface InputOf {
   quote: void;
   accordion: void;
   stats: void;
+  steps: void;
   form: void;
   logo: void;
   menu: void;

@@ -2,12 +2,13 @@
 
 One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
-`map/`, `iconbox/`, `quote/`, `accordion/`, `stats/`, `form/`, `logo/`,
-`menu/`. The last two are the blocks a header and a footer are made of,
-in Insert's Site group, after the approved design's groups, their tiles
-drawn in the design's language; a page may hold them too. Stats came
-after the design too, a widget of a kind it has a group for: it stands
-last in Content, after the design's own tiles. Each holds:
+`map/`, `iconbox/`, `quote/`, `accordion/`, `stats/`, `steps/`, `form/`,
+`logo/`, `menu/`. The last two are the blocks a header and a footer are
+made of, in Insert's Site group, after the approved design's groups, their
+tiles drawn in the design's language; a page may hold them too. Stats and
+steps came after the design too, widgets of a kind it has a group for:
+they stand last in Content, after the design's own tiles, in the order
+they were made. Each holds:
 
 - `definition.ts`: the type, its group and label in the Insert drawer and
   the "+"'s picker (the
@@ -77,8 +78,8 @@ Three need something first, and their definition says which:
 `registry.test.ts`: one definition for each widget type of the schema;
 the panel's groups, order and labels equal to the approved design's
 (read from `design/index.html`), with the widgets made after it last in
-their group (stats) or in a group of their own (Site); every tile's icon
-drawn as its shapes are held, with no warning from React
+their group (stats, steps) or in a group of their own (Site); every
+tile's icon drawn as its shapes are held, with no warning from React
 (`../editor/icons.test.ts` holds the shapes to their Lucide files); every
 new widget a valid block, and a page holding one of each a valid page.
 The contract test checks each widget's traps exist, in a fixture, with
@@ -107,7 +108,10 @@ alone, after the twelve others, and its commit holds every place below.
   props' names in the history, and the name of an item of its list.
   `src/editor/names.ts` says what the Outline shows after its name, and
   `src/editor/panels/groups.tsx` its groups and what its first says
-  closed.
+  closed. A colour that is neither its words nor its lines (a steps
+  block's discs) takes a group of its own there, named after what it
+  colours, and the same name for its setting in `labelOf` of
+  `src/editor/panels/StyleFields.tsx`.
 - **A list of items**, for a widget that has one (a gallery's images, an
   accordion's questions, a form's fields): the name of one item and of
   many in `ITEM_NAMES` (`src/document/labels.ts`), and the order of an
@@ -120,7 +124,8 @@ alone, after the twelve others, and its commit holds every place below.
   first (`InputOf`) and, for a new group of the design's Insert, the group;
   and in `registry.test.ts`, its input there, and for a widget the
   approved design did not draw, its place among those made after it
-  (stats is one: last in Content, after the design's tiles).
+  (stats and steps are two: last in Content, after the design's tiles,
+  in the order they were made).
 - **The browser tests**: the widget's own, `e2e/<type>.spec.ts` (the
   form's is `e2e/form.spec.ts`: its tile in Insert and in the picker, a
   published form sent by the browser). What its accessibility test says a
@@ -130,7 +135,9 @@ alone, after the twelve others, and its commit holds every place below.
   no line there; the form needed it taught to check a field's `required`
   (`required` and the roles of a field and a button in `Exposed` of
   `src/widgets/a11y.ts`, the tree read by `e2e/helpers/ax.ts`), and a
-  widget with something else to say about the tree does the same.
+  widget with something else to say about the tree does the same. The
+  steps' own test reads there the numbers the stylesheet draws, which the
+  page's markup does not hold (`axTexts`).
 - **The server**: its partial in `cms/app/views/blocks/`, its type in
   `BlocksHelper::WIDGET_TYPES`, its look in
   `cms/app/assets/stylesheets/site.css`, and its view test in

@@ -66,7 +66,7 @@ const sizeStep = fc.oneof({ weight: 5, arbitrary: fc.constantFrom("display", "he
 const sizeSides = fc.oneof({ weight: 5, arbitrary: fc.record({ textSize: sizeStep }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const sizeStyle = fc.oneof({ weight: 5, arbitrary: fc.record({ base: sizeSides, tablet: sizeSides, phone: sizeSides }, { requiredKeys: [] }) }, { weight: 1, arbitrary: anyJson });
 const headerBlock = fc.oneof(
-  { weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "Image", "") }) },
+  { weight: 5, arbitrary: fc.record({ type: fc.constantFrom("logo", "menu", "button", "heading", "text", "image", "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "Image", "") }) },
   { weight: 3, arbitrary: fc.record({ type: fc.constantFrom("heading", "text"), props: fc.oneof(fc.record({ level: fc.oneof(fc.integer({ min: 0, max: 5 }), fc.constantFrom(2.5, "1", null)) }, { requiredKeys: [] }), anyJson), style: sizeStyle }, { requiredKeys: ["type"] }) },
   { weight: 1, arbitrary: anyJson },
 );

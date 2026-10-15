@@ -52,13 +52,14 @@ export interface GroupSpec {
 // The style groups each type has, by the keys they hold, in the layout's
 // order around the widget's own content and Shown on. Every key a type
 // accepts is in exactly one of its groups (groups.test.tsx holds it).
-type StyleGroupId = "size" | "type" | "colors" | "text-color" | "line-color" | "shape" | "spacing" | "background" | "alignment";
+type StyleGroupId = "size" | "type" | "colors" | "text-color" | "line-color" | "disc-color" | "shape" | "spacing" | "background" | "alignment";
 const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly StyleKey[] }>> = {
   size: { name: "Size and color", keys: ["textSize", "typeface", "color"] },
   type: { name: "Text size and color", keys: ["textSize", "color"] },
   colors: { name: "Colors", keys: ["background", "color"] },
   "text-color": { name: "Text color", keys: ["color"] },
   "line-color": { name: "Line color", keys: ["color"] },
+  "disc-color": { name: "Disc color", keys: ["color"] },
   shape: { name: "Shape", keys: ["aspect"] },
   spacing: { name: "Spacing", keys: ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween"] },
   background: { name: "Background", keys: ["background"] },
@@ -86,6 +87,7 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   gallery: ["content", "spacing", "shown", "advanced"],
   iconbox: ["content", "text-color", "alignment", "shown", "advanced"],
   stats: ["content", "text-color", "alignment", "shown", "advanced"],
+  steps: ["content", "disc-color", "shown", "advanced"],
   form: ["content", "shown", "advanced"],
   logo: ["content", "text-color", "alignment", "shown", "advanced"],
   menu: ["content", "text-color", "alignment", "shown", "advanced"],
@@ -158,6 +160,7 @@ function styleWords(id: StyleGroupId, keys: readonly StyleKey[], { block, device
     }
     case "text-color":
     case "line-color":
+    case "disc-color":
       words = colorWord("Theme default");
       break;
     case "background": {
@@ -202,6 +205,10 @@ function contentWords(block: WidgetBlock): string {
   if (block.type === "stats") {
     const count = block.props.items.length;
     return `${count} ${count === 1 ? "figure" : "figures"}`;
+  }
+  if (block.type === "steps") {
+    const count = block.props.items.length;
+    return `${count} ${count === 1 ? "step" : "steps"}`;
   }
   if (block.type === "image" && block.props.decorative !== true && !block.props.alt) return "No alt text";
   if (block.type === "form") {

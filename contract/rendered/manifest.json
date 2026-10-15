@@ -2,35 +2,35 @@
   "about": "Written by `UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb` from cms/. See contract/README.md.",
   "media": "ContractMedia: every mediaId is /media/<id>.png, 800 x 600; an id starting with \"missing\" has no image.",
   "fixtures": {
-    "edge.json": "6d81ed24571ff0f75c9462e70a7f9eb452f6f721175a5fc26f160b84fd3aca0d",
+    "edge.json": "527f697124a5ea40d50438eb3cb29d007cba0005cb0419759f2331f9156befcd",
     "empty.json": "da64b1119befdc62fd6ed691cc5bd3a6a8e199ff2449e21998a9d2542cdd9f61",
-    "free-colors.json": "94051891d3fe1d32387a2e857a84de28923f69de2bb3067ba98b8146c49d03ce",
+    "free-colors.json": "308b576a5b2377f698e724917789451cc0efeb87b8a5f68692139766b24ce65e",
     "large-500.json": "3f5c33b8c838e7d999e5bda48cd421835fc89195593938ecba7899b74ee5fa5a",
-    "site-own.json": "2e40212469c163158d71db851dd1e520b0b65a0fa3d65bb6cfe140648f706c8c",
+    "site-own.json": "8fa9dfdc16a48faaaf7bfece968594000af345f5984bf5a8579a3de42826fc8c",
     "traps-form.json": "07d2f4539895538d511faea86f89ed09b1005d93b6dab1c8b7940fedc9613b19",
     "traps-media.json": "a0689b8131c7ecaba894de4d9f2f4b15667decdacfa3b74654985d7ac044050a",
     "traps-site.json": "ee756d81b212800bc7a209c693c4f3aae4ecc60a9791f17b9322cd172cfd74dd",
-    "traps-structure.json": "807c3a9f1c6aa7a51b9b28d40e2ba85a992fc8af187f862819a41b9672d4bcce",
-    "traps-text.json": "1b1c497783695cade9262f792508f9d12e63ab6be4ff5fde29cee4804515270f"
+    "traps-structure.json": "a55bb4d0e3e843be73fc631a9a1bf335567332b053dc2aeb6ef49f1743b92147",
+    "traps-text.json": "b328880ef753714e057f2be4f8c20c94ad88cd8663ab3f09ff55c932d3e04eda"
   },
   "rendered": {
-    "edge.html": "0d732a096b7edc5a23422ada292800dd893c712d85280e4b5f8fea252deb0c6b",
+    "edge.html": "dd592095f919a9ad2f3ef6f670db20382374de37fe16cd0064782624e29362b2",
     "empty.html": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "free-colors.html": "33b4233cd4586ae1dea74092e09756efd9bdd2b9e6091d82c16a90a0c145e214",
+    "free-colors.html": "206b4b219fee9c8474d29d6158b1887dcbd11071cd0a68d6e3e31dfcac877e31",
     "large-500.html": "35cf074a83c4fbf6638e9106d292f3eefae79c7b9ff5a8b2a39afcef95b7c3bc",
-    "site-own.html": "5b5a810b28c9560a90ed202a43637141427b9e117777dadb9b535f103b23fde0",
+    "site-own.html": "1b2df67f5daaa3a6084fcae54c97aafe446a367ad30ddbf215ac272e6a1d2324",
     "traps-form.html": "9db7e3b9223c5d7607708497e1b9433a43479861a8babb1a7070627f729bd13d",
     "traps-media.html": "6db9387e1bb472e41fc3752eccda601a5c4cfbcdd9ec2c7f00aa688acf283dd4",
     "traps-site.html": "4d0bd36798833d1d70653026ccad510ecd607bfea1d64a347db693c025806be3",
-    "traps-structure.html": "7745ddb54d3e8475b6a9288d06c0bda9c21f6275743ad3176e9aaa8188a24d61",
-    "traps-text.html": "faee0840e25071cc293aa395d6676b850646b7340aa0c77f2ad8989fcee7dc7e"
+    "traps-structure.html": "14a35f68ff60b0efbf2244f2a88c60462b20b3720d599e5dafe5c213535ebecc",
+    "traps-text.html": "07c04ccbd28ad5992983c517646f05ff831fa3e0a731dcc56e7689f76fe4715c"
   },
   "renderer": {
-    "cms/app/helpers/blocks_helper.rb": "1723fb354d87c34af2610dac82041a02617da2924e81cb5d13d3cb26eaebc42c",
+    "cms/app/helpers/blocks_helper.rb": "4d50e030fb12519a276794f991548621463a7bc371742ab6e7a24b8c07152318",
     "cms/app/helpers/rich_text_helper.rb": "b9d9dc7105fea2a4e536f6851c19ea7c49ecb95da3559aa5f3b126e004a19426",
     "cms/app/models/block_style.rb": "903c0b2c39ffaa6fde80d2bcacf6b81f2b7fa2ecde026fb3d1da65bf51f3bb86",
     "cms/app/models/form_block.rb": "a66401ff4783c7a20ba28822fb9615ae6b3810e6fbc4d21adbec9e183bdeab91",
-    "cms/app/models/render_policy.rb": "7bb2bfc989a170d5a3776d4d1845483f75a71441bc7f6eb143ae0479de118ce8",
+    "cms/app/models/render_policy.rb": "82459c1ecf90e04ede14ba3908e1c93b5185aed84959054b1020c9762119cb06",
     "cms/app/models/site_icons.rb": "350a0a3c37710da56c52c2051da95d348119760a42aae5c4033abefc2ff7f0bd",
     "cms/app/views/blocks/_accordion.html.erb": "364f74b2db68d4ba89661630a77bc4d350feb6d614336dfd6943dd8690de35c9",
     "cms/app/views/blocks/_block.html.erb": "a6b0e6a36d350854e468a49a6d818ea719af5fbcaafb05cdc56e3efac93a30f5",
@@ -49,11 +49,12 @@
     "cms/app/views/blocks/_section.html.erb": "78a9530122cd29beee6b6da19f6eb944f6167ac300cf50a4918d8969efc47843",
     "cms/app/views/blocks/_spacer.html.erb": "90496c09e14e5331c4f1b1ae848cdfdbee5df1a7d75832fbbae5c76fbdbee249",
     "cms/app/views/blocks/_stats.html.erb": "d72e22c5f342dfa2d688d01d312aebf64e9103991ed34ddd0ae31d68652baef3",
+    "cms/app/views/blocks/_steps.html.erb": "efd019493470d381550894d7b43a6dd442e6b1c2ea99bcc959269898cb17a45b",
     "cms/app/views/blocks/_text.html.erb": "de530b36ed7d5f1c3d911addd4089b429122e346b3f440c48318d318b1836c81",
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
     "cms/lib/site_theme/token_css.rb": "4a557a84109d31b8e0184df101a2ba5fbbb685e0885e1c38dcd6e7efdfe2d1e5",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
-    "schema/block-document.schema.json": "9d2e56cc02962fc64c826d9c982c1f8e68f9bb703e209e842b6c2c3955fff88f",
+    "schema/block-document.schema.json": "a96c5ec2940f1db176c847b4ca2467d71614788e4f275e602c90e499acb5a708",
     "schema/icons.svg": "86273c3534a9d322caa64654f5dbc2034b237e8edb5f786491261a0468796562"
   }
 }

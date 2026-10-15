@@ -42,7 +42,7 @@ export type StyleKey = Exclude<keyof StyleTokens, "visibility">;
 // The setting's name where the type means it its own way.
 export function labelOf(type: BlockType, key: StyleKey): string {
   if (key === "spaceBetween") return type === "section" ? "Space between columns" : type === "gallery" ? "Space between images" : "Space between widgets";
-  if (key === "color") return type === "divider" || type === "accordion" ? "Line color" : "Text color";
+  if (key === "color") return type === "divider" || type === "accordion" ? "Line color" : type === "steps" ? "Disc color" : "Text color";
   if (key === "textSize") return type === "column" ? "Text size in this column" : "Text size";
   if (key === "verticalAlign") return "Vertical alignment";
   if (key === "align") return "Alignment";
@@ -368,9 +368,10 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
             const open = picking?.id === block.id && picking.key === key;
             const slots = key === "background" ? SWATCH_ORDER.filter((slot) => (BACKGROUND_TOKENS as readonly string[]).includes(slot)).map(swatch) : SWATCH_ORDER.map(swatch);
             const choices: Choice<string>[] = [...(key === "background" ? [{ value: "none", label: "None" }] : []), ...slots];
-            // A divider's and an accordion's colour is their lines', not
-            // words: no contrast of words to say.
-            const words = key === "color" ? !(block.type === "divider" || block.type === "accordion") : true;
+            // A divider's and an accordion's colour is their lines', a
+            // steps block's its discs', not words: no contrast of words to
+            // say.
+            const words = key === "color" ? !(block.type === "divider" || block.type === "accordion" || block.type === "steps") : true;
             const own = key === "color" ? ownColor !== null : ownBackground !== null && ownBackground !== "none";
             const start: FreeColor = free ?? normalizeHex(key === "color" ? keptColours.wordsHex : keptColours.backgroundHex) ?? "#000000";
             const check = contrastWords(contrastRatio(wordsHex, backgroundHex));

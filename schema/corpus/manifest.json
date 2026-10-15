@@ -1349,6 +1349,96 @@
     "keyword": "maxItems",
     "layer": "schema"
   },
+  "invalid/steps-11-steps.json": {
+    "rule": "a steps block has at most ten steps",
+    "pointer": "/sections/5/children/0/children/2/props/items",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/steps-one-step.json": {
+    "rule": "a steps block has at least two steps: one alone is no order to follow",
+    "pointer": "/sections/5/children/0/children/2/props/items",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/steps-step-extra-key.json": {
+    "rule": "a step is a title and a text, nothing else: its number is the page's, never stored",
+    "pointer": "/sections/5/children/0/children/2/props/items/0/number",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/steps-step-string.json": {
+    "rule": "a step is an object, never its title alone",
+    "pointer": "/sections/5/children/0/children/2/props/items/0",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/steps-style-align.json": {
+    "rule": "the steps stand where their column puts them",
+    "pointer": "/sections/5/children/0/children/2/style/base/align",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/steps-style-text-size.json": {
+    "rule": "the steps' size is the theme's",
+    "pointer": "/sections/5/children/0/children/2/style/tablet/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/steps-text-blank.json": {
+    "rule": "a text has a visible character",
+    "pointer": "/sections/5/children/0/children/2/props/items/0/text",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/steps-text-missing.json": {
+    "rule": "every step has a text",
+    "pointer": "/sections/5/children/0/children/2/props/items/2",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/steps-text-tab.json": {
+    "rule": "a text may break its lines, and holds no other control character",
+    "pointer": "/sections/5/children/0/children/2/props/items/2/text",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/steps-text-too-long.json": {
+    "rule": "a text has at most 1000 characters",
+    "pointer": "/sections/5/children/0/children/2/props/items/2/text",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/steps-title-blank.json": {
+    "rule": "a title has a visible character",
+    "pointer": "/sections/5/children/0/children/2/props/items/1/title",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/steps-title-missing.json": {
+    "rule": "every step has a title",
+    "pointer": "/sections/5/children/0/children/2/props/items/1",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/steps-title-newline.json": {
+    "rule": "a title is one line",
+    "pointer": "/sections/5/children/0/children/2/props/items/1/title",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/steps-title-too-long.json": {
+    "rule": "a title has at most 120 characters",
+    "pointer": "/sections/5/children/0/children/2/props/items/0/title",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/steps-with-children.json": {
+    "rule": "a steps block holds no blocks",
+    "pointer": "/sections/5/children/0/children/2/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/style-desktop-key.json": {
     "rule": "desktop is base: there is no desktop key",
     "pointer": "/sections/0/children/0/children/0/style/desktop",
@@ -1780,6 +1870,9 @@
   },
   "valid/stats-figures.json": {
     "rule": "a stats block of one figure and one of eight, the most it holds; a value of one character and of 24, in code points too, a label of one character and of 80; values written with signs and units as they are shown; a colour of the site's own and a figure's words aligned per device"
+  },
+  "valid/steps-two-and-ten.json": {
+    "rule": "a steps block of two steps, the fewest, and one of ten, the most; a title of one character and of 120, in code points too; a text of one character and of 1000, its line breaks kept, an empty line too; a colour of the site's own, a slot's on tablets, hidden on phones"
   },
   "valid/string-escapes.json": {
     "rule": "JSON escapes: quote, backslash, slash, a letter and an accented letter as u-escapes, an emoji as a surrogate pair of two escapes, and the member name type spelled with an escaped t"

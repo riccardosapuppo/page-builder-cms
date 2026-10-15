@@ -147,6 +147,34 @@
                 }
               },
               "children": []
+            },
+            {
+              "id": "sp-free",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Write to us",
+                    "text": "Tell us when."
+                  },
+                  {
+                    "title": "Try a swim",
+                    "text": "Come along once."
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "color": "#ffc107"
+                },
+                "tablet": {
+                  "color": "#1d4e6f"
+                },
+                "phone": {
+                  "color": "accent"
+                }
+              },
+              "children": []
             }
           ]
         },

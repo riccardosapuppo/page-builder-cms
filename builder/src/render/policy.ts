@@ -74,7 +74,7 @@ export function anchor(value: unknown): string | null {
 
 // The blocks a header's column counts three rows for: drawn taller than a
 // bar's logo, menu or button.
-const TALL_BLOCKS: ReadonlySet<unknown> = new Set(["image", "gallery", "video", "map", "iconbox", "quote", "accordion", "stats"]);
+const TALL_BLOCKS: ReadonlySet<unknown> = new Set(["image", "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps"]);
 
 // A column's rows, one for each of its blocks, three for a tall one, and at
 // least one.

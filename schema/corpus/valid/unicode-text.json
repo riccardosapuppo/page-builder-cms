@@ -131,6 +131,26 @@
               }
             },
             {
+              "id": "uni-sp",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Écrivez-nous",
+                    "text": "Dites-nous quand venir."
+                  },
+                  {
+                    "title": "一度泳いでみる",
+                    "text": "浜で会いましょう。\n帽子を持ってきてください。"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
               "id": "uni-ib",
               "type": "iconbox",
               "props": {

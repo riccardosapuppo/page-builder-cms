@@ -96,6 +96,12 @@ const responsive = checked({
               { value: "1,200 m", label: "From the slipway to the buoy line" }, { value: "6", label: "Coaches" },
             ],
           }, { base: { color: "accent", align: "center" }, phone: { align: "left" } }),
+          block("steps1", "steps", {
+            items: [
+              { title: "Get in touch", text: "Tell us what you would like to do and when." }, { title: "Try it", text: "Come along once,\nwith someone to show you how." },
+              { title: "Join", text: "Stay on if it suits you." }, { title: "Swim all winter", text: "Short, cold swims, and very hot tea after." },
+            ],
+          }, { base: { color: "accent" }, phone: { color: "primary" } }),
           block("g1", "gallery", { items: [{ url: "/media/one.png", alt: "One" }, { url: "/media/two.png", decorative: true }, { url: "https://images.example.org/three.jpg", alt: "Three" }] }, { base: { spaceBetween: "l" }, phone: { spaceBetween: "xs" } }),
         ],
       }],

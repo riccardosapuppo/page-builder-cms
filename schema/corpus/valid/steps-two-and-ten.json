@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "title": "Steps",
+  "sections": [
+    {
+      "id": "sp",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "sp-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "sp-two",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "1",
+                    "text": "x"
+                  },
+                  {
+                    "title": "Then",
+                    "text": "And then the next."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "sp-ten",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Write to us",
+                    "text": "Tell us when you would like to come.\n\nAfter an empty line."
+                  },
+                  {
+                    "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+                    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  },
+                  {
+                    "title": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊",
+                    "text": "A hundred and twenty waves: 120 code points, 240 UTF-16 units"
+                  },
+                  {
+                    "title": "Step 4",
+                    "text": "What happens in step 4."
+                  },
+                  {
+                    "title": "Step 5",
+                    "text": "What happens in step 5."
+                  },
+                  {
+                    "title": "Step 6",
+                    "text": "What happens in step 6."
+                  },
+                  {
+                    "title": "Step 7",
+                    "text": "What happens in step 7."
+                  },
+                  {
+                    "title": "Step 8",
+                    "text": "What happens in step 8."
+                  },
+                  {
+                    "title": "Step 9",
+                    "text": "What happens in step 9."
+                  },
+                  {
+                    "title": "Step 10",
+                    "text": "What happens in step 10."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "#1d4e6f"
+                },
+                "tablet": {
+                  "color": "accent"
+                },
+                "phone": {
+                  "visibility": "hidden"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

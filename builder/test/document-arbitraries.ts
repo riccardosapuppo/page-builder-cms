@@ -158,6 +158,7 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   quote: fc.record({ text: paragraph, attribution: fc.option(line, { nil: undefined }) }).map(compact),
   accordion: fc.array(fc.record({ question: line, answer: paragraph }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
   stats: fc.array(fc.record({ value: fc.constantFrom(...FIGURES), label: line }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
+  steps: fc.array(fc.record({ title: line, text: paragraph }), { minLength: 2, maxLength: 4 }).map((items) => ({ items })),
   form: fc.record({
     items: fc.uniqueArray(formField, { minLength: 1, maxLength: 4, selector: (field) => field.name }),
     submitLabel: line,
@@ -417,7 +418,7 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: c.makeSetItem(doc, picked.block.id, index, formFieldUpdates(c.REMOVE, items[index] as AnyObject, edit, wish.value)), mustAccept: true };
     }
     case "items": {
-      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "stats" || b.block.type === "form" || b.block.type === "menu");
+      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "stats" || b.block.type === "steps" || b.block.type === "form" || b.block.type === "menu");
       const picked = at(lists, wish.pick);
       if (!picked) return null;
       const items = (picked.block.props as { items: AnyObject[] }).items;
@@ -425,6 +426,7 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       const form = picked.block.type === "form";
       const menu = picked.block.type === "menu";
       const stats = picked.block.type === "stats";
+      const steps = picked.block.type === "steps";
       // A form's new field may take a name the form has: the page must
       // refuse it then, by the rule on a form's field names.
       const fieldName = at(["name", "email", "notes", "field-4", "a", "added"], wish.item) as string;
@@ -432,14 +434,17 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
         : form ? { name: fieldName, kind: "checkbox", label: "Added box", required: false }
           : menu ? { label: at(LINES, wish.item) as string, href: at(HREFS, wish.item) as string }
             : stats ? { value: at(FIGURES, wish.item) as string, label: "Added figure" }
-              : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
-      const max = gallery ? 24 : form ? 20 : menu ? 12 : stats ? 8 : 30;
+              : steps ? { title: at(LINES, wish.item) as string, text: at(PARAGRAPHS, wish.item) as string }
+                : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
+      const max = gallery ? 24 : form ? 20 : menu ? 12 : stats ? 8 : steps ? 10 : 30;
+      // A steps block keeps two steps at least; every other list, one.
+      const min = steps ? 2 : 1;
       const free = !form || !items.some((item) => item.name === fieldName);
       switch (wish.action) {
         case "insert":
           return { made: c.makeInsertItems(doc, picked.block.id, wish.index % (items.length + 1), [newItem as unknown as Json]), mustAccept: items.length < max && free };
         case "remove":
-          return { made: c.makeRemoveItem(doc, picked.block.id, wish.index % items.length), mustAccept: items.length > 1 };
+          return { made: c.makeRemoveItem(doc, picked.block.id, wish.index % items.length), mustAccept: items.length > min };
         case "move":
           return { made: c.makeMoveItem(doc, picked.block.id, wish.index % items.length, wish.other % items.length), mustAccept: true };
         case "set": {
@@ -448,7 +453,8 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
             : form ? formFieldUpdates(c.REMOVE, items[wish.index % items.length] as AnyObject, wish.other, wish.item)
               : menu ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { href: at(HREFS, wish.item) as string })
                 : stats ? (wish.other % 2 === 0 ? { value: at(FIGURES, wish.item) as string } : { label: at(LINES, wish.item) as string })
-                  : { question: at(LINES, wish.item) as string };
+                  : steps ? (wish.other % 2 === 0 ? { title: at(LINES, wish.item) as string } : { text: at(PARAGRAPHS, wish.item) as string })
+                    : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
       }

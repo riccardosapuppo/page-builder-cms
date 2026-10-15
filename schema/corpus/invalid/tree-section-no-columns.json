@@ -487,6 +487,35 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "questions-steps",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Write to us",
+                    "text": "Tell us when you would like to come."
+                  },
+                  {
+                    "title": "Try a swim",
+                    "text": "Come along once, with someone beside you.\nBring a bright cap."
+                  },
+                  {
+                    "title": "Join the club",
+                    "text": "Stay on if it suits you."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "primary"
+                },
+                "tablet": {
+                  "color": "accent"
+                }
+              }
             }
           ],
           "style": {

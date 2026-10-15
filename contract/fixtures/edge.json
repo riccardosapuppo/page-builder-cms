@@ -29,6 +29,7 @@
             { "id": "e-iconbox-every-icon-8", "type": "iconbox", "props": { "icon": "info", "title": "info", "text": "i" }, "style": { "base": {} }, "children": [] },
             { "id": "e-accordion-one", "type": "accordion", "props": { "items": [ { "question": "Only one?", "answer": "Only one, and open." } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-stats-one", "type": "stats", "props": { "items": [ { "value": "1", "label": "x" } ] }, "style": { "base": {} }, "children": [] },
+            { "id": "e-steps-two", "type": "steps", "props": { "items": [ { "title": "1", "text": "x" }, { "title": "2", "text": "y" } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-quote-lines", "type": "quote", "props": { "text": "One\n\nTwo after an empty line" }, "style": { "base": {} }, "children": [] }
           ]
         }

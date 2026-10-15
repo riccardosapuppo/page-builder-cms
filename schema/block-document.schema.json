@@ -44,7 +44,7 @@
       "enum": [
         "section", "column",
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
         "form",
         "logo", "menu"
       ]
@@ -53,7 +53,7 @@
       "description": "The block types a column may hold: every block type except section and column.",
       "enum": [
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
         "form",
         "logo", "menu"
       ]
@@ -86,6 +86,7 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "quote" } } }, "then": { "$ref": "#/$defs/quoteBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "stats" } } }, "then": { "$ref": "#/$defs/statsBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "steps" } } }, "then": { "$ref": "#/$defs/stepsBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "logo" } } }, "then": { "$ref": "#/$defs/logoBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } }
@@ -443,6 +444,38 @@
         },
         "children": { "$ref": "#/$defs/noChildren" },
         "style": { "$ref": "#/$defs/statsStyle" }
+      }
+    },
+    "stepsBlock": {
+      "description": "Numbered steps in order, each a title and a short text: what to do first, then next. The page numbers them; the number is not stored.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["items"],
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "description": "The steps, in the order the page numbers them.",
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "required": ["title", "text"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 },
+                  "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 1000 }
+                }
+              }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/stepsStyle" }
       }
     },
     "formBlock": {
@@ -835,6 +868,20 @@
       "type": "object",
       "additionalProperties": false,
       "properties": { "color": true, "align": true, "visibility": true }
+    },
+    "stepsStyle": {
+      "description": "Steps: the colour of the discs their numbers stand in, and whether they are shown.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/stepsStyleKeys" },
+        "tablet": { "$ref": "#/$defs/stepsStyleKeys" },
+        "phone": { "$ref": "#/$defs/stepsStyleKeys" }
+      }
+    },
+    "stepsStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "visibility": true }
     },
     "navStyle": {
       "description": "Logo and menu: the colour of their words, where they sit in their column, and whether they are shown.",

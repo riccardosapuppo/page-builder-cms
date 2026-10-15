@@ -17,7 +17,7 @@ export const SCHEMA_VERSION = 1;
 export const BLOCK_TYPES = [
   "section", "column",
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
   "form",
   "logo", "menu",
 ] as const;
@@ -26,7 +26,7 @@ export type BlockType = (typeof BLOCK_TYPES)[number];
 // What a column may hold: every block type but section and column.
 export const WIDGET_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
   "form",
   "logo", "menu",
 ] as const;
@@ -166,6 +166,7 @@ export const STYLE_KEYS_BY_TYPE = {
   gallery: ["spaceBetween", "visibility"],
   iconbox: ["color", "align", "visibility"],
   stats: ["color", "align", "visibility"],
+  steps: ["color", "visibility"],
   logo: NAV_STYLE,
   menu: NAV_STYLE,
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
@@ -333,6 +334,16 @@ export interface StatsProps extends BlockAttributes {
   // The figures, in the order the page shows them.
   items: StatsItem[];
 }
+// One step of a steps block: its title, one line, and its text, which may
+// break its lines. Its number is its place in the list, never stored.
+export interface StepsItem {
+  title: string;
+  text: string;
+}
+export interface StepsProps extends BlockAttributes {
+  // The steps, in the order the page numbers them.
+  items: StepsItem[];
+}
 // One field of a form. name is the key its answers are kept under, made by
 // the editor and never shown; unique in its form (an application rule).
 // maxLength is there for the two kinds of text and only for them.
@@ -397,6 +408,7 @@ export type IconboxBlock = BlockOf<"iconbox", IconboxProps, NoChildren>;
 export type QuoteBlock = BlockOf<"quote", QuoteProps, NoChildren>;
 export type AccordionBlock = BlockOf<"accordion", AccordionProps, NoChildren>;
 export type StatsBlock = BlockOf<"stats", StatsProps, NoChildren>;
+export type StepsBlock = BlockOf<"steps", StepsProps, NoChildren>;
 export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
 export type LogoBlock = BlockOf<"logo", LogoProps, NoChildren>;
 export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
@@ -404,7 +416,7 @@ export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
   | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
-  | StatsBlock | FormBlock | LogoBlock | MenuBlock;
+  | StatsBlock | StepsBlock | FormBlock | LogoBlock | MenuBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -449,6 +461,7 @@ export const PROP_KEYS = {
   quote: { text: "required", attribution: "optional", ...OWN },
   accordion: { items: "required", ...OWN },
   stats: { items: "required", ...OWN },
+  steps: { items: "required", ...OWN },
   form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
   logo: { name: "optional", ...OWN },
   menu: { label: "required", items: "required", ...OWN },
@@ -456,6 +469,7 @@ export const PROP_KEYS = {
 
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
 export const STATS_ITEM_KEYS = { value: "required", label: "required" } as const satisfies KeyTable<StatsItem>;
+export const STEPS_ITEM_KEYS = { title: "required", text: "required" } as const satisfies KeyTable<StepsItem>;
 export const MENU_LINK_KEYS = { label: "required", href: "required" } as const satisfies KeyTable<MenuLink>;
 // A field's keys whatever its kind: maxLength is optional here, and the
 // schema says for which kinds it is required and for which absent.

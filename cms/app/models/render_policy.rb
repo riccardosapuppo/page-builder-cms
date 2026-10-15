@@ -76,7 +76,7 @@ module RenderPolicy
 
   # The blocks a header's column counts three rows for: drawn taller than a
   # bar's logo, menu or button.
-  TALL_BLOCKS = %w[image gallery video map iconbox quote accordion stats].freeze
+  TALL_BLOCKS = %w[image gallery video map iconbox quote accordion stats steps].freeze
 
   # The rows a sticky header draws on a desktop, a tablet and a phone, as
   # "desktop tablet phone" (each from 1 to 9), or nil for a document that is

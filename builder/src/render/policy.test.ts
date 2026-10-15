@@ -121,6 +121,7 @@ describe("a sticky header's rows", () => {
     expect(stickyRows({ sticky: true, sections: [holding("never", ["logo"], ["menu"], ["button"]), holding(undefined, ["heading", "button"], ["heading"])] })).toBe("3 4 4");
     expect(stickyRows({ sticky: true, sections: [holding("phone", ["image"], ["text", "text"])] })).toBe("3 3 5");
     expect(stickyRows({ sticky: true, sections: [holding("never", ["logo"], ["stats"])] })).toBe("3 3 3");
+    expect(stickyRows({ sticky: true, sections: [holding("phone", ["steps"], ["logo"])] })).toBe("3 3 4");
     expect(stickyRows({ sticky: true, sections: [holding(undefined, [])] })).toBe("1 1 1");
   });
   test("a section's own space above and below counts, past the header's 20 (12 on a phone) and the 16 to spare, at a row's 88 (68)", () => {

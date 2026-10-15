@@ -11,7 +11,7 @@
 // may go there, the preset fits the columns) and refuse with a sentence;
 // the reducer checks what the schema says when the command is applied.
 import {
-  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STATS_ITEM_KEYS, STYLE_TOKEN_KEYS,
+  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_TOKEN_KEYS,
   type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock, type StackToken,
   type StyleTokens, type WidgetBlock,
 } from "../shared/document.ts";
@@ -493,7 +493,7 @@ export function makeReplacePage(doc: PageDocument, next: PageDocument, label: st
 
 // The lists of a widget's props whose items have commands of their own: a
 // gallery's images, an accordion's questions, a stats block's figures, a
-// form's fields.
+// steps block's steps, a form's fields.
 function itemList(doc: PageDocument, id: string): { block: Block; items: readonly Json[]; one: string; many: string; order: readonly string[] } | null {
   const block = locate(doc, id)?.block;
   if (!block) return null;
@@ -502,6 +502,7 @@ function itemList(doc: PageDocument, id: string): { block: Block; items: readonl
   if (!names || !Array.isArray(items)) return null;
   const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS)
     : block.type === "stats" ? Object.keys(STATS_ITEM_KEYS)
+    : block.type === "steps" ? Object.keys(STEPS_ITEM_KEYS)
     : block.type === "form" ? Object.keys(FORM_FIELD_KEYS)
     : block.type === "menu" ? Object.keys(MENU_LINK_KEYS)
     : IMAGE_REF_KEYS;

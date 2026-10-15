@@ -180,6 +180,27 @@
               "style": { "base": {} }
             },
             {
+              "id": "t-steps", "type": "steps", "children": [],
+              "props": {
+                "items": [
+                  { "title": "Write </h3><script>alert(1)</script> & wait", "text": "<b>Bold?</b> No: it is text.\nOn two lines & escaped." },
+                  "Try it",
+                  null,
+                  [ { "title": "In a list", "text": "is no step" } ],
+                  { "title": "\"Quoted\" & 'apostrophes'", "text": "Entities &amp; stay &lt;text&gt;\n\nAfter an empty line, and a break at the end\n" },
+                  { "title": 42, "text": [ "not text" ] },
+                  { "text": "No title" },
+                  { "title": "  Spaces at both ends  ", "text": "  And  inside  " }
+                ]
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-steps-no-list", "type": "steps", "children": [],
+              "props": { "items": { "title": "An object where the list goes", "text": "Not a list." } },
+              "style": { "base": {} }
+            },
+            {
               "id": "t-divider", "type": "divider", "children": [], "props": {},
               "style": { "base": { "color": "accent\" onmouseover=\"alert(1)" } }
             },

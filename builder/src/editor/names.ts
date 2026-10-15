@@ -63,6 +63,9 @@ export function excerpt(block: Block): string {
     case "stats":
       // Its figures' values: "12, 300+, 98%".
       return block.props.items.map((item) => item.value).join(", ");
+    case "steps":
+      // Its steps' titles, in order: "Get in touch, Try it, Join".
+      return block.props.items.map((item) => item.title).join(", ");
     case "form":
       // What its button says it does: "Send request".
       return block.props.submitLabel;

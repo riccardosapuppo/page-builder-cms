@@ -3,10 +3,13 @@
 // The random-page agreement check can fail. Each fault below is planted in
 // the React renderer, one at a time, and the same check
 // (render-agreement.rails.test.tsx)
-// run on it must find a document that disagrees, within 40 documents of the
-// default seed: a map address written with toFixed, data-style with its keys
-// unsorted, a plain text's last line breaks dropped, an empty paragraph not
-// drawn. Shrinking is skipped (endOnFailure): finding is what is shown here.
+// run on it must find a document that disagrees, within the 60 documents
+// of the default seed the check itself runs by default: a map address
+// written with toFixed, data-style with its keys unsorted, a plain text's
+// last line breaks dropped, an empty paragraph not drawn. Shrinking is
+// skipped (endOnFailure): finding is what is shown here. (Each new widget
+// changes the documents a seed draws: with the steps block, the map that
+// toFixed misdraws came at the 43rd.)
 import fc from "fast-check";
 import { beforeAll, expect, inject, test, vi } from "vitest";
 import { startAgreement, type Agreement } from "./agreement-harness.ts";
@@ -91,7 +94,7 @@ test.each(["toFixed", "unsorted", "breaks", "paragraphs"] as const)("with the fa
         await cmsPage.save(document);
         await cmsPage.agree(document);
       }),
-      { seed: SEED, numRuns: 40, endOnFailure: true },
+      { seed: SEED, numRuns: 60, endOnFailure: true },
     );
     // fast-check names the failing run in its message and keeps the
     // property's own error as the cause.

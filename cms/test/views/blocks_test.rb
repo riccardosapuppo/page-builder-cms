@@ -38,6 +38,7 @@ class BlocksTest < ActionView::TestCase
       block("w-quote", "quote", { "text" => "Cold water, hot tea.", "attribution" => "A member" }),
       block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] }),
       block("w-stats", "stats", { "items" => [ { "value" => "12", "label" => "Years on the water" }, { "value" => "300+", "label" => "Swimmers each season" } ] }),
+      block("w-steps", "steps", { "items" => [ { "title" => "Get in touch", "text" => "Tell us when." }, { "title" => "Try it", "text" => "Come along once." } ] }),
       block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }),
       block("w-logo", "logo", { "name" => "Slack Water" }),
       block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] })
@@ -70,7 +71,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats form logo menu], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps form logo menu], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -220,6 +221,24 @@ class BlocksTest < ActionView::TestCase
     assert_empty html.css("script")
   end
 
+  test "the steps are one ordered list, each step its title then its text with its line breaks, the number left to the stylesheet, and an item that is no object is left out" do
+    items = [ { "title" => "Get in touch", "text" => "Tell us when.\nOr write." }, "Try it", nil, { "title" => "Join", "text" => "Stay on." }, { "title" => 7 } ]
+    style = { "base" => { "color" => "#1d4e6f" }, "tablet" => { "color" => "accent" }, "phone" => { "visibility" => "hidden" } }
+    html = html_of(page(block("sp", "steps", { "items" => items }, style: style)))
+
+    root = html.at_css("[data-block-id=sp]")
+    assert_equal %w[w w-steps sw-steps tablet-line-accent hide-phone], root["class"].split
+    assert_equal "#1d4e6f", root["data-line"]
+    assert_equal %w[ol], root.element_children.map(&:name)
+    steps = root.css("ol > li")
+    assert_equal [ %w[h3 p] ] * 3, steps.map { |step| step.element_children.map(&:name) }
+    assert_equal [ [ "Get in touch", "Tell us when.Or write." ], [ "Join", "Stay on." ], [ "", "" ] ], steps.map { |step| [ step.at_css("h3").text, step.at_css("p").text ] }
+    assert_equal 1, steps.first.css("p br").size
+    # No number is written: the counter is the stylesheet's.
+    assert_no_match(/\d/, root.at_css("ol").text)
+    assert_empty html.css("script")
+  end
+
   test "the form posts to the page's own address, each field tied to its label, the required ones said and checked by the browser" do
     html = form_html
     form = html.at_css("[data-block-type=form] form.sw-form")
@@ -366,6 +385,7 @@ class BlocksTest < ActionView::TestCase
       block("q", "quote", { "text" => trap, "attribution" => trap }),
       block("a", "accordion", { "items" => [ { "question" => trap, "answer" => trap } ] }),
       block("s", "stats", { "items" => [ { "value" => trap, "label" => trap } ] }),
+      block("sp", "steps", { "items" => [ { "title" => trap, "text" => trap }, { "title" => trap, "text" => trap } ] }),
       block("v", "video", { "provider" => "vimeo", "videoId" => "76979871", "title" => trap }),
       block("m", "map", { "latitude" => 1, "longitude" => 2, "zoom" => 3, "label" => trap }),
       block("p", "image", { "mediaId" => "hero", "alt" => trap }),
@@ -374,7 +394,7 @@ class BlocksTest < ActionView::TestCase
 
     assert_empty html.css("b, [onerror]")
     assert_equal [ "hero.png" ], html.css("img").map { |img| img["src"].split("/").last }
-    %w[h t b i q a s v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    %w[h t b i q a s sp v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
     assert_equal trap, html.at_css("[data-block-id=p] img")["alt"]
   end
 

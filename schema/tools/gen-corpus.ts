@@ -59,6 +59,8 @@ const quote = (id: string, body: string, attribution?: string): J =>
 const accordion = (id: string, items: J[]): J => block(id, "accordion", { items });
 const stats = (id: string, items: J[], style: Style = plain()): J => block(id, "stats", { items }, [], style);
 const figure = (value: string, label: string): J => ({ value, label });
+const steps = (id: string, items: J[], style: Style = plain()): J => block(id, "steps", { items }, [], style);
+const step = (title: string, body: string): J => ({ title, text: body });
 const form = (id: string, items: J[], submitLabel: string, confirmation: string): J => block(id, "form", { items, submitLabel, confirmation });
 const field = (name: string, kind: string, label: string, required: boolean, maxLength?: number): J =>
   (maxLength === undefined ? { name, kind, label, required } : { name, kind, label, required, maxLength });
@@ -140,6 +142,11 @@ function landing(): J {
       column("questions-1", [
         heading("questions-heading", 2, "Before your first swim"),
         text("questions-text", rich(p(t("Ask us anything at the slipway, or "), t("send a request", [link("#join")]), t(".")))),
+        steps("questions-steps", [
+          step("Write to us", "Tell us when you would like to come."),
+          step("Try a swim", `Come along once, with someone beside you.${NEWLINE}Bring a bright cap.`),
+          step("Join the club", "Stay on if it suits you."),
+        ], { base: { color: "primary" }, tablet: { color: "accent" } }),
       ]),
       column("questions-2", [
         accordion("questions-list", [
@@ -216,6 +223,7 @@ const QUOTE = P("quote-text");
 const QIMG = P("quote-image");
 const ACC = P("questions-list");
 const STATS = P("gallery-stats");
+const STEPS = P("questions-steps");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
@@ -444,6 +452,7 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     quote("uni-q", `«Il mare d’inverno»${NEWLINE}non è un concetto.`, "Anonimo"),
     accordion("uni-a", [{ question: "¿Qué?", answer: "Ça va." }]),
     stats("uni-st", [figure("٣٤٥ €", "Größe des Vereins"), figure("約 40 分", "潮が止まる時間")]),
+    steps("uni-sp", [step("Écrivez-nous", "Dites-nous quand venir."), step("一度泳いでみる", `浜で会いましょう。${NEWLINE}帽子を持ってきてください。`)]),
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
     form("uni-f", [field("nom", "text", "Prénom et nom", true, 80), field("accord", "checkbox", "J’accepte d’être rappelé·e ☎", false)], "Envoyer ✉", `Merci ! À bientôt.${NEWLINE}— Le club`),
@@ -487,6 +496,17 @@ valid("stats-figures", "a stats block of one figure and one of eight, the most i
       figure(cp(0x1f30a).repeat(24), "Twenty-four waves: 24 code points, 48 UTF-16 units"),
       figure("1/2", "Half of us swim all winter"),
     ], { base: { color: "#1d4e6f", align: "center" }, tablet: { align: "right" }, phone: { color: "accent", align: "left", visibility: "hidden" } }),
+  ])]),
+]));
+valid("steps-two-and-ten", "a steps block of two steps, the fewest, and one of ten, the most; a title of one character and of 120, in code points too; a text of one character and of 1000, its line breaks kept, an empty line too; a colour of the site's own, a slot's on tablets, hidden on phones", doc("Steps", [
+  section("sp", [column("sp-1", [
+    steps("sp-two", [step("1", "x"), step("Then", "And then the next.")]),
+    steps("sp-ten", [
+      step("Write to us", `Tell us when you would like to come.${NEWLINE}${NEWLINE}After an empty line.`),
+      step("T".repeat(120), "x".repeat(1000)),
+      step(cp(0x1f30a).repeat(120), "A hundred and twenty waves: 120 code points, 240 UTF-16 units"),
+      ...Array.from({ length: 7 }, (_, k) => step(`Step ${k + 4}`, `What happens in step ${k + 4}.`)),
+    ], { base: { color: "#1d4e6f" }, tablet: { color: "accent" }, phone: { visibility: "hidden" } }),
   ])]),
 ]));
 valid("text-inner-nbsp", "a no-break space inside text with visible letters is fine; only all-blank text is refused", doc("Nbsp", [
@@ -868,6 +888,26 @@ invalid("stats-label-tab", "a label is one line", `${FIGURE(2)}/label`, "not", (
 invalid("stats-style-text-size", "the figures' size is the theme's", `${STATS}/style/base/textSize`, "additionalProperties", (d) => { at(d, STATS).style.base.textSize = "display"; });
 invalid("stats-style-background", "a stats block takes the band's background", `${STATS}/style/phone/background`, "additionalProperties", (d) => { at(d, STATS).style.phone.background = "soft"; });
 invalid("stats-with-children", "a stats block holds no blocks", `${STATS}/children`, "maxItems", (d) => { at(d, STATS).children.push(heading("in-stats", 2, "In the stats")); });
+
+// =============================== INVALID: steps =================================
+const STEP = (k: number): string => `${STEPS}/props/items/${k}`;
+invalid("steps-one-step", "a steps block has at least two steps: one alone is no order to follow", `${STEPS}/props/items`, "minItems", (d) => { at(d, STEPS).props.items.splice(1); });
+invalid("steps-11-steps", "a steps block has at most ten steps", `${STEPS}/props/items`, "maxItems", (d) => {
+  at(d, STEPS).props.items.push(...Array.from({ length: 8 }, (_, k) => step(`Step ${k + 4}`, `What happens in step ${k + 4}.`)));
+});
+invalid("steps-step-string", "a step is an object, never its title alone", STEP(0), "type", (d) => { at(d, STEPS).props.items[0] = "Write to us"; });
+invalid("steps-title-missing", "every step has a title", STEP(1), "required", (d) => { delete at(d, STEPS).props.items[1].title; });
+invalid("steps-text-missing", "every step has a text", STEP(2), "required", (d) => { delete at(d, STEPS).props.items[2].text; });
+invalid("steps-step-extra-key", "a step is a title and a text, nothing else: its number is the page's, never stored", `${STEP(0)}/number`, "additionalProperties", (d) => { at(d, STEPS).props.items[0].number = 1; });
+invalid("steps-title-blank", "a title has a visible character", `${STEP(1)}/title`, "pattern", (d) => { at(d, STEPS).props.items[1].title = `${NBSP}${ZERO_WIDTH_SPACE}`; });
+invalid("steps-title-newline", "a title is one line", `${STEP(1)}/title`, "not", (d) => { at(d, STEPS).props.items[1].title = `Try${NEWLINE}a swim`; });
+invalid("steps-title-too-long", "a title has at most 120 characters", `${STEP(0)}/title`, "maxLength", (d) => { at(d, STEPS).props.items[0].title = "x".repeat(121); });
+invalid("steps-text-blank", "a text has a visible character", `${STEP(0)}/text`, "pattern", (d) => { at(d, STEPS).props.items[0].text = ` ${NEWLINE} `; });
+invalid("steps-text-tab", "a text may break its lines, and holds no other control character", `${STEP(2)}/text`, "not", (d) => { at(d, STEPS).props.items[2].text = `Stay on${TAB}if it suits you.`; });
+invalid("steps-text-too-long", "a text has at most 1000 characters", `${STEP(2)}/text`, "maxLength", (d) => { at(d, STEPS).props.items[2].text = "x".repeat(1001); });
+invalid("steps-style-align", "the steps stand where their column puts them", `${STEPS}/style/base/align`, "additionalProperties", (d) => { at(d, STEPS).style.base.align = "center"; });
+invalid("steps-style-text-size", "the steps' size is the theme's", `${STEPS}/style/tablet/textSize`, "additionalProperties", (d) => { at(d, STEPS).style.tablet.textSize = "large"; });
+invalid("steps-with-children", "a steps block holds no blocks", `${STEPS}/children`, "maxItems", (d) => { at(d, STEPS).children.push(heading("in-steps", 2, "In the steps")); });
 
 // =============================== INVALID: form ==================================
 const FIELD = (k: number): string => `${FORM}/props/items/${k}`;
