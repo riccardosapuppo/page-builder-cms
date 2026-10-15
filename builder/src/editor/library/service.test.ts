@@ -42,7 +42,7 @@ function rig(library: MediaItem[] = [], inBrowser = false) {
   let altAnswer: (id: string, alt: string) => Promise<Outcome<MediaItem, Invalid>> = async (id, alt) => ({ ok: true, value: { ...item(id), alt } });
   let deleteAnswer: (id: string) => Promise<Outcome<null, InUse>> = async () => ({ ok: true, value: null });
   const adapter: MediaAdapter = {
-    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: false },
     listMedia: async () => {
       listed += 1;
       return listAnswer ?? [...ui.getState().media.values()];
@@ -256,7 +256,7 @@ describe("alt text and deleting", () => {
     expect(await r.service.remove("a")).toEqual({ ok: true });
     expect(r.ids()).toEqual(["b", "c"]);
 
-    const usedBy = { pages: [{ id: 1, title: "Home", slug: "home" }], versions: [{ pageId: 1, number: 3 }] };
+    const usedBy = { pages: [{ id: 1, title: "Home", slug: "home" }], versions: [{ pageId: 1, number: 3 }], entries: [] };
     r.deleteWith(async () => ({ ok: false, problem: { kind: "in-use", message: "Pages still use this image.", usedBy } }));
     expect(await r.service.remove("b")).toEqual({ ok: false, inUse: usedBy });
     expect(r.ids()).toEqual(["b", "c"]);

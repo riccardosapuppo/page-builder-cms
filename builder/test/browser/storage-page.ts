@@ -4,7 +4,7 @@
 // Chromium's own IndexedDB. Two pages of one browser context are two tabs
 // on one database. What crosses to Node is ../../e2e/browser/wire.ts.
 import { isStorageError, type StorageAdapter } from "../../src/storage/adapter.ts";
-import { createBrowserAdapter, DATABASE_NAME } from "../../src/storage/browser.ts";
+import { createBrowserAdapter, DATABASE_NAME, LAYOUT, standing } from "../../src/storage/browser.ts";
 import { systemClock, type Clock } from "../../src/storage/clock.ts";
 import type { StoragePage, WireAnswer } from "../../e2e/browser/wire.ts";
 
@@ -15,10 +15,12 @@ const adapters = new Map<string, StorageAdapter>();
 let moved: number | null = null;
 const clock: Clock = { ...systemClock, now: () => moved ?? Date.now() };
 
-function adapterOf(key: string): StorageAdapter {
+// steps: the layout of a build before this one, its first steps only, for
+// a test of the upgrade from the database that build made.
+function adapterOf(key: string, steps?: number): StorageAdapter {
   let adapter = adapters.get(key);
   if (!adapter) {
-    adapter = createBrowserAdapter({ clock });
+    adapter = createBrowserAdapter({ clock, ...(steps === undefined ? {} : { layout: LAYOUT.slice(0, steps) }) });
     adapters.set(key, adapter);
   }
   return adapter;
@@ -40,8 +42,8 @@ function decode(value: unknown, progress: Array<[number, number]>): unknown {
 }
 
 const page: StoragePage = {
-  open(key) {
-    return adapterOf(key).capabilities;
+  open(key, steps) {
+    return adapterOf(key, steps).capabilities;
   },
   async call(key, method, args): Promise<WireAnswer> {
     const progress: Array<[number, number]> = [];
@@ -62,6 +64,42 @@ const page: StoragePage = {
   },
   keys(store) {
     return raw(store, "readonly", (objects) => objects.getAllKeys()) as Promise<unknown[]>;
+  },
+  records(store) {
+    return raw(store, "readonly", (objects) => objects.getAll()) as Promise<unknown[]>;
+  },
+  // How the site stands over these stores, read as the storage reads it
+  // (standing), in a transaction that spans them alone: what a build whose
+  // database had only these stores would say.
+  stands(stores) {
+    return new Promise((resolve, reject) => {
+      const opening = indexedDB.open(DATABASE_NAME);
+      opening.onerror = () => reject(opening.error);
+      opening.onsuccess = () => {
+        const database = opening.result;
+        standing(database.transaction(stores, "readonly")).then(
+          (digest) => {
+            database.close();
+            resolve(digest);
+          },
+          (error: unknown) => {
+            database.close();
+            reject(error as Error);
+          },
+        );
+      };
+    });
+  },
+  version() {
+    return new Promise((resolve, reject) => {
+      const opening = indexedDB.open(DATABASE_NAME);
+      opening.onerror = () => reject(opening.error);
+      opening.onsuccess = () => {
+        const { version } = opening.result;
+        opening.result.close();
+        resolve(version);
+      };
+    });
   },
   async put(store, value) {
     await raw(store, "readwrite", (objects) => objects.put(value));

@@ -2,7 +2,9 @@
 
 # The one draft of a page: the document as the editor last saved it, and
 # the address the page will have once published; none for the site's
-# header and footer (Page::PARTS), which have no address.
+# header and footer (Page::PARTS), nor for a collection's template, which
+# have no address. A page's address is never a collection's prefix: its
+# entries' addresses start with it (Collection).
 #
 # The editor saves again and again. Each save names the revision it started
 # from; the save goes through only if the draft is still at that revision,
@@ -30,10 +32,12 @@ class Draft < ApplicationRecord
   belongs_to :page
   has_many :media_usages, dependent: :delete_all
 
-  validates :slug, slug: true, unless: :part?
+  validates :slug, slug: true, unless: :addressless?
   validates :slug, absence: { message: "is not for a header or footer, which has no address" }, if: :part?
+  validates :slug, absence: { message: "is not for a template, which draws its entries at theirs" }, if: :template?
   validates :slug, uniqueness: { message: "is already the next address of another page" }, allow_nil: true
   validate :slug_not_live_elsewhere
+  validate :slug_not_a_prefix
 
   # Saves a document sent by the editor over the draft of page page_id.
   #
@@ -56,8 +60,9 @@ class Draft < ApplicationRecord
   # Returns the draft as saved. Raises BlockDocument::Invalid, Conflict, or
   # ActiveRecord::RecordNotFound when there is no such page.
   def self.save_document!(page_id:, revision:, document:, save_id:, at: Time.current)
-    # A part's draft is held to a part's rule too (SiteParts.check).
-    result = (Page.where(id: page_id).pick(:kind).in?(Page::PARTS) ? SiteParts : BlockDocument).check(document)
+    # A part's draft is held to a part's rules too (SiteParts.check), and a
+    # template's to a template's (CollectionTemplate.check).
+    result = Page.checks_for(Page.where(id: page_id).pick(:kind)).check(document)
     raise BlockDocument::Invalid, result.errors unless result.ok?
 
     json = JSON.generate(result.document)
@@ -86,17 +91,17 @@ class Draft < ApplicationRecord
   end
 
   # The document upgraded to the current schemaVersion and checked again,
-  # a part's by a part's rule too: what a version made from this draft
-  # will hold.
+  # a part's by a part's rule too and a template's by its own: what a
+  # version made from this draft will hold.
   def checked_document
-    self.class.upgrade_and_check(document, part: part?)
+    self.class.upgrade_and_check(document, kind: page_kind)
   end
 
   # Puts a stored document in place of the draft's, as a restore does. The
   # revision goes up like on any save; the last save id is cleared, so a
   # retry of a save made before the restore is a conflict, not a success.
   def replace_document!(stored_document, at: Time.current)
-    document = self.class.upgrade_and_check(stored_document, part: part?)
+    document = self.class.upgrade_and_check(stored_document, kind: page_kind)
     self.class.where(id: id)
       .update_all([ "document = ?, revision = revision + 1, last_save_id = NULL, updated_at = ?", JSON.generate(document), at ])
     reload
@@ -106,15 +111,16 @@ class Draft < ApplicationRecord
 
   # A stored document upgraded and checked again, as a publish, a
   # schedule, a version and a restore take it; a part's held to a part's
-  # rule as well (SiteParts.check), as its saves are.
-  def self.upgrade_and_check(stored_document, part: false)
+  # rule as well (SiteParts.check), and a template's to its own
+  # (CollectionTemplate.check), as their saves are.
+  def self.upgrade_and_check(stored_document, kind: "page")
     upgraded =
       begin
         BlockDocument::Upgrade.call(stored_document)
       rescue BlockDocument::Upgrade::Unsupported => e
         raise BlockDocument::Invalid, [ BlockDocument::Error.at("/schemaVersion", "upgrade", e.message) ]
       end
-    result = (part ? SiteParts : BlockDocument).check(upgraded)
+    result = Page.checks_for(kind).check(upgraded)
     raise BlockDocument::Invalid, result.errors unless result.ok?
 
     result.document
@@ -122,8 +128,30 @@ class Draft < ApplicationRecord
 
   private
 
+  def page_kind
+    page&.kind || "page"
+  end
+
   def part?
     page&.part? || false
+  end
+
+  def template?
+    page&.template? || false
+  end
+
+  def addressless?
+    part? || template?
+  end
+
+  # The address must not be a collection's prefix: /<prefix>/<entry> are
+  # its entries' addresses, and the collection's own checks refuse a
+  # prefix that is a page's (Collection).
+  def slug_not_a_prefix
+    return if slug.nil? || errors.include?(:slug)
+    return unless Collection.exists?(prefix: slug)
+
+    errors.add(:slug, :taken, message: "is already the prefix of a collection")
   end
 
   # The address must not be another page's live address either: that page

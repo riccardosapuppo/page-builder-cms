@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Collection",
+  "description": "A collection, a type of content: its name, the address prefix its entries live under (/<prefix>/<entry>), its fields, and the order its entries are listed in by default; and, under $defs, an entry and the value each type of field holds. Which value belongs to which field depends on the collection, which is data: application rules, written once in TypeScript (schema/tools/collection-rules.ts) and once in Ruby (cms/lib/collection_document/rules.rb), give each value of an entry to the definition of its field's type here, and say what this file cannot (schema/README.md lists them).",
+  "$comment": "Written to the rules of block-document.schema.json, and linted with it: dispatch is if/then on the type const, never oneOf; patterns use only explicit ASCII classes and \\u escapes. A value reuses the page document's own definitions: a rich text is the text widget's document, an image the image widget's library image, a link the button's label and address. No $id: the references to block-document.schema.json are relative, so each reader resolves them beside this file (json_schemer from the file, the API description's linter from its folder), and ajv, which needs a name, is given this file under https://page-builder-cms.example/schema/collection.schema.json, beside the page schema's $id.",
+  "type": "object",
+  "required": ["name", "prefix", "fields", "sort"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "description": "What the editor calls the collection (News, Events).",
+      "$ref": "block-document.schema.json#/$defs/line",
+      "type": "string",
+      "maxLength": 60
+    },
+    "prefix": {
+      "description": "The first part of every entry's address: news for /news/<entry>. Unique among the collections and never a page's address, nor one the application answers itself: the CMS's rules, outside this file.",
+      "$ref": "#/$defs/slug"
+    },
+    "fields": {
+      "description": "The fields every entry of the collection has, in the order the editor shows them, beside the built-in title and slug. Keys unique in the collection: an application rule.",
+      "type": "array",
+      "maxItems": 30,
+      "items": { "$ref": "#/$defs/field" }
+    },
+    "sort": { "$ref": "#/$defs/sort" }
+  },
+  "$defs": {
+    "slug": {
+      "description": "An address, or a part of one, as a page's: lowercase letters and digits in words joined by single hyphens, at most 64 characters.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "fieldKey": {
+      "description": "The key a field's value is kept under in every entry: lowercase letters, digits and hyphens, starting with a letter, as an anchor; never title or slug, the built-in fields every entry has.",
+      "$ref": "block-document.schema.json#/$defs/anchor",
+      "not": { "enum": ["title", "slug"] }
+    },
+    "fieldType": {
+      "description": "text: one line; paragraph: plain lines; richText: the text widget's document; number: with an optional lowest and highest value, two decimals at most; date: a day; image: a library image with its alt text, or decorative; link: a button's label and address; toggle: true or false; choice: one of the field's options.",
+      "enum": ["text", "paragraph", "richText", "number", "date", "image", "link", "toggle", "choice"]
+    },
+    "field": {
+      "description": "One field: its key, what the editor calls it, its type, whether an entry must give it a value; for a number its lowest and highest value, each optional, and for a choice its options.",
+      "type": "object",
+      "required": ["key", "label", "type", "required"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/fieldKey" },
+        "label": {
+          "$ref": "block-document.schema.json#/$defs/line",
+          "type": "string",
+          "maxLength": 60
+        },
+        "type": { "$ref": "#/$defs/fieldType" },
+        "required": { "type": "boolean" },
+        "min": {
+          "description": "The lowest value a number may have, two decimals at most (an application rule), and never above max (another).",
+          "$ref": "#/$defs/numberValue"
+        },
+        "max": {
+          "description": "The highest value a number may have, two decimals at most (an application rule).",
+          "$ref": "#/$defs/numberValue"
+        },
+        "options": {
+          "description": "What a choice may be, in the order the editor offers them: one to twenty, each once (an application rule).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/choiceValue" }
+        }
+      },
+      "$comment": "One if/then per type, on min, max and options, with the same 'properties: {x: true}' beside each 'required' as the page schema's imageRules, for ajv's strictRequired.",
+      "allOf": [
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "text" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "paragraph" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "richText" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "number" } } },
+          "then": { "not": { "type": "object", "properties": { "options": true }, "required": ["options"] } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "date" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "image" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "link" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "toggle" } } },
+          "then": { "not": { "$ref": "#/$defs/rangeOrOptions" } }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "choice" } } },
+          "then": {
+            "type": "object",
+            "properties": { "options": true },
+            "required": ["options"],
+            "not": {
+              "anyOf": [
+                { "type": "object", "properties": { "min": true }, "required": ["min"] },
+                { "type": "object", "properties": { "max": true }, "required": ["max"] }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "rangeOrOptions": {
+      "description": "Used under 'not': a field that names a lowest or highest value, or options, which only a number and a choice take.",
+      "anyOf": [
+        { "type": "object", "properties": { "min": true }, "required": ["min"] },
+        { "type": "object", "properties": { "max": true }, "required": ["max"] },
+        { "type": "object", "properties": { "options": true }, "required": ["options"] }
+      ]
+    },
+    "sort": {
+      "description": "The order the entries are listed in when nothing else is asked for: by title, by when they were last changed (updatedAt), by when they went live (publishedAt), or by the key of one of the collection's date or number fields (an application rule); ascending or descending.",
+      "type": "object",
+      "required": ["by", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "type": "string",
+          "pattern": "^(?:title|updatedAt|publishedAt|[a-z][a-z0-9-]{0,63})$"
+        },
+        "direction": { "enum": ["asc", "desc"] }
+      }
+    },
+    "entry": {
+      "description": "One entry of a collection as the editor saves it: its title, its address in the collection, and its values by field key. Each value is checked by the application rules against its field: there is one for each key, a value for each required field, and each one is of its field's type (the definitions below).",
+      "type": "object",
+      "required": ["title", "slug", "values"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "$ref": "#/$defs/textValue" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "values": { "type": "object" }
+      }
+    },
+    "textValue": {
+      "description": "One line of plain text with a visible character, at most 200 characters.",
+      "$ref": "block-document.schema.json#/$defs/line",
+      "type": "string",
+      "maxLength": 200
+    },
+    "paragraphValue": {
+      "description": "Plain text that may break its lines, with a visible character, at most 5000 characters.",
+      "$ref": "block-document.schema.json#/$defs/paragraph",
+      "type": "string",
+      "maxLength": 5000
+    },
+    "richTextValue": {
+      "description": "The text widget's own document: paragraphs, line breaks, lists, and bold, italic and link marks.",
+      "$ref": "block-document.schema.json#/$defs/pmDoc"
+    },
+    "numberValue": {
+      "description": "A number from minus a billion to a billion, with two decimals at most (an application rule), within its field's own lowest and highest values (another).",
+      "type": "number",
+      "minimum": -1000000000,
+      "maximum": 1000000000
+    },
+    "dateValue": {
+      "description": "A day, written YYYY-MM-DD. That the day exists (no 30 February) is an application rule.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$"
+    },
+    "imageValue": {
+      "description": "An image of the media library, by its id, with its alt text, or marked decorative: the image widget's own rules, with no image from another site.",
+      "$ref": "block-document.schema.json#/$defs/imageRef",
+      "type": "object",
+      "properties": { "mediaId": true },
+      "required": ["mediaId"]
+    },
+    "linkValue": {
+      "description": "A button's label and where it goes, by the link rules of a page.",
+      "type": "object",
+      "required": ["label", "href"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "$ref": "block-document.schema.json#/$defs/line",
+          "type": "string",
+          "maxLength": 80
+        },
+        "href": { "$ref": "block-document.schema.json#/$defs/href" }
+      }
+    },
+    "toggleValue": {
+      "description": "Yes or no.",
+      "type": "boolean"
+    },
+    "choiceValue": {
+      "description": "One line of plain text with a visible character, at most 60 characters: an option of a choice, and the value an entry gives it, which must be one of its field's options (an application rule).",
+      "$ref": "block-document.schema.json#/$defs/line",
+      "type": "string",
+      "maxLength": 60
+    }
+  }
+}

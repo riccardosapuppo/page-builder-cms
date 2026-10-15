@@ -111,6 +111,63 @@ module Api
       json
     end
 
+    # A collection: its definition (fields as the schema has them, sort
+    # the order its entries are listed in by default), the changes visitors
+    # could see of it so far, how many entries it has and how many are
+    # live, and its template, the page that draws them, as the page list
+    # summarises a page. counts is {collection_id => [entries, live]}.
+    def collection_json(collection, counts)
+      entries, live = counts.fetch(collection.id, [ 0, 0 ])
+      {
+        "id" => collection.id,
+        "name" => collection.name,
+        "prefix" => collection.prefix,
+        "fields" => collection.fields,
+        "sort" => collection.default_sort,
+        "publishedRevision" => collection.published_revision,
+        "entryCount" => entries,
+        "publishedCount" => live,
+        "createdAt" => iso(collection.created_at),
+        "updatedAt" => iso(collection.updated_at),
+        "template" => page_summary_json(collection.template)
+      }
+    end
+
+    # How many entries each collection has, and how many of them are live,
+    # read in two queries: {collection_id => [entries, live]}.
+    def entry_counts(collection_ids)
+      all = Entry.where(collection_id: collection_ids).group(:collection_id).count
+      live = Entry.where(collection_id: collection_ids).where.not(published_at: nil).group(:collection_id).count
+      all.to_h { |id, count| [ id, [ count, live.fetch(id, 0) ] ] }
+    end
+
+    # An entry: its draft at its revision, the saveId of the save that took
+    # it there, and what is live: the title, slug and values it was
+    # published with, the draft revision they came from (the draft holds
+    # that many saves visitors do not see while its revision is past it),
+    # and when it went live; null before its first publish and after an
+    # unpublish.
+    def entry_json(entry)
+      {
+        "id" => entry.id,
+        "collectionId" => entry.collection_id,
+        "title" => entry.title,
+        "slug" => entry.slug,
+        "values" => entry.field_values,
+        "revision" => entry.revision,
+        "lastSaveId" => entry.last_save_id,
+        "createdAt" => iso(entry.created_at),
+        "updatedAt" => iso(entry.updated_at),
+        "published" => entry.published? ? {
+          "title" => entry.published_title,
+          "slug" => entry.published_slug,
+          "values" => entry.published_field_values,
+          "draftRevision" => entry.published_revision,
+          "publishedAt" => iso(entry.published_at)
+        } : nil
+      }
+    end
+
     def media_json(item)
       blob = item.file.blob
       {

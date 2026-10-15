@@ -742,6 +742,11 @@ the schema file) each failed it.
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
 | `GET /api/site-style`, `PUT /api/site-style` | the palette, type scale and letter width, with their curated values; replace them (the letter width when given) |
 | `GET /api/site` | the site's settings: its time zone |
+| `GET /api/collections`, `POST /api/collections` | the collections, oldest first, each with its entries counted and its template; create one from its definition `{name, prefix, fields, sort}`, with its template |
+| `GET /api/collections/:id`, `PATCH ...`, `DELETE ...` | one collection; replace the members of its definition given, checked whole; delete it with its entries and its template |
+| `GET /api/collections/:id/entries?q=&order=`, `POST ...` | its entries, searched by title and in an order (its own by default); create one from `{title, slug, values}` |
+| `GET /api/collections/:id/entries/:entry_id`, `PUT ...`, `DELETE ...` | one entry, its draft and what is live; save `{revision, saveId, title, slug, values}`; delete it |
+| `POST /api/collections/:id/entries/:entry_id/publish`, `POST .../unpublish` | put its draft live, optionally only at `{revision}`; take it off |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the
@@ -999,6 +1004,70 @@ again, as a page's rules are, when a publish, a schedule, a version or a
 restore reads a stored document. The site's time zone is not a part's:
 only `config/site.yml` sets it.
 
+**Collections** (`app/models/collection.rb`, `entry.rb`,
+`collection_template.rb`, `collection_document.rb`). A collection is a
+type of content: its row holds its definition, as
+[`../schema/collection.schema.json`](../schema/collection.schema.json)
+describes it, its name, the prefix of its entries' addresses
+(`/<prefix>/<entry slug>`), its fields (`text`, `paragraph`, `richText`,
+`number`, `date`, `image`, `link`, `toggle`, `choice`) and the order its
+entries are listed in by default. A definition and an entry are checked
+by `CollectionDocument`: the rules any JSON value is held to
+(`BlockDocument::Rules.check_json`), then the collection's rules
+([`lib/collection_document/rules.rb`](lib/collection_document/rules.rb),
+the twin of the editor's) and the schema, every fault of both answered
+together, 422 `invalid_request` at its pointer (`/fields/1/key`
+`uniqueKey`, `/values/day` `dateExists`, `/values/summery`
+`unknownField`, `/values/summary` `required`...). A prefix is unique,
+never one the application answers itself (`Slug.reserved?`, and `sent`,
+whose `/sent/<form>` answers the home page's forms), and never a page's
+address, next or live, nor a page's address a prefix: refused both ways
+at `/prefix` or `/slug`, keyword `taken`.
+
+An entry has a draft, its title, slug and values, saved at a revision as
+a page's draft is (one conditional statement; the same `saveId`,
+revision and entry sent again is answered 200, anything else from a
+revision moved past is a 409 with `currentRevision` and `lastSaveId`), and
+what is live: the title, slug and values it was last published with,
+`published.draftRevision` and `publishedAt`, the time of the first
+publish since the last unpublish. Its slug is unique in its collection as
+its next address and as its live one. A publish checks the draft again
+against the fields as they are then (a field made required since is a
+422 at the value), and a live entry published under a new slug leaves a
+redirect from the old one (`EntryRedirect`); an unpublish keeps the
+draft. An entry has no versions. Its image values are a library's images
+as a page's are (`mediaExists` at `/values/<key>/mediaId`), indexed with
+the entry's draft and what is live (`MediaUsage.index_entry!`): an image
+an entry shows is not deleted, the 409 naming the entry in
+`usedBy.entries`, nor purged.
+
+A collection's **template**, the document each entry is drawn with, is a
+page of kind `template` (`Page::KINDS`, `collection_id`, one each), made
+with the collection, an empty document titled with its name, nothing
+live, and deleted with it with its draft and versions: read, saved, kept,
+restored, scheduled and published by the page routes, by its id, as a
+part is. It has no address and is never home (`PATCH` refused at the
+member, keyword `template`), and holds no form (refused at the form
+block, keyword `template`): a form's answers are kept with a page and its
+published version, and an entry is no page. `GET /api/pages` does not
+list it; its collection's answer does, as `template`.
+
+`publishedRevision` counts the changes a visitor could see of a
+collection: every publish, every unpublish and every delete of a live
+entry (a live entry's new address is a publish), and every change of its
+definition, whose prefix the entries' links start with and whose fields a
+list of entries draws. A save does not move it, nor a change that changes
+nothing. The list of entries searches the titles for `q` (ASCII letters
+without their case; any other letter keeps it) and orders by `title` (by
+code point), `updatedAt`, `publishedAt`, `createdAt` or a date or number
+field's key, `-` for descending; an entry with nothing to order by comes
+last either way, and a query the list does not take is 400
+`invalid_query` with its `parameter`. A change of a definition replaces
+the members given and is checked whole: the field the default order
+follows does not go without a new order (422 at `/sort/by`,
+`sortField`); the entries' values under a key no field has any more stay
+until each entry's next save, which must leave them out.
+
 **Responses.** What visitors sent with a page's forms (see "Forms a
 visitor sends") is read and deleted under the page, and only there: a
 response asked for under another page is 404. The list is newest first,
@@ -1141,7 +1210,15 @@ sweep above does the same for a schedule that is more than a minute late.
   `SlugRedirect`, `MediaItem`, `MediaUsage`, `SiteStyle`, `Submission`;
   for the rendering, `RenderPolicy`, `BlockStyle`, `MediaResolver` and
   `SiteIcons`; for forms, `FormBlock` (a form's fields, for the page and
-  the server alike) and `FormAnswers` (a visitor's answers checked).
+  the server alike) and `FormAnswers` (a visitor's answers checked); for
+  collections, `Collection` (a definition, its prefix's rules, its
+  published revision), `Entry` (a draft saved at a revision, what is live,
+  a publish and an unpublish), `EntryRedirect`, `CollectionTemplate` (a
+  template's rule, and its first draft) and `CollectionDocument` (the
+  checks of a definition and an entry: the rules of
+  [`lib/collection_document/rules.rb`](lib/collection_document/rules.rb),
+  the twin of the editor's, with the collection schema read by
+  `CollectionDocument::Schema`).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
   `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
   recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.

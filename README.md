@@ -323,6 +323,15 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   Page tab). Cost: a change is live only once published, and a part holds
   no form and no anchor. [The note](docs/decisions/header-and-footer-are-parts.md), which
   replaced [the header and footer kept as the site style is](docs/decisions/header-and-footer-kept-as-the-site-style.md).
+- **Collections are typed entries: a definition held to a schema, values
+  held to it by rules written twice, a template kept as a part.** A
+  collection's fields are of nine types; an entry's values are checked
+  against them by rules written in TypeScript and in Ruby, held to one
+  verdict by a corpus of 124 cases; an entry has a draft saved at a
+  revision and what is live, and the template its entries are drawn with
+  is a page of kind `template`. Cost: another pair of twins to keep in
+  step, a definition changed without a revision, and a list of entries
+  read whole. [The note](docs/decisions/collections-are-typed-entries.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
   adds up letter widths measured once in the site's typeface and names the
@@ -333,7 +342,7 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   [The note](docs/decisions/header-folds-by-measured-letters.md).
 - **The editor reaches storage through one interface, and one battery holds
   every adapter to it.** Cost: the browser's checks are a copy of Ruby's, and
-  it runs 50 of the 57 cases.
+  it runs 64 of the 71 cases.
   [The note](docs/decisions/storage-behind-an-adapter.md).
 - **The browser demo is a build of its own, and draws what the CMS would
   serve.** Cost: two entry points to keep in step, and no demo online while

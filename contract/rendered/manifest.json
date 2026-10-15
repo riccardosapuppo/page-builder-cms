@@ -57,7 +57,7 @@
     "cms/app/views/blocks/_steps.html.erb": "efd019493470d381550894d7b43a6dd442e6b1c2ea99bcc959269898cb17a45b",
     "cms/app/views/blocks/_text.html.erb": "4a122abef2bed6766cf15f8d427c62b57102f6a8c5b2f0b99a2652c42b8423b9",
     "cms/app/views/blocks/_video.html.erb": "109e42eb4a516b71a2c558ef3c588e7f9ab7ccd32ca5fd01f600015e5ce061a8",
-    "cms/lib/block_document/rules.rb": "87855f3874ac30ea805bb5764ba1041324bbb3620798267b338b66e5ad4cf432",
+    "cms/lib/block_document/rules.rb": "4259f6e3b7bb9a392e575b71da3c5338584299d9e9c1ff2442998c0a05c16530",
     "cms/lib/site_theme/token_css.rb": "4a557a84109d31b8e0184df101a2ba5fbbb685e0885e1c38dcd6e7efdfe2d1e5",
     "cms/test/support/contract_media.rb": "3bc03ccdda6629d274f57f8b00206d1f10b08d629a843ff2324aad5ef472355a",
     "schema/block-document.schema.json": "0a3f0c59a0ee51739fc14c1470ebb96912d3ea7e8ec7bd06c2529bb181c94b14",

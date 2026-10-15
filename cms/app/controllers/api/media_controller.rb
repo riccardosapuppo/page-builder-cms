@@ -41,17 +41,18 @@ module Api
 
     # DELETE /api/media/:id
     #
-    # 204 when deleted with its file. 409 while a draft or a kept version
-    # still shows it, with who they are: deleting it would leave a hole in
-    # those pages.
+    # 204 when deleted with its file. 409 while a draft, a kept version or
+    # an entry still shows it, with who they are: deleting it would leave a
+    # hole in those pages and entries.
     def destroy
       find_item.destroy_unless_used!
       head :no_content
     rescue MediaItem::InUse => e
-      render_error :conflict, "media_in_use", "Pages still use this image.",
+      render_error :conflict, "media_in_use", "Pages or entries still use this image.",
                    usedBy: {
                      "pages" => e.drafts.map { |draft| { "id" => draft.page_id, "title" => draft.document["title"], "slug" => draft.slug } },
-                     "versions" => e.versions.map { |version| { "pageId" => version.page_id, "number" => version.number } }
+                     "versions" => e.versions.map { |version| { "pageId" => version.page_id, "number" => version.number } },
+                     "entries" => e.entries.map { |entry| { "collectionId" => entry.collection_id, "id" => entry.id, "title" => entry.title } }
                    }
     end
 

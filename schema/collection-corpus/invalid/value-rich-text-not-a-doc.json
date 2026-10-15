@@ -1,0 +1,102 @@
+{
+  "collection": {
+    "name": "News",
+    "prefix": "news",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "Summary",
+        "type": "paragraph",
+        "required": true
+      },
+      {
+        "key": "body",
+        "label": "Body",
+        "type": "richText",
+        "required": false
+      },
+      {
+        "key": "picture",
+        "label": "Picture",
+        "type": "image",
+        "required": false
+      },
+      {
+        "key": "day",
+        "label": "Day",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "place",
+        "label": "Place",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "places",
+        "label": "Places",
+        "type": "number",
+        "required": false,
+        "min": 0,
+        "max": 40
+      },
+      {
+        "key": "booking",
+        "label": "Booking",
+        "type": "link",
+        "required": false
+      },
+      {
+        "key": "members-only",
+        "label": "Members only",
+        "type": "toggle",
+        "required": false
+      },
+      {
+        "key": "level",
+        "label": "Level",
+        "type": "choice",
+        "required": true,
+        "options": [
+          "Beginner",
+          "Improver",
+          "Strong swimmer"
+        ]
+      }
+    ],
+    "sort": {
+      "by": "day",
+      "direction": "desc"
+    }
+  },
+  "entry": {
+    "title": "Dawn swims start again",
+    "slug": "dawn-swims-start-again",
+    "values": {
+      "summary": "From May, twice a week at first light.\nMeet at the slipway.",
+      "body": {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Hi"
+          }
+        ]
+      },
+      "picture": {
+        "mediaId": "dawn-01",
+        "alt": "The bay at first light, flat and grey"
+      },
+      "day": "2026-05-02",
+      "place": "The slipway at the north end",
+      "places": 24,
+      "booking": {
+        "label": "Book a place",
+        "href": "/join?swim=dawn"
+      },
+      "members-only": false,
+      "level": "Beginner"
+    }
+  }
+}

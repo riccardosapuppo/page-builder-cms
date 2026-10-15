@@ -8,7 +8,10 @@
 // publish as a version and the page's published state, the media library
 // with each image's bytes as a blob, and the site style. The site's header
 // and footer are pages too, of their own kind, made the first time they are
-// asked for from the starters the build serves. What it cannot do it says it cannot
+// asked for from the starters the build serves. Collections and their
+// entries each have a store of their own, an entry with its draft and what
+// it was last published with; a collection's template is a page of its own
+// kind, made with its collection. What it cannot do it says it cannot
 // (capabilities): there is no server to serve a page, to publish it at a
 // time, or to take a visitor's form, so links.live stays null, and
 // scheduling and responses are refused as unsupported. It makes no
@@ -39,9 +42,16 @@ import {
   unsupported,
   type CallOptions,
   type Capabilities,
+  type Collection,
+  type CollectionChanges,
+  type Conflict,
   type Draft,
   type DraftSave,
   type DraftSaved,
+  type Entry,
+  type EntryPublished,
+  type EntryQuery,
+  type EntrySave,
   type FieldError,
   type ImageType,
   type Invalid,
@@ -72,18 +82,24 @@ import {
 } from "./adapter.ts";
 import {
   ALT_MAX_LENGTH,
+  asciiLower,
   AUTO_VERSION_EVERY_MS,
   BodyCheck,
+  BUILT_IN_ORDERS,
   CONTENT_TYPES,
+  ENTRY_QUERY,
   fieldError,
   FILENAME_MAX_LENGTH,
   MEDIA_ID,
   mediaRefs,
+  orderedBy,
+  prefixReserved,
   SAVE_ID,
   sizeErrors,
   siteStyleErrors,
   slugErrors,
   sniff,
+  type SortValue,
   underDocument,
   VERSION_NAME_MAX_LENGTH,
   WORDS,
@@ -93,9 +109,10 @@ import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
+import { SORTABLE_TYPES, type CollectionDefinition, type EntryContent, type EntryValues } from "../shared/collection.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
-import { isLine, partFaults, validateDocument } from "../shared/validate.ts";
+import { isLine, partFaults, templateFaults, validateCollection, validateDocument, validateEntry, type DocumentError } from "../shared/validate.ts";
 
 export const BROWSER_CAPABILITIES: Capabilities = {
   // A publish is kept as a version, with the page's published state, for
@@ -107,6 +124,9 @@ export const BROWSER_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // Nothing is served: there is no live address to give.
   livePages: false,
+  // Collections, their entries and their templates, kept as the CMS keeps
+  // them; an entry published is kept with its collection, served nowhere.
+  collections: true,
 };
 
 export const DATABASE_NAME = "page-builder-cms";
@@ -137,16 +157,31 @@ export const LAYOUT: readonly LayoutStep[] = [
   // before it, which would put the style back without the stylesheet,
   // lets go of the database (onversionchange) once this build opens it.
   () => undefined,
+  // Version 3: collections and their entries, in stores of their own, an
+  // entry found by its collection. A collection's template is a record of
+  // pages, of its own kind, which needs no store. Every record of the
+  // stores before stays as it is.
+  (database) => {
+    database.createObjectStore("collections", { keyPath: "id", autoIncrement: true });
+    database.createObjectStore("entries", { keyPath: "id", autoIncrement: true }).createIndex("collectionId", "collectionId");
+  },
 ];
 
-const STORES = ["pages", "versions", "media", "blobs", "site"] as const;
+const STORES = ["pages", "versions", "media", "blobs", "site", "collections", "entries"] as const;
 type StoreName = (typeof STORES)[number];
+// The stores a later step added: how the site stands (standing) leaves
+// each out while it holds nothing, so a site with no collection stands as
+// it stood under a build before them, and the demo's seed still knows it
+// as the one it put in (./example-site.ts).
+const LATER_STORES: readonly StoreName[] = ["collections", "entries"];
 
 interface PageRecord {
   id: number;
-  // A page, or one of the site's parts; absent, as in the records a build
-  // before the parts kept, a page.
+  // A page, one of the site's parts, or a collection's template; absent,
+  // as in the records a build before the parts kept, a page.
   kind?: PageKind;
+  // A template's collection.
+  collectionId?: number;
   createdAt: Time;
   // The latest change of the page or of its draft.
   updatedAt: Time;
@@ -184,6 +219,28 @@ interface MediaRecord {
 interface BlobRecord {
   id: string;
   blob: Blob;
+}
+
+// A collection: its definition, the changes a visitor could see of it, and
+// its template's page.
+interface CollectionRecord extends CollectionDefinition {
+  id: number;
+  publishedRevision: number;
+  templateId: number;
+  createdAt: Time;
+  updatedAt: Time;
+}
+
+// An entry: its draft at its revision, and what it was last published
+// with.
+interface EntryRecord extends EntryContent {
+  id: number;
+  collectionId: number;
+  revision: number;
+  lastSaveId: string | null;
+  createdAt: Time;
+  updatedAt: Time;
+  published: EntryPublished | null;
 }
 
 interface StyleRecord {
@@ -267,12 +324,17 @@ function wire<T>(value: T): T {
 
 // One IndexedDB request, as a promise. Awaited inside a transaction's
 // body, the next request is made before the transaction can commit.
-// How the site stands, read in `tx`, which spans every store: every record
-// of each, a picture's bytes by their size and type (BrowserAdapter).
-async function standing(tx: IDBTransaction): Promise<string> {
+// How the site stands, read in `tx`, over the stores it spans (every one,
+// in this build): every record of each, a picture's bytes by their size
+// and type (BrowserAdapter). A store a later step added is left out while
+// it holds nothing (LATER_STORES), so a site with no collection stands as
+// it stood under the build before them.
+export async function standing(tx: IDBTransaction): Promise<string> {
   const held: unknown[] = [];
   for (const store of STORES) {
+    if (!tx.objectStoreNames.contains(store)) continue;
     const records = (await request(tx.objectStore(store).getAll())) as unknown[];
+    if (LATER_STORES.includes(store) && records.length === 0) continue;
     held.push(store === "blobs" ? (records as BlobRecord[]).map((record) => [record.id, record.blob.size, record.blob.type]) : records);
   }
   return digest(JSON.stringify(held));
@@ -595,9 +657,11 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   }
 
   // A part's own rules (SiteParts.check): no form, refused at each form
-  // block, and no section anchor, refused at each anchor.
+  // block, and no section anchor, refused at each anchor; and a template's
+  // (CollectionTemplate.check): no form.
   function partRefusal(record: PageRecord, document: PageDocument): { ok: false; problem: Invalid } | null {
-    const faults = kindOf(record) === "page" ? [] : partFaults(document);
+    const kind = kindOf(record);
+    const faults = kind === "page" ? [] : kind === "template" ? templateFaults(document) : partFaults(document);
     return faults.length > 0 ? invalid("invalid_document", faults.map(underDocument)) : null;
   }
 
@@ -625,6 +689,42 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
     scheduled: null,
     links: links(record.id),
   });
+
+  const entryOf = (record: EntryRecord): Entry => ({
+    id: record.id,
+    collectionId: record.collectionId,
+    title: record.title,
+    slug: record.slug,
+    values: record.values,
+    revision: record.revision,
+    lastSaveId: record.lastSaveId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    published: record.published,
+  });
+
+  const definitionOf = (record: CollectionRecord): CollectionDefinition => ({ name: record.name, prefix: record.prefix, fields: record.fields, sort: record.sort });
+
+  // A refusal of the collection's checks (../shared/validate.ts), as the
+  // CMS's 422 lists them.
+  const refusedBy = (errors: readonly DocumentError[]) => invalid("invalid_request", errors.map((e) => fieldError(e.pointer, e.keyword, e.message)));
+
+  const entryConflict = (record: EntryRecord): { ok: false; problem: Conflict } =>
+    ({ ok: false, problem: { kind: "conflict", message: WORDS.entryConflict, currentRevision: record.revision, lastSaveId: record.lastSaveId } });
+
+  // The value an entry is ordered by, as the CMS reads it
+  // (EntriesController#sort_value): a field's only when it is of its
+  // field's type, a date's text or a number.
+  const sortValueOf = (entry: EntryRecord, key: string, type: string | undefined): SortValue => {
+    if (key === "title") return entry.title;
+    if (key === "updatedAt") return entry.updatedAt;
+    if (key === "createdAt") return entry.createdAt;
+    if (key === "publishedAt") return entry.published?.publishedAt ?? null;
+    const found: unknown = entry.values[key];
+    if (type === "date" && typeof found === "string") return found;
+    if (type === "number" && typeof found === "number") return found;
+    return null;
+  };
 
   const versionOf = (record: VersionRecord, page: PageRecord): Version => ({
     number: record.number,
@@ -715,13 +815,94 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   }
 
   // Whether another page has the address as its next one, or as the one
-  // it is live under: the draft's two uniqueness rules.
+  // it is live under, or a collection as its prefix: the draft's
+  // uniqueness rules, in the order the CMS checks them. `tx` spans pages
+  // and collections.
   async function addressTaken(tx: IDBTransaction, slug: string, pageId: number | null): Promise<FieldError[]> {
     const pages = (await request(tx.objectStore("pages").getAll())) as PageRecord[];
     const others = pages.filter((page) => page.id !== pageId);
     if (others.some((page) => page.slug === slug)) return [fieldError("/slug", "taken", WORDS.nextAddressTaken)];
     if (others.some((page) => page.liveSlug === slug)) return [fieldError("/slug", "taken", WORDS.liveAddressTaken)];
+    const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
+    if (collections.some((collection) => collection.prefix === slug)) return [fieldError("/slug", "taken", WORDS.slugIsPrefix)];
     return [];
+  }
+
+  // Whether a prefix is another collection's, reserved, or a page's
+  // address, next or live: Collection's checks, the first that fails, in
+  // their order. `tx` spans pages and collections.
+  async function prefixTaken(tx: IDBTransaction, prefix: string, collectionId: number | null): Promise<FieldError[]> {
+    const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
+    if (collections.some((collection) => collection.id !== collectionId && collection.prefix === prefix)) return [fieldError("/prefix", "taken", WORDS.prefixTaken)];
+    const reserved = prefixReserved(prefix);
+    if (reserved.length > 0) return reserved;
+    const pages = (await request(tx.objectStore("pages").getAll())) as PageRecord[];
+    if (pages.some((page) => page.slug === prefix || page.liveSlug === prefix)) return [fieldError("/prefix", "taken", WORDS.prefixIsPage)];
+    return [];
+  }
+
+  // The images an entry's values name, each checked to be in the library,
+  // at its value's pointer: MediaUsage.index_entry!'s refusal.
+  async function missingEntryMedia(tx: IDBTransaction, values: EntryValues): Promise<FieldError[]> {
+    const index = tx.objectStore("media").index("id");
+    const errors: FieldError[] = [];
+    for (const [pointer, id] of mediaRefs(values)) {
+      if ((await request(index.getKey(id))) === undefined) errors.push(fieldError(`/values${pointer}`, "mediaExists", WORDS.mediaMissing(id)));
+    }
+    return errors;
+  }
+
+  // Entry's slug rules in its collection: no other entry's next address,
+  // nor its live one.
+  async function entrySlugTaken(tx: IDBTransaction, collectionId: number, slug: string, entryId: number | null): Promise<FieldError[]> {
+    const others = (await entriesIn(tx, collectionId)).filter((entry) => entry.id !== entryId);
+    if (others.some((entry) => entry.slug === slug)) return [fieldError("/slug", "taken", WORDS.entryNextAddressTaken)];
+    if (others.some((entry) => entry.published?.slug === slug)) return [fieldError("/slug", "taken", WORDS.entryAddressTaken)];
+    return [];
+  }
+
+  async function collectionIn(tx: IDBTransaction, collectionId: number): Promise<CollectionRecord> {
+    if (!Number.isSafeInteger(collectionId) || collectionId < 1) throw notFound();
+    const record = (await request(tx.objectStore("collections").get(collectionId))) as CollectionRecord | undefined;
+    if (!record) throw notFound();
+    return record;
+  }
+
+  async function entriesIn(tx: IDBTransaction, collectionId: number): Promise<EntryRecord[]> {
+    return (await request(tx.objectStore("entries").index("collectionId").getAll(collectionId))) as EntryRecord[];
+  }
+
+  // An entry, found only under its own collection.
+  async function entryIn(tx: IDBTransaction, collection: CollectionRecord, entryId: number): Promise<EntryRecord> {
+    if (!Number.isSafeInteger(entryId) || entryId < 1) throw notFound();
+    const record = (await request(tx.objectStore("entries").get(entryId))) as EntryRecord | undefined;
+    if (!record || record.collectionId !== collection.id) throw notFound();
+    return record;
+  }
+
+  // The collection as the CMS answers it, with its entries counted and its
+  // template summarised. `tx` spans pages and entries.
+  async function collectionOf(tx: IDBTransaction, record: CollectionRecord): Promise<Collection> {
+    const template = await pageIn(tx, record.templateId);
+    const entries = await entriesIn(tx, record.id);
+    return {
+      id: record.id,
+      name: record.name,
+      prefix: record.prefix,
+      fields: record.fields,
+      sort: record.sort,
+      publishedRevision: record.publishedRevision,
+      entryCount: entries.length,
+      publishedCount: entries.filter((entry) => entry.published !== null).length,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      template: summaryOf(template),
+    };
+  }
+
+  // One more change a visitor could see of the collection.
+  async function advance(tx: IDBTransaction, record: CollectionRecord): Promise<void> {
+    await request(tx.objectStore("collections").put({ ...record, publishedRevision: record.publishedRevision + 1 } satisfies CollectionRecord));
   }
 
   // --------------------------------------------------------- the adapter
@@ -772,7 +953,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       const slug = body.slug as string;
       const wrong = slugErrors(slug);
       if (wrong.length > 0) return invalid("invalid_request", wrong);
-      return write(["pages"], async (tx): Promise<Outcome<Page, Invalid>> => {
+      return write(["pages", "collections"], async (tx): Promise<Outcome<Page, Invalid>> => {
         const taken = await addressTaken(tx, slug, null);
         if (taken.length > 0) return invalid("invalid_request", taken);
         const at = now();
@@ -803,11 +984,15 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       check.string("slug");
       check.boolean("home");
       if (check.errors.length > 0) return invalid("invalid_request", check.errors);
-      return write(["pages"], async (tx): Promise<Outcome<Page, Invalid>> => {
+      return write(["pages", "collections"], async (tx): Promise<Outcome<Page, Invalid>> => {
         const record = await pageIn(tx, pageId);
-        // A part has no address and is never home: refused at the member
-        // sent, as the CMS refuses it.
-        if (kindOf(record) !== "page") return invalid("invalid_request", [fieldError(body.slug !== undefined ? "/slug" : "/home", "part", WORDS.partNoAddress)]);
+        // A part or a template has no address and is never home: refused at
+        // the member sent, as the CMS refuses it.
+        const kind = kindOf(record);
+        if (kind !== "page") {
+          const template = kind === "template";
+          return invalid("invalid_request", [fieldError(body.slug !== undefined ? "/slug" : "/home", template ? "template" : "part", template ? WORDS.templateNoAddress : WORDS.partNoAddress)]);
+        }
         const pages = tx.objectStore("pages");
         const at = now();
         if (typeof body.slug === "string" && body.slug !== record.slug) {
@@ -1087,22 +1272,30 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
 
     async deleteMedia(mediaId, options) {
       checkSignal(options, "The delete");
-      const outcome = await write(["pages", "versions", "media", "blobs"], async (tx) => {
+      const outcome = await write(["pages", "versions", "media", "blobs", "entries"], async (tx) => {
         if (!MEDIA_ID.test(mediaId)) throw notFound();
         const media = tx.objectStore("media");
         const seq = (await request(media.index("id").getKey(mediaId))) as number | undefined;
         if (seq === undefined) throw notFound();
-        // Who still shows it: a draft, or a kept version.
+        // Who still shows it: a draft, a kept version, or an entry, by its
+        // draft or by what is live of it.
         const uses = (document: unknown) => mediaRefs(document).some(([, id]) => id === mediaId);
         const pages = ((await request(tx.objectStore("pages").getAll())) as PageRecord[]).filter((page) => uses(page.draft.document)).sort((a, b) => a.id - b.id);
         const versions = ((await request(tx.objectStore("versions").getAll())) as VersionRecord[]).filter((version) => uses(version.document)).sort((a, b) => a.pageId - b.pageId || a.number - b.number);
-        if (pages.length > 0 || versions.length > 0) {
+        const entries = ((await request(tx.objectStore("entries").getAll())) as EntryRecord[])
+          .filter((entry) => uses(entry.values) || (entry.published !== null && uses(entry.published.values)))
+          .sort((a, b) => a.collectionId - b.collectionId || a.id - b.id);
+        if (pages.length > 0 || versions.length > 0 || entries.length > 0) {
           return {
             ok: false as const,
             problem: {
               kind: "in-use" as const,
               message: WORDS.inUse,
-              usedBy: { pages: pages.map((page) => ({ id: page.id, title: titleOf(page), slug: page.slug })), versions: versions.map((v) => ({ pageId: v.pageId, number: v.number })) },
+              usedBy: {
+                pages: pages.map((page) => ({ id: page.id, title: titleOf(page), slug: page.slug })),
+                versions: versions.map((v) => ({ pageId: v.pageId, number: v.number })),
+                entries: entries.map((entry) => ({ collectionId: entry.collectionId, id: entry.id, title: entry.title })),
+              },
             },
           };
         }
@@ -1168,6 +1361,224 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
     async deleteResponse() {
       throw unsupported("responses", "browser");
     },
+
+    // ---------------------------------------------------- collections
+
+    async listCollections(options) {
+      checkSignal(options, "Reading the collections");
+      return read(["collections", "pages", "entries"], async (tx) => {
+        const records = ((await request(tx.objectStore("collections").getAll())) as CollectionRecord[]).sort((a, b) => a.id - b.id);
+        const collections: Collection[] = [];
+        for (const record of records) collections.push(await collectionOf(tx, record));
+        return collections;
+      });
+    },
+
+    // As the CMS makes one (Collection.create_with_template!): the
+    // definition checked whole, then its prefix; the template made with it,
+    // an empty document with its name, in the same transaction.
+    async createCollection(definition: CollectionDefinition, options) {
+      checkSignal(options, "Making the collection");
+      const body = wire({ name: definition.name, prefix: definition.prefix, fields: definition.fields, sort: definition.sort });
+      const checked = validateCollection(body);
+      if (!checked.valid) return refusedBy(checked.errors);
+      const made = checked.value;
+      return write(["collections", "pages", "entries"], async (tx): Promise<Outcome<Collection, Invalid>> => {
+        const taken = await prefixTaken(tx, made.prefix, null);
+        if (taken.length > 0) return invalid("invalid_request", taken);
+        const at = now();
+        const collection: Omit<CollectionRecord, "id"> = { ...made, publishedRevision: 0, templateId: 0, createdAt: at, updatedAt: at };
+        const id = (await request(tx.objectStore("collections").add(collection))) as number;
+        const template: Omit<PageRecord, "id"> = {
+          kind: "template", collectionId: id, createdAt: at, updatedAt: at, home: false, slug: null, liveSlug: null,
+          draft: { document: { schemaVersion: CURRENT, title: made.name, sections: [] }, revision: 0, lastSaveId: null, updatedAt: at },
+          published: null,
+        };
+        const templateId = (await request(tx.objectStore("pages").add(template))) as number;
+        const record: CollectionRecord = { ...collection, id, templateId };
+        await request(tx.objectStore("collections").put(record));
+        return { ok: true, value: await collectionOf(tx, record) };
+      });
+    },
+
+    async getCollection(collectionId, options) {
+      checkSignal(options, "Reading the collection");
+      return read(["collections", "pages", "entries"], async (tx) => collectionOf(tx, await collectionIn(tx, collectionId)));
+    },
+
+    // The members given replace the definition's own, checked whole, then
+    // the prefix; a change that changes something moves the published
+    // revision (Collection#update_definition!).
+    async updateCollection(collectionId, changes: CollectionChanges, options) {
+      checkSignal(options, "Changing the collection");
+      const body = wire({ name: changes.name, prefix: changes.prefix, fields: changes.fields, sort: changes.sort }) as Record<string, unknown>;
+      const check = new BodyCheck(body);
+      check.anyOf("name", "prefix", "fields", "sort");
+      if (check.errors.length > 0) return invalid("invalid_request", check.errors);
+      return write(["collections", "pages", "entries"], async (tx): Promise<Outcome<Collection, Invalid>> => {
+        const record = await collectionIn(tx, collectionId);
+        const checked = validateCollection({ ...definitionOf(record), ...body });
+        if (!checked.valid) return refusedBy(checked.errors);
+        // Nothing changed, nothing saved: the CMS checks the prefix as it
+        // saves a change.
+        if (sameJson(checked.value, definitionOf(record))) return { ok: true, value: await collectionOf(tx, record) };
+        const taken = await prefixTaken(tx, checked.value.prefix, record.id);
+        if (taken.length > 0) return invalid("invalid_request", taken);
+        const changed: CollectionRecord = { ...record, ...checked.value, publishedRevision: record.publishedRevision + 1, updatedAt: now() };
+        await request(tx.objectStore("collections").put(changed));
+        return { ok: true, value: await collectionOf(tx, changed) };
+      });
+    },
+
+    // With its entries, and its template with the template's versions.
+    async deleteCollection(collectionId, options) {
+      checkSignal(options, "Deleting the collection");
+      await write(["collections", "pages", "versions", "entries"], async (tx) => {
+        const record = await collectionIn(tx, collectionId);
+        for (const version of await versionsIn(tx, record.templateId)) await request(tx.objectStore("versions").delete([version.pageId, version.number]));
+        await request(tx.objectStore("pages").delete(record.templateId));
+        for (const entry of await entriesIn(tx, record.id)) await request(tx.objectStore("entries").delete(entry.id));
+        await request(tx.objectStore("collections").delete(record.id));
+      });
+    },
+
+    // As the CMS lists them (EntriesController#index): the collection
+    // first, then the query's form, then an order by a key it cannot order
+    // by, each refused as the CMS's 400 is.
+    async listEntries(collectionId, query: EntryQuery = {}, options) {
+      checkSignal(options, "Reading the entries");
+      // An empty q is not sent; one with half a surrogate pair is sent as
+      // URLSearchParams writes it, with U+FFFD in its place.
+      const asked: Record<string, string> = {};
+      if (query.q !== undefined && query.q !== "") asked.q = query.q.toWellFormed();
+      if (query.order !== undefined) asked.order = query.order;
+      const badQuery = (message: string) => new StorageError({ kind: "refused", status: 400, code: "invalid_query", message });
+      return read(["collections", "entries"], async (tx) => {
+        const collection = await collectionIn(tx, collectionId);
+        for (const [name, value] of Object.entries(asked)) {
+          if (!ENTRY_QUERY[name]!(value)) throw badQuery(WORDS.queryForm(name));
+        }
+        const order = asked.order ?? `${collection.sort.direction === "desc" ? "-" : ""}${collection.sort.by}`;
+        const key = order.replace(/^-/, "");
+        const field = collection.fields.find((candidate) => candidate.key === key);
+        if (asked.order !== undefined && !BUILT_IN_ORDERS.includes(key) && !(field && SORTABLE_TYPES.includes(field.type))) throw badQuery(WORDS.noSortField(key));
+        let entries = await entriesIn(tx, collection.id);
+        if (asked.q !== undefined) {
+          const wanted = asciiLower(asked.q);
+          entries = entries.filter((entry) => asciiLower(entry.title).includes(wanted));
+        }
+        return orderedBy(entries, (entry) => sortValueOf(entry, key, field?.type), order.startsWith("-")).map(entryOf);
+      });
+    },
+
+    // As the CMS makes one (Entry.create_checked!): the collection, the
+    // entry against its fields, the slug, the images.
+    async createEntry(collectionId, entry: EntryContent, options) {
+      checkSignal(options, "Making the entry");
+      const body = wire({ title: entry.title, slug: entry.slug, values: entry.values });
+      return write(["collections", "entries", "media"], async (tx): Promise<Outcome<Entry, Invalid>> => {
+        const collection = await collectionIn(tx, collectionId);
+        const checked = validateEntry(definitionOf(collection), body);
+        if (!checked.valid) return refusedBy(checked.errors);
+        const taken = await entrySlugTaken(tx, collection.id, checked.value.slug, null);
+        if (taken.length > 0) return invalid("invalid_request", taken);
+        const missing = await missingEntryMedia(tx, checked.value.values);
+        if (missing.length > 0) return invalid("invalid_request", missing);
+        const at = now();
+        const made: Omit<EntryRecord, "id"> = { ...checked.value, collectionId: collection.id, revision: 0, lastSaveId: null, createdAt: at, updatedAt: at, published: null };
+        const id = (await request(tx.objectStore("entries").add(made))) as number;
+        return { ok: true, value: entryOf({ ...made, id }) };
+      });
+    },
+
+    async getEntry(collectionId, entryId, options) {
+      checkSignal(options, "Reading the entry");
+      return read(["collections", "entries"], async (tx) => entryOf(await entryIn(tx, await collectionIn(tx, collectionId), entryId)));
+    },
+
+    // As the CMS saves one (Entry.save_checked!): the request's members,
+    // the collection, the entry against its fields, the entry itself, its
+    // slug, then the revision, with the same answer as the CMS's for a save
+    // sent again after its answer was lost, then the images.
+    async saveEntry(collectionId, entryId, save: EntrySave, options) {
+      checkSignal(options, "The save");
+      const body = wire({ revision: save.revision, saveId: save.saveId, title: save.title, slug: save.slug, values: save.values }) as Record<string, unknown>;
+      const check = new BodyCheck(body);
+      check.integer("revision", { required: true, minimum: 0 });
+      check.string("saveId", { required: true, pattern: SAVE_ID });
+      if (check.errors.length > 0) return invalid("invalid_request", check.errors);
+      const revision = body.revision as number;
+      const saveId = body.saveId as string;
+      const content = Object.fromEntries(Object.entries(body).filter(([name]) => name === "title" || name === "slug" || name === "values"));
+      return write(["collections", "entries", "media"], async (tx): Promise<Outcome<Entry, Conflict | Invalid>> => {
+        const collection = await collectionIn(tx, collectionId);
+        const checked = validateEntry(definitionOf(collection), content);
+        if (!checked.valid) return refusedBy(checked.errors);
+        const record = await entryIn(tx, collection, entryId);
+        const taken = await entrySlugTaken(tx, collection.id, checked.value.slug, record.id);
+        if (taken.length > 0) return invalid("invalid_request", taken);
+        if (record.revision !== revision) {
+          const replay = record.lastSaveId === saveId && record.revision === revision + 1 && sameJson({ title: record.title, slug: record.slug, values: record.values }, checked.value);
+          return replay ? { ok: true, value: entryOf(record) } : entryConflict(record);
+        }
+        const missing = await missingEntryMedia(tx, checked.value.values);
+        if (missing.length > 0) return invalid("invalid_request", missing);
+        const saved: EntryRecord = { ...record, ...checked.value, revision: revision + 1, lastSaveId: saveId, updatedAt: now() };
+        await request(tx.objectStore("entries").put(saved));
+        return { ok: true, value: entryOf(saved) };
+      });
+    },
+
+    // As the CMS publishes one (Entry#publish!): at the revision asked, the
+    // draft checked again against the fields as they are now; when it went
+    // live stays the first publish's time until an unpublish. Nothing is
+    // served, so no old address is kept to redirect from.
+    async publishEntry(collectionId, entryId, request_: PublishRequest = {}, options) {
+      checkSignal(options, "The publish");
+      const body = wire({ revision: request_.revision }) as Record<string, unknown>;
+      const check = new BodyCheck(body);
+      check.integer("revision", { minimum: 0 });
+      if (check.errors.length > 0) return invalid("invalid_request", check.errors);
+      return write(["collections", "entries", "media"], async (tx): Promise<Outcome<Entry, Conflict | Invalid>> => {
+        const collection = await collectionIn(tx, collectionId);
+        const record = await entryIn(tx, collection, entryId);
+        if (typeof body.revision === "number" && body.revision !== record.revision) return entryConflict(record);
+        const checked = validateEntry(definitionOf(collection), { title: record.title, slug: record.slug, values: record.values });
+        if (!checked.valid) return refusedBy(checked.errors);
+        const missing = await missingEntryMedia(tx, record.values);
+        if (missing.length > 0) return invalid("invalid_request", missing);
+        const at = now();
+        const published: EntryPublished = { title: record.title, slug: record.slug, values: record.values, draftRevision: record.revision, publishedAt: record.published?.publishedAt ?? at };
+        const live: EntryRecord = { ...record, published, updatedAt: at };
+        await request(tx.objectStore("entries").put(live));
+        await advance(tx, collection);
+        return { ok: true, value: entryOf(live) };
+      });
+    },
+
+    async unpublishEntry(collectionId, entryId, options) {
+      checkSignal(options, "Taking the entry off");
+      return write(["collections", "entries"], async (tx) => {
+        const collection = await collectionIn(tx, collectionId);
+        const record = await entryIn(tx, collection, entryId);
+        if (record.published === null) return entryOf(record);
+        const off: EntryRecord = { ...record, published: null, updatedAt: now() };
+        await request(tx.objectStore("entries").put(off));
+        await advance(tx, collection);
+        return entryOf(off);
+      });
+    },
+
+    async deleteEntry(collectionId, entryId, options) {
+      checkSignal(options, "Deleting the entry");
+      await write(["collections", "entries"], async (tx) => {
+        const collection = await collectionIn(tx, collectionId);
+        const record = await entryIn(tx, collection, entryId);
+        await request(tx.objectStore("entries").delete(record.id));
+        if (record.published !== null) await advance(tx, collection);
+      });
+    },
+
     async siteFingerprint() {
       return read(STORES, standing);
     },

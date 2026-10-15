@@ -20,6 +20,12 @@ it holds.
   at `/type/<digest>.css` and on the canvas alike; a vw written as a
   hundredth of the page root's width, so the canvas's tablet draws it as
   a tablet does.
+- [Collections are typed entries: a definition held to a schema, values held to it by rules written twice, a template kept as a part](collections-are-typed-entries.md)
+  (15 October 2026): a collection's fields of nine types in a schema of
+  their own, an entry's values given to their fields' definitions by twin
+  rules held to a corpus; a draft saved at a revision and what is live,
+  no versions; the template a page of kind `template`; a counter of what
+  visitors could see; both storages, one battery.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

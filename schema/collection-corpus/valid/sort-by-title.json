@@ -1,0 +1,73 @@
+{
+  "collection": {
+    "name": "News",
+    "prefix": "news",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "Summary",
+        "type": "paragraph",
+        "required": true
+      },
+      {
+        "key": "body",
+        "label": "Body",
+        "type": "richText",
+        "required": false
+      },
+      {
+        "key": "picture",
+        "label": "Picture",
+        "type": "image",
+        "required": false
+      },
+      {
+        "key": "day",
+        "label": "Day",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "place",
+        "label": "Place",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "places",
+        "label": "Places",
+        "type": "number",
+        "required": false,
+        "min": 0,
+        "max": 40
+      },
+      {
+        "key": "booking",
+        "label": "Booking",
+        "type": "link",
+        "required": false
+      },
+      {
+        "key": "members-only",
+        "label": "Members only",
+        "type": "toggle",
+        "required": false
+      },
+      {
+        "key": "level",
+        "label": "Level",
+        "type": "choice",
+        "required": true,
+        "options": [
+          "Beginner",
+          "Improver",
+          "Strong swimmer"
+        ]
+      }
+    ],
+    "sort": {
+      "by": "title",
+      "direction": "desc"
+    }
+  }
+}

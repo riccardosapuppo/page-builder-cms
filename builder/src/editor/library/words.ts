@@ -29,19 +29,28 @@ export function metaLine(item: MediaItem, now: number, timeZone?: string): strin
 }
 
 // Why the CMS kept an image it was asked to delete: the pages whose draft
-// shows it, by title, and the kept versions that do, by page and number.
-// A page the editor does not list (made since) is named by its number.
+// shows it, by title, the kept versions that do, by page and number, and
+// the entries of a collection that do, in their draft or in what is live,
+// by title. A page the editor does not list (made since) is named by its
+// number.
 export function inUseSentence(usedBy: MediaUse, pages: readonly PageSummary[]): string {
   const title = (id: number) => pages.find((p) => p.id === id)?.title ?? `page ${id}`;
   const drafts = usedBy.pages.map((page) => page.title || title(page.id));
   const byPage = new Map<number, number[]>();
   for (const version of usedBy.versions) byPage.set(version.pageId, [...(byPage.get(version.pageId) ?? []), version.number]);
   const versions = [...byPage].map(([id, numbers]) => `${title(id)} (${listed(numbers.map(String))})`);
+  const entries = usedBy.entries.map((entry) => entry.title);
   const parts: string[] = [];
   if (drafts.length > 0) parts.push(`${drafts.length === 1 ? "the page" : "the pages"} ${listed(drafts)}`);
   if (versions.length > 0) parts.push(`${usedBy.versions.length === 1 ? "a kept version" : "kept versions"} of ${listed(versions)}`);
+  if (entries.length > 0) parts.push(`${entries.length === 1 ? "the entry" : "the entries"} ${listed(entries)}`);
   const where = parts.length > 0 ? parts.join(", and ") : "a page";
-  const advice = drafts.length === 0 ? null : drafts.length === 1 ? "Take it off that page first." : "Take it off those pages first.";
+  const takeOff = [
+    drafts.length === 0 ? null : drafts.length === 1 ? "that page" : "those pages",
+    entries.length === 0 ? null : entries.length === 1 ? "that entry" : "those entries",
+  ].filter((part) => part !== null);
+  const advice = takeOff.length === 0 ? null : `Take it off ${takeOff.join(" and ")} first.`;
   const kept = versions.length > 0 ? "A kept version holds its images for as long as it is kept." : null;
-  return ["Not deleted: it is still shown by", `${where}.`, advice, kept].filter((part) => part !== null).join(" ");
+  const live = entries.length > 0 ? "An entry keeps the images of what is live until it is published again or taken off." : null;
+  return ["Not deleted: it is still shown by", `${where}.`, advice, kept, live].filter((part) => part !== null).join(" ");
 }

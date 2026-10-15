@@ -1,5 +1,6 @@
 // The storage adapter: the one way the editor reads and writes pages, their
-// draft and versions, the media library, the site style and form answers.
+// draft and versions, the media library, the site style, form answers, and
+// collections with their entries.
 // The editor talks to an adapter, never to a server, so the same editor
 // runs on the Rails CMS (rails.ts) and, in stage 6, on the browser alone.
 // contract.ts is the behaviour every adapter must show, written against
@@ -19,6 +20,7 @@
 // The answers' types are written by hand from what the CMS sends
 // (cms/openapi.yaml, whose request tests hold the CMS's real answers to
 // it); openapi.test.ts holds these types to that file, key by key.
+import type { CollectionDefinition, EntryContent, EntryValues } from "../shared/collection.ts";
 import type { FormFieldKind, PageDocument } from "../shared/document.ts";
 
 // ISO 8601, in UTC, as the server writes it ("2026-10-02T09:15:00.000Z").
@@ -30,10 +32,18 @@ export type Time = string;
 // like a page's, edited, versioned and published as a page is, which every
 // page draws around its sections. A part has no address and is never the
 // home page; the storage lists the two apart from the pages (listParts).
-export const PAGE_KINDS = ["page", "header", "footer"] as const;
+// Or a collection's template, the document each of its entries is drawn
+// with, kept the same way, with no address either, which the storage lists
+// with its collection (Collection.template).
+export const PAGE_KINDS = ["page", "header", "footer", "template"] as const;
 export type PageKind = (typeof PAGE_KINDS)[number];
-export type PartKind = Exclude<PageKind, "page">;
+export type PartKind = "header" | "footer";
 export const PART_KINDS = ["header", "footer"] as const satisfies readonly PartKind[];
+
+// Whether a kind is one of the site's parts.
+export function isPartKind(kind: PageKind): kind is PartKind {
+  return (PART_KINDS as readonly PageKind[]).includes(kind);
+}
 
 export interface PageLinks {
   // The API's own addresses of the page.
@@ -213,6 +223,8 @@ export interface MediaUse {
   pages: Array<{ id: number; title: string; slug: string | null }>;
   // Kept versions that show it.
   versions: Array<{ pageId: number; number: number }>;
+  // Entries whose draft, or what is live of them, show it.
+  entries: Array<{ collectionId: number; id: number; title: string }>;
 }
 
 // ------------------------------------------------------- site style
@@ -338,6 +350,65 @@ export interface ResponseQuery {
 
 export const RESPONSES_PER_PART = 50;
 
+// ------------------------------------------------------- collections
+
+// A collection, a type of content: its definition (../shared/collection.ts:
+// its name, the prefix of its entries' addresses, its fields, the order its
+// entries are listed in), its entries counted, and its template, the page
+// of kind template that draws each entry, read, saved, versioned and
+// published by the page operations, by its id, as a part is.
+export interface Collection extends CollectionDefinition {
+  id: number;
+  // Advanced by every change a visitor could see: a publish, an
+  // unpublish, the delete of a live entry, a change of the definition.
+  // The pages that list the collection's entries are cached by it.
+  publishedRevision: number;
+  entryCount: number;
+  // How many entries are live.
+  publishedCount: number;
+  createdAt: Time;
+  // When the definition last changed.
+  updatedAt: Time;
+  template: PageSummary;
+}
+
+// What is live of an entry: what it was last published with.
+export interface EntryPublished {
+  title: string;
+  // The live address, /<prefix>/<slug>.
+  slug: string;
+  values: EntryValues;
+  // The entry's revision this was taken from: the entry's own minus it is
+  // the saves visitors do not see yet.
+  draftRevision: number;
+  // When it went live: the first publish since the last unpublish.
+  publishedAt: Time;
+}
+
+// An entry: its draft (title, slug, values) at its revision, and what is
+// live, or null before the first publish and after an unpublish.
+export interface Entry extends EntryContent {
+  id: number;
+  collectionId: number;
+  revision: number;
+  // The saveId of the save that took the entry to its revision; null
+  // before any save.
+  lastSaveId: string | null;
+  createdAt: Time;
+  // The latest save, publish or unpublish.
+  updatedAt: Time;
+  published: EntryPublished | null;
+}
+
+// The list's query: words its titles hold (ASCII letters without their
+// case), and an order (title, updatedAt, publishedAt, createdAt, or the key
+// of a date or number field; a minus before it for a descending one). An
+// entry with nothing to order by comes last.
+export interface EntryQuery {
+  q?: string;
+  order?: string;
+}
+
 // --------------------------------------------------------- requests
 
 export interface NewPage {
@@ -395,6 +466,22 @@ export interface SiteStyleChange {
   // Without either, the style keeps its own.
   letterWidth?: string;
   customCss?: string;
+}
+
+// At least one member of a collection's definition; each replaces its own,
+// and the definition is checked whole.
+export interface CollectionChanges {
+  name?: string;
+  prefix?: string;
+  fields?: CollectionDefinition["fields"];
+  sort?: CollectionDefinition["sort"];
+}
+
+// A save of an entry: its title, slug and values, from the revision the
+// editor started from, under an id of the save's own, as a page draft's.
+export interface EntrySave extends EntryContent {
+  revision: number;
+  saveId: string;
 }
 
 export interface CallOptions {
@@ -459,10 +546,11 @@ export interface NotPending {
 
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
 
-export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses"] as const;
+export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses", "collections"] as const;
 // What an adapter may lack: publishing (keeping what goes live as a
 // version, with the page's published state; whether it is then served is
-// livePages, below), scheduled publishing, form answers.
+// livePages, below), scheduled publishing, form answers, collections (and
+// their entries and templates).
 export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 
 // Says which optional operations this adapter has. The editor shows no
@@ -519,6 +607,7 @@ const OPERATION_VERBS: Record<OptionalOperation, string> = {
   publish: "publish pages",
   schedule: "schedule a publish",
   responses: "keep form answers",
+  collections: "keep collections",
 };
 
 // ---------------------------------------------------------- the adapter
@@ -589,6 +678,45 @@ export interface StorageAdapter {
   getResponse(pageId: number, responseId: number, options?: CallOptions): Promise<FormResponse>;
   // Deletes it for good; not-found when it is already gone.
   deleteResponse(pageId: number, responseId: number, options?: CallOptions): Promise<void>;
+
+  // Capability collections: types of content, each with its fields, its
+  // entries, and its template (a page of kind template, by its id, through
+  // the page operations above: no address, no home mark, no form, each
+  // refused with the keyword template). Oldest first.
+  listCollections(options?: CallOptions): Promise<Collection[]>;
+  // A new collection, with its template: an empty document with its name,
+  // nothing live. Invalid at each fault of the definition (its schema's and
+  // its rules', at pointers into it: /fields/0/key...), and at /prefix for
+  // a prefix another collection has, a page's address (next or live), or
+  // one the application answers itself (keywords taken, reserved).
+  createCollection(definition: CollectionDefinition, options?: CallOptions): Promise<Outcome<Collection, Invalid>>;
+  getCollection(collectionId: number, options?: CallOptions): Promise<Collection>;
+  // Replaces the members given and checks the definition whole: a field
+  // the sort follows does not go without a new sort (/sort/by, sortField).
+  updateCollection(collectionId: number, changes: CollectionChanges, options?: CallOptions): Promise<Outcome<Collection, Invalid>>;
+  // With its entries and its template.
+  deleteCollection(collectionId: number, options?: CallOptions): Promise<void>;
+  // The collection's entries, searched and in order (EntryQuery), or in
+  // the collection's own order; an order by a key the collection cannot
+  // order by is refused (StorageError refused, code invalid_query).
+  listEntries(collectionId: number, query?: EntryQuery, options?: CallOptions): Promise<Entry[]>;
+  // A new entry, nothing live. Invalid at each value its fields refuse
+  // (/values/<key>: unknownField, required, a value's own rules and
+  // schema; /title, /slug), an image the library has not (mediaExists), a
+  // slug another entry has, next or live (/slug, taken).
+  createEntry(collectionId: number, entry: EntryContent, options?: CallOptions): Promise<Outcome<Entry, Invalid>>;
+  // An entry, not-found unless it is this collection's.
+  getEntry(collectionId: number, entryId: number, options?: CallOptions): Promise<Entry>;
+  // Saves title, slug and values if the entry is still at save.revision,
+  // checked as a new entry's are; the same save sent again after its answer
+  // was lost is answered as saved. What is live does not change.
+  saveEntry(collectionId: number, entryId: number, save: EntrySave, options?: CallOptions): Promise<Outcome<Entry, Conflict | Invalid>>;
+  // Puts live what the draft holds, checked again against the fields as
+  // they are now; with request.revision, only if the entry is still at it.
+  publishEntry(collectionId: number, entryId: number, request?: PublishRequest, options?: CallOptions): Promise<Outcome<Entry, Conflict | Invalid>>;
+  // Takes it off, the draft kept; one not live is answered as it is.
+  unpublishEntry(collectionId: number, entryId: number, options?: CallOptions): Promise<Entry>;
+  deleteEntry(collectionId: number, entryId: number, options?: CallOptions): Promise<void>;
 }
 
 // --------------------------------------------- errors, block by block

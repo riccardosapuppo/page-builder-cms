@@ -29,12 +29,13 @@ class MediaItem < ApplicationRecord
   PUBLIC_ID = /\A[A-Za-z0-9_-]{1,64}\z/
 
   class InUse < StandardError
-    attr_reader :drafts, :versions
+    attr_reader :drafts, :versions, :entries
 
-    def initialize(drafts:, versions:)
+    def initialize(drafts:, versions:, entries: [])
       @drafts = drafts
       @versions = versions
-      super("The media item is still used by #{drafts.size} draft(s) and #{versions.size} version(s).")
+      @entries = entries
+      super("The media item is still used by #{drafts.size} draft(s), #{versions.size} version(s) and #{entries.size} entry(ies).")
     end
   end
 
@@ -84,8 +85,8 @@ class MediaItem < ApplicationRecord
   # at hand for as long as the history around it.
   KEEP_UNUSED_FOR = 30.days
 
-  # Deletes, with their files, the items no draft and no kept version
-  # names, and none has named for more than KEEP_UNUSED_FOR before `at`
+  # Deletes, with their files, the items no draft, no kept version and no
+  # entry names, and none has named for more than KEEP_UNUSED_FOR before `at`
   # (last_used_at; in UTC days of 24 hours, and one named exactly that
   # long ago stays, as an automatic version made then does). An item
   # never placed on a page has no last_used_at:
@@ -101,13 +102,15 @@ class MediaItem < ApplicationRecord
     end
   end
 
-  # Deletes the item and its file, unless a draft or a kept version still
-  # names it: then nothing changes and InUse says who uses it.
+  # Deletes the item and its file, unless a draft, a kept version or an
+  # entry (its draft, or what is live) still names it: then nothing
+  # changes and InUse says who uses it.
   def destroy_unless_used!
     transaction do
       drafts = Draft.where(id: usages.where.not(draft_id: nil).select(:draft_id)).includes(:page).to_a
       versions = PageVersion.where(id: usages.where.not(page_version_id: nil).select(:page_version_id)).order(:page_id, :number).to_a
-      raise InUse.new(drafts: drafts, versions: versions) if drafts.any? || versions.any?
+      entries = Entry.where(id: usages.where.not(entry_id: nil).select(:entry_id)).order(:collection_id, :id).to_a
+      raise InUse.new(drafts: drafts, versions: versions, entries: entries) if drafts.any? || versions.any? || entries.any?
 
       destroy!
     end

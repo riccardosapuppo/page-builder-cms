@@ -57,7 +57,7 @@ import { PageSections } from "../render/blocks.tsx";
 import { CustomCssStyle, FreeColorsStyle, FreeTypeStyle, PageRoot, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
 import { SitePart, stickyHeader } from "../render/theme.tsx";
 import type { BlockType, ImageRef, PageDocument } from "../shared/document.ts";
-import type { PartKind } from "../storage/adapter.ts";
+import { isPartKind, type PartKind } from "../storage/adapter.ts";
 import type { EditorState } from "../store/editor-store.ts";
 import { fitPreview } from "../shared/preview-widths.ts";
 import { COLUMN_GAP_DEFAULT } from "../shared/site-tokens.ts";
@@ -1111,7 +1111,7 @@ function CanvasView() {
             }}
             data-locked-hover={lockedHover ?? undefined}
           >
-            {kind !== "page"
+            {isPartKind(kind)
               ? <PartRoot kind={kind} document={shown} ctx={ctx} siteStyle={siteStyle} parts={parts} around={around?.document ?? null} aroundTitle={around?.title ?? null} width={width} />
               : document.sections.length === 0 ? (
                 <>

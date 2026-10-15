@@ -40,7 +40,7 @@ import { makeReplacePage } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
 import { openDocument } from "../document/upgrade.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { errorsByBlock, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type PartKind, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
+import { errorsByBlock, isPartKind, isStorageError, type Draft, type FieldError, type NewPage, type PageSummary, type PartKind, type RestoreResult, type ScheduleState, type SiteStyle, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { createAutosave, type Autosave, type SavePhase } from "../storage/autosave.ts";
 import { cmsAddress } from "../storage/config.ts";
 import { AboutDialog } from "./AboutDialog.tsx";
@@ -515,12 +515,12 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (shown && publishedView) {
         if (seenOn === null) {
           shown.reject(new Error("no page to show the part on"));
-          ui.getState().say(page.kind === "page" ? PUBLISHED_IN_BROWSER : partPublishedInBrowser(page.kind));
+          ui.getState().say(isPartKind(page.kind) ? partPublishedInBrowser(page.kind) : PUBLISHED_IN_BROWSER);
           return;
         }
         const view = cmsAddress(publishedView(seenOn), cmsOrigin);
         shown.resolve(view);
-        ui.getState().say(page.kind === "page" ? PUBLISHED_IN_BROWSER : partPublishedInBrowser(page.kind), { href: view, label: page.kind === "page" ? "View published page" : "View the home page" });
+        ui.getState().say(isPartKind(page.kind) ? partPublishedInBrowser(page.kind) : PUBLISHED_IN_BROWSER, { href: view, label: page.kind === "page" ? "View published page" : "View the home page" });
         return;
       }
       if (page.kind !== "page") {

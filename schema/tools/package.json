@@ -2,14 +2,14 @@
   "name": "page-builder-cms-schema-tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Checks for the page document schema: application rules, corpus, and the comparison of the two validators.",
+  "description": "Checks for the page document schema and the collection schema: application rules, corpora, and the comparison of the two validators.",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "compare": "node compare.ts",
+    "compare": "node compare.ts && node compare.ts --kind collection",
     "compare:examples": "node compare-examples.ts",
     "corpus": "node gen-corpus.ts",
     "corpus:check": "node gen-corpus.ts --check",

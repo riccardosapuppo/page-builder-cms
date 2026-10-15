@@ -55,10 +55,24 @@ module Api
                    errors: e.errors.map { |error| error.under("/document").as_json }
     end
 
+    # A collection's definition or an entry the collection's rules refuse,
+    # at pointers into the body: the members of a definition, an entry's
+    # title, slug and values, which every body that carries them names
+    # alike, and a publish of the entry as stored too.
+    rescue_from CollectionDocument::Invalid do |e|
+      render_error :unprocessable_content, "invalid_request", "The request is not valid.", errors: e.errors.map(&:as_json)
+    end
+
     # The draft moved past the revision the request named. The answer says
     # where it is now, and the saveId of the save that took it there.
     rescue_from Draft::Conflict do |e|
       render_error :conflict, "conflict", "The draft has changed since the revision sent.",
+                   currentRevision: e.current_revision, lastSaveId: e.last_save_id
+    end
+
+    # The same for an entry.
+    rescue_from Entry::Conflict do |e|
+      render_error :conflict, "conflict", "The entry has changed since the revision sent.",
                    currentRevision: e.current_revision, lastSaveId: e.last_save_id
     end
 

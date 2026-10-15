@@ -41,6 +41,20 @@ Rails.application.routes.draw do
 
     get "site", to: "sites#show"
 
+    get "collections", to: "collections#index"
+    post "collections", to: "collections#create"
+    get "collections/:id", to: "collections#show"
+    patch "collections/:id", to: "collections#update"
+    delete "collections/:id", to: "collections#destroy"
+
+    get "collections/:id/entries", to: "entries#index"
+    post "collections/:id/entries", to: "entries#create"
+    get "collections/:id/entries/:entry_id", to: "entries#show"
+    put "collections/:id/entries/:entry_id", to: "entries#update"
+    delete "collections/:id/entries/:entry_id", to: "entries#destroy"
+    post "collections/:id/entries/:entry_id/publish", to: "entries#publish"
+    post "collections/:id/entries/:entry_id/unpublish", to: "entries#unpublish"
+
     # Any other address or method under /api/: the API's JSON 404, not the
     # site's HTML 404 page.
     match "*path", to: "missing#show", via: :all

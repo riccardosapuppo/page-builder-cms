@@ -14,6 +14,20 @@ declare module "virtual:block-document-validator" {
   // The schema's $defs/line: one line of plain text with a visible
   // character, as a page's title is.
   export const validateLine: CompiledValidator;
+  // The collection schema's: a collection's definition, an entry's title,
+  // slug and values as an object, and the value of each type of field
+  // (schema/tools/collection-rules.ts, VALUE_DEFS).
+  export const validateCollection: CompiledValidator;
+  export const validateEntry: CompiledValidator;
+  export const validateTextValue: CompiledValidator;
+  export const validateParagraphValue: CompiledValidator;
+  export const validateRichTextValue: CompiledValidator;
+  export const validateNumberValue: CompiledValidator;
+  export const validateDateValue: CompiledValidator;
+  export const validateImageValue: CompiledValidator;
+  export const validateLinkValue: CompiledValidator;
+  export const validateToggleValue: CompiledValidator;
+  export const validateChoiceValue: CompiledValidator;
   export default validate;
 }
 

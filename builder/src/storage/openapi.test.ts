@@ -15,6 +15,7 @@ import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
   IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  type Collection, type CollectionChanges, type Entry, type EntryPublished, type EntryQuery, type EntrySave,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type FormResponse, type FormResponseCount, type InUse, type Invalid,
   type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
   type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
@@ -22,6 +23,7 @@ import {
   type Site, type SiteStyle, type SiteStyleChange,
   type LetterWidthChoice, type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
+import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
 import { FORM_FIELD_KINDS } from "../shared/document.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId, type PageList } from "./rails.ts";
 
@@ -65,9 +67,19 @@ const RESTORE_RESULT = { draft: obj, version: obj, kept: orNull(obj) } as const 
 const MEDIA_ITEM = {
   id: str, alt: str, width: num, height: num, contentType: str, byteSize: num, filename: str, url: str, createdAt: str,
 } as const satisfies Shape<MediaItem>;
-const MEDIA_USE = { pages: arr, versions: arr } as const satisfies Shape<MediaUse>;
+const MEDIA_USE = { pages: arr, versions: arr, entries: arr } as const satisfies Shape<MediaUse>;
 const MEDIA_USE_PAGE = { id: num, title: str, slug: orNull(str) } as const satisfies Shape<MediaUse["pages"][number]>;
 const MEDIA_USE_VERSION = { pageId: num, number: num } as const satisfies Shape<MediaUse["versions"][number]>;
+const MEDIA_USE_ENTRY = { collectionId: num, id: num, title: str } as const satisfies Shape<MediaUse["entries"][number]>;
+const COLLECTION = {
+  id: num, name: str, prefix: str, fields: arr, sort: obj, publishedRevision: num, entryCount: num, publishedCount: num, createdAt: str, updatedAt: str, template: obj,
+} as const satisfies Shape<Collection>;
+const COLLECTION_LIST = { collections: arr } as const satisfies Shape<{ collections: Collection[] }>;
+const ENTRY_PUBLISHED = { title: str, slug: str, values: obj, draftRevision: num, publishedAt: str } as const satisfies Shape<EntryPublished>;
+const ENTRY = {
+  id: num, collectionId: num, title: str, slug: str, values: obj, revision: num, lastSaveId: orNull(str), createdAt: str, updatedAt: str, published: orNull(obj),
+} as const satisfies Shape<Entry>;
+const ENTRY_LIST = { entries: arr } as const satisfies Shape<{ entries: Entry[] }>;
 const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, customCss: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr, letterWidths: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
@@ -107,8 +119,15 @@ const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>
 const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str), customCss: optional(str) } as const satisfies Shape<SiteStyleChange>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
+// A collection's definition and an entry, as the collection schema
+// describes them (cms/openapi.yaml refers to schema/collection.schema.json).
+const COLLECTION_DEFINITION = { name: str, prefix: str, fields: arr, sort: obj } as const satisfies Shape<CollectionDefinition>;
+const COLLECTION_CHANGES = { name: optional(str), prefix: optional(str), fields: optional(arr), sort: optional(obj) } as const satisfies Shape<CollectionChanges>;
+const NEW_ENTRY = { title: str, slug: str, values: obj } as const satisfies Shape<EntryContent>;
+const ENTRY_SAVE = { revision: num, saveId: str, title: str, slug: str, values: obj } as const satisfies Shape<EntrySave>;
 // Not a body: the list's query parameters, compared with the operation's.
 const RESPONSE_QUERY = { form: optional(str), before: optional(num) } as const satisfies Shape<ResponseQuery>;
+const ENTRY_QUERY = { q: optional(str), order: optional(str) } as const satisfies Shape<EntryQuery>;
 
 const INVALID_CODES = ["invalid_request", "invalid_document", "duplicate_key"] as const satisfies readonly Invalid["code"][];
 // And no code of Invalid's is missing from the list.
@@ -118,34 +137,52 @@ const everyCode: Exclude<Invalid["code"], (typeof INVALID_CODES)[number]> extend
 
 type Node = Record<string, unknown>;
 const openapi = parse(readFileSync(new URL("../../../cms/openapi.yaml", import.meta.url), "utf8")) as Node;
+// The collection schema the description refers to, and the page schema
+// that one refers to, each by the reference that names it from the
+// description's folder.
+const COLLECTION_FILE = "../schema/collection.schema.json";
+const PAGE_FILE = "../schema/block-document.schema.json";
+const files: Readonly<Record<string, Node>> = {
+  [COLLECTION_FILE]: JSON.parse(readFileSync(new URL("../../../schema/collection.schema.json", import.meta.url), "utf8")) as Node,
+  [PAGE_FILE]: JSON.parse(readFileSync(new URL("../../../schema/block-document.schema.json", import.meta.url), "utf8")) as Node,
+};
 
-// The node at a JSON pointer of the description ("#/components/schemas/Page").
-function at(pointer: string): Node {
-  let here: unknown = openapi;
-  for (const raw of pointer.replace(/^#\//, "").split("/")) {
+// The node at a JSON pointer of the description ("#/components/schemas/Page"),
+// or of another file it refers to.
+function at(pointer: string, root: Node = openapi): Node {
+  let here: unknown = root;
+  for (const raw of pointer.replace(/^#\/?/, "").split("/").filter((part) => part !== "")) {
     const key = raw.replaceAll("~1", "/").replaceAll("~0", "~");
-    if (here === null || typeof here !== "object" || !(key in here)) throw new Error(`openapi.yaml has nothing at ${pointer} (stopped at ${key})`);
+    if (here === null || typeof here !== "object" || !(key in here)) throw new Error(`there is nothing at ${pointer} (stopped at ${key})`);
     here = (here as Node)[key];
   }
   return here as Node;
 }
 
-// A schema with its local $ref followed. A reference to another file is
-// the page document's schema, held to document.ts by its own test.
-function follow(schema: Node): Node {
+// A schema with its $ref followed: in the description, into the collection
+// schema, and from there into the page schema beside it; and the file the
+// schema found is in, for the references it holds in turn. The page
+// document's own schema, referred to whole, is an object, held to
+// document.ts by its own test.
+function resolve(schema: Node, base = "openapi.yaml"): { node: Node; base: string } {
   const ref = schema.$ref;
-  if (typeof ref !== "string") return schema;
-  if (!ref.startsWith("#/")) return { type: "object", externalRef: ref };
-  return follow(at(ref));
+  if (typeof ref !== "string") return { node: schema, base };
+  const [file = "", fragment = ""] = ref.split("#");
+  const target = file === "" ? base : base === "openapi.yaml" ? file : `../schema/${file}`;
+  if (target === PAGE_FILE && fragment === "") return { node: { type: "object", externalRef: ref }, base: target };
+  const root = target === "openapi.yaml" ? openapi : files[target];
+  if (!root) throw new Error(`no file ${target} for the reference ${ref}`);
+  return resolve(at(`#${fragment}`, root), target);
 }
+const follow = (schema: Node, base?: string): Node => resolve(schema, base).node;
 
-function describeSchema(schema: Node): { type: string; nullable: boolean } {
-  const resolved = follow(schema);
+function describeSchema(schema: Node, base?: string): { type: string; nullable: boolean } {
+  const { node: resolved, base: here } = resolve(schema, base);
   if (Array.isArray(resolved.anyOf)) {
-    const branches = (resolved.anyOf as Node[]).map(follow);
-    const nonNull = branches.filter((b) => b.type !== "null");
+    const branches = (resolved.anyOf as Node[]).map((branch) => resolve(branch, here));
+    const nonNull = branches.filter((b) => b.node.type !== "null");
     if (nonNull.length !== 1) throw new Error(`an anyOf of ${nonNull.length} non-null branches has no single type`);
-    const inner = describeSchema(nonNull[0]!);
+    const inner = describeSchema(nonNull[0]!.node, nonNull[0]!.base);
     return { type: inner.type, nullable: inner.nullable || nonNull.length < branches.length };
   }
   if ("const" in resolved) return { type: typeof resolved.const, nullable: false };
@@ -157,14 +194,14 @@ function describeSchema(schema: Node): { type: string; nullable: boolean } {
 
 // The table the API gives an object schema, in the same form as the shapes.
 function shapeOf(pointer: string, without: readonly string[] = []): Record<string, { type: string; nullable: boolean; required: boolean }> {
-  const schema = follow(at(pointer));
+  const { node: schema, base } = resolve(at(pointer));
   if (schema.additionalProperties !== false) throw new Error(`${pointer} allows members it does not name, so no table can hold it`);
   const required = new Set((schema.required ?? []) as string[]);
   const properties = (schema.properties ?? {}) as Record<string, Node>;
   return Object.fromEntries(
     Object.entries(properties)
       .filter(([key]) => !without.includes(key))
-      .map(([key, property]) => [key, { ...describeSchema(property), required: required.has(key) }]),
+      .map(([key, property]) => [key, { ...describeSchema(property, base), required: required.has(key) }]),
   );
 }
 
@@ -201,6 +238,16 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["MediaUse", MEDIA_USE, "#/components/schemas/MediaInUseError/properties/usedBy"],
     ["a page of MediaUse", MEDIA_USE_PAGE, "#/components/schemas/MediaInUseError/properties/usedBy/properties/pages/items"],
     ["a version of MediaUse", MEDIA_USE_VERSION, "#/components/schemas/MediaInUseError/properties/usedBy/properties/versions/items"],
+    ["an entry of MediaUse", MEDIA_USE_ENTRY, "#/components/schemas/MediaInUseError/properties/usedBy/properties/entries/items"],
+    ["Collection", COLLECTION, "#/components/schemas/Collection"],
+    ["the list of collections", COLLECTION_LIST, response("/api/collections", "get", 200)],
+    ["EntryPublished", ENTRY_PUBLISHED, "#/components/schemas/EntryPublished"],
+    ["Entry", ENTRY, "#/components/schemas/Entry"],
+    ["the list of entries", ENTRY_LIST, response("/api/collections/{id}/entries", "get", 200)],
+    ["CollectionDefinition, the collection schema's", COLLECTION_DEFINITION, requestBody("/api/collections", "post")],
+    ["CollectionChanges", COLLECTION_CHANGES, requestBody("/api/collections/{id}", "patch")],
+    ["EntryContent, the collection schema's entry", NEW_ENTRY, requestBody("/api/collections/{id}/entries", "post")],
+    ["EntrySave", ENTRY_SAVE, requestBody("/api/collections/{id}/entries/{entryId}", "put")],
     ["SiteStyle", SITE_STYLE, "#/components/schemas/SiteStyle"],
     ["SiteStyle's choices", SITE_STYLE_CHOICES, "#/components/schemas/SiteStyle/properties/choices"],
     ["ToneChoice", TONE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/palette/additionalProperties/items"],
@@ -251,11 +298,19 @@ describe("the adapter's types match cms/openapi.yaml", () => {
   test("the responses: a list's longest part, the kinds of a kept field, and the list's query", () => {
     expect(RESPONSES_PER_PART).toBe(at(`${response("/api/pages/{id}/responses", "get", 200)}/properties/responses`).maxItems);
     expect([...FORM_FIELD_KINDS]).toEqual(at("#/components/schemas/KeptField/properties/kind").enum);
-    const parameters = (at("#/paths/~1api~1pages~1{id}~1responses/get").parameters as Node[]).map(follow);
+    const parameters = (at("#/paths/~1api~1pages~1{id}~1responses/get").parameters as Node[]).map((schema) => follow(schema));
     const query = Object.fromEntries(
       parameters.filter((p) => p.in === "query").map((p) => [p.name as string, { ...describeSchema(p.schema as Node), required: p.required === true }]),
     );
     expect(sortKeys(query)).toEqual(sortKeys(RESPONSE_QUERY));
+  });
+
+  test("the list of entries' query", () => {
+    const parameters = (at("#/paths/~1api~1collections~1{id}~1entries/get").parameters as Node[]).map((p) => follow(p));
+    const query = Object.fromEntries(
+      parameters.filter((p) => p.in === "query").map((p) => [p.name as string, { ...describeSchema(p.schema as Node), required: p.required === true }]),
+    );
+    expect(sortKeys(query)).toEqual(sortKeys(ENTRY_QUERY));
   });
 
   test("the codes of an invalid request", () => {
@@ -269,7 +324,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(47);
+    expect(pairs).toHaveLength(57);
   });
 });
 

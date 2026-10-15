@@ -40,6 +40,7 @@ import {
   type StorageAdapter,
 } from "./adapter.ts";
 import { createAutosave, type Autosave, type SavePhase, type SaveSnapshot } from "./autosave.ts";
+import type { CollectionDefinition, EntryContent, EntryValues, Field } from "../shared/collection.ts";
 import type { FormBlock, FormField, PageDocument, SectionBlock, WidgetBlock } from "../shared/document.ts";
 
 // The part of a test runner's expect the battery uses (Vitest's fits).
@@ -165,6 +166,36 @@ async function upload(env: ContractEnv, name: string, alt?: string) {
   const file = png(name);
   return value(await env.adapter.uploadMedia({ file, width: 3, height: 2, ...(alt === undefined ? {} : { alt }) }), `uploading ${name}`);
 }
+
+// News, a collection with a field of most types and a day to order its
+// entries by, under a prefix of the case's own.
+const NEWS_FIELDS: Field[] = [
+  { key: "summary", label: "Summary", type: "paragraph", required: true },
+  { key: "body", label: "Body", type: "richText", required: false },
+  { key: "picture", label: "Picture", type: "image", required: false },
+  { key: "day", label: "Day", type: "date", required: true },
+  { key: "places", label: "Places", type: "number", required: false, min: 0, max: 40 },
+  { key: "booking", label: "Booking", type: "link", required: false },
+  { key: "members-only", label: "Members only", type: "toggle", required: false },
+  { key: "level", label: "Level", type: "choice", required: true, options: ["Beginner", "Improver"] },
+];
+
+function news(prefix: string, changes: Partial<CollectionDefinition> = {}): CollectionDefinition {
+  return { name: "News", prefix, fields: structuredClone(NEWS_FIELDS), sort: { by: "day", direction: "desc" }, ...changes };
+}
+
+// An entry of News: its required values, and any given.
+function newsEntry(slug: string, title = "Dawn swims start again", values: EntryValues = {}): EntryContent {
+  return { title, slug, values: { summary: "Twice a week at first light.", day: "2026-05-02", level: "Beginner", ...values } };
+}
+
+async function newCollection(env: ContractEnv, prefix = "news"): Promise<{ id: number; prefix: string; templateId: number }> {
+  const made = value(await env.adapter.createCollection(news(env.unique(prefix))), "making a collection");
+  return { id: made.id, prefix: made.prefix, templateId: made.template.id };
+}
+
+const pointers = (problem: { kind: string; errors?: Array<{ pointer: string; keyword: string }> }): string[] =>
+  (problem.errors ?? []).map((e) => `${e.pointer} ${e.keyword}`).sort();
 
 // Waits for the autosave to reach one of the phases, on the real clock.
 function phaseOf(autosave: Autosave, phases: readonly SavePhase[], withinMs = 20_000): Promise<SaveSnapshot> {
@@ -1136,6 +1167,302 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  // ------------------------------------------------------- collections
+  {
+    name: "a new collection is listed with its definition and no entry, and its template is a page of its own kind: no address, an empty document with its name, nothing live, listed with neither the pages nor the parts",
+    needs: ["collections"],
+    async run(env) {
+      const prefix = env.unique("news");
+      const made = value(await env.adapter.createCollection(news(prefix)), "the collection");
+      env.expect(made).toMatchObject({ name: "News", prefix, fields: NEWS_FIELDS, sort: { by: "day", direction: "desc" }, publishedRevision: 0, entryCount: 0, publishedCount: 0 });
+      env.expect(made.template).toMatchObject({ kind: "template", title: "News", slug: null, home: false, revision: 0, published: null, scheduled: null } satisfies Partial<PageSummary>);
+      env.expect(made.template.links.live).toBe(null);
+      env.expect((await env.adapter.listCollections()).find((c) => c.id === made.id)).toEqual(made);
+      env.expect(await env.adapter.getCollection(made.id)).toEqual(made);
+      const template = await env.adapter.getPage(made.template.id);
+      env.expect(template.page).toMatchObject({ id: made.template.id, kind: "template", slug: null, home: false });
+      env.expect(template.draft.document).toEqual({ schemaVersion: 1, title: "News", sections: [] });
+      env.expect(await env.adapter.listEntries(made.id)).toEqual([]);
+      env.expect((await env.adapter.listPages()).map((page) => page.id), "not among the pages").not.toContain(made.template.id);
+      env.expect((await env.adapter.listParts()).map((part) => part.id), "not among the parts").not.toContain(made.template.id);
+    },
+  },
+  {
+    name: "a collection is refused at the member at fault, by its schema and its rules: a key twice, a type not of the list, a choice with no options, a sort by a text, a prefix malformed, reserved or taken; and nothing is made",
+    needs: ["collections"],
+    async run(env) {
+      const taken = await newCollection(env);
+      const before = (await env.adapter.listCollections()).length;
+      const fields = (change: (fields: Field[]) => void): Field[] => {
+        const all = structuredClone(NEWS_FIELDS);
+        change(all);
+        return all;
+      };
+      for (const [definition, fault] of [
+        [news(env.unique("twice"), { fields: fields((all) => { all[1]!.key = "summary"; }) }), "/fields/1/key uniqueKey"],
+        [news(env.unique("type"), { fields: fields((all) => { (all[0] as { type: string }).type = "email"; }) }), "/fields/0/type enum"],
+        [news(env.unique("choice"), { fields: fields((all) => { delete (all[7] as { options?: string[] }).options; }) }), "/fields/7 required"],
+        [news(env.unique("sort"), { sort: { by: "summary", direction: "asc" } }), "/sort/by sortField"],
+        [news("News Room"), "/prefix pattern"],
+        [news("api"), "/prefix reserved"],
+        [news(taken.prefix), "/prefix taken"],
+      ] as const) {
+        const problem = refusal(await env.adapter.createCollection(definition), fault);
+        env.expect(problem.kind, fault).toBe("invalid");
+        env.expect(pointers(problem), fault).toEqual([fault]);
+      }
+      env.expect((await env.adapter.listCollections()).length, "none made").toBe(before);
+    },
+  },
+  {
+    name: "a page cannot take a collection's prefix as its address, and a collection cannot take a page's next or live address as its prefix",
+    needs: ["collections", "publish"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const made = refusal(await env.adapter.createPage({ title: "News", slug: collection.prefix }), "a page at a collection's prefix");
+      env.expect(pointers(made)).toEqual(["/slug taken"]);
+      const page = await newPage(env, "latest");
+      env.expect(pointers(refusal(await env.adapter.updatePage(page.id, { slug: collection.prefix }), "a page's next address at a prefix"))).toEqual(["/slug taken"]);
+
+      value(await env.adapter.publish(page.id), "the page's publish");
+      const next = env.unique("next");
+      value(await env.adapter.updatePage(page.id, { slug: next }), "the page's next address");
+      for (const [prefix, what] of [[page.slug, "the page's live address"], [next, "the page's next address"]] as const) {
+        const problem = refusal(await env.adapter.createCollection(news(prefix)), what);
+        env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword} ${e.message}`), what).toEqual(["/prefix taken is already the address of a page"]);
+      }
+    },
+  },
+  {
+    name: "a collection's definition changes by the members given, checked whole; a change moves its published revision and one that changes nothing does not; the field its order follows does not go without a new order",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const renamed = value(await env.adapter.updateCollection(collection.id, { name: "Newsroom" }), "a new name");
+      env.expect([renamed.name, renamed.prefix, renamed.publishedRevision]).toEqual(["Newsroom", collection.prefix, 1]);
+      const same = value(await env.adapter.updateCollection(collection.id, { name: "Newsroom", fields: NEWS_FIELDS }), "the same definition");
+      env.expect(same.publishedRevision, "nothing changed").toBe(1);
+      const sorted = value(await env.adapter.updateCollection(collection.id, { fields: NEWS_FIELDS.slice(0, 4), sort: { by: "title", direction: "asc" } }), "fewer fields, by title");
+      env.expect([sorted.fields.length, sorted.sort, sorted.publishedRevision]).toEqual([4, { by: "title", direction: "asc" }, 2]);
+      const dated = value(await env.adapter.updateCollection(collection.id, { sort: { by: "day", direction: "desc" } }), "by day");
+      env.expect(dated.publishedRevision).toBe(3);
+      const problem = refusal(await env.adapter.updateCollection(collection.id, { fields: NEWS_FIELDS.slice(0, 3) }), "the day's field without a new order");
+      env.expect(pointers(problem)).toEqual(["/sort/by sortField"]);
+      env.expect(pointers(refusal(await env.adapter.updateCollection(collection.id, {}), "no member"))).toEqual([" minProperties"]);
+      env.expect((await env.adapter.getCollection(collection.id)).fields).toHaveLength(4);
+    },
+  },
+  {
+    name: "an entry is made with its title, slug and values of every type, read back as made and listed; each value its fields refuse is refused at the value, all in one answer, and nothing is made",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const values: EntryValues = {
+        body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Bring a " }, { type: "text", text: "bright cap", marks: [{ type: "bold" }] }] }] },
+        places: 12.5,
+        booking: { label: "Book a place", href: "/join?swim=dawn" },
+        "members-only": true,
+        level: "Improver",
+      };
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("dawn", "Dawn swims", values)), "the entry");
+      env.expect(made).toMatchObject({ collectionId: collection.id, title: "Dawn swims", slug: "dawn", revision: 0, lastSaveId: null, published: null });
+      env.expect(made.values).toEqual({ summary: "Twice a week at first light.", day: "2026-05-02", ...values });
+      env.expect(await env.adapter.getEntry(collection.id, made.id)).toEqual(made);
+      env.expect(await env.adapter.listEntries(collection.id)).toEqual([made]);
+      env.expect((await env.adapter.getCollection(collection.id)).entryCount).toBe(1);
+
+      const wrong = newsEntry("wrong", "", { day: "2026-02-30", places: 41, level: "Expert", summery: "A typo", booking: { label: "Book", href: "javascript:alert(1)" } });
+      delete wrong.values.summary;
+      const problem = refusal(await env.adapter.createEntry(collection.id, wrong), "an entry wrong everywhere");
+      env.expect(problem.kind).toBe("invalid");
+      env.expect(pointers(problem)).toEqual([
+        "/title pattern", "/values/booking/href pattern", "/values/day dateExists", "/values/level enum", "/values/places maximum", "/values/summary required", "/values/summery unknownField",
+      ]);
+      env.expect(problem.errors.find((e) => e.pointer === "/values/places")?.message).toBe("must be at most 40");
+      env.expect((await env.adapter.listEntries(collection.id)).map((entry) => entry.id), "nothing made").toEqual([made.id]);
+    },
+  },
+  {
+    name: "an entry saved at its revision is kept, its revision up by one; from a revision another tab has moved past it is a conflict naming where the entry is and whose save took it there; the same save sent again is answered as saved, once",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("dawn")), "the entry");
+      const save = { ...newsEntry("dawn-may", "Dawn swims, from May"), revision: made.revision, saveId: "entry-save-1" };
+      const saved = value(await env.adapter.saveEntry(collection.id, made.id, save), "the save");
+      env.expect(saved).toMatchObject({ title: "Dawn swims, from May", slug: "dawn-may", revision: made.revision + 1, lastSaveId: "entry-save-1", published: null });
+      env.expect(value(await env.adapter.saveEntry(collection.id, made.id, structuredClone(save)), "the same save again")).toEqual(saved);
+
+      const other = env.openTab();
+      const theirs = value(await other.saveEntry(collection.id, made.id, { ...newsEntry("dawn-may", "From the other tab"), revision: saved.revision, saveId: "entry-other-1" }), "the other tab's save");
+      const late = refusal(await env.adapter.saveEntry(collection.id, made.id, { ...newsEntry("dawn-may", "Late"), revision: saved.revision, saveId: "entry-save-2" }), "a save from the old revision");
+      env.expect(late).toMatchObject({ kind: "conflict", currentRevision: theirs.revision, lastSaveId: "entry-other-1" });
+      env.expect(refusal(await env.adapter.saveEntry(collection.id, made.id, { ...save, title: "Something else" }), "the first saveId with other words")).toMatchObject({ kind: "conflict", currentRevision: theirs.revision });
+      env.expect((await env.adapter.getEntry(collection.id, made.id)).title).toBe("From the other tab");
+      const malformed = refusal(await env.adapter.saveEntry(collection.id, made.id, { ...save, revision: -1, saveId: "not one" }), "a save of no revision and no id");
+      env.expect(pointers(malformed)).toEqual(["/revision minimum", "/saveId pattern"]);
+    },
+  },
+  {
+    name: "an entry's slug is unique in its collection, as its next address and as its live one, and another collection's entries may take it",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const first = value(await env.adapter.createEntry(collection.id, newsEntry("dawn")), "the first entry");
+      value(await env.adapter.publishEntry(collection.id, first.id), "its publish");
+      value(await env.adapter.saveEntry(collection.id, first.id, { ...newsEntry("dawn-may"), revision: 0, saveId: "slug-1" }), "its next address");
+      const second = value(await env.adapter.createEntry(collection.id, newsEntry("winter")), "the second entry");
+      for (const [taken, words] of [["dawn", "is already the address of another entry"], ["dawn-may", "is already the next address of another entry"]] as const) {
+        const saved = refusal(await env.adapter.saveEntry(collection.id, second.id, { ...newsEntry(taken), revision: 0, saveId: `slug-${taken}` }), `a save at ${taken}`);
+        env.expect(saved.kind === "invalid" ? saved.errors.map((e) => `${e.pointer} ${e.keyword} ${e.message}`) : saved, taken).toEqual([`/slug taken ${words}`]);
+        env.expect(pointers(refusal(await env.adapter.createEntry(collection.id, newsEntry(taken)), `a new entry at ${taken}`)), taken).toEqual(["/slug taken"]);
+      }
+      const elsewhere = await newCollection(env, "events");
+      value(await env.adapter.createEntry(elsewhere.id, newsEntry("dawn")), "the same slug in another collection");
+    },
+  },
+  {
+    name: "publishing an entry puts its draft live as it is then, and later saves wait for the next publish; a publish at a moved revision is a conflict; an unpublish takes it off; each moves the collection's published revision, a save does not",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("dawn", "Live words")), "the entry");
+      const live = value(await env.adapter.publishEntry(collection.id, made.id, { revision: 0 }), "the publish");
+      env.expect(live.published).toMatchObject({ title: "Live words", slug: "dawn", values: made.values, draftRevision: 0 });
+      const wentLive = live.published!.publishedAt;
+      const later = value(await env.adapter.saveEntry(collection.id, made.id, { ...newsEntry("dawn-may", "Not live yet"), revision: 0, saveId: "live-1" }), "a later save");
+      env.expect([later.title, later.published?.title, later.published?.slug, later.published?.draftRevision]).toEqual(["Not live yet", "Live words", "dawn", 0]);
+      env.expect((await env.adapter.getCollection(collection.id)).publishedRevision, "a save is not seen").toBe(1);
+
+      env.expect(refusal(await env.adapter.publishEntry(collection.id, made.id, { revision: 0 }), "a publish of a revision moved past")).toMatchObject({ kind: "conflict", currentRevision: 1, lastSaveId: "live-1" });
+      const again = value(await env.adapter.publishEntry(collection.id, made.id, { revision: 1 }), "the next publish");
+      env.expect([again.published?.title, again.published?.slug, again.published?.draftRevision, again.published?.publishedAt]).toEqual(["Not live yet", "dawn-may", 1, wentLive]);
+      env.expect((await env.adapter.getCollection(collection.id)).publishedCount).toBe(1);
+
+      const off = await env.adapter.unpublishEntry(collection.id, made.id);
+      env.expect([off.published, off.title, off.revision]).toEqual([null, "Not live yet", 1]);
+      env.expect((await env.adapter.unpublishEntry(collection.id, made.id)).published, "taken off twice").toBe(null);
+      env.expect((await env.adapter.getCollection(collection.id))).toMatchObject({ publishedRevision: 3, publishedCount: 0 });
+    },
+  },
+  {
+    name: "a publish is checked against the collection's fields as they are then: a field made required since the last save is refused at the value",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("dawn")), "the entry");
+      const fields = structuredClone(NEWS_FIELDS);
+      fields[4]!.required = true;
+      value(await env.adapter.updateCollection(collection.id, { fields }), "places made required");
+      env.expect(pointers(refusal(await env.adapter.publishEntry(collection.id, made.id), "the publish"))).toEqual(["/values/places required"]);
+      env.expect((await env.adapter.getEntry(collection.id, made.id)).published).toBe(null);
+    },
+  },
+  {
+    name: "the entries are searched by title, ASCII letters without their case, and ordered by title, by a date field and by when they went live, either way, and by the collection's own order; an order by a field it cannot order by is refused",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const make = async (slug: string, title: string, day: string) => value(await env.adapter.createEntry(collection.id, newsEntry(slug, title, { day })), slug);
+      const tides = await make("tides", "Tide tables", "2026-03-01");
+      const dawn = await make("dawn", "Dawn swims", "2026-05-02");
+      await make("winter", "Winter series", "2026-11-20");
+      await make("eclipse", "Éclipse at the slipway", "2026-08-12");
+      value(await env.adapter.publishEntry(collection.id, tides.id), "the tides' publish");
+      value(await env.adapter.publishEntry(collection.id, dawn.id), "the dawn's publish");
+      const listed = async (query: { q?: string; order?: string } = {}) => (await env.adapter.listEntries(collection.id, query)).map((entry) => entry.slug);
+
+      env.expect(await listed(), "the collection's order, by day, newest first").toEqual(["winter", "eclipse", "dawn", "tides"]);
+      env.expect(await listed({ order: "title" }), "by title, code point by code point").toEqual(["dawn", "tides", "winter", "eclipse"]);
+      env.expect(await listed({ order: "-title" })).toEqual(["eclipse", "winter", "tides", "dawn"]);
+      env.expect(await listed({ order: "day" })).toEqual(["tides", "dawn", "eclipse", "winter"]);
+      env.expect(await listed({ order: "publishedAt" }), "the ones not live last").toEqual(["tides", "dawn", "winter", "eclipse"]);
+      env.expect(await listed({ order: "-publishedAt" }), "the ones not live last, either way").toEqual(["dawn", "tides", "eclipse", "winter"]);
+      env.expect(await listed({ order: "createdAt" })).toEqual(["tides", "dawn", "winter", "eclipse"]);
+      env.expect(await listed({ q: "WIN", order: "title" })).toEqual(["winter"]);
+      env.expect(await listed({ q: "a", order: "title" })).toEqual(["dawn", "tides", "eclipse"]);
+      env.expect(await listed({ q: "éclipse" }), "a letter beyond ASCII keeps its case").toEqual([]);
+      env.expect(await listed({ q: "" }), "no words, every entry").toHaveLength(4);
+      for (const order of ["summary", "Title", "-"]) {
+        env.expect(await failure(env.adapter.listEntries(collection.id, { order }), `an order by ${order}`), order).toMatchObject({ kind: "refused", status: 400, code: "invalid_query" });
+      }
+      env.expect(await failure(env.adapter.listEntries(collection.id, { q: "x".repeat(201) }), "201 characters to look for")).toMatchObject({ kind: "refused", code: "invalid_query" });
+    },
+  },
+  {
+    name: "an entry is found only under its own collection; a deleted entry is gone, and a deleted collection takes its entries and its template with it",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const elsewhere = await newCollection(env, "events");
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("dawn")), "the entry");
+      const kept = value(await env.adapter.createEntry(collection.id, newsEntry("winter")), "another entry");
+      value(await env.adapter.publishEntry(collection.id, made.id), "its publish");
+      env.expect(await failure(env.adapter.getEntry(elsewhere.id, made.id), "the entry under another collection")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.deleteEntry(elsewhere.id, made.id), "its delete under another collection")).toMatchObject({ kind: "not-found" });
+
+      await env.adapter.deleteEntry(collection.id, made.id);
+      env.expect(await failure(env.adapter.getEntry(collection.id, made.id), "the deleted entry")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.deleteEntry(collection.id, made.id), "deleting it again")).toMatchObject({ kind: "not-found" });
+      env.expect(await env.adapter.getCollection(collection.id)).toMatchObject({ entryCount: 1, publishedRevision: 2 });
+
+      await env.adapter.deleteCollection(collection.id);
+      env.expect(await failure(env.adapter.getCollection(collection.id), "the deleted collection")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.getEntry(collection.id, kept.id), "its entry")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.getPage(collection.templateId), "its template")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.listEntries(987_654_321), "the entries of no collection")).toMatchObject({ kind: "not-found" });
+      env.expect(await failure(env.adapter.deleteCollection(collection.id), "deleting it again")).toMatchObject({ kind: "not-found" });
+      env.expect((await env.adapter.listCollections()).map((c) => c.id)).toContain(elsewhere.id);
+    },
+  },
+  {
+    name: "a collection's template is saved, versioned and published as a part is, by its id, with no address; it takes no address and no home mark, and holds no form, each refused with the keyword template",
+    needs: ["collections", "publish"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const id = collection.templateId;
+      const document = documentOf("News", section(heading("An entry", 1)));
+      const revision = await saved(env.adapter, id, { revision: 0, document, saveId: "template-1" }, "the template's save");
+      const version = value(await env.adapter.saveVersion(id, { name: "The first template" }), "the template's version");
+      env.expect(version).toMatchObject({ reason: "manual", name: "The first template" });
+      const live = value(await env.adapter.publish(id, { revision }), "the template's publish");
+      env.expect(live.published).toMatchObject({ slug: null, draftRevision: revision });
+      env.expect(live.links.live).toBe(null);
+      env.expect((await env.adapter.getCollection(collection.id)).template).toMatchObject({ id, revision, published: { versionNumber: live.published.versionNumber } });
+
+      for (const [member, changes] of [["slug", { slug: env.unique("template") }], ["home", { home: true }]] as const) {
+        const problem = refusal(await env.adapter.updatePage(id, changes), `the template's ${member}`);
+        env.expect(pointers(problem), member).toEqual([`/${member} template`]);
+      }
+      const withForm = documentOf("News", section(heading("Join us"), form([{ name: "email", kind: "email", label: "Email", required: true }], "join")));
+      const problem = refusal(await env.adapter.saveDraft(id, { revision, document: withForm, saveId: "template-form" }), "a form in the template");
+      if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+      env.expect([problem.code, ...pointers(problem)]).toEqual(["invalid_document", "/document/sections/0/children/0/children/1 template"]);
+      env.expect(errorsByBlock(withForm, problem.errors).map((e) => [e.blockId, e.field, e.keyword])).toEqual([["join", "", "template"]]);
+      env.expect((await env.adapter.getDraft(id)).document).toEqual(document);
+    },
+  },
+  {
+    name: "an image an entry shows is not deleted, the refusal naming the entry, and neither once only what is live shows it; an entry naming an image the library does not have is refused at that image",
+    needs: ["collections"],
+    async run(env) {
+      const collection = await newCollection(env);
+      const item = await upload(env, `${env.unique("entry-image")}.png`, "A buoy");
+      const made = value(await env.adapter.createEntry(collection.id, newsEntry("buoy", "The buoy line", { picture: { mediaId: item.id, alt: "The buoy line" } })), "the entry");
+      value(await env.adapter.publishEntry(collection.id, made.id), "its publish");
+      // The draft no longer shows it: what is live still does.
+      value(await env.adapter.saveEntry(collection.id, made.id, { ...newsEntry("buoy", "The buoy line"), revision: 0, saveId: "image-1" }), "a draft without it");
+      const problem = refusal(await env.adapter.deleteMedia(item.id), "deleting the image");
+      env.expect(problem.kind).toBe("in-use");
+      env.expect(problem.usedBy).toEqual({ pages: [], versions: [], entries: [{ collectionId: collection.id, id: made.id, title: "The buoy line" }] });
+      await env.adapter.unpublishEntry(collection.id, made.id);
+      env.expect(value(await env.adapter.deleteMedia(item.id), "the delete once nothing shows it")).toBe(null);
+
+      const missing = refusal(await env.adapter.createEntry(collection.id, newsEntry("hole", "A hole", { picture: { mediaId: "NoSuchImage0000", alt: "Nothing" } })), "an image the library has not");
+      env.expect(missing.errors.map((e) => [e.pointer, e.keyword, e.blockPointer])).toEqual([["/values/picture/mediaId", "mediaExists", null]]);
+    },
+  },
+
   // ---------------------------------------------------- form responses
   {
     name: "a form sent from the live page is kept with the version and the fields it was sent with, listed newest first and counted by form",
@@ -1247,6 +1574,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         publish: () => env.adapter.publish(nowhere),
         schedule: () => env.adapter.schedulePublish(nowhere, { revision: 0, at: inMs(HOUR) }),
         responses: () => env.adapter.listResponses(nowhere),
+        collections: () => env.adapter.getCollection(nowhere),
       };
       for (const operation of OPTIONAL_OPERATIONS) {
         if (!env.adapter.capabilities[operation]) {

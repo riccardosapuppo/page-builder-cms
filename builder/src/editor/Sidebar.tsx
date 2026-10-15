@@ -15,7 +15,7 @@
 // The top bar's sidebar key, or the sidebar's own close button, hides it,
 // and the canvas takes its room.
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
-import { PART_KINDS, type PartKind } from "../storage/adapter.ts";
+import { isPartKind, PART_KINDS, type PartKind } from "../storage/adapter.ts";
 import { afterRender, shownElement } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
@@ -166,7 +166,7 @@ function PageTab() {
       <Icon name="chevron-right" className="i i-xs" />
     </button>
   );
-  if (kind !== "page") return <PartPanel kind={kind} after={<>{style}{css}</>} />;
+  if (isPartKind(kind)) return <PartPanel kind={kind} after={<>{style}{css}</>} />;
   return (
     <PagePanel
       after={(

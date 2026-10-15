@@ -10,8 +10,9 @@
 // it starts, which is not made; the site's header and footer asked for in
 // two tabs at the same moment, in a browser that has none yet; and a form a
 // broken build left in the footer, which no publish, version or restore
-// lets through; and the demo's starting over, which lets go of every
-// record and every picture's address.
+// lets through; the demo's starting over, which lets go of every record
+// and every picture's address; and the database of the build before
+// collections, upgraded to this build's with every record kept.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
@@ -366,6 +367,72 @@ test("the site let go of, for the demo to start over: every page, version, pictu
     expect(await fetches(tab, item.value.url), "the object URL is revoked").toBe(false);
     expect(await adapter.listPages()).toEqual([]);
     expect(await adapter.listMedia()).toEqual([]);
+  } finally {
+    await own.close();
+  }
+});
+
+// ------------------------------------------------ the database's upgrade
+
+// A browser that kept its site with the build before collections (version
+// 2 of the database's layout) opens this build (version 3), which adds the
+// stores of the collections and their entries. In a browser of its own, as
+// the build before left it.
+test("the database of the build before collections upgrades to this one's: every page, part, version, image and setting kept, the site standing as it stood, and the build before's tab told to reload", async ({ browser }) => {
+  const own = await browser.newContext();
+  try {
+    const older = await storagePage(await own.newPage());
+    // The build before, as this build's code on the layout's first two
+    // steps: only what that build did goes through it, since this build's
+    // new page also looks at the collections, which that database has not.
+    const before = remoteAdapter(older, capabilities, 2);
+    expect(await before.listPages()).toEqual([]);
+    expect(await older.evaluate(() => window.storagePage!.version())).toBe(2);
+    // A site as the build before kept it: a page with an image, saved,
+    // published and kept as a version; the header and footer; the library;
+    // a site style. The page's record as that build made it.
+    const item = await before.uploadMedia({ file: png(`${unique("upgrade")}.png`), width: 3, height: 2, alt: "A buoy" });
+    if (!item.ok) throw new Error(JSON.stringify(item.problem));
+    const at = "2026-10-14T09:00:00.000Z";
+    await older.evaluate((record) => window.storagePage!.put("pages", record), {
+      id: 1, createdAt: at, updatedAt: at, home: false, slug: unique("kept"), liveSlug: null,
+      draft: { document: { schemaVersion: 1, title: "Kept", sections: [] }, revision: 0, lastSaveId: null, updatedAt: at }, published: null,
+    });
+    const made = { id: 1, revision: 0 };
+    const image = { id: "i", type: "image", props: { mediaId: item.value.id, alt: "A buoy off the slipway" }, children: [], style: { base: {} } };
+    const document = { schemaVersion: 1 as const, title: "Kept", sections: [{ id: "s", type: "section", props: {}, style: { base: {} }, children: [{ id: "c", type: "column", props: {}, style: { base: {} }, children: [image] }] }] };
+    const saved = await before.saveDraft(made.id, { revision: made.revision, document: document as never, saveId: "upgrade-1" });
+    if (!saved.ok) throw new Error(JSON.stringify(saved.problem));
+    expect((await before.publish(made.id, { revision: saved.value.revision })).ok).toBe(true);
+    expect((await before.saveVersion(made.id, { name: "Kept by name" })).ok).toBe(true);
+    expect(await before.listParts()).toHaveLength(2);
+    const style = await before.getSiteStyle();
+    expect((await before.setSiteStyle({ palette: { ...style.palette, primary: "site-harbour" }, typeScale: style.typeScale })).ok).toBe(true);
+    const stores = ["pages", "versions", "media", "site"];
+    const kept = await Promise.all(stores.map((store) => older.evaluate((name) => window.storagePage!.records(name), store)));
+    const blobs = await older.evaluate(() => window.storagePage!.keys("blobs"));
+    const stood = await older.evaluate(() => window.storagePage!.stands(["pages", "versions", "media", "blobs", "site"]));
+
+    // This build opens it, in another tab.
+    const newer = await storagePage(await own.newPage());
+    const after = remoteAdapter(newer, capabilities);
+    expect(await after.listCollections()).toEqual([]);
+    expect(await newer.evaluate(() => window.storagePage!.version())).toBe(3);
+    for (const [k, store] of stores.entries()) expect(await newer.evaluate((name) => window.storagePage!.records(name), store), store).toEqual(kept[k]);
+    expect(await newer.evaluate(() => window.storagePage!.keys("blobs"))).toEqual(blobs);
+    expect(await after.siteFingerprint(), "the site stands as it stood: the demo's seed still knows it").toBe(stood);
+    // The build before's tab let go of the database as this one opened it,
+    // and says why at its next call.
+    await expect(before.listPages()).rejects.toMatchObject({ failure: { kind: "refused", code: "storage_upgraded" } });
+
+    // What the build before kept reads on, and a collection, kept now,
+    // changes how the site stands.
+    expect((await after.getPage(made.id)).draft.document).toEqual(document);
+    expect((await after.listVersions(made.id)).map((version) => version.name)).toContain("Kept by name");
+    expect((await after.listMedia()).map((m) => m.id)).toEqual([item.value.id]);
+    const collection = await after.createCollection({ name: "News", prefix: unique("news"), fields: [], sort: { by: "title", direction: "asc" } });
+    expect(collection.ok).toBe(true);
+    expect(await after.siteFingerprint()).not.toBe(stood);
   } finally {
     await own.close();
   }

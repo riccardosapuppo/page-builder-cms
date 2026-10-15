@@ -128,7 +128,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: false },
       listPages: async () => {
         if (this.refuseStart) throw this.refuseStart;
         return this.ids("page").map((id) => this.summary(id));

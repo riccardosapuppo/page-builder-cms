@@ -1,0 +1,203 @@
+{
+  "collection": {
+    "name": "News",
+    "prefix": "news",
+    "fields": [
+      {
+        "key": "field-0",
+        "label": "Field 0",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-1",
+        "label": "Field 1",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-2",
+        "label": "Field 2",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-3",
+        "label": "Field 3",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-4",
+        "label": "Field 4",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-5",
+        "label": "Field 5",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-6",
+        "label": "Field 6",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-7",
+        "label": "Field 7",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-8",
+        "label": "Field 8",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-9",
+        "label": "Field 9",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-10",
+        "label": "Field 10",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-11",
+        "label": "Field 11",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-12",
+        "label": "Field 12",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-13",
+        "label": "Field 13",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-14",
+        "label": "Field 14",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-15",
+        "label": "Field 15",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-16",
+        "label": "Field 16",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-17",
+        "label": "Field 17",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-18",
+        "label": "Field 18",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-19",
+        "label": "Field 19",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-20",
+        "label": "Field 20",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-21",
+        "label": "Field 21",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-22",
+        "label": "Field 22",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-23",
+        "label": "Field 23",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-24",
+        "label": "Field 24",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-25",
+        "label": "Field 25",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-26",
+        "label": "Field 26",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-27",
+        "label": "Field 27",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-28",
+        "label": "Field 28",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-29",
+        "label": "Field 29",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "field-30",
+        "label": "Field 30",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "sort": {
+      "by": "title",
+      "direction": "asc"
+    }
+  },
+  "entry": {
+    "title": "Dawn swims start again",
+    "slug": "dawn-swims-start-again",
+    "values": {}
+  }
+}

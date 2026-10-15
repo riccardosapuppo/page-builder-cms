@@ -33,7 +33,7 @@ function library(items: MediaItem[]) {
     return createMediaService({
       ui,
       adapter: {
-        capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true },
+        capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: false },
         listMedia: async () => [...ui.getState().media.values()],
         uploadMedia: (upload) => new Promise((resolve) => uploads.push({ name: upload.file.name, resolve })),
         setMediaAlt: async (id, alt) => {
@@ -230,7 +230,7 @@ describe("looking after the library", () => {
     kit.render(<MediaLibrary purpose={{ kind: "manage" }} onClose={() => {}} />);
     const dialog = screen.getByRole("dialog", { name: "Media library" });
 
-    lib.deleteWith(async () => ({ ok: false, problem: { kind: "in-use", message: "Pages still use this image.", usedBy: { pages: [{ id: 1, title: "Home", slug: "home" }], versions: [{ pageId: 1, number: 3 }] } } }));
+    lib.deleteWith(async () => ({ ok: false, problem: { kind: "in-use", message: "Pages still use this image.", usedBy: { pages: [{ id: 1, title: "Home", slug: "home" }], versions: [{ pageId: 1, number: 3 }], entries: [] } } }));
     fireEvent.click(within(dialog).getByRole("radio", { name: "tea.png" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete from library" }));
     const question = within(dialog).getByRole("group", { name: "Delete tea.png" });

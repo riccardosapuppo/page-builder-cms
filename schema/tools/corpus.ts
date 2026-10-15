@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { COLLECTION_SCHEMA_KEY } from "./collection-rules.ts";
 
 export const TOOLS = dirname(fileURLToPath(import.meta.url));
 export const SCHEMA_DIR = resolve(TOOLS, "..");
@@ -10,6 +11,16 @@ export const REPO = resolve(SCHEMA_DIR, "..");
 export const SCHEMA = join(SCHEMA_DIR, "block-document.schema.json");
 export const CORPUS = join(SCHEMA_DIR, "corpus");
 export const CMS_GEMFILE = join(REPO, "cms", "Gemfile");
+
+// The collection's schema and its corpus (./collection-corpus.ts), and the
+// name ajv knows the schema by (./collection-rules.ts).
+export const COLLECTION_SCHEMA = join(SCHEMA_DIR, "collection.schema.json");
+export const COLLECTION_CORPUS = join(SCHEMA_DIR, "collection-corpus");
+export const COLLECTION_KEY = COLLECTION_SCHEMA_KEY;
+
+// What a corpus holds: page documents, or cases of a collection and an
+// entry of it.
+export type CorpusKind = "page" | "collection";
 
 // valid/ and invalid/ hold documents; upgrade/ holds documents of an older
 // schemaVersion (none exist for version 1).
@@ -42,6 +53,13 @@ export interface ReportedError {
   pointer: string;
   keyword: string;
   property?: string;
+}
+
+// The kind --kind names: page, unless it says collection.
+export function kindOf(argv: readonly string[]): CorpusKind {
+  const kind = argValue(argv, "--kind", "page");
+  if (kind !== "page" && kind !== "collection") throw new Error(`--kind is page or collection, not ${JSON.stringify(kind)}`);
+  return kind;
 }
 
 // One line of runner output, one per corpus file.

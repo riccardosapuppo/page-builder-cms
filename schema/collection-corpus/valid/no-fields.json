@@ -1,0 +1,16 @@
+{
+  "collection": {
+    "name": "Notes",
+    "prefix": "notes",
+    "fields": [],
+    "sort": {
+      "by": "title",
+      "direction": "asc"
+    }
+  },
+  "entry": {
+    "title": "A note",
+    "slug": "a-note",
+    "values": {}
+  }
+}

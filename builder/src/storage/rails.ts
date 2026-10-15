@@ -18,10 +18,15 @@ import {
   StorageError,
   type CallOptions,
   type Capabilities,
+  type Collection,
+  type CollectionChanges,
   type Conflict,
   type Draft,
   type DraftSaved,
   type DraftSave,
+  type Entry,
+  type EntryQuery,
+  type EntrySave,
   type FieldError,
   type FormResponse,
   type InUse,
@@ -52,6 +57,7 @@ import {
   type VersionWithDocument,
 } from "./adapter.ts";
 import { isObject } from "../document/json.ts";
+import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
 import { systemClock, type Clock } from "./clock.ts";
 import { apiBase } from "./config.ts";
 
@@ -94,6 +100,18 @@ export const RAILS_ROUTES = {
   getSiteStyle: { method: "GET", path: "/site-style", body: "none" },
   setSiteStyle: { method: "PUT", path: "/site-style", body: "required" },
   getSite: { method: "GET", path: "/site", body: "none" },
+  listCollections: { method: "GET", path: "/collections", body: "none" },
+  createCollection: { method: "POST", path: "/collections", body: "required" },
+  getCollection: { method: "GET", path: "/collections/{id}", body: "none" },
+  updateCollection: { method: "PATCH", path: "/collections/{id}", body: "required" },
+  deleteCollection: { method: "DELETE", path: "/collections/{id}", body: "none" },
+  listEntries: { method: "GET", path: "/collections/{id}/entries", body: "none" },
+  createEntry: { method: "POST", path: "/collections/{id}/entries", body: "required" },
+  getEntry: { method: "GET", path: "/collections/{id}/entries/{entryId}", body: "none" },
+  saveEntry: { method: "PUT", path: "/collections/{id}/entries/{entryId}", body: "required" },
+  deleteEntry: { method: "DELETE", path: "/collections/{id}/entries/{entryId}", body: "none" },
+  publishEntry: { method: "POST", path: "/collections/{id}/entries/{entryId}/publish", body: "optional" },
+  unpublishEntry: { method: "POST", path: "/collections/{id}/entries/{entryId}/unpublish", body: "none" },
 } as const satisfies Record<string, Route>;
 
 export type OperationId = keyof typeof RAILS_ROUTES;
@@ -118,6 +136,8 @@ export const RAILS_CAPABILITIES: Capabilities = {
   imageVariants: false,
   // The CMS serves what is published, at the page's address, with its cache.
   livePages: true,
+  // The CMS keeps collections, their entries and their templates.
+  collections: true,
 };
 
 export interface RailsAdapterConfig {
@@ -393,6 +413,48 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
     },
     async deleteResponse(pageId, responseId, options) {
       value<null>(await call("deleteResponse", { id: pageId, responseId }, undefined, options), 204, "deleteResponse");
+    },
+
+    async listCollections(options) {
+      return value<{ collections: Collection[] }>(await call("listCollections", {}, undefined, options), 200, "listCollections").collections;
+    },
+    async createCollection(definition: CollectionDefinition, options) {
+      const body = { name: definition.name, prefix: definition.prefix, fields: definition.fields, sort: definition.sort };
+      return settle<Collection, Invalid>(await call("createCollection", {}, body, options), 201, ["invalid"], "createCollection");
+    },
+    async getCollection(collectionId, options) {
+      return value<Collection>(await call("getCollection", { id: collectionId }, undefined, options), 200, "getCollection");
+    },
+    async updateCollection(collectionId, changes: CollectionChanges, options) {
+      return settle<Collection, Invalid>(await call("updateCollection", { id: collectionId }, changes, options), 200, ["invalid"], "updateCollection");
+    },
+    async deleteCollection(collectionId, options) {
+      value<null>(await call("deleteCollection", { id: collectionId }, undefined, options), 204, "deleteCollection");
+    },
+    async listEntries(collectionId, query: EntryQuery = {}, options) {
+      const answer = await call("listEntries", { id: collectionId }, undefined, options, { q: query.q === "" ? undefined : query.q, order: query.order });
+      return value<{ entries: Entry[] }>(answer, 200, "listEntries").entries;
+    },
+    async createEntry(collectionId, entry: EntryContent, options) {
+      const body = { title: entry.title, slug: entry.slug, values: entry.values };
+      return settle<Entry, Invalid>(await call("createEntry", { id: collectionId }, body, options), 201, ["invalid"], "createEntry");
+    },
+    async getEntry(collectionId, entryId, options) {
+      return value<Entry>(await call("getEntry", { id: collectionId, entryId }, undefined, options), 200, "getEntry");
+    },
+    async saveEntry(collectionId, entryId, save: EntrySave, options) {
+      const body = { revision: save.revision, saveId: save.saveId, title: save.title, slug: save.slug, values: save.values };
+      return settle<Entry, Conflict | Invalid>(await call("saveEntry", { id: collectionId, entryId }, body, options), 200, ["conflict", "invalid"], "saveEntry");
+    },
+    async publishEntry(collectionId, entryId, request: PublishRequest = {}, options) {
+      const body = request.revision === undefined ? undefined : { revision: request.revision };
+      return settle<Entry, Conflict | Invalid>(await call("publishEntry", { id: collectionId, entryId }, body, options), 200, ["conflict", "invalid"], "publishEntry");
+    },
+    async unpublishEntry(collectionId, entryId, options) {
+      return value<Entry>(await call("unpublishEntry", { id: collectionId, entryId }, undefined, options), 200, "unpublishEntry");
+    },
+    async deleteEntry(collectionId, entryId, options) {
+      value<null>(await call("deleteEntry", { id: collectionId, entryId }, undefined, options), 204, "deleteEntry");
     },
   };
 

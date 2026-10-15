@@ -6,7 +6,8 @@ info:
   description: |
     Pages, their draft and versions, publishing now or at a set time, the
     responses visitors send with the forms of published pages, the media
-    library, the site style and the site's settings of Page Builder CMS.
+    library, the site style, the site's settings, and the collections and
+    their entries of Page Builder CMS.
     The editor talks to the CMS only through this
     API, so another server that answers the same way can stand in for it.
     (Visitors send their forms to the published page's own address, not to
@@ -26,6 +27,19 @@ info:
     `part`. Until a part is
     published, the pages draw its starter, the CMS's own, which the part's
     first draft holds.
+
+    **Collections** are types of content (News, Events): each has a name,
+    an address prefix its entries live under, its fields and the order its
+    entries are listed in, a definition held to
+    `schema/collection.schema.json` and to the collection's application
+    rules, which also hold each entry's values to the fields. An entry has
+    a draft, saved at a revision as a page's is, and what is live: the
+    title, slug and values it was last published with. A collection's
+    template, the document every entry is drawn with, is a page of kind
+    `template`, which belongs to its collection: read, saved, kept,
+    scheduled and published by the page routes, by its id, as a part is,
+    with no address, never the home page (422 at the member, keyword
+    `template`), and no form (422 at the form block, keyword `template`).
 
     **Errors** all have one shape, `{"error": <code>, "message": <sentence>}`.
     A 422 adds `errors`, one entry per problem, each with a JSON `pointer`
@@ -71,6 +85,10 @@ tags:
     description: The palette and type scale of the whole site.
   - name: site
     description: The site's own settings, its time zone.
+  - name: collections
+    description: Types of content, with their fields and the template their entries are drawn with.
+  - name: entries
+    description: The entries of a collection, each with a draft and what is live.
 
 paths:
   /api/pages:
@@ -175,7 +193,9 @@ paths:
         address `/` serves, at once, and the page that was home stops being
         it; `home: false` leaves `/` with no page. Until the home page is
         published, `/` answers 404. A header or footer has neither: 422 at
-        the member sent, keyword `part`.
+        the member sent, keyword `part`; nor has a template, keyword
+        `template`. An address that is a collection's prefix is taken
+        (keyword `taken`).
       tags: [pages]
       requestBody:
         required: true
@@ -247,7 +267,9 @@ paths:
         every ten minutes.
 
         The draft of a header or footer holds no form and no section
-        anchor: 422 at the form block or the anchor, keyword `part`.
+        anchor: 422 at the form block or the anchor, keyword `part`. A
+        template's holds no form: 422 at the form block, keyword
+        `template`.
       tags: [pages]
       requestBody:
         required: true
@@ -900,7 +922,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: A draft or a kept version still shows the image; nothing was deleted.
+          description: A draft, a kept version or an entry still shows the image; nothing was deleted.
           content:
             application/json:
               schema:
@@ -985,6 +1007,406 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/collections:
+    get:
+      operationId: listCollections
+      summary: List the collections
+      description: Every collection, oldest first, each with its definition, how many entries it has, and its template.
+      tags: [collections]
+      responses:
+        '200':
+          description: The collections.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [collections]
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Collection'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createCollection
+      summary: Create a collection
+      description: |
+        A new collection, from its definition, held to
+        `schema/collection.schema.json` and the collection's application
+        rules (each fault at its pointer); then its prefix to the CMS's
+        own: taken by another collection or by a page's address, next or
+        live (keyword `taken`), or an address the application answers
+        itself (`reserved`). Its template is made with it: an empty
+        document titled with its name, nothing live.
+      tags: [collections]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schema/collection.schema.json'
+      responses:
+        '201':
+          description: Created, with its template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/collections/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      operationId: getCollection
+      summary: Read a collection
+      tags: [collections]
+      responses:
+        '200':
+          description: The collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateCollection
+      summary: Change a collection's definition
+      description: |
+        The members given replace the definition's own, and the definition
+        is checked whole, as a new one is: a field the sort follows cannot
+        go without a new sort (422 at `/sort/by`, keyword `sortField`). A
+        change that changes something advances `publishedRevision`. The
+        entries' values under a key no field has any more are kept until
+        each entry's next save, which must leave them out.
+      tags: [collections]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name:
+                  $ref: '../schema/collection.schema.json#/properties/name'
+                prefix:
+                  $ref: '../schema/collection.schema.json#/$defs/slug'
+                fields:
+                  $ref: '../schema/collection.schema.json#/properties/fields'
+                sort:
+                  $ref: '../schema/collection.schema.json#/$defs/sort'
+      responses:
+        '200':
+          description: The collection as it is now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteCollection
+      summary: Delete a collection
+      description: With its entries, their old addresses, and its template with the template's draft and versions.
+      tags: [collections]
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/collections/{id}/entries:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      operationId: listEntries
+      summary: List a collection's entries
+      description: |
+        Every entry of the collection whose title holds `q` (ASCII letters
+        compared without their case), in the order `order` names or, without
+        it, the collection's `sort`. An entry with no value to order by (one
+        not live, by `publishedAt`; one without the field's value) comes
+        last either way; entries of one value come in the order they were
+        made, or its reverse for a descending order.
+      tags: [entries]
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Words to look for in the titles.
+          schema:
+            type: string
+            maxLength: 200
+        - name: order
+          in: query
+          required: false
+          description: title, updatedAt, publishedAt, createdAt, or the key of one of the collection's date or number fields; a minus before it for a descending order.
+          schema:
+            type: string
+            pattern: '^-?(?:title|updatedAt|publishedAt|createdAt|[a-z][a-z0-9-]{0,63})$'
+      responses:
+        '200':
+          description: The entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJsonOrInvalidQuery'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createEntry
+      summary: Create an entry
+      description: |
+        A new entry, its title, slug and values held to the collection's
+        fields (`schema/collection.schema.json` and the collection's
+        application rules: a value under a key no field has is
+        `unknownField`, a required field without one `required`, and each
+        value refused at `/values/<key>`); an image it names must be in the
+        media library (`mediaExists`); its slug must be no other entry's,
+        next or live (`taken`). Nothing is live until it is published.
+      tags: [entries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schema/collection.schema.json#/$defs/entry'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/collections/{id}/entries/{entryId}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - $ref: '#/components/parameters/EntryId'
+    get:
+      operationId: getEntry
+      summary: Read an entry
+      tags: [entries]
+      responses:
+        '200':
+          description: The entry, its draft and what is live.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: saveEntry
+      summary: Save an entry
+      description: |
+        Saves the title, slug and values if the entry is still at
+        `revision`, and raises the revision by one, as a page's draft is
+        saved: the same `saveId`, `revision`, title, slug and values sent
+        again after the answer was lost is answered 200, and anything else
+        from a revision the entry has moved past is a 409. Held to the
+        collection's fields as a new entry is. What is live does not
+        change until the next publish.
+      tags: [entries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revision, saveId, title, slug, values]
+              properties:
+                revision:
+                  description: The revision the editor started from.
+                  type: integer
+                  minimum: 0
+                saveId:
+                  $ref: '#/components/schemas/SaveId'
+                title:
+                  $ref: '../schema/collection.schema.json#/$defs/textValue'
+                slug:
+                  $ref: '../schema/collection.schema.json#/$defs/slug'
+                values:
+                  $ref: '#/components/schemas/EntryValues'
+      responses:
+        '200':
+          description: Saved, or a retry of the last accepted save.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteEntry
+      summary: Delete an entry
+      description: With its old addresses. A live entry's delete advances its collection's `publishedRevision`.
+      tags: [entries]
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/collections/{id}/entries/{entryId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - $ref: '#/components/parameters/EntryId'
+    post:
+      operationId: publishEntry
+      summary: Publish an entry
+      description: |
+        Puts live what the draft holds now: its title, slug and values,
+        checked again against the collection's fields as they are (422 at
+        the value, as for a save). With `revision`, only if the entry is
+        still at it (409 otherwise). The slug becomes its address; the one
+        it had redirects to it from then on, and a redirect from the new
+        one goes. When it went live is the first publish's time, until an
+        unpublish. Advances the collection's `publishedRevision`.
+      tags: [entries]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                revision:
+                  description: The revision the person publishing has seen.
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Published.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/collections/{id}/entries/{entryId}/unpublish:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - $ref: '#/components/parameters/EntryId'
+    post:
+      operationId: unpublishEntry
+      summary: Unpublish an entry
+      description: Takes it off, its draft kept; an entry not live is answered as it is. Taking a live one off advances the collection's `publishedRevision`.
+      tags: [entries]
+      responses:
+        '200':
+          description: The entry, with nothing live.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   parameters:
     PageId:
@@ -1026,6 +1448,22 @@ components:
       schema:
         type: integer
         minimum: 1
+    CollectionId:
+      name: id
+      in: path
+      required: true
+      description: The collection's id.
+      schema:
+        type: integer
+        minimum: 1
+    EntryId:
+      name: entryId
+      in: path
+      required: true
+      description: The entry's id, among the collection's entries.
+      schema:
+        type: integer
+        minimum: 1
 
   responses:
     MalformedJson:
@@ -1043,13 +1481,13 @@ components:
               - $ref: '#/components/schemas/MalformedJsonError'
               - $ref: '#/components/schemas/InvalidQueryError'
     NotFound:
-      description: No such page, version, media item or response.
+      description: No such page, version, media item, response, collection or entry.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/NotFoundError'
     Conflict:
-      description: The draft has moved past the revision sent.
+      description: The draft, or the entry, has moved past the revision sent.
       content:
         application/json:
           schema:
@@ -1178,11 +1616,11 @@ components:
         links:
           $ref: '#/components/schemas/PageLinks'
     Kind:
-      description: A page, or one of the site's parts, the header and the footer, which every published page draws around its sections.
+      description: A page, or one of the site's parts, the header and the footer, which every published page draws around its sections, or a collection's template, which draws each of its entries.
       type: string
-      enum: [page, header, footer]
+      enum: [page, header, footer, template]
     NextAddress:
-      description: The next address, the one the next publish applies; null for a header or footer, which has none.
+      description: The next address, the one the next publish applies; null for a header, a footer or a template, which has none.
       type: [string, 'null']
     PublishedOrNone:
       description: What is live, or null before the first publish.
@@ -1263,7 +1701,7 @@ components:
           description: The draft as the published page would look, inside the drafts of the header and footer; for a header or footer, the home page's draft inside them.
           type: string
         live:
-          description: The live page, `/` for the home page, or null before the first publish, and for a header or footer, which has no page of its own.
+          description: The live page, `/` for the home page, or null before the first publish, and for a header, a footer or a template, which has no page of its own.
           type: [string, 'null']
     DraftSaved:
       type: object
@@ -1461,6 +1899,115 @@ components:
         timeZone:
           description: The site's time zone, an IANA name such as Europe/London. The editor shows and takes the time of a scheduled publish in it; the API's times stay in UTC.
           type: string
+
+    Collection:
+      description: A type of content, its entries each drawn with its template.
+      type: object
+      additionalProperties: false
+      required: [id, name, prefix, fields, sort, publishedRevision, entryCount, publishedCount, createdAt, updatedAt, template]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        prefix:
+          description: The first part of every entry's address, /<prefix>/<entry slug>.
+          type: string
+        fields:
+          description: The fields every entry has, beside its title and slug, in the order the editor shows them.
+          type: array
+          items:
+            $ref: '../schema/collection.schema.json#/$defs/field'
+        sort:
+          $ref: '../schema/collection.schema.json#/$defs/sort'
+        publishedRevision:
+          description: Advanced by every change a visitor could see of the collection's entries (a publish, an unpublish, the delete of a live entry) and of its definition; the pages that list its entries are cached by it.
+          type: integer
+          minimum: 0
+        entryCount:
+          type: integer
+          minimum: 0
+        publishedCount:
+          description: How many of its entries are live.
+          type: integer
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/Time'
+        updatedAt:
+          description: When its definition last changed.
+          $ref: '#/components/schemas/Time'
+        template:
+          description: The page of kind template that draws each entry, read, saved, kept and published by the page routes, by its id.
+          $ref: '#/components/schemas/PageSummary'
+    EntryValues:
+      description: The values of the collection's fields, by key, each held to its field by the collection's rules. A value under a key no field has any more is kept from before until the entry's next save, which must leave it out.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/EntryValue'
+    EntryValue:
+      description: A value of one of the types of field, whichever its field is; which one its field takes is the collection's rules' to say.
+      anyOf:
+        - $ref: '../schema/collection.schema.json#/$defs/textValue'
+        - $ref: '../schema/collection.schema.json#/$defs/paragraphValue'
+        - $ref: '../schema/collection.schema.json#/$defs/richTextValue'
+        - $ref: '../schema/collection.schema.json#/$defs/numberValue'
+        - $ref: '../schema/collection.schema.json#/$defs/dateValue'
+        - $ref: '../schema/collection.schema.json#/$defs/imageValue'
+        - $ref: '../schema/collection.schema.json#/$defs/linkValue'
+        - $ref: '../schema/collection.schema.json#/$defs/toggleValue'
+        - $ref: '../schema/collection.schema.json#/$defs/choiceValue'
+    Entry:
+      description: An entry of a collection, its draft and what is live.
+      type: object
+      additionalProperties: false
+      required: [id, collectionId, title, slug, values, revision, lastSaveId, createdAt, updatedAt, published]
+      properties:
+        id:
+          type: integer
+        collectionId:
+          type: integer
+        title:
+          type: string
+        slug:
+          description: The next address, /<prefix>/<slug>, which the next publish applies.
+          type: string
+        values:
+          $ref: '#/components/schemas/EntryValues'
+        revision:
+          type: integer
+        lastSaveId:
+          description: The saveId of the save that brought the entry to its revision; null before any save.
+          type: [string, 'null']
+        createdAt:
+          $ref: '#/components/schemas/Time'
+        updatedAt:
+          description: The latest save, publish or unpublish.
+          $ref: '#/components/schemas/Time'
+        published:
+          description: What is live, or null before the first publish and after an unpublish.
+          anyOf:
+            - $ref: '#/components/schemas/EntryPublished'
+            - type: 'null'
+    EntryPublished:
+      description: What is live of an entry.
+      type: object
+      additionalProperties: false
+      required: [title, slug, values, draftRevision, publishedAt]
+      properties:
+        title:
+          type: string
+        slug:
+          description: The live address, /<prefix>/<slug>.
+          type: string
+        values:
+          $ref: '#/components/schemas/EntryValues'
+        draftRevision:
+          description: The entry's revision what is live was taken from; while the entry's own revision is past it, it holds that many saves visitors do not see yet.
+          type: integer
+          minimum: 0
+        publishedAt:
+          description: When it went live, the first publish since the last unpublish.
+          $ref: '#/components/schemas/Time'
 
     FormId:
       description: A form block's id in the page's document (blockId in the document's schema).
@@ -1706,8 +2253,22 @@ components:
         usedBy:
           type: object
           additionalProperties: false
-          required: [pages, versions]
+          required: [pages, versions, entries]
           properties:
+            entries:
+              description: Entries whose draft, or what is live of them, show the image.
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [collectionId, id, title]
+                properties:
+                  collectionId:
+                    type: integer
+                  id:
+                    type: integer
+                  title:
+                    type: string
             pages:
               description: Pages whose draft shows the image, the header and footer among them.
               type: array

@@ -228,7 +228,7 @@ test("the mark's menu opens the site style in the sidebar, the sidebar shown if 
 });
 
 test("where the storage serves no page (the browser demo), the line counts what is still to publish, not what visitors do not see", () => {
-  const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false } };
+  const demo = { cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: false } };
   for (const [current, said, tip] of [
     [open({ published: null }), "Not published yet", undefined],
     [open({}), "Published", "Published <when>."],

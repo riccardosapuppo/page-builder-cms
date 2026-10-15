@@ -1,0 +1,36 @@
+{
+  "collection": {
+    "name": "Νέα της ακτής",
+    "prefix": "nea",
+    "fields": [
+      {
+        "key": "titlos",
+        "label": "Περίληψη σύντομη",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "choice",
+        "label": "Выбор",
+        "type": "choice",
+        "required": true,
+        "options": [
+          "Один",
+          "Два"
+        ]
+      }
+    ],
+    "sort": {
+      "by": "publishedAt",
+      "direction": "desc"
+    }
+  },
+  "entry": {
+    "title": "Ημέρα στη θάλασσα",
+    "slug": "imera",
+    "values": {
+      "titlos": "Κρύο νερό, ζεστό τσάι",
+      "choice": "Два"
+    }
+  }
+}

@@ -1,0 +1,710 @@
+{
+  "invalid/collection-31-fields.json": {
+    "rule": "a collection has at most thirty fields",
+    "pointer": "/collection/fields",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/collection-extra-member.json": {
+    "rule": "a collection names nothing else: its template is a document of its own",
+    "pointer": "/collection/template",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/collection-fields-not-a-list.json": {
+    "rule": "the fields are a list",
+    "pointer": "/collection/fields",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/collection-name-blank.json": {
+    "rule": "a name has a visible character",
+    "pointer": "/collection/name",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/collection-name-missing.json": {
+    "rule": "a collection has a name",
+    "pointer": "/collection",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/collection-name-newline.json": {
+    "rule": "a name is one line",
+    "pointer": "/collection/name",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/collection-name-too-long.json": {
+    "rule": "a name has at most 60 characters",
+    "pointer": "/collection/name",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-double-hyphen.json": {
+    "rule": "single hyphens between words",
+    "pointer": "/collection/prefix",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-missing.json": {
+    "rule": "a collection has a prefix",
+    "pointer": "/collection",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-path.json": {
+    "rule": "a prefix is one part of an address",
+    "pointer": "/collection/prefix",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-too-long.json": {
+    "rule": "a prefix has at most 64 characters",
+    "pointer": "/collection/prefix",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-trailing-newline.json": {
+    "rule": "the line-anchor trap: news and a newline",
+    "pointer": "/collection/prefix",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/collection-prefix-uppercase.json": {
+    "rule": "a prefix is lowercase",
+    "pointer": "/collection/prefix",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/entry-extra-member.json": {
+    "rule": "an entry as saved names nothing else: what is live is the storage's",
+    "pointer": "/entry/published",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/entry-slug-missing.json": {
+    "rule": "an entry has an address",
+    "pointer": "/entry",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/entry-slug-spaces.json": {
+    "rule": "an address is lowercase words joined by hyphens",
+    "pointer": "/entry/slug",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/entry-slug-too-long.json": {
+    "rule": "an address has at most 64 characters",
+    "pointer": "/entry/slug",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/entry-title-blank.json": {
+    "rule": "a title has a visible character",
+    "pointer": "/entry/title",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/entry-title-missing.json": {
+    "rule": "an entry has a title",
+    "pointer": "/entry",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/entry-title-newline.json": {
+    "rule": "a title is one line",
+    "pointer": "/entry/title",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/entry-title-too-long.json": {
+    "rule": "a title has at most 200 characters",
+    "pointer": "/entry/title",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/entry-values-a-list.json": {
+    "rule": "the values are an object, by field key",
+    "pointer": "/entry/values",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/field-choice-21-options.json": {
+    "rule": "a choice has at most twenty options",
+    "pointer": "/collection/fields/8/options",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
+  "invalid/field-choice-no-option.json": {
+    "rule": "a choice has at least one option",
+    "pointer": "/collection/fields/8/options",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/field-choice-option-blank.json": {
+    "rule": "an option has a visible character",
+    "pointer": "/collection/fields/8/options/1",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-choice-option-too-long.json": {
+    "rule": "an option has at most 60 characters",
+    "pointer": "/collection/fields/8/options/2",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/field-choice-option-twice.json": {
+    "rule": "an option is listed once (a rule)",
+    "pointer": "/collection/fields/8/options/2",
+    "keyword": "uniqueOption",
+    "layer": "rules"
+  },
+  "invalid/field-choice-with-max.json": {
+    "rule": "a choice has no highest value",
+    "pointer": "/collection/fields/8",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-choice-without-options.json": {
+    "rule": "a choice lists its options",
+    "pointer": "/collection/fields/8",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/field-date-with-options.json": {
+    "rule": "only a choice has options",
+    "pointer": "/collection/fields/3",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-extra-member.json": {
+    "rule": "a field has no placeholder or default value",
+    "pointer": "/collection/fields/4/placeholder",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/field-key-arabic-digits.json": {
+    "rule": "digits of another script are not digits here",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-key-missing.json": {
+    "rule": "a field has a key",
+    "pointer": "/collection/fields/0",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/field-key-slug.json": {
+    "rule": "slug is the built-in field every entry has",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-key-starts-with-digit.json": {
+    "rule": "a key starts with a letter",
+    "pointer": "/collection/fields/0/key",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-key-title.json": {
+    "rule": "title is the built-in field every entry has",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-key-too-long.json": {
+    "rule": "a key has at most 64 characters",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-key-trailing-newline.json": {
+    "rule": "the line-anchor trap in a key",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-key-twice.json": {
+    "rule": "two fields of one key would keep their values under one name (a rule)",
+    "pointer": "/collection/fields/4/key",
+    "keyword": "uniqueKey",
+    "layer": "rules"
+  },
+  "invalid/field-key-uppercase.json": {
+    "rule": "a key is lowercase",
+    "pointer": "/collection/fields/0/key",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-label-blank.json": {
+    "rule": "a label has a visible character",
+    "pointer": "/collection/fields/4/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/field-label-tab.json": {
+    "rule": "a label is one line",
+    "pointer": "/collection/fields/4/label",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-label-too-long.json": {
+    "rule": "a label has at most 60 characters",
+    "pointer": "/collection/fields/4/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/field-number-max-beyond.json": {
+    "rule": "a highest value is at most a billion",
+    "pointer": "/collection/fields/5/max",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/field-number-min-above-max.json": {
+    "rule": "the lowest value is not above the highest (a rule)",
+    "pointer": "/collection/fields/5/max",
+    "keyword": "range",
+    "layer": "rules"
+  },
+  "invalid/field-number-min-text.json": {
+    "rule": "a lowest value is a number",
+    "pointer": "/collection/fields/5/min",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/field-number-min-three-decimals.json": {
+    "rule": "a lowest value has two decimals at most (a rule)",
+    "pointer": "/collection/fields/5/min",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
+  "invalid/field-number-with-options.json": {
+    "rule": "a number has no options",
+    "pointer": "/collection/fields/5",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-required-text.json": {
+    "rule": "whether a value is required is true or false",
+    "pointer": "/collection/fields/4/required",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/field-text-with-min.json": {
+    "rule": "only a number has a lowest value",
+    "pointer": "/collection/fields/4",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/field-type-unknown.json": {
+    "rule": "the types are a closed list",
+    "pointer": "/collection/fields/4/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/sort-by-no-field.json": {
+    "rule": "an order follows a field the collection has (a rule)",
+    "pointer": "/collection/sort/by",
+    "keyword": "sortField",
+    "layer": "rules"
+  },
+  "invalid/sort-by-text-field.json": {
+    "rule": "an order follows a date or number field, not a text (a rule)",
+    "pointer": "/collection/sort/by",
+    "keyword": "sortField",
+    "layer": "rules"
+  },
+  "invalid/sort-by-uppercase.json": {
+    "rule": "a field's key is lowercase",
+    "pointer": "/collection/sort/by",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/sort-direction-up.json": {
+    "rule": "ascending or descending",
+    "pointer": "/collection/sort/direction",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/sort-extra-member.json": {
+    "rule": "an order names nothing else",
+    "pointer": "/collection/sort/then",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/sort-missing.json": {
+    "rule": "a collection says how its entries are ordered",
+    "pointer": "/collection",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/text-byte-order-mark.json": {
+    "rule": "a byte-order mark before the case (a rule)",
+    "pointer": "",
+    "keyword": "parse",
+    "layer": "rules"
+  },
+  "invalid/text-duplicate-value.json": {
+    "rule": "a value given twice: each parser would see another entry (a rule)",
+    "pointer": "/entry/values/place",
+    "keyword": "duplicateKey",
+    "layer": "rules"
+  },
+  "invalid/text-invalid-utf8.json": {
+    "rule": "a 0xFF byte is not UTF-8 (a rule)",
+    "pointer": "",
+    "keyword": "encoding",
+    "layer": "rules"
+  },
+  "invalid/text-lone-surrogate.json": {
+    "rule": "half of a surrogate pair in a value (a rule)",
+    "pointer": "/entry/values/place",
+    "keyword": "wellFormed",
+    "layer": "rules"
+  },
+  "invalid/text-nesting-70.json": {
+    "rule": "70 nested arrays: past the rules' 64 levels (a rule)",
+    "pointer": "/entry/values/deep/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0",
+    "keyword": "maxNesting",
+    "layer": "rules"
+  },
+  "invalid/value-choice-not-offered.json": {
+    "rule": "a choice is one of its options (a rule)",
+    "pointer": "/entry/values/level",
+    "keyword": "enum",
+    "layer": "rules"
+  },
+  "invalid/value-choice-number.json": {
+    "rule": "a choice is its option's words",
+    "pointer": "/entry/values/level",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-choice-other-case.json": {
+    "rule": "an option is matched exactly (a rule)",
+    "pointer": "/entry/values/level",
+    "keyword": "enum",
+    "layer": "rules"
+  },
+  "invalid/value-date-29-february-1900.json": {
+    "rule": "a century is a leap year only every 400 years (a rule)",
+    "pointer": "/entry/values/day",
+    "keyword": "dateExists",
+    "layer": "rules"
+  },
+  "invalid/value-date-29-february-2027.json": {
+    "rule": "29 February only in a leap year (a rule)",
+    "pointer": "/entry/values/day",
+    "keyword": "dateExists",
+    "layer": "rules"
+  },
+  "invalid/value-date-30-february.json": {
+    "rule": "a day that exists (a rule)",
+    "pointer": "/entry/values/day",
+    "keyword": "dateExists",
+    "layer": "rules"
+  },
+  "invalid/value-date-31-april.json": {
+    "rule": "April has 30 days (a rule)",
+    "pointer": "/entry/values/day",
+    "keyword": "dateExists",
+    "layer": "rules"
+  },
+  "invalid/value-date-and-time.json": {
+    "rule": "a day, not a time",
+    "pointer": "/entry/values/day",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-date-arabic-digits.json": {
+    "rule": "digits of another script are not digits here",
+    "pointer": "/entry/values/day",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-date-month-13.json": {
+    "rule": "twelve months",
+    "pointer": "/entry/values/day",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-date-number.json": {
+    "rule": "a day is written as text",
+    "pointer": "/entry/values/day",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-date-short.json": {
+    "rule": "a day is written with two digits for its month and day",
+    "pointer": "/entry/values/day",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-date-trailing-newline.json": {
+    "rule": "the line-anchor trap in a day",
+    "pointer": "/entry/values/day",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-image-alt-and-decorative.json": {
+    "rule": "a decorative image has no alt text",
+    "pointer": "/entry/values/picture",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/value-image-alt-too-long.json": {
+    "rule": "alt text has at most 300 characters",
+    "pointer": "/entry/values/picture/alt",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/value-image-caption.json": {
+    "rule": "an image value names nothing else",
+    "pointer": "/entry/values/picture/caption",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/value-image-from-elsewhere.json": {
+    "rule": "an image of the library, never one from another site",
+    "pointer": "/entry/values/picture",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/value-image-id-space.json": {
+    "rule": "a media id is one word of its alphabet",
+    "pointer": "/entry/values/picture/mediaId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-image-no-alt.json": {
+    "rule": "an image has alt text, or is decorative",
+    "pointer": "/entry/values/picture",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/value-link-javascript.json": {
+    "rule": "a link follows a page's link rules",
+    "pointer": "/entry/values/booking/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-link-label-blank.json": {
+    "rule": "a link's words have a visible character",
+    "pointer": "/entry/values/booking/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-link-label-too-long.json": {
+    "rule": "a link's words are at most 80 characters",
+    "pointer": "/entry/values/booking/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/value-link-newline-then-https.json": {
+    "rule": "the line-anchor trap in a link",
+    "pointer": "/entry/values/booking/href",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/value-link-no-address.json": {
+    "rule": "a link goes somewhere",
+    "pointer": "/entry/values/booking",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/value-link-target.json": {
+    "rule": "a link has its words and address, nothing else",
+    "pointer": "/entry/values/booking/target",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/value-link-text.json": {
+    "rule": "a link is its words and its address, not an address alone",
+    "pointer": "/entry/values/booking",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-number-1e400.json": {
+    "rule": "1e400 reads as Infinity in both languages (a rule)",
+    "pointer": "/entry/values/places",
+    "keyword": "finite",
+    "layer": "rules"
+  },
+  "invalid/value-number-20-digits.json": {
+    "rule": "a 20-digit integer is exact in Ruby and rounded in JavaScript (a rule)",
+    "pointer": "/entry/values/places",
+    "keyword": "safeInteger",
+    "layer": "rules"
+  },
+  "invalid/value-number-above-max.json": {
+    "rule": "a number at most its field's highest (a rule)",
+    "pointer": "/entry/values/places",
+    "keyword": "maximum",
+    "layer": "rules"
+  },
+  "invalid/value-number-below-min.json": {
+    "rule": "a number at least its field's lowest (a rule)",
+    "pointer": "/entry/values/places",
+    "keyword": "minimum",
+    "layer": "rules"
+  },
+  "invalid/value-number-beyond-a-billion.json": {
+    "rule": "no number beyond a billion, whatever its field says",
+    "pointer": "/entry/values/places",
+    "keyword": "maximum",
+    "layer": "schema"
+  },
+  "invalid/value-number-text.json": {
+    "rule": "a number is a number",
+    "pointer": "/entry/values/places",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-number-three-decimals.json": {
+    "rule": "a number has two decimals at most (a rule)",
+    "pointer": "/entry/values/places",
+    "keyword": "decimals",
+    "layer": "rules"
+  },
+  "invalid/value-paragraph-blank.json": {
+    "rule": "a paragraph has a visible character",
+    "pointer": "/entry/values/summary",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-paragraph-tab.json": {
+    "rule": "a paragraph breaks its lines with a newline, nothing else",
+    "pointer": "/entry/values/summary",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/value-paragraph-too-long.json": {
+    "rule": "a paragraph has at most 5000 characters",
+    "pointer": "/entry/values/summary",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/value-required-choice-missing.json": {
+    "rule": "a required choice has a value (a rule)",
+    "pointer": "/entry/values/level",
+    "keyword": "required",
+    "layer": "rules"
+  },
+  "invalid/value-required-missing.json": {
+    "rule": "a required field has a value (a rule)",
+    "pointer": "/entry/values/summary",
+    "keyword": "required",
+    "layer": "rules"
+  },
+  "invalid/value-rich-text-bold-twice.json": {
+    "rule": "a run of text carries a mark once",
+    "pointer": "/entry/values/body/content/0/content/1/marks",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/value-rich-text-empty.json": {
+    "rule": "a rich text holds a paragraph at least",
+    "pointer": "/entry/values/body/content",
+    "keyword": "minItems",
+    "layer": "schema"
+  },
+  "invalid/value-rich-text-heading.json": {
+    "rule": "the text widget's document has no heading",
+    "pointer": "/entry/values/body/content/0/type",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/value-rich-text-javascript-link.json": {
+    "rule": "a link in a rich text follows a page's link rules",
+    "pointer": "/entry/values/body/content/0/content/3/marks/0/attrs/href",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-rich-text-not-a-doc.json": {
+    "rule": "a rich text is the text widget's document",
+    "pointer": "/entry/values/body/type",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/value-text-empty.json": {
+    "rule": "a text with nothing in it is no value: the field is left without one",
+    "pointer": "/entry/values/place",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/value-text-newline.json": {
+    "rule": "a text is one line",
+    "pointer": "/entry/values/place",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/value-text-number.json": {
+    "rule": "a text is a string",
+    "pointer": "/entry/values/place",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-text-too-long.json": {
+    "rule": "a text has at most 200 characters",
+    "pointer": "/entry/values/place",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/value-toggle-null.json": {
+    "rule": "a toggle with no value has no key",
+    "pointer": "/entry/values/members-only",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-toggle-text.json": {
+    "rule": "a toggle is true or false",
+    "pointer": "/entry/values/members-only",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/value-unknown-key.json": {
+    "rule": "a value under a key no field has (a rule)",
+    "pointer": "/entry/values/summery",
+    "keyword": "unknownField",
+    "layer": "rules"
+  },
+  "valid/collection-alone.json": {
+    "rule": "a collection with no entry to check"
+  },
+  "valid/integral-floats.json": {
+    "rule": "24.0, 0.0 and 4e1 are the integers 24, 0 and 40: a value, a lowest and a highest"
+  },
+  "valid/labels-in-other-scripts.json": {
+    "rule": "names, labels and options in other scripts, and spaces inside them"
+  },
+  "valid/news.json": {
+    "rule": "the base case: a collection with a field of every type, sorted by a date field, and an entry with a value for each; each invalid case changes one thing in it"
+  },
+  "valid/no-fields.json": {
+    "rule": "a collection of no field but the built-in title and slug, sorted by title, and an entry with no value"
+  },
+  "valid/required-values-only.json": {
+    "rule": "an entry that leaves every optional field without a value"
+  },
+  "valid/rich-text-every-mark.json": {
+    "rule": "a rich text value with every node and mark the text widget takes"
+  },
+  "valid/sort-by-places.json": {
+    "rule": "sorted by places, asc: the title, a time, or a number field"
+  },
+  "valid/sort-by-published-at.json": {
+    "rule": "sorted by publishedAt, asc: the title, a time, or a number field"
+  },
+  "valid/sort-by-title.json": {
+    "rule": "sorted by title, desc: the title, a time, or a number field"
+  },
+  "valid/sort-by-updated-at.json": {
+    "rule": "sorted by updatedAt, desc: the title, a time, or a number field"
+  },
+  "valid/values-at-their-limits.json": {
+    "rule": "every value at the ends of its rules: a title of 200 emoji, a paragraph of 5000 characters, numbers at a billion each way and with two decimals, 29 February of leap years (2000, 0000) and a day of the gap the Julian calendar left in 1582, a choice of twenty options of 60 characters, a decorative image, every link form"
+  }
+}

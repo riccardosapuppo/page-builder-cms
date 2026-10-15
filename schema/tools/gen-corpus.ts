@@ -1,4 +1,6 @@
-// Writes schema/corpus: valid/ and invalid/ documents and manifest.json.
+// Writes schema/corpus: valid/ and invalid/ documents and manifest.json;
+// and schema/collection-corpus, the cases of the collection schema and its
+// rules, which ./collection-corpus.ts makes.
 //
 // Every invalid file is the base page (valid/landing.json) with ONE change,
 // and the manifest records the rule it breaks and where both validators
@@ -13,6 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { COLLECTION_CORPUS_DIR, collectionCorpus } from "./collection-corpus.ts";
 import { MAX_NESTING } from "./rules.ts";
 
 const CORPUS = join(dirname(fileURLToPath(import.meta.url)), "..", "corpus");
@@ -1245,6 +1248,9 @@ function writeOrCheck(dir: string, corpusFiles: Map<string, Uint8Array>, corpusM
   return problems;
 }
 const problems = writeOrCheck(CORPUS, files, manifest);
+// And the collection corpus (./collection-corpus.ts), in a folder of its own.
+const collections = collectionCorpus();
+const collectionProblems = writeOrCheck(COLLECTION_CORPUS_DIR, collections.files, collections.manifest as Record<string, ValidEntry | InvalidEntry>);
 const counted = (corpusFiles: Map<string, Uint8Array>): string => {
   const nValid = [...corpusFiles.keys()].filter((f) => f.startsWith("valid/")).length;
   return `${corpusFiles.size} files (${nValid} valid, ${corpusFiles.size - nValid} invalid)`;
@@ -1252,6 +1258,9 @@ const counted = (corpusFiles: Map<string, Uint8Array>): string => {
 if (check) {
   for (const problem of problems) console.log(`  ${problem}`);
   console.log(problems.length === 0 ? `corpus is up to date: ${counted(files)}` : `corpus is NOT up to date: ${problems.length} difference(s)`);
-  process.exit(problems.length === 0 ? 0 : 1);
+  for (const problem of collectionProblems) console.log(`  collection-corpus/${problem}`);
+  console.log(collectionProblems.length === 0 ? `collection corpus is up to date: ${counted(collections.files)}` : `collection corpus is NOT up to date: ${collectionProblems.length} difference(s)`);
+  process.exit(problems.length === 0 && collectionProblems.length === 0 ? 0 : 1);
 }
 console.log(`wrote ${counted(files)} and manifest.json`);
+console.log(`wrote the collection corpus: ${counted(collections.files)} and manifest.json`);

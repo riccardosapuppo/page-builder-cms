@@ -11,11 +11,28 @@
 # address of its own. A part has no address, is never the home page, and
 # there is at most one of each kind (a unique index); the CMS makes it the
 # first time the editor asks for the pages (part!).
+#
+# Or "template", a collection's (CollectionTemplate): the document each
+# entry of its collection is drawn with, kept the same way, which belongs
+# to its collection (collection_id, one each) and goes with it. It has no
+# address of its own either, and is never the home page.
 class Page < ApplicationRecord
-  KINDS = %w[page header footer].freeze
+  KINDS = %w[page header footer template].freeze
   PARTS = %w[header footer].freeze
 
+  # The checks a draft of each kind is held to: a part's (SiteParts), a
+  # template's (CollectionTemplate), or a page's (BlockDocument), each with
+  # a check(document) that answers a BlockDocument::Result.
+  def self.checks_for(kind)
+    case kind
+    when *PARTS then SiteParts
+    when "template" then CollectionTemplate
+    else BlockDocument
+    end
+  end
+
   has_one :draft, dependent: :delete
+  belongs_to :collection, optional: true
   # What visitors sent with the page's forms: a page that has answers is
   # not destroyed with them (nothing in the CMS destroys a page yet).
   has_many :submissions, dependent: :restrict_with_exception
@@ -32,6 +49,10 @@ class Page < ApplicationRecord
   validates :slug, uniqueness: { message: "is already the address of another page" }, allow_nil: true
   validates :slug, absence: { message: "is not for a header or footer, which has no address" }, if: :part?
   validates :home, exclusion: { in: [ true ], message: "is not for a header or footer, which is drawn on every page" }, if: :part?
+  validates :slug, absence: { message: "is not for a template, which draws its entries at theirs" }, if: :template?
+  validates :home, exclusion: { in: [ true ], message: "is not for a template, which draws its entries at theirs" }, if: :template?
+  validates :collection, presence: true, if: :template?
+  validates :collection_id, absence: true, unless: :template?
   # The draft revision the live version came from, exactly when something
   # is live (here and not in the database: see the migration that added it).
   validates :published_revision, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: :published?
@@ -80,6 +101,15 @@ class Page < ApplicationRecord
     PARTS.include?(kind)
   end
 
+  def template?
+    kind == "template"
+  end
+
+  # A part or a template: a document with no address of its own.
+  def addressless?
+    part? || template?
+  end
+
   def published?
     !published_version_id.nil?
   end
@@ -97,6 +127,7 @@ class Page < ApplicationRecord
   # the write look unneeded. A part is never home (Part).
   def make_home!(at: Time.current)
     raise Part, "A header or footer is drawn on every page: it cannot be the home page." if part?
+    raise Part, "A template draws its collection's entries: it cannot be the home page." if template?
 
     transaction do
       Page.where(home: true).where.not(id: id).update_all(home: false, updated_at: at)
@@ -110,14 +141,15 @@ class Page < ApplicationRecord
     reload
   end
 
-  # What a page has and a part has not: an address, the home page's place.
+  # What a page has and a part or a template has not: an address, the home
+  # page's place.
   class Part < StandardError; end
 
   # Where a visitor finds the live page: / for the home page, /<slug> for
-  # the others, nil before the first publish, and for a part, which has no
-  # address of its own.
+  # the others, nil before the first publish, and for a part or a template,
+  # which has no address of its own.
   def live_path
-    return nil unless published? && !part?
+    return nil unless published? && !addressless?
 
     home? ? "/" : "/#{slug}"
   end
@@ -197,7 +229,7 @@ class Page < ApplicationRecord
   def publish_scheduled!(schedule, at: Time.current)
     transaction do
       draft = Draft.find_by!(page_id: id)
-      put_live!(Draft.upgrade_and_check(schedule.version.document, part: part?), revision: schedule.revision, slug: draft.slug, at: at)
+      put_live!(Draft.upgrade_and_check(schedule.version.document, kind: kind), revision: schedule.revision, slug: draft.slug, at: at)
     end
   end
 

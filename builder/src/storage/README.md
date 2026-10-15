@@ -12,7 +12,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `adapter.ts` | The storage adapter's interface, whole from stage 2, and the types of what it answers. |
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
 | `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. It refuses what the CMS refuses, including a body with half a surrogate pair in any text (the CMS's JSON parser does: 400, `malformed_json`). |
-| `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the address and home mark a part refuses) as TypeScript, for `browser.ts`. |
+| `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the address and home mark a part or a template refuses, a collection's prefix, an entry's slug, a list of entries' query and order) as TypeScript, for `browser.ts`. |
 | `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, the home page set, and the header and footer published as their starters are; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. By editions: the seed keeps the edition it put in (a digest of the example site's files and of the header's and footer's starters) and how the site stood right after (`browser.ts`, `siteFingerprint`, over every record the browser keeps, versions too); a later build of another edition lets go of a site that still stands so, read in the transaction that lets go of it (`clearSiteIf`: a save from another tab in between keeps it), and puts its own in, and keeps one somebody changed, for the demo to offer the new edition. |
 | `site-theme-module.d.ts` | The type of `virtual:site-theme`: the header's and footer's starters, read from `cms/config/parts` when the editor is built, where a starter the CMS would not start with stops the build, each value named, and the site's time zone, from `cms/config/site.yml` (`../../build/site-theme.ts`). |
 | `contract.ts` | The battery every adapter must pass, written against the interface alone. |
@@ -59,6 +59,48 @@ show, but serves nothing, so its `links.live` stays null.
 `MAX_UPLOAD_BYTES` (10 MB) and `MAX_IMAGE_SIDE` (10,000 px) are the
 CMS's limits, held to `openapi.yaml`; the editor uses them to word a
 refusal, and the CMS enforces them.
+
+**Collections** (capability `collections`, which both adapters have): a
+collection is a type of content, its definition
+(`../shared/collection.ts`: a name, the prefix of its entries' addresses,
+its fields of nine types, the order its entries are listed in) checked as
+the CMS checks it (`validateCollection` of `../shared/validate.ts`: the
+collection rules of `schema/tools/collection-rules.ts` with the schema's
+validators compiled when the editor is built). `listCollections`,
+`createCollection`, `getCollection`, `updateCollection` (the members
+given replace the definition's own, checked whole: the field the default
+order follows does not go without a new order, invalid at `/sort/by`,
+`sortField`) and `deleteCollection` (its entries and its template with
+it). A refusal of a definition is invalid at each fault, its schema's and
+its rules', at pointers into the definition (`/fields/1/key` `uniqueKey`),
+and at `/prefix` for a prefix another collection has, a page's address
+next or live (`taken`), or one the application answers itself
+(`reserved`); a page refuses a collection's prefix as its address the
+same way (`/slug`, `taken`). Each collection answers its counts of
+entries, live entries, and `publishedRevision`, which every publish,
+unpublish and delete of a live entry and every change of the definition
+move, and its `template`: a page of kind `template`, with no address,
+never home and with no form (each refused with the keyword `template`),
+read, saved, versioned and published by the page operations by its id,
+as a part is, and listed neither with the pages nor with the parts.
+Entries: `listEntries(collectionId, { q, order })` (the titles that hold
+`q`, ASCII letters without their case; in `order`, `title`, `updatedAt`,
+`publishedAt`, `createdAt` or a date or number field's key, `-` before
+it for a descending one, the collection's own order without one; one
+with nothing to order by last; an order the collection cannot take, or
+`q` past 200 characters or with a control character, is refused,
+`refused`, 400, `invalid_query`), `createEntry` and `saveEntry` (title,
+slug and values checked against the fields, `validateEntry`: invalid at
+each fault, `/values/<key>` `unknownField`, `required`, a value's own
+rules and schema, `/title`, `/slug`; `mediaExists` for an image the
+library has not; `/slug` `taken` for a slug another entry of the
+collection has, next or live), `saveEntry` at a revision as a draft is
+saved (a conflict with `currentRevision` and `lastSaveId`, the same save
+sent again answered as saved), `publishEntry` (the draft checked again
+against the fields as they are; at a revision, or a conflict),
+`unpublishEntry` and `deleteEntry`; an entry is found only under its own
+collection. An image an entry shows, in its draft or in what is live, is
+`in-use`, the refusal naming it in `usedBy.entries`.
 
 How an operation answers:
 - what it was asked for; or, where the editor has a way forward, an
@@ -114,13 +156,29 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   check and its write touch one record), `versions` (by page and
   number), `media` (the library's items) and `blobs` (each image's bytes,
   apart, so the list is read without them), `site` (the site style, once
-  first changed). The header and footer are records of `pages`, of their
-  own kind. Its
+  first changed), `collections` and `entries` (an entry found by its
+  collection). The header and footer are records of `pages`, of their
+  own kind, and so is a collection's template, made with its collection
+  in the same transaction. Its
   layout is `LAYOUT`, a step per version, as the document upgrades are:
   a later layout is a step added at the end. A change that adds a field
   to a record adds a step too, if one with nothing in it: an editor
   built before it would write the record without the field, and the
   version tells its tabs to let go (version 2, the style's custom CSS).
+  Version 3 adds the stores of the collections and their entries and
+  touches no record of the others: a browser that kept a site with a
+  build before opens it with every page, part, version, image and setting
+  as it was, and its tabs of that build let go of the database and say to
+  reload (`storage_upgraded`). How the site stands (`siteFingerprint`)
+  leaves out a store added later while it holds nothing, so a site with no
+  collection stands as it stood, and the demo's seed still knows the
+  edition it put in.
+- **Collections** kept as the CMS keeps them, with its refusals in its
+  words (`browser-rules.ts`, the prefix's and an entry's slug's rules,
+  the list's query and order: by code point, as Ruby compares strings,
+  never by UTF-16 unit). An entry published is kept with what it was
+  published with; nothing is served, so no old address is kept to
+  redirect from.
 - **Two tabs.** Every write is one readwrite transaction, and IndexedDB
   runs the transactions of one database's stores one after the other,
   whichever tab sends them: a save checks the revision and writes in the
@@ -202,7 +260,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the
-  end. It first checks the battery holds its 57 cases (at least 50),
+  end. It first checks the battery holds its 71 cases (at least 50),
   each named once, and that the Rails adapter skips none of them (with
   `publish` planted as absent in its capabilities, that check failed). A
   visitor's form is sent by the runner as a browser sends it from the
@@ -322,7 +380,21 @@ draft takes the same document), the
 responses to a page's forms (kept with the
 version and the fields they were sent with across a change of the form,
 newest first, counted by form, a part at a time to the end, deleted for
-good, found only under their own page), every optional operation called
+good, found only under their own page), the collections (a new one
+listed with its template, a page of its own kind listed with neither the
+pages nor the parts; a definition refused at each fault, its schema's and
+its rules'; a prefix and a page's address, both ways; a definition
+changed by the members given, its published revision moved only by a
+change; an entry of every type of value made, read and refused at each
+value in one answer; an entry saved at a revision, in conflict with
+another tab's save, a save sent again; a slug unique in its collection,
+next and live; a publish, a publish at a moved revision, a publish
+refused by a field made required since, an unpublish; the list searched
+and ordered every way, an order refused; an entry found only under its
+collection, deleted, and a collection deleted with its entries and its
+template; the template saved, versioned and published as a part, with no
+address, no home and no form; an image an entry shows kept, and one the
+library has not refused), every optional operation called
 so that it changes nothing, on a page that does not exist (refused as
 unsupported when the capabilities declare it absent; not found when
 they declare it present),

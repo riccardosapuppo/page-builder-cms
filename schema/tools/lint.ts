@@ -12,6 +12,11 @@
 //   6. the schema is valid draft 2020-12 to both engines, and the example in
 //      schema/README.md is the corpus file valid/readme-example.json.
 //
+// The collection's schema (collection.schema.json) is held to 1, 2, 3 and
+// the first half of 6 with the page schema: its patterns, the keywords it
+// may use, its dispatch on a field's type, and both engines compiling it
+// with every definition, the page schema's it refers to included.
+//
 //   node lint.ts [--schema PATH] [--readme PATH] [--no-style]
 //
 // --no-style skips the portable-subset check, so lint-plants.ts can show the
@@ -31,7 +36,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeAjv } from "./ajv.ts";
-import { CORPUS, SCHEMA, SCHEMA_DIR, TOOLS, argValue, listCorpus } from "./corpus.ts";
+import { COLLECTION_CORPUS, COLLECTION_KEY, COLLECTION_SCHEMA, CORPUS, SCHEMA, SCHEMA_DIR, TOOLS, argValue, listCorpus } from "./corpus.ts";
 import { escapePointer } from "./rules.ts";
 
 type Obj = Record<string, unknown>;
@@ -43,6 +48,10 @@ const readmePath = argValue(argv, "--readme", join(SCHEMA_DIR, "README.md"));
 const checkStyle = !argv.includes("--no-style");
 const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as Obj;
 const defs = (isObject(schema.$defs) ? schema.$defs : {}) as Record<string, unknown>;
+// The collection's schema, held to the checks that are not the page's own.
+const collectionSchema = JSON.parse(readFileSync(COLLECTION_SCHEMA, "utf8")) as Obj;
+const collectionDefs = (isObject(collectionSchema.$defs) ? collectionSchema.$defs : {}) as Record<string, unknown>;
+const COLLECTION_AT = "collection.schema.json#";
 
 const problems: string[] = [];
 const report: string[] = [];
@@ -57,11 +66,12 @@ const MAP_KEYWORDS = ["properties", "patternProperties", "$defs", "dependentSche
 const ONE_KEYWORDS = ["items", "additionalProperties", "not", "if", "then", "else", "contains", "propertyNames", "unevaluatedItems", "unevaluatedProperties"];
 const LIST_KEYWORDS = ["allOf", "anyOf", "oneOf", "prefixItems"];
 
-function subschemas(root: unknown): Array<{ s: Obj; at: string }> {
-  const out: Array<{ s: Obj; at: string }> = [];
+// Each subschema with its pointer and the $defs its local references name.
+function subschemas(root: unknown, origin = "#", rootDefs: Record<string, unknown> = defs): Array<{ s: Obj; at: string; defs: Record<string, unknown> }> {
+  const out: Array<{ s: Obj; at: string; defs: Record<string, unknown> }> = [];
   const visit = (s: unknown, at: string): void => {
     if (!isObject(s)) return;
-    out.push({ s, at });
+    out.push({ s, at, defs: rootDefs });
     for (const k of MAP_KEYWORDS) {
       const m = s[k];
       if (isObject(m)) for (const [name, child] of Object.entries(m)) visit(child, `${at}/${k}/${escapePointer(name)}`);
@@ -72,25 +82,28 @@ function subschemas(root: unknown): Array<{ s: Obj; at: string }> {
       if (Array.isArray(l)) l.forEach((child, i) => visit(child, `${at}/${k}/${i}`));
     }
   };
-  visit(root, "#");
+  visit(root, origin);
   return out;
 }
-const all = subschemas(schema);
+// The page schema's subschemas, then the collection schema's: sections 1
+// to 3 read both.
+const all = [...subschemas(schema), ...subschemas(collectionSchema, COLLECTION_AT, collectionDefs)];
 
-// Follows local $refs to the schema that holds the keywords.
-function deref(s: unknown): Obj | undefined {
+// Follows local $refs, in the schema whose $defs are given, to the schema
+// that holds the keywords. A reference to another file is not followed.
+function deref(s: unknown, within: Record<string, unknown> = defs): Obj | undefined {
   let cur = s;
   for (let hops = 0; hops < 20 && isObject(cur); hops++) {
     const ref = cur.$ref;
     if (typeof ref !== "string") return cur;
     const m = /^#\/\$defs\/([A-Za-z0-9_]+)$/.exec(ref);
     if (!m) return undefined;
-    cur = defs[m[1] as string];
+    cur = within[m[1] as string];
   }
   return isObject(cur) ? cur : undefined;
 }
-const enumOf = (s: unknown): unknown[] | undefined => {
-  const d = deref(s);
+const enumOf = (s: unknown, within: Record<string, unknown> = defs): unknown[] | undefined => {
+  const d = deref(s, within);
   return d && Array.isArray(d.enum) ? d.enum : undefined;
 };
 const sameList = (a: readonly unknown[], b: readonly unknown[]): boolean =>
@@ -224,7 +237,9 @@ const collect = (v: unknown): void => {
   else if (Array.isArray(v)) v.forEach(collect);
   else if (isObject(v)) Object.values(v).forEach(collect);
 };
-for (const file of listCorpus(CORPUS).filter((f) => f.startsWith("valid/"))) collect(JSON.parse(readFileSync(join(CORPUS, file), "utf8")));
+for (const corpus of [CORPUS, COLLECTION_CORPUS]) {
+  for (const file of listCorpus(corpus).filter((f) => f.startsWith("valid/"))) collect(JSON.parse(readFileSync(join(corpus, file), "utf8")));
+}
 
 interface PatternRun { at: string; source: string; probes: string[]; js?: RegExp; jsError?: string }
 const runs: PatternRun[] = patterns.map(({ at, source }) => {
@@ -255,7 +270,7 @@ const runs: PatternRun[] = patterns.map(({ at, source }) => {
 
 interface RubyPattern { at: string; ok: boolean; error?: string; ruby?: string; matches?: string }
 interface RubyAnswer { engine: string; schemaErrors: string[]; patterns: RubyPattern[] }
-const rubyInput = JSON.stringify({ schema: schemaPath, patterns: runs.map(({ at, source, probes }) => ({ at, source, probes })) });
+const rubyInput = JSON.stringify({ schemas: [schemaPath, COLLECTION_SCHEMA], patterns: runs.map(({ at, source, probes }) => ({ at, source, probes })) });
 const ruby = spawnSync(process.env.RUBY ?? "ruby", [join(TOOLS, "lint.rb")], {
   input: rubyInput,
   encoding: "utf8",
@@ -340,7 +355,7 @@ report.push(`keywords: ${all.length} subschemas, ${keywordHits} forbidden keywor
 // const of one property. Its values come from that property's enum.
 interface Dispatcher { at: string; key: string; values: unknown[]; branches: number }
 const dispatchers: Dispatcher[] = [];
-for (const { s, at } of all) {
+for (const { s, at, defs: within } of all) {
   if (!Array.isArray(s.allOf)) continue;
   const byKey = new Map<string, Array<{ value: unknown; branch: Obj; index: number }>>();
   s.allOf.forEach((branch: unknown, index: number) => {
@@ -355,7 +370,7 @@ for (const { s, at } of all) {
   });
   for (const [key, branches] of byKey) {
     const props = isObject(s.properties) ? s.properties : {};
-    const values = enumOf(props[key]);
+    const values = enumOf(props[key], within);
     if (!values) {
       problem("dispatch", `${at} dispatches on ${key}, which has no enum: an unknown value would run no branch and pass unchecked`);
       continue;
@@ -381,6 +396,11 @@ const blockDispatch = dispatchers.find((d) => d.at === "#/$defs/block" && d.key 
 if (!blockDispatch) problem("dispatch", "#/$defs/block does not dispatch on type");
 const blockTypes = enumOf(defs.blockType) ?? [];
 if (blockDispatch && !sameList(blockDispatch.values, blockTypes)) problem("dispatch", "#/$defs/block dispatches on an enum other than $defs/blockType");
+// A collection's field dispatches on its type, every type of the closed
+// list once.
+const fieldDispatch = dispatchers.find((d) => d.at === `${COLLECTION_AT}/$defs/field` && d.key === "type");
+if (!fieldDispatch) problem("dispatch", `${COLLECTION_AT}/$defs/field does not dispatch on type`);
+if (fieldDispatch && !sameList(fieldDispatch.values, enumOf(collectionDefs.fieldType, collectionDefs) ?? [])) problem("dispatch", `${COLLECTION_AT}/$defs/field dispatches on an enum other than $defs/fieldType`);
 report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values.length} values, ${d.branches} branches`).join("; ")}`);
 
 // --- 3b. marks ---------------------------------------------------------------------------
@@ -618,6 +638,21 @@ report.push(`dispatch: ${dispatchers.map((d) => `${d.at} on ${d.key}: ${d.values
   } catch (e) {
     problem("schema", `ajv refuses the schema: ${e instanceof Error ? e.message : String(e)}`);
   }
+  // The collection schema beside the page schema it refers to, compiled
+  // whole and then each definition, which nothing in the root refers to.
+  let collectionDefsCompiled = 0;
+  try {
+    const ajv = makeAjv();
+    ajv.addSchema(schema);
+    ajv.addSchema(collectionSchema, COLLECTION_KEY);
+    ajv.getSchema(COLLECTION_KEY);
+    for (const name of Object.keys(collectionDefs)) {
+      if (ajv.getSchema(`${COLLECTION_KEY}#/$defs/${name}`)) collectionDefsCompiled++;
+    }
+  } catch (e) {
+    problem("schema", `ajv refuses collection.schema.json: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  report.push(`collection schema: compiled by ajv with ${collectionDefsCompiled}/${Object.keys(collectionDefs).length} definitions`);
   for (const e of answer?.schemaErrors ?? []) problem("schema", `json_schemer: ${e}`);
   const readme = readFileSync(readmePath, "utf8");
   const block = /```json\r?\n([\s\S]*?)\r?\n```/.exec(readme);

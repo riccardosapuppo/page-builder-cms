@@ -5,12 +5,16 @@
 // versions' names, the media library's (cms/app/models/media_item.rb and
 // the direct upload's checks), the site style's
 // (cms/app/models/site_style.rb), and the members of a change of the
-// header and footer (cms/app/models/site.rb). The browser's adapter
+// header and footer (cms/app/models/site.rb); and a collection's prefix
+// and an entry's slug (cms/app/models/collection.rb, entry.rb), and the
+// query and the order of a list of entries
+// (cms/app/controllers/api/entries_controller.rb). The browser's adapter
 // refuses what the CMS refuses, at the same pointers, with the same
 // keywords and the same words, so the editor shows the same message in
 // either mode. The page document itself, and the header and footer's
 // values, are checked by the editor's own twin of the schema and the
-// application rules (../shared/validate.ts).
+// application rules (../shared/validate.ts), and so are a collection's
+// definition and an entry's values.
 //
 // browser-rules.test.ts holds the lists, the limits and the words to the
 // Ruby they follow.
@@ -30,6 +34,28 @@ export const MEDIA_ID = /^[A-Za-z0-9_-]{1,64}$/;
 export const SLUG_FORMAT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SLUG_MAX_LENGTH = 64;
 export const RESERVED_SLUGS: readonly string[] = ["api", "up", "assets", "rails", "preview", "400", "404", "422", "500"];
+// Collection::RESERVED_PREFIXES: besides the reserved addresses, a first
+// part the application answers below itself (/sent/<form>).
+export const RESERVED_PREFIXES: readonly string[] = ["sent"];
+
+// EntriesController::QUERY: the list's query, by parameter: the words to
+// look for, at most 200 characters, counted by code point as Ruby counts
+// them, none of them a control character (U+0000 to U+001F, U+007F); and
+// the order, a key, a minus before it for a descending one. With the
+// orders the list takes besides a date or number field's key
+// (EntriesController::BUILT_IN_ORDERS).
+export const ENTRY_QUERY: Readonly<Record<string, (value: string) => boolean>> = {
+  q: (value) => {
+    const characters = [...value];
+    return characters.length <= 200 && characters.every((character) => {
+      const code = character.codePointAt(0)!;
+      return code >= 0x20 && code !== 0x7f;
+    });
+  },
+  order: (value) => ENTRY_ORDER.test(value),
+};
+export const ENTRY_ORDER = /^-?(?:title|updatedAt|publishedAt|createdAt|[a-z][a-z0-9-]{0,63})$/;
+export const BUILT_IN_ORDERS: readonly string[] = ["title", "updatedAt", "publishedAt", "createdAt"];
 
 // PageVersion::NAME_MAX_LENGTH, MediaItem::ALT_MAX_LENGTH, the direct
 // upload's longest filename, and Draft::AUTO_VERSION_EVERY.
@@ -89,15 +115,27 @@ export const WORDS = {
   notASlot: "is not a palette slot",
   typeScale: "is not one of the type-scale choices",
   letterWidth: "is not one of the letter-width choices",
+  // A collection's prefix and a page's address, both ways; an entry's slug.
+  prefixTaken: "is already the prefix of another collection",
+  prefixIsPage: "is already the address of a page",
+  slugIsPrefix: "is already the prefix of a collection",
+  entryNextAddressTaken: "is already the next address of another entry",
+  entryAddressTaken: "is already the address of another entry",
   // The messages of the API's error answers.
   malformedJson: "The body is not valid JSON.",
   invalidRequest: "The request is not valid.",
   invalidDocument: "The document is not valid.",
   conflict: "The draft has changed since the revision sent.",
+  entryConflict: "The entry has changed since the revision sent.",
   partNoAddress: "A header or footer has no address and is never the home page: it is drawn on every page.",
+  templateNoAddress: "A template has no address and is never the home page: it draws its collection's entries at theirs.",
   notFound: "There is nothing at this address.",
-  inUse: "Pages still use this image.",
+  inUse: "Pages or entries still use this image.",
   mediaMissing: (id: string) => `The media library has no item ${id}.`,
+  // A list of entries' query refused (400, invalid_query).
+  queryParameters: "This list takes only the parameters q and order.",
+  queryForm: (name: string) => `The parameter ${name} is not in the form it takes.`,
+  noSortField: (key: string) => `The collection has no date or number field ${key} to order its entries by.`,
 } as const;
 
 // BlockDocument::BLOCK_POINTER: a block sits at /sections/n, a column at
@@ -194,6 +232,51 @@ export function slugErrors(slug: unknown): FieldError[] {
   if (!SLUG_FORMAT.test(slug)) return [fieldError("/slug", "invalid", WORDS.slugFormat)];
   if (RESERVED_SLUGS.includes(slug)) return [fieldError("/slug", "reserved", WORDS.reserved)];
   return [];
+}
+
+// Collection's check of a prefix that is not taken: reserved, as a page's
+// address is, or a first part the application answers below itself.
+// Whether another collection or a page has it is the storage's to say.
+export function prefixReserved(prefix: string): FieldError[] {
+  return RESERVED_SLUGS.includes(prefix) || RESERVED_PREFIXES.includes(prefix) ? [fieldError("/prefix", "reserved", WORDS.reserved)] : [];
+}
+
+// String#downcase(:ascii): the ASCII letters lowercased, nothing else.
+export const asciiLower = (text: string): string => text.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+
+// Ruby's order of two UTF-8 strings, byte by byte, which is code point by
+// code point: not JavaScript's, by UTF-16 unit, where a letter past U+FFFF
+// comes before U+E000.
+export function compareCodePoints(a: string, b: string): number {
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    const x = a.codePointAt(i)!;
+    const y = b.codePointAt(j)!;
+    if (x !== y) return x < y ? -1 : 1;
+    i += x > 0xffff ? 2 : 1;
+    j += y > 0xffff ? 2 : 1;
+  }
+  if (i >= a.length && j >= b.length) return 0;
+  return i >= a.length ? -1 : 1;
+}
+
+// The value an entry is ordered by, as EntriesController#sort_value reads
+// it: a time as the API writes it, a title, a date field's value as its
+// text, a number field's as its number; null for none, or one of another
+// kind than its field takes.
+export type SortValue = string | number | null;
+
+// EntriesController#ordered: by the value, the ones without one last;
+// each run of one value by id; reversed, those without a value apart, for
+// a descending order. The values of one key are all text or all numbers.
+export function orderedBy<T extends { id: number }>(items: readonly T[], value: (item: T) => SortValue, descending: boolean): T[] {
+  const valued = items.filter((item) => value(item) !== null);
+  const rest = items.filter((item) => value(item) === null).sort((a, b) => a.id - b.id);
+  const compare = (a: SortValue, b: SortValue): number =>
+    (typeof a === "number" && typeof b === "number" ? a - b : compareCodePoints(String(a), String(b)));
+  const sorted = [...valued].sort((a, b) => compare(value(a), value(b)) || a.id - b.id);
+  return descending ? [...sorted.reverse(), ...rest.reverse()] : [...sorted, ...rest];
 }
 
 // MediaItem's checks of a new item's size in pixels, width first, as the

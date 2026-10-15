@@ -7,8 +7,13 @@
 // schema's validator is ajv's, compiled ahead of time with the options the
 // comparator uses. The server still decides: this lets the editor say what
 // is wrong before a save is refused for it.
-import validateSchema, { validateBlock, validateLine } from "virtual:block-document-validator";
-import { checkDocument, checkTree, escapePointer, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
+import validateSchema, {
+  validateBlock, validateChoiceValue, validateCollection as validateCollectionSchema, validateDateValue, validateEntry as validateEntrySchema, validateImageValue,
+  validateLine, validateLinkValue, validateNumberValue, validateParagraphValue, validateRichTextValue, validateTextValue, validateToggleValue,
+} from "virtual:block-document-validator";
+import { checkCollection, checkEntry, type CheckError, type SchemaCheck } from "../../../schema/tools/collection-rules.ts";
+import { checkDocument, checkJson, checkTree, escapePointer, parseDocument, type ParseResult } from "../../../schema/tools/rules.ts";
+import type { CollectionDefinition, EntryContent } from "./collection.ts";
 import type { Block, PageDocument } from "./document.ts";
 
 // The pieces of the application rules the editor's checks of one change
@@ -132,6 +137,78 @@ export function validatePart(value: unknown): Validation {
   const faults = partFaults(result.document);
   if (faults.length === 0) return result;
   return { valid: false, errors: faults.map((fault) => ({ ...fault, layer: "rules" })) };
+}
+
+// What a collection's template is refused for that a page is not: a form,
+// whose answers belong to the page they are sent from, where an entry is
+// drawn at an address that is no page's. The server's words
+// (CollectionTemplate::FORM).
+export const TEMPLATE_FORM = "A template holds no form: a form's answers belong to the page they are sent from, and an entry is no page.";
+
+// Every fault of a template's own rule, at each form block, in page order.
+export function templateFaults(document: PageDocument): Array<{ pointer: string; keyword: "template"; message: string }> {
+  return partForms(document).map((pointer) => ({ pointer, keyword: "template" as const, message: TEMPLATE_FORM }));
+}
+
+// ----------------------------------------------------- collections
+
+// The collection schema's validators, by the name the collection rules
+// give each definition (schema/tools/collection-rules.ts).
+const COLLECTION_VALIDATORS: Readonly<Record<string, typeof validateCollectionSchema>> = {
+  collection: validateCollectionSchema,
+  entry: validateEntrySchema,
+  textValue: validateTextValue,
+  paragraphValue: validateParagraphValue,
+  richTextValue: validateRichTextValue,
+  numberValue: validateNumberValue,
+  dateValue: validateDateValue,
+  imageValue: validateImageValue,
+  linkValue: validateLinkValue,
+  toggleValue: validateToggleValue,
+  choiceValue: validateChoiceValue,
+};
+
+// The schema's faults, as the server reads json_schemer's: no "if" at a
+// branch that failed, a member not allowed pointed at by its name.
+const collectionSchema: SchemaCheck = (definition, value) => {
+  const validate = COLLECTION_VALIDATORS[definition];
+  if (!validate) throw new Error(`the collection schema has no definition ${definition}`);
+  if (validate(value)) return [];
+  return schemaErrors(validate.errors).map(({ pointer, keyword, message }) => ({ pointer, keyword, message }));
+};
+
+export type CollectionValidation<T> = { valid: true; value: T } | { valid: false; errors: DocumentError[] };
+
+// The rules any JSON value is held to, then the collection's rules and its
+// schema (checkCollection or checkEntry): each fault once, by pointer and
+// keyword, the first said, as the server answers them
+// (CollectionDocument.checked).
+function collectionChecks<T>(value: unknown, check: (normalised: unknown) => CheckError[]): CollectionValidation<T> {
+  const json = checkJson(value);
+  const found: Array<{ pointer: string; keyword: string; message: string; layer: "rules" | "schema" }> =
+    json.errors.length > 0 ? json.errors.map((e) => ({ ...e, layer: "rules" })) : check(json.document);
+  if (found.length === 0) return { valid: true, value: json.document as T };
+  const seen = new Set<string>();
+  const errors = found.filter((e) => {
+    const key = `${e.pointer}\u0000${e.keyword}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return { valid: false, errors: errors.map(({ pointer, keyword, message, layer }) => ({ pointer, keyword, message, layer })) };
+}
+
+// A collection's definition, checked as the server checks it, and
+// normalised; pointers into the definition ("/fields/0/key").
+export function validateCollection(value: unknown): CollectionValidation<CollectionDefinition> {
+  return collectionChecks(value, (normalised) => checkCollection(normalised, collectionSchema));
+}
+
+// An entry ({title, slug, values}) checked against its collection's
+// definition, which passed validateCollection, as the server checks it;
+// pointers into the entry ("/values/day").
+export function validateEntry(definition: CollectionDefinition, value: unknown): CollectionValidation<EntryContent> {
+  return collectionChecks(value, (normalised) => checkEntry(definition, normalised, collectionSchema));
 }
 
 function finish(result: ParseResult): Validation {

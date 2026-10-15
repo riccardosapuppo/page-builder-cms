@@ -68,7 +68,7 @@ test("the battery holds its cases, and the browser's adapter skips only those of
   expect(new Set(STORAGE_CONTRACT.map((c) => c.name)).size).toBe(STORAGE_CONTRACT.length);
   const skipped = STORAGE_CONTRACT.filter((c) => c.needs.some((operation) => !capabilities[operation])).map((c) => c.name);
   expect(skipped.sort()).toEqual(Object.keys(SKIPPED).sort());
-  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false, livePages: false });
+  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: true });
 });
 
 for (const contract of STORAGE_CONTRACT) {

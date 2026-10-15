@@ -12,23 +12,28 @@
 // the same helper, and anything left that looks like a require() fails the
 // build instead of reaching the bundle.
 //
-// The module has three validators, sharing their compiled code: the default
-// export checks a whole page document; validateBlock checks one block and
-// everything under it against $defs/block, so the editor can check the one
-// parent a change touches (a section that would get a fifth column) without
-// validating the page; validateLine checks one line of text against
-// $defs/line, the rule the server also holds a version's name and an
-// image's alt text to, for the browser's storage adapter, which keeps
-// both. The same plugin
-// serves virtual:block-document-nesting, the nesting rule read from the
-// schema (build/nesting.ts).
+// The module has three validators of the page schema, sharing their
+// compiled code: the default export checks a whole page document;
+// validateBlock checks one block and everything under it against
+// $defs/block, so the editor can check the one parent a change touches (a
+// section that would get a fifth column) without validating the page;
+// validateLine checks one line of text against $defs/line, the rule the
+// server also holds a version's name and an image's alt text to, for the
+// browser's storage adapter, which keeps both. And the collection schema's
+// (schema/collection.schema.json), which refers to the page schema's
+// definitions: validateCollection checks a collection's definition, and
+// one validator for each definition the collection rules check an entry's
+// parts against (COLLECTION_VALIDATORS), for the browser's storage too.
+// The same plugin serves virtual:block-document-nesting, the nesting rule
+// read from the schema (build/nesting.ts).
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 import Ajv2020Module from "ajv/dist/2020.js";
 import standaloneModule from "ajv/dist/standalone/index.js";
 import { AJV_OPTIONS } from "../../schema/tools/ajv-options.ts";
+import { COLLECTION_SCHEMA_KEY, VALUE_DEFS } from "../../schema/tools/collection-rules.ts";
 import { nestingSource } from "./nesting.ts";
-import { ajvOptionsFile, schemaFile } from "./paths.ts";
+import { ajvOptionsFile, collectionSchemaFile, schemaFile } from "./paths.ts";
 
 // ajv is CommonJS: the constructor and the function are module.exports.default.
 const Ajv2020 = Ajv2020Module.default;
@@ -54,23 +59,46 @@ export function readSchema(): object {
   return JSON.parse(readFileSync(schemaFile, "utf8")) as object;
 }
 
-// ajv's own standalone output for the schema: `export const validateDocument`
-// for the page, `export const validateBlock` for $defs/block,
-// and `export const validateLine` for $defs/line, the single line of plain
-// text the server also holds a version's name and an image's alt text to.
-export function ajvStandalone(schema: object = readSchema()): string {
+export function readCollectionSchema(): object {
+  return JSON.parse(readFileSync(collectionSchemaFile, "utf8")) as object;
+}
+
+// The validator a definition of the collection schema is exported as:
+// validateCollection for the collection itself ("collection", as the rules
+// name it), validateEntry for $defs/entry, validateTextValue for
+// $defs/textValue, and so on for each type of field's value.
+export const exportOf = (definition: string): string =>
+  (definition === "collection" ? "validateCollection" : `validate${definition.charAt(0).toUpperCase()}${definition.slice(1)}`);
+
+// The definitions the collection rules hand the schema, by the name of
+// their export.
+export const COLLECTION_VALIDATORS: Readonly<Record<string, string>> = Object.fromEntries(
+  ["collection", "entry", ...Object.values(VALUE_DEFS)].map((definition) => [
+    exportOf(definition),
+    definition === "collection" ? COLLECTION_SCHEMA_KEY : `${COLLECTION_SCHEMA_KEY}#/$defs/${definition}`,
+  ]),
+);
+
+// ajv's own standalone output for the schemas: `export const
+// validateDocument` for the page, `export const validateBlock` for
+// $defs/block, `export const validateLine` for $defs/line, the single line
+// of plain text the server also holds a version's name and an image's alt
+// text to; and the collection schema's (COLLECTION_VALIDATORS), added under
+// the name its references to the page schema resolve by.
+export function ajvStandalone(schema: object = readSchema(), collection: object = readCollectionSchema()): string {
   const id = (schema as { $id?: unknown }).$id;
   if (typeof id !== "string") throw new Error("the schema has no $id to name its validators by");
   const ajv = new Ajv2020({ ...AJV_OPTIONS, code: { source: true, esm: true } });
   ajv.addSchema(schema);
-  return standaloneCode(ajv, { validateDocument: id, validateBlock: `${id}#/$defs/block`, validateLine: `${id}#/$defs/line` });
+  ajv.addSchema(collection, COLLECTION_SCHEMA_KEY);
+  return standaloneCode(ajv, { validateDocument: id, validateBlock: `${id}#/$defs/block`, validateLine: `${id}#/$defs/line`, ...COLLECTION_VALIDATORS });
 }
 
-// Compiles the schema with the project's ajv options and returns it as an
-// ES module whose default export validates a page document, and whose
-// validateBlock export validates one block.
-export function validatorSource(schema: object = readSchema()): ValidatorSource {
-  const source = replaceRequires(ajvStandalone(schema));
+// Compiles the schemas with the project's ajv options and returns them as
+// an ES module whose default export validates a page document, and whose
+// named exports validate a block, a line and a collection's parts.
+export function validatorSource(schema: object = readSchema(), collection: object = readCollectionSchema()): ValidatorSource {
+  const source = replaceRequires(ajvStandalone(schema, collection));
   return { ...source, code: `${source.code}\nexport default validateDocument;\n` };
 }
 
@@ -95,7 +123,7 @@ export function replaceRequires(raw: string): ValidatorSource {
     `import * as ajvRuntimeModule${index} from "${path}.js";`,
     `const ajvRuntime${index} = typeof ajvRuntimeModule${index}.default === "function" ? ajvRuntimeModule${index}.default : ajvRuntimeModule${index}.default.default;`,
   ].join("\n"));
-  const code = `// Generated by builder/build/validator.ts from schema/block-document.schema.json.\n${imports.join("\n")}\n${body}`;
+  const code = `// Generated by builder/build/validator.ts from schema/block-document.schema.json and schema/collection.schema.json.\n${imports.join("\n")}\n${body}`;
   return { code, requiresInAjvOutput, runtimeModules };
 }
 
@@ -115,6 +143,7 @@ export function documentValidator(): Plugin {
     load(id) {
       if (id === RESOLVED) {
         this.addWatchFile(schemaFile);
+        this.addWatchFile(collectionSchemaFile);
         this.addWatchFile(ajvOptionsFile);
         return validatorSource().code;
       }

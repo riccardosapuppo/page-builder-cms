@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 # The Ruby half of lint.ts: json_schemer, from the app's bundle, compiles
-# every pattern of the schema the way the app will (regexp_resolver "ecma")
-# and answers the probe strings lint.ts sends; and the schema is checked
-# against the 2020-12 meta-schema.
+# every pattern of the schemas the way the app will (regexp_resolver
+# "ecma") and answers the probe strings lint.ts sends; and each schema is
+# checked against the 2020-12 meta-schema, and built from its file with
+# every one of its definitions, so a reference to another file (the
+# collection schema's to the page schema) is resolved as the app resolves
+# it.
 #
 # Reads one JSON object on stdin:
-#   {"schema": PATH, "patterns": [{"at": POINTER, "source": PATTERN, "probes": [STRING, ...]}]}
+#   {"schemas": [PATH, ...], "patterns": [{"at": POINTER, "source": PATTERN, "probes": [STRING, ...]}]}
 # Writes one JSON object on stdout:
 #   {"engine": ..., "schemaErrors": [...], "patterns": [{"at", "ok", "error", "ruby", "matches"}]}
 # where matches is a string of 0 and 1, one per probe.
@@ -16,16 +19,25 @@ ENV["BUNDLE_GEMFILE"] = CMS_GEMFILE
 require "bundler/setup"
 require "json"
 require "json_schemer"
+require "pathname"
 
 input = JSON.parse($stdin.binmode.read.force_encoding(Encoding::UTF_8))
-schema = JSON.parse(File.read(input.fetch("schema"), encoding: "UTF-8"))
 
-schema_errors = JSONSchemer.validate_schema(schema).map { |e| "#{e['data_pointer']} #{e['type']}" }
-# Building the schemer with the app's options also compiles every keyword.
-begin
-  JSONSchemer.schema(schema, regexp_resolver: "ecma", format: false)
-rescue StandardError => e
-  schema_errors << "JSONSchemer.schema raised #{e.class}: #{e.message[0, 300]}"
+schema_errors = input.fetch("schemas").each_with_index.flat_map do |path, k|
+  # The first schema's errors as they were always named; any other's with
+  # its file's name.
+  name = k.zero? ? "" : "#{File.basename(path)}: "
+  schema = JSON.parse(File.read(path, encoding: "UTF-8"))
+  errors = JSONSchemer.validate_schema(schema).map { |e| "#{name}#{e['data_pointer']} #{e['type']}" }
+  # Building the schemer with the app's options also compiles every
+  # keyword; asking each definition for a verdict resolves its references.
+  begin
+    schemer = JSONSchemer.schema(Pathname.new(path), regexp_resolver: "ecma", format: false)
+    (schema["$defs"] || {}).each_key { |definition| schemer.ref("#/$defs/#{definition}").valid?(nil) }
+  rescue StandardError => e
+    errors << "#{name}JSONSchemer.schema raised #{e.class}: #{e.message[0, 300]}"
+  end
+  errors
 end
 
 patterns = input.fetch("patterns").map do |item|

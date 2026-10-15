@@ -21,6 +21,11 @@
 //      decimals at most ("decimals")
 //   5. normalisation: an integral number becomes an integer (2.0 -> 2)
 // Then the schema runs on the normalised document.
+//
+// parseJson and checkJson run the same pipeline on JSON that is not a page
+// (a collection and its entries, whose own rules are ./collection-rules.ts):
+// step 4 only as any JSON value has it (strings, numbers, nesting), with no
+// rule of a page's blocks.
 
 export const MAX_NESTING = 64;
 export const MAX_SAFE_INTEGER = 9007199254740991; // 2^53 - 1, the largest integer both languages read exactly
@@ -79,6 +84,31 @@ export function checkDocument(document: unknown): ParseResult {
   const errors = checkTree(document);
   if (errors.length > 0) return { document, errors };
   return { document: normalise(document), errors: [] };
+}
+
+// The same steps for JSON that is not a page document (a collection and
+// its entries, ./collection-rules.ts): the text steps, then the rules of
+// any JSON value (well-formed strings, finite and exact numbers, nesting),
+// none of a page's blocks, then the normalisation.
+export function parseJson(input: Uint8Array | string): ParseResult {
+  let text: string;
+  if (typeof input === "string") {
+    text = input;
+  } else {
+    const decoded = decodeUtf8(input);
+    if (typeof decoded !== "string") return { errors: [decoded] };
+    text = decoded;
+  }
+  const scanError = scanJson(text);
+  if (scanError) return { errors: [scanError] };
+  return checkJson(JSON.parse(text));
+}
+
+// parseJson's steps on a value already in memory.
+export function checkJson(value: unknown): ParseResult {
+  const errors = checkJsonTree(value);
+  if (errors.length > 0) return { document: value, errors };
+  return { document: normalise(value), errors: [] };
 }
 
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -451,6 +481,18 @@ function freeTypeRules(style: Record<string, unknown>, pointer: string): RuleErr
 }
 
 export function checkTree(document: unknown): RuleError[] {
+  return treeRules(document, true);
+}
+
+// The rules of any JSON value, without a page's: well-formed strings and
+// member names, finite and exact numbers, the nesting limit.
+export function checkJsonTree(value: unknown): RuleError[] {
+  return treeRules(value, false);
+}
+
+// blocks: whether the value is a page document, whose blocks have rules of
+// their own (a form's field names, classes, free type, ids and anchors).
+function treeRules(document: unknown, blocks: boolean): RuleError[] {
   const errors: RuleError[] = [];
 
   // Every value, iteratively. depth is the number of containers above.
@@ -475,12 +517,12 @@ export function checkTree(document: unknown): RuleError[] {
       if (Array.isArray(value)) {
         value.forEach((child, k) => stack.push({ value: child, pointer: `${pointer}/${k}`, depth: depth + 1 }));
       } else {
-        if (value.type === "form") errors.push(...duplicateFieldNames(value, pointer));
-        if (typeof value.type === "string" && isObject(value.props)) {
+        if (blocks && value.type === "form") errors.push(...duplicateFieldNames(value, pointer));
+        if (blocks && typeof value.type === "string" && isObject(value.props)) {
           const reserved = reservedClass(value.props.className);
           if (reserved !== null) errors.push({ pointer: `${pointer}/props/className`, keyword: "reservedClass", message: `The class "${reserved}" is one the theme uses: give the block a name of the site's own.` });
         }
-        if (typeof value.type === "string" && isObject(value.style)) errors.push(...freeTypeRules(value.style, pointer));
+        if (blocks && typeof value.type === "string" && isObject(value.style)) errors.push(...freeTypeRules(value.style, pointer));
         for (const [key, child] of Object.entries(value)) {
           if (!key.isWellFormed()) {
             errors.push({ pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair." });
@@ -491,6 +533,8 @@ export function checkTree(document: unknown): RuleError[] {
       }
     }
   }
+
+  if (!blocks) return errors;
 
   // Block ids, in document order: the second block with an id is the one
   // reported.

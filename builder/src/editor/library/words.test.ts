@@ -29,12 +29,23 @@ const summary = (id: number, title: string) => ({ id, title }) as PageSummary;
 
 test("an image the CMS kept says which pages and which kept versions show it", () => {
   const pages = [summary(1, "Home"), summary(2, "Winter series")];
-  expect(inUseSentence({ pages: [{ id: 1, title: "Home", slug: "home" }], versions: [] }, pages)).toBe("Not deleted: it is still shown by the page Home. Take it off that page first.");
-  expect(inUseSentence({ pages: [{ id: 1, title: "Home", slug: "home" }, { id: 2, title: "Winter series", slug: "winter-series" }], versions: [{ pageId: 1, number: 3 }, { pageId: 1, number: 5 }, { pageId: 9, number: 2 }] }, pages)).toBe(
+  expect(inUseSentence({ pages: [{ id: 1, title: "Home", slug: "home" }], versions: [], entries: [] }, pages)).toBe("Not deleted: it is still shown by the page Home. Take it off that page first.");
+  expect(inUseSentence({ pages: [{ id: 1, title: "Home", slug: "home" }, { id: 2, title: "Winter series", slug: "winter-series" }], versions: [{ pageId: 1, number: 3 }, { pageId: 1, number: 5 }, { pageId: 9, number: 2 }], entries: [] }, pages)).toBe(
     "Not deleted: it is still shown by the pages Home and Winter series, and kept versions of Home (3 and 5) and page 9 (2). Take it off those pages first. A kept version holds its images for as long as it is kept.",
   );
-  expect(inUseSentence({ pages: [], versions: [{ pageId: 2, number: 4 }] }, pages)).toBe(
+  expect(inUseSentence({ pages: [], versions: [{ pageId: 2, number: 4 }], entries: [] }, pages)).toBe(
     "Not deleted: it is still shown by a kept version of Winter series (4). A kept version holds its images for as long as it is kept.",
+  );
+});
+
+test("an image the CMS kept for a collection's entries says which entries show it, by their titles, beside the pages", () => {
+  const pages = [summary(1, "Home")];
+  const dawn = { collectionId: 3, id: 7, title: "Dawn swims" };
+  expect(inUseSentence({ pages: [], versions: [], entries: [dawn] }, pages)).toBe(
+    "Not deleted: it is still shown by the entry Dawn swims. Take it off that entry first. An entry keeps the images of what is live until it is published again or taken off.",
+  );
+  expect(inUseSentence({ pages: [{ id: 1, title: "Home", slug: "home" }], versions: [], entries: [dawn, { collectionId: 3, id: 8, title: "Winter series" }] }, pages)).toBe(
+    "Not deleted: it is still shown by the page Home, and the entries Dawn swims and Winter series. Take it off that page and those entries first. An entry keeps the images of what is live until it is published again or taken off.",
   );
 });
 

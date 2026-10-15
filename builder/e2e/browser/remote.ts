@@ -38,10 +38,17 @@ interface OwnCalls {
   clearSiteIf(fingerprint: string): Promise<boolean>;
 }
 
-export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAdapter & OwnCalls {
+// steps: an adapter of a build before this one, whose database's layout
+// had only its first steps.
+export function remoteAdapter(page: Page, capabilities: Capabilities, steps?: number): StorageAdapter & OwnCalls {
   const key = `tab-${++made}`;
+  let opened = steps === undefined;
 
   async function call<T>(method: keyof StorageAdapter | keyof OwnCalls, args: unknown[], options?: CallOptions | UploadOptions): Promise<T> {
+    if (!opened) {
+      await page.evaluate(([k, s]) => window.storagePage!.open(k, s), [key, steps] as const);
+      opened = true;
+    }
     const given: unknown[] = [...args, wireOptions(options)];
     const answer: WireAnswer = await page.evaluate(([k, m, a]) => window.storagePage!.call(k, m, a), [key, method, given] as const);
     if ("failure" in answer) throw new StorageError(answer.failure);
@@ -79,6 +86,18 @@ export function remoteAdapter(page: Page, capabilities: Capabilities): StorageAd
     listResponses: (pageId, query, options) => call("listResponses", [pageId, query], options),
     getResponse: (pageId, responseId, options) => call("getResponse", [pageId, responseId], options),
     deleteResponse: (pageId, responseId, options) => call("deleteResponse", [pageId, responseId], options),
+    listCollections: (options) => call("listCollections", [], options),
+    createCollection: (definition, options) => call("createCollection", [definition], options),
+    getCollection: (collectionId, options) => call("getCollection", [collectionId], options),
+    updateCollection: (collectionId, changes, options) => call("updateCollection", [collectionId, changes], options),
+    deleteCollection: (collectionId, options) => call("deleteCollection", [collectionId], options),
+    listEntries: (collectionId, query, options) => call("listEntries", [collectionId, query], options),
+    createEntry: (collectionId, entry, options) => call("createEntry", [collectionId, entry], options),
+    getEntry: (collectionId, entryId, options) => call("getEntry", [collectionId, entryId], options),
+    saveEntry: (collectionId, entryId, save, options) => call("saveEntry", [collectionId, entryId, save], options),
+    publishEntry: (collectionId, entryId, request, options) => call("publishEntry", [collectionId, entryId, request], options),
+    unpublishEntry: (collectionId, entryId, options) => call("unpublishEntry", [collectionId, entryId], options),
+    deleteEntry: (collectionId, entryId, options) => call("deleteEntry", [collectionId, entryId], options),
     siteFingerprint: () => call("siteFingerprint", []),
     clearSite: () => call("clearSite", []),
     clearSiteIf: (fingerprint) => call("clearSiteIf", [fingerprint]),

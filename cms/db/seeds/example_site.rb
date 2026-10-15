@@ -140,7 +140,7 @@ module ExampleSite
   end
 
   def report(done)
-    Page.includes(:draft, :published_version).order(:id).each do |page|
+    Page.includes(:draft, :published_version).where(kind: [ "page", *Page::PARTS ]).order(:id).each do |page|
       said = done[page.part? ? page.kind : page.draft.slug] == :left_as_it_is ? ", already there, left as it is" : ""
       version = page.published_version ? "version #{page.published_version.number}" : "not published"
       where = page.part? ? "every page" : page.live_path || "/#{page.draft.slug}"

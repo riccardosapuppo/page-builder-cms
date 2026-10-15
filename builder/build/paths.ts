@@ -10,6 +10,8 @@ export const repoRoot = resolve(builderRoot, "..");
 
 export const schemaDir = join(repoRoot, "schema");
 export const schemaFile = join(schemaDir, "block-document.schema.json");
+// A collection's definition and the values of its entries' fields.
+export const collectionSchemaFile = join(schemaDir, "collection.schema.json");
 export const tokensFile = join(schemaDir, "tokens.json");
 // The application rules, the TypeScript twin of cms/lib/block_document/rules.rb.
 export const rulesFile = join(schemaDir, "tools", "rules.ts");

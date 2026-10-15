@@ -17,19 +17,24 @@
 // It reports, without failing, how many invalid files get identical error
 // sets from both engines.
 //
-//   node compare.ts [--corpus DIR] [--schema PATH] [--min-files N]
-//                   [--rules off] [--regexp ruby] [--drop-ruby FILE]
-//                   [--ruby-normalize off]
+//   node compare.ts [--kind page|collection] [--corpus DIR] [--schema PATH]
+//                   [--min-files N] [--rules off] [--regexp ruby]
+//                   [--drop-ruby FILE] [--ruby-normalize off]
 //
-// The last four exist to show the comparator failing; see README.md.
+// --kind collection compares the two over the collection corpus
+// (../collection-corpus): each file a case of a collection and, maybe, an
+// entry of it, checked by the collection rules (collection-rules.ts and
+// its Ruby twin) with collection.schema.json. The last four exist to show
+// the comparator failing; see README.md.
 import { spawnSync } from "node:child_process";
 import { join, relative, sep } from "node:path";
-import { CMS_GEMFILE, CORPUS, SCHEMA, TOOLS, argValue, listCorpus, readManifest, type ReportedError, type ResultLine } from "./corpus.ts";
+import { CMS_GEMFILE, COLLECTION_CORPUS, COLLECTION_SCHEMA, CORPUS, SCHEMA, TOOLS, argValue, kindOf, listCorpus, readManifest, type ReportedError, type ResultLine } from "./corpus.ts";
 import { escapePointer } from "./rules.ts";
 
 const argv = process.argv.slice(2);
-const corpus = argValue(argv, "--corpus", CORPUS);
-const schema = argValue(argv, "--schema", SCHEMA);
+const kind = kindOf(argv);
+const corpus = argValue(argv, "--corpus", kind === "page" ? CORPUS : COLLECTION_CORPUS);
+const schema = argValue(argv, "--schema", kind === "page" ? SCHEMA : COLLECTION_SCHEMA);
 const minFiles = Number(argValue(argv, "--min-files", "60"));
 const rules = argValue(argv, "--rules", "on");
 const regexp = argValue(argv, "--regexp", "ecma");
@@ -51,7 +56,7 @@ for (const name of files) if (!(name in manifest)) fail(`${name} is in the corpu
 if (files.length < listed.length) fail(`${files.length} files in the corpus, fewer than the ${listed.length} the manifest lists`);
 if (files.length < minFiles) fail(`only ${files.length} files in the corpus (at least ${minFiles} required)`);
 const upgrade = files.filter((f) => f.startsWith("upgrade/"));
-if (upgrade.length > 0) fail(`upgrade/ holds ${upgrade.length} file(s), but schemaVersion 1 has no upgrade step to run on them`);
+if (upgrade.length > 0) fail(`upgrade/ holds ${upgrade.length} file(s), but ${kind === "page" ? "schemaVersion 1 has no upgrade step" : "a collection has no upgrade steps"} to run on them`);
 
 // --- the two runners -------------------------------------------------------------------
 interface Run {
@@ -93,7 +98,7 @@ function run(label: string, command: string, args: string[], env: NodeJS.Process
   return out;
 }
 
-const common = ["--corpus", corpus, "--schema", schema, "--rules", rules];
+const common = ["--kind", kind, "--corpus", corpus, "--schema", schema, "--rules", rules];
 const ajv = run("ajv", process.execPath, [join(TOOLS, "validate.ts"), ...common], process.env);
 const rubyArgs = [
   join(TOOLS, "validate.rb"), ...common, "--regexp", regexp, "--normalize", rubyNormalize,
@@ -241,6 +246,7 @@ const describe = (r: Run): string =>
   [r.header.engine, r.header.parser, r.header.runtime, typeof r.header.bundle === "string" ? `bundle ${r.header.bundle}` : undefined]
     .filter((x) => typeof x === "string").join(", ") || "(no header)";
 const shown = (path: string): string => relative(TOOLS, path).split(sep).join("/");
+console.log(`kind:    ${kind === "page" ? "page documents" : "collections and their entries"}`);
 console.log(`schema:  ${shown(schema)}`);
 console.log(`corpus:  ${shown(corpus)}: ${files.length} files (${count("valid/")} valid, ${count("invalid/")} invalid, ${count("upgrade/")} upgrade); the manifest lists ${listed.length}`);
 console.log(`ajv:          ${describe(ajv)}; ${ajv.results.size} results in ${ajv.seconds.toFixed(1)} s`);

@@ -1,10 +1,14 @@
 # schema/
 
-The page document's one schema, and the design tokens it names.
+The page document's one schema, the design tokens it names, and the
+schema of a collection and its entries.
 
 - [`block-document.schema.json`](block-document.schema.json): JSON Schema
   draft 2020-12. The editor validates with ajv, the server with
   json_schemer, and both read this file.
+- [`collection.schema.json`](collection.schema.json): a collection's
+  definition, and the value each type of field holds, read by the same two
+  engines (see [Collections](#collections), below).
 - [`tokens.json`](tokens.json): the design tokens taken from the approved
   mock in `design/`. The style settings of a block are names from this file.
 - [`icons.svg`](icons.svg): the eight icons an icon box may name, one
@@ -531,6 +535,99 @@ reads: a block's size within its unit's range (`sizeRange`) and its
 numbers' two decimals (`decimals`), which the schema cannot hold; the
 editor's renderer and its panel read the same tables and tests from
 `rules.ts`, and the CMS's from `rules.rb`.
+
+## Collections
+
+A collection is a type of content (News, Events): its name, the prefix of
+its entries' addresses (`/news/<entry>`), its fields and the order its
+entries are listed in by default. [`collection.schema.json`](collection.schema.json)
+describes that definition at its root, and under `$defs` an entry as the
+editor saves it (`title`, `slug`, `values` by field key) and the value
+of each of the nine types of field: `textValue` (a line, at most 200),
+`paragraphValue` (at most 5000), `richTextValue` (the text widget's own
+document, `pmDoc`), `numberValue` (minus a billion to a billion),
+`dateValue` (`YYYY-MM-DD`), `imageValue` (the image widget's own rules,
+a library image only), `linkValue` (a button's label and address, by the
+page's link rules), `toggleValue` and `choiceValue`. A field is `{key,
+label, type, required}`, a number's with an optional `min` and `max` and
+a choice's with its `options`, one if/then per type as a form field's.
+The values reuse the page schema's definitions by reference: the file has
+no `$id`, so json_schemer and the API description's linter resolve
+`block-document.schema.json` beside it, and ajv is given it under
+`https://page-builder-cms.example/schema/collection.schema.json`, beside
+the page schema's `$id`.
+
+Which value belongs to which field depends on the collection, which is
+data, so no schema can say it. The **collection rules** do, written once
+in TypeScript ([`tools/collection-rules.ts`](tools/collection-rules.ts),
+which the editor imports as it is) and once in Ruby
+([`../cms/lib/collection_document/rules.rb`](../cms/lib/collection_document/rules.rb)),
+after the rules any JSON value is held to (`parseJson`, `checkJson` of
+`rules.ts` and their Ruby twins: well-formed strings, finite and exact
+numbers, nesting, then `2.0` made `2`; none of a page's block rules):
+
+| Rule | Why the schema cannot hold it | Keyword |
+| --- | --- | --- |
+| Field keys are unique in a collection | `uniqueItems` compares whole fields, and is not used | `uniqueKey`, at the second |
+| A choice's options are unique | the same | `uniqueOption`, at the second |
+| A number field's `min` and `max` have two decimals at most, and `min` is not above `max` | a fractional `multipleOf` is read differently by the engines; one value against another needs `$data`, which json_schemer has not | `decimals`; `range`, at `max` |
+| A sort follows a date or number field of the collection | the fields are data | `sortField`, at `/sort/by` |
+| An entry's value is under a key a field has | the same | `unknownField` |
+| A required field has a value | the same | `required`, at `/values/<key>` |
+| A number is within its field's `min` and `max`, with two decimals at most | the same | `minimum`, `maximum`, `decimals` |
+| A day exists (no 30 February; 29 February in leap years of the proleptic Gregorian calendar, which Ruby's `Date` would leave in 1582) | a pattern that knew leap years would be unreadable | `dateExists` |
+| A choice is one of its field's options | the options are data | `enum` |
+| Each value is of its field's type | the type is data | the value's own definition, by the engines, at `/values/<key>/...` |
+
+Unlike a page's rules, these do not stand in front of the schema: they
+guard what a value means, not the engines (the JSON rules have done
+that), and a person filling in an entry should see every fault at once.
+Both answer together, each fault once by pointer and keyword.
+
+[`collection-corpus/`](collection-corpus) holds the two to one verdict as
+`corpus/` holds the page schema's: each file a case, `{"collection": ...,
+"entry": ...}`, the collection checked and then the entry against it;
+`valid/` must pass, and each file of `invalid/` is the base case
+(`valid/news.json`, a field of every type and an entry of it) with one
+change, refused for the reason its manifest names, at its pointer and
+keyword. [`tools/collection-corpus.ts`](tools/collection-corpus.ts)
+writes it, called by `gen-corpus.ts` with the page corpus, and
+`npm run corpus:check` checks both. `npm run compare` runs the comparator
+on both corpora, the second as `node compare.ts --kind collection`, with
+the same failures and normalisations as the page corpus. The run of 15
+October 2026:
+
+```
+kind:    collections and their entries
+schema:  ../collection.schema.json
+corpus:  ../collection-corpus: 124 files (12 valid, 112 invalid, 0 upgrade); the manifest lists 124
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 124 results in 0.6 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 124 results in 4.2 s
+rules:   on; Ruby normalisation: on
+verdicts compared: 124; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 112/112, json_schemer 112/112
+identical {pointer, keyword} sets: 112/112 invalid files (refused by the rules: 26/26; by the schema: 86/86)
+errors on the invalid files: ajv 129, json_schemer 117; normalised: 12 ajv "if" errors dropped, 6 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 2, json_schemer 2
+normalised documents with the same numbers and values: 117/117
+RESULT: PASS (124 files, 0 disagreements, 0 exceptions)
+```
+
+It can fail, as the page corpus's comparison can: with the Ruby twin's
+`dateExists` rule taken out, the run exited 1 with eight failures (the
+four impossible days, each `verdicts differ` and `json_schemer calls ...
+valid, against its folder`); with the TypeScript twin's `uniqueKey` rule
+taken out, it exited 1 with `ajv does not report uniqueKey at
+"/collection/fields/4/key" on invalid/field-key-twice.json`. Each rule was
+put back.
+
+The comparator compares pointers and keywords, not words: the editor's
+browser storage answers with the TypeScript twin's words and the CMS with
+the Ruby's, so `builder/src/storage/browser-rules.test.ts` reads the Ruby
+file and fails on a word of `COLLECTION_WORDS` it does not find there.
+`npm run lint` holds `collection.schema.json` to the page schema's
+pattern, keyword and dispatch checks (its three patterns, and a field's
+dispatch on its nine types) and compiles it in both engines with every
+definition, its references to the page schema resolved.
 
 ## Versions
 

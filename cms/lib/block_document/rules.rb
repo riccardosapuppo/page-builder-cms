@@ -28,6 +28,11 @@ require "json"
 #      decimals at most ("decimals")
 #   5. normalisation: an integral Float becomes an Integer (2.0 -> 2)
 # Then the schema runs on the normalised document.
+#
+# parse_json and check_json run the same pipeline on JSON that is not a
+# page (a collection and its entries, whose own rules are
+# lib/collection_document/rules.rb): step 4 only as any JSON value has it
+# (strings, numbers, nesting), with no rule of a page's blocks.
 module BlockDocument
   module Rules
     MAX_NESTING = 64
@@ -102,6 +107,30 @@ module BlockDocument
       Result.new(document: normalize(document), errors: [])
     end
 
+    # The same steps for JSON that is not a page document (a collection and
+    # its entries, CollectionDocument::Rules): the text steps, then the
+    # rules of any JSON value (well-formed strings, finite and exact
+    # numbers, nesting), none of a page's blocks, then the normalisation.
+    def parse_json(source)
+      text = source.b.force_encoding(Encoding::UTF_8)
+      unless text.valid_encoding?
+        return Result.new(document: nil, errors: [ Error.new(pointer: "", keyword: "encoding", message: "The text is not valid UTF-8.") ])
+      end
+
+      scan_error = scan_json(text)
+      return Result.new(document: nil, errors: [ scan_error ]) if scan_error
+
+      check_json(JSON.parse(text, **JSON_OPTIONS))
+    end
+
+    # parse_json's steps on a value already in memory.
+    def check_json(value)
+      errors = check_json_tree(value)
+      return Result.new(document: value, errors: errors) unless errors.empty?
+
+      Result.new(document: normalize(value), errors: [])
+    end
+
     def escape_pointer(key)
       key.gsub("~", "~0").gsub("/", "~1")
     end
@@ -116,6 +145,19 @@ module BlockDocument
 
     # Step 4: rules on the tree.
     def check_tree(document)
+      tree_rules(document, blocks: true)
+    end
+
+    # The rules of any JSON value, without a page's: well-formed strings
+    # and member names, finite and exact numbers, the nesting limit.
+    def check_json_tree(value)
+      tree_rules(value, blocks: false)
+    end
+
+    # blocks: whether the value is a page document, whose blocks have rules
+    # of their own (a form's field names, classes, free type, ids and
+    # anchors).
+    def tree_rules(document, blocks:)
       errors = []
 
       # Every value, iteratively. depth is the number of containers above.
@@ -141,11 +183,11 @@ module BlockDocument
           if value.is_a?(Array)
             value.each_with_index { |child, k| stack << [ child, "#{pointer}/#{k}", depth + 1 ] }
           else
-            errors.concat(duplicate_field_names(value, pointer)) if value["type"] == "form"
-            if value["type"].is_a?(String) && value["props"].is_a?(Hash) && (reserved = reserved_class(value["props"]["className"]))
+            errors.concat(duplicate_field_names(value, pointer)) if blocks && value["type"] == "form"
+            if blocks && value["type"].is_a?(String) && value["props"].is_a?(Hash) && (reserved = reserved_class(value["props"]["className"]))
               errors << Error.new(pointer: "#{pointer}/props/className", keyword: "reservedClass", message: "The class \"#{reserved}\" is one the theme uses: give the block a name of the site's own.")
             end
-            errors.concat(free_type_rules(value["style"], pointer)) if value["type"].is_a?(String) && value["style"].is_a?(Hash)
+            errors.concat(free_type_rules(value["style"], pointer)) if blocks && value["type"].is_a?(String) && value["style"].is_a?(Hash)
             value.each do |key, child|
               unless key.is_a?(String) && well_formed?(key)
                 errors << Error.new(pointer: pointer, keyword: "wellFormed", message: "A member name holds half of a surrogate pair.")
@@ -156,6 +198,7 @@ module BlockDocument
           end
         end
       end
+      return errors unless blocks
 
       errors.concat(duplicate_ids(document))
       errors.concat(duplicate_anchors(document))
