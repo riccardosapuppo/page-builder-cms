@@ -359,7 +359,15 @@ export function EntryForm({ storage, collection, entryId, livePages, refused, on
     try {
       const taken = await storage.unpublishEntry(collection.id, current.id);
       if (!mounted.current) return;
-      keep(taken);
+      // Taken off as the entry stands. A draft another tab saved since this
+      // form read its own is not the form's: the form stays at the revision
+      // it was based on, and says the conflict now, with its choices, so
+      // that its next save cannot go over that draft unasked.
+      if (taken.revision === current.revision) keep(taken);
+      else {
+        keep({ ...current, published: null });
+        setConflict(true);
+      }
       setSaid(livePages ? "Unpublished: visitors no longer find it. Its draft is kept." : "Unpublished: it is a draft again, kept in this browser.");
       onChanged(taken);
     } catch (error) {

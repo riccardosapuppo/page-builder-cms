@@ -6,8 +6,9 @@
 // again as it was; a link's two parts kept when one comes before the
 // other is drawn; the storage's refusals at their fields; values no field
 // takes said and left out; a conflict settled by Reload or Keep mine;
-// publish and unpublish; an image chosen in the library opened over the
-// screen; changes not saved asked about before they are left.
+// publish and unpublish, an unpublish that finds another tab's newer draft
+// saying the conflict at once; an image chosen in the library opened over
+// the screen; changes not saved asked about before they are left.
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { field, NEWS, openScreen, press, type } from "../../../test/collections-kit.tsx";
@@ -210,6 +211,33 @@ test("a conflict: another tab saved first; the banner asks; Keep mine saves this
   expect(field(form, /^Summary/)).toHaveProperty("value", "Theirs again");
   expect(within(form).queryByRole("alert")).toBeNull();
   expect(form.querySelector(".co-said")?.textContent).toBe("Reloaded: this is the entry as the other tab saved it.");
+});
+
+test("an unpublish after another tab saved the draft lands, and says the conflict at once: the other tab's draft is not saved over unasked", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const entry = fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: { summary: "As this tab read it" } }, { published: true });
+  const { dialog } = await openScreen(fake);
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  const form = await within(dialog).findByRole("region", { name: "First swim" });
+  // Another tab saves a newer draft; this form still holds the one it read.
+  fake.saveElsewhere(entry.id, { values: { summary: "The other tab's words" } });
+  await press(within(form).getByRole("button", { name: "Unpublish" }));
+  expect(fake.entries[0]?.published).toBeNull();
+  expect(form.querySelector(".co-said")?.textContent).toBe("Unpublished: visitors no longer find it. Its draft is kept.");
+  // The draft kept is not the one in this form: said now, with its choices,
+  // and Save waits for one.
+  const banner = within(form).getByRole("alert");
+  expect(banner.textContent).toContain("Changed in another tab. This entry was saved in another tab after you opened it. Saving waits until you choose.");
+  await type(field(form, /^Summary/), "This tab's words");
+  expect(within(form).getByRole("button", { name: "Save" }).getAttribute("aria-disabled")).toBe("true");
+  await press(within(form).getByRole("button", { name: "Save" }));
+  expect(fake.calls.filter((c) => c.startsWith("saveEntry"))).toEqual([]);
+  expect(fake.entries[0]?.values).toEqual({ summary: "The other tab's words" });
+  // Keep mine, chosen, saves this tab's draft over it.
+  await press(within(banner).getByRole("button", { name: "Keep mine" }));
+  expect(fake.calls.filter((c) => c.startsWith("saveEntry")).map((c) => c.split(" ")[3])).toEqual(["r1"]);
+  expect(fake.entries[0]?.values).toEqual({ summary: "This tab's words" });
 });
 
 test("a publish from the list that a field refuses opens the entry, the field marked", async () => {

@@ -12,10 +12,12 @@
 //
 // Everything here is one change of the definition: it is checked as the
 // storage checks it (validateCollection), each refusal at its control, and
-// sent whole by Save changes (updateCollection), not at a revision: two
-// tabs changing one collection keep the last (docs/decisions/
-// collections-are-typed-entries.md). Like an entry's save, it is the
-// storage's, not a command on the page: Undo does not take it back.
+// sent by Save changes (updateCollection), the parts changed only and not
+// at a revision (docs/decisions/collections-are-typed-entries.md): the
+// storage merges them into the collection as it stands, and the settings
+// then take the collection as it answers, another tab's change to the rest
+// with it (afterSave). Like an entry's save, it is the storage's, not a
+// command on the page: Undo does not take it back.
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { sameJson } from "../../document/json.ts";
 import { FIELD_TYPES, type CollectionDefinition, type Field, type FieldType } from "../../shared/collection.ts";
@@ -73,6 +75,59 @@ const draftOf = (collection: Collection): Draft => ({
 });
 
 const definitionOf = (draft: Draft): CollectionDefinition => ({ name: draft.name, prefix: draft.prefix, fields: draft.fields.map((d) => d.field), sort: draft.sort });
+
+// The settings once a save is answered: the collection as the storage
+// holds it, which merges what this tab sent into what another tab changed
+// meanwhile (a field it added, say), with what was changed here while the
+// save travelled kept over it, a change of its own: a name, a field's
+// contents, a field added, deleted or moved. `sent` is the draft the save
+// was made from, `now` the draft as it is. Fields go by the form's ids:
+// one the answer holds takes the id of the field sent under its key.
+function afterSave(sent: Draft, now: Draft, back: CollectionDefinition): Draft {
+  const sentUnder = new Map(sent.fields.map((d) => [d.field.key, d.uid]));
+  const answered = new Map(back.fields.map((field): [string, DraftField] => {
+    const id = sentUnder.get(field.key) ?? uid();
+    return [id, { uid: id, field: { ...field, ...(field.type === "choice" ? { options: [...field.options] } : {}) } as Field, added: false, keyOwn: true }];
+  }));
+  const before = new Map(sent.fields.map((d) => [d.uid, d.field]));
+  const mine = new Map(now.fields.map((d) => [d.uid, d]));
+  // Added here meanwhile, or its contents changed here.
+  const changedHere = (id: string) => {
+    const d = mine.get(id);
+    const was = before.get(id);
+    return d !== undefined && (was === undefined || !sameJson(was, d.field));
+  };
+  // The fields there are: the answer's, but one deleted here meanwhile;
+  // and one changed here, though another tab deleted it.
+  const there = (id: string) => (answered.has(id) && (mine.has(id) || !before.has(id))) || changedHere(id);
+  // Their order: this tab's when a field was moved here meanwhile, else the
+  // answer's, which holds another tab's moves. A field only the other order
+  // has (another tab's new field, one added here) goes before the field it
+  // comes before there, or last.
+  const answerIds = [...answered.keys()];
+  const nowIds = now.fields.map((d) => d.uid);
+  const moved = !sameJson(sent.fields.map((d) => d.uid).filter((id) => mine.has(id)), nowIds.filter((id) => before.has(id)));
+  const [lead, among] = moved ? [nowIds, answerIds] : [answerIds, nowIds];
+  const ids = lead.filter(there);
+  for (const id of among) {
+    if (!there(id) || ids.includes(id)) continue;
+    const next = among.slice(among.indexOf(id) + 1).find((other) => ids.includes(other));
+    ids.splice(next === undefined ? ids.length : ids.indexOf(next), 0, id);
+  }
+  // Each as the answer has it, or as it was changed here.
+  const fields = ids.map((id) => {
+    const saved = answered.get(id);
+    if (!changedHere(id)) return saved!;
+    const d = mine.get(id)!;
+    return saved ? { ...saved, field: d.field } : d;
+  });
+  return {
+    name: now.name === sent.name ? back.name : now.name,
+    prefix: now.prefix === sent.prefix ? back.prefix : now.prefix,
+    fields,
+    sort: sameJson(now.sort, sent.sort) ? back.sort : now.sort,
+  };
+}
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
@@ -199,7 +254,8 @@ export function Settings({ storage, collection, livePages, onSaved, onDeleted, o
   };
 
   const save = async () => {
-    const sending = definitionOf(latest.current);
+    const from = latest.current;
+    const sending = definitionOf(from);
     const checked = validateCollection(sending);
     if (!checked.valid) {
       setIssues(definitionIssues(checked.errors));
@@ -224,8 +280,9 @@ export function Settings({ storage, collection, livePages, onSaved, onDeleted, o
         return;
       }
       const next = outcome.value;
-      setSaved({ name: next.name, prefix: next.prefix, fields: next.fields, sort: next.sort });
-      setDraft((d) => ({ ...d, fields: d.fields.map((f) => ({ ...f, added: false, keyOwn: true })) }));
+      const back = { name: next.name, prefix: next.prefix, fields: next.fields, sort: next.sort };
+      setSaved(back);
+      setDraft((now) => afterSave(from, now, back));
       setSaid("Saved.");
       onSaved(next);
     } catch (error) {

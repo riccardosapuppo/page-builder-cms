@@ -5,10 +5,12 @@
 // refused where another collection or a page has it; a collection's entries
 // as a table, its first two fields in words, searched by the storage; its
 // settings (fields added from the types, keys from labels and fixed once
-// entries hold values, moved, deleted after asking, saved whole, each
-// change made to the settings as they are then); Delete
-// asked twice; the template opened as a page is; changes not saved asked
-// about before they are left.
+// entries hold values, moved, deleted after asking, saved, each change made
+// to the settings as they are then; once saved, the collection as the
+// storage answers it, another tab's field with it, and what changed while
+// the save travelled kept); Delete asked twice; the template opened as a
+// page is; changes not saved, and text still in its pause, asked about
+// before they are left.
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { editorKit } from "../../../test/editor-kit.tsx";
@@ -235,6 +237,117 @@ test("settings: a label handed over and a switch flipped before it is drawn both
   expect(fake.collections[0]?.fields.at(-1)).toEqual({ key: "level", label: "Level", type: "choice", required: true, options: ["First option"] });
 });
 
+test("settings: a field another tab added while they were open is kept: saved, the settings take the collection as the storage holds it, and a second save keeps the field", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  await within(dialog).findByRole("listitem", { name: "Summary, Paragraph" });
+  // Another tab adds a field; this tab renames the collection, and only
+  // the name is sent, merged into the collection as it stands.
+  await fake.updateCollection(news.id, { fields: [...NEWS.fields, { key: "place", label: "Place", type: "text", required: false }] });
+  await type(field(dialog, /^Name/), "Harbour news");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  expect(fake.calls.filter((c) => c.startsWith("updateCollection"))).toEqual(["updateCollection 1 fields", "updateCollection 1 name"]);
+  expect(fake.collections[0]?.fields.map((f) => f.key)).toEqual(["summary", "image", "body", "date", "place"]);
+  // The other tab's field is in the settings now, and nothing waits.
+  expect(within(dialog).getByRole("listitem", { name: "Place, Text" })).toBeTruthy();
+  expect(within(dialog).getByRole("button", { name: "Save changes" }).getAttribute("aria-disabled")).toBe("true");
+  // A second save keeps it.
+  await type(field(dialog, /^Name/), "Harbour notices");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  expect(fake.collections[0]?.name).toBe("Harbour notices");
+  expect(fake.collections[0]?.fields.map((f) => f.key)).toEqual(["summary", "image", "body", "date", "place"]);
+});
+
+test("settings: what is changed while a save travels stays, a change of its own, over the collection the save answers with", async () => {
+  const fake = new FakeCollections();
+  fake.add(NEWS);
+  const answer = fake.updateCollection;
+  let arrive = () => {};
+  fake.updateCollection = (collectionId, changes) => new Promise((done) => {
+    arrive = () => done(answer(collectionId, changes));
+  });
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  await within(dialog).findByRole("listitem", { name: "Summary, Paragraph" });
+  await type(field(dialog, /^Name/), "Harbour news");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  // While it travels, a field's label changes.
+  await type(field(within(dialog).getByRole("listitem", { name: "Summary, Paragraph" }), "Label"), "Short summary");
+  await act(async () => arrive());
+  expect(fake.collections[0]?.name).toBe("Harbour news");
+  expect(fake.collections[0]?.fields[0]?.label).toBe("Summary");
+  expect(field(within(dialog).getByRole("listitem", { name: "Short summary, Paragraph" }), "Label")).toHaveProperty("value", "Short summary");
+  expect(field(dialog, /^Name/)).toHaveProperty("value", "Harbour news");
+  expect(within(dialog).getByRole("button", { name: "Save changes" }).getAttribute("aria-disabled")).toBeNull();
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  await act(async () => arrive());
+  expect(fake.collections[0]?.fields[0]?.label).toBe("Short summary");
+  expect(fake.collections[0]?.name).toBe("Harbour news");
+});
+
+// A save held on its way until the test lets its answer arrive; another
+// tab's change goes straight to the storage meanwhile.
+function slowSaves(fake: FakeCollections) {
+  const elsewhere = fake.updateCollection;
+  let arrive = () => {};
+  fake.updateCollection = (collectionId, changes) => new Promise((done) => {
+    arrive = () => done(elsewhere(collectionId, changes));
+  });
+  return { elsewhere, arrive: () => act(async () => arrive()) };
+}
+
+const fieldOrder = (dialog: HTMLElement) => within(dialog).getAllByRole("listitem").filter((li) => li.classList.contains("co-fieldcard")).map((li) => li.getAttribute("aria-label"));
+
+test("settings: a field moved, and one deleted, while a save travels stay so, changes of their own that the next save sends", async () => {
+  const fake = new FakeCollections();
+  fake.add(NEWS);
+  const { arrive } = slowSaves(fake);
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  await within(dialog).findByRole("listitem", { name: "Summary, Paragraph" });
+  await type(field(dialog, /^Name/), "Harbour news");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  await press(within(dialog).getByRole("button", { name: "Move Date up" }));
+  await arrive();
+  expect(fake.collections[0]?.name).toBe("Harbour news");
+  expect(fieldOrder(dialog)).toEqual(["Summary, Paragraph", "Image, Image", "Date, Date", "Body, Rich text"]);
+  expect(within(dialog).getByRole("button", { name: "Save changes" }).getAttribute("aria-disabled")).toBeNull();
+  // Saved, and while that save travels, Image deleted.
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Delete Image" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Delete field" }));
+  await arrive();
+  expect(fake.collections[0]?.fields.map((f) => f.key)).toEqual(["summary", "image", "date", "body"]);
+  expect(fieldOrder(dialog)).toEqual(["Summary, Paragraph", "Date, Date", "Body, Rich text"]);
+  expect(within(dialog).getByRole("button", { name: "Save changes" }).getAttribute("aria-disabled")).toBeNull();
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  await arrive();
+  expect(fake.collections[0]?.fields.map((f) => f.key)).toEqual(["summary", "date", "body"]);
+});
+
+test("settings: moved here while another tab added a field, both stay: this tab's order, and the other tab's field before the one it came before", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const { elsewhere, arrive } = slowSaves(fake);
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  await within(dialog).findByRole("listitem", { name: "Summary, Paragraph" });
+  await type(field(dialog, /^Name/), "Harbour news");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  // While this save travels, another tab puts Place after Summary, and
+  // Date is moved up here.
+  const [summary, ...rest] = NEWS.fields;
+  await elsewhere(news.id, { fields: [summary!, { key: "place", label: "Place", type: "text", required: false }, ...rest] });
+  await press(within(dialog).getByRole("button", { name: "Move Date up" }));
+  await arrive();
+  expect(fieldOrder(dialog)).toEqual(["Summary, Paragraph", "Place, Text", "Image, Image", "Date, Date", "Body, Rich text"]);
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  await arrive();
+  expect(fake.collections[0]?.fields.map((f) => f.key)).toEqual(["summary", "place", "image", "date", "body"]);
+});
+
 test("settings: a field deleted after asking, saying the entries keep its values until each is saved again; its key, fixed while entries hold values, and the order that followed it", async () => {
   const fake = new FakeCollections();
   const news = fake.add(NEWS);
@@ -315,6 +428,43 @@ test("changes not saved are asked about before they are left: Keep editing stays
   fireEvent.click(within(dialog).getByRole("button", { name: "Leave without saving" }));
   expect(kit.ui.getState().collections).toBeNull();
   expect(fake.collections[0]?.name).toBe("News");
+});
+
+test("text typed and not handed over yet, still in its pause, is asked about too: on Esc, on the way back to the entries, and on another collection", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  fake.add({ ...NEWS, name: "Events", prefix: "events" });
+  fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: { summary: "Cold water." } });
+  const { kit, dialog } = await openScreen(fake);
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  const form = await within(dialog).findByRole("region", { name: "First swim" });
+  // Typed, and not handed over: the field has not been left, and its pause
+  // has not run out.
+  fireEvent.change(field(form, /^Summary/), { target: { value: "Cold water, warm hearts." } });
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+  const asked = () => within(dialog).getByRole("alertdialog", { name: /^Leave without saving\?/ });
+  const keepEditing = () => fireEvent.click(within(asked()).getByRole("button", { name: "Keep editing" }));
+
+  fireEvent.keyDown(field(form, /^Summary/), { key: "Escape" });
+  expect(kit.ui.getState().collections).not.toBeNull();
+  expect(asked().textContent).toContain("The changes to this entry are not saved.");
+  keepEditing();
+
+  fireEvent.click(within(form).getByRole("button", { name: "All entries" }));
+  expect(within(dialog).queryByRole("region", { name: "First swim" })).not.toBeNull();
+  expect(asked()).toBeTruthy();
+  keepEditing();
+
+  fireEvent.click(within(dialog).getByRole("button", { name: /^Events,/ }));
+  expect(within(dialog).queryByRole("region", { name: "First swim" })).not.toBeNull();
+  expect(asked()).toBeTruthy();
+  keepEditing();
+  expect(field(form, /^Summary/)).toHaveProperty("value", "Cold water, warm hearts.");
+  // Left without saving, it is gone, and the entry is as it was.
+  fireEvent.click(within(dialog).getByRole("button", { name: /^Events,/ }));
+  await press(within(asked()).getByRole("button", { name: "Leave without saving" }));
+  expect(within(dialog).getByRole("heading", { name: "Events" })).toBeTruthy();
+  expect(fake.entries[0]?.values).toEqual({ summary: "Cold water." });
 });
 
 test("a read that fails says why, and Try again reads again", async () => {

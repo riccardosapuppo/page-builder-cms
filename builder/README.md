@@ -441,12 +441,18 @@ CMS serves carries neither.
   (`test/fake-collections.ts`): an entry of every type saved in one call,
   a required field and a bound said before anything is sent, values no
   field takes left out, a save whose answer was lost sent again with its
-  saveId, the conflict's Reload and Keep mine, the settings' fields saved
-  whole, a key following its label not handed back as typed when the Tab
-  key passes through it before it is drawn again, a change that comes
-  before the one ahead of it is drawn kept with it; fifteen of its
-  behaviours taken out one at a time, each failing its test, the key's
-  also before its fix. In Chromium, `e2e/collections.spec.ts` against the CMS and
+  saveId, the conflict's Reload and Keep mine, and the conflict said at
+  once when an unpublish finds another tab's newer draft; the settings
+  saved, then taken as the storage answers them (a field another tab
+  added kept by the next save, what changed meanwhile kept over it, a
+  field moved or deleted among it), a key following its label not
+  handed back as typed when the Tab key passes through it before it is
+  drawn again, a change that comes before the one ahead of it is drawn
+  kept with it; text still in its pause
+  asked about on Esc and on another collection or entry; twenty-two of
+  its behaviours taken out one at a time, each failing its test, and five
+  of them failing before their fixes too. In Chromium,
+  `e2e/collections.spec.ts` against the CMS and
   `e2e/browser/collections.spec.ts` on this browser's storage.
 - **Collections on the page**: what a Collection list and a Field block
   draw, rule by rule (`src/widgets/collectionList/cards.test.ts`,

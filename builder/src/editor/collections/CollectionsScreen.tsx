@@ -124,9 +124,12 @@ function Screen({ storage, at, onClose }: { storage: CollectionsStorage; at: Col
   const collections = list.phase === "ready" ? list.collections : [];
   const collection = collections.find((c) => c.id === chosen) ?? null;
 
-  // Anything not saved is asked about first; then `next`.
+  // Anything not saved is asked about first; then `next`. Text typed in a
+  // field and not handed over yet counts too (../pending.ts: a field hands
+  // it over at its pause, when it is left, or at Enter): Esc, or a choice
+  // the field is not left for, would take it away with the form unasked.
   const leave = (next: () => void, what?: string) => {
-    if (!dirty.current) {
+    if (!dirty.current && ui.getState().pending.waiting === 0) {
       next();
       return;
     }
