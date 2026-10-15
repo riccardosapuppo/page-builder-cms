@@ -55,11 +55,15 @@ class Collection < ApplicationRecord
   # A new definition from changes to some of its members, checked whole.
   # A change that changes something counts as one visitors may see. The
   # values entries keep under a key no field has any more stay until each
-  # entry's next save leaves them out.
+  # entry's next save leaves them out. The changes are merged into the
+  # definition as it stands in the transaction that writes it, which
+  # SQLite runs one at a time (Rails opens it IMMEDIATE): a request that
+  # loaded the collection before another changed it does not write back
+  # the members it did not change.
   def update_definition!(changes, at: Time.current)
-    checked = CollectionDocument.check_collection!(definition.merge(changes))
     transaction do
       reload
+      checked = CollectionDocument.check_collection!(definition.merge(changes))
       assign_attributes(name: checked["name"], prefix: checked["prefix"], fields: checked["fields"], default_sort: checked["sort"])
       if changed?
         self.published_revision += 1

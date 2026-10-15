@@ -63,6 +63,22 @@ class CollectionTest < ActiveSupport::TestCase
     assert_equal [ 4, 2 ], [ collection.reload.fields.size, collection.published_revision ]
   end
 
+  # Two requests that load one collection: one changes its fields, the
+  # other only its name. The second merges its change into the definition
+  # as it is when its transaction runs, not as it was loaded, so neither
+  # change is lost.
+  test "a change of one member merges into the definition as it stands, not as it was loaded" do
+    collection = create_news
+    loaded_early = Collection.find(collection.id)
+
+    Collection.find(collection.id).update_definition!({ "fields" => news_definition["fields"].first(4), "sort" => { "by" => "title", "direction" => "asc" } })
+    loaded_early.update_definition!({ "name" => "Newsroom" })
+
+    collection.reload
+    assert_equal [ "Newsroom", 4, "title" ], [ collection.name, collection.fields.size, collection.default_sort["by"] ]
+    assert_equal 2, collection.published_revision
+  end
+
   test "a field the sort follows does not go without a new sort" do
     collection = create_news
 
