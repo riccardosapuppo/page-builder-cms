@@ -6,8 +6,8 @@
 // numbered 1, 2, 3 by the stylesheet's counter in a disc of the theme's
 // primary, its number in the colour that reads on it (on a disc of the
 // block's own Accent, the site's Text), with a ring of paper at its edge
-// on a primary band; three across on a desktop and one under the other on
-// a phone, the disc beside the title.
+// on a primary band; three across on a desktop and one under the other
+// below it, on a tablet as on a phone, the disc beside the title.
 import type { Locator } from "@playwright/test";
 import { axTexts } from "./helpers/ax.ts";
 import { block } from "./helpers/canvas.ts";
@@ -90,7 +90,7 @@ async function tone(root: Locator, color: string): Promise<string> {
   }, color);
 }
 
-test("published, the steps are an ordered list the CMS serves with no script, numbered by the stylesheet's counter in a disc, three across on a desktop and one under the other on a phone", async ({ page, request }) => {
+test("published, the steps are an ordered list the CMS serves with no script, numbered by the stylesheet's counter in a disc, three across on a desktop and one under the other below it", async ({ page, request }) => {
   const primary = { ...section("band", "Band", [column("bc", [widget("band-steps", "steps", { items: STEPS })])]), style: { base: { background: "primary" } } };
   const accent = { ...widget("accent-steps", "steps", { items: STEPS }), style: { base: { color: "accent" } } };
   const made = await makePage(request, "Steps served", [section("s", "Club", [column("c", [widget("club-steps", "steps", { items: STEPS }), accent])]), primary]);
@@ -134,14 +134,17 @@ test("published, the steps are an ordered list the CMS serves with no script, nu
     expect(disc.titleTop).toBeGreaterThanOrEqual(disc.top + 40);
   }
 
-  // On a phone, one under the other, each disc beside its title.
-  await page.setViewportSize({ width: 390, height: 844 });
-  const phone = await discs(root);
-  expect(new Set(phone.map((disc) => disc.left)).size).toBe(1);
-  expect(phone[0]!.top).toBeLessThan(phone[1]!.top);
-  expect(phone[1]!.top).toBeLessThan(phone[2]!.top);
-  for (const disc of phone) {
-    expect(disc.titleLeft).toBeGreaterThanOrEqual(disc.left + 40);
-    expect(disc.titleTop).toBeLessThan(disc.top + 40);
+  // Below the desktop layout, on a tablet as on a phone, one under the
+  // other, each disc beside its title, as a section's columns stack there.
+  for (const width of [768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const stacked = await discs(root);
+    expect(new Set(stacked.map((disc) => disc.left)).size, `one column at ${width}`).toBe(1);
+    expect(stacked[0]!.top).toBeLessThan(stacked[1]!.top);
+    expect(stacked[1]!.top).toBeLessThan(stacked[2]!.top);
+    for (const disc of stacked) {
+      expect(disc.titleLeft).toBeGreaterThanOrEqual(disc.left + 40);
+      expect(disc.titleTop).toBeLessThan(disc.top + 40);
+    }
   }
 });

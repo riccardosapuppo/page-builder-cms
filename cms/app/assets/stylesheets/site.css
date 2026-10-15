@@ -447,7 +447,8 @@ a.sw-btn:not([href]) { cursor: default; }
 /* Numbered steps side by side, as many to a row as the block holds at
    220 px each and three at most (a track is never narrower than a third
    of the row less one gap, nor wider than the row), one under the other in
-   a narrow column and on a phone. Each step is a list item: its number, a
+   a narrow column and below the desktop layout, on a tablet as on a phone,
+   as a section's columns stack there. Each step is a list item: its number, a
    counter of the list drawn in a disc before it (the page writes no
    number, and the ordered list gives a screen reader the order), then its
    title, set as an icon box's, and its text, in the body's face. Below the
@@ -609,6 +610,7 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* The disc beside the title and the text, the title's first line
      centred on it. */
+  .sw-steps ol { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
   .sw-steps li { grid-template-columns: 40px minmax(0, 1fr); column-gap: var(--space-m); row-gap: var(--space-xs); }
   .sw-steps li::before { grid-row: span 2; margin: 0; }
   .sw-steps h3 { padding-top: max(0px, calc((40px - 1lh) / 2)); }
@@ -644,7 +646,6 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
   .sw-gallery img { border-radius: 8px; }
   .sw-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-m); }
-  .sw-steps ol { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
   .sw-pricing > ul { grid-template-columns: minmax(0, 1fr); }
   .sw-embed-bar { padding: 12px 14px 14px; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
