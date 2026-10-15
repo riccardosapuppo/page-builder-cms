@@ -12,7 +12,7 @@
 // after a delete its neighbour, after a move or an edit the block itself.
 // An undo is the inverse command, so it focuses the block it touched, or
 // where that block was when the undo took it away.
-import type { PageDocument } from "../shared/document.ts";
+import { itemsKey, type PageDocument } from "../shared/document.ts";
 import { checkContainer, checkNesting, checkRoot, checkUniqueAnchors, checkUniqueIds, checkValueRules, refusal, type CommandError } from "./check.ts";
 import type { Command } from "./commands.ts";
 import { applyOp, StaleStep, type Op } from "./ops.ts";
@@ -141,7 +141,7 @@ export function focusAfter(doc: PageDocument, command: Command): Focus | null {
   const found = locate(doc, subject.id);
   if (found) {
     if (subject.item === undefined) return { id: subject.id };
-    const items = (found.block.props as { items?: unknown }).items;
+    const items = (found.block.props as Record<string, unknown>)[itemsKey(found.block.type)];
     const length = Array.isArray(items) ? items.length : 0;
     const item = itemFocus(command.ops, subject.id, subject.item, length);
     return item === undefined ? { id: subject.id } : { id: subject.id, item };

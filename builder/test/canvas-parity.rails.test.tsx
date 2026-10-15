@@ -102,6 +102,13 @@ const responsive = checked({
               { title: "Join", text: "Stay on if it suits you." }, { title: "Swim all winter", text: "Short, cold swims, and very hot tea after." },
             ],
           }, { base: { color: "accent" }, phone: { color: "primary" } }),
+          block("pr1", "pricing", {
+            plans: [
+              { name: "Basic", price: "€9", period: "a month", text: "What most people need to start.", features: ["The thing that matters most", "Another one"], button: { label: "Choose Basic", href: "/join" }, featured: false, badge: "" },
+              { name: "Plus", price: "€19", period: "a month", text: "For those who use it every day,\nall year.", features: ["Everything in Basic", "Help the same day"], button: { label: "Choose Plus", href: "/join?plan=plus" }, featured: true, badge: "Most chosen" },
+              { name: "Team", price: "€49", period: "", text: "", features: [], button: { label: "Write to us", href: "mailto:team@example.org" }, featured: false, badge: "" },
+            ],
+          }, { base: { color: "accent" }, tablet: { color: "#1d4e6f" }, phone: { color: "primary" } }),
           block("g1", "gallery", { items: [{ url: "/media/one.png", alt: "One" }, { url: "/media/two.png", decorative: true }, { url: "https://images.example.org/three.jpg", alt: "Three" }] }, { base: { spaceBetween: "l" }, phone: { spaceBetween: "xs" } }),
         ],
       }],

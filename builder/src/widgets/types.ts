@@ -51,6 +51,7 @@ export interface InputOf {
   accordion: void;
   stats: void;
   steps: void;
+  pricing: void;
   form: void;
   logo: void;
   menu: void;

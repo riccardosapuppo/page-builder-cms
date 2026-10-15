@@ -33,7 +33,8 @@
             { "id": "ib", "type": "iconbox", "props": { "icon": "sunrise", "title": "Dawn", "text": "At first light.", "className": "card" }, "children": [], "style": { "base": {} } },
             { "id": "acc", "type": "accordion", "props": { "items": [ { "question": "When?", "answer": "At dawn." } ], "className": "faq", "anchor": "faq" }, "children": [], "style": { "base": {} } },
             { "id": "st", "type": "stats", "props": { "items": [ { "value": "12", "label": "Years" } ], "className": "figures Big_2", "anchor": "numbers" }, "children": [], "style": { "base": {} } },
-            { "id": "sp", "type": "steps", "props": { "items": [ { "title": "Write", "text": "To us." }, { "title": "Swim", "text": "With us." } ], "className": "how-to", "anchor": "how" }, "children": [], "style": { "base": {} } }
+            { "id": "sp", "type": "steps", "props": { "items": [ { "title": "Write", "text": "To us." }, { "title": "Swim", "text": "With us." } ], "className": "how-to", "anchor": "how" }, "children": [], "style": { "base": {} } },
+            { "id": "pr", "type": "pricing", "props": { "plans": [ { "name": "Season", "price": "€60", "period": "a season", "text": "", "features": [ "Every dawn swim" ], "button": { "label": "Join", "href": "#plans" }, "featured": true, "badge": "Most chosen" } ], "className": "price-list Plans_2", "anchor": "plans" }, "children": [], "style": { "base": {} } }
           ]
         }
       ]

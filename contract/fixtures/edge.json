@@ -30,6 +30,7 @@
             { "id": "e-accordion-one", "type": "accordion", "props": { "items": [ { "question": "Only one?", "answer": "Only one, and open." } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-stats-one", "type": "stats", "props": { "items": [ { "value": "1", "label": "x" } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-steps-two", "type": "steps", "props": { "items": [ { "title": "1", "text": "x" }, { "title": "2", "text": "y" } ] }, "style": { "base": {} }, "children": [] },
+            { "id": "e-pricing-one", "type": "pricing", "props": { "plans": [ { "name": "x", "price": "0", "period": "", "text": "", "features": [], "button": { "label": "Go", "href": "/" }, "featured": false, "badge": "" } ] }, "style": { "base": {} }, "children": [] },
             { "id": "e-quote-lines", "type": "quote", "props": { "text": "One\n\nTwo after an empty line" }, "style": { "base": {} }, "children": [] }
           ]
         }

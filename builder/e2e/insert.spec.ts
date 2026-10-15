@@ -49,7 +49,7 @@ test("the + on the selected block's edge opens its yellow line and the block pic
   await expect(slot.locator(".ins-slot-label")).toHaveText("New block");
   const picker = page.getByRole("dialog", { name: "Add a block after Heading" });
   await expect(picker.getByRole("searchbox", { name: "Search blocks" })).toBeFocused();
-  await expect(picker.getByRole("group", { name: "Blocks that go in a column" }).getByRole("button")).toHaveText(["Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion", "Stats", "Steps", "Form", "Logo", "Menu"]);
+  await expect(picker.getByRole("group", { name: "Blocks that go in a column" }).getByRole("button")).toHaveText(["Heading", "Text", "Image", "Button", "Divider", "Spacer", "Gallery", "Video", "Map", "Icon box", "Quote", "Accordion", "Stats", "Steps", "Pricing", "Form", "Logo", "Menu"]);
   await expect(picker).toContainText("Lands on the yellow line, after Heading.");
   // Beside the line, to its right, over the column beside it.
   const placed = (await picker.boundingBox())!;
@@ -87,12 +87,12 @@ test("the picker by the keyboard: the search narrows it, the arrows go along its
   await page.keyboard.press("End");
   await expect(picker.getByRole("button", { name: "Menu" })).toBeFocused();
   await page.keyboard.press("ArrowUp");
-  await expect(picker.getByRole("button", { name: "Steps" })).toBeFocused();
+  await expect(picker.getByRole("button", { name: "Pricing" })).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowUp");
-  await expect(picker.getByRole("button", { name: "Text" })).toBeFocused();
+  await expect(picker.getByRole("button", { name: "Image" })).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(search).toBeFocused();
   await page.keyboard.type("spa");

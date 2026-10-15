@@ -46,7 +46,7 @@ export const DEMO_PREVIEW = {
   alt: "The Page Builder CMS editor with the home page of Slack Water, an invented swimming club, on its canvas",
 } as const;
 
-export const DEMO_DESCRIPTION = "Try a page builder in your browser: build a page from sections, columns and seventeen kinds of block, then preview and publish it, all kept in this browser.";
+export const DEMO_DESCRIPTION = "Try a page builder in your browser: build a page from sections, columns and eighteen kinds of block, then preview and publish it, all kept in this browser.";
 
 // The picture's fingerprint, the first 12 hex digits of its SHA-256, which
 // its address carries (?v=): a site that keeps link previews by address

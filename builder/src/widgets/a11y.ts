@@ -15,13 +15,16 @@ import type { WidgetType } from "../shared/document.ts";
 // name and, for a heading, level; for a form's field, whether the
 // accessibility tree says it is required, which a screen reader announces.
 // A stats block's figures are the terms and definitions of a description
-// list.
+// list. For a role whose words are no name (a paragraph: a pricing plan's
+// badge), the words the tree reads in it: only those of the role that hold
+// them are counted.
 export interface Exposed {
   role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button" | "navigation" | "term" | "definition";
   name?: string;
   level?: number;
   count?: number;
   required?: boolean;
+  text?: string;
 }
 
 export interface A11yCase {

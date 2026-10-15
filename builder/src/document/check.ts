@@ -19,7 +19,7 @@
 // The whole page is validated only when asked (a drop, a document read from
 // outside): milliseconds on 500 blocks, against microseconds for one parent
 // (the measurements are in ./README.md).
-import type { BlockType, PageDocument } from "../shared/document.ts";
+import { itemsKey, type BlockType, type PageDocument } from "../shared/document.ts";
 import {
   checkTree, duplicateAnchors, MAX_NESTING, validateBlockSchema, validateDocumentSchema, validateHeldDocument, type DocumentError,
 } from "../shared/validate.ts";
@@ -141,10 +141,13 @@ function checkPageShell(doc: PageDocument): CommandError | null {
 // sections) and of a widget's items (a gallery's images).
 function countRefusal(doc: PageDocument, id: ParentId, type: ContainerType, errors: DocumentError[], list = "/children"): CommandError | null {
   const items = type === "page" ? undefined : ITEM_NAMES[type];
-  const count = errors.find((e) => (e.pointer === list || (items && e.pointer === "/props/items")) && (e.keyword === "maxItems" || e.keyword === "minItems"));
+  // Where the list of a widget's items is: its props' items, a pricing
+  // block's plans.
+  const itemList = type === "page" ? undefined : `/props/${itemsKey(type)}`;
+  const count = errors.find((e) => (e.pointer === list || (items && e.pointer === itemList)) && (e.keyword === "maxItems" || e.keyword === "minItems"));
   if (!count || count.limit === undefined) return null;
   const name = id === null ? "The page" : blockWithPlace(doc, id);
-  const what = count.pointer === "/props/items" && items ? (count.limit === 1 ? items.one : items.many) : childrenWord(type, count.limit);
+  const what = count.pointer === itemList && items ? (count.limit === 1 ? items.one : items.many) : childrenWord(type, count.limit);
   const at = id === null ? "" : pointerOf(locate(doc, id)?.path ?? []);
   const located = errors.map((e) => ({ ...e, pointer: `${at}${e.pointer}` }));
   return count.keyword === "maxItems"

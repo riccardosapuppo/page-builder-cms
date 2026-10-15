@@ -18,7 +18,7 @@ import fc from "fast-check";
 import { isDeepStrictEqual } from "node:util";
 import {
   COLUMN_WIDTHS_BY_COUNT, COLUMN_WIDTHS_TOKENS, DEVICES, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, ICON_NAMES, ORDERED_LIST_STYLES, SCHEMA_VERSION, SPACE_TOKENS, STACK_TOKENS, STYLE_KEYS_BY_TYPE, STYLE_TOKENS,
-  WIDGET_TYPES, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
+  WIDGET_TYPES, itemsKey, type BlockType, type Device, type PageDocument, type StyleTokens, type WidgetType,
 } from "../src/shared/document.ts";
 import { validateDocument } from "../src/shared/validate.ts";
 import { wholeNumberFromEnv } from "./env.ts";
@@ -127,6 +127,20 @@ export const editorText: fc.Arbitrary<AnyObject> = fc.oneof(
 
 // A form's field: a limit only on the two kinds of text, within the
 // line's; names unique in their form (fc.uniqueArray, below).
+// A pricing block's plan: its period, text and badge empty or not, none
+// to three features, its button a button block's words and link.
+const PRICES = ["€9", "Free", "€1,200", "19 €"] as const;
+const pricingPlan = fc.record({
+  name: line,
+  price: fc.constantFrom(...PRICES),
+  period: fc.constantFrom("", "a month", "a season"),
+  text: fc.oneof(fc.constant(""), paragraph),
+  features: fc.array(line, { maxLength: 3 }),
+  button: fc.record({ label: line, href }),
+  featured: fc.boolean(),
+  badge: fc.oneof(fc.constant(""), line),
+});
+
 const formField = fc.record({
   name: fc.constantFrom("name", "email", "notes", "field-4", "a"),
   kind: fc.constantFrom(...FORM_FIELD_KINDS),
@@ -159,6 +173,7 @@ export const PROPS: Readonly<Record<WidgetType, fc.Arbitrary<AnyObject>>> = {
   accordion: fc.array(fc.record({ question: line, answer: paragraph }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
   stats: fc.array(fc.record({ value: fc.constantFrom(...FIGURES), label: line }), { minLength: 1, maxLength: 3 }).map((items) => ({ items })),
   steps: fc.array(fc.record({ title: line, text: paragraph }), { minLength: 2, maxLength: 4 }).map((items) => ({ items })),
+  pricing: fc.array(pricingPlan, { minLength: 1, maxLength: 3 }).map((plans) => ({ plans })),
   form: fc.record({
     items: fc.uniqueArray(formField, { minLength: 1, maxLength: 4, selector: (field) => field.name }),
     submitLabel: line,
@@ -418,15 +433,17 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
       return { made: c.makeSetItem(doc, picked.block.id, index, formFieldUpdates(c.REMOVE, items[index] as AnyObject, edit, wish.value)), mustAccept: true };
     }
     case "items": {
-      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "stats" || b.block.type === "steps" || b.block.type === "form" || b.block.type === "menu");
+      const lists = blocks.filter((b) => b.block.type === "gallery" || b.block.type === "accordion" || b.block.type === "stats" || b.block.type === "steps" || b.block.type === "pricing" || b.block.type === "form" || b.block.type === "menu");
       const picked = at(lists, wish.pick);
       if (!picked) return null;
-      const items = (picked.block.props as { items: AnyObject[] }).items;
+      // A pricing block's list is its plans; every other list, its items.
+      const items = (picked.block.props as unknown as Record<string, AnyObject[]>)[itemsKey(picked.block.type)]!;
       const gallery = picked.block.type === "gallery";
       const form = picked.block.type === "form";
       const menu = picked.block.type === "menu";
       const stats = picked.block.type === "stats";
       const steps = picked.block.type === "steps";
+      const pricing = picked.block.type === "pricing";
       // A form's new field may take a name the form has: the page must
       // refuse it then, by the rule on a form's field names.
       const fieldName = at(["name", "email", "notes", "field-4", "a", "added"], wish.item) as string;
@@ -435,8 +452,12 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
           : menu ? { label: at(LINES, wish.item) as string, href: at(HREFS, wish.item) as string }
             : stats ? { value: at(FIGURES, wish.item) as string, label: "Added figure" }
               : steps ? { title: at(LINES, wish.item) as string, text: at(PARAGRAPHS, wish.item) as string }
-                : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
-      const max = gallery ? 24 : form ? 20 : menu ? 12 : stats ? 8 : steps ? 10 : 30;
+                : pricing ? {
+                  name: at(LINES, wish.item) as string, price: at(PRICES, wish.item) as string, period: "", text: "", features: [],
+                  button: { label: "Choose", href: at(HREFS, wish.item) as string }, featured: wish.item % 2 === 0, badge: "",
+                }
+                  : { question: "Cold?", answer: at(PARAGRAPHS, wish.item) as string };
+      const max = gallery ? 24 : form ? 20 : menu ? 12 : stats ? 8 : steps ? 10 : pricing ? 4 : 30;
       // A steps block keeps two steps at least; every other list, one.
       const min = steps ? 2 : 1;
       const free = !form || !items.some((item) => item.name === fieldName);
@@ -454,7 +475,8 @@ export function commandFor(impl: Implementation, doc: PageDocument, wish: Intent
               : menu ? (wish.other % 2 === 0 ? { label: at(LINES, wish.item) as string } : { href: at(HREFS, wish.item) as string })
                 : stats ? (wish.other % 2 === 0 ? { value: at(FIGURES, wish.item) as string } : { label: at(LINES, wish.item) as string })
                   : steps ? (wish.other % 2 === 0 ? { title: at(LINES, wish.item) as string } : { text: at(PARAGRAPHS, wish.item) as string })
-                    : { question: at(LINES, wish.item) as string };
+                    : pricing ? planUpdates(items[wish.index % items.length] as AnyObject, wish.other, wish.item)
+                      : { question: at(LINES, wish.item) as string };
           return { made: c.makeSetItem(doc, picked.block.id, wish.index % items.length, updates), mustAccept: true };
         }
       }
@@ -493,6 +515,25 @@ function formFieldUpdates(REMOVE: typeof Commands.REMOVE, field: AnyObject, vari
   const own = field.maxLength;
   const fitting = typeof own === "number" && own <= FORM_TEXT_LIMITS[next];
   return { kind: next, maxLength: fitting ? own : next === "text" ? 100 : 1000 };
+}
+
+// Valid changes of one plan of a pricing block, picked by `variant`, as
+// its Plans group makes them: one key, or its button, whole, with one of
+// its two halves changed.
+function planUpdates(plan: AnyObject, variant: number, value: number): Commands.Updates {
+  const button = plan.button as { label: string; href: string };
+  const choices: Commands.Updates[] = [
+    { name: at(LINES, value) as string },
+    { price: at(PRICES, value) as string },
+    { period: at(["", "a month", "a year"], value) as string },
+    { text: value % 3 === 0 ? "" : (at(PARAGRAPHS, value) as string) },
+    { features: LINES.slice(0, value % 4) },
+    { button: { ...button, label: at(LINES, value) as string } },
+    { button: { ...button, href: at(HREFS, value) as string } },
+    { featured: value % 2 === 0 },
+    { badge: value % 3 === 0 ? "" : (at(LINES, value) as string) },
+  ];
+  return choices[variant % choices.length]!;
 }
 
 // Valid changes of props for each type, picked by `variant`.

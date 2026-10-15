@@ -17,7 +17,7 @@ export const SCHEMA_VERSION = 1;
 export const BLOCK_TYPES = [
   "section", "column",
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
   "form",
   "logo", "menu",
 ] as const;
@@ -26,7 +26,7 @@ export type BlockType = (typeof BLOCK_TYPES)[number];
 // What a column may hold: every block type but section and column.
 export const WIDGET_TYPES = [
   "heading", "text", "image", "button", "divider", "spacer",
-  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
+  "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
   "form",
   "logo", "menu",
 ] as const;
@@ -167,6 +167,7 @@ export const STYLE_KEYS_BY_TYPE = {
   iconbox: ["color", "align", "visibility"],
   stats: ["color", "align", "visibility"],
   steps: ["color", "visibility"],
+  pricing: ["color", "visibility"],
   logo: NAV_STYLE,
   menu: NAV_STYLE,
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
@@ -344,6 +345,31 @@ export interface StepsProps extends BlockAttributes {
   // The steps, in the order the page numbers them.
   items: StepsItem[];
 }
+// A plan's button: a button block's words and link, by the button's own
+// rules.
+export interface PricingButton {
+  label: string;
+  href: string;
+}
+// One plan of a pricing block: its name; its price, text written as it is
+// shown ("€19", "Free"), and what the price is for ("a month"); a short
+// text, which may break its lines; what it includes, a line each; its
+// button. Its period, its text and its badge are always there and may be
+// empty (""). Its badge is drawn only while it is featured.
+export interface PricingPlan {
+  name: string;
+  price: string;
+  period: string;
+  text: string;
+  features: string[];
+  button: PricingButton;
+  featured: boolean;
+  badge: string;
+}
+export interface PricingProps extends BlockAttributes {
+  // The plans, in the order the page shows them.
+  plans: PricingPlan[];
+}
 // One field of a form. name is the key its answers are kept under, made by
 // the editor and never shown; unique in its form (an application rule).
 // maxLength is there for the two kinds of text and only for them.
@@ -409,6 +435,7 @@ export type QuoteBlock = BlockOf<"quote", QuoteProps, NoChildren>;
 export type AccordionBlock = BlockOf<"accordion", AccordionProps, NoChildren>;
 export type StatsBlock = BlockOf<"stats", StatsProps, NoChildren>;
 export type StepsBlock = BlockOf<"steps", StepsProps, NoChildren>;
+export type PricingBlock = BlockOf<"pricing", PricingProps, NoChildren>;
 export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
 export type LogoBlock = BlockOf<"logo", LogoProps, NoChildren>;
 export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
@@ -416,7 +443,7 @@ export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
   | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
-  | StatsBlock | StepsBlock | FormBlock | LogoBlock | MenuBlock;
+  | StatsBlock | StepsBlock | PricingBlock | FormBlock | LogoBlock | MenuBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -462,6 +489,7 @@ export const PROP_KEYS = {
   accordion: { items: "required", ...OWN },
   stats: { items: "required", ...OWN },
   steps: { items: "required", ...OWN },
+  pricing: { plans: "required", ...OWN },
   form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
   logo: { name: "optional", ...OWN },
   menu: { label: "required", items: "required", ...OWN },
@@ -470,12 +498,22 @@ export const PROP_KEYS = {
 export const ACCORDION_ITEM_KEYS = { question: "required", answer: "required" } as const satisfies KeyTable<AccordionItem>;
 export const STATS_ITEM_KEYS = { value: "required", label: "required" } as const satisfies KeyTable<StatsItem>;
 export const STEPS_ITEM_KEYS = { title: "required", text: "required" } as const satisfies KeyTable<StepsItem>;
+export const PRICING_PLAN_KEYS = {
+  name: "required", price: "required", period: "required", text: "required", features: "required", button: "required", featured: "required", badge: "required",
+} as const satisfies KeyTable<PricingPlan>;
+export const PRICING_BUTTON_KEYS = { label: "required", href: "required" } as const satisfies KeyTable<PricingButton>;
 export const MENU_LINK_KEYS = { label: "required", href: "required" } as const satisfies KeyTable<MenuLink>;
 // A field's keys whatever its kind: maxLength is optional here, and the
 // schema says for which kinds it is required and for which absent.
 export const FORM_FIELD_KEYS = {
   name: "required", kind: "required", label: "required", required: "required", maxLength: "optional",
 } as const satisfies KeyTable<FormFieldOf<FormFieldKind> & { maxLength?: number }>;
+// The prop that holds a widget's list of items, the one its item commands
+// change (../document/commands.ts): a pricing block's plans, every other
+// list's items (a gallery's images, a form's fields).
+export function itemsKey(type: BlockType): "items" | "plans" {
+  return type === "pricing" ? "plans" : "items";
+}
 export const DOCUMENT_KEYS = {
   schemaVersion: "required",
   title: "required",

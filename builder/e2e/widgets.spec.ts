@@ -1,28 +1,32 @@
 // Each widget's accessibility test (src/widgets/<widget>/a11y.ts), in
 // Chromium: its cases saved to the run's CMS and published; on the page the
 // CMS serves, each case exposes what its test says (role, name, level, how
-// many, and for a form's field whether the accessibility tree says it is
-// required), a hidden one exposes nothing, and axe finds nothing serious or
-// critical in the widget; on the editor's canvas, each case that is not
-// hidden exposes the same, and the same blocks pass axe too.
+// many, for a form's field whether the accessibility tree says it is
+// required, and the words the tree reads in a paragraph), a hidden one
+// exposes nothing, and axe finds nothing serious or critical in the widget;
+// on the editor's canvas, each case that is not hidden exposes the same,
+// and the same blocks pass axe too.
 import type { Locator, Page } from "@playwright/test";
 import { WIDGET_A11Y } from "../src/widgets/a11y-all.ts";
 import type { A11yCase } from "../src/widgets/a11y.ts";
-import { axProperties } from "./helpers/ax.ts";
+import { axProperties, axTexts } from "./helpers/ax.ts";
 import { axe } from "./helpers/axe.ts";
 import { cms, column, expect, makePage, open, section, test, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-// What the case says it exposes, found inside the block's root.
+// What the case says it exposes, found inside the block's root. Words that
+// are no name (a paragraph's) are read in the accessibility tree.
 async function exposes(page: Page, root: Locator, c: A11yCase, where: string): Promise<void> {
   for (const exposed of c.exposes) {
-    const found = root.getByRole(exposed.role, {
+    const named = root.getByRole(exposed.role, {
       ...(exposed.name === undefined ? {} : { name: exposed.name, exact: true }),
       ...(exposed.level === undefined ? {} : { level: exposed.level }),
     });
-    const what = `${where}, ${c.name}: ${exposed.role}${exposed.name ? ` "${exposed.name}"` : ""}`;
+    const found = exposed.text === undefined ? named : named.filter({ hasText: exposed.text });
+    const what = `${where}, ${c.name}: ${exposed.role}${exposed.name ? ` "${exposed.name}"` : ""}${exposed.text ? ` reading "${exposed.text}"` : ""}`;
     await expect(found, what).toHaveCount(exposed.count ?? 1);
+    if (exposed.text !== undefined) for (const one of await found.all()) expect((await axTexts(page, one)).join(""), what).toBe(exposed.text);
     if (exposed.required === undefined) continue;
     for (const one of await found.all()) expect((await axProperties(page, one)).get("required") ?? false, `${what} is required`).toBe(exposed.required);
   }

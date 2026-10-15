@@ -11,7 +11,8 @@
 // may go there, the preset fits the columns) and refuse with a sentence;
 // the reducer checks what the schema says when the command is applied.
 import {
-  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, MENU_LINK_KEYS, PROP_KEYS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_TOKEN_KEYS,
+  ACCORDION_ITEM_KEYS, COLUMN_WIDTHS_BY_COUNT, DEVICES, DOCUMENT_KEYS, FORM_FIELD_KEYS, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, itemsKey, MENU_LINK_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, STATS_ITEM_KEYS,
+  STEPS_ITEM_KEYS, STYLE_TOKEN_KEYS,
   type Block, type BlockType, type ColumnBlock, type ColumnWidthsToken, type Device, type PageDocument, type SectionBlock, type StackToken,
   type StyleTokens, type WidgetBlock,
 } from "../shared/document.ts";
@@ -493,23 +494,24 @@ export function makeReplacePage(doc: PageDocument, next: PageDocument, label: st
 
 // The lists of a widget's props whose items have commands of their own: a
 // gallery's images, an accordion's questions, a stats block's figures, a
-// steps block's steps, a form's fields.
-function itemList(doc: PageDocument, id: string): { block: Block; items: readonly Json[]; one: string; many: string; order: readonly string[] } | null {
+// steps block's steps, a pricing block's plans, a form's fields; with the
+// path to the list, its props' items, or a pricing block's plans.
+function itemList(doc: PageDocument, id: string): { block: Block; path: Path; items: readonly Json[]; one: string; many: string; order: readonly string[] } | null {
   const block = locate(doc, id)?.block;
   if (!block) return null;
   const names = ITEM_NAMES[block.type];
-  const items = (block.props as Record<string, unknown>).items;
+  const key = itemsKey(block.type);
+  const items = (block.props as Record<string, unknown>)[key];
   if (!names || !Array.isArray(items)) return null;
   const order = block.type === "accordion" ? Object.keys(ACCORDION_ITEM_KEYS)
     : block.type === "stats" ? Object.keys(STATS_ITEM_KEYS)
     : block.type === "steps" ? Object.keys(STEPS_ITEM_KEYS)
+    : block.type === "pricing" ? Object.keys(PRICING_PLAN_KEYS)
     : block.type === "form" ? Object.keys(FORM_FIELD_KEYS)
     : block.type === "menu" ? Object.keys(MENU_LINK_KEYS)
     : IMAGE_REF_KEYS;
-  return { block, items: items as Json[], ...names, order };
+  return { block, path: ["props", key], items: items as Json[], ...names, order };
 }
-
-const ITEMS: Path = ["props", "items"];
 
 // Items put at `index`, in order: images whose uploads have finished, each
 // with its media id, or new questions.
@@ -517,7 +519,7 @@ export function makeInsertItems(doc: PageDocument, id: string, index: number, it
   const list = itemList(doc, id);
   if (!list) return unknown(id);
   if (!Number.isInteger(index) || index < 0 || index > list.items.length) return refuse(refusal("noTarget", `There is no place ${index} in ${blockWithPlace(doc, id)}.`));
-  const ops: Op[] = items.map((item, k) => ({ op: "insertItem", id, path: ITEMS, index: index + k, item: copyJson(item) }));
+  const ops: Op[] = items.map((item, k) => ({ op: "insertItem", id, path: list.path, index: index + k, item: copyJson(item) }));
   const what = items.length === 1 ? (list.one === "image" ? "an image" : `a ${list.one}`) : `${items.length} ${list.many}`;
   return made("items", `Added ${what} to ${blockWithPlace(doc, id)}`, { id, item: index }, ops);
 }
@@ -528,7 +530,7 @@ export function makeRemoveItem(doc: PageDocument, id: string, index: number): Ma
   const item = list.items[index];
   if (item === undefined) return refuse(refusal("unknown", `${blockWithPlace(doc, id)} has no ${list.one} ${index + 1}.`));
   return made("items", `Removed ${list.one} ${index + 1} from ${blockWithPlace(doc, id)}`, { id, item: index }, [
-    { op: "removeItem", id, path: ITEMS, index, item: copyJson(item) },
+    { op: "removeItem", id, path: list.path, index, item: copyJson(item) },
   ]);
 }
 
@@ -540,7 +542,7 @@ export function makeMoveItem(doc: PageDocument, id: string, from: number, to: nu
   if (!Number.isInteger(to) || to < 0 || to > list.items.length - 1) return refuse(refusal("noTarget", `There is no place ${to + 1} in ${blockWithPlace(doc, id)}.`));
   if (from === to) return refuse(refusal("nothing", `That ${list.one} is already there.`));
   return made("items", `Moved ${list.one} ${from + 1} in ${blockWithPlace(doc, id)}`, { id, item: to }, [
-    { op: "moveItem", id, path: ITEMS, from, to },
+    { op: "moveItem", id, path: list.path, from, to },
   ]);
 }
 
@@ -549,7 +551,7 @@ export function makeSetItem(doc: PageDocument, id: string, index: number, update
   if (!list) return unknown(id);
   const item = list.items[index];
   if (!isObject(item)) return refuse(refusal("unknown", `${blockWithPlace(doc, id)} has no ${list.one} ${index + 1}.`));
-  const { ops } = keySteps(id, [...ITEMS, index], item, updates, list.order);
+  const { ops } = keySteps(id, [...list.path, index], item, updates, list.order);
   const keys = Object.keys(updates);
   const altOnly = list.one === "image" && keys.every((key) => key === "alt" || key === "decorative");
   return made("items", `Changed ${altOnly ? "the alt text of " : ""}${list.one} ${index + 1} in ${blockWithPlace(doc, id)}`, { id, item: index }, ops);

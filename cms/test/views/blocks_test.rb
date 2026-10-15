@@ -39,10 +39,16 @@ class BlocksTest < ActionView::TestCase
       block("w-accordion", "accordion", { "items" => [ { "question" => "How cold?", "answer" => "Cold." }, { "question" => "Wetsuit?", "answer" => "No." } ] }),
       block("w-stats", "stats", { "items" => [ { "value" => "12", "label" => "Years on the water" }, { "value" => "300+", "label" => "Swimmers each season" } ] }),
       block("w-steps", "steps", { "items" => [ { "title" => "Get in touch", "text" => "Tell us when." }, { "title" => "Try it", "text" => "Come along once." } ] }),
+      block("w-pricing", "pricing", { "plans" => [ plan("Season", "€60", button: { "label" => "Join", "href" => "/join" }, featured: true, badge: "Most chosen") ] }),
       block("w-form", "form", { "items" => FORM_FIELDS, "submitLabel" => "Send request", "confirmation" => "Thank you." }),
       block("w-logo", "logo", { "name" => "Slack Water" }),
       block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] })
     ]
+  end
+
+  # A plan of a pricing block, its keys all there as the schema has them.
+  def plan(name, price, period: "", text: "", features: [], button: { "label" => "Choose", "href" => "/" }, featured: false, badge: "")
+    { "name" => name, "price" => price, "period" => period, "text" => text, "features" => features, "button" => button, "featured" => featured, "badge" => badge }
   end
 
   FORM_FIELDS = [
@@ -71,7 +77,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps form logo menu], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -239,6 +245,41 @@ class BlocksTest < ActionView::TestCase
     assert_empty html.css("script")
   end
 
+  test "the pricing is one list of plans, each its badge while featured, its name, its price and its period, its text with its line breaks, its features and its button, what is empty left out, and a plan that is no object too" do
+    plans = [
+      plan("Basic", "€9", period: "a month", text: "To start.\nAlone.", features: [ "One", 2, nil, "Three" ], button: { "label" => "Choose Basic", "href" => "/join?plan=basic" }),
+      "Plus",
+      nil,
+      plan("Plus", "€19", period: "a month", button: { "label" => "Choose Plus", "href" => "javascript:alert(1)" }, featured: true, badge: "Most chosen"),
+      plan("Team", "€49", features: "not a list", button: "Choose Team", featured: "true", badge: "Not drawn"),
+      plan("Free", "0", featured: true)
+    ]
+    style = { "base" => { "color" => "#1d4e6f" }, "tablet" => { "color" => "accent" }, "phone" => { "visibility" => "hidden" } }
+    html = html_of(page(block("pr", "pricing", { "plans" => plans }, style: style)))
+
+    root = html.at_css("[data-block-id=pr]")
+    assert_equal %w[w w-pricing sw-pricing tablet-line-accent hide-phone], root["class"].split
+    assert_equal "#1d4e6f", root["data-line"]
+    assert_equal %w[ul], root.element_children.map(&:name)
+    cards = root.css("ul > li.sw-plan")
+    assert_equal [ %w[h3 p p ul div], %w[p h3 p div], %w[h3 p], %w[h3 p div] ], cards.map { |card| card.element_children.map(&:name) }
+    assert_equal [ nil, "true", nil, "true" ], cards.map { |card| card["data-featured"] }
+    assert_equal %w[Basic Plus Team Free], cards.map { |card| card.at_css("h3").text }
+    # The badge on the featured plan that has one, before its name.
+    assert_equal [ "Most chosen" ], root.css(".sw-plan-badge").map(&:text)
+    # The price, then its period beside it when there is one.
+    assert_equal [ [ "€9", "a month" ], [ "€19", "a month" ], [ "€49", nil ], [ "0", nil ] ], cards.map { |card| [ card.at_css(".sw-plan-price strong").text, card.at_css(".sw-plan-price span")&.text ] }
+    assert_equal "€9 a month", cards.first.at_css(".sw-plan-price").text
+    assert_equal 1, cards.first.css(".sw-plan-price + p br").size
+    # Features that are text, in order.
+    assert_equal %w[One Three], cards.first.css(".sw-plan-features > li").map(&:text)
+    # The buttons as a button block draws its link: a refused address leaves
+    # a label that links nowhere.
+    buttons = root.css(".sw-plan-action > a.sw-btn")
+    assert_equal [ [ "Choose Basic", "/join?plan=basic" ], [ "Choose Plus", nil ], [ "Choose", "/" ] ], buttons.map { |a| [ a.text, a["href"] ] }
+    assert_empty html.css("script")
+  end
+
   test "the form posts to the page's own address, each field tied to its label, the required ones said and checked by the browser" do
     html = form_html
     form = html.at_css("[data-block-type=form] form.sw-form")
@@ -344,11 +385,14 @@ class BlocksTest < ActionView::TestCase
   test "an address RenderPolicy refuses leaves the label or the heading without a link" do
     html = html_of(page(
       block("b", "button", { "label" => "Click", "href" => "javascript:alert(1)" }),
-      block("h", "heading", { "level" => 2, "text" => "Title", "href" => "//evil.example" })
+      block("h", "heading", { "level" => 2, "text" => "Title", "href" => "//evil.example" }),
+      block("pr", "pricing", { "plans" => [ plan("Plan", "€1", button: { "label" => "Choose", "href" => "data:text/html,x" }) ] })
     ))
 
     button = html.at_css("[data-block-id=b] .sw-btn")
     assert_equal [ "a", "Click", nil ], [ button.name, button.text, button["href"] ]
+    plan_button = html.at_css("[data-block-id=pr] .sw-btn")
+    assert_equal [ "a", "Choose", nil ], [ plan_button.name, plan_button.text, plan_button["href"] ]
     assert_nil html.at_css("[data-block-id=h] a")
     assert_equal "Title", html.at_css("[data-block-id=h] h2").text
   end
@@ -386,6 +430,7 @@ class BlocksTest < ActionView::TestCase
       block("a", "accordion", { "items" => [ { "question" => trap, "answer" => trap } ] }),
       block("s", "stats", { "items" => [ { "value" => trap, "label" => trap } ] }),
       block("sp", "steps", { "items" => [ { "title" => trap, "text" => trap }, { "title" => trap, "text" => trap } ] }),
+      block("pr", "pricing", { "plans" => [ plan(trap, trap, period: trap, text: trap, features: [ trap ], button: { "label" => trap, "href" => "/" }, featured: true, badge: trap) ] }),
       block("v", "video", { "provider" => "vimeo", "videoId" => "76979871", "title" => trap }),
       block("m", "map", { "latitude" => 1, "longitude" => 2, "zoom" => 3, "label" => trap }),
       block("p", "image", { "mediaId" => "hero", "alt" => trap }),
@@ -394,7 +439,8 @@ class BlocksTest < ActionView::TestCase
 
     assert_empty html.css("b, [onerror]")
     assert_equal [ "hero.png" ], html.css("img").map { |img| img["src"].split("/").last }
-    %w[h t b i q a s sp v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    %w[h t b i q a s sp pr v m f].each { |id| assert_includes html.at_css("[data-block-id=#{id}]").text, trap, id }
+    assert_equal 7, html.at_css("[data-block-id=pr]").text.scan(trap).size
     assert_equal trap, html.at_css("[data-block-id=p] img")["alt"]
   end
 

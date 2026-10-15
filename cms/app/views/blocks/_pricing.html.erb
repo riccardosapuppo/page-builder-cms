@@ -1,0 +1,20 @@
+<%# Plans side by side, each a card of its name, its price and what the price is for, a short text, what it includes and a button: one list, each plan an item. A featured plan's badge comes first, when it has one, then its name, a heading of level 3; its price, with its period beside it when it has one; its text with its line breaks, when it has one; its features, a list of their own, when it has any; and its button, the link a button block draws (_button.html.erb), an address RenderPolicy refuses leaving a label that links nowhere. The colour is the featured plan's ring and its badge's fill, kept as an accordion keeps the colour of its lines, so the plans' words keep the band's. A plan that is not an object is left out, as is a feature that is not text; features that are not a list are none, and a button that is not an object draws no button. -%>
+<%- style = block_style(block) -%>
+<%- plans = Array(block_props(block)["plans"]).select { |plan| plan.is_a?(Hash) } -%>
+<%- items = plans.map do |plan|
+      featured = plan["featured"] == true
+      badge = prop_text(plan, "badge")
+      period = prop_text(plan, "period")
+      text = prop_text(plan, "text")
+      features = plan["features"].is_a?(Array) ? plan["features"].select { |feature| feature.is_a?(String) } : []
+      button = plan["button"].is_a?(Hash) ? plan["button"] : nil
+      tag.li(safe_join([
+        (tag.p(badge, class: "sw-plan-badge") if featured && !badge.empty?),
+        tag.h3(prop_text(plan, "name")),
+        tag.p(safe_join([ tag.strong(prop_text(plan, "price")), *([ " ", tag.span(period) ] unless period.empty?) ]), class: "sw-plan-price"),
+        (tag.p(text_with_breaks(text)) unless text.empty?),
+        (tag.ul(safe_join(features.map { |feature| tag.li(feature) }), class: "sw-plan-features") if features.any?),
+        (tag.div(content_tag(:a, prop_text(button, "label"), class: [ "sw-btn" ], href: RenderPolicy.link_href(button["href"])), class: "sw-plan-action") if button)
+      ].compact), class: "sw-plan", data: { featured: ("true" if featured) })
+    end -%>
+<%= tag.div(**block_root(block, [ "w", "w-pricing", "sw-pricing", BlockStyle.classes(style, "color", family: "line"), BlockStyle.visibility_classes(style) ], data: BlockStyle.free_color_data(style, "color", family: "line"))) do %><%= tag.ul(safe_join(items)) %><% end %>

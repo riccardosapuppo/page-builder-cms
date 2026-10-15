@@ -9,7 +9,7 @@ import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
   COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES, MARK_TYPES,
-  MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
+  MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PRICING_BUTTON_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
   SPACE_TOKENS, STACK_TOKENS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
@@ -122,12 +122,30 @@ describe("the document's types match the schema", () => {
     expect(sorted(STATS_ITEM_KEYS)).toEqual(sorted(keyTable(deref(statsItems.items as Node))));
     const stepsItems = properties(branch("steps").props).items as Node;
     expect(sorted(STEPS_ITEM_KEYS)).toEqual(sorted(keyTable(deref(stepsItems.items as Node))));
+    const plans = properties(branch("pricing").props).plans as Node;
+    const plan = deref(plans.items as Node);
+    expect(sorted(PRICING_PLAN_KEYS)).toEqual(sorted(keyTable(plan)));
+    expect(sorted(PRICING_BUTTON_KEYS)).toEqual(sorted(keyTable(properties(plan).button as Node)));
     const formItems = properties(branch("form").props).items as Node;
     expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
     const menuItems = properties(branch("menu").props).items as Node;
     expect(sorted(MENU_LINK_KEYS)).toEqual(sorted(keyTable(deref(menuItems.items as Node))));
     expect(sorted(DOCUMENT_KEYS)).toEqual(sorted(keyTable(schema)));
     expect(properties(schema).schemaVersion?.const).toBe(SCHEMA_VERSION);
+  });
+
+  test("a pricing plan's button is a button block's words and link, by the same definitions; its period, text and badge are a line or a paragraph that may be empty", () => {
+    const plan = properties(deref((properties(branch("pricing").props).plans as Node).items as Node));
+    const own = properties(branch("button").props);
+    expect(properties(plan.button as Node).label).toEqual(own.label);
+    expect(properties(plan.button as Node).href).toEqual(own.href);
+    expect([plan.period?.$ref, plan.text?.$ref, plan.badge?.$ref]).toEqual(["#/$defs/lineOrEmpty", "#/$defs/paragraphOrEmpty", "#/$defs/lineOrEmpty"]);
+    // Each is its text's own definition with the empty string let in, and
+    // nothing else changed.
+    for (const [empty, text] of [["lineOrEmpty", "line"], ["paragraphOrEmpty", "paragraph"]] as const) {
+      expect(def(empty).pattern, empty).toBe(`^$|${def(text).pattern as string}`);
+      expect(def(empty).not, empty).toEqual(def(text).not);
+    }
   });
 
   test("each gallery item is an image reference, and an image's props are one with the block's class and anchor", () => {

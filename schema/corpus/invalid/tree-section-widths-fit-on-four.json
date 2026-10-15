@@ -716,6 +716,103 @@
       }
     },
     {
+      "id": "prices",
+      "type": "section",
+      "props": {
+        "anchor": "prices"
+      },
+      "children": [
+        {
+          "id": "prices-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "prices-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Membership"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "prices-plans",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "Trial swim",
+                    "price": "Free",
+                    "period": "",
+                    "text": "Come once, with someone beside you.",
+                    "features": [
+                      "One dawn swim",
+                      "A cap to borrow"
+                    ],
+                    "button": {
+                      "label": "Book a trial",
+                      "href": "#join"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  },
+                  {
+                    "name": "Season",
+                    "price": "€60",
+                    "period": "a season",
+                    "text": "Every dawn swim from May to October.\nInsurance included.",
+                    "features": [
+                      "Every dawn swim",
+                      "The beginners’ course",
+                      "Club insurance"
+                    ],
+                    "button": {
+                      "label": "Join for the season",
+                      "href": "/join?plan=season"
+                    },
+                    "featured": true,
+                    "badge": "Most chosen"
+                  },
+                  {
+                    "name": "Winter series",
+                    "price": "€25",
+                    "period": "",
+                    "text": "",
+                    "features": [],
+                    "button": {
+                      "label": "Join the series",
+                      "href": "/winter-series"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "accent"
+                },
+                "phone": {
+                  "color": "primary"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
       "id": "join",
       "type": "section",
       "props": {

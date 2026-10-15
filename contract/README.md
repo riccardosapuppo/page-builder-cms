@@ -14,11 +14,15 @@ the server writes for them. The editor's half is
 
 - [`fixtures/`](fixtures): page documents, as JSON.
   - `traps-text.json`: headings, rich text, buttons, icon boxes, quotes,
-    accordions, stats and steps whose text holds markup, entities, quotes
-    and line breaks, with `javascript:`, `data:`, `//host` and backslash
-    links in every place a link can be, and unicode (combining marks, emoji
-    sequences, right-to-left text, a no-break space, repeated spaces); and
-    stats and steps whose items are no object, or whose list is none.
+    accordions, stats, steps and pricing tables whose text holds markup,
+    entities, quotes and line breaks, with `javascript:`, `data:`, `//host`
+    and backslash links in every place a link can be (a pricing plan's
+    button takes each kind a button block's link does), and unicode
+    (combining marks, emoji sequences, right-to-left text, a no-break
+    space, repeated spaces); stats, steps and pricing tables whose items
+    are no object, or whose list is none; and pricing plans whose features
+    are no list or hold what is no text, whose button is no object, whose
+    featured is no boolean, and whose badge is on a plan not featured.
   - `traps-media.json`: images from the library, from another site, a site
     path, decorative, deleted, and with `javascript:`, `data:` and `http:`
     sources; a gallery mixing all of them; videos from both providers, an
@@ -138,7 +142,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 19 block types
+fixture, when there are fewer than 6 fixtures or one of the 20 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

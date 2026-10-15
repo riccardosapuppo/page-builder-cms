@@ -61,6 +61,9 @@ const stats = (id: string, items: J[], style: Style = plain()): J => block(id, "
 const figure = (value: string, label: string): J => ({ value, label });
 const steps = (id: string, items: J[], style: Style = plain()): J => block(id, "steps", { items }, [], style);
 const step = (title: string, body: string): J => ({ title, text: body });
+const pricing = (id: string, plans: J[], style: Style = plain()): J => block(id, "pricing", { plans }, [], style);
+const plan = (name: string, price: string, period: string, body: string, features: string[], label: string, href: string, featured = false, badge = ""): J =>
+  ({ name, price, period, text: body, features, button: { label, href }, featured, badge });
 const form = (id: string, items: J[], submitLabel: string, confirmation: string): J => block(id, "form", { items, submitLabel, confirmation });
 const field = (name: string, kind: string, label: string, required: boolean, maxLength?: number): J =>
   (maxLength === undefined ? { name, kind, label, required } : { name, kind, label, required, maxLength });
@@ -156,6 +159,16 @@ function landing(): J {
         ]),
       ]),
     ], { anchor: "questions" }),
+    section("prices", [
+      column("prices-1", [
+        heading("prices-heading", 2, "Membership"),
+        pricing("prices-plans", [
+          plan("Trial swim", "Free", "", "Come once, with someone beside you.", ["One dawn swim", "A cap to borrow"], "Book a trial", "#join"),
+          plan("Season", "€60", "a season", `Every dawn swim from May to October.${NEWLINE}Insurance included.`, ["Every dawn swim", "The beginners’ course", "Club insurance"], "Join for the season", "/join?plan=season", true, "Most chosen"),
+          plan("Winter series", "€25", "", "", [], "Join the series", "/winter-series"),
+        ], { base: { color: "accent" }, phone: { color: "primary" } }),
+      ]),
+    ], { anchor: "prices" }),
     section("join", [
       column("join-1", [
         divider("join-divider"),
@@ -224,6 +237,7 @@ const QIMG = P("quote-image");
 const ACC = P("questions-list");
 const STATS = P("gallery-stats");
 const STEPS = P("questions-steps");
+const PRICING = P("prices-plans");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
@@ -453,6 +467,10 @@ valid("unicode-text", "non-ASCII text in every plain-text field and in rich text
     accordion("uni-a", [{ question: "¿Qué?", answer: "Ça va." }]),
     stats("uni-st", [figure("٣٤٥ €", "Größe des Vereins"), figure("約 40 分", "潮が止まる時間")]),
     steps("uni-sp", [step("Écrivez-nous", "Dites-nous quand venir."), step("一度泳いでみる", `浜で会いましょう。${NEWLINE}帽子を持ってきてください。`)]),
+    pricing("uni-pr", [
+      plan("Saison", "60 €", "par saison", "Tous les bains de l’aube.", ["Assurance ✓", "日本語の案内"], "S’inscrire", "/fr", true, "Le plus choisi"),
+      plan("冬", "٢٥ €", "", "", [], "Écrire", "mailto:club@example.org"),
+    ]),
     iconbox("uni-ib", "globe", "Ünïcödé", "Ẅïth ẗrëmäs."),
     map("uni-m", 35.6812, 139.7671, 12, "東京駅"),
     form("uni-f", [field("nom", "text", "Prénom et nom", true, 80), field("accord", "checkbox", "J’accepte d’être rappelé·e ☎", false)], "Envoyer ✉", `Merci ! À bientôt.${NEWLINE}— Le club`),
@@ -506,6 +524,20 @@ valid("steps-two-and-ten", "a steps block of two steps, the fewest, and one of t
       step("T".repeat(120), "x".repeat(1000)),
       step(cp(0x1f30a).repeat(120), "A hundred and twenty waves: 120 code points, 240 UTF-16 units"),
       ...Array.from({ length: 7 }, (_, k) => step(`Step ${k + 4}`, `What happens in step ${k + 4}.`)),
+    ], { base: { color: "#1d4e6f" }, tablet: { color: "accent" }, phone: { visibility: "hidden" } }),
+  ])]),
+]));
+valid("pricing-plans", "a pricing block of one plan, the fewest, and one of four, the most; a name of one character and of 80, a price of 24 characters, in code points too, a period of 40 and an empty one, a text of 400 that breaks its lines, with an empty line, and an empty text; no features and twelve of 120 characters, in code points too; a badge of 30 on a featured plan, none on another, and one kept on a plan that is not featured; a button's link in every form a button's link takes; a colour of the site's own, a slot's on tablets, hidden on phones", doc("Pricing", [
+  section("pr", [column("pr-1", [
+    pricing("pr-one", [plan("x", "0", "", "", [], "Go", "/")]),
+    pricing("pr-four", [
+      plan(
+        "N".repeat(80), "9".repeat(24), "p".repeat(40), `${"t".repeat(198)}${NEWLINE}${NEWLINE}${"t".repeat(200)}`,
+        Array.from({ length: 12 }, (_, k) => `${"F".repeat(118)}${String(k).padStart(2, "0")}`), "L".repeat(80), "https://example.com/plans?ref=pricing#four", true, "B".repeat(30),
+      ),
+      plan("Waves", cp(0x1f30a).repeat(24), "a month", "Twenty-four waves: 24 code points, 48 UTF-16 units", [cp(0x1f30a).repeat(120)], "Write", "mailto:club@example.org?subject=Plans", false, "Kept, not drawn"),
+      plan("Call", "€5", "a call", "", ["One"], "Call", "tel:+44-20-7946-0958"),
+      plan("Top", "Free", "", "", [], "Back to the top", "#top", true),
     ], { base: { color: "#1d4e6f" }, tablet: { color: "accent" }, phone: { visibility: "hidden" } }),
   ])]),
 ]));
@@ -908,6 +940,51 @@ invalid("steps-text-too-long", "a text has at most 1000 characters", `${STEP(2)}
 invalid("steps-style-align", "the steps stand where their column puts them", `${STEPS}/style/base/align`, "additionalProperties", (d) => { at(d, STEPS).style.base.align = "center"; });
 invalid("steps-style-text-size", "the steps' size is the theme's", `${STEPS}/style/tablet/textSize`, "additionalProperties", (d) => { at(d, STEPS).style.tablet.textSize = "large"; });
 invalid("steps-with-children", "a steps block holds no blocks", `${STEPS}/children`, "maxItems", (d) => { at(d, STEPS).children.push(heading("in-steps", 2, "In the steps")); });
+
+// =============================== INVALID: pricing ===============================
+const PLAN = (k: number): string => `${PRICING}/props/plans/${k}`;
+const plans = (d: J): J[] => at(d, PRICING).props.plans;
+invalid("pricing-no-plans", "a pricing block has at least one plan", `${PRICING}/props/plans`, "minItems", (d) => { at(d, PRICING).props.plans = []; });
+invalid("pricing-5-plans", "a pricing block has at most four plans", `${PRICING}/props/plans`, "maxItems", (d) => {
+  plans(d).push(plan("Family", "€90", "a season", "", [], "Join together", "/join?plan=family"), plan("Club", "€120", "a season", "", [], "Join the club", "/join?plan=club"));
+});
+invalid("pricing-plan-string", "a plan is an object, never its name alone", PLAN(0), "type", (d) => { plans(d)[0] = "Trial swim"; });
+invalid("pricing-plan-extra-key", "a plan is its name, price, period, text, features, button, featured and badge, nothing else: its currency is written in its price", `${PLAN(1)}/currency`, "additionalProperties", (d) => { plans(d)[1].currency = "EUR"; });
+invalid("pricing-name-missing", "every plan has a name", PLAN(1), "required", (d) => { delete plans(d)[1].name; });
+invalid("pricing-name-blank", "a name has a visible character", `${PLAN(1)}/name`, "pattern", (d) => { plans(d)[1].name = `${NBSP}${ZERO_WIDTH_SPACE}`; });
+invalid("pricing-name-too-long", "a name has at most 80 characters", `${PLAN(0)}/name`, "maxLength", (d) => { plans(d)[0].name = "N".repeat(81); });
+invalid("pricing-price-number", "a price is text, written as it is shown (€60, Free), never a number the page would format", `${PLAN(1)}/price`, "type", (d) => { plans(d)[1].price = 60; });
+invalid("pricing-price-too-long", "a price has at most 24 characters", `${PLAN(2)}/price`, "maxLength", (d) => { plans(d)[2].price = "9".repeat(25); });
+invalid("pricing-period-missing", "a plan without a period has an empty one: the key is never left out", PLAN(0), "required", (d) => { delete plans(d)[0].period; });
+invalid("pricing-period-blank", "a period is empty or has a visible character, never blank", `${PLAN(0)}/period`, "pattern", (d) => { plans(d)[0].period = " "; });
+invalid("pricing-period-newline", "a period is one line", `${PLAN(1)}/period`, "not", (d) => { plans(d)[1].period = `a${NEWLINE}season`; });
+invalid("pricing-text-blank", "a text is empty or has a visible character, never blank", `${PLAN(2)}/text`, "pattern", (d) => { plans(d)[2].text = ` ${NEWLINE} `; });
+invalid("pricing-text-tab", "a text may break its lines, and holds no other control character", `${PLAN(0)}/text`, "not", (d) => { plans(d)[0].text = `Come once,${TAB}with someone beside you.`; });
+invalid("pricing-text-too-long", "a text has at most 400 characters", `${PLAN(1)}/text`, "maxLength", (d) => { plans(d)[1].text = "x".repeat(401); });
+invalid("pricing-features-string", "a plan's features are a list, never one text", `${PLAN(0)}/features`, "type", (d) => { plans(d)[0].features = "One dawn swim"; });
+invalid("pricing-13-features", "a plan has at most twelve features", `${PLAN(1)}/features`, "maxItems", (d) => {
+  plans(d)[1].features.push(...Array.from({ length: 10 }, (_, k) => `Feature ${k + 4}`));
+});
+invalid("pricing-feature-empty", "a feature has a visible character: an empty line is no feature, and is left out", `${PLAN(1)}/features/1`, "pattern", (d) => { plans(d)[1].features[1] = ""; });
+invalid("pricing-feature-number", "a feature is text", `${PLAN(0)}/features/0`, "type", (d) => { plans(d)[0].features[0] = 1; });
+invalid("pricing-feature-newline", "a feature is one line", `${PLAN(1)}/features/2`, "not", (d) => { plans(d)[1].features[2] = `Club${NEWLINE}insurance`; });
+invalid("pricing-feature-too-long", "a feature has at most 120 characters", `${PLAN(0)}/features/1`, "maxLength", (d) => { plans(d)[0].features[1] = "x".repeat(121); });
+invalid("pricing-button-missing", "every plan has its button", PLAN(2), "required", (d) => { delete plans(d)[2].button; });
+invalid("pricing-button-string", "a plan's button is its words and its link, never its words alone", `${PLAN(0)}/button`, "type", (d) => { plans(d)[0].button = "Book a trial"; });
+invalid("pricing-button-label-missing", "a plan's button has its words, as a button block has", `${PLAN(1)}/button`, "required", (d) => { delete plans(d)[1].button.label; });
+invalid("pricing-button-label-too-long", "a plan's button has at most 80 characters, as a button block has", `${PLAN(1)}/button/label`, "maxLength", (d) => { plans(d)[1].button.label = "x".repeat(81); });
+invalid("pricing-button-extra-key", "a plan's button is its words and its link, nothing else: the page decides how it opens", `${PLAN(2)}/button/target`, "additionalProperties", (d) => { plans(d)[2].button.target = "_blank"; });
+invalid("pricing-button-href-javascript", "a plan's button follows a button block's link rules", `${PLAN(0)}/button/href`, "pattern", (d) => { plans(d)[0].button.href = "JaVaScRiPt:alert(1)"; });
+invalid("pricing-button-href-protocol-relative", "no //host link", `${PLAN(1)}/button/href`, "pattern", (d) => { plans(d)[1].button.href = "//evil.example/"; });
+invalid("pricing-button-href-newline-then-https", "the line-anchor trap", `${PLAN(2)}/button/href`, "not", (d) => { plans(d)[2].button.href = `javascript:alert(1)${NEWLINE}https://ok.example`; });
+invalid("pricing-featured-string", "featured is true or false", `${PLAN(1)}/featured`, "type", (d) => { plans(d)[1].featured = "true"; });
+invalid("pricing-featured-missing", "whether a plan is featured is always said", PLAN(0), "required", (d) => { delete plans(d)[0].featured; });
+invalid("pricing-badge-missing", "a plan without a badge has an empty one: the key is never left out", PLAN(2), "required", (d) => { delete plans(d)[2].badge; });
+invalid("pricing-badge-blank", "a badge is empty or has a visible character, never blank", `${PLAN(1)}/badge`, "pattern", (d) => { plans(d)[1].badge = IDEOGRAPHIC_SPACE; });
+invalid("pricing-badge-too-long", "a badge has at most 30 characters", `${PLAN(1)}/badge`, "maxLength", (d) => { plans(d)[1].badge = "B".repeat(31); });
+invalid("pricing-style-align", "the plans stand where their column puts them", `${PRICING}/style/base/align`, "additionalProperties", (d) => { at(d, PRICING).style.base.align = "center"; });
+invalid("pricing-style-background", "a pricing block takes the band's background: each plan draws its own card", `${PRICING}/style/phone/background`, "additionalProperties", (d) => { at(d, PRICING).style.phone.background = "soft"; });
+invalid("pricing-with-children", "a pricing block holds no blocks", `${PRICING}/children`, "maxItems", (d) => { at(d, PRICING).children.push(button("in-pricing", "In the pricing", "/")); });
 
 // =============================== INVALID: form ==================================
 const FIELD = (k: number): string => `${FORM}/props/items/${k}`;

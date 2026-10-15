@@ -44,7 +44,7 @@
       "enum": [
         "section", "column",
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
         "form",
         "logo", "menu"
       ]
@@ -53,7 +53,7 @@
       "description": "The block types a column may hold: every block type except section and column.",
       "enum": [
         "heading", "text", "image", "button", "divider", "spacer",
-        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps",
+        "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing",
         "form",
         "logo", "menu"
       ]
@@ -87,6 +87,7 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "accordion" } } }, "then": { "$ref": "#/$defs/accordionBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "stats" } } }, "then": { "$ref": "#/$defs/statsBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "steps" } } }, "then": { "$ref": "#/$defs/stepsBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "pricing" } } }, "then": { "$ref": "#/$defs/pricingBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "logo" } } }, "then": { "$ref": "#/$defs/logoBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } }
@@ -478,6 +479,30 @@
         "style": { "$ref": "#/$defs/stepsStyle" }
       }
     },
+    "pricingBlock": {
+      "description": "Plans side by side, each a name, a price as it is written and what it is for, a short text, what it includes and a button. A plan may be featured: the page rings it and shows its badge.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["plans"],
+          "additionalProperties": false,
+          "properties": {
+            "plans": {
+              "description": "The plans, in the order the page shows them.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": { "$ref": "#/$defs/pricingPlan" }
+            },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/pricingStyle" }
+      }
+    },
     "formBlock": {
       "description": "A form a visitor fills in and sends, with no script: its fields in order, the text of its button, and the message shown once it is sent. The fields live here, in the page's version, and nowhere else; each answer the server keeps records the version it was sent from and a copy of its fields.",
       "type": "object",
@@ -549,6 +574,36 @@
         },
         "children": { "$ref": "#/$defs/noChildren" },
         "style": { "$ref": "#/$defs/navStyle" }
+      }
+    },
+    "pricingPlan": {
+      "description": "One plan of a pricing block. Its price is text, written as it is shown (with its currency, or Free), never a number the page would format, and its period says what the price is for (a month), or is empty. Its text, its period and its badge are always there and may be empty; its features are lines, none to twelve; its button is a button block's words and link, by a button block's own rules. Its badge is drawn only while it is featured.",
+      "type": "object",
+      "required": ["name", "price", "period", "text", "features", "button", "featured", "badge"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+        "price": { "$ref": "#/$defs/line", "type": "string", "maxLength": 24 },
+        "period": { "$ref": "#/$defs/lineOrEmpty", "type": "string", "maxLength": 40 },
+        "text": { "$ref": "#/$defs/paragraphOrEmpty", "type": "string", "maxLength": 400 },
+        "features": {
+          "description": "What the plan includes, one line each, in the order the page lists them.",
+          "type": "array",
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/line", "type": "string", "maxLength": 120 }
+        },
+        "button": {
+          "description": "The plan's button: a button block's label and href, by the same definitions.",
+          "type": "object",
+          "required": ["label", "href"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+            "href": { "$ref": "#/$defs/href" }
+          }
+        },
+        "featured": { "type": "boolean" },
+        "badge": { "$ref": "#/$defs/lineOrEmpty", "type": "string", "maxLength": 30 }
       }
     },
     "menuLink": {
@@ -683,6 +738,18 @@
       "description": "Plain text that may hold line breaks (\\n only), with at least one visible character.",
       "type": "string",
       "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u00ad\\u1680\\u180e\\u2000-\\u200f\\u2028\\u2029\\u202f\\u205f\\u2060\\u3000\\ufeff]",
+      "not": { "$ref": "#/$defs/paragraphControls" }
+    },
+    "lineOrEmpty": {
+      "description": "A single line of plain text, or nothing: a field that is always there and may be left empty, never blank. Once it holds anything, it has a visible character, as a line does; ^$ is the whole value, empty.",
+      "type": "string",
+      "pattern": "^$|[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u00ad\\u1680\\u180e\\u2000-\\u200f\\u2028\\u2029\\u202f\\u205f\\u2060\\u3000\\ufeff]",
+      "not": { "$ref": "#/$defs/lineControls" }
+    },
+    "paragraphOrEmpty": {
+      "description": "Plain text that may hold line breaks (\\n only), or nothing: a field that is always there and may be left empty, never blank. Once it holds anything, it has a visible character, as a paragraph does.",
+      "type": "string",
+      "pattern": "^$|[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u00ad\\u1680\\u180e\\u2000-\\u200f\\u2028\\u2029\\u202f\\u205f\\u2060\\u3000\\ufeff]",
       "not": { "$ref": "#/$defs/paragraphControls" }
     },
     "lineControls": {
@@ -879,6 +946,20 @@
       }
     },
     "stepsStyleKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "color": true, "visibility": true }
+    },
+    "pricingStyle": {
+      "description": "Pricing: the colour of the featured plan's ring and its badge, and whether it is shown. The plans' words keep the band's colour.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/pricingStyleKeys" },
+        "tablet": { "$ref": "#/$defs/pricingStyleKeys" },
+        "phone": { "$ref": "#/$defs/pricingStyleKeys" }
+      }
+    },
+    "pricingStyleKeys": {
       "type": "object",
       "additionalProperties": false,
       "properties": { "color": true, "visibility": true }

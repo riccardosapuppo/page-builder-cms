@@ -9,7 +9,8 @@
 // last line breaks dropped, an empty paragraph not drawn. Shrinking is
 // skipped (endOnFailure): finding is what is shown here. (Each new widget
 // changes the documents a seed draws: with the steps block, the map that
-// toFixed misdraws came at the 43rd.)
+// toFixed misdraws came at the 43rd; with the pricing block, at the 3rd,
+// and the empty paragraph at the 15th.)
 import fc from "fast-check";
 import { beforeAll, expect, inject, test, vi } from "vitest";
 import { startAgreement, type Agreement } from "./agreement-harness.ts";

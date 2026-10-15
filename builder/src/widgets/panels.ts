@@ -15,6 +15,7 @@ import { panel as image } from "./image/panel.tsx";
 import { panel as logo } from "./logo/panel.tsx";
 import { panel as map } from "./map/panel.tsx";
 import { panel as menu } from "./menu/panel.tsx";
+import { panel as pricing } from "./pricing/panel.tsx";
 import { panel as quote } from "./quote/panel.tsx";
 import { panel as spacer } from "./spacer/panel.tsx";
 import { panel as stats } from "./stats/panel.tsx";
@@ -23,5 +24,5 @@ import { panel as text } from "./text/panel.tsx";
 import { panel as video } from "./video/panel.tsx";
 
 export const WIDGET_PANELS: { readonly [T in WidgetType]: WidgetPanel<T> } = {
-  heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, stats, steps, form, logo, menu,
+  heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, stats, steps, pricing, form, logo, menu,
 };

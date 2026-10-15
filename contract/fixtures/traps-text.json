@@ -201,6 +201,66 @@
               "style": { "base": {} }
             },
             {
+              "id": "t-pricing", "type": "pricing", "children": [],
+              "props": {
+                "plans": [
+                  {
+                    "name": "Basic </h3><script>alert(1)</script> & more", "price": "<b>€9</b>", "period": "a \"month\" & 'more'",
+                    "text": "<i>Line one</i> & escaped.\nLine two &amp; stays text.",
+                    "features": [ "<li>One</li>", "Two & <em>three</em>", 3, null, { "text": "an object" }, [ "in a list" ], "" ],
+                    "button": { "label": "Choose </a><script>alert(1)</script>", "href": "/join?plan=basic&ref='a'" },
+                    "featured": true, "badge": "<b>Most</b> & \"chosen\""
+                  },
+                  "Plus",
+                  null,
+                  [ { "name": "In a list", "price": "is no plan" } ],
+                  {
+                    "name": "Entities &amp; stay &lt;text&gt;", "price": "€19", "period": "",
+                    "text": "After a line\n\nan empty line, and a break at the end\n",
+                    "features": "not a list", "button": "Choose Plus", "featured": "true", "badge": "Featured as text: not drawn"
+                  },
+                  {
+                    "name": 42, "price": [ "not text" ], "period": 7, "text": null,
+                    "features": { "0": "an object where the features go" }, "button": { "label": 9, "href": "/" }, "featured": 1, "badge": "Featured as 1: not drawn"
+                  },
+                  {
+                    "name": "  Spaces at both ends  ", "price": "  Free  ", "period": "  a month  ", "text": "  And  inside  ",
+                    "features": [ "  Spaced  " ], "button": { "label": "  Go  ", "href": "#top" }, "featured": false, "badge": "A badge without featured"
+                  },
+                  { "featured": true, "badge": "" },
+                  { "name": "A button that is a list", "button": [ { "label": "In a list", "href": "/" } ] }
+                ]
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-pricing-links", "type": "pricing", "children": [],
+              "props": {
+                "plans": [
+                  { "name": "A safe address", "button": { "label": "Write <now> & \"save\"", "href": "mailto:club@example.org?subject=Trial%20swim" } },
+                  { "name": "A telephone", "button": { "label": "Call", "href": "tel:+44-20-7946-0958" } },
+                  { "name": "The home page", "button": { "label": "Home", "href": "/" } },
+                  { "name": "A query", "button": { "label": "Query", "href": "?season=winter" } },
+                  { "name": "Script", "button": { "label": "Click me", "href": "javascript:alert(1)" } },
+                  { "name": "Script in mixed case", "button": { "label": "Mixed case", "href": " JaVaScRiPt:alert(2)" } },
+                  { "name": "Script with a tab", "button": { "label": "Tab", "href": "java\tscript:alert(3)" } },
+                  { "name": "Script by an entity", "button": { "label": "Entity", "href": "javascript&colon;alert(4)" } },
+                  { "name": "Data", "button": { "label": "Data", "href": "data:text/html,<script>alert(5)</script>" } },
+                  { "name": "Another site", "button": { "label": "Elsewhere", "href": "//evil.example/" } },
+                  { "name": "A backslash", "button": { "label": "Backslash", "href": "/\\evil.example" } },
+                  { "name": "A double quote", "button": { "label": "Quote", "href": "/winter?b=\"2\"" } },
+                  { "name": "No address", "button": { "label": "Nowhere" } },
+                  { "name": "An address that is a number", "button": { "label": "A number", "href": 7 } }
+                ]
+              },
+              "style": { "base": {} }
+            },
+            {
+              "id": "t-pricing-no-list", "type": "pricing", "children": [],
+              "props": { "plans": { "name": "An object where the list goes", "price": "€1" } },
+              "style": { "base": {} }
+            },
+            {
               "id": "t-divider", "type": "divider", "children": [], "props": {},
               "style": { "base": { "color": "accent\" onmouseover=\"alert(1)" } }
             },

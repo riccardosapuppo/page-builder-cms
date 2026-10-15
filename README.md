@@ -10,15 +10,15 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 [The Rails application](cms/README.md) ·
 [The editor](builder/README.md)
 
-The editor builds a page from sections, columns and seventeen kinds of
+The editor builds a page from sections, columns and eighteen kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
-accordion, stats, steps, divider, spacer, form, logo and menu), dragged
-into place on the page or in the Outline, where the page moves with the
-block as it goes; with rich text written where it stands on the canvas,
-undo and redo, a tablet's and a phone's own values, a media library and a
-form. It works on a tablet and on a phone too, with a finger: the page
-first, its panels floating over it on a tablet and rising from a bar at
-the foot on a phone.
+accordion, stats, steps, pricing, divider, spacer, form, logo and menu),
+dragged into place on the page or in the Outline, where the page moves
+with the block as it goes; with rich text written where it stands on the
+canvas, undo and redo, a tablet's and a phone's own values, a media
+library and a form. It works on a tablet and on a phone too, with a
+finger: the page first, its panels floating over it on a tablet and
+rising from a bar at the foot on a phone.
 It builds the site's header and footer the same way, from sections, columns and
 blocks, parts of the site that every page shows once published, the header
 staying at the top of the window if asked. Site style sets the site's
@@ -419,7 +419,7 @@ Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
 
 The server's and the editor's measurements work on one page,
 `contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns and
-414 widgets of twelve of the seventeen kinds (no stats, steps, form, logo or menu), which the
+414 widgets of twelve of the eighteen kinds (no stats, steps, pricing, form, logo or menu), which the
 server renders to 211 KB of HTML. Its nine library images are the example
 site's pictures, uploaded to the run's own library as the editor uploads an
 image, with the library's ids in place of the fixture's own; the rest is the

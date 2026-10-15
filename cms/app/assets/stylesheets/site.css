@@ -485,6 +485,77 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-steps[data-phone-line] { --step-ink: initial; }
 }
 
+/* ---------- Pricing ---------- */
+/* Plans side by side, as many to a row as the block holds at 240 px each
+   and four at most (a track is never narrower than a quarter of the row
+   less one gap, nor wider than the row), one under the other on a phone.
+   Each plan is a card that reads on any band: a hairline and a faint fill
+   made of the band's own words' colour (currentColor), never a colour of
+   its own; the cards of a row are as tall as the tallest, each a column
+   with its button at its foot. Its name is set as an icon box's title; its
+   price in the headings' face at the Heading 2 step, its period beside it
+   small and muted, as a stats block's label is; its features a list, each
+   after a check the stylesheet draws in the words' colour; its button the
+   button block's own, as wide as the card.
+   The featured plan is ringed, two pixels of the block's own colour (the
+   line classes and the free colours, as an accordion's lines take theirs,
+   so the plans' words keep the band's colour) or the theme's primary, and
+   its badge is a pill standing on the card's top edge, where the column
+   aligns its words, filled with the same colour, on one line (one too
+   long for its card ends in an ellipsis, its words all there for a screen
+   reader). The badge's words take the colour that reads on that fill, as
+   a steps block's numbers do on their disc: the site's Background on
+   Text, Primary and Muted, its Text on Background, Soft and Accent, the
+   Background on a free colour. On a dark band, whose background class
+   sets --mark-disc (the logo's mark turns round there), the ring with no
+   colour of the block's own is that paper, and a ring of it keeps the
+   badge apart from a band of its own colour, as it keeps a step's disc. */
+.sw-pricing { --plan-ring: var(--line-color, var(--mark-disc, var(--sw-primary))); }
+.sw-pricing > ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, max(240px, calc(25% - var(--space-l)))), 1fr)); gap: var(--space-l); margin: 0; padding: 0; list-style: none; }
+/* Room above the first row for a badge standing on its card's edge. */
+.sw-pricing > ul:has(.sw-plan-badge) { padding-top: 13px; }
+.sw-plan {
+  position: relative; display: flex; flex-direction: column; min-width: 0; padding: var(--space-l);
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 12px;
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+}
+.sw-plan[data-featured] { border-color: var(--plan-ring); box-shadow: 0 0 0 1px var(--plan-ring); }
+.sw-plan-badge {
+  position: absolute; top: -1px; inset-inline: var(--space-l); width: fit-content; max-width: calc(100% - 2 * var(--space-l)); transform: translateY(-50%);
+  padding: 4px 12px; border-radius: 999px;
+  background-color: var(--line-color, var(--sw-primary)); color: var(--badge-ink, var(--sw-background)); box-shadow: inset 0 0 0 1.5px var(--mark-disc, transparent);
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 13px; line-height: 18px; font-weight: 650; font-stretch: var(--stretch-strong, 100%); letter-spacing: .02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sw-plan h3 { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); font-weight: 600; font-stretch: var(--stretch-display, 100%); letter-spacing: -.012em; }
+.sw-plan-price { margin-top: var(--space-s); }
+.sw-plan-price strong { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-heading-2); line-height: var(--lh-heading-2); font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: var(--face-tracking); }
+.sw-plan-price span { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--caption-color, var(--sw-muted)); }
+.sw-plan-price + p { margin-top: var(--space-s); }
+.sw-plan-features {
+  display: grid; gap: var(--space-s); margin: var(--space-l) 0 0; padding: var(--space-l) 0 0; list-style: none; text-align: start;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.sw-plan-features li { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 10px; }
+/* The check: two borders of a box turned a quarter, centred on the
+   feature's first line. */
+.sw-plan-features li::before { content: ""; width: 6px; height: 11px; margin: calc((1lh - 11px) / 2 - 1px) 0 0 4px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.sw-plan-action { margin-top: auto; padding-top: var(--space-l); }
+.sw-plan-action .sw-btn { display: flex; width: 100%; }
+.sw-pricing:is(.line-text, .line-primary, .line-muted) { --badge-ink: var(--sw-background); }
+.sw-pricing:is(.line-background, .line-soft, .line-accent) { --badge-ink: var(--sw-text); }
+/* A tablet's or a phone's own colour, a slot's or a free one. */
+@container site (560px <= width < 800px) {
+  .sw-pricing:is(.tablet-line-text, .tablet-line-primary, .tablet-line-muted) { --badge-ink: var(--sw-background); }
+  .sw-pricing:is(.tablet-line-background, .tablet-line-soft, .tablet-line-accent) { --badge-ink: var(--sw-text); }
+  .sw-pricing[data-tablet-line] { --badge-ink: initial; }
+}
+@container site (width < 560px) {
+  .sw-pricing:is(.phone-line-text, .phone-line-primary, .phone-line-muted) { --badge-ink: var(--sw-background); }
+  .sw-pricing:is(.phone-line-background, .phone-line-soft, .phone-line-accent) { --badge-ink: var(--sw-text); }
+  .sw-pricing[data-phone-line] { --badge-ink: initial; }
+}
+
 /* ---------- Form ---------- */
 /* The mock's form. A field's own colours (paper, ink, a muted border) go
    with it onto any band; its label takes the band's text colour. The
@@ -574,6 +645,7 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-gallery img { border-radius: 8px; }
   .sw-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-m); }
   .sw-steps ol { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
+  .sw-pricing > ul { grid-template-columns: minmax(0, 1fr); }
   .sw-embed-bar { padding: 12px 14px 14px; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
   .sw-embed-bar small { font-size: 14px; }

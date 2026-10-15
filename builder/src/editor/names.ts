@@ -66,6 +66,9 @@ export function excerpt(block: Block): string {
     case "steps":
       // Its steps' titles, in order: "Get in touch, Try it, Join".
       return block.props.items.map((item) => item.title).join(", ");
+    case "pricing":
+      // Its plans' names, in order: "Basic, Plus, Team".
+      return block.props.plans.map((plan) => plan.name).join(", ");
     case "form":
       // What its button says it does: "Send request".
       return block.props.submitLabel;

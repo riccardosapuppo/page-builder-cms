@@ -24,7 +24,7 @@ test("the groups are labelled groups of buttons, in the layout's order", () => {
     ["New section, by number of columns", ["1 column", "2 columns", "3 columns", "4 columns"]],
     ["Basic", ["Heading", "Text", "Image", "Button", "Divider", "Spacer"]],
     ["Media", ["Gallery", "Video", "Map"]],
-    ["Content", ["Icon box", "Quote", "Accordion", "Stats", "Steps"]],
+    ["Content", ["Icon box", "Quote", "Accordion", "Stats", "Steps", "Pricing"]],
     ["Forms", ["Form"]],
     ["Site", ["Logo", "Menu"]],
   ]);

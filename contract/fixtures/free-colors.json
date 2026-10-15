@@ -175,6 +175,41 @@
                 }
               },
               "children": []
+            },
+            {
+              "id": "pr-free",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "Season",
+                    "price": "€60",
+                    "period": "a season",
+                    "text": "Every dawn swim.",
+                    "features": [
+                      "Club insurance"
+                    ],
+                    "button": {
+                      "label": "Join",
+                      "href": "/join"
+                    },
+                    "featured": true,
+                    "badge": "Most chosen"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "color": "#00695c"
+                },
+                "tablet": {
+                  "color": "primary"
+                },
+                "phone": {
+                  "color": "#c2352b"
+                }
+              },
+              "children": []
             }
           ]
         },

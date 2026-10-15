@@ -78,6 +78,7 @@ class RenderPolicyTest < ActiveSupport::TestCase
     assert_equal "3 3 5", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.("phone", %w[image], %w[text text]) ] })
     assert_equal "3 3 3", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.("never", %w[logo], %w[stats]) ] })
     assert_equal "3 3 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.("phone", %w[steps], %w[logo]) ] })
+    assert_equal "3 4 4", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.(nil, %w[pricing], %w[button]) ] })
     assert_equal "9 9 9", RenderPolicy.sticky_rows({ "sticky" => true, "sections" => [ holding.(nil, %w[gallery map video quote]) ] })
     [ { "sections" => [ section.(2) ] }, { "sticky" => false }, { "sticky" => "true" }, nil, [] ].each { |document| assert_nil RenderPolicy.sticky_rows(document) }
   end

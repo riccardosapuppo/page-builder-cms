@@ -1,36 +1,68 @@
 // The button's Button group: what it says and where it goes. Its colours
 // and alignment are the Colors and Alignment groups'.
+import type { CommandError } from "../../document/check.ts";
 import { TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import { usePageLinks } from "../../editor/session.tsx";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 
-function ButtonContent({ block }: ContentProps<"button">) {
-  const commands = useBlockCommands(block.id);
+interface ButtonFieldsProps {
+  blockId: string;
+  // Where the button's two keys are in the block: "/props" for a button
+  // block, a plan's "/props/plans/1/button".
+  at: string;
+  label: string;
+  href: string;
+  // The two fields' names.
+  names: { label: string; href: string };
+  onLabel: (label: string) => CommandError | null;
+  // Handed the link trimmed: a link's spaces at its ends are never kept.
+  onHref: (href: string) => CommandError | null;
+}
+
+// A button's words and its link: the button block's own, and a pricing
+// plan's button (../pricing/panel.tsx), with the same rules and the same
+// help, so the two are written alike.
+export function ButtonFields({ blockId, at, label, href, names, onLabel, onHref }: ButtonFieldsProps) {
   const pages = usePageLinks();
   return (
     <>
       <TextField
-        label="Text"
-        value={block.props.label}
-        blockId={block.id}
-        field="/props/label"
+        label={names.label}
+        value={label}
+        blockId={blockId}
+        field={`${at}/label`}
         rules={{ kind: "line", maxLength: 80 }}
-        onCommit={(label) => commands.setProps({ label })}
+        onCommit={onLabel}
       />
       <TextField
-        label="Link"
+        label={names.href}
         icon="link"
-        value={block.props.href}
+        value={href}
         placeholder="Paste a link or choose a page"
         suggestions={pages}
-        blockId={block.id}
-        field="/props/href"
+        blockId={blockId}
+        field={`${at}/href`}
         rules={{ kind: "href", maxLength: 2048 }}
         hint="A full address (https://…), a page of this site (/join), a section of this page (#join), mailto: or tel:."
-        onCommit={(href) => commands.setProps({ href: href.trim() })}
+        onCommit={(text) => onHref(text.trim())}
       />
     </>
+  );
+}
+
+function ButtonContent({ block }: ContentProps<"button">) {
+  const commands = useBlockCommands(block.id);
+  return (
+    <ButtonFields
+      blockId={block.id}
+      at="/props"
+      label={block.props.label}
+      href={block.props.href}
+      names={{ label: "Text", href: "Link" }}
+      onLabel={(label) => commands.setProps({ label })}
+      onHref={(href) => commands.setProps({ href })}
+    />
   );
 }
 

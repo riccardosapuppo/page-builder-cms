@@ -56,6 +56,16 @@
               "style": { "base": { "color": "accent", "visibility": "visible" }, "tablet": { "color": "muted" }, "phone": { "color": "background", "visibility": "hidden" } }
             },
             {
+              "id": "s-pricing-styled", "type": "pricing", "children": [],
+              "props": { "plans": [ { "name": "Ring in Accent", "price": "€9", "period": "Muted on tablets", "text": "", "features": [ "Hidden on phones" ], "button": { "label": "Choose", "href": "#one" }, "featured": true, "badge": "Featured" } ] },
+              "style": { "base": { "color": "accent", "visibility": "visible" }, "tablet": { "color": "muted" }, "phone": { "color": "background", "visibility": "hidden" } }
+            },
+            {
+              "id": "s-pricing-unlisted", "type": "pricing", "children": [],
+              "props": { "plans": [ { "name": "Values the schema does not list", "price": "and keys a pricing block does not take", "period": "", "text": "", "features": [], "button": { "label": "Choose", "href": "/" }, "featured": true, "badge": "Featured" } ] },
+              "style": { "base": { "color": "Accent", "align": "center", "textSize": "heading-1", "background": "primary" }, "tablet": { "color": "primary\" onclick=\"alert(1)", "visibility": "none" }, "phone": { "spaceBetween": "xl", "typeface": "heading" } }
+            },
+            {
               "id": "s-steps-unlisted", "type": "steps", "children": [],
               "props": { "items": [ { "title": "Values the schema does not list", "text": "and keys a steps block does not take" }, { "title": "Two", "text": "steps" } ] },
               "style": { "base": { "color": "Accent", "align": "center", "textSize": "heading-1", "background": "primary" }, "tablet": { "color": "primary\" onclick=\"alert(1)", "visibility": "none" }, "phone": { "spaceBetween": "xl", "typeface": "heading" } }

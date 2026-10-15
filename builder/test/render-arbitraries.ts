@@ -157,6 +157,24 @@ const formField = fc.record({
   ? field
   : { ...field, maxLength: Math.max(1, Math.ceil(limit * FORM_TEXT_LIMITS[field.kind])) }));
 
+// A line or a paragraph that may be empty: empty as often as not.
+const lineOrEmpty = (max: number) => fc.oneof(fc.constant(""), line(max));
+const paragraphOrEmpty = (max: number) => fc.oneof(fc.constant(""), paragraph(max));
+
+// A pricing block's plan: any name and price the schema takes, its period,
+// text and badge empty or not, up to twelve features, its button a button
+// block's words and link, featured or not.
+const pricingPlan = fc.record({
+  name: line(80),
+  price: line(24),
+  period: lineOrEmpty(40),
+  text: paragraphOrEmpty(400),
+  features: fc.array(line(120), { maxLength: 12 }),
+  button: fc.record({ label: line(80), href }),
+  featured: fc.boolean(),
+  badge: lineOrEmpty(30),
+});
+
 function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
   switch (type) {
     case "heading": return fc.record({ level: fc.integer({ min: 1, max: 4 }), text: line(200), href: fc.option(href, { nil: undefined }) }).map(compact);
@@ -176,6 +194,7 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
     case "accordion": return fc.array(fc.record({ question: line(200), answer: paragraph(2000) }), { minLength: 1, maxLength: 4 }).map((items) => ({ items }));
     case "stats": return fc.array(fc.record({ value: line(24), label: line(80) }), { minLength: 1, maxLength: 8 }).map((items) => ({ items }));
     case "steps": return fc.array(fc.record({ title: line(120), text: paragraph(1000) }), { minLength: 2, maxLength: 10 }).map((items) => ({ items }));
+    case "pricing": return fc.array(pricingPlan, { minLength: 1, maxLength: 4 }).map((plans) => ({ plans }));
     case "form": return fc.record({
       items: fc.uniqueArray(formField, { minLength: 1, maxLength: 5, selector: (field) => field.name }),
       submitLabel: line(60),

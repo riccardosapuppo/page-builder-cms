@@ -151,6 +151,47 @@
               }
             },
             {
+              "id": "uni-pr",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "Saison",
+                    "price": "60 €",
+                    "period": "par saison",
+                    "text": "Tous les bains de l’aube.",
+                    "features": [
+                      "Assurance ✓",
+                      "日本語の案内"
+                    ],
+                    "button": {
+                      "label": "S’inscrire",
+                      "href": "/fr"
+                    },
+                    "featured": true,
+                    "badge": "Le plus choisi"
+                  },
+                  {
+                    "name": "冬",
+                    "price": "٢٥ €",
+                    "period": "",
+                    "text": "",
+                    "features": [],
+                    "button": {
+                      "label": "Écrire",
+                      "href": "mailto:club@example.org"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
               "id": "uni-ib",
               "type": "iconbox",
               "props": {

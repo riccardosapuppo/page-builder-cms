@@ -51,7 +51,7 @@ function designPanel(): Array<{ title: string; tiles: Array<{ label: string; sym
 // design's own tiles.
 const AFTER_DESIGN: readonly WidgetType[] = ["logo", "menu"];
 const AFTER_DESIGN_GROUP = "site";
-const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats", "steps"] };
+const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats", "steps", "pricing"] };
 
 test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
@@ -104,7 +104,7 @@ const library: ImageRef = { mediaId: "m1", alt: "The bay at dawn" };
 const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorative: true };
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
   heading: [undefined], text: [undefined], button: [undefined], divider: [undefined], spacer: [undefined],
-  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], stats: [undefined], steps: [undefined], form: [undefined],
+  map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], stats: [undefined], steps: [undefined], pricing: [undefined], form: [undefined],
   logo: [undefined], menu: [undefined],
   image: [library, external],
   gallery: [[library], [library, external]],
