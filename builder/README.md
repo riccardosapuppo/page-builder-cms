@@ -117,6 +117,20 @@ it. With a finger the keys are 44 square, a "+" takes the presses around
 it, Insert's keys are held still before they drag, and no field is
 focused for the person, so no keyboard opens unasked.
 
+**Stage 13, collections.** Typed content beside the pages
+(`../docs/decisions/collections-are-typed-entries.md`), looked after in a
+screen of its own, Collections, from the mark's menu and the phone's
+More when the storage keeps collections (`src/editor/collections/`): a
+collection made from a preset (Articles, Events, Blank), its entries in a
+table searched by their titles, each written in a form of the sidebar's
+own controls, one per type of field (the text widget's editor for a rich
+text, the media library for an image), checked as the storage checks it
+and saved in one call at its revision, published and unpublished; its
+settings (name, prefix, order, fields), and the way to its template,
+which opens on the canvas as a part does. These are the storage's
+operations, saved by their own Save and not in the page's history: the
+editor's README says why ([src/editor/README.md](src/editor/README.md)).
+
 ## Before you start
 
 - **Node** `^22.13.0 || ^24.0.0 || >=26.0.0` (`engines`, the narrowest of
@@ -166,7 +180,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the renderer's twins and a menu's fold against the CMS's Ruby; the header and footer against the CMS's, each from what it published or its starter; the canvas's layout against the CMS's pages in headless Chromium; the API examples of cms/README.md, run as written in a POSIX shell and in Windows PowerShell. Needs Ruby on the PATH and Playwright's Chromium. |
 | `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
-| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 12 October 2026, with the header and footer kept in this storage as parts and their cases in the battery: 74 passed, 7 skipped (the cases that need a server); on 15 October, with the collections and their 13 cases and the upgrade from the build before: 95 passed, 7 skipped. |
+| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 12 October 2026, with the header and footer kept in this storage as parts and their cases in the battery: 74 passed, 7 skipped (the cases that need a server); on 15 October, with the collections and their 13 cases and the upgrade from the build before: 95 passed, 7 skipped, and that evening, with the editor's Collections screen on this storage: 96 passed, 7 skipped. |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move with Space and the arrows, add from the page with the "+" key and its picker and move that block up from its clamp, edit a heading's text and level in its Text group, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space in its Spacing group, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-nine states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, the clamp's block menu, the block picker and the section picker, a seam under the pointer, Insert open beside a first column's block, a key of Insert picked up by the keyboard and a dropped Video asking for its address, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the Schedule dialog and on the Publish menu with a publish waiting, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish, a publish set for a time going live, a cancel by the keyboard, Site style, and the header opened from a page's Page tab by the keyboard alone, with axe on the editor while it is open, and back to the page. |
 | `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; the demo's build served as GitHub Pages serves it (below), its line unregistering a service worker left in its own path and keeping another project's, a 404 for a missing file, no CMS adapter or address in its files and no request outside its path; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports and on `E2E_DEMO_PORT` (4903); prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. On 9 October 2026, with the demo keeping the header and footer, it printed `RESULT: 60 checks passed`, 19 of them on the demo's build. |
 | `npm run shots:editor -- <folder>` | Photographs the editor, headless, in every state of the approved layout's shots but Schedule, whose dialog stage 4 built and this does not photograph yet, named and staged as they are (`../design/layout/shots`: editor, add, structure, style, drag, tablet, publish, history, media, site-style, empty, shortcuts; `shots-extra`: text-editing, small-block, insert-at-seam, insert-drawer, page-tab, block-menu, more, new-section, phone, section, pages, conflict, offline, narrow-gutter, seam-hover, outline-col1, insert-col1), and in a right click's menu, a text's link field, a drag from Insert, a dropped Gallery key with its library open (`drop-asks`), the hero's own space on phones, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900 (the layout's `editor-1280`, `insert-drawer-1280` and `outline-col1` are the 1280 ones), on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. On 4 October 2026 it printed `RESULT: 74 shots`, and, once `drop-asks` was added, `RESULT: 76 shots`. |
@@ -174,7 +188,7 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 | `npm run build:demo` | The browser demo in `dist-demo/`, then the bundle check (below): for GitHub Pages, under `/page-builder-cms/`, or with `DEMO_BASE=/` for a host of its own, at the root. |
 | `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/`, or at `http://127.0.0.1:4903/` with `DEMO_BASE=/` (`E2E_DEMO_PORT` moves the port), until Ctrl+C. |
-| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base, and that evening, with the test of the example site's editions, 10. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base, and that evening, with the test of the example site's editions, 10; on 15 October, with Collections among the screens that promise nothing the browser cannot do: 13 passed. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -233,7 +247,10 @@ same demo from the source, at `/`.
   and footer, parts kept as pages are, in the browser's IndexedDB
   (`src/storage/browser.ts`), held
   to the CMS adapter's storage battery. Two tabs of one browser share
-  them, and the one that saves second gets the conflict bar.
+  them, and the one that saves second gets the conflict bar. Collections
+  and their entries are kept the same way, made and written in the
+  Collections screen; an entry published is kept as published, as a page
+  is, and served nowhere.
 - Preview opens the draft as it would be published (`?preview=<id>`), and
   Publish keeps the page as published and opens it in a new tab
   (`?published=<id>`): the demo draws each with the canvas's renderer,
@@ -407,7 +424,19 @@ CMS serves carries neither.
   (`validateCollection`, `validateEntry`: the collection rules of
   `../schema/tools/collection-rules.ts` with the compiled validators) to
   every case of the collection corpus (`src/shared/collection.test.ts`),
-  as the CMS's are and the comparator holds the two engines.
+  as the CMS's are and the comparator holds the two engines. The
+  Collections screen (`src/editor/collections/*.test.ts*`), on a storage
+  of the test's own that keeps collections by those same checks
+  (`test/fake-collections.ts`): an entry of every type saved in one call,
+  a required field and a bound said before anything is sent, values no
+  field takes left out, a save whose answer was lost sent again with its
+  saveId, the conflict's Reload and Keep mine, the settings' fields saved
+  whole, a key following its label not handed back as typed when the Tab
+  key passes through it before it is drawn again, a change that comes
+  before the one ahead of it is drawn kept with it; fifteen of its
+  behaviours taken out one at a time, each failing its test, the key's
+  also before its fix. In Chromium, `e2e/collections.spec.ts` against the CMS and
+  `e2e/browser/collections.spec.ts` on this browser's storage.
 - **The commands** ([src/document/README.md](src/document/README.md)): on
   random valid pages and random editing sessions (fast-check, seeded and
   replayable), every command the reducer accepts gives a page the schema

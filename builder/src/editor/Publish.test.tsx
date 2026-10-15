@@ -241,3 +241,25 @@ test("in the browser demo, a part's Publish says it goes onto every page publish
   expect(now!.textContent).toContain("Your 2 changes go onto every page published here; the home page shows them in a new tab.");
   expect(view!.querySelector("strong")?.textContent).toBe("View published home page");
 });
+
+// A collection's template, open as a page is: no address of its own, and
+// no page to view; its collection's entries are drawn with it.
+const template = (changes: Partial<OpenPage> = {}): OpenPage => ({ ...header(), id: 12, kind: "template", links: { preview: "/preview/12", live: null }, collection: { id: 2, name: "News", prefix: "news" }, ...changes });
+
+test("a collection's template may be published empty; the menu says its entries are drawn with it, and offers no page to view", () => {
+  draw({ current: template({ published: null }), pages: [home] }, EMPTY);
+  expect(screen.getByRole("button", { name: "Publish" }).getAttribute("aria-disabled")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  expect(screen.getAllByRole("menuitem").map((item) => item.querySelector("small")?.textContent)).toEqual(["Every entry of News is drawn with this template right away."]);
+});
+
+test("in the browser demo, a template's Publish keeps it here, and the menu links no page", () => {
+  draw({
+    current: template(),
+    cmsOrigin: null,
+    capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: true },
+    publishedView: (id) => `?published=${id}`,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "More publish options" }));
+  expect(screen.getAllByRole("menuitem").map((item) => item.querySelector("small")?.textContent)).toEqual(["Your 2 changes go into the published template, kept in this browser."]);
+});

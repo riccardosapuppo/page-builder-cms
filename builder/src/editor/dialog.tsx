@@ -37,6 +37,12 @@ interface DialogProps {
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
+// The dialogs open, the one on top last. A dialog may open over another
+// (the media library over Collections, to pick an entry's image): the one
+// under it is inert too while it waits, and only the one on top answers a
+// key that reached no dialog.
+const opened: HTMLElement[] = [];
+
 export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy, beside }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
@@ -59,15 +65,19 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const app = document.querySelector<HTMLElement>(".app");
     app?.setAttribute("inert", "");
+    const own = box.current;
+    opened.at(-1)?.setAttribute("inert", "");
+    if (own) opened.push(own);
     // What the dialog marks, else its first key: with a finger, the first
     // that takes no typing (./layout-mode.ts, TYPING).
     const keys = [...(box.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
     const first = box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? (coarsePointer() ? keys.find((key) => !key.matches(TYPING)) : keys[0]);
     first?.focus();
     // A focus that left the dialog for the page (the field it was in went
-    // away): Esc still closes it, and Tab comes back into it.
+    // away): Esc still closes it, and Tab comes back into it. A key in a
+    // dialog opened over this one is that dialog's.
     const outside = (event: KeyboardEvent) => {
-      if (!box.current || (event.target instanceof Node && box.current.contains(event.target))) return;
+      if (!box.current || opened.at(-1) !== box.current || (event.target instanceof Node && box.current.contains(event.target))) return;
       if (event.key === "Escape") {
         event.preventDefault();
         close.current();
@@ -82,7 +92,14 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
     document.addEventListener("keydown", outside);
     return () => {
       document.removeEventListener("keydown", outside);
-      app?.removeAttribute("inert");
+      const at = own ? opened.indexOf(own) : -1;
+      if (at !== -1) opened.splice(at, 1);
+      // The dialog under it, if any, takes the keys back; the editor only
+      // once none is left. Before the focus goes back, which an inert
+      // element would not take.
+      const under = opened.at(-1);
+      if (under) under.removeAttribute("inert");
+      else app?.removeAttribute("inert");
       if (before?.isConnected) before.focus();
     };
   }, []);

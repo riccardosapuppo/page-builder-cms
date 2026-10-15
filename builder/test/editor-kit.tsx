@@ -14,6 +14,7 @@ import { EditorProvider, type EditorEnv } from "../src/editor/context.tsx";
 import { MediaServiceProvider } from "../src/editor/library/context.tsx";
 import type { MediaService } from "../src/editor/library/service.ts";
 import { ResponsesProvider, type ResponsesStorage } from "../src/editor/responses/context.ts";
+import { CollectionsProvider, type CollectionsStorage } from "../src/editor/collections/context.ts";
 import { emptySession, SessionProvider, type Session } from "../src/editor/session.tsx";
 import { createUiStore, type UiStore } from "../src/editor/ui-store.ts";
 import type { Block, PageDocument, WidgetType } from "../src/shared/document.ts";
@@ -71,9 +72,11 @@ export interface Kit {
 // `responses`: what the form responses' screen reads and deletes through
 // (src/editor/responses/context.ts); without it, as with a storage that
 // keeps none, the screen has no way in.
+// `collections`: what the Collections screen reads and writes through
+// (src/editor/collections/context.ts); the same without it.
 // `providers`: the Assistant's (src/assistant/providers.ts); without them,
 // a call to one fails, as with no network.
-export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session>; media?: (ui: UiStore) => MediaService; responses?: ResponsesStorage; providers?: (id: ProviderId) => Promise<ProviderClient> }): Kit {
+export function editorKit(options: { document: PageDocument; selection?: string | null; session?: Partial<Session>; media?: (ui: UiStore) => MediaService; responses?: ResponsesStorage; collections?: CollectionsStorage; providers?: (id: ProviderId) => Promise<ProviderClient> }): Kit {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const store = createEditorStore({ document: options.document, now: () => clock.now() });
   if (options.selection) store.getState().select(options.selection);
@@ -104,7 +107,9 @@ export function editorKit(options: { document: PageDocument; selection?: string 
           <AssistantProvider value={assistant}>
             <SessionProvider value={session}>
               <MediaServiceProvider value={media}>
-                <ResponsesProvider value={options.responses ?? null}>{children}</ResponsesProvider>
+                <ResponsesProvider value={options.responses ?? null}>
+                  <CollectionsProvider value={options.collections ?? null}>{children}</CollectionsProvider>
+                </ResponsesProvider>
               </MediaServiceProvider>
             </SessionProvider>
           </AssistantProvider>

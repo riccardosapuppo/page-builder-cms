@@ -11,7 +11,9 @@
 // style opens a level below Page, in the sidebar's place, and closes back
 // to it. The Page tab of a page leads to the site's header and footer,
 // which open in the editor as pages do; the Page tab of a header or a
-// footer says it is on every page, and leads back to the page around it.
+// footer says it is on every page, and leads back to the page around it;
+// a collection's template's, that every entry is drawn with it, with the
+// way to its collection and back.
 // The top bar's sidebar key, or the sidebar's own close button, hides it,
 // and the canvas takes its room.
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
@@ -19,7 +21,7 @@ import { isPartKind, PART_KINDS, type PartKind } from "../storage/adapter.ts";
 import { afterRender, shownElement } from "./act.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
-import { BlockPanel, MovingPanel, PagePanel, PartPanel } from "./panels/EditPanel.tsx";
+import { BlockPanel, MovingPanel, PagePanel, PartPanel, TemplatePanel } from "./panels/EditPanel.tsx";
 import { PART_NAMES, partOf, useOpenKind, useSession } from "./session.tsx";
 import { CustomCssPanel } from "./CustomCssPanel.tsx";
 import { SheetGrip } from "./sheet-grip.tsx";
@@ -167,6 +169,7 @@ function PageTab() {
     </button>
   );
   if (isPartKind(kind)) return <PartPanel kind={kind} after={<>{style}{css}</>} />;
+  if (kind === "template") return <TemplatePanel after={<>{style}{css}</>} />;
   return (
     <PagePanel
       after={(

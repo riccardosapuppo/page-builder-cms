@@ -32,10 +32,13 @@ interface ImagePickerProps {
   // The yellow line of that place, which the window stands beside and
   // never over (./place-dialog.ts).
   beside?: string;
+  // An image of the library and no other: an entry's (./collections/),
+  // which the collection schema takes from the library only.
+  libraryOnly?: boolean;
 }
 
-export function ImagePicker({ confirm, multiple = false, onPick, onClose, where, beside }: ImagePickerProps) {
-  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}), ...(beside ? { beside } : {}) }} onClose={onClose} />;
+export function ImagePicker({ confirm, multiple = false, onPick, onClose, where, beside, libraryOnly = false }: ImagePickerProps) {
+  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}), ...(beside ? { beside } : {}), ...(libraryOnly ? { libraryOnly } : {}) }} onClose={onClose} />;
 }
 
 // ------------------------------------------------------------ video

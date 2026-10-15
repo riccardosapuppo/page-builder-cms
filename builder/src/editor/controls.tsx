@@ -52,13 +52,21 @@ function useClaim(field: string | undefined): void {
 }
 
 // The server's errors for a block's field (blockId null: the page's own
-// keys), as sentences.
+// keys), as sentences. With no blockId, a value that is not the page's (an
+// entry's, ./collections/), none: its form gives its own (`issues`).
 export function useServerErrors(blockId: string | null | undefined, field: string | undefined, rules?: FieldRules): string[] {
   const errors = useUi((u) => u.serverErrors);
   return useMemo(
     () => (blockId === undefined || field === undefined ? [] : serverErrorsAt(errors, blockId, field, rules)),
     [errors, blockId, field, rules],
   );
+}
+
+// A field's errors with those its form found itself, each said once.
+function useWithIssues(server: string[], issues: readonly string[] | undefined): string[] {
+  // By their words, so a list made again with the same ones changes nothing.
+  const key = issues && issues.length > 0 ? JSON.stringify(issues) : "";
+  return useMemo(() => (key === "" ? server : [...server, ...(JSON.parse(key) as string[]).filter((issue) => !server.includes(issue))]), [server, key]);
 }
 
 // ------------------------------------------------------- field frame
@@ -146,9 +154,10 @@ interface TypedOptions {
   label: string;
   value: string;
   onCommit: (value: string) => CommandError | null;
-  blockId: string | null;
+  blockId: string | null | undefined;
   field: string;
   rules?: FieldRules | undefined;
+  issues?: readonly string[] | undefined;
 }
 
 // What a field typed into does with its text (TextField's, and the size
@@ -156,7 +165,7 @@ interface TypedOptions {
 // (on the injected clock), leaves the field or presses Enter, and held
 // with the page's other pending edits until then (./pending.ts); the
 // refusal, if any, with the server's errors at the field.
-function useTyped({ label, value, onCommit, blockId, field, rules }: TypedOptions) {
+function useTyped({ label, value, onCommit, blockId, field, rules, issues }: TypedOptions) {
   const { clock, ui } = useEnv();
   const id = useId();
   const [draft, setDraft] = useState(value);
@@ -177,7 +186,7 @@ function useTyped({ label, value, onCommit, blockId, field, rules }: TypedOption
     latest.current = { draft, onCommit, rules, field, label };
   });
   useClaim(field);
-  const server = useServerErrors(blockId, field, rules);
+  const server = useWithIssues(useServerErrors(blockId, field, rules), issues);
 
   // Hands the text over: true once the page has it (or nothing waits),
   // false when the page refused it. A refused text stays in the field,
@@ -216,9 +225,13 @@ function useTyped({ label, value, onCommit, blockId, field, rules }: TypedOption
 
   // The page changed under the field (another field, a reload): show it,
   // unless the person is typing here. A refused text it replaces is let go.
+  // A commit reads the page's text from now on, not the one drawn before:
+  // the field may be left before it is drawn again (the Tab key passing
+  // through it on a busy machine), and would hand that one back as typed.
   useEffect(() => {
     if (!following.current && (focused.current || timer.current !== null)) return;
     following.current = false;
+    latest.current = { ...latest.current, draft: value };
     setDraft(value);
     sent.current = value;
     setRefusal(null);
@@ -279,10 +292,16 @@ interface TextFieldProps extends ScopeProps {
   // Hands the text over; null when the page took it, the refusal otherwise.
   onCommit: (value: string) => CommandError | null;
   // Where the value is: the block (null for the page itself) and the
-  // field's pointer inside it ("/props/text"), for the errors.
-  blockId: string | null;
+  // field's pointer inside it ("/props/text"), for the errors. No block for
+  // a value that is not the page's (an entry's), whose form gives its
+  // errors in `issues`.
+  blockId?: string | null;
   field: string;
   rules?: FieldRules;
+  // Errors found by the form the field is in, said under it after its own.
+  issues?: readonly string[];
+  // Said beside the label, and to a screen reader.
+  required?: boolean;
   multiline?: boolean;
   // A text area for a value of one line (a heading's text): Enter hands
   // the text over instead of starting a new line.
@@ -307,8 +326,8 @@ interface TextFieldProps extends ScopeProps {
   stepBy?: (draft: string, by: 1 | -1, big: boolean) => string | null;
 }
 
-export function TextField({ label, value, onCommit, blockId, field, rules, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled, suggestions, suffix, inputMode, stepBy, scope, scopeDevice, scopeTitle, note }: TextFieldProps) {
-  const typed = useTyped({ label, value, onCommit, blockId, field, rules });
+export function TextField({ label, value, onCommit, blockId, field, rules, issues, required = false, multiline = false, oneLine = false, rows = 2, placeholder, hint, icon, prefix, autoFocus, disabled, suggestions, suffix, inputMode, stepBy, scope, scopeDevice, scopeTitle, note }: TextFieldProps) {
+  const typed = useTyped({ label, value, onCommit, blockId, field, rules, issues });
   const { id, draft, errors, commit } = typed;
   const unitId = suffix ? `${id}-unit` : null;
   const common = {
@@ -318,6 +337,7 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
     autoFocus,
     disabled,
     inputMode,
+    "aria-required": required ? true : undefined,
     "aria-invalid": errors.length > 0 ? true : undefined,
     "aria-describedby": [unitId, describedBy(id, hint, errors, note)].filter(Boolean).join(" ") || undefined,
     onFocus: typed.onFocus,
@@ -364,7 +384,7 @@ export function TextField({ label, value, onCommit, blockId, field, rules, multi
       ? <div className="input input-icon">{icon && <Icon name={icon} />}{prefix && <span className="input-prefix" aria-hidden="true">{prefix}</span>}{input}{suffix && <span className="input-suffix" id={unitId ?? undefined}>{suffix}</span>}{listed}</div>
       : <>{input}{listed}</>;
   }
-  return <FieldFrame id={id} label={label} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>{control}</FieldFrame>;
+  return <FieldFrame id={id} label={required ? <>{label} <span className="req">required</span></> : label} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>{control}</FieldFrame>;
 }
 
 // A number, handed over like text; what is not a number is refused here.
@@ -582,15 +602,16 @@ interface RadioGroupProps<T extends string | number> {
   label?: string;
   describedBy?: string | undefined;
   invalid: boolean;
+  required?: boolean;
 }
 
 // One radio group, its keys a native group's: the arrows move the choice.
-function RadioGroup<T extends string | number>({ choices, value, inUse = null, choose, look, labelledBy, label, describedBy: described, invalid }: RadioGroupProps<T>) {
+function RadioGroup<T extends string | number>({ choices, value, inUse = null, choose, look, labelledBy, label, describedBy: described, invalid, required = false }: RadioGroupProps<T>) {
   const shown = value ?? inUse;
   const { refs, onKeyDown, tabStop } = useRadioKeys(choices, shown, choose);
   const className = look === "seg" ? "seg seg-text" : look === "seg-icons" ? "seg seg-icons" : look;
   return (
-    <div className={className} role="radiogroup" aria-labelledby={labelledBy} aria-label={labelledBy === undefined ? label : undefined} aria-describedby={described} aria-invalid={invalid ? true : undefined}>
+    <div className={className} role="radiogroup" aria-labelledby={labelledBy} aria-label={labelledBy === undefined ? label : undefined} aria-describedby={described} aria-invalid={invalid ? true : undefined} aria-required={required ? true : undefined}>
       {choices.map((choice, index) => {
         const checked = choice.value === shown;
         const iconOnly = choice.icon !== undefined && (look === "seg-icons");
@@ -628,11 +649,12 @@ function RadioGroup<T extends string | number>({ choices, value, inUse = null, c
   );
 }
 
-// A choice made, and what the page or the server said of it, for a field.
-function useChoice<T extends string | number>(onChange: (value: T) => CommandError | null, blockId: string | null, field: string, rules: FieldRules | undefined) {
+// A choice made, and what the page or the server said of it, for a field;
+// with what the field's own form found (`issues`).
+function useChoice<T extends string | number>(onChange: (value: T) => CommandError | null, blockId: string | null | undefined, field: string, rules: FieldRules | undefined, issues?: readonly string[]) {
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
-  const server = useServerErrors(blockId, field, rules);
+  const server = useWithIssues(useServerErrors(blockId, field, rules), issues);
   const errors = refusal ? [refusal, ...server] : server;
   const choose = (next: T) => {
     const error = onChange(next);
@@ -649,8 +671,12 @@ interface RadioFieldProps<T extends string | number> extends ScopeProps {
   // The value in use when none is set, checked in its place.
   inUse?: T | null | undefined;
   onChange: (value: T) => CommandError | null;
-  blockId: string | null;
+  // As a text field's: no block for a value that is not the page's, whose
+  // form gives its errors in `issues`.
+  blockId?: string | null;
   field: string;
+  issues?: readonly string[];
+  required?: boolean;
   hint?: ReactNode;
   // seg: a segmented row (.seg); swatches: colour circles; steps: tiles.
   look?: RadioLook;
@@ -662,13 +688,13 @@ interface RadioFieldProps<T extends string | number> extends ScopeProps {
   extra?: ReactNode;
 }
 
-export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules, lead, extra }: RadioFieldProps<T>) {
+export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, issues, required = false, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules, lead, extra }: RadioFieldProps<T>) {
   const id = useId();
-  const { errors, choose } = useChoice(onChange, blockId, field, rules);
+  const { errors, choose } = useChoice(onChange, blockId, field, rules, issues);
   return (
-    <FieldFrame id={id} label={label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
+    <FieldFrame id={id} label={required ? <>{label} <span className="req">required</span></> : label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
       {lead && <p className="field-lead">{lead}</p>}
-      <RadioGroup choices={choices} value={value} inUse={inUse} choose={choose} look={look} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, errors, note)} invalid={errors.length > 0} />
+      <RadioGroup choices={choices} value={value} inUse={inUse} choose={choose} look={look} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, errors, note)} invalid={errors.length > 0} required={required} />
       {extra}
     </FieldFrame>
   );
@@ -838,15 +864,18 @@ interface ToggleProps {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => CommandError | null;
-  blockId: string | null;
+  // As a text field's: no block for a value that is not the page's, whose
+  // form gives its errors in `issues`.
+  blockId?: string | null;
   field: string;
+  issues?: readonly string[];
   describedById?: string;
 }
 
-export function Toggle({ label, checked, onChange, blockId, field, describedById }: ToggleProps) {
+export function Toggle({ label, checked, onChange, blockId, field, issues, describedById }: ToggleProps) {
   const [refusal, setRefusal] = useState<string | null>(null);
   useClaim(field);
-  const server = useServerErrors(blockId, field);
+  const server = useWithIssues(useServerErrors(blockId, field), issues);
   const errors = refusal ? [refusal, ...server] : server;
   const id = useId();
   return (

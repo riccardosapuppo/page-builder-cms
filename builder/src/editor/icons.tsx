@@ -273,6 +273,14 @@ export const ICONS = {
     ],
   },
   page: { lucide: "file", shapes: [["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" }], ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4" }]] },
+  // Collections: entries listed one after another.
+  collection: {
+    lucide: "list-ordered",
+    shapes: [
+      ["path", { d: "M10 12h11" }], ["path", { d: "M10 18h11" }], ["path", { d: "M10 6h11" }], ["path", { d: "M4 10h2" }],
+      ["path", { d: "M4 6h1v4" }], ["path", { d: "M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" }],
+    ],
+  },
   bookmark: { lucide: "bookmark", shapes: [["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" }]] },
   play: { lucide: "play", shapes: [["polygon", { points: "6 3 20 12 6 21 6 3" }]] },
   pin: {

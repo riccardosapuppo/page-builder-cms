@@ -19,7 +19,7 @@ import { explain } from "../errors.ts";
 import { Icon } from "../icons.tsx";
 import { blockName, fromLine, placeLine } from "../names.ts";
 import { siteAddress } from "../Publish.tsx";
-import { PART_NAMES, partOf, publishWords, useKeptWords, useSession, type Session } from "../session.tsx";
+import { PART_NAMES, partOf, publishWords, templateOf, useKeptWords, useSession, type Session } from "../session.tsx";
 import { openSiteStyle } from "../Sidebar.tsx";
 import { GroupList, StaticGroups, useBlockGroups, type GroupSpec } from "./groups.tsx";
 import { useBlock } from "./hooks.ts";
@@ -53,6 +53,56 @@ export function PartPanel({ kind, after }: { kind: PartKind; after?: ReactNode }
         <p>The {kind} is drawn on every page, {where} its sections. Build it as you build a page: sections, columns and blocks. Logo and Menu are in Insert, under Site.</p>
         <p>{live ? `Publish puts it on every page at once.` : `Publish puts it on every page shown in this browser.`} {published ? "" : `Until then, every page shows the ${kind} the site started with.`}</p>
         {kind === "header" && <StickyHeader />}
+        {back && (
+          <button
+            className="btn btn-secondary btn-block"
+            type="button"
+            data-part-back=""
+            onClick={() => void session.openPage(back.id).then((why) => {
+              if (why) ui.getState().say(why);
+            })}
+          >
+            <Icon name="arrow-left" />Back to {back.title}
+          </button>
+        )}
+        {after}
+      </div>
+    </>
+  );
+}
+
+// The Page tab of a collection's template, which has no address of its
+// own: what it is (the page every entry of its collection is drawn in,
+// between the site's header and footer), how it goes live, the way to its
+// collection in Collections, and the way back to the page it was opened
+// from; then `after`, the way to the site style.
+export function TemplatePanel({ after }: { after?: ReactNode }) {
+  const { ui } = useEnv();
+  const session = useSession();
+  const around = useUi((u) => u.aroundPart);
+  const current = session.current;
+  const of = current ? templateOf(current) : "its collection";
+  const published = current?.published ?? null;
+  const live = session.capabilities.livePages;
+  const owner = current?.collection ?? null;
+  const back = around ?? (() => {
+    const home = session.pages.find((page) => page.home) ?? session.pages[0];
+    return home ? { id: home.id, title: home.title } : null;
+  })();
+  return (
+    <>
+      <div className="ed-title">
+        <span className="ed-icon"><Icon name="collection" className="i i-tile" /></span>
+        <div><strong>Template of {of}</strong><span>{published ? "For every entry, published" : "For every entry, not published yet"}</span></div>
+      </div>
+      <div className="sb-body sb-body-pad part-panel">
+        <p>{`${live ? "Every" : "In the full system, every"} entry of ${of} is drawn with this template at its own address${owner ? `, /${owner.prefix}/<slug>` : ""}, between the site’s header and footer.`} Build it as you build a page: sections, columns and blocks.</p>
+        <p>{live ? "Publish puts it to use for every entry at once." : "Publish keeps it as published in this browser."}</p>
+        {owner && (
+          <button className="btn btn-secondary btn-block" type="button" data-template-collection="" onClick={() => ui.getState().setCollections({ collectionId: owner.id, tab: "settings" })}>
+            <Icon name="collection" />{owner.name} in Collections
+          </button>
+        )}
         {back && (
           <button
             className="btn btn-secondary btn-block"

@@ -38,8 +38,10 @@ export type LibraryPurpose =
   // returns null once they are placed, the refusal otherwise. where: the
   // place they will land, said under the window (a "+" picker's place).
   // beside: the yellow line of that place, which the window stands above or
-  // under and never over (../place-dialog.ts).
-  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode; beside?: string }
+  // under and never over (../place-dialog.ts). libraryOnly: an image of the
+  // library and no other (an entry's, ../collections/), so no address of
+  // another site is asked for.
+  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode; beside?: string; libraryOnly?: boolean }
   // Looking after the library: nothing is placed.
   | { kind: "manage" };
 
@@ -450,7 +452,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
           ) : picking ? (
             <>
               <p className="md-none">{multiple ? "Choose images on the left, or upload them." : "Choose an image on the left, or upload one."}</p>
-              {!multiple || live.length === 0 ? (
+              {(!multiple || live.length === 0) && !(purpose.kind === "pick" && purpose.libraryOnly) ? (
                 <>
                   <h3 className="group-title md-or">Or an image from another site</h3>
                   <div className="field">

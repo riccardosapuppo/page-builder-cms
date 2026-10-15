@@ -32,8 +32,10 @@
 // Around it all: drag and drop (./drag/DragLayer.tsx), the keyboard map
 // (./keys.ts) and its "?" window, the selected block's menu, the save
 // state's banner and toast (./SaveStatus.tsx), About, the media library's
-// work on this adapter (./library/context.tsx), and the adapter's form
-// responses when it keeps them (./responses/context.ts).
+// work on this adapter (./library/context.tsx), the adapter's form
+// responses when it keeps them (./responses/context.ts), and its
+// collections and their screen when it keeps those (./collections/): a
+// collection's template is opened here as a part is, by its id.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
@@ -56,6 +58,8 @@ import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
 import { MediaProvider } from "./library/context.tsx";
 import { ResponsesProvider, responsesOf } from "./responses/context.ts";
+import { CollectionsProvider, collectionsOf } from "./collections/context.ts";
+import { CollectionsScreen } from "./collections/CollectionsScreen.tsx";
 import { Navigator } from "./Navigator.tsx";
 import { EditorKeys, MODIFIERS } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
@@ -63,7 +67,7 @@ import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
 import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
-import { keptWords, NO_VERSIONS, publishWords, SessionProvider, type OpenPage, type Session, type StyleSave, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, publishWords, SessionProvider, templateOf, type OpenPage, type Session, type StyleSave, type TemplateOf, type VersionList } from "./session.tsx";
 import { STILL_HELD } from "./pending.ts";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
@@ -264,6 +268,14 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       return opening.current === ticket ? `The page could not be opened: ${describe(error)}` : null;
     }
     if (opening.current !== ticket) return null;
+    // A collection's template is named by its collection, which the page
+    // does not say: found among the collections, or not named.
+    let collection: TemplateOf | null = null;
+    if (page.page.kind === "template" && adapter.capabilities.collections) {
+      const owner = (await adapter.listCollections().catch(() => [])).find((c) => c.template.id === page.page.id);
+      if (owner) collection = { id: owner.id, name: owner.name, prefix: owner.prefix };
+      if (opening.current !== ticket) return null;
+    }
     const taken = openDocument(page.draft.document);
     if (!taken.ok) return `The page could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`;
     // The page being left stayed open while the next one loaded, and the
@@ -311,12 +323,12 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       clock,
     });
     // A part's draft, as it is edited, is what the canvas draws around the
-    // pages opened after it.
+    // pages opened after it. A template is drawn around nothing.
     const kind = page.page.kind;
-    if (kind !== "page") ui.getState().setParts({ [kind]: taken.document });
+    if (isPartKind(kind)) ui.getState().setParts({ [kind]: taken.document });
     const stopEdits = store.subscribe((state, before) => {
       if (state.document === before.document) return;
-      if (kind !== "page") ui.getState().setParts({ [kind]: state.document });
+      if (isPartKind(kind)) ui.getState().setParts({ [kind]: state.document });
       // The server's own draft, taken after a conflict, is no edit.
       if (!live.current.adopting) saving.edit(state.document);
     });
@@ -333,7 +345,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       adopting: false,
     };
     setAutosave(saving);
-    setCurrent({ id: page.page.id, kind, slug: page.page.slug, home: page.page.home, published: page.published, scheduled: page.scheduled, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live } });
+    setCurrent({ id: page.page.id, kind, slug: page.page.slug, home: page.page.home, published: page.published, scheduled: page.scheduled, revision: page.draft.revision, links: { preview: page.links.preview, live: page.links.live }, ...(kind === "template" ? { collection } : {}) });
     setStatus({ kind: "ready" });
     address.write(page.page.id);
     // A part opened with no page before it (the address named it) is drawn
@@ -462,7 +474,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const page = opened.current;
     const saving = live.current.autosave;
     if (!page || !saving || !adapter.capabilities.publish) return;
-    const shown = !adapter.capabilities.livePages && publishedView ? later<string>() : null;
+    // A template has no page to show: its entries are drawn with it.
+    const shown = !adapter.capabilities.livePages && publishedView && page.kind !== "template" ? later<string>() : null;
     if (shown) tabs.open(shown.promise);
     setPublishing(true);
     try {
@@ -510,6 +523,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       // history, if it shows the versions, lists it.
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
       const listed = await refreshPages().catch(() => null);
+      if (page.kind === "template") {
+        const of = templateOf(page);
+        ui.getState().say(adapter.capabilities.livePages ? `Published: every entry of ${of} is drawn with this template.` : `Published in this browser. In the full system, every entry of ${of} is drawn with this template.`);
+        return;
+      }
       // A part has no page of its own: it is seen on the home page.
       const seenOn = page.kind === "page" ? page.id : (listed ?? []).find((p) => p.home)?.id ?? listed?.[0]?.id ?? null;
       if (shown && publishedView) {
@@ -581,7 +599,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
       await refreshPages().catch(() => undefined);
       const zone = ui.getState().site?.timeZone ?? "UTC";
-      ui.getState().say(`Scheduled: visitors see these changes from ${siteWhen(zone, schedule.at)}. Until then the live page stays as it is.`);
+      ui.getState().say(page.kind === "template"
+        ? `Scheduled: every entry of ${templateOf(page)} is drawn with these changes from ${siteWhen(zone, schedule.at)}.`
+        : `Scheduled: visitors see these changes from ${siteWhen(zone, schedule.at)}. Until then the live page stays as it is.`);
       return null;
     } finally {
       setScheduling(false);
@@ -936,8 +956,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     versions, loadVersions, saveVersion, restoreVersion, restoring,
   }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
-  // them (./responses/context.ts).
+  // them (./responses/context.ts), and the collections' screen the same
+  // way (./collections/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);
+  const collections = useMemo(() => collectionsOf(adapter), [adapter]);
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
@@ -958,6 +980,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       <SessionProvider value={session}>
         <MediaProvider adapter={adapter} inBrowser={cmsOrigin === null}>
           <ResponsesProvider value={responses}>
+          <CollectionsProvider value={collections}>
             <DragLayer>
               {/* In the order the Tab key goes: the top bar, the drawer, the
                   canvas, the sidebar (Tab from the selection reaches its
@@ -980,8 +1003,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
             <BlockMenu />
             <ShortcutsDialog />
             <AboutDialog />
+            <CollectionsScreen />
             <SaveToast />
             <Notice />
+          </CollectionsProvider>
           </ResponsesProvider>
         </MediaProvider>
       </SessionProvider>

@@ -1,16 +1,18 @@
 // The top bar of the approved layout (design/layout/shots/editor.png): on
 // the left, the mark and its menu (Site style, the pages, the media
-// library, the form responses, the shortcuts, About), the three drawers (Insert, Outline and
-// History, each opening and closing its own, ./Drawer.tsx), undo and redo;
-// in the middle, the page's title, which switches pages, with whether it
-// is live and how many saved changes are not (./PageSwitch.tsx); on the
-// right, where the edits are, Preview, Publish and the sidebar's key.
+// library, the form responses, the collections, the shortcuts, About), the
+// three drawers (Insert, Outline and History, each opening and closing its
+// own, ./Drawer.tsx), undo and redo; in the middle, the page's title, which
+// switches pages, with whether it is live and how many saved changes are
+// not (./PageSwitch.tsx); on the right, where the edits are, Preview,
+// Publish and the sidebar's key.
 //
 // What the design draws here and the editor does not have yet is not drawn
 // (no control that does nothing).
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { runRedo, runUndo } from "./act.ts";
 import { BlockIcon } from "./block-icon.tsx";
+import { useCollectionsStorage } from "./collections/context.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { DRAWER_NAMES, toggleDrawer } from "./Drawer.tsx";
 import { Icon, Mark, type IconName } from "./icons.tsx";
@@ -45,6 +47,10 @@ export function TopBar() {
   // not the bar's drawers. Only when the storage keeps them.
   const responses = useResponsesStorage();
   const [responsesOpen, setResponsesOpen] = useState(false);
+  // The site's collections and their entries, after them, when the storage
+  // keeps them: a screen the shell draws (./collections/), since the
+  // phone's More and a template's Page tab open it too.
+  const collections = useCollectionsStorage();
   // Schedule… from the Publish menu opens its dialog here, beside the
   // media library's.
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -93,6 +99,11 @@ export function TopBar() {
             {responses && (
               <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-haspopup="dialog" onClick={() => { setMenu(null); markButton.current?.focus(); setResponsesOpen(true); }}>
                 <BlockIcon type="form" className="i" /><span>Form responses</span>
+              </button>
+            )}
+            {collections && (
+              <button className="menu-item" role="menuitem" type="button" tabIndex={-1} aria-haspopup="dialog" onClick={() => { setMenu(null); markButton.current?.focus(); ui.getState().setCollections({ collectionId: null }); }}>
+                <Icon name="collection" /><span>Collections</span>
               </button>
             )}
             {keysToo && (

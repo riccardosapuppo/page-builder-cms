@@ -7,7 +7,7 @@
 import { useId, useState } from "react";
 import { cmsAddress } from "../storage/config.ts";
 import { shownAddress } from "./Publish.tsx";
-import { useSession, type OpenPage } from "./session.tsx";
+import { templateOf, useSession, type OpenPage } from "./session.tsx";
 import { WELCOME_KEY } from "./welcome-key.ts";
 
 function seen(): boolean {
@@ -19,8 +19,10 @@ function seen(): boolean {
 }
 
 // What is open, as the note names it: "the home page, “Slack Water”",
-// "“Winter series”, at /winter-series", "the header, on every page".
+// "“Winter series”, at /winter-series", "the header, on every page", "the
+// template of News, drawn for every entry".
 export function openWords(page: OpenPage, title: string): string {
+  if (page.kind === "template") return `the template of ${templateOf(page)}, drawn for every entry`;
   if (page.kind !== "page") return `the ${page.kind}, on every page`;
   return page.home ? `the home page, “${title}”` : `“${title}”, at /${page.slug ?? ""}`;
 }

@@ -72,8 +72,10 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
 }
 
 // Where the open document is on the site, beside its title: the home page,
-// a page's address, or a part's place on every page.
+// a page's address, a part's place on every page, or a template's, every
+// entry of its collection.
 export function whereWords(page: OpenPage): string {
+  if (page.kind === "template") return "every entry";
   return page.kind !== "page" ? "every page" : page.home ? "home page" : `/${page.slug ?? ""}`;
 }
 

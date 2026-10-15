@@ -605,6 +605,20 @@ test("the screens promise nothing the browser cannot do: no visitor, live page o
   await library.getByRole("button", { name: "Delete from library" }).click();
   await expect(library.getByRole("group", { name: "Delete hero-dawn.png" })).toContainText("This browser keeps it while a page or a kept version shows it.");
   await promisesNothing(page, "the Media library", found);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  // Collections: none yet, then a new one's form, which says where its
+  // entries would be.
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Collections" }).click();
+  const collections = page.getByRole("dialog", { name: "Collections" });
+  await expect(collections.getByText("No collections yet", { exact: true }).last()).toBeVisible();
+  await promisesNothing(page, "Collections, with none yet", found);
+  await collections.getByRole("button", { name: "New collection" }).click();
+  await collections.getByRole("textbox", { name: /^Name/ }).fill("News");
+  await collections.getByRole("textbox", { name: /^Name/ }).press("Tab");
+  await expect(collections.getByText("Lowercase letters, digits and hyphens. In the full system, entries are at /news/<slug> once published.")).toBeVisible();
+  await promisesNothing(page, "a new collection", found);
   expect(found, "what the screens say that only the full system does").toEqual([]);
 });
 

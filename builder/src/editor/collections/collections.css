@@ -1,0 +1,241 @@
+/* Collections (./CollectionsScreen.tsx), which the approved design does
+   not draw: the media library's window (../library/library.css, .dlg-media)
+   and the form responses' (../responses/responses.css), with their size,
+   head and footer, holding two columns: the collections, and the one
+   chosen under its two tabs, its entries' table or an entry's form, or
+   its settings. The editor's own tokens and controls only (../editor.css):
+   graphite for what is chosen, the amber tint for a question before
+   leaving and for a conflict, as the page's conflict banner has it. */
+
+.dlg-collections { width: min(1060px, calc(100vw - 32px)); height: min(720px, calc(100vh - 48px)); }
+.dlg-collections .dlg-head { padding-bottom: 12px; }
+.dlg-collections .dlg-foot { justify-content: flex-start; padding: 14px 16px 16px 20px; }
+.dlg-collections .dlg-foot .hint { margin: 0; max-width: 440px; }
+/* A live region drawn even while empty, as the form responses' note. */
+.co-note { margin-left: auto; color: var(--graphite); font-size: 12px; line-height: 16px; text-align: right; }
+
+.dlg-body.co-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.co-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.co-state { padding: 8px 0; color: var(--graphite); }
+.co-state .btn { margin-top: 10px; }
+.co-state-wide { grid-column: 1 / -1; align-self: start; padding: 8px 20px; }
+.co-none { color: var(--steel); }
+
+/* With nothing yet: what it is, and the way to the first. */
+.co-empty { max-width: 460px; padding: 28px 0 8px; }
+.co-empty-wide { grid-column: 1 / -1; align-self: center; justify-self: center; padding: 24px 20px 64px; text-align: center; }
+.co-empty-title { font-size: 14px; line-height: 20px; font-weight: 600; }
+.co-empty .hint { margin-top: 6px; }
+.co-empty .btn { margin-top: 16px; }
+
+/* The collections. */
+.co-list { min-height: 0; overflow: auto; padding: 0 12px 16px 20px; }
+.co-list ul { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.co-collection { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border-radius: var(--r-control); text-align: left; color: var(--graphite); }
+.co-collection:hover { background: var(--key); }
+.co-collection[aria-current="true"], .co-new-current { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }
+.co-collection-name { font-weight: 600; overflow-wrap: anywhere; }
+.co-collection-meta { color: var(--steel); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.co-new-collection { width: 100%; justify-content: flex-start; padding: 0 10px; }
+
+/* The collection chosen: its name, where its entries are, its tabs. */
+.co-pane { min-height: 0; overflow: auto; padding: 0 20px 16px 12px; }
+.co-head { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.co-head-name { font-size: 16px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.co-head-meta { color: var(--steel); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.co-back-list { display: none; }
+.co-tabs { margin-top: 10px; }
+.co-panel { padding-top: 14px; }
+
+/* The entries. */
+.co-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.co-search { flex: 0 1 260px; min-width: 150px; margin: 0; }
+.co-count { flex: 1; min-width: 0; color: var(--steel); font-size: 12px; line-height: 16px; }
+.co-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.co-table thead th { padding: 0 8px 6px; border-bottom: 1px solid var(--alloy); text-align: left; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The title takes what the others leave; the status words wrap before
+   the title is squeezed. */
+.co-table .co-col-status { width: 17%; }
+.co-table .co-col-updated { width: 15%; }
+.co-table .co-col-field { width: 15%; }
+.co-table .co-col-actions { width: 120px; }
+.co-table tbody tr { position: relative; border-bottom: 1px solid var(--alloy); }
+.co-table tbody tr:not(.co-row-question):hover { background: var(--key); }
+.co-table tbody th, .co-table td { padding: 8px; text-align: left; font-weight: 400; vertical-align: middle; }
+.co-table td { color: var(--graphite); }
+/* The title opens the entry, with a click anywhere on its row, as a
+   response's row opens it (../responses/responses.css): the button in the
+   row's head covers the row, under the row's own keys. Its slug under it,
+   the address it takes. */
+.co-open { display: flex; flex-direction: column; gap: 1px; width: 100%; min-width: 0; text-align: left; color: var(--graphite); }
+.co-open::after { content: ""; position: absolute; inset: 0; }
+.co-open:focus-visible { outline: none; }
+.co-open:focus-visible::after { outline: 2px solid var(--graphite); outline-offset: -2px; border-radius: 2px; }
+.co-row-actions { position: relative; z-index: 1; }
+.co-entry-title { font-weight: 600; overflow-wrap: anywhere; }
+.co-open:hover .co-entry-title { text-decoration: underline; text-underline-offset: 2px; }
+.co-entry-slug { color: var(--steel); font-size: 12px; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-status { display: inline-flex; align-items: baseline; gap: 6px; }
+.co-status > span { flex: none; transform: translateY(-1px); }
+.co-value { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+/* Publish and Unpublish one width, so the rows' delete keys line up. */
+.co-row-actions .btn { min-width: 84px; }
+.co-delete { color: var(--steel); }
+.co-delete:hover { color: var(--err); }
+.co-row-asking { background: var(--key); }
+.co-row-question td { padding: 0 8px 10px; background: var(--key); }
+.co-confirm p { font-size: 12px; line-height: 16px; }
+.co-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+/* In a row of the table, the question and its answers on one line. */
+.co-row-question .co-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.co-row-question .co-confirm p { flex: 1; min-width: 220px; }
+.co-row-question .co-confirm-buttons { margin-top: 0; }
+.co-autofocus { display: contents; }
+
+/* An entry's form, and the settings: their actions stay at the top of the
+   column while it scrolls. */
+.co-form-head { position: sticky; top: -14px; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 2px 12px; margin-top: -14px; padding: 10px 0 12px; background: var(--plate); box-shadow: 0 1px 0 var(--alloy); }
+.co-back { grid-column: 1 / -1; justify-self: start; margin-left: -10px; }
+.co-form-title { min-width: 0; }
+.co-form-title h3 { font-size: 16px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.co-form-state { display: flex; align-items: center; gap: 6px; margin-top: 2px; color: var(--steel); font-size: 12px; line-height: 16px; }
+.co-sep { color: var(--rule); }
+.co-form-actions { display: flex; align-items: center; gap: 8px; }
+/* What the last Save or Publish did: a live region drawn even while
+   empty, which then takes no room. */
+.co-said { margin-top: 10px; color: var(--graphite); font-size: 12px; line-height: 16px; }
+.co-said:empty { margin-top: 0; }
+.co-form-body { max-width: 580px; padding-bottom: 28px; }
+.co-form-body > :first-child .field { margin-top: 14px; }
+.co-other, .co-left { max-width: 580px; }
+.co-no-fields { margin-top: 18px; }
+
+/* A conflict, as the page's banner says it (../editor.css, .banner-inplace),
+   and the question before leaving changes not saved. */
+.co-banner, .co-leave { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; padding: 10px 12px; border-radius: var(--r-control); background: var(--warn-tint); box-shadow: inset 0 -2px 0 var(--warn); color: var(--graphite); font-size: 13px; line-height: 18px; }
+.co-leave { margin: 0 0 12px; }
+.co-banner > .i, .co-leave > .i { color: var(--warn); }
+.co-banner p, .co-leave p { flex: 1; min-width: 220px; }
+.co-banner strong, .co-leave strong { font-weight: 700; }
+.co-banner-actions, .co-leave-buttons { display: flex; gap: 6px; flex: none; }
+.co-banner .btn-secondary, .co-leave .btn-secondary { border-color: var(--graphite); box-shadow: inset 0 -1px 0 var(--graphite); }
+
+/* A field's controls. A group (an image, a link) is a fieldset with its
+   label for a legend, its parts' labels quieter under it. */
+.co-group { min-width: 0; margin: 18px 0 0; padding: 0; border: 0; }
+.co-group > legend { padding: 0; }
+.co-group .field { margin-top: 10px; }
+.co-group .field .label { color: var(--steel); font-weight: 500; }
+.co-image { display: flex; align-items: center; gap: 12px; }
+.co-thumb { flex: none; width: 112px; height: 84px; border-radius: var(--r-control); object-fit: cover; background: var(--key); }
+.co-thumb-none { display: grid; place-items: center; color: var(--err); }
+.co-image-about { min-width: 0; }
+.co-image-name { font-weight: 600; overflow-wrap: anywhere; }
+.co-image-buttons { display: flex; gap: 6px; margin-top: 8px; }
+.co-image-buttons .btn-quiet { color: var(--graphite); }
+.co-decorative .toggle { min-height: 28px; }
+.co-decorative .hint { margin-top: 2px; }
+.co-date { max-width: 220px; }
+
+/* An entry's rich text: the text widget's editor in a field's box, its
+   bold, italic and link above it. */
+.co-rte { border: 1px solid var(--rule); border-radius: var(--r-field); background: var(--white); }
+.co-rte:focus-within { outline: 2px solid var(--graphite); outline-offset: 2px; }
+.co-rte-invalid { border-color: var(--err); box-shadow: 0 0 0 1px var(--err); }
+.co-rte-bar { display: flex; gap: 2px; padding: 3px; border-bottom: 1px solid var(--alloy); }
+.co-rte-bar .ibtn[aria-pressed="true"] { background: var(--graphite); color: var(--white); }
+/* TipTap makes the element it is given its own (../rich/setup.ts): the
+   text's box is the .rte inside the field, whatever else it is. */
+.co-rte .rte { min-height: 132px; max-height: 360px; overflow: auto; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: break-word; outline: none; line-height: 20px; }
+.co-rte .rte > * + * { margin-top: 8px; }
+.co-rte .rte :is(ul, ol) { margin: 0; padding-left: 22px; }
+.co-rte .rte a { color: inherit; text-decoration: underline; }
+.co-rte-link { padding: 0 10px 10px; }
+.co-rte-link .ov-link { position: static; width: auto; padding: 8px 0 0; border: 0; border-top: 1px solid var(--alloy); border-radius: 0; box-shadow: none; }
+.co-rte-loading { min-height: 168px; padding: 10px; }
+
+/* The settings. */
+.co-settings-head { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; gap: 12px; margin-top: -14px; padding: 10px 0; background: var(--plate); box-shadow: 0 1px 0 var(--alloy); }
+.co-settings-head .co-said { flex: 1; margin: 0; }
+.co-section { max-width: 640px; margin-top: 24px; }
+.co-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 20px; font-weight: 600; }
+.co-section-aside { color: var(--steel); font-size: 12px; font-weight: 500; }
+.co-section > .field:first-of-type { margin-top: 8px; }
+.co-section-hint { margin-top: 2px; }
+.co-fields { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.co-fieldcard { padding: 10px 12px 12px; border: 1px solid var(--alloy); border-radius: 8px; background: var(--white); }
+.co-fieldcard-asking { border-color: var(--rule); }
+.co-fieldcard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.co-fieldcard-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.co-type-chip { padding: 1px 8px; border-radius: 9px; background: var(--key); color: var(--steel); font-size: 12px; line-height: 16px; font-weight: 500; }
+.co-fieldcard-tools { display: flex; flex: none; gap: 2px; }
+.co-fieldcard .co-confirm { margin-top: 8px; padding: 10px; border-radius: var(--r-control); background: var(--key); }
+/* Its label, its key and whether it is required, on one row. */
+.co-fieldcard-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0 16px; }
+.co-fieldcard-body .field { margin-top: 8px; }
+.co-required { padding-top: 30px; }
+.co-required .toggle { min-height: 34px; }
+.co-key-fixed { background: var(--plate); color: var(--steel); }
+.co-fieldcard-more { margin-top: 10px; }
+.co-bounds { display: grid; grid-template-columns: 128px 128px; gap: 0 12px; }
+.co-bounds .field { margin-top: 0; }
+.co-bounds > div:last-child { grid-column: 1 / -1; }
+.co-order { max-width: 280px; }
+.co-options { margin-top: 10px; }
+.co-options ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.co-option { display: flex; align-items: flex-end; gap: 6px; max-width: 360px; }
+.co-option .field { flex: 1; min-width: 0; margin-top: 0; }
+.co-option .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.co-option .ibtn { margin-bottom: 5px; }
+.co-options .btn-quiet { margin: 6px 0 0 -10px; }
+.co-add-field { margin-top: 12px; }
+.co-types { margin-top: 12px; padding: 12px; border: 1px solid var(--alloy); border-radius: 8px; background: var(--white); }
+.co-types-title { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); }
+.co-types-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+.co-type { display: flex; flex-direction: column; gap: 2px; padding: 9px 10px; border: 1px solid var(--alloy); border-radius: var(--r-control); background: var(--plate); text-align: left; color: var(--graphite); }
+.co-type:hover { border-color: var(--rule); background: var(--key); }
+.co-type strong { font-weight: 600; }
+.co-type span { color: var(--steel); font-size: 12px; line-height: 16px; }
+.co-template-line { margin-top: 6px; }
+.co-template-state { display: inline-flex; align-items: center; gap: 6px; margin-left: 2px; color: var(--steel); font-size: 12px; white-space: nowrap; }
+.co-section .co-template-line + .btn { margin-top: 10px; }
+.co-delete-collection { margin: 6px 0 0 -10px; color: var(--err); }
+.co-delete-collection > .i { margin-left: 0; }
+.co-section > .co-confirm { margin-top: 8px; padding: 10px 12px; border-radius: var(--r-control); background: var(--key); }
+
+/* A new collection. */
+.co-new { max-width: 580px; padding-bottom: 24px; }
+.co-new-title { font-size: 16px; line-height: 22px; font-weight: 600; }
+.co-new-lead { margin-top: 4px; }
+.co-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.co-preset { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--white); text-align: left; color: var(--graphite); }
+.co-preset:hover { background: var(--plate); }
+.co-preset[aria-checked="true"] { border-color: var(--graphite); box-shadow: inset 0 0 0 1px var(--graphite); }
+.co-preset strong { font-weight: 600; }
+.co-preset span { color: var(--steel); font-size: 12px; line-height: 16px; }
+.co-new-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+/* On a phone's window: the whole window, one level at a time, the
+   collections or the one chosen, with the way back; the table keeps its
+   title, status and actions. */
+@media (max-width: 699px) {
+  .dlg-collections { width: calc(100vw - 16px); height: calc(100dvh - 16px); }
+  .dlg-collections .dlg-foot .hint { display: none; }
+  .co-body { grid-template-columns: minmax(0, 1fr); }
+  .co-body[data-level="pane"] .co-list, .co-body[data-level="list"] .co-pane { display: none; }
+  .co-list { padding: 0 12px 12px; }
+  .co-pane { padding: 0 12px 12px; }
+  .co-back-list { display: inline-flex; margin: 0 0 4px -10px; }
+  .co-toolbar { flex-wrap: wrap; }
+  .co-search { flex: 1 1 100%; }
+  .co-table .co-col-updated, .co-table .co-col-field { display: none; }
+  .co-table .co-col-status { width: 112px; }
+  .co-table .co-col-actions { width: 116px; }
+  .co-status { white-space: normal; }
+  .co-form-head { grid-template-columns: minmax(0, 1fr); }
+  .co-form-actions { flex-wrap: wrap; }
+  .co-fieldcard-body { grid-template-columns: minmax(0, 1fr); }
+  .co-required { padding-top: 8px; }
+  .co-presets, .co-types-grid { grid-template-columns: minmax(0, 1fr); }
+}

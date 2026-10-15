@@ -145,6 +145,18 @@ test("a section pasted into a header or footer leaves its anchor behind, which a
   });
   expect(inPart.lastCommand()?.kind).toBe("paste");
   expect(pasted(inPart)?.props).toEqual({ label: "Visit" });
+  cleanup();
+
+  // A collection's template keeps it, as a page does: it is the whole of
+  // its entries' page between the header and the footer.
+  const template = { ...header, id: 8, kind: "template" as const, links: { preview: "/preview/8", live: null } };
+  const inTemplate = editorKit({ document: page(), selection: "join", session: { current: template } });
+  inTemplate.render(<div className="app"><Canvas /><EditorKeys /></div>);
+  act(() => root("join").focus());
+  act(() => {
+    fireEvent.paste(root("join"), { clipboardData });
+  });
+  expect(pasted(inTemplate)?.props).toEqual({ label: "Visit", anchor: "visit" });
 });
 
 test("in a text field the keys are the field's: no block is deleted, no selection moves", () => {

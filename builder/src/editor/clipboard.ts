@@ -15,7 +15,7 @@ import type { CommandError } from "../document/check.ts";
 import { makePaste } from "../document/commands.ts";
 import { blockName } from "../document/labels.ts";
 import type { Block } from "../shared/document.ts";
-import type { PageKind } from "../storage/adapter.ts";
+import { isPartKind, type PageKind } from "../storage/adapter.ts";
 import { runCommand, type Region } from "./act.ts";
 import type { EditorEnv } from "./context.tsx";
 
@@ -46,7 +46,8 @@ export function pasteText(env: Env, text: string, region: Region, kind: PageKind
     return read.error;
   }
   const selection = env.store.getState().selection;
-  const block = kind === "page" ? read.block : withoutAnchor(read.block);
+  // A part's blocks take no anchor; a page's and a template's do.
+  const block = isPartKind(kind) ? withoutAnchor(read.block) : read.block;
   return runCommand(env, (doc) => makePaste(doc, block, selection, env.newId), region);
 }
 

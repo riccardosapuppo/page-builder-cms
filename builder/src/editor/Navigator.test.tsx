@@ -185,6 +185,11 @@ test("a part's row opens it as a page is opened; with a part open there are no s
   const second = inPart.render(<Navigator />);
   expect(document.querySelectorAll("[data-part-row]")).toHaveLength(0);
   second.unmount();
+  // A collection's template is drawn between them, as a page is.
+  const inTemplate = editorKit({ document: page(), session: { parts: PARTS, current: { ...header, id: 9, kind: "template" } } });
+  const third = inTemplate.render(<Navigator />);
+  expect([...document.querySelectorAll<HTMLButtonElement>("[data-part-row]")].map((row) => row.dataset.partRow)).toEqual(["header", "footer"]);
+  third.unmount();
   const none = editorKit({ document: page() });
   none.render(<Navigator />);
   expect([...document.querySelectorAll<HTMLButtonElement>("[data-part-row]")].map((row) => row.disabled)).toEqual([true, true]);

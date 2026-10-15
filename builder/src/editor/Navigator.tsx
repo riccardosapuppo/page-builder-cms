@@ -44,7 +44,7 @@ import { siblingsIn } from "./drag/place.ts";
 import { Icon } from "./icons.tsx";
 import { focusBlock } from "./act.ts";
 import { excerpt } from "./names.ts";
-import type { PartKind } from "../storage/adapter.ts";
+import { isPartKind, type PartKind } from "../storage/adapter.ts";
 import { PART_NAMES, partOf, useKeptWords, useOpenKind, useOptionalSession } from "./session.tsx";
 
 interface Row {
@@ -119,7 +119,9 @@ export function Navigator() {
   const selection = useEditor((s) => s.selection);
   const serverErrors = useUi((u) => u.serverErrors);
   // Around a page, the site's header and footer, each a row that opens it.
-  const aroundPage = useOpenKind() === "page";
+  // A page, or a collection's template, is drawn between the site's header
+  // and footer; a part is one of them.
+  const aroundPage = !isPartKind(useOpenKind());
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   // The row with the Tab stop: the selection's, else the first.
   const [active, setActive] = useState<string | null>(null);

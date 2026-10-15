@@ -89,7 +89,7 @@ import { forgetLeftText, preloadTextEditor, startEditing, TextEditorHost, type T
 import { HeadingEditor } from "./HeadingEditor.tsx";
 import { headingLevel } from "../widgets/heading/render.tsx";
 import { placeSeamTip } from "./seam-tip.ts";
-import { PART_NAMES, partOf, useOptionalSession } from "./session.tsx";
+import { PART_NAMES, partOf, useOpenKind, useOptionalSession } from "./session.tsx";
 import { pushes, type PartsShown, type Preview } from "./ui-store.ts";
 
 // How a block stands to the selection, for the marks it draws.
@@ -1285,7 +1285,10 @@ function Invite({ part }: { part?: PartKind }) {
   const { insertMade } = useInsert();
   const [picking, setPicking] = useState(false);
   const canPublish = useOptionalSession()?.capabilities.publish ?? false;
-  const name = part ? PART_NAMES[part].toLowerCase() : "page";
+  // A collection's template is built as a page is, and drawn on every
+  // entry's own page; like a part, it may be published empty.
+  const template = useOpenKind() === "template";
+  const name = part ? PART_NAMES[part].toLowerCase() : template ? "template" : "page";
   const addPreset = (preset: Preset, image?: ImageRef) => {
     const doc = store.getState().document;
     return insertMade(makeInsert(doc, presetSection(doc, preset, newId, image), { parentId: null, index: doc.sections.length }));
@@ -1298,8 +1301,8 @@ function Invite({ part }: { part?: PartKind }) {
           <span className="ins ins-sec is-static" aria-hidden="true"><Icon name="plus" className="li" /></span>
           <h2>Start this {name} with a section</h2>
         </div>
-        <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : "A section is a band across the page. Pick its columns; you can change them later."}</p>
-        {canPublish && !part && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
+        <p>{part ? `A section is a band across the ${name}, on every page. Pick its columns; you can change them later. Logo and Menu are in Insert, under Site.` : template ? "A section is a band across the template, on every entry’s page. Pick its columns; you can change them later." : "A section is a band across the page. Pick its columns; you can change them later."}</p>
+        {canPublish && !part && !template && <p className="invite-publish"><Icon name="info" className="i i-xs" />Publish turns on once the page has a section. An empty page has nothing to publish.</p>}
         {canPublish && part && <p className="invite-publish"><Icon name="info" className="i i-xs" />Published empty, the site has no {name}.</p>}
         <div className="invite-layouts" role="group" aria-label="Add a section">
           {[1, 2, 3, 4].map((n) => (

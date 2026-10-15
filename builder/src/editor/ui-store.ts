@@ -3,12 +3,11 @@
 // page out at, which drawer is open and what the sidebar shows, the media
 // library, the site style and settings, the header and footer the canvas
 // draws around a page and the page it draws around a header or footer, the
-// errors of the last save the server refused, whether the shortcuts window
-// or the About
-// window is open, and the text typed in a field and not handed over yet. A
-// vanilla zustand store, like the editor's own (../store), so each part of
-// the interface subscribes to the one value it draws and nothing else
-// redraws.
+// errors of the last save the server refused, whether the shortcuts window,
+// the About window or the Collections screen is open, and the text typed
+// in a field and not handed over yet. A vanilla zustand store, like the
+// editor's own (../store), so each part of the interface subscribes to the
+// one value it draws and nothing else redraws.
 //
 // The page document, the selection and the history are not here: they are
 // the editor store's, changed only by its commands.
@@ -96,6 +95,14 @@ export interface BlockMenuAt {
   from: "canvas" | "navigator";
 }
 
+// The Collections screen (./collections/), open from the mark's menu, the
+// phone's More or a template's Page tab: on a collection, and on its
+// entries or its settings, or on the first.
+export interface CollectionsAt {
+  collectionId: number | null;
+  tab?: "entries" | "settings";
+}
+
 export interface UiState {
   hover: string | null;
   preview: Preview;
@@ -144,6 +151,8 @@ export interface UiState {
   shortcutsOpen: boolean;
   // The About window (./AboutDialog.tsx) is open.
   aboutOpen: boolean;
+  // The Collections screen is open, and where; null while it is not.
+  collections: CollectionsAt | null;
   // The drawer open is the history (./HistoryPanel.tsx), kept beside
   // `drawer` for the parts that ask only that; its "Save version" asks for
   // a name.
@@ -202,6 +211,7 @@ export interface UiState {
   say(notice: string | null, link?: NoticeLink | null): void;
   setShortcutsOpen(open: boolean): void;
   setAboutOpen(open: boolean): void;
+  setCollections(at: CollectionsAt | null): void;
   // The history's drawer opened, or closed if it is the one open.
   setHistoryOpen(open: boolean): void;
   setNamingVersion(naming: boolean): void;
@@ -237,6 +247,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     noticeLink: null,
     shortcutsOpen: false,
     aboutOpen: false,
+    collections: null,
     historyOpen: drawer === "history",
     namingVersion: false,
     copied: null,
@@ -273,6 +284,7 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     say: (notice, link = null) => set({ notice, noticeLink: notice === null ? null : link }),
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     setAboutOpen: (aboutOpen) => set({ aboutOpen }),
+    setCollections: (collections) => set({ collections }),
     setHistoryOpen: (open) => {
       if (open) get().setDrawer("history");
       else if (get().drawer === "history") get().setDrawer(null);

@@ -30,6 +30,17 @@ export interface OpenPage {
   // The publish set for a time and still waiting for it; absent or null
   // when there is none.
   scheduled?: Schedule | null;
+  // A collection's template: the collection whose entries it draws, its
+  // name and the prefix of their addresses; absent for any other page,
+  // null when the storage could not say.
+  collection?: TemplateOf | null;
+}
+
+// The collection a template belongs to, as its words name it.
+export interface TemplateOf {
+  id: number;
+  name: string;
+  prefix: string;
 }
 
 // Where the site style's last change is: on its way, confirmed, or refused
@@ -153,6 +164,10 @@ export function partOf(session: Pick<Session, "parts">, kind: PartKind): PageSum
 
 // How the interface names a part: "Header", "Footer".
 export const PART_NAMES: Readonly<Record<PartKind, string>> = { header: "Header", footer: "Footer" };
+
+// How the interface names the collection a template draws: "News", or,
+// when the storage could not say which, "its collection".
+export const templateOf = (page: Pick<OpenPage, "collection">): string => page.collection?.name ?? "its collection";
 
 // A session with nothing open and every operation doing nothing, for a
 // test to complete with what it needs.

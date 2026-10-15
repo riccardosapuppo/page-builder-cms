@@ -19,7 +19,7 @@ import { Icon } from "./icons.tsx";
 import { ariaKeyShortcuts, entry, entryCaps, entryKeysText } from "./keymap.ts";
 import { Menu } from "./Menu.tsx";
 import { changes, useSaveSnapshot, when } from "./SaveStatus.tsx";
-import { useSession, type OpenPage } from "./session.tsx";
+import { templateOf, useSession, type OpenPage } from "./session.tsx";
 import { KeyCaps } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
 
@@ -100,6 +100,11 @@ export function PreviewButton() {
 export function scheduleLine(page: OpenPage, notLive: number, zone: string): { line: string; nothing: boolean } {
   const pending = page.scheduled ?? null;
   if (pending) return { line: `Set for ${siteWhen(zone, pending.at)}. Choose another time.`, nothing: false };
+  if (page.kind === "template") {
+    if (!page.published) return { line: `Choose the day and time every entry of ${templateOf(page)} is first drawn with this template.`, nothing: false };
+    if (notLive === 0) return { line: "Its entries are drawn with this draft already: there is nothing to schedule.", nothing: true };
+    return { line: `Choose the day and time its entries are drawn with your ${changes(notLive)}.`, nothing: false };
+  }
   if (!page.published) return { line: page.kind === "page" ? "Choose the day and time visitors first see this page." : `Choose the day and time every page first shows this ${page.kind}.`, nothing: false };
   if (notLive === 0) return { line: "Visitors already see this draft: there is nothing to schedule.", nothing: true };
   return { line: `Choose the day and time visitors see your ${changes(notLive)}.`, nothing: false };
@@ -108,8 +113,13 @@ export function scheduleLine(page: OpenPage, notLive: number, zone: string): { l
 // What Publish now does, under its name: on a storage that serves the
 // page, what visitors see; on one that only keeps it (the browser demo),
 // what is kept, and where it shows. A header or a footer has no address:
-// it goes onto every page at once.
+// it goes onto every page at once; a template neither, its collection's
+// entries are drawn with it.
 function nowLine(page: OpenPage, notLive: number): string {
+  if (page.kind === "template") {
+    if (!page.published) return `Every entry of ${templateOf(page)} is drawn with this template right away.`;
+    return notLive > 0 ? `Its entries are drawn with your ${changes(notLive)} right away.` : "Its entries are drawn with this draft already; publishing keeps it as a new version.";
+  }
   if (page.kind !== "page") {
     if (!page.published) return `Every page shows this ${page.kind} right away.`;
     return notLive > 0 ? `Every page shows your ${changes(notLive)} right away.` : "Every page already shows this draft; publishing keeps it as a new version.";
@@ -119,6 +129,10 @@ function nowLine(page: OpenPage, notLive: number): string {
 }
 
 function keptLine(page: OpenPage, notLive: number): string {
+  if (page.kind === "template") {
+    if (!page.published) return "Kept as published in this browser. In the full system, its entries are drawn with it.";
+    return notLive > 0 ? `Your ${changes(notLive)} go into the published template, kept in this browser.` : "The published template is this draft already; publishing keeps it as a new version.";
+  }
   if (page.kind !== "page") {
     if (!page.published) return "Kept as published in this browser, on every page published here; the home page shows it in a new tab.";
     return notLive > 0 ? `Your ${changes(notLive)} go onto every page published here; the home page shows them in a new tab.` : `The published ${page.kind} is this draft already; publishing keeps it as a new version.`;
@@ -138,21 +152,26 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
   const page = session.current;
   if (!session.capabilities.publish || !page) return null;
 
+  // A header, a footer or a template may go empty: published so, the
+  // site has none, or its entries are drawn with the header and footer
+  // alone.
   const part = page.kind !== "page";
+  const template = page.kind === "template";
   const paused = publishPaused(snapshot, sections, part);
   const busy = session.publishing || session.scheduling;
   const keys = entry("publish");
   const off = paused !== null || busy;
   const notLive = changesNotLive(page, snapshot);
   // A header or a footer has no address of its own: it is seen on the home
-  // page, as on every other.
-  const livePath = part ? session.pages.find((p) => p.home)?.links.live ?? null : page.links.live;
+  // page, as on every other. A template has none either, and no page to
+  // open: its entries have theirs.
+  const livePath = template ? null : part ? session.pages.find((p) => p.home)?.links.live ?? null : page.links.live;
   const live = livePath === null ? null : cmsAddress(livePath, session.cmsOrigin);
   const schedule = session.capabilities.schedule && onSchedule ? scheduleLine(page, notLive, zone) : null;
   const pending = session.capabilities.schedule ? page.scheduled ?? null : null;
   // With no live page (the browser demo), the page as published opens from
   // the demo itself.
-  const view = live === null && !session.capabilities.livePages && session.publishedView ? cmsAddress(session.publishedView(page.id), session.cmsOrigin) : null;
+  const view = live === null && !template && !session.capabilities.livePages && session.publishedView ? cmsAddress(session.publishedView(page.id), session.cmsOrigin) : null;
 
   return (
     <div className={`split${off ? " split-off" : ""}`}>
@@ -245,7 +264,7 @@ export function PublishButton({ onSchedule }: { onSchedule?: () => void }) {
               <Icon name="close" />
               <span>
                 <strong>Cancel scheduled publish</strong>
-                <small>Set for {siteWhen(zone, pending.at)}. {part ? "Every page" : "The live page"} stays as it is.</small>
+                <small>Set for {siteWhen(zone, pending.at)}. {template ? "Its entries stay" : part ? "Every page stays" : "The live page stays"} as it is.</small>
               </span>
             </button>
           )}

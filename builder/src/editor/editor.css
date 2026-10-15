@@ -1237,10 +1237,14 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .ibtn[aria-disabled="true"]:hover { background: none; }
 
 /* A header's or a footer's Page tab (panels/EditPanel.tsx, PartPanel):
-   what it is and how it goes live, then the way back to the page. */
+   what it is and how it goes live, then the way back to the page; a
+   collection's template's (TemplatePanel) the way to its collection
+   first, the way back under it. */
 .part-panel p { font-size: 13px; line-height: 18px; color: var(--graphite); }
 .part-panel p + p { margin-top: 8px; }
 .part-panel [data-part-back] { margin: 14px 0 6px; }
+.part-panel [data-template-collection] { margin-top: 14px; }
+.part-panel [data-template-collection] + [data-part-back] { margin-top: 8px; }
 
 /* About (design/shots-extra/about.png). */
 .dlg-about { width: 440px; padding: 28px; align-items: flex-start; gap: 10px; }
