@@ -126,13 +126,22 @@ table searched by their titles, each written in a form of the sidebar's
 own controls, one per type of field (the text widget's editor for a rich
 text, the media library for an image), checked as the storage checks it
 and saved in one call at its revision, published and unpublished; its
-settings (name, prefix, order, fields), and the way to its template,
-which opens on the canvas as a part does. These are the storage's
+settings (name, prefix, order, fields). These are the storage's
 operations, saved by their own Save and not in the page's history: the
 editor's README says why ([src/editor/README.md](src/editor/README.md)).
+Its template opens on the canvas as a part does, by one Edit the
+template (`src/editor/collections/edit-template.ts`), wherever it is
+asked for: in the collection's head, beside its name and address,
+whichever tab is open; at the foot of its settings; in an entry's form,
+beside Preview and View, the template drawn with that entry; in the
+page switch, the page's title in the top bar, where the templates follow
+the header and the footer, each named by its collection; and in a
+Collection list's panel. What the screen has not saved is asked about first, as
+when it is left.
 On the page, a Collection list (Insert's Content group) draws a
 collection's published entries as cards, each leading to its entry's
-page, and its panel says how many drafts it leaves out; in a
+page, and its panel says how many drafts it leaves out and leads to the
+collection in Collections and to its template; in a
 collection's template, Field blocks (Insert's This entry, offered there
 alone) draw the entry's values, each as the widget its type draws as.
 The canvas draws a template with the entry its Page tab picks, the first
@@ -506,9 +515,20 @@ CMS serves carries neither.
   of them failing before their fixes too. A published entry's View, its
   address on the CMS or the demo's own view of it, its words while the
   template has nothing live, none for a draft (`EntryForm.test.tsx`,
-  each failing before View was there). In Chromium,
+  each failing before View was there). The ways to a template
+  (`src/editor/collections/edit-template.test.tsx`, with the page
+  switch's in `src/editor/TopBar.test.tsx` and the shell's in
+  `src/editor/App.test.tsx`): each of them watched going through Edit the
+  template, the page switch listing the templates after the header and
+  the footer and finding them, the screen's and an entry's asking first,
+  a template open already left as it is, the switch saying a template is
+  live once it is published; twenty-five behaviours taken out one at a
+  time, each failing its test. In Chromium,
   `e2e/collections.spec.ts` against the CMS and
-  `e2e/browser/collections.spec.ts` on this browser's storage.
+  `e2e/browser/collections.spec.ts` on this browser's storage, and
+  `e2e/templates.spec.ts` on the example site: from the home page, the
+  page switch opens News's template, its Field blocks drawn with the
+  newest entry, on a desktop and on a phone.
 - **The example site** (`../example-site/`, as the demo puts it in):
   `src/storage/example-site.test.ts`, the seed in the CMS's order, the
   pictures, then News with its entries published and its template, its

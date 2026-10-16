@@ -114,7 +114,9 @@ server from its database (`SiteContent`).
   and that field is its price, as a number otherwise
   (`../render/shop-words.ts`, `numberOrPrice`, the twin of `ShopWords`).
   The canvas never draws a draft in it; its panel says how many drafts it
-  leaves out, and leads to them in Collections.
+  leaves out, leads to them in Collections, and, unless the page open is
+  that template, to the collection's template, by Edit the template
+  (`../editor/collections/edit-template.ts`).
 - **Field** (`field/`): `drawing.ts` says what it draws, the twin of
   `EntryField` (`cms/app/models/entry_field.rb`): the title, or the field
   its key names, drawn as the widget its type draws as (a heading of the

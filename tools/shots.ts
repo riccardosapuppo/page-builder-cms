@@ -371,7 +371,7 @@ async function templateShot(browser: Browser, shots: Staging, editor: string, cm
   await page.getByRole("menuitem", { name: "Collections" }).click();
   const screen = page.getByRole("dialog", { name: "Collections" });
   await screen.getByRole("tab", { name: "Settings" }).click();
-  await screen.getByRole("button", { name: "Edit the template" }).click();
+  await screen.getByRole("button", { name: "Edit the template", exact: true }).click();
   await page.getByRole("button", { name: "Switch page. Open: News" }).waitFor();
   await page.locator(".canvas img").first().waitFor();
   await page.locator('.canvas [data-block-id="entry-title"]').click();

@@ -82,6 +82,14 @@ Club kit beside News, and was kept with the five new pictures of the shop:
 its page, a product on a desktop and on a phone, a visitor's cart, and the
 Shop screen with its orders. The others were kept as they were.
 
+Later that day, with Edit the template in a collection's head as well,
+`collections.png` was made again alone (`--only`, on the ports 3925 and
+4925): News's head now has the way to its template beside its name and
+address, and the entries' times are that run's. `template.png`, made with
+it into another folder, came out byte for byte the same and was kept. No
+picture shows the page switch open, where the templates are now listed
+too.
+
 ## What holds them to what the script makes
 
 The pictures' names, sizes in pixels, byte limits and what each shows are

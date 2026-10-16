@@ -615,6 +615,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (opened.current?.id === page.id && ui.getState().historyOpen) loadVersions();
       const listed = await refreshPages().catch(() => null);
       if (page.kind === "template") {
+        // The page switch lists the templates with their collections:
+        // read again, they say this one is live.
+        void refreshEntries();
         const of = templateOf(page);
         ui.getState().say(adapter.capabilities.livePages ? `Published: every entry of ${of} is drawn with this template.` : `Published in this browser. In the full system, every entry of ${of} is drawn with this template.`);
         return;
@@ -644,7 +647,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       // Not published: the tab opened for it goes.
       shown?.reject(new Error("not published"));
     }
-  }, [adapter, cmsOrigin, held, loadVersions, publishedView, refreshPages, store, tabs, ui, words, publishedWords.maybe, publishedWords.nothingWent]);
+  }, [adapter, cmsOrigin, held, loadVersions, publishedView, refreshEntries, refreshPages, store, tabs, ui, words, publishedWords.maybe, publishedWords.nothingWent]);
 
   // What is live and what waits to go live, read again from the CMS, for a
   // page still open: the draft on the canvas and its autosave stay as
@@ -653,8 +656,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     const page = await adapter.getPage(id);
     setCurrent((open) => (open?.id === id ? { ...open, published: page.published, scheduled: page.scheduled, links: { preview: page.links.preview, live: page.links.live } } : open));
     if (opened.current?.id === id && ui.getState().historyOpen) loadVersions();
+    // A template is listed with its collection, as the page switch lists it.
+    if (page.page.kind === "template") void refreshEntries();
     await refreshPages().catch(() => undefined);
-  }, [adapter, loadVersions, refreshPages, ui]);
+  }, [adapter, loadVersions, refreshEntries, refreshPages, ui]);
 
   // Saves what waits, then sets the draft at the revision just saved to go
   // live at `at`: what goes live then is what the editor shows now.

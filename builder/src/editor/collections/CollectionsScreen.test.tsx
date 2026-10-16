@@ -9,8 +9,9 @@
 // to the settings as they are then; once saved, the collection as the
 // storage answers it, another tab's field with it, and what changed while
 // the save travelled kept); Delete asked twice; the template opened as a
-// page is; changes not saved, and text still in its pause, asked about
-// before they are left.
+// page is, from the collection's head as from its settings, and left as it
+// is when it is open already; changes not saved, and text still in its
+// pause, asked about before they are left, the template's way among them.
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { editorKit } from "../../../test/editor-kit.tsx";
@@ -430,6 +431,53 @@ test("Edit the template opens it as a page is opened, and the screen closes", as
   expect(openPage).toHaveBeenCalledWith(news.template.id);
   expect(kit.ui.getState().collections).toBeNull();
   expect(screen.queryByRole("dialog", { name: "Collections" })).toBeNull();
+});
+
+test("Edit the template is in the collection's head too, beside its name and address, from the Entries tab: it opens the template as the settings' does, and the screen closes", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const openPage = vi.fn(async () => null);
+  const { kit, dialog } = await openScreen(fake, { openPage });
+  expect(within(dialog).getByRole("tab", { name: "Entries" }).getAttribute("aria-selected")).toBe("true");
+  const head = within(dialog).getByRole("heading", { name: "News" }).closest<HTMLElement>(".co-head")!;
+  expect(head.textContent).toContain("Entries live at /news/<slug>.");
+  const way = within(head).getByRole("button", { name: "Edit the template of News" });
+  expect(way.textContent).toBe("Edit the template");
+  await press(way);
+  expect(openPage).toHaveBeenCalledWith(news.template.id);
+  expect(kit.ui.getState().collections).toBeNull();
+  expect(screen.queryByRole("dialog", { name: "Collections" })).toBeNull();
+});
+
+test("the head's Edit the template asks first about changes not saved: Keep editing stays, Leave without saving opens the template", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const openPage = vi.fn(async () => null);
+  const { kit, dialog } = await openScreen(fake, { openPage });
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  await type(field(dialog, /^Name/), "Club news");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Edit the template of News" }));
+  const question = within(dialog).getByRole("alertdialog", { name: /^Leave without saving\?/ });
+  expect(question.textContent).toContain("The changes to the settings of News are not saved.");
+  fireEvent.click(within(question).getByRole("button", { name: "Keep editing" }));
+  expect(openPage).not.toHaveBeenCalled();
+  expect(field(dialog, /^Name/)).toHaveProperty("value", "Club news");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Edit the template of News" }));
+  await press(within(dialog).getByRole("button", { name: "Leave without saving" }));
+  expect(openPage).toHaveBeenCalledWith(news.template.id);
+  expect(kit.ui.getState().collections).toBeNull();
+  expect(fake.collections[0]?.name).toBe("News");
+});
+
+test("with the template open already (Collections opened from its Page tab), Edit the template closes the screen and leaves the template as it is", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const openPage = vi.fn(async () => null);
+  const current = { id: news.template.id, kind: "template" as const, slug: null, home: false, published: null, revision: 1, links: { preview: `/preview/${news.template.id}`, live: null }, collection: { id: news.id, name: "News", prefix: "news" } };
+  const { kit, dialog } = await openScreen(fake, { openPage, current });
+  await press(within(dialog).getByRole("button", { name: "Edit the template of News" }));
+  expect(openPage).not.toHaveBeenCalled();
+  expect(kit.ui.getState().collections).toBeNull();
 });
 
 test("changes not saved are asked about before they are left: Keep editing stays, Leave without saving goes", async () => {

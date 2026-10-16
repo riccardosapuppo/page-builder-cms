@@ -3,8 +3,9 @@
 // draws its Field blocks with the entry its Page tab picks (the first
 // published by default, made-up values when its collection has none), and
 // a field with nothing to draw is drawn faintly, saying so; the panels of
-// the two blocks, Insert's offer of each, and a Field block pasted where
-// only a template takes one.
+// the two blocks, the list's leading to its collection and its template,
+// Insert's offer of each, and a Field block pasted where only a template
+// takes one.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
@@ -122,6 +123,26 @@ test("the Collection list panel chooses the collection, its order and what it ke
   expect(kit.block("list")?.props).toMatchObject({ collection: 4, order: { by: "title", direction: "asc" } });
   expect(listProps().filter).toBeUndefined();
   expect(screen.getByText("Events has no published entry yet: the list says its empty words.")).toBeTruthy();
+});
+
+test("the Collection list panel leads to its collection's template too, opened as Edit the template opens it, though not in that template itself", async () => {
+  const opened: number[] = [];
+  const kit = editorKit({ document: document(list), selection: "list", session: { current: page, capabilities: CAPABILITIES, openPage: async (id) => (opened.push(id), null) } });
+  act(() => kit.ui.getState().setSiteEntries(siteOf(news, [dawn, winter, draft])));
+  const { unmount } = kit.render(<BlockPanel id="list" />);
+  const way = screen.getByRole("button", { name: "Edit the template of News" });
+  expect(way.previousElementSibling?.textContent).toBe("News in Collections");
+  await act(async () => fireEvent.click(way));
+  expect(opened).toEqual([news.template.id]);
+  unmount();
+
+  // In News's template, whose list draws its other entries, it is the page
+  // open: no way to it.
+  const inIt = editorKit({ document: document(list), selection: "list", session: { current: template, capabilities: CAPABILITIES } });
+  act(() => inIt.ui.getState().setSiteEntries(siteOf(news, [dawn, winter])));
+  inIt.render(<BlockPanel id="list" />);
+  expect(screen.getByRole("button", { name: "News in Collections" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Edit the template of News" })).toBeNull();
 });
 
 test("Insert offers This entry first in a template, its Field block alone, and a Collection list where the storage keeps collections, naming the first", () => {

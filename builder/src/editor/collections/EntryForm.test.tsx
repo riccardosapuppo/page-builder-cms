@@ -8,10 +8,11 @@
 // takes said and left out; a conflict settled by Reload or Keep mine;
 // publish and unpublish, an unpublish that finds another tab's newer draft
 // saying the conflict at once; a published entry's View, its live address
-// or the demo's own drawing of it; an image chosen in the library opened over
+// or the demo's own drawing of it; Edit the template beside them, the
+// template drawn with the entry; an image chosen in the library opened over
 // the screen; changes not saved asked about before they are left.
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { field, NEWS, openScreen, press, type } from "../../../test/collections-kit.tsx";
 import { FakeCollections } from "../../../test/fake-collections.ts";
 import { standInLayout } from "../../../test/text-editor-kit.ts";
@@ -173,6 +174,53 @@ test("on the CMS, View of an entry whose template has nothing live says the page
   const view = within(await within(dialog).findByRole("region", { name: "First swim" })).getByRole("link", { name: "View" });
   expect(view.getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/news\/first-swim$/);
   expect(view.getAttribute("title")).toBe("Its template is not published yet: visitors find no page at /news/first-swim until it is. Opens in a new tab.");
+});
+
+test("Edit the template, beside Preview and View, opens the template drawn with this entry; changes not saved, and text still in its pause, are asked about first", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const entry = fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: {} }, { published: true });
+  const openPage = vi.fn(async () => null);
+  const { kit, dialog } = await openScreen(fake, { openPage });
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  const form = await within(dialog).findByRole("region", { name: "First swim" });
+  const way = within(form).getByRole("button", { name: "Edit the template" });
+  expect(way.previousElementSibling?.textContent).toBe("View");
+  expect(way.getAttribute("title")).toBe("The template every entry of News is drawn with, opened on the canvas with this entry.");
+
+  await type(field(form, /^Title/), "First swim of autumn");
+  fireEvent.click(way);
+  const asked = () => within(dialog).getByRole("alertdialog", { name: /^Leave without saving\?/ });
+  expect(asked().textContent).toContain("The changes to this entry are not saved.");
+  fireEvent.click(within(asked()).getByRole("button", { name: "Keep editing" }));
+  expect(openPage).not.toHaveBeenCalled();
+  expect(field(form, /^Title/)).toHaveProperty("value", "First swim of autumn");
+
+  // Saved, then typed again and not handed over: still asked.
+  await press(within(form).getByRole("button", { name: "Save" }));
+  fireEvent.change(field(form, /^Summary/), { target: { value: "Cold water." } });
+  expect(kit.ui.getState().pending.waiting).toBe(1);
+  fireEvent.click(way);
+  await press(within(asked()).getByRole("button", { name: "Leave without saving" }));
+  expect(openPage).toHaveBeenCalledWith(news.template.id);
+  expect(kit.ui.getState().previewEntry).toEqual({ collectionId: news.id, choice: entry.id });
+  expect(kit.ui.getState().collections).toBeNull();
+  expect(fake.entries[0]?.title).toBe("First swim of autumn");
+});
+
+test("an entry never saved has Edit the template too, which opens the template drawn with what its Page tab picks", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const openPage = vi.fn(async () => null);
+  const { kit, dialog } = await openScreen(fake, { openPage });
+  await press(await within(dialog).findByRole("button", { name: "Write the first entry" }));
+  const form = within(dialog).getByRole("region", { name: "New entry" });
+  const way = within(form).getByRole("button", { name: "Edit the template" });
+  expect(way.getAttribute("title")).toBe("The template every entry of News is drawn with, opened on the canvas.");
+  await press(way);
+  expect(openPage).toHaveBeenCalledWith(news.template.id);
+  expect(kit.ui.getState().previewEntry).toBeNull();
+  expect(kit.ui.getState().collections).toBeNull();
 });
 
 test("a link's words handed over, then its address before the words are drawn: the link keeps both", async () => {

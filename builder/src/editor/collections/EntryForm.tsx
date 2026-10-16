@@ -9,7 +9,9 @@
 // saved draft drawn with the template's draft, as its page would show it
 // (/preview/<template id>?entry=<entry id>, the demo's ?preview=...&entry=);
 // View, for an entry that is published, its page as visitors find it
-// (/<prefix>/<slug>, the demo's own ?entry=<entry id>).
+// (/<prefix>/<slug>, the demo's own ?entry=<entry id>); and Edit the
+// template, which opens the template on the canvas drawn with this entry
+// (./edit-template.ts), once the screen has asked about what is not saved.
 //
 // What the form holds is checked as the storage checks it before it is
 // sent (validateEntry, ../../shared/validate.ts): a required field with
@@ -63,6 +65,10 @@ export interface EntryFormProps {
   // Whether the form holds changes not saved, for the screen to ask before
   // they are left.
   onDirty: (dirty: boolean) => void;
+  // The template this entry is drawn with, on the canvas: drawn with the
+  // entry as last read or saved, or with the template's own pick for one
+  // never saved (null).
+  onEditTemplate: (entry: Entry | null) => void;
 }
 
 interface Held {
@@ -107,7 +113,7 @@ function viewOf(live: string, entryId: number, livePages: boolean, templateLive:
   };
 }
 
-export function EntryForm({ storage, collection, entryId, livePages, refused, onBack, onChanged, onDirty }: EntryFormProps) {
+export function EntryForm({ storage, collection, entryId, livePages, refused, onBack, onChanged, onDirty, onEditTemplate }: EntryFormProps) {
   const { ui, clock } = useEnv();
   const session = useOptionalSession();
   const cmsOrigin = session?.cmsOrigin ?? null;
@@ -482,6 +488,14 @@ export function EntryForm({ storage, collection, entryId, livePages, refused, on
               <Icon name="external" />View
             </a>
           )}
+          <button
+            className="btn btn-small btn-quiet co-edit-template"
+            type="button"
+            title={entry ? `The template every entry of ${collection.name} is drawn with, opened on the canvas with this entry.` : `The template every entry of ${collection.name} is drawn with, opened on the canvas.`}
+            onClick={() => onEditTemplate(kept.current)}
+          >
+            <Icon name="page" />Edit the template
+          </button>
           {entry?.published && <button className="btn btn-small btn-secondary" type="button" aria-disabled={off ? true : undefined} onClick={off ? undefined : () => void unpublish()}>{busy === "unpublishing" ? "Unpublishing…" : "Unpublish"}</button>}
           <button className="btn btn-small btn-dark" type="button" data-entry-save="" aria-disabled={off || saveWhy !== null ? true : undefined} title={saveWhy ?? undefined} onClick={off || saveWhy !== null ? undefined : () => void saveNow()}>{busy === "saving" ? "Saving…" : "Save"}</button>
           <button className={`btn btn-small${off || publishWhy !== null ? "" : " btn-primary"}`} type="button" aria-disabled={off || publishWhy !== null ? true : undefined} title={publishWhy ?? undefined} onClick={off || publishWhy !== null ? undefined : () => void publish()}>{busy === "publishing" ? "Publishing…" : "Publish"}</button>

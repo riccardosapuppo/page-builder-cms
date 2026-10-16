@@ -1,10 +1,13 @@
 // The collection list's two groups. Entries: which collection, how many,
 // in what order and which of them (every entry, or those whose choice
 // field holds an option or whose toggle is on or off), with how many of
-// its entries no list shows, since they are not published, and the way to
-// them in Collections. Cards: the layout, a grid's columns, the fields a
-// card shows (an image, a day, an excerpt, a price), the words at its foot
-// and what the list says when it has nothing to show.
+// its entries no list shows, since they are not published, the way to
+// them in Collections, and the way to the collection's template, opened
+// as Edit the template opens it (../../editor/collections/edit-template.ts),
+// unless that template is the page open. Cards: the layout, a grid's
+// columns, the fields a card shows (an image, a day, an excerpt, a price),
+// the words at its foot and what the list says when it has nothing to
+// show.
 //
 // The choices are the collection's fields as the storage last gave them
 // (../../editor/collections/content.ts); a field the list names that the
@@ -12,6 +15,7 @@
 // shows, and draws nothing until another is chosen.
 import { REMOVE, type Updates } from "../../document/commands.ts";
 import { draftCount } from "../../editor/collections/content.ts";
+import { editTemplate } from "../../editor/collections/edit-template.ts";
 import { useSiteCollection, useSiteCollections } from "../../editor/collections/use-content.ts";
 import { directionWords } from "../../editor/collections/words.ts";
 import { useEnv, useUi } from "../../editor/context.tsx";
@@ -89,7 +93,8 @@ function cardChoices(fields: readonly Field[], types: readonly string[], value: 
 function EntriesContent({ block }: ContentProps<"collectionList">) {
   const { ui } = useEnv();
   const commands = useBlockCommands(block.id);
-  const keeps = useOptionalSession()?.capabilities.collections ?? false;
+  const session = useOptionalSession();
+  const keeps = session?.capabilities.collections ?? false;
   const all = useSiteCollections();
   const id = block.props.collection;
   const shown = useSiteCollection(id);
@@ -162,6 +167,12 @@ function EntriesContent({ block }: ContentProps<"collectionList">) {
           <button className="btn btn-secondary btn-block" type="button" onClick={() => ui.getState().setCollections({ collectionId: shown.collection.id, tab: "entries" })}>
             <Icon name="collection" />{shown.collection.name} in Collections
           </button>
+          {/* Not in the collection's own template, the page open already (a list of its other entries). */}
+          {session?.current?.id !== shown.collection.template.id && (
+            <button className="btn btn-secondary btn-block" type="button" onClick={() => editTemplate({ ui, session }, shown.collection)}>
+              <Icon name="page" />Edit the template of {shown.collection.name}
+            </button>
+          )}
         </div>
       )}
     </>

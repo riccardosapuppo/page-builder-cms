@@ -134,11 +134,12 @@ const saved = (page: Page) => expect(saveState(page)).toHaveText("Saved");
 // The editor's one sentence about what just happened.
 const notice = (page: Page) => page.locator(".notice");
 
-test("a first visit opens the example site: five pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
+test("a first visit opens the example site: five pages, the header and footer and the templates of its two collections, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
   const pages = page.getByRole("dialog", { name: "Pages" });
-  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Shop/shopPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
+  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Shop/shopPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished", "NewsEvery entryPublished", "Club kitEvery entryPublished"]);
+  await expect(pages.getByRole("list", { name: "Templates" }).locator(".page-row")).toHaveCount(2);
   await shoot(page, "demo-pages");
   await page.keyboard.press("Escape");
 
@@ -443,7 +444,7 @@ test("the example site's News: an entry's View opens it as the demo draws it; it
   // band of the others renamed, saved and published here.
   await form.getByRole("button", { name: "All entries" }).click();
   await collections.getByRole("tab", { name: "Settings" }).click();
-  await collections.getByRole("button", { name: "Edit the template" }).click();
+  await collections.getByRole("button", { name: "Edit the template", exact: true }).click();
   await expect(page.getByRole("button", { name: "Switch page. Open: News" })).toBeVisible();
   await expect(block(page, "entry-title").locator("h1")).toHaveText(NEWS_TITLES[0]!);
   await block(page, "more-heading").click();
@@ -462,7 +463,7 @@ test("the example site's News: an entry's View opens it as the demo draws it; it
   // and its panel.
   await sidebar.getByRole("button", { name: "Back to Slack Water" }).click();
   await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
-  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^News/ }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("list", { name: "The site's pages" }).getByRole("button", { name: /^News/ }).click();
   await expect(page.getByRole("button", { name: "Switch page. Open: News" })).toBeVisible();
   await expect(block(page, "entries-list").locator(".sw-entry-title")).toHaveText(NEWS_TITLES);
   await block(page, "entries-list").click();

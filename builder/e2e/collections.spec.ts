@@ -263,7 +263,7 @@ test("Edit the template opens it on the canvas as a part opens, its Page tab say
   const screen = await openCollections(page);
   await screen.getByRole("button", { name: new RegExp(`^${name},`) }).click();
   await screen.getByRole("tab", { name: "Settings" }).click();
-  await screen.getByRole("button", { name: "Edit the template" }).click();
+  await screen.getByRole("button", { name: "Edit the template", exact: true }).click();
   await expect(screen).toHaveCount(0);
   await expect(page.getByRole("button", { name: `Switch page. Open: ${name}` })).toBeVisible();
   await expect(page.locator(".tb-page-where")).toHaveText("every entry");

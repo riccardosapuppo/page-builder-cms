@@ -2,11 +2,12 @@
 // the form responses (and from the phone's More): the site's types of
 // content and their entries (docs/decisions/collections-are-typed-entries.md).
 // On the left the collections, each with its address and its count, and
-// New collection; on the right the one chosen, under two tabs: its entries
+// New collection; on the right the one chosen, its name, its address and
+// the way to its template in its head, then two tabs: its entries
 // (./EntryList.tsx), each opened in its form (./EntryForm.tsx) in the
 // table's place, and its settings (./Settings.tsx), the way to its
-// template among them. With none yet, the screen says what a collection is
-// and makes the first (./NewCollection.tsx).
+// template among them too. With none yet, the screen says what a
+// collection is and makes the first (./NewCollection.tsx).
 //
 // The window is the media library's and the form responses': its size,
 // head and footer, Esc and Close, the focus back where it was when it
@@ -30,6 +31,7 @@ import { useOptionalSession } from "../session.tsx";
 import type { CollectionsAt } from "../ui-store.ts";
 import { useCollectionsStorage, type CollectionsStorage } from "./context.ts";
 import "./collections.css";
+import { editTemplate } from "./edit-template.ts";
 import { EntryForm } from "./EntryForm.tsx";
 import { EntryList } from "./EntryList.tsx";
 import { NewCollection } from "./NewCollection.tsx";
@@ -190,15 +192,13 @@ function Screen({ storage, at, onClose }: { storage: CollectionsStorage; at: Col
     setChosen(null);
   });
 
-  // The template, on the canvas, as a part opens: the screen closes first,
-  // the focus going back where it was, and the page open is saved first
-  // (the shell's openPage).
-  const editTemplate = (target: Collection) => ask(() => {
+  // The template, on the canvas, by Edit the template (./edit-template.ts),
+  // which closes the screen first: from the collection's head, its
+  // settings, or an entry's form, whose entry the canvas then draws it
+  // with.
+  const toTemplate = (target: Collection, entry: Entry | null = null) => ask(() => {
     dirty.current = false;
-    onClose();
-    void session?.openPage(target.template.id).then((why) => {
-      if (why) ui.getState().say(why);
-    });
+    editTemplate({ ui, session }, target, entry);
   });
 
   const made = (fresh: Collection) => {
@@ -308,8 +308,14 @@ function Screen({ storage, at, onClose }: { storage: CollectionsStorage; at: Col
                 <>
                   <div className="co-head">
                     <button className="btn btn-small btn-quiet co-back-list" type="button" onClick={toList}><Icon name="arrow-left" />Collections</button>
-                    <h3 className="co-head-name">{collection.name}</h3>
-                    <p className="co-head-meta">{addressLine(collection.prefix, livePages)}</p>
+                    <div className="co-head-line">
+                      <div className="co-head-words">
+                        <h3 className="co-head-name">{collection.name}</h3>
+                        <p className="co-head-meta">{addressLine(collection.prefix, livePages)}</p>
+                      </div>
+                      {/* Beside the name, whichever tab is open. */}
+                      <button className="btn btn-small btn-secondary co-head-template" type="button" aria-label={`Edit the template of ${collection.name}`} onClick={() => toTemplate(collection)}><Icon name="page" />Edit the template</button>
+                    </div>
                   </div>
                   <Tabs id={id} tab={tab} onTab={toTab} />
                   <div className="co-panel" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>
@@ -340,6 +346,7 @@ function Screen({ storage, at, onClose }: { storage: CollectionsStorage; at: Col
                           dirty.current = false;
                           setView({ kind: "list", focus: entryId ?? "new" });
                         })}
+                        onEditTemplate={(entry) => toTemplate(collection, entry)}
                       />
                     )}
                     {tab === "settings" && (
@@ -352,7 +359,7 @@ function Screen({ storage, at, onClose }: { storage: CollectionsStorage; at: Col
                         say={setNote}
                         onSaved={(fresh) => setList((before) => (before.phase === "ready" ? { ...before, collections: before.collections.map((c) => (c.id === fresh.id ? fresh : c)) } : before))}
                         onDeleted={deleted}
-                        onEditTemplate={() => editTemplate(collection)}
+                        onEditTemplate={() => toTemplate(collection)}
                       />
                     )}
                   </div>

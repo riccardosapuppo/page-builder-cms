@@ -2,13 +2,16 @@
 // design/layout/shots-extra/pages.png): the page being edited, like a
 // document's name, with whether it is live under it; pressed, it opens the
 // site's pages, a search over them, each with its address and whether it
-// is live, then the site's header and footer, which open as pages do, and
-// New page. A small window that stays beside its button (a
+// is live, then the site's header and footer, which open as pages do, then
+// the templates of the site's collections, each named by its collection
+// and opened as Edit the template opens it (./collections/edit-template.ts),
+// and New page. A small window that stays beside its button (a
 // non-modal dialog): its search takes the focus, the arrows move between
 // the pages, Esc, a click elsewhere or the focus leaving it closes it, and
 // the focus goes back to the title.
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type RefObject } from "react";
-import type { PageSummary } from "../storage/adapter.ts";
+import type { Collection, PageSummary } from "../storage/adapter.ts";
+import { editTemplate } from "./collections/edit-template.ts";
 import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { coarsePointer } from "./layout-mode.ts";
@@ -73,8 +76,9 @@ export function PageSwitch({ open, onOpen }: PageSwitchProps) {
 
 // Where the open document is on the site, beside its title: the home page,
 // a page's address, a part's place on every page, or a template's, every
-// entry of its collection.
-export function whereWords(page: OpenPage): string {
+// entry of its collection. The list of pages says it of a part and of a
+// template too.
+export function whereWords(page: Pick<OpenPage, "kind" | "home" | "slug">): string {
   if (page.kind === "template") return "every entry";
   return page.kind !== "page" ? "every page" : page.home ? "home page" : `/${page.slug ?? ""}`;
 }
@@ -129,10 +133,14 @@ export function PublishedStatus({ page, id }: { page: OpenPage; id?: string }) {
   return <span className="tb-status" id={id} title={`${since}${waitingTitle}`}><span className="dot-live" aria-hidden="true" />Published{waiting}</span>;
 }
 
-const matches = (page: PageSummary, query: string) => {
+// Whether the search finds a row: by its name (a page's title, a
+// template's collection's name) or its address.
+const matches = (query: string, ...words: ReadonlyArray<string | null>) => {
   const wanted = query.trim().toLowerCase();
-  return wanted === "" || page.title.toLowerCase().includes(wanted) || (page.slug ?? "").toLowerCase().includes(wanted);
+  return wanted === "" || words.some((said) => (said ?? "").toLowerCase().includes(wanted));
 };
+
+const NO_COLLECTIONS: readonly Collection[] = [];
 
 interface PagesWindowProps {
   button: RefObject<HTMLButtonElement | null>;
@@ -155,8 +163,12 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
     close.current = onClose;
   });
   const current = session.current;
-  const shown = session.pages.filter((page) => matches(page, query));
-  const shownParts = session.parts.filter((part) => matches(part, query));
+  const shown = session.pages.filter((page) => matches(query, page.title, page.slug));
+  const shownParts = session.parts.filter((part) => matches(query, part.title, part.slug));
+  // The collections' templates, as the canvas last read the collections
+  // (./collections/content.ts): where the storage keeps them.
+  const collections = useUi((u) => u.siteEntries?.collections) ?? NO_COLLECTIONS;
+  const shownTemplates = session.capabilities.collections ? collections.filter((collection) => matches(query, collection.name)) : NO_COLLECTIONS;
 
   useEffect(() => {
     const open = coarsePointer() ? box.current?.querySelector<HTMLElement>(".page-row[aria-current]") : null;
@@ -171,8 +183,14 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
   }, [button]);
 
   // A page's address as a person reads it, and whether it is live; a part
-  // has none, and is on every page.
-  const address = (page: PageSummary) => (page.kind !== "page" ? "Every page" : page.home ? siteAddress("/", session.cmsOrigin) : `/${page.slug ?? ""}`);
+  // has none, and is on every page, a template on every entry.
+  const address = (page: PageSummary) => {
+    if (page.kind !== "page") {
+      const where = whereWords(page);
+      return `${where.charAt(0).toUpperCase()}${where.slice(1)}`;
+    }
+    return page.home ? siteAddress("/", session.cmsOrigin) : `/${page.slug ?? ""}`;
+  };
   const state = (page: PageSummary): { dot: string; words: string } => {
     const isOpen = current?.id === page.id;
     if (!(isOpen ? current.published : page.published)) return { dot: "dot-draft", words: "Not published yet" };
@@ -180,9 +198,10 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
     return notLive > 0 ? { dot: "dot-part", words: publishWords(session.capabilities.livePages).notLive(changes(notLive)) } : { dot: "dot-live", words: "Published" };
   };
 
-  // One page or part of the list: opens it, or, open already, closes the
-  // window.
-  const pageRow = (page: PageSummary) => {
+  // One page, part or template of the list: opens it, or, open already,
+  // closes the window. A template is named by its collection, and opened
+  // as Edit the template opens it.
+  const pageRow = (page: PageSummary, of?: Collection) => {
     const isOpen = current?.id === page.id;
     const said = state(page);
     return (
@@ -197,11 +216,12 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
             button.current?.focus();
             return;
           }
-          void session.openPage(page.id).then((why) => ui.getState().say(why));
+          if (of) editTemplate({ ui, session }, of);
+          else void session.openPage(page.id).then((why) => ui.getState().say(why));
         }}
       >
-        <Icon name={page.kind === "page" ? "page" : "globe"} />
-        <span className="page-row-name"><strong>{isOpen ? title : page.title}</strong><small>{address(page)}</small></span>
+        <Icon name={of ? "collection" : page.kind === "page" ? "page" : "globe"} />
+        <span className="page-row-name"><strong>{of ? of.name : isOpen ? title : page.title}</strong><small>{address(page)}</small></span>
         <span className="pr-state"><span className={said.dot} aria-hidden="true" />{said.words}</span>
       </button>
     );
@@ -255,6 +275,14 @@ function PagesWindow({ button, title, onClose, onNew }: PagesWindowProps) {
           <h3 className="pages-group" id="pages_site">On every page</h3>
           <ul className="pages-list" aria-labelledby="pages_site">
             {shownParts.map((part) => <li key={part.id}>{pageRow(part)}</li>)}
+          </ul>
+        </>
+      )}
+      {shownTemplates.length > 0 && (
+        <>
+          <h3 className="pages-group" id="pages_templates">Templates</h3>
+          <ul className="pages-list" aria-labelledby="pages_templates">
+            {shownTemplates.map((collection) => <li key={collection.template.id}>{pageRow(collection.template, collection)}</li>)}
           </ul>
         </>
       )}

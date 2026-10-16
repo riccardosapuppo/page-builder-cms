@@ -2,7 +2,10 @@
 // address names (a collection's template too, drawn with its entry, even
 // when the collections cannot be read, and given its collection once a
 // later read finds it; else the home page), the collections read again as
-// Collections closes, the latest read standing over a slower one; its
+// Collections closes, the latest read standing over a slower one, and a
+// template chosen in the page switch opened as Edit the template opens it,
+// the page's edit saved first, the switch saying it is live once it is
+// published; its
 // edits reach the adapter through
 // the autosave on the injected clock, a save the server refuses with a 422
 // puts each error on its block's field, and a new page is made and opened.
@@ -876,6 +879,46 @@ test("a template opened while the collections cannot be read finds its collectio
   expect(await screen.findByRole("heading", { level: 1, name: "The title of an entry" })).toBeTruthy();
   expect(screen.getByText("Template of News")).toBeTruthy();
   expect(env.ui.getState().previewEntry).toEqual({ collectionId: 3, choice: "sample" });
+});
+
+test("a collection's template chosen in the page switch opens through the shell, the page's edit waiting saved first; published, the switch says so once the template is left", async () => {
+  const { site, written } = start(1, { collections: true });
+  await opened();
+  const rows = (scope: HTMLElement) => [...scope.querySelectorAll(".page-row")].map((row) => row.textContent);
+  const templates = () => within(screen.getByRole("dialog", { name: "Pages" })).getByRole("list", { name: "Templates" });
+  relabel("Winter");
+  expect(site.saves).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
+  expect(rows(templates())).toEqual(["NewsEvery entryNot published yet"]);
+  fireEvent.click(within(templates()).getByRole("button", { name: /^News/ }));
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  expect(site.saves).toHaveLength(1);
+  expect(site.drafts.get(1)!.document.sections[0]!.props.label).toBe("Winter");
+  expect(written).toEqual([1, TEMPLATE]);
+  expect(await screen.findByRole("heading", { level: 1, name: "Dawn swims" })).toBeTruthy();
+
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Publish" })));
+  expect(site.publishes).toEqual([{ id: TEMPLATE, revision: 1 }]);
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: News" }));
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Pages" })).getByRole("button", { name: /^Winter series/ }));
+  await screen.findByRole("button", { name: "Switch page. Open: Winter series" });
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
+  await waitFor(() => expect(rows(templates())).toEqual(["NewsEvery entryPublished"]));
+});
+
+test("a template's publish set for a time, once the time comes and the template is read again, is listed live in the page switch when the template is left", async () => {
+  const { site, clock } = start(TEMPLATE, { schedule: true, collections: true });
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  await scheduleFor("Oct 2, 2026", "3:00 PM");
+  site.fire(TEMPLATE);
+  await act(() => clock.advance(5 * 3_600_000 + 1_000));
+  await waitFor(() => expect(document.querySelector(".tb-status")?.textContent).toBe("Published"));
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: News" }));
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Pages" })).getByRole("button", { name: /^Home/ }));
+  await screen.findByRole("button", { name: "Switch page. Open: Home" });
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Home" }));
+  const templates = within(screen.getByRole("dialog", { name: "Pages" })).getByRole("list", { name: "Templates" });
+  await waitFor(() => expect([...templates.querySelectorAll(".page-row")].map((row) => row.textContent)).toEqual(["NewsEvery entryPublished"]));
 });
 
 test("of two reads of the collections, the later one asked for stands: a slow one that ends after it changes nothing", async () => {

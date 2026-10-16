@@ -2,14 +2,16 @@
 // many of its saved changes are not (the draft's revision against the one
 // the live version came from); the three drawers' keys, one drawer open at
 // a time; the page switch, a small window with a search over the site's
-// pages; the sidebar's key.
+// pages, its header and footer, and its collections' templates; the
+// sidebar's key.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { editorKit } from "../../test/editor-kit.tsx";
 import { page } from "../../test/document-page.ts";
+import { newsCollection, templateOf } from "../../test/site-entries.ts";
 import type { PageSummary, Published, Schedule } from "../storage/adapter.ts";
-import type { OpenPage } from "./session.tsx";
+import { emptySession, type OpenPage } from "./session.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 const live: Published = { slug: "winter-series", versionNumber: 4, draftRevision: 3, publishedAt: "2026-09-28T07:02:00.000Z" };
@@ -203,6 +205,99 @@ test("the page switch lists the header and the footer apart, on every page, and 
     fireEvent.click(within(pages).getByRole("button", { name: /^Footer/ }));
   });
   expect(opened).toEqual([5]);
+});
+
+// The site's collections and their templates, as the canvas read them: News
+// live, Club kit's template never published.
+const COLLECTIONS = [
+  newsCollection({ template: { ...templateOf(90, "News"), revision: 2, published: { slug: null, versionNumber: 3, draftRevision: 2, publishedAt: "2026-10-01T09:00:00.000Z" } } }),
+  newsCollection({ id: 4, name: "Club kit", prefix: "shop", template: templateOf(91, "Kit page") }),
+];
+const KEEPS_COLLECTIONS = { ...emptySession().capabilities, collections: true };
+const pageRows = (scope: HTMLElement) => within(scope).queryAllByRole("button").filter((b) => b.classList.contains("page-row"));
+
+test("the page switch lists the collections' templates apart, after the header and the footer, each named by its collection, on every entry, live or not; the search finds them, the arrows reach them, and one opens as Edit the template opens it", async () => {
+  const opened: number[] = [];
+  const summary = (id: number, kind: PageSummary["kind"], title: string, slug: string | null): PageSummary => ({
+    id, kind, title, slug, home: false, revision: 1, updatedAt: "2026-10-02T08:00:00.000Z", published: null, scheduled: null,
+    links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null },
+  });
+  const kit = editorKit({
+    document: page(),
+    session: {
+      current: open({}),
+      capabilities: KEEPS_COLLECTIONS,
+      pages: [summary(1, "page", "Winter series", "winter-series"), summary(2, "page", "News", "news")],
+      parts: [summary(4, "header", "Header", null), summary(5, "footer", "Footer", null)],
+      openPage: async (id) => {
+        opened.push(id);
+        return null;
+      },
+    },
+  });
+  kit.ui.getState().setSiteEntries({ collections: COLLECTIONS, entries: new Map() });
+  kit.ui.getState().setCollections({ collectionId: null });
+  kit.render(<TopBar />);
+  const title = screen.getByRole("button", { name: "Switch page. Open: Winter series" });
+  fireEvent.click(title);
+  const pages = screen.getByRole("dialog", { name: "Pages" });
+  expect(within(pages).getAllByRole("heading").map((h) => h.textContent)).toEqual(["On every page", "Templates"]);
+  const templates = within(pages).getByRole("list", { name: "Templates" });
+  // Named by the collection, not by the template's own title.
+  expect(pageRows(templates).map((r) => r.textContent)).toEqual(["NewsEvery entryPublished", "Club kitEvery entryNot published yet"]);
+  expect(templates.compareDocumentPosition(within(pages).getByRole("list", { name: "On every page" })) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+
+  // The arrows go on from the footer to the templates.
+  const footer = within(pages).getByRole("button", { name: /^Footer/ });
+  footer.focus();
+  fireEvent.keyDown(footer, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(pageRows(templates)[0]);
+
+  // The search finds a template by its collection's name, as it finds a
+  // page by its title.
+  const search = within(pages).getByRole("searchbox", { name: "Find a page" });
+  fireEvent.change(search, { target: { value: "KIT" } });
+  expect(pageRows(pages).map((r) => r.querySelector("strong")?.textContent)).toEqual(["Club kit"]);
+  fireEvent.change(search, { target: { value: "news" } });
+  expect(pageRows(pages).map((r) => [r.querySelector("strong")?.textContent, r.querySelector("small")?.textContent])).toEqual([["News", "/news"], ["News", "Every entry"]]);
+  fireEvent.change(search, { target: { value: "harbour" } });
+  expect(within(pages).queryByRole("heading", { name: "Templates" })).toBeNull();
+
+  // Opened as Edit the template opens it: by the page's opening, the
+  // Collections screen closed if it was open, the window gone.
+  fireEvent.change(search, { target: { value: "" } });
+  await act(async () => {
+    fireEvent.click(within(within(pages).getByRole("list", { name: "Templates" })).getByRole("button", { name: /^Club kit/ }));
+  });
+  expect(opened).toEqual([91]);
+  expect(kit.ui.getState().collections).toBeNull();
+  expect(screen.queryByRole("dialog", { name: "Pages" })).toBeNull();
+});
+
+test("the template open is marked in the page switch, and pressed it only closes the window; the templates are listed only where the storage keeps collections and one exists", async () => {
+  const opened: number[] = [];
+  const template = open({ id: 90, kind: "template", slug: null, collection: { id: 3, name: "News", prefix: "news" } });
+  const kit = editorKit({ document: page(), session: { current: template, capabilities: KEEPS_COLLECTIONS, openPage: async (id) => (opened.push(id), null) } });
+  kit.ui.getState().setSiteEntries({ collections: COLLECTIONS, entries: new Map() });
+  const { unmount } = kit.render(<TopBar />);
+  const title = screen.getByRole("button", { name: "Switch page. Open: Winter series" });
+  fireEvent.click(title);
+  const row = within(screen.getByRole("list", { name: "Templates" })).getByRole("button", { name: /^News/ });
+  expect(row.getAttribute("aria-current")).toBe("page");
+  fireEvent.click(row);
+  expect(opened).toEqual([]);
+  expect(screen.queryByRole("dialog", { name: "Pages" })).toBeNull();
+  expect(document.activeElement).toBe(title);
+  unmount();
+
+  for (const [capabilities, collections] of [[emptySession().capabilities, COLLECTIONS], [KEEPS_COLLECTIONS, []]] as const) {
+    const plain = editorKit({ document: page(), session: { current: open({}), capabilities } });
+    plain.ui.getState().setSiteEntries({ collections, entries: new Map() });
+    const drawn = plain.render(<TopBar />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
+    expect(within(screen.getByRole("dialog", { name: "Pages" })).queryByRole("heading", { name: "Templates" })).toBeNull();
+    drawn.unmount();
+  }
 });
 
 test("the sidebar's key hides the sidebar and brings it back, pressed while it shows", () => {
