@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { WIDGET_TYPES } from "../src/shared/document.ts";
 import { DEMO_DESCRIPTION, DEMO_PAGES_BASE, DEMO_PREVIEW, DEMO_SITE, demoBase, demoLinkPreview, linkPreviewTags, previewVersion } from "./demo.ts";
 
 test("the demo's base: Pages' path by default, the root or another path when DEMO_BASE says so, and nothing else", () => {
@@ -54,6 +55,15 @@ test("the demo's build puts the tags in its page's head and the picture at its r
   (plugin.generateBundle as unknown as (this: unknown) => void).call({ emitFile: (file: (typeof emitted)[number]) => emitted.push(file) });
   expect(emitted.map((file) => [file.type, file.fileName])).toEqual([["asset", "preview.png"]]);
   expect(Buffer.from(emitted[0]!.source).equals(readFileSync(DEMO_PREVIEW.source))).toBe(true);
+});
+
+// The description a shared link shows counts the kinds of block in words:
+// held to the editor's own list, a new kind cannot leave it behind.
+test("the description names as many kinds of block as the editor has", () => {
+  const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const tens = ["", "", "twenty", "thirty", "forty"];
+  const words = (n: number) => (n < 20 ? ones[n]! : `${tens[Math.floor(n / 10)]!}${n % 10 === 0 ? "" : `-${ones[n % 10]!}`}`);
+  expect(/\b([a-z-]+) kinds of block\b/.exec(DEMO_DESCRIPTION)?.[1]).toBe(words(WIDGET_TYPES.length));
 });
 
 test("the picture is a PNG of the size the tags give, light enough for the sites that draw previews", () => {
