@@ -61,7 +61,7 @@ export const ENTRY_NOT_PUBLISHED_LINE = "This entry is not published in this bro
 // The cart and an order, above them.
 export const CART_VIEW_LINE = "The cart, kept in this browser. In the full system, Rails keeps a visitor's cart in a cookie of its own and serves it at /cart, and Checkout goes to Stripe's checkout, in its test mode.";
 export const ORDER_LINE = "An order made in this browser, and nothing was paid. In the full system, Rails sends the visitor to Stripe's checkout, in its test mode, and this page says the order is paid once Stripe does.";
-export const SHOP_OFF_LINE = "The shop is off in this browser: the Shop screen in the editor turns it on. In the full system, /cart is the site's 404 page while the shop is off.";
+export const SHOP_OFF_LINE = "The shop is off in this browser: the Shop screen in the editor turns it on. In the full system, no cart answers at /cart while the shop is off: it is the site's 404 page, or a page the site had there before the shop.";
 export const NO_ORDER_LINE = "This browser has no such order.";
 // What the page of an order says of it, in the site's frame.
 export const ORDER_TITLE = "Order made";
@@ -121,7 +121,7 @@ function findEntry(site: SiteEntries | null, entryId: number): { collection: Col
 }
 
 // What the cart is drawn from, while the shop is on and its collection is
-// there; null otherwise, when the CMS answers /cart with its 404 page.
+// there; null otherwise, when no cart answers at the CMS's /cart.
 export function cartShop(site: SiteEntries | null, shop: ShopSettings | null, pages: readonly PageSummary[]): CartShop | null {
   if (!shop?.enabled || shop.productsCollectionId === null || shop.priceField === null) return null;
   const collection = site?.collections.find((one) => one.id === shop.productsCollectionId);

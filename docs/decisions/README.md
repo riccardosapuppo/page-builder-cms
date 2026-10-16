@@ -42,6 +42,9 @@ it holds.
   from Stripe drawn in the site's frame, the demo's own cart drawn as the
   CMS's, held to it by goldens, and its checkout making the demo's
   orders; and the example site's club kit, sold at `/shop` in pounds.
+  After a review, a site upgraded with a page or a collection at `/cart`
+  keeps it: the cart's routes match only while the shop is open, what
+  holds `cart` keeps it, and the shop is not turned on over it.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

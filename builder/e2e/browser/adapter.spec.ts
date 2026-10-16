@@ -14,7 +14,8 @@
 // and every picture's address; the databases of the build before
 // collections and of the build before the shop, each upgraded to this
 // build's with every record kept; and the shop as a new database has it,
-// and the demo's checkout, which only the browser's storage has.
+// and the demo's checkout, which only the browser's storage has; and a
+// page and a collection that held cart before the shop reserved it.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
@@ -555,5 +556,46 @@ test("the demo's checkout orders the lines for sale at the prices their products
   } finally {
     const back = await tab.setShop({ enabled: found.enabled, currency: found.currency, productsCollectionId: found.productsCollectionId, priceField: found.priceField });
     expect(back.ok).toBe(true);
+  }
+});
+
+// A database that held cart before the shop reserved it: a page at /cart
+// and a collection at the prefix cart, written as the build before kept
+// them, past today's rules. What holds cart keeps it, as on the CMS, where
+// a reserved word stops new writes only: the page is published there
+// again, the collection changed as any other; once the collection moves,
+// it does not take cart back, nor does anything new. And the shop turns on
+// over them, as the CMS's does not (cms/test/integration/
+// cart_address_test.rb): this storage serves no address, and the demo's
+// cart is at ?cart.
+test("a page and a collection that held cart before the shop keep it, as on the CMS, and nothing takes it anew; the shop turns on over them, the demo's cart being at ?cart", async ({ browser }) => {
+  const own = await browser.newContext();
+  try {
+    const opened = await storagePage(await own.newPage());
+    const tab = remoteAdapter(opened, capabilities);
+    const made = await page(tab);
+    expect((await tab.publish(made.id)).ok).toBe(true);
+    const fields = [{ key: "price", label: "Price", type: "number" as const, required: false }];
+    const kit = await tab.createCollection({ name: "Club kit", prefix: unique("kit"), fields, sort: { by: "title", direction: "asc" } });
+    if (!kit.ok) throw new Error(JSON.stringify(kit.problem));
+    const kept = async (store: string, id: number) => ((await opened.evaluate((name) => window.storagePage!.records(name), store)) as Array<{ id: number }>).find((record) => record.id === id)!;
+    const pageRecord = await kept("pages", made.id);
+    await opened.evaluate((record) => window.storagePage!.put("pages", record), { ...pageRecord, slug: "cart", liveSlug: "cart" });
+    const kitRecord = await kept("collections", kit.value.id);
+    await opened.evaluate((record) => window.storagePage!.put("collections", record), { ...kitRecord, prefix: "cart" });
+
+    const again = await tab.publish(made.id);
+    expect(again.ok && again.value.published.slug, "published again at the address it holds").toBe("cart");
+    const renamed = await tab.updateCollection(kit.value.id, { name: "Club shop" });
+    expect(renamed.ok && [renamed.value.name, renamed.value.prefix], "changed as any other, at the prefix it holds").toEqual(["Club shop", "cart"]);
+    expect((await tab.setShop({ enabled: true, currency: "GBP", productsCollectionId: kit.value.id, priceField: "price" })).ok, "the shop on over them").toBe(true);
+
+    const reserved = (outcome: { ok: boolean; problem?: { errors?: ReadonlyArray<{ pointer: string; keyword: string }> } }) => (outcome.ok ? [] : outcome.problem!.errors!.map((e) => `${e.pointer} ${e.keyword}`));
+    expect(reserved(await tab.updateCollection(kit.value.id, { prefix: unique("kit") }))).toEqual([]);
+    expect(reserved(await tab.updateCollection(kit.value.id, { prefix: "cart" })), "moved, it does not take cart back").toEqual(["/prefix reserved"]);
+    expect(reserved(await tab.createCollection({ name: "Basket", prefix: "cart", fields, sort: { by: "title", direction: "asc" } })), "nor does a new one").toEqual(["/prefix reserved"]);
+    expect(reserved(await tab.createPage({ title: "Basket", slug: "cart" })), "nor a new page").toEqual(["/slug reserved"]);
+  } finally {
+    await own.close();
   }
 });

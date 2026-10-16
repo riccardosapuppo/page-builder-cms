@@ -138,6 +138,23 @@ class SeedTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # A site upgraded from before the shop, its page at /cart written as that
+  # build kept it, past today's validations (cart_address_test.rb).
+  test "a site that has a page at /cart from before the shop keeps it: the seed leaves the shop off and says why" do
+    page = Page.create_with_draft!(title: "Old basket", slug: "old-basket")
+    page.publish!
+    Page.where(id: page.id).update_all(slug: "cart")
+    Draft.where(page_id: page.id).update_all(slug: "cart")
+
+    said = seed
+
+    assert_match %r{The shop +/cart +off, not set: The page "Old basket" is at /cart, the address of the shop's cart: give the page another address and publish it before turning the shop on\.\n}, said
+    assert_nil ShopSetting.current.changed_at, "the settings were never changed"
+    get "/cart"
+    assert_response :ok
+    assert_select "title", "Old basket"
+  end
+
   test "each collection is made as its file has it: its definition, each entry published with its values and its images by their uploads' ids, in the file's order, and its template published, its list naming the collection" do
     seed_beside_another
     uploads = MediaItem.includes(file_attachment: :blob).to_h { |item| [ item.file.filename.to_s, item ] }

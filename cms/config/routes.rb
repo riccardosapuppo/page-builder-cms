@@ -82,15 +82,23 @@ Rails.application.routes.draw do
 
   # The shop's cart (CartController): the cart, a product put in, a line's
   # quantity set (0 takes it out), the checkout that sends the visitor to
-  # Stripe, and the thanks page Stripe sends them back to. The site's 404
-  # page while the shop is off. cart is reserved as a page's address and
-  # as a prefix (Slug::RESERVED), so neither a page nor an entry is ever
-  # at one of these.
-  get "cart", to: "cart#show", format: false
-  post "cart/items", to: "cart#add", format: false
-  post "cart/items/:entry_id", to: "cart#set", constraints: { entry_id: /[0-9]{1,18}/ }, format: false
-  post "cart/checkout", to: "cart#checkout", format: false
-  get "cart/thanks", to: "cart#thanks", format: false
+  # Stripe, and the thanks page Stripe sends them back to. They match only
+  # while the shop is open (ShopSetting.open?, read at each request, by a
+  # lambda so that it names the class reloaded in development); with the
+  # shop off, /cart and the addresses below it fall through to the pages'
+  # and the entries' routes below, as before the shop: a page a site had
+  # at /cart before cart was reserved, a collection at the prefix cart, or
+  # the 404 page. The shop is not turned on while a page or a collection
+  # holds cart (ShopSetting), and cart is reserved for a new page's
+  # address and a new prefix (Slug::RESERVED), so while these answer,
+  # neither a page nor an entry is at one of them.
+  constraints(->(_request) { ShopSetting.open? }) do
+    get "cart", to: "cart#show", format: false
+    post "cart/items", to: "cart#add", format: false
+    post "cart/items/:entry_id", to: "cart#set", constraints: { entry_id: /[0-9]{1,18}/ }, format: false
+    post "cart/checkout", to: "cart#checkout", format: false
+    get "cart/thanks", to: "cart#thanks", format: false
+  end
 
   root "pages#home"
   get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page

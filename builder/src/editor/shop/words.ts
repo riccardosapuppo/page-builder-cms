@@ -45,11 +45,25 @@ export function pricePicked(collection: Pick<Collection, "fields">): string | nu
   return (offered.find((field) => field.key === "price") ?? offered[0])?.key ?? null;
 }
 
+// Where the editor frees the cart's address, after the storage's own words
+// for what holds it: a site upgraded from before the shop may have a page
+// at /cart (cartAddress) or a collection at the prefix cart (cartPrefix),
+// and the CMS turns the shop on over neither
+// (cms/app/models/shop_setting.rb). Only the storage knows which page or
+// collection it is, so its sentence names it; the browser's storage never
+// refuses so, its cart being at ?cart.
+export const CART_ADDRESS_WHERE = "Open the page: its address is in the Page tab, under Title and address.";
+export const CART_PREFIX_WHERE = "Its prefix is in Collections, on the collection's Settings tab.";
+
 // A refusal of the settings, said at the control of the member it is at,
-// by its keyword (the shop's rules', ../../shared/shop.ts, or the
-// schema's), else in the storage's own words.
+// by its keyword (the shop's rules', ../../shared/shop.ts, the schema's or
+// the CMS's own), else in the storage's own words.
 export function settingRefusal(member: string, keyword: string, message: string): string {
   switch (keyword) {
+    case "cartAddress":
+      return `${message} ${CART_ADDRESS_WHERE}`;
+    case "cartPrefix":
+      return `${message} ${CART_PREFIX_WHERE}`;
     case "collectionExists":
       return "That collection is not there any more: choose another.";
     case "numberField":

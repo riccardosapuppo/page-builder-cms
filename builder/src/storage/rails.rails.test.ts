@@ -64,7 +64,7 @@ async function sendForm(live: string, formId: string, answers: Readonly<Record<s
 
 // Each product put in the cart, then the checkout: 303 to the fake
 // Stripe's page, where a visitor who pays leaves it. With the shop off
-// the cart's addresses are the site's 404 page, and no order is made.
+// no route takes the cart's writes, a 404, and no order is made.
 async function checkout(lines: readonly CartLine[], { paid = false }: { paid?: boolean } = {}): Promise<boolean> {
   shoppers += 1;
   let cookie: string | null = null;

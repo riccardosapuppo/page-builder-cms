@@ -6,10 +6,10 @@
 # checks it: its name, the prefix every entry's address starts with
 # (/<prefix>/<entry>), its fields, and the order its entries are listed in
 # when nothing else is asked for (default_sort, the definition's sort). A
-# prefix is one collection's only, and never an address the application
-# answers itself; a page may have it as its address, the page of the
-# section that lists the entries at /news: a page's address is one part,
-# an entry's two.
+# prefix is one collection's only, and never, when it is new, an address
+# the application answers itself; a page may have it as its address, the
+# page of the section that lists the entries at /news: a page's address
+# is one part, an entry's two.
 #
 # Its template is a page of kind "template" (Page, CollectionTemplate),
 # made with the collection, an empty document titled with its name and
@@ -133,8 +133,13 @@ class Collection < ApplicationRecord
     raise CollectionDocument::Invalid, [ BlockDocument::Error.new(pointer: index ? "/fields/#{index}/type" : "/fields", keyword: "shopPrice", block_pointer: nil, message: message) ]
   end
 
+  # For a new prefix only, as a page's address (SlugValidator): a
+  # collection a site had at the prefix cart before the shop reserved it
+  # keeps it, its name, fields and order changed as any other's, while the
+  # shop is off (ShopSetting); once it moves, it cannot take cart back.
   def prefix_not_reserved
     return if errors.include?(:prefix) || prefix.nil?
+    return if persisted? && !will_save_change_to_prefix?
     return unless Slug.reserved?(prefix) || RESERVED_PREFIXES.include?(prefix)
 
     errors.add(:prefix, :reserved, message: "is an address the application uses itself")

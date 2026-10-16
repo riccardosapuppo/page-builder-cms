@@ -861,11 +861,14 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
 
   // Whether a prefix is another collection's, or reserved: Collection's
   // checks, the first that fails, in their order. A page's address may be
-  // one.
-  async function prefixTaken(tx: IDBTransaction, prefix: string, collectionId: number | null): Promise<FieldError[]> {
+  // one. held: the prefix the collection has, which a reserved word does
+  // not take from it, as on the CMS, where it stops new writes only: a
+  // collection a database had at cart before the shop reserved it keeps
+  // it, its other members changed as any collection's.
+  async function prefixTaken(tx: IDBTransaction, prefix: string, collectionId: number | null, held: string | null = null): Promise<FieldError[]> {
     const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
     if (collections.some((collection) => collection.id !== collectionId && collection.prefix === prefix)) return [fieldError("/prefix", "taken", WORDS.prefixTaken)];
-    return prefixReserved(prefix);
+    return prefix === held ? [] : prefixReserved(prefix);
   }
 
   // The images an entry's values name, each checked to be in the library,
@@ -1473,9 +1476,9 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
         const price = await shopPriceFault(tx, record.id, checked.value.fields);
         if (price) return invalid("invalid_request", [price]);
         // Nothing changed, nothing saved: the CMS checks the prefix as it
-        // saves a change.
+        // saves a change, a reserved one only when it is new.
         if (sameJson(checked.value, definitionOf(record))) return { ok: true, value: await collectionOf(tx, record) };
-        const taken = await prefixTaken(tx, checked.value.prefix, record.id);
+        const taken = await prefixTaken(tx, checked.value.prefix, record.id, record.prefix);
         if (taken.length > 0) return invalid("invalid_request", taken);
         const changed: CollectionRecord = { ...record, ...checked.value, publishedRevision: record.publishedRevision + 1, updatedAt: now() };
         await request(tx.objectStore("collections").put(changed));

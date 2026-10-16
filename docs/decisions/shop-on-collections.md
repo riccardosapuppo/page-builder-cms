@@ -16,7 +16,8 @@ the pages that draw them. Its third, the same day, the site (below, "The
 site"): the cart and the page back from Stripe drawn in the site's frame,
 the demo's own cart and checkout, and a whole checkout in a browser. Its
 fourth, the example site's shop and the README's pictures (below, "The
-example site").
+example site"). After a review the same day, a site upgraded with a page
+or a collection at `/cart` keeps it (below, "A site that held /cart").
 
 ## The question
 
@@ -88,9 +89,10 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   kilobyte at most (413). Each id and quantity is held to the shop's rules
   and to the published products, and a refusal is the cart drawn again
   with what was refused. Nothing there is cached (`no-store`) or for
-  search engines (`noindex`); with the shop off, every one is the site's
-  404 page. `cart` is reserved as a page's address and as a prefix, on or
-  off.
+  search engines (`noindex`). They answer only while the shop is open:
+  with it off, they are the site's pages' and entries' addresses again,
+  as before the shop (below, "A site that held /cart"). `cart` is reserved
+  for a new page's address and a new prefix, on or off.
 - **An order** is what a checkout asks Stripe to be paid: its lines as they
   were sold (each product's entry id, its title and unit price then, the
   quantity), the total, the currency, the id of its Checkout Session at
@@ -331,6 +333,79 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   from leaves the shop unset, the seed saying why. The demo's example site
   is a new edition.
 
+## A site that held /cart
+
+- **The question.** Before the shop, `cart` was an address like any other:
+  a site could have a page at `/cart`, or a collection at the prefix
+  `cart` with its entries at `/cart/<slug>`. The shop put the cart's
+  routes before the pages' and the entries', and reserved `cart`, which
+  stopped new writes but did nothing with what was there. On a CMS
+  upgraded with such a page or collection, CartController answered at
+  its addresses, the 404 page while the shop is off, as a site has it
+  until its owner turns it on: the content was gone from where its
+  visitors found it, and the page could not even be published again,
+  since the check of a page's address refused the reserved word to the
+  page that held it.
+- **While the shop is off, `cart` is the site's.** The cart's five routes
+  are in a routing constraint, `ShopSetting.open?`, read at each request
+  (a lambda, so that it names the class reloaded in development), and
+  match only while the shop is open; otherwise the request falls through
+  to the routes after them, the pages' and the entries', as before the
+  shop: the page at `/cart`, an entry at `/cart/<slug>`, `/cart/thanks`
+  among them, or the 404 page any missing page gets. The cart's writes
+  then find no route, as before the shop, Rails' own 404 as for any
+  address no route takes. While they answer, the cart's pages are still
+  `no-store` and `noindex`; a page at `/cart` is cached as any page is,
+  and once it has moved, its old address leads to it while the shop is
+  off, a 301 that every visit asks again (`no-cache`), so a browser finds
+  the cart there once the shop is on. A constraint rather than a check
+  in the controller: a controller cannot hand the request on to the
+  routes after it, while a constraint that does not match lets the
+  router try them, as Rails' `X-Cascade: pass` does.
+- **What holds `cart` keeps it, and nothing takes it anew.** The
+  reservation stops new writes only: a page's address, live or next, and
+  a collection's prefix are refused a reserved word when they take it (a
+  new page or collection, or a value changed to it), not while they hold
+  it (`SlugValidator#held?`, `Collection#prefix_not_reserved`). The page
+  at `/cart` is published there again; the collection at `cart` changes
+  its name, its fields and its order as any other. Once either moves, it
+  cannot take `cart` back, and no new page or prefix can.
+- **The shop is not turned on while anything holds `cart`.**
+  `ShopSetting.change!` looks, after the shop's rules and for a shop that
+  is on, in the transaction that writes the settings: a page live at
+  `/cart`; a page whose next address is `cart`, which would go live there
+  and holds it as much (its publish is refused there, as a new write); a
+  collection whose prefix is `cart`. Each is a fault at `/enabled`,
+  keyword `cartAddress` for a page and `cartPrefix` for a collection,
+  every one at once, the pages first, naming it (a page by its title, a
+  collection by its name) and saying how to free it: another address,
+  published (only published, for a page whose next address is another
+  already), or another prefix. Nothing takes `cart` anew, so once the
+  shop is on, nothing holds it while it is on.
+- **A rule of the CMS's alone.** It reads the pages, their drafts and the
+  collections' prefixes, which the shop's rules are handed nothing of,
+  and it is there because the CMS serves `/cart`: the browser's storage
+  serves no address, the demo draws its cart at `?cart` and its pages at
+  `?published=<id>`, so no page's address collides with the cart there,
+  and its shop turns on over a page at `cart`. So it is `ShopSetting`'s,
+  not the twins' (`shop_rules.rb`, `shop.ts`), and the shop's cases
+  (`contract/shop/cases.json`) hold no case of it: a twin's rule that the
+  browser would never apply would be one storage's rule written twice.
+  Where the browser's storage keeps a twin of the CMS's checks, it moves
+  with them: a collection that held `cart` keeps it there too
+  (`prefixTaken`), as a page's address there already did, checked only
+  when it changes.
+- **The editor says the refusal at the switch.** The Shop screen says a
+  refusal at the control of its member, `/enabled` the on and off
+  switch, in words of its keyword: for these two, the CMS's sentence,
+  which alone knows which page or collection it is, then where the editor
+  changes it ("Open the page: its address is in the Page tab, under Title
+  and address."; "Its prefix is in Collections, on the collection's
+  Settings tab.").
+- **The seed says why.** On a site that holds `cart`, `db:seed`, which
+  turns the example site's shop on only while its settings were never
+  changed, leaves it off and prints the refusal.
+
 ## What it costs
 
 - **A cookie at last, though on no page**: the cart's addresses set one,
@@ -398,6 +473,27 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   not empty in a run that checked out before it.
 - **The footer's More pages menu holds four links**, and on a phone it
   folds into Menu, where three still fitted.
+- **A query more at each of the cart's addresses**: the constraint reads
+  the settings, and the controller again. An address the cart's routes do
+  not take reads nothing more: the router tries the constraint only for
+  a path one of them matches.
+- **With the shop off, the cart's writes are Rails' own 404**,
+  `public/404.html` in production, not the site's 404 page, as any address
+  no route takes: a visitor who presses Add to cart on a page left open
+  since the shop was on gets it.
+- **What gives `cart` up cannot take it back**, even before its next
+  publish: a page's next address set back to `cart` is a new write. And a
+  page whose next address was `cart` before the shop is not published
+  until it has another, the shop off as on.
+- **A shop turned on before this check, over a page or a collection that
+  held `cart`**, stays on, its cart over them: no settings with the shop
+  on are saved until they are freed; turning it off is.
+- **The cart's address is looked at after the shop's rules**: settings
+  with a fault of their own are refused for it first, and for what holds
+  `cart` once they pass.
+- **The editor learns of it after Save**: its own check before sending,
+  the twin's, knows nothing of the pages, so the refusal is the CMS's
+  answer.
 
 ## The proof
 
@@ -575,3 +671,49 @@ search engine, with no script and no cookie set by reading it, and failed
 with the cart's `no-store` taken out. At the root, `npm run
 measure:server` (`RESULT: 38 checks passed`) finds a cold visit writing
 514 fragments, one more than before for the footer's link to the shop.
+
+For a site that held `/cart`, after the review, on 16 October 2026. From
+`cms/`, `ruby bin/rails test` (630 runs, none failing, 540 answers of the
+API held to `openapi.yaml`) holds the upgrade
+(`test/integration/cart_address_test.rb`, the rows written past the
+validations as the migration tests write theirs): with the shop off,
+never set or saved off, the page at `/cart` is there, cached as a page
+is, and the cart's writes find no route and set no cookie; the shop
+turned on is refused at `/enabled`, naming the page, and again, saying to
+publish it, once its next address is another, then turns on once it is
+published, `/cart` the cart, which takes a product; off again, the old
+address leads to the page, `no-cache`; a page to be published at `/cart`
+is refused the same, and is not published there; a collection at the
+prefix `cart` has its entries below `/cart`, `/cart/thanks` among them,
+is renamed, is refused, naming it, until it has another prefix, and
+cannot take `cart` back; every one that holds it is named at once, the
+pages first; the page is published again at `/cart`, and once it moves,
+neither it nor a new page takes `cart`. `test/integration/cart_test.rb`
+holds `/cart` and `/cart/thanks` with the shop off to the 404 page of a
+missing page, and `seed_test.rb` a site with a page at `/cart` keeping
+it, the shop left off and the refusal printed. Planted one at a time,
+each failed: the cart's routes matching whatever the shop (six tests),
+the shop turned on whatever holds `cart` (five), the pages' next
+addresses not looked at (one), the collections not looked at (two), a
+page's reserved address refused to the page that holds it (one), a
+collection's prefix to the collection (one). `ruby bin/rubocop` and
+`ruby bin/brakeman -q` found nothing.
+
+From `builder/`, `npm test` (1464 tests in 179 files, none failing) holds
+the Shop screen's words for the refusal (`src/editor/shop/words.test.ts`,
+`ShopScreen.test.tsx`): at the switch, the CMS's sentence naming what
+holds `cart`, then where the editor frees it, the shop left off; planted,
+the CMS's sentence said alone, and the refusal said above the controls,
+each failed both. `npm run e2e:browser` (107 passed, 7 skipped) holds the
+browser's storage (`e2e/browser/adapter.spec.ts`): a page and a
+collection written at `cart`, the page published there again, the
+collection renamed, the shop turned on over them, and neither the
+collection, once moved, nor anything new taking `cart`; planted, the
+prefix refused to the collection that holds it, it failed. `npm run
+test:rails` (109 tests), `e2e/shop.spec.ts` and `e2e/shop-checkout.spec.ts`
+on their own (2 passed: the checkout's test, which opened the editor on
+whatever page earlier tests of a whole run had made and failed alone,
+makes its own now), `npm run check:serving` (`RESULT: 107 checks
+passed`) and, at the root, `npm run measure:bundle` (`RESULT: 9 checks
+passed`) and `npm run test:tools` (134 passed, 1 skipped on Windows) pass
+as before.

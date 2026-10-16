@@ -28,7 +28,10 @@
 # Every product and quantity is held to the shop's rules (ShopRules) and
 # to the published products.
 #
-# With the shop off, every one of these addresses is the site's 404 page.
+# The routes come here only while the shop is open (config/routes.rb):
+# with it off, /cart and the addresses below it are the site's pages' and
+# entries' again. A shop turned off between the route and the action is
+# the site's 404 page here, never stored (shop_open).
 class CartController < ApplicationController
   include PublicPage
 
@@ -163,7 +166,8 @@ class CartController < ApplicationController
     response.headers["X-Robots-Tag"] = "noindex"
   end
 
-  # The shop is on, its collection there: else the site's 404 page.
+  # The shop is on, its collection there, as the routes found it: else
+  # the site's 404 page.
   def shop_open
     @shop = ShopSetting.current
     @collection = Collection.find_by(id: @shop.products_collection_id) if @shop.open?

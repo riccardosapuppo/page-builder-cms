@@ -74,7 +74,9 @@ order follows does not go without a new order, invalid at `/sort/by`,
 it). A refusal of a definition is invalid at each fault, its schema's and
 its rules', at pointers into the definition (`/fields/1/key` `uniqueKey`),
 and at `/prefix` for a prefix another collection has (`taken`), or one
-the application answers itself (`reserved`). A page's address may be a
+the application answers itself (`reserved`), when it is new: a
+collection that had `cart` before the shop reserved it keeps it, as a
+page keeps such an address, as on the CMS. A page's address may be a
 prefix, made there or moved there, and a prefix a page's address: the
 page at `/news` lists the entries at `/news/<slug>`. Each collection answers its counts of
 entries, live entries, and `publishedRevision`, which every publish,

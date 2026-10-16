@@ -117,7 +117,10 @@ the server writes for them. The editor's half is
   both must find in them at their pointers, keywords and words, a price
   in the smallest unit of its currency and an amount in the site's words,
   a cart as it is kept, a change of it, and a cart priced from what its
-  products published.
+  products published. Not the CMS's own refusal of a shop turned on over
+  a page or a collection that holds `/cart`, which reads the pages and
+  which the browser's storage, serving no address, never makes
+  (`ShopSetting`, `docs/decisions/shop-on-collections.md`).
 - [`cart/`](cart): the cart's pages, which no document holds, drawn by
   the CMS (`app/views/cart/`, `CartHelper`, `CartPage`) at `/cart` and
   `/cart/thanks`, and by the browser demo (`builder/src/demo/cart-view.tsx`

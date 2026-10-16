@@ -6,12 +6,14 @@
 // thanks page, which says the order is paid and lists what it took. The
 // editor's Shop screen lists the order as paid, with the email the buyer
 // gave and the items; and the cart has lost what was paid and kept the
-// line put in meanwhile. The products, their template and the shop's
-// settings are the test's own, the settings put back as they were found.
+// line put in meanwhile. The products, their template, the shop's
+// settings and the page the editor opens on are the test's own, the
+// settings put back as they were found: the test passes on a CMS of its
+// own as in a whole run.
 import type { APIRequestContext, Page } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { makeCollection, makeEntry, saveDocument } from "./helpers/collections.ts";
-import { cms, column, expect, section, stripe, test, watchQuietly, widget } from "./helpers/site.ts";
+import { cms, column, expect, heading, makePage, open, section, stripe, test, watchQuietly, widget } from "./helpers/site.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -65,6 +67,7 @@ test("a visitor checks out on the CMS: a product put in from its page, its quant
   await makeEntry(request, kit, { title: "Tow float", slug: "tow-float", values: { summary: "An orange float.", price: 24, "in-stock": true } });
   await saveDocument(request, kit.templateId, "Checkout kit", PRODUCT_TEMPLATE);
   await putShop(request, { enabled: true, currency: "GBP", productsCollectionId: kit.id, priceField: "price" });
+  const home = await makePage(request, "Checkout home", [section("s", "Story", [column("c", [heading("h", "The club's kit")])])]);
 
   const { tab, problems, close } = await visitorTab(page);
   try {
@@ -132,8 +135,7 @@ test("a visitor checks out on the CMS: a product put in from its page, its quant
   }
 
   // 6. The order paid in the editor's Shop screen, with the buyer's email.
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: /^Switch page/ })).toBeVisible();
+  await open(page, home.id);
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
   await page.getByRole("menuitem", { name: "Shop" }).click();
   const shop = page.getByRole("dialog", { name: "Shop" });

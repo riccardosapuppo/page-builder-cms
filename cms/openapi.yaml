@@ -1460,10 +1460,16 @@ paths:
         collection the site does not have (`collectionExists`) or one with
         no number field (`numberField`); a price that is no number field of
         that collection, or one named with no collection (`priceField`); a
-        shop on without both (`required`). The collection and the price
-        field the settings name then stay as they are while named: the
-        collection is not deleted (409 `collection_in_shop`), and its price
-        field neither goes nor changes its type (422, `shopPrice`).
+        shop on without both (`required`). Then, for a shop that is on, the
+        cart's address, `/cart`, which nothing may hold, each fault at
+        `/enabled` naming what holds it and how to free it: a page at
+        `/cart` or to be published there (`cartAddress`), a collection
+        whose prefix is `cart` (`cartPrefix`). Only a site that held `cart`
+        before the shop reserved it can: the shop is not turned on over
+        it. The collection and the price field the settings name then stay
+        as they are while named: the collection is not deleted (409
+        `collection_in_shop`), and its price field neither goes nor changes
+        its type (422, `shopPrice`).
       tags: [shop]
       requestBody:
         required: true
@@ -2202,7 +2208,7 @@ components:
       required: [enabled, currency, productsCollectionId, priceField]
       properties:
         enabled:
-          description: Whether the shop sells. Off, the cart's addresses are the site's 404 page.
+          description: Whether the shop sells. Off, no cart answers at `/cart` and below it, which are the site's pages' and entries' addresses again, the 404 page unless a page or a collection held `cart` before the shop reserved it.
           type: boolean
         currency:
           $ref: '#/components/schemas/Currency'

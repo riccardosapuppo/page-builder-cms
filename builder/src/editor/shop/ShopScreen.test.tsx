@@ -164,6 +164,30 @@ test("each refusal is said at its control: the editor's own checks before sendin
   expect(within(dialog).getByRole("radiogroup", { name: "Currency" }).getAttribute("aria-invalid")).toBe("true");
 });
 
+// A site upgraded from before the shop may hold /cart; the CMS turns the
+// shop on over no page and no collection that holds it.
+test("the shop turned on over what holds /cart, refused by the CMS: said at the switch, each naming what holds it and where to free it, and the shop stays off", async () => {
+  const fake = new FakeShop();
+  const { dialog } = await openShop(fake);
+  await act(async () => fireEvent.click(within(dialog).getByRole("switch", { name: "The shop is on" })));
+  await choose(within(dialog).getByLabelText("Collection"), "7");
+  const page = "The page \"Club news\" is at /cart, the address of the shop's cart: give the page another address and publish it before turning the shop on.";
+  const collection = "The collection Notices has the prefix cart, so its entries are below /cart, the address of the shop's cart: give the collection another prefix before turning the shop on.";
+  fake.refuseNext = [{ pointer: "/enabled", keyword: "cartAddress", message: page }, { pointer: "/enabled", keyword: "cartPrefix", message: collection }];
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+
+  expect(within(dialog).getByText("Not saved: a setting needs a change, marked below.")).toBeTruthy();
+  const toggle = within(dialog).getByRole("switch", { name: "The shop is on" });
+  expect(toggle.getAttribute("aria-invalid")).toBe("true");
+  const said = document.getElementById(toggle.getAttribute("aria-describedby")?.split(" ").at(-1) ?? "");
+  expect([...(said?.querySelectorAll("p.error") ?? [])].map((p) => p.textContent)).toEqual([
+    `${page} Open the page: its address is in the Page tab, under Title and address.`,
+    `${collection} Its prefix is in Collections, on the collection's Settings tab.`,
+  ]);
+  expect(dialog.querySelector(".shop-other")).toBeNull();
+  expect(fake.settings.enabled).toBe(false);
+});
+
 test("checkout set up, not set up and why, with how to set it up; in the browser, what the full system does; never a key", async () => {
   const fake = new FakeShop();
   const { dialog } = await openShop(fake);

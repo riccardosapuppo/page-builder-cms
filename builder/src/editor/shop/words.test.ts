@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { KIT, NEWS, order } from "../../../test/fake-shop.ts";
 import { StorageError } from "../../storage/adapter.ts";
 import { settingIssues } from "./Settings.tsx";
-import { CHECKOUT_FULL_SYSTEM, CHECKOUT_HOW, CHECKOUT_READY, checkoutWords, currencyWords, emailOf, itemCount, itemsWords, OFF_WORDS, onWords, ordersLine, pricePicked, refreshedWords, refreshFailure, settingRefusal, settingsLine } from "./words.ts";
+import { CART_ADDRESS_WHERE, CART_PREFIX_WHERE, CHECKOUT_FULL_SYSTEM, CHECKOUT_HOW, CHECKOUT_READY, checkoutWords, currencyWords, emailOf, itemCount, itemsWords, OFF_WORDS, onWords, ordersLine, pricePicked, refreshedWords, refreshFailure, settingRefusal, settingsLine } from "./words.ts";
 
 test("each keyword of the shop's rules and of the schema is said in words at its control; anything else, as the storage says it", () => {
   expect(settingRefusal("productsCollectionId", "collectionExists", "The site has no collection 9.")).toBe("That collection is not there any more: choose another.");
@@ -22,6 +22,20 @@ test("each keyword of the shop's rules and of the schema is said in words at its
   expect(settingRefusal("priceField", "type", "must be a field's key, or null")).toBe("Choose a number field of the list.");
   expect(settingRefusal("currency", "type", "must be a string")).toBe("must be a string");
   expect(settingRefusal("priceField", "another", "Something else.")).toBe("Something else.");
+});
+
+// The CMS's refusal to turn the shop on over a page or a collection that
+// holds /cart, from before the shop reserved it: its words name which,
+// and the screen adds where the editor changes it.
+test("the cart's address held by a page or a collection is said at the switch: the storage's words, which name it, then where to free it", () => {
+  const page = "The page \"Club news\" is at /cart, the address of the shop's cart: give the page another address and publish it before turning the shop on.";
+  const collection = "The collection Notices has the prefix cart, so its entries are below /cart, the address of the shop's cart: give the collection another prefix before turning the shop on.";
+  expect(settingRefusal("enabled", "cartAddress", page)).toBe(`${page} Open the page: its address is in the Page tab, under Title and address.`);
+  expect(settingRefusal("enabled", "cartPrefix", collection)).toBe(`${collection} Its prefix is in Collections, on the collection's Settings tab.`);
+  expect(settingIssues([{ pointer: "/enabled", keyword: "cartAddress", message: page }, { pointer: "/enabled", keyword: "cartPrefix", message: collection }]).enabled).toEqual([
+    `${page} ${CART_ADDRESS_WHERE}`,
+    `${collection} ${CART_PREFIX_WHERE}`,
+  ]);
 });
 
 test("the refusals land at their members; one at no member is said above the controls", () => {

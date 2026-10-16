@@ -441,7 +441,7 @@ no warnings, the same morning).
 | `POST /`, `POST /<slug>` | a form of that page, sent by a visitor ([Forms a visitor sends](#forms-a-visitor-sends)) |
 | `/sent/<form id>`, `/<slug>/sent/<form id>` | what the form says once its answers are kept, after the 303; `no-store` and `noindex` |
 | `POST /preview/<page id>` | a form sent from the draft preview: 403, a page saying forms are sent from the published page, and nothing kept |
-| `/cart`, `POST /cart/items`, `POST /cart/items/<entry id>`, `POST /cart/checkout`, `/cart/thanks?session_id=<id>` | the shop's cart, its checkout and where Stripe sends a visitor back ([The shop](#the-shop)); `no-store` and `noindex`; the 404 page while the shop is off |
+| `/cart`, `POST /cart/items`, `POST /cart/items/<entry id>`, `POST /cart/checkout`, `/cart/thanks?session_id=<id>` | the shop's cart, its checkout and where Stripe sends a visitor back ([The shop](#the-shop)); `no-store` and `noindex`; only while the shop is open: with it off, none of these is the cart, and `/cart` and the addresses below it are the rows above, the 404 page unless a page or a collection held `cart` before the shop |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
   twenty-two in all, walked by `BlocksHelper#render_document`. Every block
@@ -717,8 +717,21 @@ fault at its member. While they name a collection, on or off, it is not
 deleted (409 `collection_in_shop`), and its price field neither goes nor
 takes another type (422, `shopPrice`).
 
+**`cart` is the site's while the shop is off.** The cart's routes match
+only while the shop is open (`ShopSetting.open?`, read at each request):
+with it off, `/cart` and the addresses below it are the pages' and the
+entries' again, as before the shop. `cart` is reserved for a new page's
+address and a new prefix, on or off, but a site upgraded from before the
+shop may hold it: a page at `/cart` (published there again as any page
+while it holds it) or a collection at the prefix `cart` (changed as any
+other). The shop is not turned on while one does: 422 at `/enabled`,
+keyword `cartAddress` for a page at `/cart` or to be published there,
+`cartPrefix` for the collection, each naming it and saying how to free it
+(another address, published; another prefix). Once one gives `cart` up, it
+cannot take it back.
+
 **The cart's addresses** ([CartController](app/controllers/cart_controller.rb)),
-the site's 404 page while the shop is off:
+while the shop is open:
 
 | Address | What it does |
 | --- | --- |
@@ -1259,7 +1272,9 @@ together, 422 `invalid_request` at its pointer (`/fields/1/key`
 `unknownField`, `/values/summary` `required`...). A prefix is unique,
 refused at `/prefix` with the keyword `taken`, and never one the
 application answers itself (`Slug.reserved?`, and `sent`, whose
-`/sent/<form>` answers the home page's forms), keyword `reserved`. It
+`/sent/<form>` answers the home page's forms), keyword `reserved`: a
+new prefix, that is, as for a page's address, so a collection that had
+`cart` before the shop reserved it keeps it ([The shop](#the-shop)). It
 may be a page's address, next or live, and a page may move to it: the
 page at `/news` is the section's, listing what `/news/<slug>` draws.
 

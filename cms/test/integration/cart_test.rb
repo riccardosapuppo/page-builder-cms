@@ -32,22 +32,27 @@ class CartTest < ActionDispatch::IntegrationTest
     assert_equal "noindex", response.headers["X-Robots-Tag"], what
   end
 
-  test "with the shop off, or on with nothing to sell from, every one of the cart's addresses is the site's 404 page" do
+  # The cart's routes match only while the shop is open (config/routes.rb):
+  # with it off, /cart is a page's address again and /cart/thanks an
+  # entry's, here the 404 page as any missing page's, and the cart's
+  # writes find no route, as before the shop. A site that holds /cart is
+  # cart_address_test.rb's.
+  test "with the shop off, or never set, none of the cart's routes answers: /cart and /cart/thanks are the 404 page as any missing page's, the writes find no route, and no cookie is set" do
+    get "/nowhere"
+    missing = response.headers["Cache-Control"]
     [ -> { ShopSetting.change!({ "enabled" => false, "currency" => "GBP", "productsCollectionId" => @shop.id, "priceField" => "price" }) },
       -> { ShopSetting.delete_all } ].each do |turn_off|
       turn_off.call
-      get "/cart"
-      assert_response :not_found
-      assert_select "h1", "There is no page here"
-      assert_private "the cart's 404"
-      cart_post("/cart/items", { "entry" => @cap.id.to_s })
-      assert_response :not_found
-      cart_post("/cart/items/#{@cap.id}", { "quantity" => "2" })
-      assert_response :not_found
-      cart_post("/cart/checkout")
-      assert_response :not_found
-      get "/cart/thanks", params: { "session_id" => "cs_test_Any" }
-      assert_response :not_found
+      [ "/cart", "/cart/thanks?session_id=cs_test_Any" ].each do |path|
+        get path
+        assert_response :not_found
+        assert_select "h1", "There is no page here"
+        assert_equal missing, response.headers["Cache-Control"], "#{path}: the 404 page of a missing page, not the cart's"
+        assert_nil response.headers["X-Robots-Tag"], path
+      end
+      assert_no_route("/cart/items", { "entry" => @cap.id.to_s })
+      assert_no_route("/cart/items/#{@cap.id}", { "quantity" => "2" })
+      assert_no_route("/cart/checkout")
       assert_empty set_cookies, "no cookie from a shop that is off"
     end
   end

@@ -76,4 +76,13 @@ module ShopRequests
   def set_cookies
     Array(response.headers["Set-Cookie"]).flat_map { |line| line.split("\n") }
   end
+
+  # A write of the cart's sent while the shop is off, as a page left open
+  # since it was on would send it: as before the shop, no route takes it,
+  # so no controller answers, only Rails' own 404.
+  def assert_no_route(path, params = {})
+    cart_post(path, params)
+    assert_response :not_found, path
+    assert_raises(ActionController::RoutingError, path) { Rails.application.routes.recognize_path(path, method: :post) }
+  end
 end
