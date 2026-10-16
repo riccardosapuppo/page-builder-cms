@@ -420,17 +420,25 @@ normalised documents with the same numbers and values: 369/369
 RESULT: PASS (413 files, 0 disagreements, 0 exceptions)
 ```
 
-**The example site's pages**, which live once in
-[`../example-site/`](../example-site/) for the CMS's seed and the
-browser demo, and **the header's and footer's starters**,
+**The example site's pages and its collection's template**, which live
+once in [`../example-site/`](../example-site/) for the CMS's seed and
+the browser demo, and **the header's and footer's starters**,
 [`../cms/config/parts/`](../cms/config/parts/), go through the same
 comparison: [`compare-examples.ts`](tools/compare-examples.ts) copies
 them, for the run only, into a temporary corpus of `valid/` files with a
-manifest that names each page by its address and each starter by its
-part, and runs `compare.ts` on it, with their number as the floor.
-`npm run compare:examples`, on 12 October 2026:
+manifest that names each page by its address, the template by its
+collection and each starter by its part, and runs `compare.ts` on it,
+with their number as the floor. Then **the collection's entries**, each
+a case of its own with the collection's definition, go through the
+collection corpus's comparison (`compare.ts --kind collection`), the
+same way. `npm run compare:examples`, on 16 October 2026, the site's
+four pages, News's template and the two starters, then News's five
+entries:
 
 ```
+verdicts compared: 7; disagreements: 0; against the folder: 0; exceptions: 0
+normalised documents with the same numbers and values: 7/7
+RESULT: PASS (7 files, 0 disagreements, 0 exceptions)
 verdicts compared: 5; disagreements: 0; against the folder: 0; exceptions: 0
 normalised documents with the same numbers and values: 5/5
 RESULT: PASS (5 files, 0 disagreements, 0 exceptions)
@@ -454,7 +462,7 @@ The first six were run on 8 October 2026 on the corpus as it stood then,
 | `node compare.ts --schema <the schema before the marks rule>` (2 October 2026, on 211 files) | a mark type a run of text may carry twice | six failures: each engine `calls invalid/text-bold-twice.json valid, against its folder`, and the same for `text-break-italic-twice` and `text-link-twice` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_anchors` (2 October 2026, on 214 files, the file restored afterwards) | the Ruby twin without the anchor rule | three failures on each of the two anchor files: `verdicts differ on invalid/section-anchor-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
 | `node compare.ts` with `rules.rb` not calling `duplicate_field_names` (5 October 2026, on 249 files, the file restored afterwards) | the Ruby twin without the rule on a form's field names | six failures, three on each of the two files of repeated names: `verdicts differ on invalid/form-name-duplicate.json: ajv invalid, json_schemer valid`, `json_schemer calls ... valid, against its folder` and `only one side's rules accepted ...` |
-| `node compare-examples.ts --plant-invalid` (8 October 2026, on the example site's 3 pages) | the home page's first heading at level 7, in the temporary copy only | `ajv calls valid/home.json invalid, against its folder` and `json_schemer calls valid/home.json invalid, against its folder` |
+| `node compare-examples.ts --plant-invalid` (8 October 2026, on the example site's 3 pages; 16 October, with News's template and its five entries) | the home page's first heading at level 7, and since 16 October the first entry given a value under a key no field has, in the temporary copies only | `ajv calls valid/home.json invalid, against its folder` and `json_schemer calls valid/home.json invalid, against its folder`; on 16 October those two, and `ajv calls valid/news-autumn-tide-times.json invalid, against its folder` and the same of json_schemer, each comparison failing |
 
 
 ## The lint of the schema

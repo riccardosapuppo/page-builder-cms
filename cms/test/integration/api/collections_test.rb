@@ -40,27 +40,33 @@ class Api::CollectionsTest < ActionDispatch::IntegrationTest
     assert_equal 0, Collection.count
   end
 
-  test "a prefix taken by another collection or by a page, or one the application answers, is refused at the prefix" do
+  test "a prefix taken by another collection, or one the application answers, is refused at the prefix; a page's address is not taken" do
     create_news(prefix: "news")
     Page.create_with_draft!(title: "Tides", slug: "tides")
 
-    { "news" => "taken", "tides" => "taken", "preview" => "reserved", "sent" => "reserved" }.each do |prefix, keyword|
+    { "news" => "taken", "preview" => "reserved", "sent" => "reserved" }.each do |prefix, keyword|
       api :post, "/api/collections", news_definition(prefix: prefix)
       assert_response :unprocessable_content, prefix
       assert_equal [ [ "/prefix", keyword ] ], error_pointers, prefix
     end
+    api :post, "/api/collections", news_definition(prefix: "tides")
+    assert_response :created
+    assert_equal "tides", json["prefix"]
   end
 
-  test "a page cannot take a collection's prefix as its address" do
+  # The section's page lists the entries at their prefix: /news, then
+  # /news/<slug>.
+  test "a page takes a collection's prefix as its address, new or next" do
     create_news(prefix: "news")
+    create_news(prefix: "events")
 
     api :post, "/api/pages", { "title" => "News", "slug" => "news" }
-    assert_response :unprocessable_content
-    assert_equal [ [ "/slug", "taken" ] ], error_pointers
+    assert_response :created
+    assert_equal "news", json.dig("page", "slug")
     page = create_page(title: "Latest", slug: "latest")
-    api :patch, "/api/pages/#{page.id}", { "slug" => "news" }
-    assert_response :unprocessable_content
-    assert_equal [ [ "/slug", "taken" ] ], error_pointers
+    api :patch, "/api/pages/#{page.id}", { "slug" => "events" }
+    assert_response :ok
+    assert_equal "events", json.dig("page", "slug")
   end
 
   test "a change of the definition replaces the members given, checked whole, and moves the published revision" do

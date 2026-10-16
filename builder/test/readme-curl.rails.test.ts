@@ -172,8 +172,8 @@ function runPowerShell(block: string): { output: string } {
 // ---------------------------------------------------------------- the tests
 
 beforeAll(() => {
-  // The database `npm start` prepares: the example site's three pages, the
-  // first of them the home page.
+  // The database `npm start` prepares: the example site's four pages, the
+  // first of them the home page, and its collection.
   expect(seedCms({ folder })).toContain("Seeding the example site, Slack Water:");
 }, 120_000);
 

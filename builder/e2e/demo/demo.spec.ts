@@ -1,6 +1,6 @@
 // The browser demo's story, on its build as GitHub Pages serves it, each
 // test a first visit in a browser of its own:
-// - the example site is there, its three pages published, the home page
+// - the example site is there, its four pages published, the home page
 //   open, and the demo's line at the bottom, word for word, who made it a
 //   link to the author's site;
 // - the line's key shuts it down to who made it and opens it again, the
@@ -15,9 +15,11 @@
 //   form says what the full system does instead of sending; a link to the
 //   site's other page opens it as the demo draws it; Preview shows the
 //   draft;
-// - a collection made here, its first entry and its template published: a
-//   Collection list on the home page shows the entry, and its card opens
-//   the entry's page as the demo draws it;
+// - the example site's News: an entry's View in Collections opens the
+//   entry as the demo draws it; its template changed and published here;
+//   the news page, reached from the footer of the home page as published,
+//   lists the entries newest first, and a card opens the entry's page as
+//   the demo draws it, with the change, and the way back to all the news;
 // - the header and footer changed from their panel, opened by a click on
 //   the canvas's header: the canvas draws them as they are typed; saved,
 //   the pages published in this browser show them with nothing published
@@ -50,6 +52,16 @@ const PREVIEW_LINE = "The draft, as it would be published. In the full system, R
 const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
 const PART_LINE = "Publish puts it on every page shown in this browser.";
+
+// The example site's pages as a first visit numbers them: the template of
+// News first, made with its collection, then the pages in site.json's
+// order.
+const HOME = 2;
+const WINTER = 3;
+const NEWS = 4;
+const NOTICES = 5;
+// News's entries, newest first, as its list orders them.
+const NEWS_TITLES = ["The winter series starts on 1 November", "A rockpool morning for children", "Tea in the hut on Sundays", "Bright caps for the dark mornings", "The autumn tide times are up by the door"];
 
 // Every page of the context held to no error, in it or in its console, and
 // to no request off the demo's own path.
@@ -114,11 +126,11 @@ const saved = (page: Page) => expect(saveState(page)).toHaveText("Saved");
 // The editor's one sentence about what just happened.
 const notice = (page: Page) => page.locator(".notice");
 
-test("a first visit opens the example site: three pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
+test("a first visit opens the example site: four pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
   const pages = page.getByRole("dialog", { name: "Pages" });
-  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
+  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
   await shoot(page, "demo-pages");
   await page.keyboard.press("Escape");
 
@@ -182,7 +194,7 @@ test("the demo's line shuts down to who made it with its key, and opens again; t
   await openDemo(page);
   await expect(line).toHaveText(CREDIT);
   const view = await context.newPage();
-  await view.goto(`${DEMO_BASE}?published=1`);
+  await view.goto(`${DEMO_BASE}?published=${HOME}`);
   const viewLine = view.getByRole("complementary", { name: "About this demo" });
   await expect(viewLine).toHaveText(CREDIT);
   await viewLine.getByRole("button", { name: "About this demo" }).click();
@@ -341,12 +353,12 @@ test("Publish opens the page as published, with its line; the form says what the
   const opened = context.waitForEvent("page");
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   const view = await opened;
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=${HOME}`);
   await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText(PUBLISHED_LINE);
   await expect(view.getByRole("heading", { level: 1, name: "Swim when the tide stands still" })).toBeVisible();
   await expect(view).toHaveTitle("Slack Water");
   await expect(notice(page)).toContainText(PUBLISHED_LINE);
-  await expect(page.getByRole("link", { name: "View published page" })).toHaveAttribute("href", `${baseURL}${DEMO_BASE}?published=1`);
+  await expect(page.getByRole("link", { name: "View published page" })).toHaveAttribute("href", `${baseURL}${DEMO_BASE}?published=${HOME}`);
   // The demo's line under the page too.
   await expect(view.getByRole("complementary", { name: "About this demo" })).toHaveText(LINE);
   // The pictures come from the browser's library.
@@ -361,18 +373,18 @@ test("Publish opens the page as published, with its line; the form says what the
   await form.getByRole("checkbox", { name: "I can swim 200 meters without stopping" }).check();
   await form.getByRole("button", { name: "Send request" }).click();
   await expect(form.getByRole("status")).toHaveText(FORM_NOT_SENT);
-  await expect(view).toHaveURL(`${baseURL}${DEMO_BASE}?published=1`);
+  await expect(view).toHaveURL(`${baseURL}${DEMO_BASE}?published=${HOME}`);
   await form.scrollIntoViewIfNeeded();
   await shoot(view, "demo-form");
 
   // The site's links: the header's to a section of the page shown, the
   // winter series' back to the home page, each as the demo draws it.
   await view.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Questions" }).first().click();
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1#questions`);
-  await view.goto(`${DEMO_BASE}?published=2`);
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=${HOME}#questions`);
+  await view.goto(`${DEMO_BASE}?published=${WINTER}`);
   await expect(view.getByRole("heading", { level: 1, name: "Winter series" })).toBeVisible();
   await view.getByRole("link", { name: "Back to the club" }).click();
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=${HOME}`);
   await expect(view.getByRole("heading", { level: 1, name: "Swim when the tide stands still" })).toBeVisible();
 
   // Preview: the draft, in a tab of its own.
@@ -381,42 +393,56 @@ test("Publish opens the page as published, with its line; the form says what the
   const previewed = context.waitForEvent("page");
   await page.getByRole("link", { name: "Preview" }).click();
   const preview = await previewed;
-  await preview.waitForURL(`${baseURL}${DEMO_BASE}?preview=1`);
+  await preview.waitForURL(`${baseURL}${DEMO_BASE}?preview=${HOME}`);
   await expect(preview.getByRole("complementary", { name: "About this page" })).toHaveText(PREVIEW_LINE);
   await expect(preview.getByRole("heading", { level: 1, name: "A draft not published yet" })).toBeVisible();
   await shoot(preview, "demo-preview");
   await noSeriousFinding(preview, "the draft's preview");
 });
 
-test("a collection's entry and template, published here: a Collection list on the home page shows the entry, and its card opens the entry's page as the demo draws it", async ({ page, context, baseURL }) => {
+test("the example site's News: an entry's View opens it as the demo draws it; its template changed and published here; the news page, from the home page's footer, lists the entries newest first, and a card opens the entry's page with the change", async ({ page, context, baseURL }) => {
   const found: string[] = [];
   await openDemo(page);
-  // A collection from the Articles preset, and its first entry, published.
+  const own = new URL(`${baseURL}${DEMO_BASE}`).pathname;
+  const entryView = (url: URL) => url.pathname === own && /^\?entry=[1-9][0-9]*$/.test(url.search);
+  const pageLine = (view: Page) => view.getByRole("complementary", { name: "About this page" });
+  const entryLine = (slug: string) => `The entry as published in this browser. In the full system, Rails serves it at /news/${slug}, with the cache.`;
+
+  // News in Collections, its five entries published as the example site
+  // has them; an entry's View opens the demo's own drawing of it.
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
   await page.getByRole("menuitem", { name: "Collections" }).click();
   const collections = page.getByRole("dialog", { name: "Collections" });
-  await collections.getByRole("button", { name: "New collection" }).first().click();
-  await collections.getByRole("textbox", { name: /^Name/ }).fill("News");
-  await collections.getByRole("textbox", { name: /^Name/ }).press("Tab");
-  await collections.getByRole("button", { name: "Create collection" }).click();
-  await collections.getByRole("button", { name: "Write the first entry" }).click();
+  const rows = collections.getByRole("table", { name: /^Entries of News/ }).locator("tbody tr");
+  await expect(rows).toHaveCount(5);
+  await expect(rows.filter({ hasText: "Published" })).toHaveCount(5);
+  await promisesNothing(page, "News in Collections", found);
+  await collections.getByRole("button", { name: "Edit Tea in the hut on Sundays" }).click();
   const form = collections.locator(".co-form");
-  await form.getByRole("textbox", { name: /^Title/ }).fill("First swim of the season");
-  await form.getByRole("textbox", { name: /^Summary/ }).fill("Cold water, warm hearts.");
-  await form.getByLabel(/^Date/).fill("2026-05-02");
-  await form.getByRole("button", { name: "Publish" }).click();
-  await expect(form.locator(".co-said")).toHaveText("Published in this browser. In the full system, visitors find it at /news/first-swim-of-the-season.");
+  const view = form.getByRole("link", { name: "View", exact: true });
+  await expect(view).toHaveAttribute("href", new RegExp(`${own.replaceAll("/", "\\/")}\\?entry=[1-9][0-9]*$`));
+  await expect(view).toHaveAttribute("title", "The entry as published in this browser. Opens in a new tab.");
+  await promisesNothing(page, "an entry's form", found);
+  const viewed = context.waitForEvent("page");
+  await view.click();
+  const shown = await viewed;
+  await shown.waitForURL(entryView);
+  await expect(pageLine(shown)).toHaveText(entryLine("tea-in-the-hut"));
+  await expect(shown.getByRole("heading", { level: 1 })).toHaveText("Tea in the hut on Sundays");
+  await shown.close();
 
-  // Its template: a section, the entry's title in it, published here.
+  // Its template, from the settings, drawn with the newest entry: the
+  // band of the others renamed, saved and published here.
+  await form.getByRole("button", { name: "All entries" }).click();
   await collections.getByRole("tab", { name: "Settings" }).click();
   await collections.getByRole("button", { name: "Edit the template" }).click();
   await expect(page.getByRole("button", { name: "Switch page. Open: News" })).toBeVisible();
-  await page.locator(".topbar").getByRole("button", { name: "Insert", exact: true }).click();
-  const insert = page.getByRole("complementary", { name: "Insert", exact: true });
-  await insert.getByRole("button", { name: "1 column" }).click();
-  await page.locator(".canvas").getByRole("button", { name: "Add a block to Column 1" }).click();
-  await page.getByRole("dialog", { name: /^Add a block/ }).getByRole("button", { name: "Field" }).click();
-  await expect(page.locator('.canvas [data-block-type="field"] h1')).toHaveText("First swim of the season");
+  await expect(block(page, "entry-title").locator("h1")).toHaveText(NEWS_TITLES[0]!);
+  await block(page, "more-heading").click();
+  const words = page.getByRole("textbox", { name: "Text" });
+  await words.fill("More from the slipway");
+  await words.blur();
+  await saved(page);
   const sidebar = page.getByRole("complementary", { name: "Settings" });
   await sidebar.getByRole("tab", { name: "Page" }).click();
   await promisesNothing(page, "the template's Page tab", found);
@@ -424,30 +450,40 @@ test("a collection's entry and template, published here: a Collection list on th
   await expect(notice(page)).toContainText("Published in this browser. In the full system, every entry of News is drawn with this template.");
   await promisesNothing(page, "the notice after the template's publish", found);
 
-  // Back on the home page: a Collection list after the hero's heading,
-  // which names the one collection; published, its card leads to the
-  // entry's page.
+  // The news page, at the collection's prefix: its list, newest first,
+  // and its panel.
   await sidebar.getByRole("button", { name: "Back to Slack Water" }).click();
-  await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
-  await block(page, "hero-heading").click();
-  await insert.getByRole("group", { name: "Content" }).getByRole("button", { name: "Collection list" }).click();
-  await expect(page.locator('.canvas [data-block-type="collectionList"] .sw-entry-title')).toHaveText(["First swim of the season"]);
+  await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
+  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^News/ }).click();
+  await expect(page.getByRole("button", { name: "Switch page. Open: News" })).toBeVisible();
+  await expect(block(page, "entries-list").locator(".sw-entry-title")).toHaveText(NEWS_TITLES);
+  await block(page, "entries-list").click();
   await promisesNothing(page, "the Collection list's panel", found);
-  await saved(page);
-  const opened = context.waitForEvent("page");
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-  const view = await opened;
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
-  const card = view.locator('[data-block-type="collectionList"] .sw-entry-title a');
-  await expect(card).toHaveText("First swim of the season");
-  await expect(card).toHaveAttribute("href", /^\?entry=[1-9][0-9]*$/);
-  await card.click();
-  await view.waitForURL((url) => url.pathname === new URL(`${baseURL}${DEMO_BASE}`).pathname && /^\?entry=[1-9][0-9]*$/.test(url.search));
-  await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText("The entry as published in this browser. In the full system, Rails serves it at /news/first-swim-of-the-season, with the cache.");
-  await expect(view.locator('[data-block-type="field"] h1')).toHaveText("First swim of the season");
-  await expect(view).toHaveTitle("First swim of the season");
-  await shoot(view, "demo-entry");
-  await noSeriousFinding(view, "an entry's page");
+
+  // As published here: the home page's footer leads to the news, the
+  // news's first card to its entry, drawn with the template as just
+  // published, the others below it, and its last button back.
+  const visit = await context.newPage();
+  await visit.goto(`${DEMO_BASE}?published=${HOME}`);
+  await visit.locator("footer").getByRole("link", { name: "News", exact: true }).click();
+  await visit.waitForURL(`${baseURL}${DEMO_BASE}?published=${NEWS}`);
+  await expect(visit.getByRole("heading", { level: 1, name: "News" })).toBeVisible();
+  const cards = visit.locator('[data-block-id="entries-list"] .sw-entry-title a');
+  await expect(cards).toHaveText(NEWS_TITLES);
+  await expect(cards.first()).toHaveAttribute("href", /^\?entry=[1-9][0-9]*$/);
+  await shoot(visit, "demo-news");
+  await noSeriousFinding(visit, "the news page");
+  await cards.first().click();
+  await visit.waitForURL(entryView);
+  await expect(pageLine(visit)).toHaveText(entryLine("winter-series-starts"));
+  await expect(visit.locator('[data-block-type="field"] h1')).toHaveText(NEWS_TITLES[0]!);
+  await expect(visit).toHaveTitle(NEWS_TITLES[0]!);
+  await expect(visit.getByRole("heading", { level: 2, name: "More from the slipway" })).toBeVisible();
+  await expect(visit.locator('[data-block-id="more-list"] .sw-entry-title a')).toHaveText(NEWS_TITLES.slice(1, 4));
+  await shoot(visit, "demo-entry");
+  await noSeriousFinding(visit, "an entry's page");
+  await visit.getByRole("link", { name: "All the news" }).click();
+  await visit.waitForURL(`${baseURL}${DEMO_BASE}?published=${NEWS}`);
   expect(found, "what the screens say that only the full system does").toEqual([]);
 });
 
@@ -517,14 +553,14 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   const opened = context.waitForEvent("page");
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   const view = await opened;
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=1`);
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=${HOME}`);
   await expect(view.getByRole("complementary", { name: "About this page" })).toHaveText(PUBLISHED_LINE);
   await expect(view.locator("header.sw-header .w-logo-link span")).toHaveText(changed.name);
   expect(await partsOf(view)).toEqual(changed);
   // The new link opens the notices as published, under the same header
   // and footer.
   await view.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Notices", exact: true }).first().click();
-  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=3`);
+  await view.waitForURL(`${baseURL}${DEMO_BASE}?published=${NOTICES}`);
   await expect(view.getByRole("heading", { level: 1, name: "Notices" })).toBeVisible();
   expect(await partsOf(view)).toEqual(changed);
   await shoot(view, "demo-header-published");
@@ -555,7 +591,7 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   // The logo's name, then the footer's words, whatever space the markup
   // leaves between the two columns.
   expect(shown.footer.replace(/\s/g, "")).toBe(`Eelgrass Bay Swim Club${changed.footer}`.replace(/\s/g, ""));
-  await view.goto(`${DEMO_BASE}?published=1`);
+  await view.goto(`${DEMO_BASE}?published=${HOME}`);
   expect(await partsOf(view)).toEqual(changed);
 
   // Kept in this browser: after a reload, the footer opens as it was
@@ -563,7 +599,7 @@ test("the header, opened from the canvas, is edited as a page is, the page dimme
   await page.reload();
   await expect(page.getByRole("button", { name: "Switch page. Open: Footer" })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.canvas [data-editing-part="footer"] .w-logo-link span')).toHaveText("Eelgrass Bay Swim Club");
-  await page.goto(`${DEMO_BASE}?page=1`);
+  await page.goto(`${DEMO_BASE}?page=${HOME}`);
   await expect(page.locator(`${CANVAS.header} .w-logo-link span`)).toHaveText(changed.name, { timeout: 30_000 });
   expect((await partsOf(page, CANVAS)).links).toEqual(changed.links);
 });
@@ -673,17 +709,17 @@ test("the screens promise nothing the browser cannot do: no visitor, live page o
   await promisesNothing(page, "the Media library", found);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  // Collections: none yet, then a new one's form, which says where its
-  // entries would be.
+  // Collections: the example site's News, which says where its entries
+  // are; then a new one's form, which says where its entries would be.
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
   await page.getByRole("menuitem", { name: "Collections" }).click();
   const collections = page.getByRole("dialog", { name: "Collections" });
-  await expect(collections.getByText("No collections yet", { exact: true }).last()).toBeVisible();
-  await promisesNothing(page, "Collections, with none yet", found);
+  await expect(collections.getByText("In the full system, entries are at /news/<slug> once published.")).toBeVisible();
+  await promisesNothing(page, "Collections, with News", found);
   await collections.getByRole("button", { name: "New collection" }).click();
-  await collections.getByRole("textbox", { name: /^Name/ }).fill("News");
+  await collections.getByRole("textbox", { name: /^Name/ }).fill("Events");
   await collections.getByRole("textbox", { name: /^Name/ }).press("Tab");
-  await expect(collections.getByText("Lowercase letters, digits and hyphens. In the full system, entries are at /news/<slug> once published.")).toBeVisible();
+  await expect(collections.getByText("Lowercase letters, digits and hyphens. In the full system, entries are at /events/<slug> once published.")).toBeVisible();
   await promisesNothing(page, "a new collection", found);
   expect(found, "what the screens say that only the full system does").toEqual([]);
 });

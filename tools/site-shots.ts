@@ -2,8 +2,9 @@
 //
 // Photographs the published pages of a running CMS, headless, the way the
 // design's shots were taken (design/tools/shots.mjs): the home page full
-// length at 1280 and at 390 wide, the other example pages, and a draft
-// preview. Compare page.png and page-phone.png with design/shots/.
+// length at 1280 and at 390 wide, the other example pages, one of News's
+// entries, and a draft preview. Compare page.png and page-phone.png with
+// design/shots/.
 //
 // It also checks what a visitor's browser does on the home page:
 // - no request leaves the site while the page loads, and nothing is
@@ -34,6 +35,10 @@ const SHOTS = [
   { name: "page-phone", path: "/", width: 390, height: 844 },
   { name: "winter-series", path: "/winter-series", width: 1280, height: 900 },
   { name: "winter-series-phone", path: "/winter-series", width: 390, height: 844 },
+  { name: "news", path: "/news", width: 1280, height: 900 },
+  { name: "news-phone", path: "/news", width: 390, height: 844 },
+  { name: "news-entry", path: "/news/winter-series-starts", width: 1280, height: 900 },
+  { name: "news-entry-phone", path: "/news/winter-series-starts", width: 390, height: 844 },
   { name: "notices", path: "/notices", width: 1280, height: 900 },
   { name: "notices-tablet", path: "/notices", width: 768, height: 1024 },
   { name: "notices-phone", path: "/notices", width: 390, height: 844 },

@@ -2,8 +2,8 @@
 // suggested from the name until one is typed, and the fields it starts
 // with, from one of three presets (./presets.ts). Checked as the storage
 // checks it before it is sent (validateCollection), each refusal at its
-// field, the storage's own (a prefix taken by another collection or a
-// page) the same way. Made, it opens on its entries, empty.
+// field, the storage's own (a prefix another collection has, or one the
+// site answers itself) the same way. Made, it opens on its entries, empty.
 import { useEffect, useId, useRef, useState } from "react";
 import { validateCollection } from "../../shared/validate.ts";
 import { isStorageError, type Collection } from "../../storage/adapter.ts";

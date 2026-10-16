@@ -150,6 +150,29 @@ class EntryPagesTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # The usual shape of a site's section: the page that lists the entries at
+  # their prefix. A page's address is one part and an entry's two, so the
+  # two never meet.
+  test "a page at a collection's prefix is that page, and the prefix with an entry's slug is the entry" do
+    publish_template
+    publish_entry(title: "Dawn swims start again", slug: "dawn-swims")
+    page = create_page(title: "News", slug: "news")
+    Draft.save_document!(page_id: page.id, revision: 0, document: page_document(title: "News", widgets: [ heading_block("h", "News from the club"), list_block("list", @news) ]), save_id: "n1")
+    page.publish!
+
+    get "/news"
+    assert_response :ok
+    assert_select "title", text: "News"
+    assert_select "main [data-block-type=heading] h1", text: "News from the club"
+    assert_equal [ [ "Dawn swims start again", "/news/dawn-swims" ] ], css_select("main .sw-entry-title a").map { |a| [ a.text, a["href"] ] }
+
+    get "/news/dawn-swims"
+    assert_response :ok
+    assert_select "title", text: "Dawn swims start again"
+    assert_select "main [data-field=title] h1", text: "Dawn swims start again"
+    assert_select "main [data-block-type=collectionList]", false
+  end
+
   test "a page's Collection list draws its collection's published entries, newest by its day first, each card linking to the entry's page" do
     publish_template
     publish_entry(title: "Dawn swims start again", slug: "dawn-swims", values: { "day" => "2026-05-02" })

@@ -14,8 +14,9 @@
 # collection's old prefix leads nowhere: a new prefix moves every entry.
 #
 # The route takes two parts in a slug's form (config/routes.rb), so it is
-# never a page's address, which is one part, nor one of the application's
-# own: a prefix is never a page's slug or a reserved address (Collection).
+# never a page's address, which is one part: a page at /news, the one that
+# lists the entries, and /news/<slug> live side by side. Nor is it one of
+# the application's own: a prefix is never a reserved address (Collection).
 class EntryPagesController < ApplicationController
   include PublicPage
 

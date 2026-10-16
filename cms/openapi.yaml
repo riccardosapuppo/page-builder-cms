@@ -194,8 +194,8 @@ paths:
         it; `home: false` leaves `/` with no page. Until the home page is
         published, `/` answers 404. A header or footer has neither: 422 at
         the member sent, keyword `part`; nor has a template, keyword
-        `template`. An address that is a collection's prefix is taken
-        (keyword `taken`).
+        `template`. An address may be a collection's prefix: the page at
+        `/news` and the entries at `/news/<slug>` live side by side.
       tags: [pages]
       requestBody:
         required: true
@@ -1038,10 +1038,10 @@ paths:
         A new collection, from its definition, held to
         `schema/collection.schema.json` and the collection's application
         rules (each fault at its pointer); then its prefix to the CMS's
-        own: taken by another collection or by a page's address, next or
-        live (keyword `taken`), or an address the application answers
-        itself (`reserved`). Its template is made with it: an empty
-        document titled with its name, nothing live.
+        own: taken by another collection (keyword `taken`), or an address
+        the application answers itself (`reserved`). A page's address,
+        next or live, may be a prefix. Its template is made with it: an
+        empty document titled with its name, nothing live.
       tags: [collections]
       requestBody:
         required: true

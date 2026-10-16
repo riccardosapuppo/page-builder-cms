@@ -7,7 +7,9 @@
 // over; Publish saves what waits first, then puts it live at that
 // revision; Unpublish takes it off, the draft kept. Preview opens the
 // saved draft drawn with the template's draft, as its page would show it
-// (/preview/<template id>?entry=<entry id>, the demo's ?preview=...&entry=).
+// (/preview/<template id>?entry=<entry id>, the demo's ?preview=...&entry=);
+// View, for an entry that is published, its page as visitors find it
+// (/<prefix>/<slug>, the demo's own ?entry=<entry id>).
 //
 // What the form holds is checked as the storage checks it before it is
 // sent (validateEntry, ../../shared/validate.ts): a required field with
@@ -85,9 +87,30 @@ type Doing = "Not saved" | "Not published";
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
 
+// Where View opens a published entry, and what it says: on the CMS, the
+// entry's live address; in the browser demo, which serves nothing, the
+// demo's own drawing of it (the session's entryView), and nothing where
+// there is neither. An entry's page needs its template live, which View
+// says while it is not.
+function viewOf(live: string, entryId: number, livePages: boolean, templateLive: boolean, cmsOrigin: string | null, entryView: ((entryId: number) => string) | null): { href: string; title: string } | null {
+  const opens = "Opens in a new tab.";
+  if (livePages) {
+    return {
+      href: cmsAddress(live, cmsOrigin),
+      title: templateLive ? `The entry as visitors find it, at ${live}. ${opens}` : `Its template is not published yet: visitors find no page at ${live} until it is. ${opens}`,
+    };
+  }
+  if (entryView === null) return null;
+  return {
+    href: cmsAddress(entryView(entryId), cmsOrigin),
+    title: templateLive ? `The entry as published in this browser. ${opens}` : `Its template is not published in this browser yet: publish it, and the entry shows. ${opens}`,
+  };
+}
+
 export function EntryForm({ storage, collection, entryId, livePages, refused, onBack, onChanged, onDirty }: EntryFormProps) {
   const { ui, clock } = useEnv();
-  const cmsOrigin = useOptionalSession()?.cmsOrigin ?? null;
+  const session = useOptionalSession();
+  const cmsOrigin = session?.cmsOrigin ?? null;
   const id = useId();
   const fields = collection.fields;
   const [phase, setPhase] = useState<{ kind: "loading" } | { kind: "failed"; message: string } | { kind: "ready" }>(entryId === null ? { kind: "ready" } : { kind: "loading" });
@@ -424,6 +447,7 @@ export function EntryForm({ storage, collection, entryId, livePages, refused, on
   const saveWhy = conflict ? settleFirst : !savable ? "No changes to save." : null;
   const publishWhy = conflict ? settleFirst : status === "published" && !savable ? (livePages ? "Visitors see this entry as it is." : "It is published as it is.") : null;
   const live = entry?.published ? entryAddress(collection.prefix, entry.published.slug) : null;
+  const view = live === null || entry === null ? null : viewOf(live, entry.id, livePages, collection.template.published !== null, cmsOrigin, session?.entryView ?? null);
   const next = entryAddress(collection.prefix, now.slug === "" ? "…" : now.slug);
   const slugHint = live !== null && live !== next
     ? livePages ? `Live at ${live}; the next publish moves it to ${next}, and the old address leads to the new one.` : `Published in this browser as ${live}; the next publish uses ${next}.`
@@ -451,6 +475,11 @@ export function EntryForm({ storage, collection, entryId, livePages, refused, on
               title={savable ? "The draft as last saved, in the template: save first to see these changes." : "The draft, in the template, as its page would show it."}
             >
               <Icon name="eye" />Preview
+            </a>
+          )}
+          {view && (
+            <a className="btn btn-small btn-quiet co-view" href={view.href} target="_blank" rel="noopener" title={view.title}>
+              <Icon name="external" />View
             </a>
           )}
           {entry?.published && <button className="btn btn-small btn-secondary" type="button" aria-disabled={off ? true : undefined} onClick={off ? undefined : () => void unpublish()}>{busy === "unpublishing" ? "Unpublishing…" : "Unpublish"}</button>}

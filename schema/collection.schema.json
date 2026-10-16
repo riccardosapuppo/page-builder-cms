@@ -14,7 +14,7 @@
       "maxLength": 60
     },
     "prefix": {
-      "description": "The first part of every entry's address: news for /news/<entry>. Unique among the collections and never a page's address, nor one the application answers itself: the CMS's rules, outside this file.",
+      "description": "The first part of every entry's address: news for /news/<entry>. Unique among the collections, and never one the application answers itself: the CMS's rules, outside this file. A page may have it as its address, /news, the page that lists the entries.",
       "$ref": "#/$defs/slug"
     },
     "fields": {

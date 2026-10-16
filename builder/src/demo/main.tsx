@@ -11,7 +11,7 @@
 // - The editor's address with ?preview=<id>, ?published=<id> or
 //   ?entry=<id> is a page the demo draws itself (./PageView.tsx), where
 //   the full system's CMS would serve it: Preview opens the first, Publish
-//   the second, a Collection list's card the third.
+//   the second, a Collection list's card and an entry's View the third.
 // - Under the editor's bottom line, and under every page it draws, the
 //   demo's line (./DemoLine.tsx).
 import { StrictMode } from "react";
@@ -31,7 +31,7 @@ import { builtSource, seedExampleEdition, startOver, withExampleSite } from "../
 import { createEditorStore } from "../store/editor-store.ts";
 import { DemoLine, seedNews } from "./DemoLine.tsx";
 import { PageView } from "./PageView.tsx";
-import { previewAddress, publishedAddress, readView } from "./views.ts";
+import { entryAddress, previewAddress, publishedAddress, readView } from "./views.ts";
 
 const browser = createBrowserAdapter({ clock: systemClock, previewAddress });
 // What the seed found, for the demo's line.
@@ -64,7 +64,7 @@ if (view) {
   keepOpenGroups(env.ui);
   createRoot(root).render(
     <StrictMode>
-      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} foot={<DemoLine news={news} startOver={startingOver} />} />
+      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} entryView={entryAddress} foot={<DemoLine news={news} startOver={startingOver} />} />
     </StrictMode>,
   );
 }

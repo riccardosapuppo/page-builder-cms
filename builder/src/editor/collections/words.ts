@@ -277,7 +277,7 @@ export function definitionRefusal(where: "name" | "prefix" | "key" | "label" | "
       return explain(keyword, message, { kind: "line", maxLength: 60 });
     case "prefix":
       if (keyword === "reserved") return "The site answers this address itself. Choose another prefix.";
-      if (keyword === "taken") return /page/.test(message) ? "A page has this address. Choose another prefix, or change the page’s." : "Another collection has this prefix. Choose another.";
+      if (keyword === "taken") return "Another collection has this prefix. Choose another.";
       return explain(keyword, message, { kind: "slug", maxLength: 64 });
     case "key":
       if (keyword === "uniqueKey") return "Another field has this key. Choose another.";

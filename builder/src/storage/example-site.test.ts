@@ -1,27 +1,40 @@
 // The demo's seed on a storage that records what it is asked: the example
 // site goes into an empty site the way the CMS's seed puts it in, pictures
-// first, then each page saved, published, and the home page set; never into
-// a site that has a page or a picture; and nothing is kept when a file is
-// missing or a page names a picture site.json does not list.
+// first, then each collection made with its entries published and, once
+// every collection has its id, its template saved and published, then each
+// page saved, published, and the home page set, a document's pictures and
+// lists named by the ids the storage gave; never into a site that has a
+// page, a picture or a collection; and nothing is kept when a file is
+// missing or names a picture or a collection site.json does not list.
 import { describe, expect, test } from "vitest";
 import site from "../../../example-site/site.json";
 import type { Invalid, MediaItem, StorageAdapter } from "./adapter.ts";
-import { builtFiles, builtSource, editionOf, seedExampleEdition, seedExampleSite, startOver, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
+import { builtFiles, builtSource, editionOf, seedExampleEdition, seedExampleSite, startOver, withCollectionIds, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
 import type { BrowserAdapter } from "./browser.ts";
 import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
 
+const list = (collection: number) => ({ type: "collectionList", props: { collection, count: 3 } });
 const pages: Record<string, unknown> = {
   "pages/a.json": { schemaVersion: 1, title: "Home", sections: [{ type: "section", children: [{ type: "image", props: { mediaId: "pic-1" } }] }] },
-  "pages/b.json": { schemaVersion: 1, title: "Second", sections: [{ type: "gallery", props: { items: [{ mediaId: "pic-2" }, { mediaId: "pic-1" }] } }] },
+  "pages/b.json": { schemaVersion: 1, title: "Second", sections: [{ type: "gallery", props: { items: [{ mediaId: "pic-2" }, { mediaId: "pic-1" }] } }, list(1)] },
+};
+const collections: Record<string, unknown> = {
+  "collections/c.json": {
+    collection: { name: "News", prefix: "news", fields: [], sort: { by: "updatedAt", direction: "desc" } },
+    entries: [{ title: "Dawn", slug: "dawn", values: { picture: { mediaId: "pic-2", alt: "The second" } } }, { title: "Dusk", slug: "dusk", values: {} }],
+    template: { schemaVersion: 1, title: "News", sections: [list(1), { type: "image", props: { mediaId: "pic-1" } }] },
+  },
 };
 const source = (changes: Partial<ExampleSource> = {}): ExampleSource => ({
   site: {
     name: "Test site",
     images: [{ id: "pic-1", file: "images/one.png", alt: "The first" }, { id: "pic-2", file: "images/two.png", alt: "The second" }],
+    collections: [{ id: 1, file: "collections/c.json" }],
     pages: [{ slug: "home", file: "pages/a.json", home: true }, { slug: "second", file: "pages/b.json", home: false }],
   },
   pages,
+  collections,
   image: async (file) => ({ bytes: new Blob([file], { type: "image/png" }), width: file.length * 10, height: 7 }),
   ...changes,
 });
@@ -34,15 +47,25 @@ function marks(start: string | null = null): SeedMarks & { state: string | null 
 
 const refused: Invalid = { kind: "invalid", code: "invalid_request", message: "The request is not valid.", errors: [{ pointer: "/alt", blockPointer: null, keyword: "maxLength", message: "is too long" }] };
 
+// The library's ids a value names, and the collections its lists name.
+const named = (value: unknown): string => {
+  const text = JSON.stringify(value);
+  const images = text.match(/lib\d/g)?.join(",") ?? "no images";
+  const lists = [...text.matchAll(/"collection":(\d+)/g)].map((found) => found[1]);
+  return lists.length > 0 ? `${images}, lists ${lists.join(",")}` : images;
+};
+
 // What the seed asked, in order, and a storage that holds `existing`.
-function recorder(existing: { pages?: number; media?: number } = {}, refuse: string | null = null) {
+function recorder(existing: { pages?: number; media?: number; collections?: number } = {}, refuse: string | null = null) {
   const calls: string[] = [];
   let pageId = 0;
   let mediaId = 0;
+  let entryId = 0;
   const adapter = {
     name: "recorder",
     listPages: async () => Array.from({ length: existing.pages ?? 0 }, () => ({})),
     listMedia: async () => Array.from({ length: existing.media ?? 0 }, () => ({})),
+    listCollections: async () => Array.from({ length: existing.collections ?? 0 }, () => ({})),
     // The header and footer as a new store makes them, nothing published.
     listParts: async () => [{ id: 101, kind: "header", revision: 0, published: null }, { id: 102, kind: "footer", revision: 0, published: null }],
     uploadMedia: async (upload: { file: File; width: number; height: number; alt?: string }) => {
@@ -50,12 +73,25 @@ function recorder(existing: { pages?: number; media?: number } = {}, refuse: str
       if (refuse === upload.file.name) return { ok: false, problem: refused };
       return { ok: true, value: { id: `lib${++mediaId}` } as MediaItem };
     },
+    createCollection: async (definition: { name: string; prefix: string }) => {
+      calls.push(`collection ${definition.prefix} "${definition.name}"`);
+      if (refuse === definition.prefix) return { ok: false, problem: refused };
+      return { ok: true, value: { id: 41, prefix: definition.prefix, template: { id: 201, revision: 0, published: null } } };
+    },
+    createEntry: async (collectionId: number, entry: { slug: string; values: unknown }) => {
+      calls.push(`entry ${collectionId} ${entry.slug}: ${named(entry.values)}`);
+      return { ok: true, value: { id: ++entryId, slug: entry.slug, revision: 0, published: null } };
+    },
+    publishEntry: async (collectionId: number, id: number, request: { revision?: number }) => {
+      calls.push(`publish entry ${id} of ${collectionId} at ${request.revision}`);
+      return { ok: true, value: {} };
+    },
     createPage: async (page: { title: string; slug: string }) => {
       calls.push(`create ${page.slug} "${page.title}"`);
       return { ok: true, value: { page: { id: ++pageId }, draft: { revision: 0 } } };
     },
     saveDraft: async (id: number, save: { revision: number; saveId: string; document: unknown }) => {
-      calls.push(`save ${id} at ${save.revision} as ${save.saveId}: ${JSON.stringify(save.document).match(/lib\d/g)?.join(",") ?? "no images"}`);
+      calls.push(`save ${id} at ${save.revision} as ${save.saveId}: ${named(save.document)}`);
       return { ok: true, value: { revision: save.revision + 1 } };
     },
     publish: async (id: number, request: { revision?: number }) => {
@@ -71,46 +107,63 @@ function recorder(existing: { pages?: number; media?: number } = {}, refuse: str
 }
 
 describe("the demo's seed", () => {
-  test("puts the example site into an empty site: pictures, then each page saved and published, and the home page; then the header and footer published as they are", async () => {
+  test("puts the example site into an empty site: pictures; each collection, its entries published, then its template, its list naming the collection by the storage's id; each page saved and published, and the home page; then the header and footer published as they are", async () => {
     const { adapter, calls } = recorder();
     expect(await seedExampleSite(adapter, source(), marks())).toBe("seeded");
     expect(calls).toEqual([
       'upload one.png 140x7 "The first"',
       'upload two.png 140x7 "The second"',
+      'collection news "News"',
+      "entry 41 dawn: lib2",
+      "publish entry 1 of 41 at 0",
+      "entry 41 dusk: no images",
+      "publish entry 2 of 41 at 0",
+      "save 201 at 0 as example-template-news: lib1, lists 41",
+      "publish 201 at 1",
       'create home "Home"',
       "save 1 at 0 as example-home: lib1",
       "publish 1 at 1",
       'page 1 {"home":true}',
       'create second "Second"',
-      "save 2 at 0 as example-second: lib2,lib1",
+      "save 2 at 0 as example-second: lib2,lib1, lists 41",
       "publish 2 at 1",
       "publish 101 at 0",
       "publish 102 at 0",
     ]);
   });
 
-  test("leaves a site with a page, or with a picture, as it is", async () => {
-    for (const existing of [{ pages: 1 }, { media: 1 }]) {
+  test("leaves a site with a page, a picture or a collection as it is", async () => {
+    for (const existing of [{ pages: 1 }, { media: 1 }, { collections: 1 }]) {
       const { adapter, calls } = recorder(existing);
       expect(await seedExampleSite(adapter, source(), marks())).toBe("not empty");
       expect(calls).toEqual([]);
     }
   });
 
-  test("keeps nothing when a page is not in the build, or names a picture site.json does not list", async () => {
-    const missing = recorder();
-    await expect(seedExampleSite(missing.adapter, source({ pages: { "pages/a.json": pages["pages/a.json"] } }), marks())).rejects.toThrow("The example site's pages/b.json is not in this build.");
-    expect(missing.calls).toEqual([]);
-    const unlisted = recorder();
-    const stray = { ...pages, "pages/b.json": { schemaVersion: 1, title: "Second", sections: [{ type: "image", props: { mediaId: "pic-9" } }] } };
-    await expect(seedExampleSite(unlisted.adapter, source({ pages: stray }), marks())).rejects.toThrow('example-site/pages/b.json names the image "pic-9", which site.json does not list');
-    expect(unlisted.calls).toEqual([]);
+  test("keeps nothing when a file is not in the build, or names a picture or a collection site.json does not list", async () => {
+    const cases: Array<[Partial<ExampleSource>, string]> = [
+      [{ pages: { "pages/a.json": pages["pages/a.json"] } }, "The example site's pages/b.json is not in this build."],
+      [{ pages: { ...pages, "pages/b.json": { schemaVersion: 1, title: "Second", sections: [{ type: "image", props: { mediaId: "pic-9" } }] } } }, 'example-site/pages/b.json names the image "pic-9", which site.json does not list'],
+      [{ pages: { ...pages, "pages/b.json": { schemaVersion: 1, title: "Second", sections: [list(2)] } } }, "example-site/pages/b.json names the collection 2, which site.json does not list"],
+      [{ collections: {} }, "The example site's collections/c.json is not in this build."],
+      [{ collections: { "collections/c.json": { ...(collections["collections/c.json"] as object), entries: [{ title: "Dawn", slug: "dawn", values: { picture: { mediaId: "pic-9" } } }] } } }, 'example-site/collections/c.json names the image "pic-9", which site.json does not list'],
+      [{ collections: { "collections/c.json": { ...(collections["collections/c.json"] as object), template: { schemaVersion: 1, title: "News", sections: [list(7)] } } } }, "example-site/collections/c.json names the collection 7, which site.json does not list"],
+      [{ collections: { "collections/c.json": { collection: {}, items: [], template: {} } } }, 'example-site/collections/c.json has the keys ["collection", "items", "template"], not collection, entries and template'],
+    ];
+    for (const [changes, message] of cases) {
+      const { adapter, calls } = recorder();
+      await expect(seedExampleSite(adapter, source(changes), marks()), message).rejects.toThrow(message);
+      expect(calls, message).toEqual([]);
+    }
   });
 
-  test("stops at a refused picture, naming it", async () => {
-    const { adapter, calls } = recorder({}, "two.png");
-    await expect(seedExampleSite(adapter, source(), marks())).rejects.toThrow("The example site's picture images/two.png was refused: is too long");
-    expect(calls).toEqual(['upload one.png 140x7 "The first"', 'upload two.png 140x7 "The second"']);
+  test("stops at a refused picture, or a refused collection, naming it", async () => {
+    const picture = recorder({}, "two.png");
+    await expect(seedExampleSite(picture.adapter, source(), marks())).rejects.toThrow("The example site's picture images/two.png was refused: is too long");
+    expect(picture.calls).toEqual(['upload one.png 140x7 "The first"', 'upload two.png 140x7 "The second"']);
+    const collection = recorder({}, "news");
+    await expect(seedExampleSite(collection.adapter, source(), marks())).rejects.toThrow("The example site's collection collections/c.json was refused: is too long");
+    expect(collection.calls.at(-1)).toBe('collection news "News"');
   });
 
   test("swaps each mediaId for the library's, at any depth, and nothing else", () => {
@@ -118,26 +171,42 @@ describe("the demo's seed", () => {
     expect(withLibraryIds({ mediaId: "a", alt: "a", items: [{ mediaId: "a", id: "a" }] }, ids, "x.json")).toEqual({ mediaId: "LIB_A", alt: "a", items: [{ mediaId: "LIB_A", id: "a" }] });
   });
 
-  test("the build holds every page and picture site.json lists", () => {
+  test("swaps the collection each Collection list names for the storage's, at any depth, and nothing else", () => {
+    const ids = new Map([[1, 41]]);
+    const document = { sections: [{ type: "section", props: { collection: 1 }, children: [{ type: "column", children: [list(1), { type: "text", props: { collection: 1 } }] }] }] };
+    expect(withCollectionIds(document, ids, "x.json")).toEqual({ sections: [{ type: "section", props: { collection: 1 }, children: [{ type: "column", children: [list(41), { type: "text", props: { collection: 1 } }] }] }] });
+    expect(withCollectionIds({ type: "collectionList", props: { count: 3 } }, ids, "x.json"), "a list that names none").toEqual({ type: "collectionList", props: { count: 3 } });
+    expect(() => withCollectionIds(list(2), ids, "x.json")).toThrow("example-site/x.json names the collection 2, which site.json does not list");
+  });
+
+  test("the build holds every page, collection and picture site.json lists", () => {
     const built = builtFiles();
     expect(built.pages).toEqual(site.pages.map((page) => page.file).sort());
+    expect(built.collections).toEqual(site.collections.map((collection) => collection.file).sort());
     expect(built.images).toEqual(site.images.map((image) => image.file).sort());
   });
 });
 
 // A storage that keeps what it is given, as the browser's does, and can be
-// cut short once: an upload of the named file, or a publish of the page or
-// part with that id, throws as a closed tab or a full storage would.
-function store(cut: { upload?: string; publish?: number } = {}) {
+// cut short once: an upload of the named file, a publish of the entry or
+// of the page or part with that id, throws as a closed tab or a full
+// storage would.
+function store(cut: { upload?: string; publish?: number; publishEntry?: number } = {}) {
   const media: Array<{ id: string; filename: string; alt: string }> = [];
   const pages: Array<{ id: number; slug: string; title: string; home: boolean; revision: number; published: object | null }> = [];
+  const templates: Array<{ id: number; revision: number; published: object | null }> = [];
+  const collections: Array<{ id: number; prefix: string; templateId: number }> = [];
+  const entries: Array<{ id: number; collectionId: number; slug: string; revision: number; published: object | null }> = [];
   // The header and footer, made as a new store makes them.
   const parts = [{ id: 101, kind: "header", revision: 0, published: null as object | null }, { id: 102, kind: "footer", revision: 0, published: null as object | null }];
+  const drafts = () => [...pages, ...templates];
   const adapter = {
     name: "store",
     listPages: async () => pages.map((page) => ({ ...page })),
     listParts: async () => parts.map((part) => ({ ...part })),
     listMedia: async () => media.map((item) => ({ ...item })),
+    listCollections: async () => collections.map((one) => ({ id: one.id, prefix: one.prefix, template: { ...templates.find((t) => t.id === one.templateId)! } })),
+    listEntries: async (collectionId: number) => entries.filter((one) => one.collectionId === collectionId).map((one) => ({ ...one })),
     uploadMedia: async ({ file, alt }: { file: File; alt?: string }) => {
       if (cut.upload === file.name) {
         delete cut.upload;
@@ -147,6 +216,28 @@ function store(cut: { upload?: string; publish?: number } = {}) {
       media.push(item);
       return { ok: true, value: item };
     },
+    createCollection: async ({ prefix }: { prefix: string }) => {
+      if (collections.some((one) => one.prefix === prefix)) return { ok: false, problem: refused };
+      const template = { id: 201 + templates.length, revision: 0, published: null };
+      templates.push(template);
+      const made = { id: 41 + collections.length, prefix, templateId: template.id };
+      collections.push(made);
+      return { ok: true, value: { id: made.id, prefix, template: { ...template } } };
+    },
+    createEntry: async (collectionId: number, { slug }: { slug: string }) => {
+      if (entries.some((one) => one.collectionId === collectionId && one.slug === slug)) return { ok: false, problem: refused };
+      const made = { id: entries.length + 1, collectionId, slug, revision: 0, published: null };
+      entries.push(made);
+      return { ok: true, value: { ...made } };
+    },
+    publishEntry: async (_collectionId: number, id: number) => {
+      if (cut.publishEntry === id) {
+        delete cut.publishEntry;
+        throw new Error("The tab was closed.");
+      }
+      entries.find((one) => one.id === id)!.published = {};
+      return { ok: true, value: {} };
+    },
     createPage: async ({ title, slug }: { title: string; slug: string }) => {
       if (pages.some((page) => page.slug === slug)) return { ok: false, problem: refused };
       const page = { id: pages.length + 1, slug, title, home: false, revision: 0, published: null };
@@ -154,7 +245,7 @@ function store(cut: { upload?: string; publish?: number } = {}) {
       return { ok: true, value: { page: { id: page.id }, draft: { revision: 0 } } };
     },
     saveDraft: async (id: number, save: { revision: number }) => {
-      const page = pages.find((each) => each.id === id)!;
+      const page = drafts().find((each) => each.id === id)!;
       if (save.revision !== page.revision) return { ok: false, problem: { kind: "conflict", message: "Another save came first." } };
       page.revision += 1;
       return { ok: true, value: { revision: page.revision } };
@@ -164,7 +255,7 @@ function store(cut: { upload?: string; publish?: number } = {}) {
         delete cut.publish;
         throw new Error("The tab was closed.");
       }
-      [...pages, ...parts].find((each) => each.id === id)!.published = {};
+      [...drafts(), ...parts].find((each) => each.id === id)!.published = {};
       return { ok: true, value: {} };
     },
     updatePage: async (id: number, changes: { home?: boolean }) => {
@@ -172,13 +263,18 @@ function store(cut: { upload?: string; publish?: number } = {}) {
       return { ok: true, value: {} };
     },
   };
-  return { adapter: adapter as unknown as StorageAdapter, media, pages, parts };
+  return { adapter: adapter as unknown as StorageAdapter, media, pages, parts, collections, entries, templates };
 }
 
-// The example site as a whole: each picture once, each page once,
-// published, the home page set, and the header and footer published.
+// The example site as a whole: each picture once, the collection once with
+// each of its entries once, all published, and its template published;
+// each page once, published, the home page set; and the header and footer
+// published.
 function whole(kept: ReturnType<typeof store>) {
   expect(kept.media.map((item) => item.filename)).toEqual(["one.png", "two.png"]);
+  expect(kept.collections.map((one) => one.prefix)).toEqual(["news"]);
+  expect(kept.entries.map((one) => [one.slug, one.published !== null])).toEqual([["dawn", true], ["dusk", true]]);
+  expect(kept.templates.map((one) => one.published !== null)).toEqual([true]);
   expect(kept.pages.map((page) => [page.slug, page.home, page.published !== null])).toEqual([["home", true, true], ["second", false, true]]);
   expect(kept.parts.map((part) => [part.kind, part.published !== null])).toEqual([["header", true], ["footer", true]]);
 }
@@ -195,13 +291,36 @@ describe("a seed cut short", () => {
     expect(mark.state).toBe("seeded");
   });
 
-  test("is finished by the next visit, after a page was made and saved: the same page goes on", async () => {
+  test("is finished by the next visit, after an entry was made and before it was published: the collection found by its prefix and the entry by its slug go on", async () => {
+    const kept = store({ publishEntry: 2 });
+    const mark = marks();
+    await expect(seedExampleSite(kept.adapter, source(), mark)).rejects.toThrow("The tab was closed.");
+    expect(kept.entries.map((one) => [one.slug, one.published !== null])).toEqual([["dawn", true], ["dusk", false]]);
+    const first = kept.entries[0]!.published;
+    expect(await seedExampleSite(kept.adapter, source(), mark)).toBe("seeded");
+    whole(kept);
+    expect(kept.entries[0]!.published, "the same publish, not a second").toBe(first);
+  });
+
+  test("is finished by the next visit, after the template was saved and before it was published: saved again from where it is, and published", async () => {
+    const kept = store({ publish: 201 });
+    const mark = marks();
+    await expect(seedExampleSite(kept.adapter, source(), mark)).rejects.toThrow("The tab was closed.");
+    expect(kept.templates.map((one) => [one.revision, one.published])).toEqual([[1, null]]);
+    expect(kept.pages).toEqual([]);
+    expect(await seedExampleSite(kept.adapter, source(), mark)).toBe("seeded");
+    whole(kept);
+  });
+
+  test("is finished by the next visit, after a page was made and saved: the same page goes on, the collection and its template as the seed left them", async () => {
     const kept = store({ publish: 1 });
     const mark = marks();
     await expect(seedExampleSite(kept.adapter, source(), mark)).rejects.toThrow("The tab was closed.");
     expect(kept.pages).toHaveLength(1);
+    const template = kept.templates[0]!.published;
     expect(await seedExampleSite(kept.adapter, source(), mark)).toBe("seeded");
     whole(kept);
+    expect([kept.templates[0]!.revision, kept.templates[0]!.published === template], "saved once and published once").toEqual([1, true]);
   });
 
   test("is finished by the next visit, after the header was published: the footer goes on, the header left as it is", async () => {
@@ -220,6 +339,7 @@ describe("a seed cut short", () => {
     expect(await seedExampleSite(kept.adapter, source(), marks("seeded"))).toBe("not empty");
     expect(kept.media).toEqual([]);
     expect(kept.pages).toEqual([]);
+    expect(kept.collections).toEqual([]);
   });
 
   test("with no mark, a site with a page or a picture is still left as it is", async () => {
@@ -281,19 +401,41 @@ describe("editions", () => {
     ];
     // `cleared` counts every letting go; `unasked`, those that did not
     // check first how the site stood (start over's, the visitor's choice).
-    const state = { pages: [] as Row[], parts: parts(), media: [] as Array<{ id: string; alt: string; byteSize: number; width: number; height: number; filename: string }>, cleared: 0, unasked: 0 };
+    const state = {
+      pages: [] as Row[], parts: parts(), templates: [] as Row[], media: [] as Array<{ id: string; alt: string; byteSize: number; width: number; height: number; filename: string }>,
+      collections: [] as Array<{ id: number; prefix: string; templateId: number }>, entries: [] as Array<{ id: number; collectionId: number; slug: string; revision: number; published: object | null }>,
+      cleared: 0, unasked: 0,
+    };
     let next = 0;
-    const row = (id: number) => [...state.pages, ...state.parts].find((one) => one.id === id)!;
+    const row = (id: number) => [...state.pages, ...state.parts, ...state.templates].find((one) => one.id === id)!;
     const adapter = {
       name: "kept",
       listPages: async () => state.pages.map((one) => ({ ...one })),
       listParts: async () => state.parts.map((one) => ({ ...one })),
       listMedia: async () => state.media.map((one) => ({ ...one })),
+      listCollections: async () => state.collections.map((one) => ({ id: one.id, prefix: one.prefix, template: { ...row(one.templateId) } })),
+      listEntries: async (collectionId: number) => state.entries.filter((one) => one.collectionId === collectionId).map((one) => ({ ...one })),
       getSiteStyle: async () => ({ palette: { primary: "site-signal" }, typeScale: "balanced", updatedAt: null }),
       uploadMedia: async (upload: { file: File; width: number; height: number; alt?: string }) => {
         const item = { id: `lib${++next}`, alt: upload.alt ?? "", byteSize: upload.file.size, width: upload.width, height: upload.height, filename: upload.file.name };
         state.media.push(item);
         return { ok: true, value: item };
+      },
+      createCollection: async ({ prefix }: { prefix: string }) => {
+        const template: Row = { id: ++next, kind: "template", title: "News", slug: null, home: false, revision: 0, updatedAt: "t0", published: null };
+        state.templates.push(template);
+        const made = { id: ++next, prefix, templateId: template.id };
+        state.collections.push(made);
+        return { ok: true, value: { id: made.id, prefix, template: { ...template } } };
+      },
+      createEntry: async (collectionId: number, { slug }: { slug: string }) => {
+        const made = { id: ++next, collectionId, slug, revision: 0, published: null };
+        state.entries.push(made);
+        return { ok: true, value: { ...made } };
+      },
+      publishEntry: async (_collectionId: number, id: number) => {
+        state.entries.find((one) => one.id === id)!.published = {};
+        return { ok: true, value: {} };
       },
       createPage: async (page: { title: string; slug: string }) => {
         const made: Row = { id: ++next, kind: "page", title: page.title, slug: page.slug, home: false, revision: 0, updatedAt: "t0", published: null };
@@ -314,11 +456,14 @@ describe("editions", () => {
       },
     } as unknown as StorageAdapter & Pick<BrowserAdapter, "siteFingerprint" | "clearSite" | "clearSiteIf">;
     // As the browser's storage says how the site stands: every record.
-    const fingerprint = () => digest(JSON.stringify([state.pages, state.parts, state.media]));
+    const fingerprint = () => digest(JSON.stringify([state.pages, state.parts, state.templates, state.media, state.collections, state.entries]));
     const empty = () => {
       state.pages = [];
       state.parts = parts();
+      state.templates = [];
       state.media = [];
+      state.collections = [];
+      state.entries = [];
       state.cleared += 1;
     };
     adapter.siteFingerprint = async () => fingerprint();
@@ -347,6 +492,7 @@ describe("editions", () => {
     expect(await seedExampleEdition(adapter, source({ edition: "one" }), m, e)).toBe("not empty");
     expect(state.cleared).toBe(0);
     expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
+    expect(state.collections.map((one) => one.prefix)).toEqual(["news"]);
   });
 
   test("a newer edition replaces a site nobody worked on: let go of, and put in anew", async () => {
@@ -363,6 +509,7 @@ describe("editions", () => {
     expect(e.record?.edition).toBe("two");
     expect(state.pages.map((page) => page.slug)).toEqual(["home", "second"]);
     expect(state.pages.map((page) => page.id).some((id) => before.includes(id))).toBe(false);
+    expect([state.collections.length, state.entries.length]).toEqual([1, 2]);
   });
 
   test("a newer edition is only offered to a site somebody worked on, or one put in before editions were kept; starting over puts it in on the next visit", async () => {
@@ -384,22 +531,27 @@ describe("editions", () => {
     expect(e.record?.edition).toBe("two");
   });
 
-  test("an edition is its files': the same files give the same one, a page, a picture or a part's starter changed another", () => {
+  test("an edition is its files': the same files give the same one, a page, a collection's file, a picture or a part's starter changed another", () => {
     const parts = { header: { title: "Header" }, footer: { title: "Footer" } };
-    const one = editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, parts);
-    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, { footer: parts.footer, header: parts.header })).toBe(one);
-    expect(editionOf(site, { "pages/home.json": { title: "B" } }, { "images/a.png": "/assets/a-1.png" }, parts)).not.toBe(one);
-    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-2.png" }, parts)).not.toBe(one);
-    expect(editionOf(site, { "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, { ...parts, footer: { title: "Footer", sections: [] } })).not.toBe(one);
+    const documents = { "pages/home.json": { title: "A" }, "collections/news.json": { entries: [] } };
+    const one = editionOf(site, documents, { "images/a.png": "/assets/a-1.png" }, parts);
+    expect(editionOf(site, { "collections/news.json": { entries: [] }, "pages/home.json": { title: "A" } }, { "images/a.png": "/assets/a-1.png" }, { footer: parts.footer, header: parts.header })).toBe(one);
+    expect(editionOf(site, { ...documents, "pages/home.json": { title: "B" } }, { "images/a.png": "/assets/a-1.png" }, parts)).not.toBe(one);
+    expect(editionOf(site, { ...documents, "collections/news.json": { entries: [{ slug: "dawn" }] } }, { "images/a.png": "/assets/a-1.png" }, parts)).not.toBe(one);
+    expect(editionOf(site, documents, { "images/a.png": "/assets/a-2.png" }, parts)).not.toBe(one);
+    expect(editionOf(site, documents, { "images/a.png": "/assets/a-1.png" }, { ...parts, footer: { title: "Footer", sections: [] } })).not.toBe(one);
     expect(one).toMatch(/^[0-9a-f]{8}$/);
   });
 
-  test("the build's edition holds the header's and footer's starters it serves", () => {
+  test("the build's edition holds the collections' files and the header's and footer's starters it serves", () => {
     // The pictures by their name in site.json, as the build gives them.
     const found = import.meta.glob<string>("../../../example-site/images/*.png", { eager: true, query: "?url", import: "default" });
     const images = Object.fromEntries(Object.entries(found).map(([path, url]) => [path.slice(path.indexOf("images/")), url]));
     const built = builtSource();
-    expect(built.edition).toBe(editionOf(built.site, built.pages, images, SITE_THEME.parts));
-    expect(built.edition).not.toBe(editionOf(built.site, built.pages, images, { ...SITE_THEME.parts, footer: { ...SITE_THEME.parts.footer, title: "Another footer" } }));
+    const documents = { ...built.pages, ...built.collections };
+    expect(Object.keys(built.collections)).toEqual(["collections/news.json"]);
+    expect(built.edition).toBe(editionOf(built.site, documents, images, SITE_THEME.parts));
+    expect(built.edition).not.toBe(editionOf(built.site, built.pages, images, SITE_THEME.parts));
+    expect(built.edition).not.toBe(editionOf(built.site, documents, images, { ...SITE_THEME.parts, footer: { ...SITE_THEME.parts.footer, title: "Another footer" } }));
   });
 });

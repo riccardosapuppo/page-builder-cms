@@ -74,10 +74,9 @@ test("with no collection, the screen says what one is; the first is made from a 
   expect(dialog.querySelector(".co-note")?.textContent).toBe("Winter swims is made: write its first entry.");
 });
 
-test("a prefix another collection or a page has is refused at the prefix, in the editor's words; nothing is made", async () => {
+test("a prefix another collection has, or one the site answers itself, is refused at the prefix, in the editor's words; nothing is made", async () => {
   const fake = new FakeCollections();
   fake.add(NEWS);
-  fake.pageSlugs.add("events");
   const { dialog } = await openScreen(fake);
   await press(within(dialog).getByRole("button", { name: "New collection" }));
   const form = within(dialog).getByRole("region", { name: "New collection" });
@@ -87,9 +86,9 @@ test("a prefix another collection or a page has is refused at the prefix, in the
   const prefix = field(form, /^Prefix/);
   expect(prefix.getAttribute("aria-invalid")).toBe("true");
   expect(prefix.closest(".field")?.querySelector(".error")?.textContent).toBe("Another collection has this prefix. Choose another.");
-  await type(prefix, "events");
+  await type(prefix, "sent");
   await press(within(form).getByRole("button", { name: "Create collection" }));
-  expect(prefix.closest(".field")?.querySelector(".error")?.textContent).toBe("A page has this address. Choose another prefix, or change the page’s.");
+  expect(prefix.closest(".field")?.querySelector(".error")?.textContent).toBe("The site answers this address itself. Choose another prefix.");
   // The editor's own check, before anything is sent.
   await type(prefix, "Not A Prefix");
   const sent = fake.calls.length;

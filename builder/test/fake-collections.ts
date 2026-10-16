@@ -39,8 +39,6 @@ export class FakeCollections implements CollectionsStorage {
   readonly collections: Collection[] = [];
   readonly entries: Entry[] = [];
   readonly calls: string[] = [];
-  // The pages' addresses, which a prefix may not take.
-  readonly pageSlugs = new Set<string>();
   private readonly failing = new Map<string, Failure>();
   private nextId = 1;
   private nextEntry = 1;
@@ -120,7 +118,6 @@ export class FakeCollections implements CollectionsStorage {
 
   private prefixErrors(prefix: string, except: number | null): Array<{ pointer: string; keyword: string; message: string }> {
     if (this.collections.some((c) => c.prefix === prefix && c.id !== except)) return [{ pointer: "/prefix", keyword: "taken", message: "is already the prefix of another collection" }];
-    if (this.pageSlugs.has(prefix)) return [{ pointer: "/prefix", keyword: "taken", message: "is already the address of a page" }];
     if (prefix === "sent" || prefix === "api") return [{ pointer: "/prefix", keyword: "reserved", message: "is an address the application uses itself" }];
     return [];
   }

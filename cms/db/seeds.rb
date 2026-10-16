@@ -1,5 +1,6 @@
-# The example site of the approved design: three published pages and the
-# images they show, uploaded into the media library, read from
+# The example site of the approved design: four published pages, the
+# collection News with its five entries and its template, published, and
+# the images they show, uploaded into the media library, read from
 # ../example-site/ (db/seeds/example_site.rb says how). With EMPTY_SITE=1,
 # which `npm start -- --empty` sets, a site with nothing in it instead
 # (db/seeds/empty_site.rb).

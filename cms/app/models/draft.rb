@@ -3,8 +3,8 @@
 # The one draft of a page: the document as the editor last saved it, and
 # the address the page will have once published; none for the site's
 # header and footer (Page::PARTS), nor for a collection's template, which
-# have no address. A page's address is never a collection's prefix: its
-# entries' addresses start with it (Collection).
+# have no address. A page's address may be a collection's prefix: /news is
+# then the page, and /news/<entry> each entry (Collection).
 #
 # The editor saves again and again. Each save names the revision it started
 # from; the save goes through only if the draft is still at that revision,
@@ -37,7 +37,6 @@ class Draft < ApplicationRecord
   validates :slug, absence: { message: "is not for a template, which draws its entries at theirs" }, if: :template?
   validates :slug, uniqueness: { message: "is already the next address of another page" }, allow_nil: true
   validate :slug_not_live_elsewhere
-  validate :slug_not_a_prefix
 
   # Saves a document sent by the editor over the draft of page page_id.
   #
@@ -142,16 +141,6 @@ class Draft < ApplicationRecord
 
   def addressless?
     part? || template?
-  end
-
-  # The address must not be a collection's prefix: /<prefix>/<entry> are
-  # its entries' addresses, and the collection's own checks refuse a
-  # prefix that is a page's (Collection).
-  def slug_not_a_prefix
-    return if slug.nil? || errors.include?(:slug)
-    return unless Collection.exists?(prefix: slug)
-
-    errors.add(:slug, :taken, message: "is already the prefix of a collection")
   end
 
   # The address must not be another page's live address either: that page

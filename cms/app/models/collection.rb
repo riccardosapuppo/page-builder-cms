@@ -5,7 +5,11 @@
 # as schema/collection.schema.json describes it and CollectionDocument
 # checks it: its name, the prefix every entry's address starts with
 # (/<prefix>/<entry>), its fields, and the order its entries are listed in
-# when nothing else is asked for (default_sort, the definition's sort).
+# when nothing else is asked for (default_sort, the definition's sort). A
+# prefix is one collection's only, and never an address the application
+# answers itself; a page may have it as its address, the page of the
+# section that lists the entries at /news: a page's address is one part,
+# an entry's two.
 #
 # Its template is a page of kind "template" (Page, CollectionTemplate),
 # made with the collection, an empty document titled with its name and
@@ -34,7 +38,6 @@ class Collection < ApplicationRecord
 
   validates :prefix, uniqueness: { message: "is already the prefix of another collection" }
   validate :prefix_not_reserved
-  validate :prefix_not_a_page_address
 
   # A new collection from its definition, checked, and its template.
   # Raises CollectionDocument::Invalid, or ActiveRecord::RecordInvalid for a
@@ -95,15 +98,5 @@ class Collection < ApplicationRecord
     return unless Slug.reserved?(prefix) || RESERVED_PREFIXES.include?(prefix)
 
     errors.add(:prefix, :reserved, message: "is an address the application uses itself")
-  end
-
-  # A page's address, live or next, is never a prefix: /<prefix> would be
-  # the page and /<prefix>/<entry> an entry, two things under one name.
-  # A page refuses a prefix as its address the same way (Draft).
-  def prefix_not_a_page_address
-    return if errors.include?(:prefix) || prefix.nil?
-    return unless Page.exists?(slug: prefix) || Draft.exists?(slug: prefix)
-
-    errors.add(:prefix, :taken, message: "is already the address of a page")
   end
 end

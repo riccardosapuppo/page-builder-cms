@@ -83,6 +83,10 @@
                     "href": "/winter-series"
                   },
                   {
+                    "label": "News",
+                    "href": "/news"
+                  },
+                  {
                     "label": "Notices",
                     "href": "/notices"
                   }

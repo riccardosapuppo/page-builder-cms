@@ -3,7 +3,8 @@
 // added in its settings and saved; an entry written with every type of
 // field (an image uploaded in the library opened over the screen, a rich
 // text with a bold word), a value past its field's bound refused at the
-// field with nothing sent, then saved, published and unpublished, the CMS
+// field with nothing sent, then saved, published (its View leading to its
+// address on the CMS) and unpublished, the CMS
 // keeping each step; the entries searched by their titles; one deleted
 // after asking; axe on the screen. Two tabs on one entry: the second save
 // meets the conflict, and Keep mine saves it over the first. The template
@@ -171,6 +172,11 @@ test("a collection from a preset, a field of every type, an entry written, refus
   await form.getByRole("button", { name: "Publish" }).click();
   await expect(form.locator(".co-said")).toHaveText(`Published: visitors find it at /${prefix}/first-swim-of-the-season.`);
   expect((await entries(request, collection.id))[0]?.published?.slug).toBe("first-swim-of-the-season");
+  // Published, it has a View beside Preview: its address on the CMS,
+  // whose page waits for the template, which has nothing live yet.
+  const view = form.getByRole("link", { name: "View", exact: true });
+  await expect(view).toHaveAttribute("href", `${cms()}/${prefix}/first-swim-of-the-season`);
+  await expect(view).toHaveAttribute("title", `Its template is not published yet: visitors find no page at /${prefix}/first-swim-of-the-season until it is. Opens in a new tab.`);
 
   const report = await axe(page, { include: ".dlg-collections" });
   for (const line of report.other) console.log(`Collections: ${line}`);
@@ -180,6 +186,7 @@ test("a collection from a preset, a field of every type, an entry written, refus
   await form.getByRole("button", { name: "Unpublish" }).click();
   await expect(form.locator(".co-said")).toHaveText("Unpublished: visitors no longer find it. Its draft is kept.");
   expect((await entries(request, collection.id))[0]?.published).toBeNull();
+  await expect(view).toHaveCount(0);
 
   // Three more, made through the API; the list reads them, and the search
   // asks the CMS for the titles that hold a word.

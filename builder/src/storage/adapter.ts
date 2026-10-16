@@ -687,8 +687,9 @@ export interface StorageAdapter {
   // A new collection, with its template: an empty document with its name,
   // nothing live. Invalid at each fault of the definition (its schema's and
   // its rules', at pointers into it: /fields/0/key...), and at /prefix for
-  // a prefix another collection has, a page's address (next or live), or
-  // one the application answers itself (keywords taken, reserved).
+  // a prefix another collection has, or one the application answers itself
+  // (keywords taken, reserved). A page's address may be a prefix: the page
+  // at /news lists the entries at /news/<slug>.
   createCollection(definition: CollectionDefinition, options?: CallOptions): Promise<Outcome<Collection, Invalid>>;
   getCollection(collectionId: number, options?: CallOptions): Promise<Collection>;
   // Replaces the members given and checks the definition whole: a field

@@ -816,30 +816,24 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   }
 
   // Whether another page has the address as its next one, or as the one
-  // it is live under, or a collection as its prefix: the draft's
-  // uniqueness rules, in the order the CMS checks them. `tx` spans pages
-  // and collections.
+  // it is live under: the draft's uniqueness rules, in the order the CMS
+  // checks them. A collection's prefix leaves the address free: the page
+  // at /news and the entries at /news/<slug> live side by side.
   async function addressTaken(tx: IDBTransaction, slug: string, pageId: number | null): Promise<FieldError[]> {
     const pages = (await request(tx.objectStore("pages").getAll())) as PageRecord[];
     const others = pages.filter((page) => page.id !== pageId);
     if (others.some((page) => page.slug === slug)) return [fieldError("/slug", "taken", WORDS.nextAddressTaken)];
     if (others.some((page) => page.liveSlug === slug)) return [fieldError("/slug", "taken", WORDS.liveAddressTaken)];
-    const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
-    if (collections.some((collection) => collection.prefix === slug)) return [fieldError("/slug", "taken", WORDS.slugIsPrefix)];
     return [];
   }
 
-  // Whether a prefix is another collection's, reserved, or a page's
-  // address, next or live: Collection's checks, the first that fails, in
-  // their order. `tx` spans pages and collections.
+  // Whether a prefix is another collection's, or reserved: Collection's
+  // checks, the first that fails, in their order. A page's address may be
+  // one.
   async function prefixTaken(tx: IDBTransaction, prefix: string, collectionId: number | null): Promise<FieldError[]> {
     const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
     if (collections.some((collection) => collection.id !== collectionId && collection.prefix === prefix)) return [fieldError("/prefix", "taken", WORDS.prefixTaken)];
-    const reserved = prefixReserved(prefix);
-    if (reserved.length > 0) return reserved;
-    const pages = (await request(tx.objectStore("pages").getAll())) as PageRecord[];
-    if (pages.some((page) => page.slug === prefix || page.liveSlug === prefix)) return [fieldError("/prefix", "taken", WORDS.prefixIsPage)];
-    return [];
+    return prefixReserved(prefix);
   }
 
   // The images an entry's values name, each checked to be in the library,
@@ -954,7 +948,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       const slug = body.slug as string;
       const wrong = slugErrors(slug);
       if (wrong.length > 0) return invalid("invalid_request", wrong);
-      return write(["pages", "collections"], async (tx): Promise<Outcome<Page, Invalid>> => {
+      return write(["pages"], async (tx): Promise<Outcome<Page, Invalid>> => {
         const taken = await addressTaken(tx, slug, null);
         if (taken.length > 0) return invalid("invalid_request", taken);
         const at = now();
@@ -985,7 +979,7 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       check.string("slug");
       check.boolean("home");
       if (check.errors.length > 0) return invalid("invalid_request", check.errors);
-      return write(["pages", "collections"], async (tx): Promise<Outcome<Page, Invalid>> => {
+      return write(["pages"], async (tx): Promise<Outcome<Page, Invalid>> => {
         const record = await pageIn(tx, pageId);
         // A part or a template has no address and is never home: refused at
         // the member sent, as the CMS refuses it.

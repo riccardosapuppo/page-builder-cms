@@ -93,11 +93,14 @@ that one listener.
 
 `db:seed` loads the example site, Slack Water, an invented open-water
 swimming club, from [`../example-site/`](../example-site/), the one copy
-of its pages and pictures, which the editor's browser demo reads too
-([db/seeds/example_site.rb](db/seeds/example_site.rb)):
+of its pages, its collection and its pictures, which the editor's
+browser demo reads too ([db/seeds/example_site.rb](db/seeds/example_site.rb)):
 - the home page, the course a beginner swims out to the buoy line, at
   `http://127.0.0.1:3900/`;
 - a content page, `/winter-series`;
+- the news, `/news`: the page of the collection News, at its prefix,
+  listing its five entries, each at `/news/<slug>`, drawn with News's
+  template, the footer's More pages menu leading there;
 - a page that breaks assumptions on purpose, `/notices`: four columns, a
   word too long for any line, emoji and right-to-left text, nested lists, a
   long alt text, a dark band, a heading hidden on phones.
@@ -105,39 +108,49 @@ of its pages and pictures, which the editor's browser demo reads too
 The fifteen images go into the media library as an upload does (a blob on the
 storage service, then `MediaItem.create_from_upload!` and its checks), from
 PNGs that `node tools/seed-images.ts` renders from the design's SVGs; a
-page names each by its id in `site.json`, and the seed puts the library's
-id for that upload in its place before it saves the page. Every file is
-read and checked before anything is uploaded or saved. Last, it
-publishes the site's header and footer as their starters are
+document names each by its id in `site.json`, and the seed puts the
+library's id for that upload in its place before it saves the document.
+Then the collection is made (`Collection.create_with_template!`), each
+entry written and published, and its template saved and published, in
+one transaction; then the pages, a Collection list's collection, named
+by its id in `site.json`, given the id the collection was made with.
+Every file is read and checked before anything is uploaded or saved.
+Last, it publishes the site's header and footer as their starters are
 (`config/parts`, the example site's own), a part already published left
-as it is. On 12 October 2026, `ruby bin/rails db:prepare` on a fresh
+as it is. On 16 October 2026, `ruby bin/rails db:prepare` on a fresh
 development database (the three `*_DATABASE_URL` and `CMS_STORAGE_ROOT`
 pointing at a folder of its own) created it and ran the seed, which
-printed the first seven lines below; `ruby bin/rails db:seed` right after
-printed the next seven:
+printed the first nine lines below; `ruby bin/rails db:seed` right after
+printed the next nine:
 
 ```
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home
   Winter series                /winter-series   version 2
+  News                         /news            version 2
   Notices                      /notices         version 2
   Header                       every page       version 1
   Footer                       every page       version 1
-  9 images in the media library
+  News                         /news/<slug>     5 of 5 entries published, its template version 2
+  15 images in the media library
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home, already there, left as it is
   Winter series                /winter-series   version 2, already there, left as it is
+  News                         /news            version 2, already there, left as it is
   Notices                      /notices         version 2, already there, left as it is
   Header                       every page       version 1, already there, left as it is
   Footer                       every page       version 1, already there, left as it is
-  9 images in the media library
+  News                         /news/<slug>     5 of 5 entries published, its template version 2, already there, left as it is
+  15 images in the media library
 ```
 
 Running it again changes nothing (`test/integration/seed_test.rb` runs it
-twice). Version 1 of each page is the automatic version the first save
-makes; version 2 is the publish. A page whose address is already taken,
-live or in a draft, is left as it is, with whatever was changed in it
-since, and the home page is set only while the site has none.
+twice). Version 1 of each page, and of the template, is the automatic
+version the first save makes; version 2 is the publish. A page whose
+address is already taken, live or in a draft, is left as it is, with
+whatever was changed in it since, and so is a collection whose prefix is
+taken, with its entries and its template; the home page is set only
+while the site has none.
 
 With `EMPTY_SITE=1`, which `npm start -- --empty` sets, the seed makes a
 site with nothing in it instead ([db/seeds/empty_site.rb](db/seeds/empty_site.rb)):
@@ -210,8 +223,9 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3900/api/pages/$($page.pag
 Invoke-RestMethod http://127.0.0.1:3900/api/site-style
 ```
 
-The first answer begins `{"page":{"id":4,...`: the id is the new page's,
-whatever the database held (the seeded one has three pages), and the
+The first answer begins `{"page":{"id":8,...`: the id is the new page's,
+whatever the database held (the seeded one holds seven: News's template,
+its four pages, the header and the footer), and the
 publish is of that page and no other. The address `winter` is taken once
 the first step has run, so a second run is refused with a 422 at `/slug`:
 change the address in the first step to run it again.
@@ -351,7 +365,8 @@ had made one pool, and none was connected).
   the published template drawn with what the entry went live with,
   under its title and the description its values give; a draft, an
   unknown slug or prefix and a template with nothing live, 404; an old
-  slug, 301; a page's Collection list and its cards' links; a Field block
+  slug, 301; a page's Collection list and its cards' links; a page at the
+  collection's prefix, `/news`, beside its entries at `/news/<slug>`; a Field block
   refused on a page and a header; the template's preview with an entry's
   draft, or made-up values. And their cache
   ([test/integration/collection_cache_test.rb](test/integration/collection_cache_test.rb)):
@@ -511,10 +526,11 @@ no warnings, the same morning).
   first paragraph field with a value, else its first text field, on one
   line and cut at a word within 160 characters (`Entry#description`),
   else the template's own. The route takes two parts in a slug's form, so
-  it is never a page's address (one part) nor one of the application's: a
-  prefix is never a page's slug nor a reserved address, and a page's slug
-  is never a prefix. A new prefix moves every entry and leaves no
-  redirect behind: an old prefix is a 404.
+  it is never a page's address (one part) nor one of the application's
+  (a prefix is never a reserved address): a page may have the prefix as
+  its address, and `/news`, the page that lists the entries, and
+  `/news/<slug>`, each entry, live side by side. A new prefix moves every
+  entry and leaves no redirect behind: an old prefix is a 404.
 
 From the repository root, with the server running and seeded,
 `node tools/site-shots.ts http://127.0.0.1:3900 <folder> [preview page id]`
@@ -1098,10 +1114,11 @@ the twin of the editor's) and the schema, every fault of both answered
 together, 422 `invalid_request` at its pointer (`/fields/1/key`
 `uniqueKey`, `/values/day` `dateExists`, `/values/summery`
 `unknownField`, `/values/summary` `required`...). A prefix is unique,
-never one the application answers itself (`Slug.reserved?`, and `sent`,
-whose `/sent/<form>` answers the home page's forms), and never a page's
-address, next or live, nor a page's address a prefix: refused both ways
-at `/prefix` or `/slug`, keyword `taken`.
+refused at `/prefix` with the keyword `taken`, and never one the
+application answers itself (`Slug.reserved?`, and `sent`, whose
+`/sent/<form>` answers the home page's forms), keyword `reserved`. It
+may be a page's address, next or live, and a page may move to it: the
+page at `/news` is the section's, listing what `/news/<slug>` draws.
 
 An entry has a draft, its title, slug and values, saved at a revision as
 a page's draft is (one conditional statement; the same `saveId`,

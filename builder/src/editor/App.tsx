@@ -177,12 +177,15 @@ interface AppProps {
   // demo's own drawing of it. Publish opens it, and the Publish menu
   // links it.
   publishedView?: ((pageId: number) => string) | null;
+  // The same for an entry of a collection: an entry's form links it as
+  // View.
+  entryView?: ((entryId: number) => string) | null;
   // A line under the bottom line, across the window: the demo's.
   foot?: ReactNode;
   tabs?: TabOpener;
 }
 
-export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, foot, tabs = windowTabs }: AppProps) {
+export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, entryView = null, foot, tabs = windowTabs }: AppProps) {
   const { store, ui, clock } = env;
   // The Assistant (../assistant/README.md): one for the editor's life; the
   // key it may hold is forgotten when the window is left, or the editor goes.
@@ -1016,10 +1019,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
   const isOpen = useCallback((id: number) => loaded.current === id, []);
   const session = useMemo<Session>(() => ({
-    pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, publishing, styleSave,
+    pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, entryView, publishing, styleSave,
     openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts), and the collections' screen the same
   // way (./collections/context.ts).

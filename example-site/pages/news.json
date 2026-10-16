@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "title": "News",
+  "description": "News from the slipway: the tide times, the winter swims, and what goes on in the hut after.",
+  "sections": [
+    {
+      "id": "intro",
+      "type": "section",
+      "props": {
+        "label": "News"
+      },
+      "children": [
+        {
+          "id": "intro-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "intro-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "News"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display"
+                }
+              }
+            },
+            {
+              "id": "intro-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "The tide times, the winter swims, and what goes on in the hut after."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "large"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "m"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        },
+        "phone": {
+          "spaceAbove": "l"
+        }
+      }
+    },
+    {
+      "id": "entries",
+      "type": "section",
+      "props": {
+        "label": "The news"
+      },
+      "children": [
+        {
+          "id": "entries-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "entries-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "From the slipway"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-2",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "entries-list",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 24,
+                "order": {
+                  "by": "date",
+                  "direction": "desc"
+                },
+                "layout": "list",
+                "columns": 3,
+                "image": "image",
+                "date": "date",
+                "excerpt": "summary",
+                "linkLabel": "Read more",
+                "emptyText": "No news yet: the next swim will be."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "text"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "xl"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "close",
+      "type": "section",
+      "props": {
+        "label": "Come and swim"
+      },
+      "children": [
+        {
+          "id": "close-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "close-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Come and swim"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-2",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "close-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Trial swims run every week through the autumn. Tell us a little about your swimming, and we reply within two days."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "close-button",
+              "type": "button",
+              "props": {
+                "label": "Join a trial swim",
+                "href": "/#join"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "primary"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "m"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "soft",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    }
+  ]
+}

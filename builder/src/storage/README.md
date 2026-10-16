@@ -13,7 +13,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
 | `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. It refuses what the CMS refuses, including a body with half a surrogate pair in any text (the CMS's JSON parser does: 400, `malformed_json`). |
 | `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the address and home mark a part or a template refuses, a collection's prefix, an entry's slug, a list of entries' query and order) as TypeScript, for `browser.ts`. |
-| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser as the CMS's seed puts it in, pictures first, then each page saved and published, the home page set, and the header and footer published as their starters are; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. By editions: the seed keeps the edition it put in (a digest of the example site's files and of the header's and footer's starters) and how the site stood right after (`browser.ts`, `siteFingerprint`, over every record the browser keeps, versions too); a later build of another edition lets go of a site that still stands so, read in the transaction that lets go of it (`clearSiteIf`: a save from another tab in between keeps it), and puts its own in, and keeps one somebody changed, for the demo to offer the new edition. |
+| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser (no page, no picture, no collection) as the CMS's seed puts it in, pictures first, then each collection with its entries published and, once every collection has its id, its template saved and published, then each page saved and published, the home page set, and the header and footer published as their starters are; a document's pictures and its Collection lists' collections named by the ids the storage gave them (`withLibraryIds`, `withCollectionIds`); a seed cut short finished by the next visit, a collection found by its prefix and an entry by its slug; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. By editions: the seed keeps the edition it put in (a digest of the example site's files and of the header's and footer's starters) and how the site stood right after (`browser.ts`, `siteFingerprint`, over every record the browser keeps, versions too); a later build of another edition lets go of a site that still stands so, read in the transaction that lets go of it (`clearSiteIf`: a save from another tab in between keeps it), and puts its own in, and keeps one somebody changed, for the demo to offer the new edition. |
 | `site-theme-module.d.ts` | The type of `virtual:site-theme`: the header's and footer's starters, read from `cms/config/parts` when the editor is built, where a starter the CMS would not start with stops the build, each value named, and the site's time zone, from `cms/config/site.yml` (`../../build/site-theme.ts`). |
 | `contract.ts` | The battery every adapter must pass, written against the interface alone. |
 | `autosave.ts` | Saving on its own: the module the store hands each new document to, and the interface reads. |
@@ -73,10 +73,10 @@ order follows does not go without a new order, invalid at `/sort/by`,
 `sortField`) and `deleteCollection` (its entries and its template with
 it). A refusal of a definition is invalid at each fault, its schema's and
 its rules', at pointers into the definition (`/fields/1/key` `uniqueKey`),
-and at `/prefix` for a prefix another collection has, a page's address
-next or live (`taken`), or one the application answers itself
-(`reserved`); a page refuses a collection's prefix as its address the
-same way (`/slug`, `taken`). Each collection answers its counts of
+and at `/prefix` for a prefix another collection has (`taken`), or one
+the application answers itself (`reserved`). A page's address may be a
+prefix, made there or moved there, and a prefix a page's address: the
+page at `/news` lists the entries at `/news/<slug>`. Each collection answers its counts of
 entries, live entries, and `publishedRevision`, which every publish,
 unpublish and delete of a live entry and every change of the definition
 move, and its `template`: a page of kind `template`, with no address,
@@ -386,7 +386,8 @@ newest first, counted by form, a part at a time to the end, deleted for
 good, found only under their own page), the collections (a new one
 listed with its template, a page of its own kind listed with neither the
 pages nor the parts; a definition refused at each fault, its schema's and
-its rules'; a prefix and a page's address, both ways; a definition
+its rules'; a page at a prefix and a prefix at a page's address, next
+or live, each accepted, and two collections never at one prefix; a definition
 changed by the members given, its published revision moved only by a
 change; an entry of every type of value made, read and refused at each
 value in one answer; an entry saved at a revision, in conflict with

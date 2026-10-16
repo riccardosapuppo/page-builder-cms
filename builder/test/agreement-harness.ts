@@ -15,7 +15,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parse } from "parse5";
 import { PageSections } from "../src/render/blocks.tsx";
-import type { MediaImage, MediaResolver } from "../src/render/context.ts";
+import type { MediaImage, MediaResolver, RenderContext } from "../src/render/context.ts";
 import type { PageDocument } from "../src/shared/document.ts";
 import type { MediaItem, StorageAdapter } from "../src/storage/adapter.ts";
 import { PNG_BYTES } from "../src/storage/contract.ts";
@@ -38,8 +38,10 @@ export interface Agreement {
   publish(): Promise<string>;
   revision(): number;
   // Fetches the page at path (the preview by default) and compares it with
-  // React's render of the document; throws with where they differ.
-  agree(document: unknown, path?: string, label?: string): Promise<{ nodes: number }>;
+  // React's render of the document, given the content the CMS draws it
+  // with besides the library (the collections its lists draw, the entry a
+  // template is drawn with); throws with where they differ.
+  agree(document: unknown, path?: string, label?: string, content?: Omit<RenderContext, "media">): Promise<{ nodes: number }>;
   fetchText(path: string): Promise<string>;
 }
 
@@ -99,9 +101,9 @@ export async function startAgreement(cms: string, name: string): Promise<Agreeme
   }
   const resolver: MediaResolver = (mediaId) => known.get(mediaId) ?? null;
 
-  const agree = async (document: unknown, path = previewPath, label = "preview") => {
+  const agree = async (document: unknown, path = previewPath, label = "preview", content: Omit<RenderContext, "media"> = {}) => {
     const page = mainOfPage(await fetchText(path));
-    const html = renderToStaticMarkup(createElement(PageSections, { document, ctx: { media: resolver } }));
+    const html = renderToStaticMarkup(createElement(PageSections, { document, ctx: { ...content, media: resolver } }));
     const result = compareCanonical(canonical(page), canonical(parseSections(html)), label);
     if (!result.equal) throw new Error(result.message);
     const problems = safetyProblems(html);

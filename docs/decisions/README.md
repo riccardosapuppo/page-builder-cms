@@ -25,7 +25,9 @@ it holds.
   their own, an entry's values given to their fields' definitions by twin
   rules held to a corpus; a draft saved at a revision and what is live,
   no versions; the template a page of kind `template`; a counter of what
-  visitors could see; both storages, one battery.
+  visitors could see; both storages, one battery. Since 16 October a page
+  may live at a collection's prefix, the section's page at `/news` above
+  its entries at `/news/<slug>`.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

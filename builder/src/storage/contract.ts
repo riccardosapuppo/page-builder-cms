@@ -1215,22 +1215,30 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
-    name: "a page cannot take a collection's prefix as its address, and a collection cannot take a page's next or live address as its prefix",
+    name: "a page may be at a collection's prefix, made there or moved there, and a collection may take a page's next or live address as its prefix: the section's page lists the entries at its own address; two collections still never share a prefix, nor takes one an address the application answers itself",
     needs: ["collections", "publish"],
     async run(env) {
+      // /news the page, /news/<slug> its entries: one part, then two.
       const collection = await newCollection(env);
-      const made = refusal(await env.adapter.createPage({ title: "News", slug: collection.prefix }), "a page at a collection's prefix");
-      env.expect(pointers(made)).toEqual(["/slug taken"]);
-      const page = await newPage(env, "latest");
-      env.expect(pointers(refusal(await env.adapter.updatePage(page.id, { slug: collection.prefix }), "a page's next address at a prefix"))).toEqual(["/slug taken"]);
+      const made = value(await env.adapter.createPage({ title: "News", slug: collection.prefix }), "a page at a collection's prefix");
+      env.expect(made.page.slug).toBe(collection.prefix);
+      env.expect(value(await env.adapter.publish(made.page.id), "the publish of the page at the prefix").published.slug).toBe(collection.prefix);
+      const events = await newCollection(env, "events");
+      const moved = await newPage(env, "latest");
+      env.expect(value(await env.adapter.updatePage(moved.id, { slug: events.prefix }), "a page's next address at a prefix").page.slug).toBe(events.prefix);
 
+      const page = await newPage(env, "tides");
       value(await env.adapter.publish(page.id), "the page's publish");
       const next = env.unique("next");
       value(await env.adapter.updatePage(page.id, { slug: next }), "the page's next address");
       for (const [prefix, what] of [[page.slug, "the page's live address"], [next, "the page's next address"]] as const) {
-        const problem = refusal(await env.adapter.createCollection(news(prefix)), what);
-        env.expect(problem.errors.map((e) => `${e.pointer} ${e.keyword} ${e.message}`), what).toEqual(["/prefix taken is already the address of a page"]);
+        env.expect(value(await env.adapter.createCollection(news(prefix)), `a collection at ${what}`).prefix, what).toBe(prefix);
       }
+      const harbour = await newPage(env, "harbour");
+      env.expect(value(await env.adapter.updateCollection(events.id, { prefix: harbour.slug }), "a prefix changed to a page's address").prefix).toBe(harbour.slug);
+
+      env.expect(pointers(refusal(await env.adapter.createCollection(news(collection.prefix)), "a prefix another collection has"))).toEqual(["/prefix taken"]);
+      env.expect(pointers(refusal(await env.adapter.updateCollection(events.id, { prefix: "sent" }), "a prefix the application answers below itself"))).toEqual(["/prefix reserved"]);
     },
   },
   {

@@ -7,15 +7,17 @@
 // other is drawn; the storage's refusals at their fields; values no field
 // takes said and left out; a conflict settled by Reload or Keep mine;
 // publish and unpublish, an unpublish that finds another tab's newer draft
-// saying the conflict at once; an image chosen in the library opened over
+// saying the conflict at once; a published entry's View, its live address
+// or the demo's own drawing of it; an image chosen in the library opened over
 // the screen; changes not saved asked about before they are left.
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { field, NEWS, openScreen, press, type } from "../../../test/collections-kit.tsx";
 import { FakeCollections } from "../../../test/fake-collections.ts";
 import { standInLayout } from "../../../test/text-editor-kit.ts";
 import type { Field } from "../../shared/collection.ts";
 import type { MediaItem } from "../../storage/adapter.ts";
+import { emptySession } from "../session.tsx";
 
 standInLayout();
 
@@ -109,6 +111,68 @@ test("every type of field, written and saved in one call with its values; then p
   expect(form.querySelector(".co-said")?.textContent).toBe("Unpublished: visitors no longer find it. Its draft is kept.");
   // The list's counts follow.
   expect(within(dialog).getByRole("button", { name: "News, /news, 1 entry" })).toBeTruthy();
+});
+
+// The template of News published, so an entry published has a page.
+const templateLive = (fake: FakeCollections) => {
+  fake.collections[0]!.template.published = { slug: null, versionNumber: 1, draftRevision: 1, publishedAt: "2026-10-01T09:00:00.000Z" };
+};
+
+test("a published entry has View beside Preview: its live address, in a new tab, the next one its draft holds left for the next publish; a draft has none", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  templateLive(fake);
+  const live = fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: {} }, { published: true });
+  fake.saveElsewhere(live.id, { slug: "first-swim-of-autumn" });
+  fake.addEntry(news.id, { title: "Night swim", slug: "night-swim", values: {} });
+  const { dialog } = await openScreen(fake);
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  let form = await within(dialog).findByRole("region", { name: "First swim" });
+  const view = within(form).getByRole("link", { name: "View" });
+  expect(view.getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/news\/first-swim$/);
+  expect(view.getAttribute("target")).toBe("_blank");
+  expect(view.getAttribute("title")).toBe("The entry as visitors find it, at /news/first-swim. Opens in a new tab.");
+  expect(view.previousElementSibling?.textContent).toBe("Preview");
+
+  await press(within(form).getByRole("button", { name: "All entries" }));
+  await press(await within(dialog).findByRole("button", { name: "Edit Night swim" }));
+  form = await within(dialog).findByRole("region", { name: "Night swim" });
+  expect(within(form).queryByRole("link", { name: "View" })).toBeNull();
+  await press(within(form).getByRole("button", { name: "Publish" }));
+  expect(within(form).getByRole("link", { name: "View" }).getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/news\/night-swim$/);
+  await press(within(form).getByRole("button", { name: "Unpublish" }));
+  expect(within(form).queryByRole("link", { name: "View" })).toBeNull();
+});
+
+test("in the browser demo, View opens the demo's own drawing of the entry as published here; with its template not published, View says what the page needs", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  const entry = fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: {} }, { published: true });
+  const demo = { cmsOrigin: null, capabilities: { ...emptySession().capabilities, collections: true, livePages: false }, entryView: (id: number) => `?entry=${id}` };
+  let { dialog } = await openScreen(fake, demo);
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  let view = within(await within(dialog).findByRole("region", { name: "First swim" })).getByRole("link", { name: "View" });
+  expect(view.getAttribute("href")).toBe(new URL(`?entry=${entry.id}`, window.location.href).href);
+  expect(view.getAttribute("title")).toBe("Its template is not published in this browser yet: publish it, and the entry shows. Opens in a new tab.");
+  cleanup();
+
+  templateLive(fake);
+  ({ dialog } = await openScreen(fake, demo));
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  view = within(await within(dialog).findByRole("region", { name: "First swim" })).getByRole("link", { name: "View" });
+  expect(view.getAttribute("href")).toBe(new URL(`?entry=${entry.id}`, window.location.href).href);
+  expect(view.getAttribute("title")).toBe("The entry as published in this browser. Opens in a new tab.");
+});
+
+test("on the CMS, View of an entry whose template has nothing live says the page waits for it", async () => {
+  const fake = new FakeCollections();
+  const news = fake.add(NEWS);
+  fake.addEntry(news.id, { title: "First swim", slug: "first-swim", values: {} }, { published: true });
+  const { dialog } = await openScreen(fake);
+  await press(await within(dialog).findByRole("button", { name: "Edit First swim" }));
+  const view = within(await within(dialog).findByRole("region", { name: "First swim" })).getByRole("link", { name: "View" });
+  expect(view.getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/news\/first-swim$/);
+  expect(view.getAttribute("title")).toBe("Its template is not published yet: visitors find no page at /news/first-swim until it is. Opens in a new tab.");
 });
 
 test("a link's words handed over, then its address before the words are drawn: the link keeps both", async () => {

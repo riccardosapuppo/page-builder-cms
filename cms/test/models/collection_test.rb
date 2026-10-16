@@ -28,28 +28,33 @@ class CollectionTest < ActiveSupport::TestCase
     assert_equal 0, Page.where(kind: "template").count
   end
 
-  test "a prefix another collection has, a page's next or live address, or one the application answers itself is refused at the prefix" do
+  test "a prefix another collection has, or one the application answers itself, is refused at the prefix; a page's next or live address is not" do
     create_news(prefix: "news")
     live = Page.create_with_draft!(title: "Tides", slug: "tides")
     live.publish!
     live.draft.update!(slug: "tide-times")
 
-    { "news" => "is already the prefix of another collection", "tides" => "is already the address of a page", "tide-times" => "is already the address of a page",
+    { "news" => "is already the prefix of another collection",
       "api" => "is an address the application uses itself", "404" => "is an address the application uses itself", "sent" => "is an address the application uses itself" }.each do |prefix, words|
       error = assert_raises(ActiveRecord::RecordInvalid, prefix) { create_news(prefix: prefix) }
       assert_equal [ words ], error.record.errors[:prefix], prefix
     end
-    assert_equal [ "news" ], Collection.pluck(:prefix)
+    %w[tides tide-times].each { |prefix| create_news(prefix: prefix) }
+    assert_equal %w[news tides tide-times], Collection.order(:id).pluck(:prefix)
   end
 
-  test "a page cannot take a collection's prefix as its address, new or next" do
+  # /news is the page that lists the entries, /news/<slug> each entry: one
+  # part, then two.
+  test "a page takes a collection's prefix as its address, new or next" do
     create_news(prefix: "news")
+    create_news(prefix: "events")
 
-    error = assert_raises(ActiveRecord::RecordInvalid) { Page.create_with_draft!(title: "News", slug: "news") }
-    assert_equal [ "is already the prefix of a collection" ], error.record.errors[:slug]
-    page = Page.create_with_draft!(title: "Latest", slug: "latest")
-    assert_not page.draft.update(slug: "news")
-    assert_equal [ "is already the prefix of a collection" ], page.draft.errors[:slug]
+    page = Page.create_with_draft!(title: "News", slug: "news")
+    page.publish!
+    assert_equal "news", page.reload.slug
+    latest = Page.create_with_draft!(title: "Latest", slug: "latest")
+    assert latest.draft.update(slug: "events"), latest.draft.errors.full_messages.inspect
+    assert_equal "events", latest.draft.reload.slug
   end
 
   test "a change of the definition counts as a change visitors may see, and one that changes nothing does not" do

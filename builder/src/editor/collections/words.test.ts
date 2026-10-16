@@ -76,7 +76,6 @@ test("a refused value as a sentence about its field", () => {
 });
 
 test("a refused definition as a sentence about its control", () => {
-  expect(definitionRefusal("prefix", "taken", "is already the address of a page")).toBe("A page has this address. Choose another prefix, or change the page’s.");
   expect(definitionRefusal("prefix", "taken", "is already the prefix of another collection")).toBe("Another collection has this prefix. Choose another.");
   expect(definitionRefusal("prefix", "reserved", "is an address the application uses itself")).toBe("The site answers this address itself. Choose another prefix.");
   expect(definitionRefusal("key", "uniqueKey", "The key \"date\" is already another field's.")).toBe("Another field has this key. Choose another.");

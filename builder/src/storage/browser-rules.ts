@@ -115,10 +115,8 @@ export const WORDS = {
   notASlot: "is not a palette slot",
   typeScale: "is not one of the type-scale choices",
   letterWidth: "is not one of the letter-width choices",
-  // A collection's prefix and a page's address, both ways; an entry's slug.
+  // A collection's prefix, which a page's address may be; an entry's slug.
   prefixTaken: "is already the prefix of another collection",
-  prefixIsPage: "is already the address of a page",
-  slugIsPrefix: "is already the prefix of a collection",
   entryNextAddressTaken: "is already the next address of another entry",
   entryAddressTaken: "is already the address of another entry",
   // The messages of the API's error answers.
@@ -236,7 +234,7 @@ export function slugErrors(slug: unknown): FieldError[] {
 
 // Collection's check of a prefix that is not taken: reserved, as a page's
 // address is, or a first part the application answers below itself.
-// Whether another collection or a page has it is the storage's to say.
+// Whether another collection has it is the storage's to say.
 export function prefixReserved(prefix: string): FieldError[] {
   return RESERVED_SLUGS.includes(prefix) || RESERVED_PREFIXES.includes(prefix) ? [fieldError("/prefix", "reserved", WORDS.reserved)] : [];
 }

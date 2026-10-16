@@ -13,6 +13,10 @@ again.
 | `header.png` | The site's header open in the editor, 1440 by 900, as a page is opened: its menu selected, the menu's links on the right, the home page dimmed under it. |
 | `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
 | `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |
+| `collections.png` | Collections in the editor, 1440 by 900, opened from the mark's menu: the example site's News and its five entries, each published, in the collection's own order. |
+| `template.png` | The template of News, 1440 by 900, opened from its settings as a person opens it: drawn with the newest entry, the entry's title, a Field block, selected and its settings on the right. |
+| `entry-desktop.png` | An entry of News, `/news/tea-in-the-hut`, as the CMS serves it to a 1440 by 900 window. |
+| `entry-phone.png` | The same entry on a 390 by 844 phone, at twice the pixels. |
 | `history.png` | The editor's History: this session's changes, a version kept under a name, the version that is live. |
 | `form-responses.png` | Form responses: the answers four visitors sent from the served home page, the newest opened whole. |
 | `demo.png` | The browser demo after Publish, with its notice and its bottom line. |
@@ -44,12 +48,22 @@ every one is made and passes its check, so a run that fails leaves the pictures
 that were here. A picture here that no name lists is removed.
 
 Made again from the same code, five pictures come out byte for byte the same.
-`history.png` and `form-responses.png` show the times the run's CMS kept, so
-they differ in those times, in UTC; `publish.gif` names the CMS's address in
-the notice that says the page was published, so it differs when
-`SHOTS_CMS_PORT` moves the port. To see whether a change to the editor needs
+`history.png`, `form-responses.png` and `collections.png` show the times the
+run's CMS kept, so they differ in those times, in UTC; `publish.gif` names the
+CMS's address in the notice that says the page was published, so it differs
+when `SHOTS_CMS_PORT` moves the port. To see whether a change to the editor needs
 the pictures made again, make them with `--out` into another folder and
 compare.
+
+On 16 October 2026, with News added to the example site, a run into another
+folder gave those five again byte for byte, and three more that differed
+from the committed ones in a few pixels each, none from a change of the code:
+`editor.png` in 17 (the edges of the link field's icon), `editor-phone.png`
+around Settings (the highlight a tap leaves), `demo-preview.png` in 38 (the
+measure of a block's space, drawn where the pointer had passed). The
+committed ones were kept, and only the four new pictures were made into this
+folder (`--only`); of those, `template.png` and `entry-phone.png` came out
+byte for byte the same in two runs.
 
 ## What holds them to what the script makes
 

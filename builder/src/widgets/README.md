@@ -126,6 +126,11 @@ Their accessibility tests say what they draw from: a collection made on
 the CMS before the cases are published (`collection` in `a11y.ts`, its
 id where the cases name `A11Y_COLLECTION`), and, for the Field block, the
 collection's template, read on its first entry's page (`inTemplate`).
+The example site uses both (`../../../example-site/collections/news.json`
+and `pages/news.json`): the news page at `/news` lists every entry of
+News, newest first, one under another; News's template draws the entry's
+day, title, summary, picture and body with Field blocks, then a grid of
+three of the others.
 
 ## Checks
 

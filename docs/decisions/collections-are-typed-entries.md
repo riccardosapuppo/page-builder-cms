@@ -5,7 +5,9 @@ built on them later: its first phase, the model on both sides, the CMS's
 tables and API, the editor's storage on both adapters. The editor's
 screen came in the second phase; the two widgets, the template drawn
 with an entry and the entries' pages on the site in the third, the same
-day (below, "On the page and on the site").
+day (below, "On the page and on the site"). In the fourth, on 16
+October, the example site's News, and a page at a collection's prefix
+(below, "A page at the prefix").
 
 ## The question
 
@@ -68,10 +70,12 @@ schema can describe.
   holds between the header and the footer, which take none. It holds no
   form (keyword `template`): a form's answers are kept with a page and the
   version they were sent from, and an entry is no page.
-- **A prefix is never a page's address, nor a page's address a prefix**,
-  checked both ways, next and live; nor one the application answers
-  itself, `sent` among them, whose `/sent/<form>` confirms the home page's
-  forms.
+- **A prefix is one collection's**, never another's, and never an
+  address the application answers itself, `sent` among them, whose
+  `/sent/<form>` confirms the home page's forms. A page may have it as
+  its address, next or live: the section's page at `/news` lists the
+  entries at `/news/<slug>` (below, "A page at the prefix", which says
+  why the rule that kept them apart went).
 - **A counter of what a visitor could see**, `publishedRevision` on the
   collection: every publish, unpublish and delete of a live entry moves
   it, and so does every change of the definition, whose prefix the
@@ -150,6 +154,27 @@ schema can describe.
   strings, those with nothing to order by last (`EntryOrder` and
   `shared/entry-order.ts`), the order the API's list of entries uses too.
 
+## A page at the prefix
+
+Changed on 16 October 2026, with the example site's News. Until then a
+prefix was never a page's address, nor a page's address a prefix,
+checked both ways, next and live: `/news` would be a page and
+`/news/<entry>` an entry, two things under one name, and the rule kept
+them apart. It kept apart what a site wants together. The usual shape
+of a site's section is the page that lists its entries at their prefix,
+News at `/news` and each story at `/news/<slug>`, and the rule sent that
+page to another address (the tests had `/club-news`), leaving `/news`
+to nothing. The two never meet: a page's address is one part and an
+entry's two, each in a slug's form (`config/routes.rb`), so no address
+is both, and each is answered by its own route.
+
+So the rule went: from the CMS's `Collection` and `Draft`, from the
+browser's storage, and from the editor's words for it. What stays is
+that two collections never share a prefix, and that a prefix is never
+an address the application answers itself. The example site's News has
+that shape: the page at `/news`, linked from the footer, its entries
+under it.
+
 ## What it costs
 
 - **Another pair of twins.** The collection rules are written twice, with
@@ -181,6 +206,9 @@ schema can describe.
   A list in the header or footer does it to every page.
 - **A new prefix moves every entry and leaves no redirect**: the old
   addresses are 404s, where a page's old slug answers 301.
+- **The section's page and its entries are kept together by hand**: a
+  new prefix does not move the page at the old one, nor a page's new
+  address the prefix.
 - **No entry's page without a published template**: an entry published
   before its template is a 404 until the template is.
 - **The canvas reads every entry of every collection**, whole, at the
@@ -209,7 +237,8 @@ test/models/entry_test.rb test/models/collection_document_test.rb
 test/integration/api/collections_test.rb test/integration/api/entries_test.rb`
 (after `ruby bin/rails db:test:prepare`): the template made with its
 collection, the definition's refusals at their pointers, the prefix and a
-page's address both ways, the counter, a save at a revision, a retry and
+page's address kept apart both ways (until the rule went, "A page at the
+prefix"), the counter, a save at a revision, a retry and
 a conflict, a publish checked again, the redirect, an image an entry
 shows kept, a template's address, home and form refused, and the
 collection corpus answered by the CMS's own checks. Planted one at a
@@ -257,3 +286,28 @@ view; `npm run check:serving` (`RESULT: 99 checks passed`) an entry's
 page, its 304, its redirect and a list's page; and `npm run
 measure:server` (`RESULT: 38 checks passed`) the fragments an entry's
 page and a list's page write, given in the README's measurements.
+
+For the fourth phase, on 16 October 2026, a page at the prefix: each new
+check failed first on the code that still kept the two apart. From
+`builder/`, the battery's case of a page at a prefix and a prefix at a
+page's address, next or live, with two collections still never at one
+prefix and a prefix still never `sent`, on both adapters (`npm run
+test:rails` and `npm run e2e:browser`), refused with `a page at a
+collection's prefix was refused: ... is already the prefix of a
+collection`. From `cms/`, `test/integration/entry_pages_test.rb`'s
+`GET /news`, the page that lists the entry, beside `GET /news/<slug>`,
+the entry, and the model's and the API's tests of the same in
+`test/models/collection_test.rb` and
+`test/integration/api/collections_test.rb`: with the old rule put back,
+5 of their 32 runs failed; with each half of it, 3 and 2; with `sent`
+let through as a prefix, 2. The example site's News is held by its own
+tests, each fault planted in the seeds failing them (seven in the CMS's,
+eight in the browser's), the comparison of the two validators over the
+template and the entries, and the agreement of the two renderers on the
+news page and on each entry's page, which three faults planted in
+React's side or in what it was given failed. The whole ran green that
+night: `ruby bin/rails test` (533 runs), `npm test` (1345 tests),
+`npm run test:rails` (103), `npm run e2e` (296 passed),
+`npm run e2e:browser` (97 passed, 7 skipped), `npm run e2e:demo` (14
+passed), `npm run check:serving` (99 checks) and `npm run
+measure:server` (38 checks).

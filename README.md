@@ -34,6 +34,19 @@ and caches it; and keeps what visitors send from its form. The same editor
 also runs with no server at all, keeping its pages in the browser: that is
 the demo, [below](#the-two-modes).
 
+Collections keep what a site repeats, news or events, typed. A
+collection's fields are of nine types (text, paragraph, rich text,
+number, date, image, link, toggle and choice); its entries are written in
+the editor's Collections screen, each with a draft saved at a revision and
+what is live. Its template, built on the canvas as a page is, with Field
+blocks for the entry's values, draws every entry at `/<prefix>/<slug>`,
+and a Collection list shows its published entries on any page, the page
+at the collection's own prefix included: the example site's News is a
+page at `/news` listing five entries, each at `/news/<slug>`. Rails
+checks every value against its field with the editor's own rules,
+written twice and held to one verdict, and caches each entry's page and
+each list by what was published.
+
 An Assistant writes with a model of the person's own, Anthropic's or
 OpenAI's. The person brings the key. It is kept in the tab's memory only,
 and the browser sends it to that provider and nowhere else. The Assistant
@@ -211,7 +224,8 @@ both.
   listen anywhere else: the API has no authentication
   ([the decision](docs/decisions/no-authentication-one-address.md)).
 - The published pages are on the CMS's port: `/` is the example site's home
-  page, `/winter-series` and `/notices` the other two.
+  page, `/winter-series`, `/news` and `/notices` the other three, and the
+  news's five entries are each at `/news/<slug>`.
 - The editor opens on the home page. Beside the page's title it says where
   the page is (home page, its address, or every page for the header and
   footer); the first time, a note under the title says that what is open
@@ -270,6 +284,28 @@ The same page as Rails serves it to a 1440 by 900 window.
 
 The same page on a 390 by 844 phone, at twice the pixels: what the CMS serves
 with no script and the stylesheets it holds.
+
+![Collections in the editor](docs/images/collections.png)
+
+Collections, from the editor's menu: the example site's News, its five
+entries each with its status, when it last changed and its first two
+fields in words, newest first, the collection's own order.
+
+![The template of News on the canvas](docs/images/template.png)
+
+The template of News, opened from its settings and built as a page is,
+drawn with the newest entry: its day, its title, its summary and its
+picture are Field blocks, the title selected and its settings on the
+right.
+
+![An entry as Rails serves it](docs/images/entry-desktop.png)
+
+One of its entries as Rails serves it at `/news/tea-in-the-hut`, the
+template's published version drawn with what the entry published.
+
+![The same entry on a phone](docs/images/entry-phone.png)
+
+The same entry on a 390 by 844 phone, at twice the pixels.
 
 ![The editor's History](docs/images/history.png)
 
@@ -333,10 +369,14 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   is a page of kind `template`. A Collection list draws a collection's
   published entries on any page, Field blocks draw an entry's values in
   its template, and the CMS serves each entry at `/<prefix>/<slug>`,
-  cached by keys that name the collection's changes. Cost: another pair
-  of twins to keep in step, a definition changed without a revision, a
-  list of entries read whole, and a page listing a collection drawn
-  again at every publish of its entries. [The note](docs/decisions/collections-are-typed-entries.md).
+  cached by keys that name the collection's changes. A page may live at
+  the prefix, `/news` listing what `/news/<slug>` draws: a page's address
+  is one part and an entry's two, so the two never meet (a rule that kept
+  them apart went on 16 October 2026). Cost: another pair of twins to
+  keep in step, a definition changed without a revision, a list of
+  entries read whole, a page listing a collection drawn again at every
+  publish of its entries, and the section's page kept at its prefix by
+  hand. [The note](docs/decisions/collections-are-typed-entries.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
   adds up letter widths measured once in the site's typeface and names the
@@ -714,7 +754,8 @@ runs its jobs in Solid Queue. The editor is its client, through the API in
 
 **The browser demo** is the same editor with the browser's storage in
 place of Rails: [Try the editor in your browser](https://builder.riccardosapuppo.com/).
-On a first visit it puts in the example site, three pages and fifteen pictures,
+On a first visit it puts in the example site, four pages, the collection
+News with its five entries and its template, and fifteen pictures,
 as the CMS's seed does from the same files, and everything after is kept in
 that browser's IndexedDB, held to the same battery of cases as the CMS's
 adapter. A visitor back after the demo is built with a newer example site
@@ -723,7 +764,9 @@ something keeps it, and the demo's line offers to start over with the new
 one. Two tabs of one browser share the pages, and the one that saves
 second gets the conflict bar. Preview opens the draft as it would be
 published, and Publish opens the page as published, each drawn by the demo,
-with a line saying what the full system does in its place. The header and
+with a line saying what the full system does in its place; a Collection
+list's card, and an entry's View in Collections, open the entry as
+published there, drawn with its collection's template. The header and
 footer are built and published there as on the CMS, and every page
 published in that browser shows them. A form there is
 not sent: one line says what Rails does with its answers. At the bottom, one
@@ -806,6 +849,11 @@ Each of these is a choice, and the reason is given with it.
   the long side, before it goes up.
 - **No mixed containers**: no widget straight in a section, no column in a
   column ([the decision](docs/decisions/strict-hierarchy.md)).
+- **No pages of entries.** A Collection list shows at most 24 entries, in
+  an order and through a filter on a choice or a toggle field; there is
+  no second page and no archive by month. An entry has a draft and what
+  is live, no versions
+  ([the decision](docs/decisions/collections-are-typed-entries.md)).
 - **No Redis, no Docker, no mail.** SQLite files, Rails' own cache and queue,
   and answers that are kept and read in the editor, never sent by email.
 - **No TLS and no compression of its own.** Production forces SSL and assumes
@@ -900,11 +948,11 @@ accessibility tests again and the serving checks, 21.7 minutes in all
 
 | Folder | What it holds |
 | --- | --- |
-| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library, the site style and the header and footer; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
+| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library, the site style and the header and footer; collections, their entries and their templates; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages and entries, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
 | [`builder/`](builder/README.md) | The editor: React 19, TypeScript and Vite, every dependency pinned. The document and its commands, the store with undo and redo, the two storage adapters, the renderer, the widgets, the interface, and the browser demo's shell. Its README has the commands, the stages' account and what each check holds. |
-| [`schema/`](schema/README.md) | The page document's one schema, the design tokens the code reads, the corpus both validators are held to and the tools that compare them, and the icon box's icons. |
+| [`schema/`](schema/README.md) | The page document's one schema and a collection's, the design tokens the code reads, the corpora both validators are held to and the tools that compare them, and the icon box's icons. |
 | [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to. |
-| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: three page documents and fifteen pictures drawn from SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
+| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: four page documents, the collection News with its five entries and its template, and fifteen pictures drawn from SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
 | [`design/`](design/) | The approved design, in static HTML: the editor and a published page, the tokens, the mark, the fonts with their licences, and screenshots of every state. [`design/layout/`](design/layout/) is the editor's layout, approved on 3 October 2026, drawn the same way. |
 | [`docs/`](docs/decisions/) | [The decisions](docs/decisions/), each with its cost and the command that shows it holds, and [the pictures](docs/images/README.md) this README shows. |
 | [`tools/`](tools/README.md) | The repository's own Node tools: `npm start`, `npm run check`, the measurements, the pictures, and their tests. |

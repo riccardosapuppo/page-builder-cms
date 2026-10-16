@@ -123,7 +123,7 @@ describe("held to the CMS's Ruby", () => {
       WORDS.contentTypes, WORDS.contentMismatch("image/png"), WORDS.paletteObject, WORDS.slotMissing, WORDS.toneOf(["ink", "sea"]),
       WORDS.notASlot, WORDS.typeScale, WORDS.invalidRequest, WORDS.invalidDocument, WORDS.conflict, WORDS.partNoAddress, WORDS.notFound, WORDS.inUse,
       WORDS.mediaMissing("Shore01"), PART_FORM, PART_ANCHOR,
-      WORDS.prefixTaken, WORDS.prefixIsPage, WORDS.slugIsPrefix, WORDS.entryNextAddressTaken, WORDS.entryAddressTaken, WORDS.entryConflict,
+      WORDS.prefixTaken, WORDS.entryNextAddressTaken, WORDS.entryAddressTaken, WORDS.entryConflict,
       WORDS.templateNoAddress, WORDS.queryParameters, WORDS.queryForm("order"), WORDS.noSortField("summary"), TEMPLATE_FORM,
     ];
     expect(written.filter((words) => !sources.includes(words))).toEqual([]);

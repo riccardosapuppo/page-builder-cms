@@ -77,6 +77,8 @@ export interface Session {
   // Where a page as published in the browser opens, when the storage
   // serves no live page (the demo's own drawing of it); null otherwise.
   publishedView: ((pageId: number) => string) | null;
+  // The same for an entry of a collection, published in the browser.
+  entryView: ((entryId: number) => string) | null;
   // A publish is on its way.
   publishing: boolean;
   styleSave: StyleSave;
@@ -180,6 +182,7 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: false },
     cmsOrigin: DEFAULT_CMS_ORIGIN,
     publishedView: null,
+    entryView: null,
     publishing: false,
     styleSave: { phase: "idle" },
     openPage: async () => null,

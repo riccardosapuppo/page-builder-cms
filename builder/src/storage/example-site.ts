@@ -1,18 +1,24 @@
 // The example site, put into the browser's storage on the demo's first
 // visit as the CMS's seed puts it into the CMS (cms/db/seeds/example_site.rb):
-// the same pages and pictures, from ../../../example-site/, read when the
-// demo is built. Each picture goes into the media library the way an
-// upload does; then each page is made, its document saved as the draft
-// with its images named by the ids the library gave them, and published;
-// and the home page is set. Last, the site's header and footer, which the
-// storage makes from their starters (the example site's own, cms/config/
-// parts), are published as they are, as the CMS's seed publishes them.
+// the same pictures, collections and pages, from ../../../example-site/,
+// read when the demo is built. Each picture goes into the media library
+// the way an upload does; then each collection is made, with its
+// template, its entries written and published, and once every collection
+// has its id, each template saved and published; then each page is made,
+// its document saved as the draft with its images named by the ids the
+// library gave them and its lists' collections by the ids the storage
+// gave them, and published; and the home page is set. Last, the site's
+// header and footer, which the storage makes from their starters (the
+// example site's own, cms/config/parts), are published as they are, as
+// the CMS's seed publishes them.
 //
-// Only into an empty site, with no page and no image: a site someone has
-// worked on is never added to. The one exception is the seed's own work,
-// cut short (the tab closed, the storage full): it marks the site while it
-// puts things in (SeedMarks), and the next visit finds the mark and
-// finishes, reusing what was already put in rather than adding it twice.
+// Only into an empty site, with no page, no image and no collection: a
+// site someone has worked on is never added to. The one exception is the
+// seed's own work, cut short (the tab closed, the storage full): it marks
+// the site while it puts things in (SeedMarks), and the next visit finds
+// the mark and finishes, reusing what was already put in rather than
+// adding it twice: a picture by its file name and alt, a collection by its
+// prefix and an entry by its slug, a page by its address.
 // Two tabs opened at once on a first visit would each find the site empty,
 // so the seed holds one of the browser's locks (Web Locks, shared by the
 // tabs of one origin) while it looks and puts.
@@ -34,24 +40,39 @@
 // It lives with the storage because it reads the pictures' bytes from the
 // demo's own files: only src/storage/ sends requests.
 import siteFile from "../../../example-site/site.json";
+import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
 import type { PageDocument } from "../shared/document.ts";
-import type { Invalid, StorageAdapter } from "./adapter.ts";
+import type { Collection, Invalid, StorageAdapter } from "./adapter.ts";
 import type { BrowserAdapter } from "./browser.ts";
 import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
 
+// site.json: the site's name, its pictures, its collections (each named by
+// an id, a whole number from 1 as a Collection list names one) and its
+// pages, in order.
 export interface ExampleSiteFile {
   name: string;
   images: Array<{ id: string; file: string; alt: string }>;
+  collections: Array<{ id: number; file: string }>;
   pages: Array<{ slug: string; file: string; home: boolean }>;
 }
 
-// What the seed reads: site.json, the pages' documents by their file
-// name in site.json, and a picture's bytes by its file name; and the
-// edition they make, where the build gives one.
+// A collection's file: its definition, its entries, each as the editor
+// saves one, and its template's document.
+export interface ExampleCollectionFile {
+  collection: CollectionDefinition;
+  entries: EntryContent[];
+  template: PageDocument;
+}
+
+// What the seed reads: site.json, the pages' documents and the
+// collections' files by their file name in site.json, and a picture's
+// bytes by its file name; and the edition they make, where the build
+// gives one.
 export interface ExampleSource {
   site: ExampleSiteFile;
   pages: Readonly<Record<string, unknown>>;
+  collections: Readonly<Record<string, unknown>>;
   image(file: string): Promise<{ bytes: Blob; width: number; height: number }>;
   edition?: string;
 }
@@ -110,6 +131,38 @@ export function withLibraryIds(node: unknown, ids: ReadonlyMap<string, string>, 
   }));
 }
 
+// The collection each Collection list of a document names, an id of
+// site.json, swapped for the id the storage gave it: the twin of the
+// seed's with_collection_ids.
+export function withCollectionIds(node: unknown, ids: ReadonlyMap<number, number>, file: string): unknown {
+  if (Array.isArray(node)) return node.map((value) => withCollectionIds(value, ids, file));
+  if (typeof node !== "object" || node === null) return node;
+  const copy = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, withCollectionIds(value, ids, file)])) as Record<string, unknown>;
+  const props = copy.props;
+  if (copy.type !== "collectionList" || typeof props !== "object" || props === null || !("collection" in props)) return copy;
+  const named = (props as Record<string, unknown>).collection;
+  const id = ids.get(named as number);
+  if (id === undefined) throw new Error(`example-site/${file} names the collection ${JSON.stringify(named)}, which site.json does not list`);
+  return { ...copy, props: { ...props, collection: id } };
+}
+
+const COLLECTION_FILE = ["collection", "entries", "template"];
+
+// A collection's file of the build, held to its shape, every picture and
+// collection its entries and its template name found in site.json: the
+// twin of the seed's read_collection.
+function collectionFile(source: ExampleSource, file: string, images: ReadonlyMap<string, string>, collections: ReadonlyMap<number, number>): ExampleCollectionFile {
+  if (!(file in source.collections)) throw new Error(`The example site's ${file} is not in this build.`);
+  const held = source.collections[file];
+  const keys = typeof held === "object" && held !== null && !Array.isArray(held) ? Object.keys(held).sort() : [];
+  if (keys.join() !== COLLECTION_FILE.join()) throw new Error(`example-site/${file} has the keys [${keys.map((key) => JSON.stringify(key)).join(", ")}], not collection, entries and template`);
+  const read = held as ExampleCollectionFile;
+  if (!Array.isArray(read.entries)) throw new Error(`example-site/${file} lists its entries as no list`);
+  withLibraryIds(read.entries, images, file);
+  withCollectionIds(withLibraryIds(read.template, images, file), collections, file);
+  return read;
+}
+
 const refusal = (what: string, problem: Invalid): Error =>
   new Error(`The example site's ${what} was refused: ${problem.errors[0]?.message ?? problem.message}`);
 
@@ -129,18 +182,24 @@ export async function seedExampleSite(adapter: StorageAdapter, source: ExampleSo
 async function putIn(adapter: StorageAdapter, source: ExampleSource, marks: SeedMarks): Promise<"seeded" | "not empty"> {
   const mark = marks.read();
   if (mark === "seeded") return "not empty";
-  const [pages, media] = await Promise.all([adapter.listPages(), adapter.listMedia()]);
-  // A seed cut short finds what it had put in, a picture by its file
-  // name and alt and a page by its address, and goes on from there.
+  const [pages, media, collections] = await Promise.all([adapter.listPages(), adapter.listMedia(), adapter.listCollections()]);
+  // A seed cut short finds what it had put in, a picture by its file name
+  // and alt, a collection by its prefix and an entry by its slug, a page
+  // by its address, and goes on from there.
   const resuming = mark === "seeding";
-  if (!resuming && (pages.length > 0 || media.length > 0)) return "not empty";
-  // Every file read, and every image a page names found in site.json,
-  // before anything is kept: a file missing from the build stops the seed
-  // with nothing half done.
-  const listed = new Map(source.site.images.map((image) => [image.id, image.id]));
+  if (!resuming && (pages.length > 0 || media.length > 0 || collections.length > 0)) return "not empty";
+  // Every file read, and every image and collection a document names found
+  // in site.json, before anything is kept: a file missing from the build
+  // stops the seed with nothing half done.
+  const images = new Map(source.site.images.map((image) => [image.id, image.id]));
+  const listed = new Map(source.site.collections.map((entry) => [entry.id, entry.id]));
+  const held = source.site.collections.map((entry) => collectionFile(source, entry.file, images, listed));
+  const prefixes = held.map((file) => file.collection.prefix);
+  const twice = prefixes.find((prefix, index) => prefixes.indexOf(prefix) !== index);
+  if (twice !== undefined) throw new Error(`example-site/site.json names two collections at the prefix ${twice}`);
   for (const page of source.site.pages) {
     if (!(page.file in source.pages)) throw new Error(`The example site's ${page.file} is not in this build.`);
-    withLibraryIds(source.pages[page.file], listed, page.file);
+    withCollectionIds(withLibraryIds(source.pages[page.file], images, page.file), listed, page.file);
   }
   const pictures = await Promise.all(source.site.images.map(async (image) => ({ image, read: await source.image(image.file) })));
 
@@ -158,8 +217,47 @@ async function putIn(adapter: StorageAdapter, source: ExampleSource, marks: Seed
     if (!added.ok) throw refusal(`picture ${image.file}`, added.problem);
     ids.set(image.id, added.value.id);
   }
+  // Each collection, with its template, and its entries, each written and
+  // published in its file's order; then, once every collection has its
+  // id, each template saved and published. What a seed cut short had put
+  // in is as it left it: an entry or a template it published is not
+  // published again.
+  const collectionIds = new Map<number, number>();
+  const templates: Array<{ file: string; held: ExampleCollectionFile; collection: Collection }> = [];
+  for (const [index, listedOne] of source.site.collections.entries()) {
+    const file = held[index]!;
+    let collection = resuming ? collections.find((one) => one.prefix === file.collection.prefix) : undefined;
+    if (!collection) {
+      const created = await adapter.createCollection(file.collection);
+      if (!created.ok) throw refusal(`collection ${listedOne.file}`, created.problem);
+      collection = created.value;
+    }
+    collectionIds.set(listedOne.id, collection.id);
+    const kept = resuming ? await adapter.listEntries(collection.id) : [];
+    for (const content of file.entries) {
+      let entry = kept.find((one) => one.slug === content.slug);
+      if (!entry) {
+        const created = await adapter.createEntry(collection.id, withLibraryIds(content, ids, listedOne.file) as EntryContent);
+        if (!created.ok) throw refusal(`entry ${content.slug} of ${listedOne.file}`, created.problem);
+        entry = created.value;
+      }
+      if (entry.published) continue;
+      const published = await adapter.publishEntry(collection.id, entry.id, { revision: entry.revision });
+      if (!published.ok) throw new Error(`The example site's entry ${content.slug} of ${listedOne.file} was not published: ${published.problem.message}`);
+    }
+    templates.push({ file: listedOne.file, held: file, collection });
+  }
+  for (const { file, held: one, collection } of templates) {
+    const template = collection.template;
+    if (template.published) continue;
+    const document = withCollectionIds(withLibraryIds(one.template, ids, file), collectionIds, file) as PageDocument;
+    const saved = await adapter.saveDraft(template.id, { revision: template.revision, saveId: `example-template-${collection.prefix}`, document });
+    if (!saved.ok) throw new Error(`The example site's template of ${file} was not saved: ${saved.problem.message}`);
+    const published = await adapter.publish(template.id, { revision: saved.value.revision });
+    if (!published.ok) throw new Error(`The example site's template of ${file} was not published: ${published.problem.message}`);
+  }
   for (const entry of source.site.pages) {
-    const document = withLibraryIds(source.pages[entry.file], ids, entry.file) as PageDocument;
+    const document = withCollectionIds(withLibraryIds(source.pages[entry.file], ids, entry.file), collectionIds, entry.file) as PageDocument;
     const kept = resuming ? pages.find((page) => page.slug === entry.slug) : undefined;
     let id: number;
     let revision: number;
@@ -247,12 +345,13 @@ export function browserEditions(): EditionMarks {
   };
 }
 
-// The edition of an example site: its site.json, its pages, its pictures
-// by the addresses a build gives them, which change with their bytes, and
-// the header's and footer's starters, which the seed publishes as they are.
-export function editionOf(site: ExampleSiteFile, pages: Readonly<Record<string, unknown>>, images: Readonly<Record<string, string>>, parts: Readonly<Record<string, unknown>>): string {
+// The edition of an example site: its site.json, its documents (its pages
+// and its collections' files, by their file names), its pictures by the
+// addresses a build gives them, which change with their bytes, and the
+// header's and footer's starters, which the seed publishes as they are.
+export function editionOf(site: ExampleSiteFile, documents: Readonly<Record<string, unknown>>, images: Readonly<Record<string, string>>, parts: Readonly<Record<string, unknown>>): string {
   const sorted = (record: Readonly<Record<string, unknown>>) => Object.keys(record).sort().map((key) => [key, record[key]]);
-  return digest(JSON.stringify([site, sorted(pages), sorted(images), sorted(parts)]));
+  return digest(JSON.stringify([site, sorted(documents), sorted(images), sorted(parts)]));
 }
 
 // What the demo found of the example site on this visit: put in for the
@@ -328,24 +427,28 @@ export function withExampleSite(adapter: StorageAdapter, seed: () => Promise<unk
 // the pictures as files of their own beside the bundle, fetched from the
 // demo's own address when they are put in.
 const builtPages = import.meta.glob<unknown>("../../../example-site/pages/*.json", { eager: true, import: "default" });
+const builtCollections = import.meta.glob<unknown>("../../../example-site/collections/*.json", { eager: true, import: "default" });
 const builtImages = import.meta.glob<string>("../../../example-site/images/*.png", { eager: true, query: "?url", import: "default" });
 
-// By their file name in site.json ("pages/home.json", "images/m-tea.png").
+// By their file name in site.json ("pages/home.json",
+// "collections/news.json", "images/m-tea.png").
 const byFile = <T>(found: Record<string, T>): Record<string, T> =>
   Object.fromEntries(Object.entries(found).map(([path, value]) => [path.slice(path.indexOf("example-site/") + "example-site/".length), value]));
 
 // The files the build holds, which every name in site.json must be.
-export function builtFiles(): { pages: string[]; images: string[] } {
-  return { pages: Object.keys(byFile(builtPages)).sort(), images: Object.keys(byFile(builtImages)).sort() };
+export function builtFiles(): { pages: string[]; collections: string[]; images: string[] } {
+  return { pages: Object.keys(byFile(builtPages)).sort(), collections: Object.keys(byFile(builtCollections)).sort(), images: Object.keys(byFile(builtImages)).sort() };
 }
 
 export function builtSource(site: ExampleSiteFile = siteFile): ExampleSource {
   const pages = byFile(builtPages);
+  const collections = byFile(builtCollections);
   const images = byFile(builtImages);
   return {
     site,
     pages,
-    edition: editionOf(site, pages, images, SITE_THEME.parts),
+    collections,
+    edition: editionOf(site, { ...pages, ...collections }, images, SITE_THEME.parts),
     async image(file) {
       const address = images[file];
       if (address === undefined) throw new Error(`The example site's picture ${file} is not in this build.`);

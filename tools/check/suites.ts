@@ -272,16 +272,21 @@ export const SUITES: Suite[] = [
   },
   {
     name: "schema-compare",
-    what: "the schema's two validators agree on the corpus, and on the example site's pages and the header and footer a site starts from",
+    what: "the schema's two validators agree on the corpus, and on the example site's pages, its collection's template and entries, and the header and footer a site starts from",
     async run(ctx) {
       const why = first(packages(schemaTools, "schema/tools"), ruby());
       if (why) return notRun(why);
       const step = await ctx.step(...npmRun("compare"), { cwd: schemaTools });
       const corpus = readCompare(step.output, step.code, 284);
       if (corpus.status !== "passed") return corpus;
+      // Two comparisons, one RESULT line each: the documents (the pages,
+      // the collection's template, the starters), then the entries.
       const examples = await ctx.step(...npmRun("compare:examples"), { cwd: schemaTools });
-      const pages = readCompare(examples.output, examples.code, 5);
-      return pages.status === "passed" ? { ...pages, counts: `${corpus.counts}; the example site's pages and the starting header and footer: ${pages.counts}` } : pages;
+      const documents = readCompare(examples.output, examples.code, 7);
+      if (documents.status !== "passed") return documents;
+      const entries = readCompare(examples.output.slice(examples.output.indexOf("RESULT:") + "RESULT:".length), examples.code, 5);
+      if (entries.status !== "passed") return entries;
+      return { ...documents, counts: `${corpus.counts}; the example site's pages, its collection's template and the starting header and footer: ${documents.counts}; its collection's entries: ${entries.counts}` };
     },
   },
   {

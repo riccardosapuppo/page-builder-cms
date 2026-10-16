@@ -7,7 +7,9 @@
 // selected, in a desktop's window and on a phone, the published page on a desktop and on a phone, the version
 // history, Form responses, the browser demo with its bottom line and the
 // picture a shared link to it previews with, the GIF of a real
-// publication, and the site's header open in the editor as a page is. Their names, sizes and limits are listed in
+// publication, the site's header open in the editor as a page is, and the
+// example site's News: Collections with its entries, its template on the
+// canvas, and one of its entries as served on a desktop and on a phone. Their names, sizes and limits are listed in
 // tools/lib/shot-images.ts, which also reads the result back.
 //
 // It starts a CMS of its own in the e2e environment on 127.0.0.1:3905
@@ -220,6 +222,63 @@ async function publishedPages(browser: Browser, shots: Staging, cms: string): Pr
     await shots.shoot(page, "published-phone.png");
     await page.context().close();
   }
+}
+
+// An entry of the example site's News, as the CMS serves it at its own
+// address: on a desktop, its first band and the start of its story; on a
+// phone, at twice the pixels.
+const ENTRY = { path: "/news/tea-in-the-hut", title: "Tea in the hut on Sundays" };
+
+async function entryPages(browser: Browser, shots: Staging, cms: string): Promise<void> {
+  for (const [file, options] of [
+    ["entry-desktop.png", { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }],
+    ["entry-phone.png", { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }],
+  ] as const) {
+    if (!shots.wants(file)) continue;
+    const page = await (await context(browser, options)).newPage();
+    watch(page, `entry ${file}`, [cms]);
+    await page.goto(`${cms}${ENTRY.path}`);
+    await settled(page);
+    must((await page.getByRole("heading", { level: 1 }).innerText()).trim() === ENTRY.title, `the served entry at ${ENTRY.path} does not open with its title`);
+    must(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `the served entry scrolls sideways in ${file}`);
+    await shots.shoot(page, file);
+    await page.context().close();
+  }
+}
+
+// Collections, from the mark's menu: the example site's News, its five
+// entries published, in the collection's own order.
+async function collectionsShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "collections");
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Collections" }).click();
+  const screen = page.getByRole("dialog", { name: "Collections" });
+  const rows = screen.getByRole("table", { name: /^Entries of News/ }).locator("tbody tr");
+  await rows.nth(4).waitFor();
+  must((await rows.count()) === 5, "Collections does not list News's five entries");
+  await parked(page);
+  await shots.shoot(page, "collections.png");
+  await page.context().close();
+}
+
+// The template of News, opened from its settings as a person opens it:
+// drawn with the newest entry, the entry's title, a Field block, selected
+// and its settings beside it.
+async function templateShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "template");
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Collections" }).click();
+  const screen = page.getByRole("dialog", { name: "Collections" });
+  await screen.getByRole("tab", { name: "Settings" }).click();
+  await screen.getByRole("button", { name: "Edit the template" }).click();
+  await page.getByRole("button", { name: "Switch page. Open: News" }).waitFor();
+  await page.locator(".canvas img").first().waitFor();
+  await page.locator('.canvas [data-block-id="entry-title"]').click();
+  must((await page.locator(".canvas [data-editor-selected=true]").count()) === 1, "the entry's title is not the one block selected");
+  await settled(page);
+  await parked(page);
+  await shots.shoot(page, "template.png");
+  await page.context().close();
 }
 
 // The hero's heading selected, its settings beside it, and the Outline.
@@ -509,7 +568,10 @@ function sweep(cmsPort: number): void {
 async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: number, editorPort: number): Promise<void> {
   let browser: Browser | null = null;
   try {
-    const needsSystem = ["published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "history.png", "form-responses.png", "publish.gif", "assistant.png"].some((name) => wanted.has(name));
+    const needsSystem = [
+      "published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "collections.png", "template.png", "entry-desktop.png", "entry-phone.png",
+      "history.png", "form-responses.png", "publish.gif", "assistant.png",
+    ].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
       const cms = await startCms(cmsPort);
@@ -520,10 +582,13 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
       servers.push(editor);
       console.log(seedCms(cms).trim());
       await publishedPages(browser, shots, cms.url);
+      await entryPages(browser, shots, cms.url);
       if (wanted.has("form-responses.png")) await visitorsSend(browser, cms.url);
       if (wanted.has("editor.png")) await editorShot(browser, shots, editor.url, cms.url);
       if (wanted.has("editor-phone.png")) await phoneEditorShot(browser, shots, editor.url, cms.url);
       if (wanted.has("header.png")) await headerShot(browser, shots, editor.url, cms.url);
+      if (wanted.has("collections.png")) await collectionsShot(browser, shots, editor.url, cms.url);
+      if (wanted.has("template.png")) await templateShot(browser, shots, editor.url, cms.url);
       if (wanted.has("history.png") || wanted.has("form-responses.png")) {
         const page = await historyShot(browser, shots, editor.url, cms.url);
         if (wanted.has("form-responses.png")) await responsesShot(shots, page);
