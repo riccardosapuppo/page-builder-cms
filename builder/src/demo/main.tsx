@@ -8,10 +8,13 @@
 //   visit to a build of a newer edition, the new one, unless the visitor
 //   worked on the site, which is kept and offered the new one in the
 //   demo's line.
-// - The editor's address with ?preview=<id>, ?published=<id> or
-//   ?entry=<id> is a page the demo draws itself (./PageView.tsx), where
-//   the full system's CMS would serve it: Preview opens the first, Publish
-//   the second, a Collection list's card and an entry's View the third.
+// - The editor's address with ?preview=<id>, ?published=<id>,
+//   ?entry=<id>, ?cart or ?order=<id> is a page the demo draws itself
+//   (./PageView.tsx), where the full system's CMS would serve it: Preview
+//   opens the first, Publish the second, a Collection list's card and an
+//   entry's View the third, Add to cart and a link to /cart the cart, and
+//   the cart's Checkout, through the browser's storage (checkoutDemo), the
+//   order it made.
 // - Under the editor's bottom line, and under every page it draws, the
 //   demo's line (./DemoLine.tsx).
 import { StrictMode } from "react";
@@ -51,7 +54,7 @@ if (!root) throw new Error("index.html has no #editor_root");
 if (view) {
   createRoot(root).render(
     <StrictMode>
-      <PageView adapter={adapter} view={view} />
+      <PageView adapter={adapter} view={view} checkout={(lines) => browser.checkoutDemo(lines)} />
     </StrictMode>,
   );
 } else {

@@ -7,12 +7,15 @@
 // page, a picture or a collection; and nothing is kept when a file is
 // missing or names a picture or a collection site.json does not list.
 import { describe, expect, test } from "vitest";
-import site from "../../../example-site/site.json";
+import siteJson from "../../../example-site/site.json";
 import type { Invalid, MediaItem, StorageAdapter } from "./adapter.ts";
-import { builtFiles, builtSource, editionOf, seedExampleEdition, seedExampleSite, startOver, withCollectionIds, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSource, type SeedMarks } from "./example-site.ts";
+import { builtFiles, builtSource, editionOf, seedExampleEdition, seedExampleSite, startOver, withCollectionIds, withExampleSite, withLibraryIds, type EditionMarks, type EditionRecord, type ExampleSiteFile, type ExampleSource, type SeedMarks } from "./example-site.ts";
 import type { BrowserAdapter } from "./browser.ts";
 import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
+
+// The example site's site.json, its currency read as one of the shop's.
+const site = siteJson as ExampleSiteFile;
 
 const list = (collection: number) => ({ type: "collectionList", props: { collection, count: 3 } });
 const pages: Record<string, unknown> = {
@@ -55,8 +58,12 @@ const named = (value: unknown): string => {
   return lists.length > 0 ? `${images}, lists ${lists.join(",")}` : images;
 };
 
-// What the seed asked, in order, and a storage that holds `existing`.
-function recorder(existing: { pages?: number; media?: number; collections?: number } = {}, refuse: string | null = null) {
+// The shop's settings a site.json gives, selling its collection 1.
+const SHOP = { enabled: true, currency: "GBP", productsCollectionId: 1, priceField: "price" } as const;
+
+// What the seed asked, in order, and a storage that holds `existing`: a
+// shop's settings changed since (shopChanged) among it.
+function recorder(existing: { pages?: number; media?: number; collections?: number; shopChanged?: boolean } = {}, refuse: string | null = null) {
   const calls: string[] = [];
   let pageId = 0;
   let mediaId = 0;
@@ -102,6 +109,12 @@ function recorder(existing: { pages?: number; media?: number; collections?: numb
       calls.push(`page ${id} ${JSON.stringify(changes)}`);
       return { ok: true, value: {} };
     },
+    getShop: async () => ({ enabled: false, currency: "GBP", productsCollectionId: null, priceField: null, updatedAt: existing.shopChanged ? "2026-10-16T09:00:00.000Z" : null, checkout: { ready: false, reason: "browser" } }),
+    setShop: async (settings: object) => {
+      calls.push(`shop ${JSON.stringify(settings)}`);
+      if (refuse === "shop") return { ok: false, problem: refused };
+      return { ok: true, value: {} };
+    },
   };
   return { adapter: adapter as unknown as StorageAdapter, calls };
 }
@@ -132,6 +145,24 @@ describe("the demo's seed", () => {
     ]);
   });
 
+  test("with the shop's settings, sets them once the collections are in, naming the collection they sell from by the storage's id, before the pages", async () => {
+    const { adapter, calls } = recorder();
+    expect(await seedExampleSite(adapter, source({ site: { ...source().site, shop: SHOP } }), marks())).toBe("seeded");
+    const at = calls.indexOf('shop {"enabled":true,"currency":"GBP","productsCollectionId":41,"priceField":"price"}');
+    expect(at, calls.join("\n")).toBe(calls.indexOf("publish 201 at 1") + 1);
+    expect(calls[at + 1]).toBe('create home "Home"');
+    expect(calls.filter((call) => call.startsWith("shop "))).toHaveLength(1);
+  });
+
+  test("leaves the shop's settings as they are when they were changed since, and stops at settings the shop refuses", async () => {
+    const changed = recorder({ shopChanged: true });
+    expect(await seedExampleSite(changed.adapter, source({ site: { ...source().site, shop: SHOP } }), marks())).toBe("seeded");
+    expect(changed.calls.filter((call) => call.startsWith("shop "))).toEqual([]);
+    const refusedShop = recorder({}, "shop");
+    await expect(seedExampleSite(refusedShop.adapter, source({ site: { ...source().site, shop: SHOP } }), marks())).rejects.toThrow("The example site's shop settings were refused: is too long");
+    expect(refusedShop.calls.some((call) => call.startsWith("create "))).toBe(false);
+  });
+
   test("leaves a site with a page, a picture or a collection as it is", async () => {
     for (const existing of [{ pages: 1 }, { media: 1 }, { collections: 1 }]) {
       const { adapter, calls } = recorder(existing);
@@ -149,6 +180,8 @@ describe("the demo's seed", () => {
       [{ collections: { "collections/c.json": { ...(collections["collections/c.json"] as object), entries: [{ title: "Dawn", slug: "dawn", values: { picture: { mediaId: "pic-9" } } }] } } }, 'example-site/collections/c.json names the image "pic-9", which site.json does not list'],
       [{ collections: { "collections/c.json": { ...(collections["collections/c.json"] as object), template: { schemaVersion: 1, title: "News", sections: [list(7)] } } } }, "example-site/collections/c.json names the collection 7, which site.json does not list"],
       [{ collections: { "collections/c.json": { collection: {}, items: [], template: {} } } }, 'example-site/collections/c.json has the keys ["collection", "items", "template"], not collection, entries and template'],
+      [{ site: { ...source().site, shop: { ...SHOP, productsCollectionId: 3 } } }, "example-site/site.json has shop settings it cannot read"],
+      [{ site: { ...source().site, shop: { ...SHOP, tax: 20 } as never } }, "example-site/site.json has shop settings it cannot read"],
     ];
     for (const [changes, message] of cases) {
       const { adapter, calls } = recorder();
@@ -543,15 +576,17 @@ describe("editions", () => {
     expect(one).toMatch(/^[0-9a-f]{8}$/);
   });
 
-  test("the build's edition holds the collections' files and the header's and footer's starters it serves", () => {
+  test("the build's edition holds the collections' files, the shop's settings and the header's and footer's starters it serves", () => {
     // The pictures by their name in site.json, as the build gives them.
     const found = import.meta.glob<string>("../../../example-site/images/*.png", { eager: true, query: "?url", import: "default" });
     const images = Object.fromEntries(Object.entries(found).map(([path, url]) => [path.slice(path.indexOf("images/")), url]));
     const built = builtSource();
     const documents = { ...built.pages, ...built.collections };
-    expect(Object.keys(built.collections)).toEqual(["collections/news.json"]);
+    expect(Object.keys(built.collections).sort()).toEqual(["collections/news.json", "collections/shop.json"]);
+    expect(built.site.shop).toEqual({ enabled: true, currency: "GBP", productsCollectionId: 2, priceField: "price" });
     expect(built.edition).toBe(editionOf(built.site, documents, images, SITE_THEME.parts));
     expect(built.edition).not.toBe(editionOf(built.site, built.pages, images, SITE_THEME.parts));
+    expect(built.edition).not.toBe(editionOf({ ...built.site, shop: { ...built.site.shop!, currency: "EUR" } }, documents, images, SITE_THEME.parts));
     expect(built.edition).not.toBe(editionOf(built.site, documents, images, { ...SITE_THEME.parts, footer: { ...SITE_THEME.parts.footer, title: "Another footer" } }));
   });
 });

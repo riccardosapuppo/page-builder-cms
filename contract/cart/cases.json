@@ -1,0 +1,78 @@
+{
+  "about": "The cart's pages, drawn twice: by the CMS (cms/app/views/cart/, cms/app/helpers/cart_helper.rb, cms/app/models/cart_page.rb), which serves them at /cart and /cart/thanks, and by the browser demo (builder/src/demo/cart-view.tsx, cart-page.ts), which draws the same cart from the browser's storage. Each case gives what both read: the products collection, its products as they went live, the cart's lines as kept, and what the page says; each side prices the cart by its own twin of the shop's rules and draws <main>'s content, which cms/test/contract/cart_goldens_test.rb writes to <name>.html beside this file and the demo's cart.contract.test.tsx compares its own with. The pictures are the render contract's: /media/<id>.png, 800 by 600, none for an id starting with missing. See contract/README.md.",
+  "collection": {
+    "prefix": "shop",
+    "priceField": "price",
+    "fields": [
+      { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+      { "key": "image", "label": "Image", "type": "image", "required": false },
+      { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+      { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+    ]
+  },
+  "products": [
+    { "id": 7, "title": "Swim cap", "slug": "swim-cap", "values": { "price": 12, "in-stock": true, "image": { "mediaId": "caps", "alt": "Three swim caps, orange, pink and white, at the waterline" } } },
+    { "id": 8, "title": "Tow float <b>\"bright\"</b> & safe", "slug": "tow-float", "values": { "price": 24.5, "in-stock": true } },
+    { "id": 9, "title": "Enamel mug", "slug": "enamel-mug", "values": { "price": 9.5, "in-stock": false, "image": { "mediaId": "mug", "alt": "" } } },
+    { "id": 10, "title": "Series pass", "slug": "series-pass", "values": { "in-stock": true, "image": { "mediaId": "pass", "alt": "The jetty in winter", "decorative": true } } },
+    { "id": 12, "title": "Club towel", "slug": "club-towel", "values": { "price": 1250, "in-stock": true, "image": { "mediaId": "missing-towel", "alt": "A towel deleted from the library" } } }
+  ],
+  "cases": [
+    {
+      "name": "cart",
+      "page": "cart",
+      "about": "lines of every kind: for sale with a picture, for sale with none and a title holding markup, out of stock, with no price and a decorative picture, gone, and a picture the library no longer has; the template live, so each title leads to its page; checkout open",
+      "currency": "GBP",
+      "live": true,
+      "lines": [[7, 2], [8, 1], [9, 1], [10, 1], [11, 3], [12, 1]],
+      "said": null,
+      "shopPath": "/shop"
+    },
+    {
+      "name": "cart-nothing",
+      "page": "cart",
+      "about": "nothing for sale, said above the cart: the template not live, so no title leads anywhere; one line of one item, in euros",
+      "currency": "EUR",
+      "live": false,
+      "lines": [[9, 1]],
+      "said": { "state": "outOfStock" },
+      "shopPath": "/"
+    },
+    {
+      "name": "cart-empty",
+      "page": "cart",
+      "about": "an empty cart, leading to the shop",
+      "currency": "GBP",
+      "live": true,
+      "lines": [],
+      "said": null,
+      "shopPath": "/shop"
+    },
+    {
+      "name": "cart-refused",
+      "page": "cart",
+      "about": "a change refused before the cart was read: what was said, and the way back to the cart",
+      "currency": "USD",
+      "live": true,
+      "lines": null,
+      "said": "This did not come from this site's own page, so nothing changed. Use the cart on the site itself.",
+      "shopPath": "/shop"
+    },
+    {
+      "name": "order",
+      "page": "order",
+      "about": "an order's lines as they were sold, its total, and the way back, under the words its page gives it",
+      "title": "Thank you",
+      "said": "Your order is paid: £48.50.",
+      "order": {
+        "currency": "GBP",
+        "total": 4850,
+        "lines": [
+          { "entryId": 7, "title": "Swim cap", "unitAmount": 1200, "quantity": 2 },
+          { "entryId": 8, "title": "Tow float <b>\"bright\"</b> & safe", "unitAmount": 2450, "quantity": 1 }
+        ]
+      },
+      "back": { "href": "/shop", "words": "Back to the shop" }
+    }
+  ]
+}

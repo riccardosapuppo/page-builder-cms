@@ -1,27 +1,13 @@
 <%#
   Where Stripe sends a visitor back after its checkout (CartController#
-  thanks), a plain page in the site's frame for now: paid, with what was
-  bought and the total; not paid yet; expired; or, when the payment could
-  not be asked about (asked: false), saying so. order: the order the
-  session is of.
+  thanks), in the site's frame as the cart is (CartHelper draws it): a band
+  of deep water saying, in plain words, whether the order is paid, not
+  yet, or expired, or that whether it is paid could not be asked just now
+  (asked: false); then the order's lines as they were sold, its total, and
+  the way back: to the shop once it is paid, otherwise to the cart, which
+  still holds what was not paid for.
+  order: the order the session is of.
 -%>
-<section class="sec space-above-section-l space-below-section-l sw-cart"><div class="sw-inner cols cols-1"><div class="col">
-<%- if order.status == "paid" -%>
-<div class="w w-heading size-heading-1"><h1>Thank you</h1></div>
-<div class="w w-text size-large"><p><%= order.total.zero? ? "Your order is confirmed: there was nothing to pay." : "Your order is paid: #{money(order.total, order.currency)}." %></p></div>
-<ul class="sw-cart-lines">
-<%- order.lines.each do |line| -%>
-<li class="sw-cart-line"><p class="sw-cart-title"><%= line["title"] %></p><p class="sw-cart-price"><%= "#{line['quantity']} at #{money(line['unitAmount'], order.currency)}" %></p></li>
-<%- end -%>
-</ul>
-<%- elsif order.status == "expired" -%>
-<div class="w w-heading size-heading-1"><h1>Not paid</h1></div>
-<div class="w w-text size-large"><p>This checkout expired before it was paid, and nothing was paid. <a href="/cart">Back to your cart</a></p></div>
-<%- elsif !asked -%>
-<div class="w w-heading size-heading-1"><h1>Not known yet</h1></div>
-<div class="w w-text size-large"><p>Whether this order is paid could not be checked just now. Reload this page in a moment.</p></div>
-<%- else -%>
-<div class="w w-heading size-heading-1"><h1>Not paid yet</h1></div>
-<div class="w w-text size-large"><p>This order is not paid yet. If you have just paid, reload this page in a moment. <a href="/cart">Back to your cart</a></p></div>
-<%- end -%>
-</div></div></section>
+<%- title, said = order_words(order, asked) -%>
+<%- back = order.status == "paid" ? [ shop_path, "Back to the shop" ] : [ "/cart", "Back to your cart" ] -%>
+<%= cart_head(title, said) %><%= order_body(order.lines, order.total, order.currency, *back) -%>

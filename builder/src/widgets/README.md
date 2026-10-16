@@ -145,7 +145,9 @@ server from its database (`SiteContent`).
   Paste. On the canvas its form takes no click and no key, as the page's
   forms do not; the safety check of the render contract lets its form
   through, sent to the cart's address and nowhere else
-  (`test/render-safety.ts`).
+  (`test/render-safety.ts`). In the browser demo the same form puts the
+  product in the cart the browser keeps and opens it
+  (`../demo/PageView.tsx`).
 
 Their accessibility tests say what they draw from: a collection made on
 the CMS before the cases are published (`collection` in `a11y.ts`, its
@@ -158,7 +160,12 @@ and `pages/news.json`): the news page at `/news` lists every entry of
 News, newest first, one under another; News's template draws the entry's
 day, title, summary, picture and body with Field blocks, then a grid of
 two of the others, side by side on a desktop and a tablet, one above the
-other on a phone.
+other on a phone. Its shop uses all three
+(`../../../example-site/collections/shop.json` and `pages/shop.json`): the
+shop's page at `/shop` lists Club kit's four products in a grid of four,
+each card with its price as money; Club kit's template draws a product's
+picture, title, price, summary and body with Field blocks, Add to cart
+beside them, then a grid of two of the others with their prices.
 
 ## Checks
 

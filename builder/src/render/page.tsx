@@ -10,7 +10,7 @@
 // (./theme.tsx); the canvas draws them locked, with nothing of the
 // editor's on their blocks. Without them it draws the sections alone, as
 // the render contract compares them.
-import { memo, useContext, useMemo } from "react";
+import { memo, useContext, useMemo, type ReactNode } from "react";
 import { OwnClassPrefix, type RenderContext } from "./context.ts";
 import { canvasCss, checkCustomCss, scopedCss } from "../shared/custom-css.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
@@ -120,10 +120,13 @@ interface PageRootProps {
   // The editor's controls in the page, which the site's custom CSS leaves
   // alone (CustomCssStyle); absent on a page a visitor sees.
   editorControls?: string;
+  // What the page holds besides its document's sections, after them: the
+  // browser demo's cart, which no document holds (../demo/cart-view.tsx).
+  children?: ReactNode;
 }
 
-export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false, editorControls }: PageRootProps) {
-  const sections = <PageSections document={document} ctx={ctx} />;
+export function PageRoot({ document, ctx, siteStyle, width, landmark = true, parts, lockedParts = false, editorControls, children }: PageRootProps) {
+  const sections = <><PageSections document={document} ctx={ctx} />{children}</>;
   // The header and footer are drawn without the page's entry, which only
   // a template's own blocks draw; locked, without the editor's marks too.
   const partCtx = useMemo<RenderContext>(() => partContext(ctx, !lockedParts), [ctx, lockedParts]);

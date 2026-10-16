@@ -3,11 +3,13 @@ require "test_helper"
 # The shop's cart, as a visitor's browser uses it (CartController): a
 # product put in, a line's quantity set and taken out, the checkout that
 # makes the order and sends the visitor to Stripe's page (the tests' fake,
-# FakeStripe), and the thanks page Stripe sends them back to; the cookie
-# that keeps the cart, holding ids and quantities alone; and the guards a
-# visitor's form has. Nothing here reaches the network.
+# FakeStripe), and the thanks page Stripe sends them back to, both drawn
+# in the site's frame; the cookie that keeps the cart, holding ids and
+# quantities alone; and the guards a visitor's form has. Nothing here
+# reaches the network.
 class CartTest < ActionDispatch::IntegrationTest
   include ShopRequests
+  include StoredFiles
 
   setup do
     SubmissionsController::LIMIT_STORE.clear
@@ -19,8 +21,10 @@ class CartTest < ActionDispatch::IntegrationTest
 
   def html = Nokogiri::HTML5(response.body)
 
+  # Each line's title, then its price for one and what it costs, or why it
+  # cannot be bought.
   def lines_drawn
-    html.css(".sw-cart-line").map { |line| [ line.at_css(".sw-cart-title").text, line.at_css(".sw-cart-price").text ] }
+    html.css(".sw-cart-line").map { |line| [ line.at_css(".sw-cart-title").text, *line.css(".sw-cart-price, .sw-cart-state, .sw-cart-amount").map(&:text) ] }
   end
 
   def assert_private(what)
@@ -94,10 +98,12 @@ class CartTest < ActionDispatch::IntegrationTest
     cart_post("/cart/items", { "entry" => @cap.id.to_s, "quantity" => "2" })
     cart_post("/cart/items", { "entry" => @float.id.to_s })
     get "/cart"
-    assert_equal [ [ "Swim cap", "£12.00 each, 2: £24.00" ], [ "Tow float", "£24.50 each, 1: £24.50" ] ], lines_drawn
-    assert_select ".sw-cart-total", "Total: £48.50"
+    assert_equal [ [ "Swim cap", "£12.00 each", "£24.00" ], [ "Tow float", "£24.50 each", "£24.50" ] ], lines_drawn
+    assert_select ".sw-cart-total", "Total £48.50"
+    assert_select "main h1", "Your cart"
+    assert_select "main .sw-cart-head p", "You have 3 items in your cart."
     assert_select "form[action='/cart/checkout']", 0, "no checkout's button while checkout is not set up"
-    assert_select "main p", "Checkout is not open on this site yet: nothing can be paid for now."
+    assert_select "main p.sw-cart-closed", "Checkout is not open on this site yet: nothing can be paid for now."
     with_stripe do
       get "/cart"
       assert_select "form[method=post][action='/cart/checkout'] button", "Checkout"
@@ -108,17 +114,74 @@ class CartTest < ActionDispatch::IntegrationTest
     assert_empty html.css("input[name=authenticity_token]"), "no token"
   end
 
+  test "a line shows its product's picture, its alt the entry's, and its title leads to the product's page once its template is live; a product with no picture shows none" do
+    kit = products_collection(prefix: "kit", fields: [ { "key" => "image", "label" => "Image", "type" => "image", "required" => false }, *PRODUCT_FIELDS ])
+    item = MediaItem.create_from_upload!(signed_blob_id: uploaded_blob(png_bytes(width: 4, height: 3)).signed_id, width: 4, height: 3, alt: "")
+    cap = product(kit, "Swim cap", "swim-cap", values: { "price" => 12, "in-stock" => true, "image" => { "mediaId" => item.public_id, "alt" => "Three swim caps at the waterline" } })
+    mug = product(kit, "Enamel mug", "enamel-mug", price: 9.5)
+    open_shop(kit)
+    cart_post("/cart/items", { "entry" => cap.id.to_s })
+    cart_post("/cart/items", { "entry" => mug.id.to_s })
+
+    get "/cart"
+    assert_select "[data-entry-id='#{cap.id}'] figure.sw-cart-picture img[alt='Three swim caps at the waterline'][width='4'][height='3']"
+    assert_select "[data-entry-id='#{mug.id}'] figure", 0, "no picture, no figure"
+    assert_select ".sw-cart-title a", 0, "no page to lead to while the template is not live"
+    kit.template.publish!
+    get "/cart"
+    assert_equal [ [ "Swim cap", "/kit/swim-cap" ], [ "Enamel mug", "/kit/enamel-mug" ] ], css_select(".sw-cart-title a").map { |a| [ a.text, a["href"] ] }
+    assert_select "label[for='quantity-#{cap.id}']", "Quantity of Swim cap"
+    assert_select "button[aria-label='Update Swim cap']", "Update"
+  end
+
+  test "the thanks page lists the order's lines as they were sold and its total, in the site's frame, and leads back to the cart until it is paid, then to the shop" do
+    create_page(title: "Shop", slug: "shop").publish!
+    with_stripe do |stripe|
+      cart_post("/cart/items", { "entry" => @cap.id.to_s, "quantity" => "2" })
+      cart_post("/cart/items", { "entry" => @float.id.to_s })
+      cart_post("/cart/checkout")
+      order = Order.last
+      Entry.save_checked!(@shop, @cap.id, revision: @cap.revision, save_id: "price-up", entry: { "title" => "Swim cap", "slug" => "swim-cap", "values" => { "price" => 15, "in-stock" => true } })
+      @cap.reload.publish!
+
+      get "/cart/thanks", params: { "session_id" => order.stripe_session_id }
+      assert_select "header.sw-header", 1
+      assert_select "footer.sw-footer", 1
+      assert_select "main .sw-cart-head h1", "Not paid yet"
+      assert_equal [ [ "Swim cap", "2 × £12.00", "£24.00" ], [ "Tow float", "1 × £24.50", "£24.50" ] ], lines_drawn, "as they were sold, not as they are now"
+      assert_select ".sw-cart-total", "Total £48.50"
+      assert_select "main a.sw-btn[href='/cart']", "Back to your cart"
+
+      stripe.pay(order.stripe_session_id)
+      get "/cart/thanks", params: { "session_id" => order.stripe_session_id }
+      assert_select "main .sw-cart-head h1", "Thank you"
+      assert_select "main .sw-cart-head p", "Your order is paid: £48.50."
+      assert_equal 2, lines_drawn.size
+      assert_select "main a.sw-btn[href='/shop']", "Back to the shop"
+      assert_select "main a[href='/cart']", 0
+    end
+  end
+
+  test "a cart refused before it is read leads back to it, and says why" do
+    cart_post("/cart/items", { "entry" => @cap.id.to_s }, origin: "https://other.example")
+    assert_response :forbidden
+    assert_select "main .sw-cart-head h1", "Your cart"
+    assert_select "main .sw-cart-head p", 0, "nothing said of a cart not read"
+    assert_select "main p.sw-cart-notice[role=alert]", /did not come from this site's own page/
+    assert_select "main a.sw-btn[href='/cart']", "Back to your cart"
+  end
+
   test "every price is read from what the product published, never from the cart: a new price published is the cart's price, a draft's is not" do
     cart_post("/cart/items", { "entry" => @cap.id.to_s })
     Entry.save_checked!(@shop, @cap.id, revision: @cap.revision, save_id: "price-1", entry: { "title" => "Swim cap", "slug" => "swim-cap", "values" => { "price" => 15, "in-stock" => true } })
     get "/cart"
-    assert_equal [ [ "Swim cap", "£12.00 each, 1: £12.00" ] ], lines_drawn, "the draft's price is not live"
+    assert_equal [ [ "Swim cap", "£12.00 each", "£12.00" ] ], lines_drawn, "the draft's price is not live"
     @cap.reload.publish!
     get "/cart"
-    assert_equal [ [ "Swim cap", "£15.00 each, 1: £15.00" ] ], lines_drawn
+    assert_equal [ [ "Swim cap", "£15.00 each", "£15.00" ] ], lines_drawn
     ShopSetting.change!({ "enabled" => true, "currency" => "EUR", "productsCollectionId" => @shop.id, "priceField" => "price" })
     get "/cart"
-    assert_select ".sw-cart-total", "Total: €15.00"
+    assert_select ".sw-cart-total", "Total €15.00"
   end
 
   test "every product and quantity is held to the shop's rules and the published products, each refusal said on the cart's page, and nothing changes" do
@@ -170,15 +233,15 @@ class CartTest < ActionDispatch::IntegrationTest
     Entry.save_checked!(@shop, @float.id, revision: @float.revision, save_id: "out-1", entry: { "title" => "Tow float", "slug" => "tow-float", "values" => { "price" => 24.5, "in-stock" => false } })
     @float.reload.publish!
     get "/cart"
-    assert_equal [ [ "Swim cap", "£12.00 each, 2: £24.00" ], [ "Tow float", "Out of stock" ] ], lines_drawn
+    assert_equal [ [ "Swim cap", "£12.00 each", "£24.00" ], [ "Tow float", "Out of stock: the checkout leaves it out." ] ], lines_drawn
     assert_select "form[action='/cart/items/#{@float.id}'] input[name=quantity][type=number]", 0, "no quantity to set"
-    assert_select ".sw-cart-total", "Total: £24.00"
+    assert_select ".sw-cart-total", "Total £24.00"
     @cap.unpublish!
     with_stripe do
       get "/cart"
-      assert_equal [ [ "A product no longer sold", "No longer sold" ], [ "Tow float", "Out of stock" ] ], lines_drawn
+      assert_equal [ [ "A product no longer sold", "No longer sold: the checkout leaves it out." ], [ "Tow float", "Out of stock: the checkout leaves it out." ] ], lines_drawn
       assert_select "form[action='/cart/checkout']", 0
-      assert_select "main p", "Nothing in your cart can be bought now, so there is nothing to check out."
+      assert_select "main p.sw-cart-closed", "Nothing in your cart can be bought now, so there is nothing to check out."
     end
     cart_post("/cart/items/#{@cap.id}", { "quantity" => "0" })
     assert_response :see_other, "a product gone is taken out all the same"

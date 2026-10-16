@@ -233,10 +233,12 @@ class CartController < ApplicationController
 
   # The published products among these ids, as the shop's rules read them:
   # a published entry of the products collection, its title and values as
-  # it went live.
+  # it went live. Their slugs and values are kept for the cart's page, which
+  # shows each line's picture and links to its page (CartPage.shown).
   def products(ids)
-    rows = ids.empty? ? [] : @collection.entries.where(id: ids).where.not(published_at: nil).pluck(:id, :published_title, :published_field_values)
-    rows.to_h { |id, title, values| [ id, ShopRules::Product.new(id: id, title: title, values: values) ] }
+    rows = ids.empty? ? [] : @collection.entries.where(id: ids).where.not(published_at: nil).pluck(:id, :published_title, :published_slug, :published_field_values)
+    @published = rows.to_h { |id, _title, slug, values| [ id, { "slug" => slug, "values" => values } ] }
+    rows.to_h { |id, title, _slug, values| [ id, ShopRules::Product.new(id: id, title: title, values: values) ] }
   end
 
   def product_state(entry_id)
@@ -250,8 +252,17 @@ class CartController < ApplicationController
   # The cart's page, with what was said above it when given; read: false
   # for a request refused before anything of it is read.
   def draw_cart(status: :ok, said: nil, read: true)
-    lines = read ? cart_lines : []
-    draw_page("cart/show", title: "Your cart", status: status, said: said, priced: read ? price(lines) : nil, checkout: StripeSettings.current.ready?)
+    priced = read ? price(cart_lines) : nil
+    shown = priced ? CartPage.shown(priced.lines, fields: @collection.fields, prefix: @collection.prefix, live: @collection.template&.published? || false, published: @published || {}) : {}
+    draw_page("cart/show", title: "Your cart", status: status, said: said, priced: priced, shown: shown, media: CartPage.media(shown), closed: closed_words(priced))
+  end
+
+  # Why the cart has no checkout's button: checkout not set up, or nothing
+  # in it for sale; nil when it has one.
+  def closed_words(priced)
+    return WORDS[:closed] unless StripeSettings.current.ready?
+
+    WORDS[:nothing] if priced&.order_lines&.empty?
   end
 
   # A page of the cart in the site's frame: its header and footer, as a

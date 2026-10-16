@@ -1,46 +1,20 @@
 <%#
-  The cart (CartController), a plain page in the site's frame for now, drawn
-  with the theme's own classes: each line with its product's title, its
-  price as the product publishes it now, a form for its quantity and one
-  that takes it out; the total of the lines for sale; and the checkout's
-  button, or why there is none. A line whose product is out of stock, has
-  no price or is gone says so and can only be taken out; the checkout
-  leaves it out. Every form posts to the cart's own addresses, with no
-  token and no script: the Origin a browser sends is what lets it through.
-  said: what the last change said, above the cart; priced: the cart
-  priced (ShopRules.price_cart), nil for a request refused before the cart
-  was read.
+  The cart (CartController), in the site's frame (CartHelper draws it): a
+  band of deep water with the title and how many items the cart holds;
+  then, on the page's band, what the last change said, and the lines, each
+  with its product's picture, its title (the link to its page), its price
+  for one as the product publishes it now and what the line costs, a form
+  for its quantity and one that takes it out; beside them, the total of
+  the lines for sale and the checkout's button, or why there is none. A
+  line whose product is out of stock, has no price or is gone says why and
+  can only be taken out; the checkout leaves it out. An empty cart says so
+  and leads to the shop. Every form posts to the cart's own addresses,
+  with no token and no script: the Origin a browser sends is what lets it
+  through.
+  said: what the last change said, above the cart; priced: the cart priced
+  (ShopRules.price_cart), nil for a request refused before the cart was
+  read; shown: each line's page and picture (CartPage.shown); media: the
+  library's items for those pictures; closed: why there is no checkout's
+  button, or nil.
 -%>
-<section class="sec space-above-section-l space-below-section-l sw-cart"><div class="sw-inner cols cols-1"><div class="col">
-<div class="w w-heading size-heading-1"><h1>Your cart</h1></div>
-<%- if said -%>
-<div class="w w-text size-large"><p class="sw-cart-notice" role="alert"><%= said %></p></div>
-<%- end -%>
-<%- if priced.nil? -%>
-<div class="w w-text"><p><a href="/cart">Back to your cart</a></p></div>
-<%- elsif priced.lines.empty? -%>
-<div class="w w-text size-large"><p>Your cart is empty. <a href="<%= shop_path %>">See what the shop sells</a></p></div>
-<%- else -%>
-<ul class="sw-cart-lines">
-<%- priced.lines.each do |line| -%>
-<%- title = line.title || "A product no longer sold" -%>
-<li class="sw-cart-line" data-entry-id="<%= line.entry_id %>" data-state="<%= line.state %>">
-<p class="sw-cart-title"><%= title %></p>
-<p class="sw-cart-price"><%= line.state == "forSale" ? "#{money(line.unit_amount, currency)} each, #{line.quantity}: #{money(line.amount, currency)}" : line_state_words(line.state) %></p>
-<%- if line.state == "forSale" -%>
-<form class="sw-form" method="post" action="/cart/items/<%= line.entry_id %>"><div class="sw-field"><label for="quantity-<%= line.entry_id %>">Quantity</label><input id="quantity-<%= line.entry_id %>" name="quantity" type="number" inputmode="numeric" min="0" max="<%= ShopRules::MOST_QUANTITY %>" value="<%= line.quantity %>" required></div><button class="sw-btn" type="submit">Update</button></form>
-<%- end -%>
-<form method="post" action="/cart/items/<%= line.entry_id %>"><input type="hidden" name="quantity" value="0"><%= tag.button("Remove", class: "sw-btn", type: "submit", aria: { label: "Remove #{title}" }) %></form>
-</li>
-<%- end -%>
-</ul>
-<div class="w w-text size-large"><p class="sw-cart-total">Total: <%= money(priced.total, currency) %></p></div>
-<%- if !checkout -%>
-<div class="w w-text"><p><%= CartController::WORDS[:closed] %></p></div>
-<%- elsif priced.order_lines.empty? -%>
-<div class="w w-text"><p><%= CartController::WORDS[:nothing] %></p></div>
-<%- else -%>
-<form method="post" action="/cart/checkout"><button class="sw-btn sw-btn-primary" type="submit">Checkout</button></form>
-<%- end -%>
-<%- end -%>
-</div></div></section>
+<%= cart_head("Your cart", priced && (priced.lines.empty? ? CartHelper::EMPTY : cart_count_words(priced.lines))) %><%= cart_body(priced, shown, media, currency, said: said, closed: closed, shop_path: shop_path) -%>

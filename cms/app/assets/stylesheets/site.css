@@ -691,6 +691,98 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-errors-box ul { margin: 0; padding-left: 1.2em; }
 .sw-errors-box a { font-weight: 650; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
 
+/* ---------- The cart's pages ---------- */
+/* The cart and the page a visitor comes back to from Stripe's checkout
+   (app/views/cart/), drawn outside any document, in the site's frame and
+   with a block's own classes wherever a block would draw the same thing:
+   a band of deep water holding the title and a line under it, then the
+   page's own band, its lines down the left, and the total and what comes
+   next on a pale card beside them, under them below a desktop's width.
+   - A line: the product's picture, square, beside its title (the link to
+     its page, in the headings' face) and its price for one, muted, what
+     the line costs at its right; under them, on one row where it fits,
+     how many (its label beside a field 44 px tall) and Update, a pill of
+     the same height drawn as an outline in the band's words' colour, so
+     the checkout's button is the band's one red, then Remove, plain
+     words. A line that cannot be bought says why in bold, as a refused
+     field does, and can only be taken out.
+   - The card: the total in the headings' face at the Heading 3 step, the
+     checkout's button as wide as the card, or why there is none.
+   - What the cart said of the last change sits above it in the ink border
+     of the list above a refused form (.sw-errors-box).
+   Remove stands 44 px tall on every pointer; on a coarse one, the links of
+   a line and of the card do too. */
+.sw-cart-notice { margin-bottom: var(--space-xl); padding: var(--space-m) var(--space-l); border: 2.5px solid var(--sw-text); border-radius: 4px; font-weight: 650; }
+.sw-cart-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-xxl) var(--cols-gap); align-items: start; }
+.sw-cart-lines { margin: 0; padding: 0; list-style: none; }
+.sw-cart-line {
+  display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; grid-template-areas: "picture about amount" "picture change change";
+  gap: var(--space-m) var(--space-l); align-items: start;
+  padding-block: var(--space-l); border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.sw-cart-line:first-child { padding-top: 0; border-top: 0; }
+.sw-cart-line:last-child { padding-bottom: 0; }
+.sw-cart-picture { grid-area: picture; margin: 0; }
+.sw-cart-picture img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; }
+.sw-cart-about { grid-area: about; display: grid; gap: var(--space-xs); min-width: 0; }
+.sw-cart-title {
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: var(--fs-large); line-height: 1.3; font-weight: 650; font-stretch: var(--stretch-display, 100%); letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.sw-cart-title a { text-decoration: none; }
+.sw-cart-title a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .14em; }
+.sw-cart-price { margin-inline: 0; color: var(--caption-color, var(--sw-muted)); font-variant-numeric: lining-nums tabular-nums; }
+.sw-cart-state { margin-inline: 0; font-weight: 650; }
+.sw-cart-amount {
+  grid-area: amount; margin-inline: 0; text-align: end; white-space: nowrap;
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 19px; line-height: 1.3; font-weight: 650; font-stretch: var(--stretch-strong, 100%);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.sw-cart-change { grid-area: change; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s) var(--space-l); }
+.sw-cart-quantity, .sw-cart-quantity .sw-field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s); }
+.sw-cart-quantity .sw-field label { margin: 0; }
+.sw-cart-quantity .sw-field input { width: 4.5rem; min-height: 44px; padding-block: 7px; }
+.sw-cart .sw-btn-small { min-height: 44px; }
+.sw-btn-line { background-color: transparent; color: inherit; box-shadow: inset 0 0 0 1.5px currentColor; }
+.sw-cart-remove button {
+  min-height: 44px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer;
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; font-weight: 650; font-stretch: var(--stretch-strong, 100%);
+  text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em;
+}
+.sw-cart-summary { display: grid; gap: var(--space-m); padding: var(--space-l); background-color: var(--sw-soft); color: var(--sw-text); --ring-color: var(--sw-text); }
+.sw-cart-total {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-xs) var(--space-m); margin-inline: 0;
+  font-family: "Archivo", "Helvetica Neue", sans-serif;
+}
+.sw-cart-total span { font-size: 17px; font-weight: 600; font-stretch: var(--stretch-ui, 100%); }
+.sw-cart-total strong {
+  font-size: var(--fs-heading-3); line-height: var(--lh-heading-3); font-weight: 700; font-stretch: var(--stretch-display, 100%); letter-spacing: -.012em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.sw-cart-summary .sw-btn { display: flex; width: 100%; }
+.sw-cart-summary p:not(.sw-cart-total) { margin-inline: 0; }
+.sw-cart-back a { font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 15px; font-weight: 650; font-stretch: var(--stretch-strong, 100%); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: .18em; }
+.sw-cart-empty .sw-btn { margin-top: var(--space-s); }
+/* Words for a screen reader alone: which product a line's field and
+   buttons are for, where the line's title is out of their way. */
+.sw-cart-unseen { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The page Stripe sends a visitor back to: the order's lines as they
+   were sold, with no picture. */
+.sw-order .sw-cart-line { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "about amount"; }
+@media (pointer: coarse) {
+  .sw-cart-title a, .sw-cart-back a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@container site (width < 800px) {
+  .sw-cart-body { grid-template-columns: minmax(0, 1fr); }
+}
+@container site (width < 560px) {
+  .sw-cart-line { grid-template-columns: 4.5rem minmax(0, 1fr); grid-template-areas: "picture about" "picture amount" "change change"; gap: var(--space-s) var(--space-m); }
+  .sw-cart-amount { text-align: start; }
+  .sw-cart-picture img { border-radius: 8px; }
+  .sw-cart-change { gap: var(--space-s) var(--space-m); }
+  .sw-order .sw-cart-line { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "about amount"; }
+}
+
 /* ---------- Tablet layout: the page root is narrower than 800 ---------- */
 @container site (width < 800px) {
   .sw {

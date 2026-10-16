@@ -1,12 +1,14 @@
 // The demo's own pages, on the editor's address: a page's draft as it
 // would be published (?preview=<id>), the page as it was published in
-// this browser (?published=<id>), and an entry of a collection as it was
+// this browser (?published=<id>), an entry of a collection as it was
 // published here (?entry=<entry id>), drawn with its collection's
-// template. A template's preview takes the entry it is drawn with
-// (?preview=<template id>&entry=<entry id>, or entry=sample for values
-// made up from its fields' types). With no CMS to serve a preview or a
-// live page, the demo draws them itself (./PageView.tsx).
-export type ViewKind = "preview" | "published" | "entry";
+// template, the cart this browser keeps (?cart), and an order its
+// checkout made (?order=<order id>), where the full system's CMS serves
+// /cart and /cart/thanks. A template's preview takes the entry it is
+// drawn with (?preview=<template id>&entry=<entry id>, or entry=sample for
+// values made up from its fields' types). With no CMS to serve a preview
+// or a live page, the demo draws them itself (./PageView.tsx).
+export type ViewKind = "preview" | "published" | "entry" | "cart" | "order";
 
 // What a template's preview is drawn with: an entry's draft, or the
 // made-up values; absent, the first published entry.
@@ -14,11 +16,15 @@ export type EntryPick = number | "sample";
 
 export type View =
   | { kind: "preview" | "published"; pageId: number; entry?: EntryPick }
-  | { kind: "entry"; entryId: number };
+  | { kind: "entry"; entryId: number }
+  | { kind: "cart" }
+  | { kind: "order"; orderId: number };
 
 export const previewAddress = (pageId: number): string => `?preview=${pageId}`;
 export const publishedAddress = (pageId: number): string => `?published=${pageId}`;
 export const entryAddress = (entryId: number): string => `?entry=${entryId}`;
+export const cartAddress = "?cart";
+export const orderAddress = (orderId: number): string => `?order=${orderId}`;
 
 const idOf = (raw: string): number | null => {
   const id = /^[1-9][0-9]{0,15}$/.test(raw) ? Number(raw) : Number.NaN;
@@ -39,6 +45,14 @@ export function readView(search: string): View | null {
     return entry === null ? { kind, pageId } : { kind, pageId, entry };
   }
   const raw = params.get("entry");
-  const entryId = raw === null ? null : idOf(raw);
-  return entryId === null ? null : { kind: "entry", entryId };
+  if (raw !== null) {
+    const entryId = idOf(raw);
+    return entryId === null ? null : { kind: "entry", entryId };
+  }
+  const order = params.get("order");
+  if (order !== null) {
+    const orderId = idOf(order);
+    return orderId === null ? null : { kind: "order", orderId };
+  }
+  return params.get("cart") === "" ? { kind: "cart" } : null;
 }

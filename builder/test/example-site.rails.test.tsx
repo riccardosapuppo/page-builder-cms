@@ -87,11 +87,12 @@ test.each(site.pages)("the example site's $file draws on the CMS as in React, in
   const live = await cmsPage.publish();
   await cmsPage.agree(document, live, "published", content);
 
-  // A page of the site, not an empty one that agrees trivially; a list of
-  // entries, with its cards.
-  expect(nodes).toBeGreaterThan(90);
+  // A page of the site, not an empty one that agrees trivially (the
+  // shop's, of three bands, the shortest, has 81 nodes); a list of
+  // entries, with its cards: News's five, or Club kit's four.
+  expect(nodes).toBeGreaterThan(60);
   const lists = JSON.stringify(document).match(/"type":"collectionList"/g)?.length ?? 0;
-  if (lists > 0) expect(cards(await cmsPage.fetchText(live)), file).toBe(5);
+  if (lists > 0) expect(cards(await cmsPage.fetchText(live)), file).toBe(file === "pages/shop.json" ? 4 : 5);
 });
 
 // The cards of entries a page holds.
@@ -119,10 +120,13 @@ test("each entry of the example site's collections draws on the CMS as in React:
       compared += 1;
     }
   }
-  expect(compared).toBe(5);
+  expect(compared).toBe(9);
 });
 
-test("the example site lists its four pages, one of them home, the news at its collection's prefix", () => {
-  expect(site.pages.map((page) => [page.slug, page.home])).toEqual([["home", true], ["winter-series", false], ["news", false], ["notices", false]]);
-  expect(site.collections.map((listed) => (read(listed.file) as ExampleCollectionFile).collection.prefix)).toEqual(["news"]);
+test("the example site lists its five pages, one of them home, the news and the shop each at its collection's prefix, and sells Club kit in pounds", () => {
+  expect(site.pages.map((page) => [page.slug, page.home])).toEqual([["home", true], ["winter-series", false], ["news", false], ["shop", false], ["notices", false]]);
+  expect(site.collections.map((listed) => (read(listed.file) as ExampleCollectionFile).collection.prefix)).toEqual(["news", "shop"]);
+  const shop = (read("site.json") as { shop: { productsCollectionId: number } }).shop;
+  expect(shop).toEqual({ enabled: true, currency: "GBP", productsCollectionId: 2, priceField: "price" });
+  expect((read(site.collections.find((listed) => listed.id === shop.productsCollectionId)!.file) as ExampleCollectionFile).collection.name).toBe("Club kit");
 });

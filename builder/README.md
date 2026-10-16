@@ -160,7 +160,15 @@ visitor's cart, or, out of stock or with no price, says so where its
 button goes ([src/widgets/README.md](src/widgets/README.md#widgets-that-draw-a-collection)).
 A Field block and a Collection list's cards draw the shop's price as
 money in its currency, a number otherwise; the CMS keys a page that draws
-them on the shop's settings.
+them on the shop's settings. The CMS draws the cart, `/cart`, and the page
+Stripe sends a visitor back to in the site's frame; in the browser demo,
+Add to cart puts the product in a cart kept in the browser
+(`src/demo/cart-page.ts`), drawn as the CMS draws `/cart`
+(`src/demo/cart-view.tsx`, held to the CMS's by the cart's contract,
+`../contract/cart/`), whose Checkout makes an order of the demo's own
+through the browser's storage, listed in the Shop screen. The example
+site sells its club kit, four products at `/shop/<slug>` listed at
+`/shop`, in pounds, its shop on in both seeds.
 
 ## Before you start
 
@@ -210,16 +218,16 @@ From the repository's root, the same through `npm run builder:install`,
 | `npm test` | Vitest, the "unit" project (pure tests in Node, tests marked `// @vitest-environment jsdom` in jsdom with only a `ResizeObserver` stub, and the first-run note closed as by a browser that has seen it, `test/setup-dom.ts`), then the "contract" project. Each test file runs in the one project its name says (`*.rails.test.*`, `*.contract.test.*`, any other `*.test.*` in "unit"); `build/projects.test.ts` asks Vitest and fails on a file in none. |
 | `npm run test:contract` | Vitest, the "contract" project alone (`*.contract.test.tsx`): the render contract, on React's production build ([src/render/README.md](src/render/README.md)). |
 | `npm run test:rails` | Vitest, the "rails" project (`*.rails.test.ts` and `.tsx`, in `src/` and `test/`), against a CMS the run starts for itself on `E2E_CMS_PORT` (3901): the storage battery on the Rails adapter ([src/storage/README.md](src/storage/README.md)); the random-page agreement check (`AGREEMENT_RUNS`, 60, at least 1, and `AGREEMENT_SEED`); the example site, its pages and each entry of its News, drawn by the CMS as by React (`test/example-site.rails.test.tsx`); the renderer's twins and a menu's fold against the CMS's Ruby; the header and footer against the CMS's, each from what it published or its starter; the canvas's layout against the CMS's pages in headless Chromium; the API examples of cms/README.md, run as written in a POSIX shell and in Windows PowerShell. Needs Ruby on the PATH and Playwright's Chromium. |
-| `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901). |
-| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 12 October 2026, with the header and footer kept in this storage as parts and their cases in the battery: 74 passed, 7 skipped (the cases that need a server); on 15 October, with the collections and their 13 cases and the upgrade from the build before: 95 passed, 7 skipped, and that evening, with the editor's Collections screen on this storage: 96 passed, 7 skipped; that night, with the battery's case of the Field block: 97 passed, 7 skipped; on 16 October, with the battery's case of a collection's prefix and a page's address made one that accepts a page at the prefix: 97 passed, 7 skipped; that day, with the shop on this storage (its settings, its orders and the demo's checkout, the battery's cases of the shop and of Add to cart, the Shop screen): 106 passed, 7 skipped. |
+| `npm run e2e` | Playwright, Chromium headless, against a CMS and a development server the run starts for itself on `E2E_CMS_PORT` (3901) and `E2E_BUILDER_PORT` (4901), the CMS's checkout going to the tests' fake Stripe (`../cms/test/support/fake_stripe.rb`), which the run starts on a port the system gives it: a visitor checks out and pays on its page, and nothing leaves the machine. On 16 October 2026, with the whole checkout and the example site's cart and thanks pages: 302 passed. |
+| `npm run e2e:browser` | Playwright, Chromium headless, against an editor server of the run's own on the browser's storage (`VITE_STORAGE=browser`), port `E2E_BROWSER_PORT` (4902), with no CMS: the storage battery on the real IndexedDB, two tabs of one browser, the editor's own tests on that storage, and each way the storage gives up, said on screen ([src/storage/README.md](src/storage/README.md#checks)). Needs Playwright's Chromium, not Ruby. On 12 October 2026, with the header and footer kept in this storage as parts and their cases in the battery: 74 passed, 7 skipped (the cases that need a server); on 15 October, with the collections and their 13 cases and the upgrade from the build before: 95 passed, 7 skipped, and that evening, with the editor's Collections screen on this storage: 96 passed, 7 skipped; that night, with the battery's case of the Field block: 97 passed, 7 skipped; on 16 October, with the battery's case of a collection's prefix and a page's address made one that accepts a page at the prefix: 97 passed, 7 skipped; that day, with the shop on this storage (its settings, its orders and the demo's checkout, the battery's cases of the shop and of Add to cart, the Shop screen): 106 passed, 7 skipped, and the same with the example site's shop on in this storage. |
 | `npm run check:a11y` | The same, only the tests tagged `@a11y`: the whole path by the keyboard alone (insert from Insert opened by its chord, move with Space and the arrows, add from the page with the "+" key and its picker and move that block up from its clamp, edit a heading's text and level in its Text group, write in a text on the canvas and make a word bold, look at a tablet from the bottom line's devices and give a column a tablet's own space in its Spacing group, go through the Outline, upload an image and place it with its alt text, undo and redo, keep a named version, publish, open the served page and read it at a desktop's and a tablet's width); the focus after every command; every key of the keyboard map and the "?" window that lists them, and the typing keys inside a text being written; a tablet's and a phone's own values set and taken back; the block's menu from the keyboard; undo, redo, versions and restore from the history; an image uploaded, described, placed and served; axe with no serious or critical finding on the editor in thirty-nine states, in a window of 1440 by 900 and one of 1280 by 800 (each drawer and the Outline's headings, the clamp's block menu, the block picker and the section picker, a seam under the pointer, Insert open beside a first column's block, a key of Insert picked up by the keyboard and a dropped Video asking for its address, Block edges and the Page tab, the sidebar hidden, a text being written and its link's field, a tablet's override, a block hidden on the phone previewed and selected, the "?" window, the history and its name field, and the media library among them), on the Schedule dialog and on the Publish menu with a publish waiting, on the published page, and on every widget's accessibility test (`src/widgets/<widget>/a11y.ts`); the save states, a publish, a publish set for a time going live, a cancel by the keyboard, Site style, and the header opened from a page's Page tab by the keyboard alone, with axe on the editor while it is open, and back to the page. |
-| `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; the demo's build served as GitHub Pages serves it (below), its line unregistering a service worker left in its own path and keeping another project's, a 404 for a missing file, no CMS adapter or address in its files and no request outside its path; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports and on `E2E_DEMO_PORT` (4903); prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. On 9 October 2026, with the demo keeping the header and footer, it printed `RESULT: 60 checks passed`, 19 of them on the demo's build; on 16 October, with an entry's page, its redirect and a page holding a Collection list on the CMS, and the demo's entry view: `RESULT: 99 checks passed`, and the same that night with the example site's News in the demo's build; that day, with a product's page and a page listing the products on the CMS, the shop on, each a new page at a change of its currency: `RESULT: 105 checks passed`. |
+| `npm run check:serving` | How the editor's shell and the published pages are served, over HTTP and in Chromium (`e2e/serving/check-serving.ts`): on the development server and on `vite preview` of a build it makes, the page never stored, no validators and no 304, the line unregistering service workers, a 404 for a missing file and no `404.html`, the hashed files kept a year; the demo's build served as GitHub Pages serves it (below), its line unregistering a service worker left in its own path and keeping another project's, a 404 for a missing file, no CMS adapter or address in its files and no request outside its path; on the CMS, published pages with no script and no service worker, and an ETag that gets a 304. Starts its own servers on the same two ports and on `E2E_DEMO_PORT` (4903); prints `RESULT: <n> checks passed`, exits 1 on a failure and 2 when it could not run. On 9 October 2026, with the demo keeping the header and footer, it printed `RESULT: 60 checks passed`, 19 of them on the demo's build; on 16 October, with an entry's page, its redirect and a page holding a Collection list on the CMS, and the demo's entry view: `RESULT: 99 checks passed`, and the same that night with the example site's News in the demo's build; that day, with a product's page and a page listing the products on the CMS, the shop on, each a new page at a change of its currency: `RESULT: 105 checks passed`; with the cart's page in the site's frame, never stored: `RESULT: 107 checks passed`. |
 | `npm run shots:editor -- <folder>` | Photographs the editor, headless, in every state of the approved layout's shots but Schedule, whose dialog stage 4 built and this does not photograph yet, named and staged as they are (`../design/layout/shots`: editor, add, structure, style, drag, tablet, publish, history, media, site-style, empty, shortcuts; `shots-extra`: text-editing, small-block, insert-at-seam, insert-drawer, page-tab, block-menu, more, new-section, phone, section, pages, conflict, offline, narrow-gutter, seam-hover, outline-col1, insert-col1), and in a right click's menu, a text's link field, a drag from Insert, a dropped Gallery key with its library open (`drop-asks`), the hero's own space on phones, Block edges, the mark's menu and About, and the home page as the CMS serves it to a tablet and a phone (`served-tablet`, `served-phone`, to set beside the canvas at 768 and 390), at 1280 by 800 and, in `<folder>/1440`, at the layout's own 1440 by 900 (the layout's `editor-1280`, `insert-drawer-1280` and `outline-col1` are the 1280 ones), on the example site of `../cms/db/seeds.rb`, in a CMS and a development server of its own on the same two ports. Fails on a console error, a page error or a request that leaves them, saying after which shot. On 4 October 2026 it printed `RESULT: 74 shots`, and, once `drop-asks` was added, `RESULT: 76 shots`. |
 | `npm run build` | The bundle in `dist/`, then its check (below). |
 | `npm run preview` | Serves `dist/` on 127.0.0.1, port `BUILDER_PORT`, with the same proxy as `npm run dev`. |
 | `npm run build:demo` | The browser demo in `dist-demo/`, then the bundle check (below): for GitHub Pages, under `/page-builder-cms/`, or with `DEMO_BASE=/` for a host of its own, at the root. |
 | `npm run serve:demo` | Serves `dist-demo/` as GitHub Pages serves it, at `http://127.0.0.1:4903/page-builder-cms/`, or at `http://127.0.0.1:4903/` with `DEMO_BASE=/` (`E2E_DEMO_PORT` moves the port), until Ctrl+C. |
-| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base, and that evening, with the test of the example site's editions, 10; on 15 October, with Collections among the screens that promise nothing the browser cannot do: 13 passed; on 16 October, with a collection's entry published and opened from a Collection list's card: 14 passed; that night, with the example site's News in place of the collection the test made, an entry's View and the news page reached from the footer: 14 passed; with the Shop screen among the screens that promise nothing the browser cannot do: 14 passed. |
+| `npm run e2e:demo` | Builds the demo, serves it so, and tells its story in Chromium headless (`e2e/demo/demo.spec.ts`, below), under the base `DEMO_BASE` gives. Needs Playwright's Chromium, not Ruby. On 9 October 2026: 9 passed; on 13 October, 9 passed under each base, and that evening, with the test of the example site's editions, 10; on 15 October, with Collections among the screens that promise nothing the browser cannot do: 13 passed; on 16 October, with a collection's entry published and opened from a Collection list's card: 14 passed; that night, with the example site's News in place of the collection the test made, an entry's View and the news page reached from the footer: 14 passed; with the Shop screen among the screens that promise nothing the browser cannot do: 14 passed; with the demo's cart, its checkout and its order in the Shop screen's Orders: 15 passed. |
 
 The editor's page is sent never stored, with no ETag and no Last-Modified,
 by both servers, and the built files under `assets/` are kept a year by
@@ -263,10 +271,11 @@ same demo from the source, at `/`.
 **What it does.**
 - On a first visit, with nothing kept in the browser, it puts in the
   example site of `../example-site/`, as the CMS's seed does: the fifteen
-  pictures, the collection News with its five entries and its template,
-  each published, the four pages, each published, the header and footer
-  published as their starters are, the home page open
-  (`src/storage/example-site.ts`). A site with a page, a picture or a
+  pictures, the collections News, with its five entries, and Club kit,
+  with its four products, each with its template, each published, the
+  shop's settings, on and selling Club kit in pounds, the five pages, each
+  published, the header and footer published as their starters are, the
+  home page open (`src/storage/example-site.ts`). A site with a page, a picture or a
   collection is never added to. Each build's example site has an
   edition, a digest of its files and of the header's and footer's
   starters: on a visit to a
@@ -297,6 +306,18 @@ same demo from the source, at `/`.
   published in this browser. A form there says in one line
   what becomes of its answers instead of sending them; a link to another
   page of the site opens that page as the demo draws it.
+- A product's Add to cart puts it in the cart this browser keeps
+  (localStorage, `page-builder-cms:demo-cart`, ids and quantities, as the
+  CMS's cookie holds them; a browser that keeps nothing has an empty cart
+  at every page) and opens the cart (`?cart`), drawn inside the header
+  and footer as the CMS draws `/cart`, under a line saying what the full
+  system does: its quantities set and its lines taken out by the shop's
+  rules, each change made to the cart as kept at that moment, so another
+  tab's is never undone, and drawn again when another tab changes it. Its
+  Checkout makes an order through the browser's storage (`checkoutDemo`),
+  marked "Not paid: browser demo", the cart losing what the order took,
+  and shows it (`?order=<id>`), saying that Rails sends the visitor to
+  Stripe's checkout, in its test mode, instead; the Shop screen lists it.
 - At the bottom, under the editor's bottom line and under each page it
   draws, one line: "Browser demo: drafts stay in this browser. The full
   CMS runs on Rails 8, with publishing, shared versions and caching.
@@ -307,8 +328,9 @@ same demo from the source, at `/`.
 
 **Its limits.**
 - Nothing is served: no page at an address of its own, no cache, no
-  publish at a set time, no form answers and no Form responses. What is
-  not there has no control: the editor draws none (capabilities).
+  publish at a set time, no form answers and no Form responses, and no
+  payment: the demo's checkout reaches no Stripe. What is not there has no
+  control: the editor draws none (capabilities).
 - Drafts stay in one browser. Another browser, or another person, sees
   none of them; clearing the site's data deletes them. A browser that
   refuses IndexedDB (some private windows), one with no room left, or a
@@ -525,6 +547,20 @@ CMS serves carries neither.
   `drawing.test.ts` of the Field block), on the canvas and in Insert
   (`src/widgets/addToCart/panel.test.tsx`), and against the server's on
   the render contract's seven fixtures of the shop.
+- **The cart**: the demo's cart pages against the CMS's goldens of them
+  (`src/demo/cart.contract.test.tsx`, `../contract/cart/`); the demo's
+  cart on a storage of the test's own (`src/demo/PageView.cart.test.tsx`:
+  a product put in from its page, quantities set and lines taken out by
+  the shop's rules, a refusal said above the cart, another tab's cart
+  never undone and drawn again, the checkout and its order); a whole
+  checkout in Chromium against the CMS and the fake Stripe
+  (`e2e/shop-checkout.spec.ts`: a product's page, Add to cart, a quantity
+  changed, Checkout to the fake's page, a line put in meanwhile, paid, the
+  thanks page, the order paid in the Shop screen, the cart keeping only
+  the line put in meanwhile); the example site's cart and thanks pages
+  with axe at two widths, reflowed at 320 and their controls 44 pixels
+  for a finger (`e2e/example-site.spec.ts`); and the demo's cart and
+  order, with the Shop screen's Orders, in the demo's own story.
 - **The commands** ([src/document/README.md](src/document/README.md)): on
   random valid pages and random editing sessions (fast-check, seeded and
   replayable), every command the reducer accepts gives a page the schema

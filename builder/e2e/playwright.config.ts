@@ -1,7 +1,9 @@
 // The editor's browser tests: Chromium headless, never a window on the
 // screen, against a CMS and an editor server the run starts for itself
 // (harness/playwright-setup.ts) on E2E_CMS_PORT (3901) and
-// E2E_BUILDER_PORT (4901). One worker: the tests share those two servers.
+// E2E_BUILDER_PORT (4901), the CMS's checkout going to the tests' fake
+// Stripe, on a port the system gives it. One worker: the tests share those
+// servers.
 // Every context starts as a browser that has seen the editor's first-run
 // note (harness/welcome.ts), but welcome.spec.ts's.
 import { defineConfig, devices } from "@playwright/test";

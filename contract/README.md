@@ -118,6 +118,22 @@ the server writes for them. The editor's half is
   in the smallest unit of its currency and an amount in the site's words,
   a cart as it is kept, a change of it, and a cart priced from what its
   products published.
+- [`cart/`](cart): the cart's pages, which no document holds, drawn by
+  the CMS (`app/views/cart/`, `CartHelper`, `CartPage`) at `/cart` and
+  `/cart/thanks`, and by the browser demo (`builder/src/demo/cart-view.tsx`
+  and `cart-page.ts`) from the browser's storage: `cases.json`, the
+  products collection, its products as they went live, and five pages
+  (a cart with a line of every kind, for sale with a picture and
+  without, a title holding markup, out of stock, with no price and a
+  decorative picture, gone, and a picture the library no longer has;
+  one with nothing for sale and a refusal said above it; an empty one;
+  one refused before it was read; and an order's lines as they were
+  sold), and `<case>.html`, `<main>`'s content as the CMS draws it,
+  written by `UPDATE_GOLDEN=1 ruby bin/rails test
+  test/contract/cart_goldens_test.rb`, which also holds the CMS to it.
+  Each side prices the cart by its own twin of the shop's rules; the
+  demo's `cart.contract.test.tsx` gives each golden's tree under the
+  render contract's normalization, and nothing else.
 - [`free-colors/`](free-colors): the stylesheet of a page's free colours
   (`/colors/<digest>.css` on the CMS, a style element on the canvas), for each case
   of `cases.json`: `<case>.css`, written by

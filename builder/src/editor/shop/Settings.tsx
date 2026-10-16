@@ -14,7 +14,7 @@ import { checkShop, CURRENCIES, type Currency, type ShopFault, type ShopSettings
 import { isStorageError, type Collection, type FieldError, type Shop } from "../../storage/adapter.ts";
 import { RadioField, SelectField, Toggle } from "../controls.tsx";
 import type { ShopStorage } from "./context.ts";
-import { checkoutWords, currencyLabel, CURRENCY_NAMES, numberFields, pricePicked, settingRefusal } from "./words.ts";
+import { checkoutWords, currencyLabel, currencyWords, CURRENCY_NAMES, numberFields, OFF_WORDS, onWords, pricePicked, settingRefusal } from "./words.ts";
 
 export interface ShopSettingsProps {
   storage: ShopStorage;
@@ -167,11 +167,7 @@ export function ShopSettingsForm({ storage, shop, collections, inBrowser, onSave
       <Section id={`${id}-on`} title="The shop">
         <div className="field">
           <Toggle label="The shop is on" checked={draft.enabled} field="/enabled" issues={issues.enabled} describedById={`${id}-on-hint`} onChange={(enabled) => change({ enabled })} />
-          <p className="hint" id={`${id}-on-hint`}>
-            {draft.enabled
-              ? "On, the products are sold: Add to cart puts them in a visitor's cart, and prices are drawn in the shop's currency."
-              : "Off, nothing is sold: Add to cart draws nothing, prices are drawn as numbers, and the cart's addresses are not found."}
-          </p>
+          <p className="hint" id={`${id}-on-hint`}>{draft.enabled ? onWords(inBrowser) : OFF_WORDS}</p>
         </div>
         <RadioField<Currency>
           label="Currency"
@@ -180,7 +176,7 @@ export function ShopSettingsForm({ storage, shop, collections, inBrowser, onSave
           value={draft.currency}
           field="/currency"
           issues={issues.currency}
-          hint="Prices are written in it, and Stripe is asked to charge it."
+          hint={currencyWords(inBrowser)}
           onChange={(currency) => change({ currency })}
         />
       </Section>

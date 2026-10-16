@@ -87,6 +87,10 @@
                     "href": "/news"
                   },
                   {
+                    "label": "Shop",
+                    "href": "/shop"
+                  },
+                  {
                     "label": "Notices",
                     "href": "/notices"
                   }

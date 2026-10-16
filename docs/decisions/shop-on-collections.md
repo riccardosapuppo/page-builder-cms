@@ -12,7 +12,11 @@ sides, the CMS's tables, its JSON API and the cart's addresses, Stripe's
 client and a fake of it, the editor's storage on both adapters. Its
 second, the same day, the editor (below, "The editor"): the Shop screen,
 a Products preset, Add to cart, prices drawn as money, and the keys of
-the pages that draw them (below, "Still to come", for the rest).
+the pages that draw them. Its third, the same day, the site (below, "The
+site"): the cart and the page back from Stripe drawn in the site's frame,
+the demo's own cart and checkout, and a whole checkout in a browser. Its
+fourth, the example site's shop and the README's pictures (below, "The
+example site").
 
 ## The question
 
@@ -71,7 +75,7 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   table. Every price is read from what the product published when the
   cart is drawn or checked out.
 - **The cart's addresses** (`CartController`): `GET /cart`, the cart in the
-  site's frame (a plain page for now); `POST /cart/items`, a product put
+  site's frame (below, "The site"); `POST /cart/items`, a product put
   in; `POST /cart/items/<entry id>`, a line's quantity set, 0 taking it
   out whatever became of its product; `POST /cart/checkout`; `GET
   /cart/thanks?session_id=<id>`. They are public writes, and have a
@@ -213,8 +217,9 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   while the shop is on, in This entry beside Field; the storage refuses
   it on a page and in the site's parts (keyword `addToCart`), as it
   refuses a Field block, and so does Paste. On the canvas the form is
-  drawn as on the site and sends nothing; the demo draws it and holds
-  its sending, a line under its form saying what the full system does.
+  drawn as on the site and sends nothing; the demo draws it, and since
+  its third phase puts the product in the cart the browser keeps (below,
+  "The site").
 - **Prices as money**, in the shop's currency, by the twins of the words
   for an amount (`moneyWords`, `money_words`), read by a renderer's twin
   of its own (`builder/src/render/shop-words.ts`, `ShopWords`): a Field
@@ -236,12 +241,95 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   keys when the settings change. The settings are read in one query, and
   only by a page that lists a collection or is drawn with an entry.
 
-## Still to come
+## The site
 
-The site (the cart and thanks pages designed in the site's frame, the
-demo's cart and checkout, its Add to cart taking a product, the browser
-runs of a checkout), then the example site's shop and the READMEs' own
-pictures, each a phase of its own.
+- **The cart's pages are drawn in the site's frame, and are no
+  document.** The cart, `/cart`, and the page Stripe sends a visitor back
+  to, `/cart/thanks`, are the visitor's own and drawn at every visit, so no
+  block can hold what they show; the CMS draws them with tag helpers
+  ([`CartHelper`](../../cms/app/helpers/cart_helper.rb)) inside the
+  site's header and footer, as the 404 page and a form's answer are drawn,
+  with a block's own classes wherever a block would draw the same thing:
+  a band of the site's Text slot, deep water in the example site, with
+  the title in the headings' face at the Heading 1 step and a line under
+  it, then the page's own band, its lines down the left and, beside them
+  above a tablet's width and under them below it, a card of the Soft slot
+  with the total and what comes next (site.css, "The cart's pages"). A
+  line holds its product's picture, the collection's first image field
+  drawn as a Field block draws one, its alt the entry's; its title, the
+  link to the product's page while the collection's template is live
+  ([`CartPage`](../../cms/app/models/cart_page.rb)); its price for one,
+  what it costs, its quantity's form, Update a pill drawn as an outline
+  in the band's words' colour, so Checkout is the band's one red, and
+  Remove, plain words. A line that cannot be bought says why in bold, as a
+  refused field does (out of stock, no price, no longer sold: "the
+  checkout leaves it out"), and can only be taken out. An empty cart says
+  so and leads to the shop, the page at the products' prefix. The page
+  back from Stripe says, in plain words, paid ("Thank you"), not yet,
+  expired, or not known just now, lists the order's lines as they were
+  sold and its total, and leads back to the shop once paid, to the cart
+  otherwise. No script: every control is a plain form posting to the
+  cart's own addresses, and on a coarse pointer every control of the
+  cart's band stands 44 pixels tall; nothing scrolls sideways at 320
+  wide. Both are still `no-store` and `noindex`.
+- **The demo draws the same cart, held to the CMS's.** The demo has no
+  server, so it keeps the cart itself: in localStorage
+  (`page-builder-cms:demo-cart`), as the CMS's cookie holds it, ids and
+  quantities, read and changed by the shop's rules (`readCart`,
+  `addToCart`, `setQuantity`, `afterOrder`), every read and write inside a
+  try, so a browser that keeps nothing has an empty cart at each page.
+  Add to cart, which on the CMS posts to `/cart/items`, puts the product
+  in and opens the demo's cart (`?cart`), drawn by twins of the CMS's
+  markup and words (`builder/src/demo/cart-view.tsx`, `cart-page.ts`):
+  the cart's contract ([`contract/cart/`](../../contract/cart/)) has five
+  pages, each priced by both sides' own twins of the rules and drawn, the
+  CMS writing `<main>`'s content as goldens and the demo giving each
+  golden's tree. Every change of the demo's cart starts from the cart as
+  kept at that moment, never from what its tab drew, and is kept before
+  anything else can run; a change made in another tab is drawn again
+  (the `storage` event). Its Checkout makes the order through the
+  browser's storage (`checkoutDemo`) of the cart as kept when it is
+  pressed, "Not paid: browser demo", then the cart as kept once the order
+  is made loses what the order took, and the order's page says what the
+  full system does instead: Rails sends the visitor to Stripe's checkout,
+  in its test mode. The Shop screen lists the order; in the browser it
+  says Add to cart fills the cart this browser keeps, and that Stripe
+  charging the currency is the full system's.
+- **A whole checkout runs in Chromium.** The editor's browser tests give
+  their CMS the tests' fake Stripe, as the battery's runs do, and let a
+  page reach the fake's own origin: a visitor puts a product in from its
+  page, changes how many, checks out to the fake's page for the session,
+  puts another product in meanwhile, pays and comes back to the thanks
+  page; the editor's Shop screen lists the order paid, with the email the
+  buyer gave, and the cart holds only the line put in meanwhile
+  (`builder/e2e/shop-checkout.spec.ts`).
+
+## The example site
+
+- **Slack Water sells its club kit.** A collection, Club kit, at the
+  prefix `shop`, of the Products preset's fields, ordered by name: a swim
+  cap (£12), a tow float (£24), the enamel mug (£9.50, out of stock, to
+  show it) and a pass for five Sundays of the winter series (£25), each
+  with one of the site's pictures and its alt words from `site.json`, in
+  short words in the voice of its other pages. Its template, made of
+  blocks and the Site style's tokens alone: a band of deep water with the
+  picture beside the title, the price, the summary and Add to cart, the
+  body on paper, then "More from the club shop", a Collection list of the
+  same collection, two of the others with their prices on the pale sea. A
+  page "Shop" at `/shop`, the prefix's own, lists the four in a grid with
+  their prices under its title and a short lede, and leads to the cart;
+  the footer's More pages menu links it, not the header, whose fold is
+  measured for its own links.
+- **Both seeds turn the shop on**, in pounds, selling Club kit by its
+  price: `site.json` holds the settings as the API takes them, their
+  collection named by its id there, and each seed, the CMS's and the
+  demo's, sets them once the collections are made, naming the collection
+  by the id it was made with, as a Collection list's collection is named,
+  only while the site's settings were never changed (the site's home is
+  set only while it has none), looked at and set in one transaction on
+  the CMS. A collection at the prefix that the shop's rules refuse to sell
+  from leaves the shop unset, the seed saying why. The demo's example site
+  is a new edition.
 
 ## What it costs
 
@@ -273,7 +361,9 @@ pictures, each a phase of its own.
 - **Three currencies, each of two decimals**: one with none or three would
   need its own count of the smallest unit.
 - **The cart's pages draw the header and the footer anew** at every visit,
-  outside the cache, being the visitor's own.
+  outside the cache, being the visitor's own. They still carry the weak
+  ETag Rack gives every answer, as the preview does; `no-store` keeps any
+  browser from holding it, so none sends it back.
 - **The fake is only as faithful as Stripe's documentation**: no test
   reaches Stripe, and a key of the test mode must be tried by hand.
 - **Add to cart needs a product to draw**: in a template whose collection
@@ -289,8 +379,25 @@ pictures, each a phase of its own.
   settings**, even when its list shows no price.
 - **Add to cart's words where its button goes are the site's own**, Out of
   stock and Not for sale, in English as the cart's pages are.
-- **The demo's Add to cart sends nothing yet**: it says what the full
-  system does, until the demo has a cart of its own.
+- **The cart's pages are drawn twice**, by the CMS and by the demo, and
+  the goldens of the cart's contract must be written again whenever the
+  CMS's change.
+- **The cart's pages are no document**: their look is the theme's, in the
+  Site style's slots and steps, and a site owner changes it through the
+  Site style and the site's custom CSS, never with blocks in the editor.
+- **The demo's cart is one browser's**, as its pages are: another browser
+  sees none of it, a browser that keeps nothing in localStorage loses it
+  at each page, and a demo's order is final: the cart loses what it took,
+  though nothing was paid.
+- **The editor's browser tests always have a Stripe**, the fake: the
+  Shop screen's words for a checkout not set up are held by the unit
+  tests and the CMS's own, no longer in Chromium.
+- **The example site's seed turns the shop on**: the browser tests of a
+  run share one CMS, so each test that changes the shop sets the settings
+  it needs and puts them back as it found them, and the list of orders is
+  not empty in a run that checked out before it.
+- **The footer's More pages menu holds four links**, and on a phone it
+  folds into Menu, where three still fitted.
 
 ## The proof
 
@@ -407,3 +514,64 @@ product's page, not keyed on the settings: each old ETag got a 304, in
 the old currency. `npm run test:rails` (108 tests) draws every widget a
 page holds on the CMS as in React, Add to cart left out with the Field
 block: the CMS refuses both on a page.
+
+For the site and the example site, on 16 October 2026. From `cms/`,
+`ruby bin/rails test` (623 runs, none failing) holds the cart's pages
+(`test/integration/cart_test.rb`: each line's picture with its entry's
+alt, its title a link while the template is live, the field and the
+buttons naming the product, the count of items, a line that cannot be
+bought saying why, the empty cart leading to the shop, a cart refused
+before it was read leading back to it, the thanks page's lines as they
+were sold, its total and its way back), the cart's contract's server half
+(`test/contract/cart_goldens_test.rb`, five pages) and the seed
+(`test/integration/seed_test.rb`: the shop on, in pounds, selling Club
+kit by the id it was made with, set once and left off when turned off,
+a collection at the prefix with no price left unsold). Planted one at a
+time, each failed: no picture drawn, a title linked while the template
+is not live, the items counted as lines, a field naming no product, the
+order's lines not drawn, a paid order leading back to the cart, a cart
+refused with no way back, a line's words changed on the CMS's side alone,
+a picture drawn with no alt; the seed setting no shop, setting it again
+once changed, naming the collection by `site.json`'s id, reading the
+settings unchecked, stopping at a collection the rules refuse; the shop's
+page listing no prices, the mug in stock, the footer not leading to the
+shop. `ruby bin/rubocop` and `ruby bin/brakeman -q` found nothing.
+
+From `builder/`, `npm test` (1449 tests in 178 files, none failing) holds
+the cart's contract's demo half (`src/demo/cart.contract.test.tsx`), the
+demo's cart (`src/demo/PageView.cart.test.tsx`), its addresses
+(`views.test.ts`), the demo's seed of the shop's settings
+(`src/storage/example-site.test.ts`) and the Shop screen's words in the
+browser (`src/editor/shop/words.test.ts`). Planted, each failed: the
+demo's price for one in other words, a line without its state, titles
+linked while the template is not live, a refused state in other words;
+Add to cart keeping nothing, a product out of stock put in, the checkout
+keeping the whole cart, no refusal said above the cart, the order's page
+without what the full system does; a change of the cart made to what the
+tab drew, which undid another tab's (as first written, before review),
+the order taken from the cart as drawn, another tab's change not drawn
+again; the demo's seed setting no shop, setting it again once changed,
+naming the collection by `site.json`'s id, reading the settings
+unchecked, letting a member through that the shop does not take; the
+switch and the currency said in the browser as on the CMS. `npm run
+test:rails` (109 tests) draws the example site's five pages and each of
+its nine entries' pages on the CMS as in React, the shop's among them;
+`npm run e2e:browser`: 106 passed, 7 skipped.
+
+In Chromium, `npm run e2e` (302 passed) runs the whole checkout
+(`e2e/shop-checkout.spec.ts`) and the example site's cart and thanks pages
+with axe, at 320 and for a finger (`e2e/example-site.spec.ts`). Planted,
+each failed: the cart's pills under 44 pixels, a line's title and the way
+back to the shop under 44 pixels for a finger, and before it was given
+its height, the quantity's field at 43 pixels on a phone; the thanks page
+keeping what was paid for in the cart, and never asking Stripe whether
+the order is paid. `npm run e2e:demo` (15 passed) tells the demo's cart and
+order with the Shop screen's Orders, and failed with a link to `/cart`
+not followed; its check that the screens promise nothing the browser
+cannot do failed, as first built, on the Shop screen's switch saying a
+visitor's cart in the browser. `npm run check:serving` (`RESULT: 107
+checks passed`) holds `/cart` to the site's frame, never stored, for no
+search engine, with no script and no cookie set by reading it, and failed
+with the cart's `no-store` taken out. At the root, `npm run
+measure:server` (`RESULT: 38 checks passed`) finds a cold visit writing
+514 fragments, one more than before for the footer's link to the shop.

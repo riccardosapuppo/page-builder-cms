@@ -428,28 +428,29 @@ normalised documents with the same numbers and values: 369/369
 RESULT: PASS (413 files, 0 disagreements, 0 exceptions)
 ```
 
-**The example site's pages and its collection's template**, which live
+**The example site's pages and its collections' templates**, which live
 once in [`../example-site/`](../example-site/) for the CMS's seed and
 the browser demo, and **the header's and footer's starters**,
 [`../cms/config/parts/`](../cms/config/parts/), go through the same
 comparison: [`compare-examples.ts`](tools/compare-examples.ts) copies
 them, for the run only, into a temporary corpus of `valid/` files with a
-manifest that names each page by its address, the template by its
+manifest that names each page by its address, a template by its
 collection and each starter by its part, and runs `compare.ts` on it,
-with their number as the floor. Then **the collection's entries**, each
-a case of its own with the collection's definition, go through the
+with their number as the floor. Then **the collections' entries**, each
+a case of its own with its collection's definition, go through the
 collection corpus's comparison (`compare.ts --kind collection`), the
 same way. `npm run compare:examples`, on 16 October 2026, the site's
-four pages, News's template and the two starters, then News's five
-entries:
+five pages, the templates of News and Club kit (Club kit's holding Add
+to cart, which a page and a part may not) and the two starters, then
+News's five entries and Club kit's four products:
 
 ```
-verdicts compared: 7; disagreements: 0; against the folder: 0; exceptions: 0
-normalised documents with the same numbers and values: 7/7
-RESULT: PASS (7 files, 0 disagreements, 0 exceptions)
-verdicts compared: 5; disagreements: 0; against the folder: 0; exceptions: 0
-normalised documents with the same numbers and values: 5/5
-RESULT: PASS (5 files, 0 disagreements, 0 exceptions)
+verdicts compared: 9; disagreements: 0; against the folder: 0; exceptions: 0
+normalised documents with the same numbers and values: 9/9
+RESULT: PASS (9 files, 0 disagreements, 0 exceptions)
+verdicts compared: 9; disagreements: 0; against the folder: 0; exceptions: 0
+normalised documents with the same numbers and values: 9/9
+RESULT: PASS (9 files, 0 disagreements, 0 exceptions)
 ```
 
 ### It can fail

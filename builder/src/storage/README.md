@@ -13,7 +13,7 @@ everywhere else in `src/` (`../../.oxlintrc.json`, shown firing by
 | `rails.ts` | The adapter for the CMS's API ([`../../../cms/openapi.yaml`](../../../cms/openapi.yaml)). |
 | `browser.ts` | The adapter that keeps everything in the browser, in IndexedDB, with no CMS: the editor in the browser alone. It refuses what the CMS refuses, including a body with half a surrogate pair in any text (the CMS's JSON parser does: 400, `malformed_json`). |
 | `browser-rules.ts` | The CMS's checks of what it keeps (request members, page addresses, version names, images, the site style, the address and home mark a part or a template refuses, a collection's prefix, an entry's slug, a list of entries' query and order) as TypeScript, for `browser.ts`. |
-| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser (no page, no picture, no collection) as the CMS's seed puts it in, pictures first, then each collection with its entries published and, once every collection has its id, its template saved and published, then each page saved and published, the home page set, and the header and footer published as their starters are; a document's pictures and its Collection lists' collections named by the ids the storage gave them (`withLibraryIds`, `withCollectionIds`); a seed cut short finished by the next visit, a collection found by its prefix and an entry by its slug; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. By editions: the seed keeps the edition it put in (a digest of the example site's files and of the header's and footer's starters) and how the site stood right after (`browser.ts`, `siteFingerprint`, over every record the browser keeps, versions too); a later build of another edition lets go of a site that still stands so, read in the transaction that lets go of it (`clearSiteIf`: a save from another tab in between keeps it), and puts its own in, and keeps one somebody changed, for the demo to offer the new edition. |
+| `example-site.ts` | The browser demo's seed: the example site (`../../../example-site/`) put into an empty browser (no page, no picture, no collection) as the CMS's seed puts it in, pictures first, then each collection with its entries published and, once every collection has its id, its template saved and published, then the shop's settings of `site.json`, their collection named by the id the storage gave it, set while they were never changed, then each page saved and published, the home page set, and the header and footer published as their starters are; a document's pictures and its Collection lists' collections named by the ids the storage gave them (`withLibraryIds`, `withCollectionIds`); a seed cut short finished by the next visit, a collection found by its prefix and an entry by its slug; under a lock of the browser's, so two tabs opened at once seed once. Here because it reads the pictures' bytes from the demo's own files. By editions: the seed keeps the edition it put in (a digest of the example site's files and of the header's and footer's starters) and how the site stood right after (`browser.ts`, `siteFingerprint`, over every record the browser keeps, versions too); a later build of another edition lets go of a site that still stands so, read in the transaction that lets go of it (`clearSiteIf`: a save from another tab in between keeps it), and puts its own in, and keeps one somebody changed, for the demo to offer the new edition. |
 | `site-theme-module.d.ts` | The type of `virtual:site-theme`: the header's and footer's starters, read from `cms/config/parts` when the editor is built, where a starter the CMS would not start with stops the build, each value named, and the site's time zone, from `cms/config/site.yml` (`../../build/site-theme.ts`). |
 | `contract.ts` | The battery every adapter must pass, written against the interface alone. |
 | `autosave.ts` | Saving on its own: the module the store hands each new document to, and the interface reads. |
@@ -200,12 +200,12 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   edition it put in. Version 4 adds the store of the orders, the same way.
 - **The shop**: its settings checked as the CMS checks them, by the
   shop's rules; its orders made by the demo's checkout, `checkoutDemo`
-  (the demo keeps the cart): the cart's lines held to the shop's rules,
-  priced from what the products published, those for sale ordered, of
-  status `demo`, since no Stripe is reached from a page with no server;
-  not found with the shop off, `refused` (409, `nothing_to_check_out`)
-  with nothing for sale, as the CMS's cart answers. An order is answered
-  as it is when asked again.
+  (the demo keeps the cart, in localStorage, `../demo/cart-page.ts`): the
+  cart's lines held to the shop's rules, priced from what the products
+  published, those for sale ordered, of status `demo`, since no Stripe is
+  reached from a page with no server; not found with the shop off,
+  `refused` (409, `nothing_to_check_out`) with nothing for sale, as the
+  CMS's cart answers. An order is answered as it is when asked again.
 - **Collections** kept as the CMS keeps them, with its refusals in its
   words (`browser-rules.ts`, the prefix's and an entry's slug's rules,
   the list's query and order: by code point, as Ruby compares strings,

@@ -21,9 +21,15 @@ class SeedTest < ActionDispatch::IntegrationTest
     assert_not_equal site["collections"].first["id"], Collection.find_by!(prefix: "news").id
   end
 
+  # Each page by its address, a part by its kind, a template by its
+  # collection's prefix.
   def stored_pages
-    Page.includes(:draft, :published_version).order(:id).to_h { |page| [ page.draft.slug || page.kind, [ page.draft.revision, page.draft.document, page.published_version.document, page.home? ] ] }
+    Page.includes(:draft, :published_version, :collection).order(:id).to_h do |page|
+      [ page.draft.slug || (page.collection ? "template of #{page.collection.prefix}" : page.kind), [ page.draft.revision, page.draft.document, page.published_version.document, page.home? ] ]
+    end
   end
+
+  def stored_shop = ShopSetting.current.then { |shop| [ shop.settings, shop.changed_at ] }
 
   def stored_collections
     Collection.includes(:entries).order(:id).to_h do |collection|
@@ -36,23 +42,27 @@ class SeedTest < ActionDispatch::IntegrationTest
     counts = -> { [ Page.count, PageVersion.count, MediaItem.count, ActiveStorage::Blob.count, Collection.count, Entry.count ] }
 
     said = seed
-    first = [ counts.call, stored_pages, stored_collections ]
+    first = [ counts.call, stored_pages, stored_collections, stored_shop ]
     said_again = seed
 
-    # News made first, its template with it, then four pages and the header
-    # and footer, each published once, besides the automatic version of
-    # each save of a page or a template; and News's five entries.
-    assert_equal [ 7, 12, 15, 15, 1, 5 ], first[0]
-    assert_equal first, [ counts.call, stored_pages, stored_collections ]
-    assert_equal %w[template home winter-series news notices header footer], first[1].keys
+    # News and Club kit made first, each with its template, then five
+    # pages and the header and footer, each published once, besides the
+    # automatic version of each save of a page or a template; and the
+    # collections' nine entries, five stories and four products.
+    assert_equal [ 9, 16, 15, 15, 2, 9 ], first[0]
+    assert_equal first, [ counts.call, stored_pages, stored_collections, stored_shop ]
+    assert_equal [ "template of news", "template of shop", "home", "winter-series", "news", "shop", "notices", "header", "footer" ], first[1].keys
     assert_equal SiteParts.starter("header"), first[1]["header"][2], "the header published is its starter, the example site's own"
-    assert_no_match(/left as it is/, said)
-    assert_equal 7, said_again.scan(/already there, left as it is/).size, said_again
+    assert_no_match(/left as it is|left as they are/, said)
+    assert_equal 9, said_again.scan(/already there, left as it is/).size, said_again
     assert_match %r{News +/news/<slug> +5 of 5 entries published, its template version 2\n}, said
     assert_match %r{News +/news/<slug> +5 of 5 entries published, its template version 2, already there, left as it is\n}, said_again
+    assert_match %r{Club kit +/shop/<slug> +4 of 4 entries published, its template version 2\n}, said
+    assert_match %r{The shop +/cart +on, in GBP, selling Club kit by its price\n}, said
+    assert_match %r{The shop +/cart +on, in GBP, selling Club kit by its price, already set, left as they are\n}, said_again
 
-    { "/" => "Swim at slack water", "/winter-series" => "Winter series", "/news" => "News", "/notices" => "Notices",
-      "/news/winter-series-starts" => "The winter series starts on 1 November" }.each do |path, heading|
+    { "/" => "Swim at slack water", "/winter-series" => "Winter series", "/news" => "News", "/shop" => "Shop", "/notices" => "Notices",
+      "/news/winter-series-starts" => "The winter series starts on 1 November", "/shop/swim-cap" => "Swim cap" }.each do |path, heading|
       get path
       assert_response :ok
       assert_select "main h1", text: heading
@@ -82,6 +92,50 @@ class SeedTest < ActionDispatch::IntegrationTest
     news = Draft.find_by!(slug: "news").page.published_version.document
     assert_equal [ Collection.find_by!(prefix: "news").id ], news["sections"].flat_map { |s| s["children"] }.flat_map { |c| c["children"] }.select { |b| b["type"] == "collectionList" }.map { |b| b.dig("props", "collection") }
     assert_equal site["images"].to_h { |image| [ File.basename(image["file"]), image["alt"] ] }, uploads.transform_values(&:alt)
+    # The shop's settings as site.json has them, selling the collection
+    # its id names, by the id that collection was made with.
+    assert_equal site["shop"].merge("productsCollectionId" => collections.fetch(site["shop"]["productsCollectionId"])), ShopSetting.current.settings
+    assert_equal "shop", Collection.find(ShopSetting.current.products_collection_id).prefix
+  end
+
+  test "the shop is on in pounds, selling Club kit by its price: a product's page draws its price as money and Add to cart, the mug out of stock, the shop's page lists the four, and the footer leads there" do
+    seed
+    kit = Collection.find_by!(prefix: "shop")
+    assert_equal({ "enabled" => true, "currency" => "GBP", "productsCollectionId" => kit.id, "priceField" => "price" }, ShopSetting.current.settings)
+
+    get "/shop/swim-cap"
+    assert_select "main [data-field=title] h1", text: "Swim cap"
+    assert_select "main [data-field=price] p", text: "£12.00"
+    assert_select "main [data-block-id=product-cart] form.sw-cart-add[method=post][action='/cart/items'] input[name=entry][value='#{kit.entries.find_by!(slug: 'swim-cap').id}']"
+    assert_select "main [data-block-id=product-image] img[alt='Three swim caps, orange, pink and white, at the waterline']"
+    assert_equal [ "Enamel mug", "Tow float" ], css_select("main [data-block-id=more-list] .sw-entry-title a").map(&:text), "the others, by name, two of them"
+    get "/shop/enamel-mug"
+    assert_select "main [data-field=price] p", text: "£9.50"
+    assert_select "main [data-block-id=product-cart] p.sw-btn-off", text: "Out of stock"
+    assert_select "main [data-block-id=product-cart] form", 0
+    get "/shop"
+    assert_equal [ [ "Enamel mug", "£9.50" ], [ "Swim cap", "£12.00" ], [ "Tow float", "£24.00" ], [ "Winter series pass", "£25.00" ] ],
+                 css_select("main [data-block-id=kit-list] .sw-entry").map { |card| [ card.at_css(".sw-entry-title a").text, card.at_css(".sw-entry-price").text ] }
+    assert_select "main a.sw-btn[href='/cart']", text: "See your cart"
+    assert_select "footer.sw-footer .w-menu-links a[href='/shop']", text: "Shop"
+    assert_select "header.sw-header a[href='/shop']", 0, "not in the header, whose fold is measured"
+
+    # Turned off by its owner: the seed run again leaves it off.
+    ShopSetting.change!(ShopSetting.current.settings.merge("enabled" => false))
+    assert_match %r{The shop +/cart +off, already set, left as they are\n}, seed
+    assert_equal false, ShopSetting.current.enabled
+  end
+
+  test "a collection at the shop's prefix that its owner made with no price is left as it is and sold by no one: the seed says why" do
+    Collection.create_with_template!({ "name" => "Merch", "prefix" => "shop", "fields" => [ { "key" => "summary", "label" => "Summary", "type" => "paragraph", "required" => false } ], "sort" => { "by" => "title", "direction" => "asc" } })
+
+    said = seed
+
+    assert_match %r{Merch +/shop/<slug> +0 of 0 entries published, its template not published, already there, left as it is\n}, said
+    assert_match %r{The shop +/cart +off, not set: The collection Merch has no number field to be the price\.}, said
+    assert_nil ShopSetting.current.changed_at, "the settings were never changed"
+    get "/cart"
+    assert_response :not_found
   end
 
   test "each collection is made as its file has it: its definition, each entry published with its values and its images by their uploads' ids, in the file's order, and its template published, its list naming the collection" do
@@ -125,7 +179,7 @@ class SeedTest < ActionDispatch::IntegrationTest
     seed
 
     assert_equal before, [ stored_pages, stored_collections ]
-    assert_equal [ "Club news", 1, 4 ], [ news.reload.name, Collection.count, news.entries.where.not(published_at: nil).count ]
+    assert_equal [ "Club news", 2, 4 ], [ news.reload.name, Collection.count, news.entries.where.not(published_at: nil).count ]
   end
 
   test "/notices serves what breaks the usual assumptions: four columns, a word longer than a line, emoji, nested lists, a long alt, right-to-left text" do
@@ -173,8 +227,12 @@ class SeedTest < ActionDispatch::IntegrationTest
                                                             'example-site/pages/notices.json names the image "no-such-image", which site.json does not list' ],
       "two home pages" => [ "site.json", ->(text) { text.sub('"home": false', '"home": true') }, "example-site/site.json marks 2 pages as home, not one" ],
       "a file outside the folder" => [ "site.json", ->(text) { text.sub('"pages/notices.json"', '"../README.md"') }, "example-site/site.json has a page it cannot read" ],
-      "a page naming a collection site.json does not list" => [ "pages/news.json", ->(text) { text.sub('"collection": 1', '"collection": 2') },
-                                                                 "example-site/pages/news.json names the collection 2, which site.json does not list" ],
+      "a page naming a collection site.json does not list" => [ "pages/news.json", ->(text) { text.sub('"collection": 1', '"collection": 3') },
+                                                                 "example-site/pages/news.json names the collection 3, which site.json does not list" ],
+      "shop settings naming a collection site.json does not list" => [ "site.json", ->(text) { text.sub('"productsCollectionId": 2', '"productsCollectionId": 3') },
+                                                                        "example-site/site.json has shop settings it cannot read" ],
+      "shop settings with a member the shop does not take" => [ "site.json", ->(text) { text.sub('"priceField": "price"', '"priceField": "price", "tax": 20') },
+                                                                 "example-site/site.json has shop settings it cannot read" ],
       "an entry naming an image site.json does not list" => [ "collections/news.json", ->(text) { text.sub('"mediaId": "m-tea"', '"mediaId": "no-such-image"') },
                                                               'example-site/collections/news.json names the image "no-such-image", which site.json does not list' ],
       "a template naming a collection site.json does not list" => [ "collections/news.json", ->(text) { text.sub('"collection": 1', '"collection": 7') },
@@ -276,14 +334,14 @@ class SeedTest < ActionDispatch::IntegrationTest
   test "no page of the example site, nor its 404 page, shows a visitor the name of a provider or another brand" do
     capture_io { ExampleSite.run }
 
-    paths = %w[/ /winter-series /news /notices] + Entry.order(:id).map { |entry| "/news/#{entry.published_slug}" } + %w[/no-such-page]
+    paths = %w[/ /winter-series /news /shop /notices] + Entry.includes(:collection).order(:id).map { |entry| "/#{entry.collection.prefix}/#{entry.published_slug}" } + %w[/no-such-page]
     found = paths.to_h do |path|
       get path
       [ path, brands_in(response.body) ]
     end
 
     assert_equal 404, response.status
-    assert_equal 10, found.size
+    assert_equal 15, found.size
     assert_equal paths.to_h { |path| [ path, [] ] }, found
     get "/"
     assert_includes visible_text(response.body), "Loads a video from the provider when you click."

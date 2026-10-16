@@ -1,6 +1,6 @@
 // The browser demo's story, on its build as GitHub Pages serves it, each
 // test a first visit in a browser of its own:
-// - the example site is there, its four pages published, the home page
+// - the example site is there, its five pages published, the home page
 //   open, and the demo's line at the bottom, word for word, who made it a
 //   link to the author's site;
 // - the line's key shuts it down to who made it and opens it again, the
@@ -20,6 +20,12 @@
 //   the news page, reached from the footer of the home page as published,
 //   lists the entries newest first, and a card opens the entry's page as
 //   the demo draws it, with the change, and the way back to all the news;
+// - the example site's shop: its page, reached from the footer, lists the
+//   products with their prices; a product's Add to cart puts it in the
+//   cart this browser keeps, which is there after a reload and draws as
+//   the CMS's /cart does; a quantity changed; Checkout makes the demo's
+//   order, says what the full system does, and the cart loses what it
+//   took; the order is in the Shop screen's Orders, the demo's;
 // - the header and footer changed from their panel, opened by a click on
 //   the canvas's header: the canvas draws them as they are typed; saved,
 //   the pages published in this browser show them with nothing published
@@ -54,13 +60,14 @@ const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's F
 const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
 const PART_LINE = "Publish puts it on every page shown in this browser.";
 
-// The example site's pages as a first visit numbers them: the template of
-// News first, made with its collection, then the pages in site.json's
-// order.
-const HOME = 2;
-const WINTER = 3;
-const NEWS = 4;
-const NOTICES = 5;
+// The example site's pages as a first visit numbers them: the templates
+// of News and Club kit first, each made with its collection, then the
+// pages in site.json's order.
+const HOME = 3;
+const WINTER = 4;
+const NEWS = 5;
+const SHOP = 6;
+const NOTICES = 7;
 // News's entries, newest first, as its list orders them.
 const NEWS_TITLES = ["The winter series starts on 1 November", "A rockpool morning for children", "Tea in the hut on Sundays", "Bright caps for the dark mornings", "The autumn tide times are up by the door"];
 
@@ -127,11 +134,11 @@ const saved = (page: Page) => expect(saveState(page)).toHaveText("Saved");
 // The editor's one sentence about what just happened.
 const notice = (page: Page) => page.locator(".notice");
 
-test("a first visit opens the example site: four pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
+test("a first visit opens the example site: five pages and the header and footer, all published, the home page open, and the demo's line at the bottom", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
   const pages = page.getByRole("dialog", { name: "Pages" });
-  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
+  await expect(pages.locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Shop/shopPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished"]);
   await shoot(page, "demo-pages");
   await page.keyboard.press("Escape");
 
@@ -485,6 +492,76 @@ test("the example site's News: an entry's View opens it as the demo draws it; it
   await noSeriousFinding(visit, "an entry's page");
   await visit.getByRole("link", { name: "All the news" }).click();
   await visit.waitForURL(`${baseURL}${DEMO_BASE}?published=${NEWS}`);
+  expect(found, "what the screens say that only the full system does").toEqual([]);
+});
+
+test("the example site's shop in this browser: a product put in the cart from its page, the cart kept after a reload, a quantity changed; Checkout makes the demo's order, says what the full system does, and the order is in the Shop screen's Orders", async ({ page, context, baseURL }) => {
+  const found: string[] = [];
+  await openDemo(page);
+  const own = `${baseURL}${DEMO_BASE}`;
+  const pageLine = (view: Page) => view.getByRole("complementary", { name: "About this page" }).locator("p").first();
+
+  // The shop's page, reached from the home page's footer, lists the four
+  // products with their prices; a card opens the product's page.
+  const visit = await context.newPage();
+  await visit.goto(`${DEMO_BASE}?published=${HOME}`);
+  await visit.locator("footer").getByRole("link", { name: "Shop", exact: true }).click();
+  await visit.waitForURL(`${own}?published=${SHOP}`);
+  await expect(visit.locator('[data-block-id="kit-list"] .sw-entry-price')).toHaveText(["£9.50", "£12.00", "£24.00", "£25.00"]);
+  await visit.locator('[data-block-id="kit-list"]').getByRole("link", { name: "Swim cap" }).click();
+  await visit.waitForURL(/\?entry=[1-9][0-9]*$/);
+  await expect(visit.locator('[data-block-id="product-price"]')).toHaveText("£12.00");
+
+  // Add to cart: the cart this browser keeps, drawn as the CMS draws /cart,
+  // under the line saying what the full system does.
+  await visit.getByRole("spinbutton", { name: "Quantity" }).fill("2");
+  await visit.getByRole("button", { name: "Add to cart" }).click();
+  await visit.waitForURL(`${own}?cart`);
+  await expect(pageLine(visit)).toHaveText("The cart, kept in this browser. In the full system, Rails keeps a visitor's cart in a cookie of its own and serves it at /cart, and Checkout goes to Stripe's checkout, in its test mode.");
+  await expect(visit.getByRole("heading", { level: 1, name: "Your cart" })).toBeVisible();
+  await expect(visit.locator(".sw-cart-line .sw-cart-title")).toHaveText(["Swim cap"]);
+  await expect(visit.locator(".sw-cart-picture img")).toHaveAttribute("src", /^blob:/);
+  await expect(visit).toHaveTitle("Your cart");
+  await visit.reload();
+  await expect(visit.locator(".sw-cart-amount")).toHaveText(["£24.00"]);
+  await noSeriousFinding(visit, "the demo's cart");
+
+  // How many, changed; the line's title leads back to its page.
+  await visit.getByRole("spinbutton", { name: "Quantity of Swim cap" }).fill("3");
+  await visit.getByRole("button", { name: "Update Swim cap" }).click();
+  await expect(visit.locator(".sw-cart-total")).toHaveText("Total £36.00");
+  await expect(visit.locator(".sw-cart-head p")).toHaveText("You have 3 items in your cart.");
+  await shoot(visit, "demo-cart");
+
+  // Checkout: the demo's order, and what the full system does instead.
+  await visit.getByRole("button", { name: "Checkout" }).click();
+  await visit.waitForURL(/\?order=[1-9][0-9]*$/);
+  await expect(pageLine(visit)).toHaveText("An order made in this browser, and nothing was paid. In the full system, Rails sends the visitor to Stripe's checkout, in its test mode, and this page says the order is paid once Stripe does.");
+  await expect(visit.getByRole("heading", { level: 1, name: "Order made" })).toBeVisible();
+  await expect(visit.locator(".sw-cart-head p")).toHaveText("Not paid: browser demo. It is listed in the editor's Shop screen, under Orders.");
+  await expect(visit.locator(".sw-order .sw-cart-price")).toHaveText(["3 × £12.00"]);
+  await expect(visit.locator(".sw-cart-total")).toHaveText("Total £36.00");
+  await shoot(visit, "demo-order");
+  await noSeriousFinding(visit, "the demo's order");
+  // The cart lost what the order took; the way back leads to the shop.
+  await visit.getByRole("link", { name: "Back to the shop" }).click();
+  await visit.waitForURL(`${own}?published=${SHOP}`);
+  await visit.getByRole("link", { name: "See your cart" }).click();
+  await visit.waitForURL(`${own}?cart`);
+  await expect(visit.locator(".sw-cart-head p")).toHaveText("Your cart is empty.");
+
+  // The editor's Shop screen lists the order, the demo's, as made here.
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Shop" }).click();
+  const shop = page.getByRole("dialog", { name: "Shop" });
+  await expect(shop.getByRole("button", { name: /^Settings, On, in pounds, from Club kit/ })).toBeVisible();
+  await shop.getByRole("button", { name: /^Orders/ }).click();
+  const row = shop.locator("tbody tr").first();
+  await expect(row.locator(".shop-status")).toHaveText("Not paid: browser demo");
+  await expect(row.locator(".shop-amount")).toHaveText("£36.00");
+  await expect(row.locator(".shop-items")).toHaveText("3 items: Swim cap × 3");
+  await promisesNothing(page, "the Shop's orders, with the demo's order", found);
+  await shoot(page, "demo-shop-orders");
   expect(found, "what the screens say that only the full system does").toEqual([]);
 });
 

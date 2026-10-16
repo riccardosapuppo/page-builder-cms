@@ -101,6 +101,11 @@ browser demo reads too ([db/seeds/example_site.rb](db/seeds/example_site.rb)):
 - the news, `/news`: the page of the collection News, at its prefix,
   listing its five entries, each at `/news/<slug>`, drawn with News's
   template, the footer's More pages menu leading there;
+- the shop, `/shop`: the page of the collection Club kit, at its prefix,
+  listing its four products with their prices, each at `/shop/<slug>`,
+  drawn with Club kit's template and its Add to cart, the enamel mug out
+  of stock; the shop on, selling them in pounds; the footer's More pages
+  menu leading there too;
 - a page that breaks assumptions on purpose, `/notices`: four columns, a
   word too long for any line, emoji and right-to-left text, nested lists, a
   long alt text, a dark band, a heading hidden on phones.
@@ -110,37 +115,46 @@ storage service, then `MediaItem.create_from_upload!` and its checks), from
 PNGs that `node tools/seed-images.ts` renders from the design's SVGs; a
 document names each by its id in `site.json`, and the seed puts the
 library's id for that upload in its place before it saves the document.
-Then the collection is made (`Collection.create_with_template!`), each
+Then each collection is made (`Collection.create_with_template!`), each
 entry written and published, and its template saved and published, in
-one transaction; then the pages, a Collection list's collection, named
-by its id in `site.json`, given the id the collection was made with.
-Every file is read and checked before anything is uploaded or saved.
-Last, it publishes the site's header and footer as their starters are
-(`config/parts`, the example site's own), a part already published left
-as it is. On 16 October 2026, `ruby bin/rails db:prepare` on a fresh
+one transaction; then the shop's settings, as `site.json` gives them and
+held to the shop's rules (`ShopSetting.change!`), their collection named
+by its id there and given the id it was made with, set only while the
+settings were never changed (an owner who turned the shop off keeps it
+off); then the pages, a Collection list's collection given its id the
+same way. Every file is read and checked before anything is uploaded or
+saved. Last, it publishes the site's header and footer as their starters
+are (`config/parts`, the example site's own), a part already published
+left as it is. On 16 October 2026, `ruby bin/rails db:prepare` on a fresh
 development database (the three `*_DATABASE_URL` and `CMS_STORAGE_ROOT`
 pointing at a folder of its own) created it and ran the seed, which
-printed the first nine lines below; `ruby bin/rails db:seed` right after
-printed the next nine:
+printed the first twelve lines below; `ruby bin/rails db:seed` right after
+printed the next twelve:
 
 ```
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home
   Winter series                /winter-series   version 2
   News                         /news            version 2
+  Shop                         /shop            version 2
   Notices                      /notices         version 2
   Header                       every page       version 1
   Footer                       every page       version 1
   News                         /news/<slug>     5 of 5 entries published, its template version 2
+  Club kit                     /shop/<slug>     4 of 4 entries published, its template version 2
+  The shop                     /cart            on, in GBP, selling Club kit by its price
   15 images in the media library
 Seeding the example site, Slack Water:
   Slack Water                  /                version 2, home, already there, left as it is
   Winter series                /winter-series   version 2, already there, left as it is
   News                         /news            version 2, already there, left as it is
+  Shop                         /shop            version 2, already there, left as it is
   Notices                      /notices         version 2, already there, left as it is
   Header                       every page       version 1, already there, left as it is
   Footer                       every page       version 1, already there, left as it is
   News                         /news/<slug>     5 of 5 entries published, its template version 2, already there, left as it is
+  Club kit                     /shop/<slug>     4 of 4 entries published, its template version 2, already there, left as it is
+  The shop                     /cart            on, in GBP, selling Club kit by its price, already set, left as they are
   15 images in the media library
 ```
 
@@ -223,9 +237,9 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3900/api/pages/$($page.pag
 Invoke-RestMethod http://127.0.0.1:3900/api/site-style
 ```
 
-The first answer begins `{"page":{"id":8,...`: the id is the new page's,
-whatever the database held (the seeded one holds seven: News's template,
-its four pages, the header and the footer), and the
+The first answer begins `{"page":{"id":10,...`: the id is the new page's,
+whatever the database held (the seeded one holds nine: the templates of
+News and Club kit, its five pages, the header and the footer), and the
 publish is of that page and no other. The address `winter` is taken once
 the first step has run, so a second run is refused with a 422 at `/slug`:
 change the address in the first step to run it again.
@@ -687,12 +701,11 @@ Chromium.
 
 The shop sells the entries of one collection, its products, through
 Stripe's Checkout in its test mode alone, and can be off, as a new site's
-is ([the decision](../docs/decisions/shop-on-collections.md)). Its first
-phases are here: the settings and the orders, the API, the cart's
-addresses and Stripe's client; then the editor's Shop screen, Add to
-cart and the prices on the page (above, "The shop on the page"). The
-cart's pages as the site's design draws them and the example site's
-shop come next.
+is ([the decision](../docs/decisions/shop-on-collections.md)): the
+settings and the orders, the API, the cart's addresses and their pages,
+Stripe's client; the editor's Shop screen, Add to cart and the prices on
+the page (above, "The shop on the page"). The example site's seed turns
+it on, selling its club kit in pounds.
 
 **The settings** (`ShopSetting`, one row for the site, as the site
 style's): on or off; the currency, GBP, EUR or USD; the collection whose
@@ -709,11 +722,26 @@ the site's 404 page while the shop is off:
 
 | Address | What it does |
 | --- | --- |
-| `GET /cart` | the cart in the site's frame: each line at the price its product published, the total, the checkout's button or why there is none |
+| `GET /cart` | the cart in the site's frame: each line with its product's picture and title, the link to its page, at the price it published, how many and Remove; a line that cannot be bought saying why; the total, and the checkout's button or why there is none; an empty cart leading to the shop |
 | `POST /cart/items` | `entry` (and `quantity`, 1 when not sent) put in: 303 to the cart |
 | `POST /cart/items/<entry id>` | `quantity` set, 0 taking the line out: 303 to the cart |
 | `POST /cart/checkout` | an order of the lines for sale, open, and 303 to Stripe's page for it |
-| `GET /cart/thanks?session_id=<id>` | the session asked of Stripe; paid, the order kept as paid and the cart rid of what it took |
+| `GET /cart/thanks?session_id=<id>` | the session asked of Stripe; paid, the order kept as paid and the cart rid of what it took; the page says, in plain words, paid, not yet or expired, with the order's lines and total and the way back |
+
+**The cart's pages** are no document: [CartHelper](app/helpers/cart_helper.rb)
+draws them with tag helpers inside the site's header and footer
+(`app/views/cart/`), with a block's own classes where a block would draw
+the same, a band of deep water with the title and a line under it, then
+the page's band, its lines and, beside them, a pale card with the total
+(site.css, "The cart's pages"). A line's picture is its product's first
+image field, drawn as a Field block draws one, and its title links to the
+product's page while the collection's template is live
+([CartPage](app/models/cart_page.rb)). With no script, every control is a
+plain form, and on a coarse pointer each stands 44 pixels tall. The
+browser demo draws the same cart from the browser's storage, and the
+cart's contract holds the two to one tree
+([`../contract/cart/`](../contract/cart/): `UPDATE_GOLDEN=1 ruby bin/rails
+test test/contract/cart_goldens_test.rb` writes its goldens).
 
 The cart is a cookie of those addresses alone: its lines (an entry's id
 and a quantity, never a price) and the mark of its last checkout,
@@ -743,10 +771,34 @@ tests' own process; `ruby test/support/fake_stripe.rb` runs it alone and
 prints its address and key). No webhook: the CMS learns an order is paid
 on the thanks page, or when the Orders screen asks again.
 
+**Trying a real checkout, in Stripe's test mode.** With a Stripe account
+of your own, take its secret key of the test mode from Stripe's
+dashboard (the one that starts `sk_test_`), and give it to the CMS in the
+environment of the shell that starts it, for that shell alone; never
+write it in a file of the repository, nor commit it:
+
+```sh
+STRIPE_SECRET_KEY=sk_test_... npm start
+```
+
+```powershell
+$env:STRIPE_SECRET_KEY = "sk_test_..."; npm start
+```
+
+The Shop screen then says checkout is set up. On the example site, put a
+product in the cart from its page (`/shop/swim-cap`), check out, and pay
+on Stripe's page with one of the cards Stripe gives for its test mode
+(`4242 4242 4242 4242`, any date to come, any three digits): Stripe
+sends you back to `/cart/thanks`, which says the order is paid, and the
+Shop screen's Orders lists it, paid, with the email you gave. Nothing is
+charged: a test mode key moves no money. The tests never use such a key,
+and no test reaches Stripe.
+
 `ruby bin/rails test test/models/shop_rules_test.rb
 test/models/stripe_client_test.rb test/integration/api/shop_test.rb
 test/integration/api/orders_test.rb test/integration/cart_test.rb
-test/integration/shop_pages_test.rb test/models/shop_words_test.rb`
+test/integration/shop_pages_test.rb test/models/shop_words_test.rb
+test/contract/cart_goldens_test.rb test/integration/seed_test.rb`
 holds all of it, against the fake: nothing reaches the network.
 
 ## How the pages are cached
@@ -1425,7 +1477,9 @@ sweep above does the same for a schedule that is more than a minute late.
   `render/shop-words.ts` and `widgets/addToCart/drawing.ts`: a price on
   the page, and Add to cart), `Order` (a checkout, and what
   Stripe says of it), `StripeSettings` (the key and the address, from the
-  environment) and `StripeClient` (Stripe's two calls, over Net::HTTP).
+  environment), `StripeClient` (Stripe's two calls, over Net::HTTP) and
+  `CartPage` (what the cart's page shows of each line's product: the
+  twin of the demo's `cart-page.ts`).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
   `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
   recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.
@@ -1436,7 +1490,8 @@ sweep above does the same for a schedule that is more than a minute late.
   `submissions_controller.rb`: the forms visitors send from them;
   `cart_controller.rb`: the shop's cart (`app/views/cart/`).
 - `app/views/blocks/`: one partial per block type; `app/helpers/`:
-  `BlocksHelper`, `RichTextHelper`, `SiteHelper`.
+  `BlocksHelper`, `RichTextHelper`, `SiteHelper`, and `CartHelper`, which
+  draws the cart's pages and writes their words.
 - `app/assets/`: `stylesheets/site.css` (the theme), `stylesheets/tokens.css`
   (generated by `lib/site_theme/token_css.rb`), the site's fonts with their
   SIL licences, and the favicon.

@@ -38,7 +38,10 @@ it holds.
   on demand, no webhook; the browser's demo orders marked as its own.
   Since 16 October, the editor's Shop screen, a Products preset, Add to
   cart in the products' template, and prices drawn as money, a page that
-  draws them keyed on the shop's settings.
+  draws them keyed on the shop's settings; the cart and the page back
+  from Stripe drawn in the site's frame, the demo's own cart drawn as the
+  CMS's, held to it by goldens, and its checkout making the demo's
+  orders; and the example site's club kit, sold at `/shop` in pounds.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

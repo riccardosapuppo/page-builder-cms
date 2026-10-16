@@ -2,7 +2,7 @@
 // watchQuietly), planted on a page of a browser the test launches for
 // itself, as the tests that need a browser drawing its scrollbars do: an
 // error on the page, an error in its console and a request to a host
-// other than the run's two servers are each caught, the request refused
+// other than the run's servers are each caught, the request refused
 // before it leaves the machine, and a picture "from another site" is
 // answered inside the browser.
 import { chromium } from "@playwright/test";

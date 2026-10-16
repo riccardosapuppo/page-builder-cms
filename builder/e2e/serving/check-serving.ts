@@ -45,7 +45,9 @@
 // cart's address, no script and no cookie, and a page listing the
 // products draws each card's price as money; a change of the shop's
 // currency gets the old ETag of each the new page, not a 304, and leaves
-// a page that draws no shop its 304.
+// a page that draws no shop its 304. The cart's page is drawn in the
+// site's frame, never stored, for no search engine, with no script and no
+// cookie set by reading it.
 //
 // Starts a CMS and the editor's servers of its own (e2e/harness), on
 // E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), and the Pages-like
@@ -387,6 +389,16 @@ async function shopChecks(base: string, api: Api): Promise<void> {
     const still = await get(base, "/served-list", { "if-none-match": plainEtag });
     await still.arrayBuffer();
     check(still.status === 304, "shop: a page that draws no shop keeps its 304 when the shop's settings change", `status ${still.status}`);
+
+    // The cart's page, a visitor's own: in the site's frame, never stored,
+    // for no search engine, with no script, and no cookie set by reading
+    // it. Like the preview, it still carries the weak ETag Rack gives every
+    // answer; no-store keeps any browser from holding it to send back.
+    const cart = await get(base, "/cart", { "if-none-match": "*" });
+    const cartHtml = await cart.text();
+    check(cart.status === 200 && cartHtml.includes("<h1>Your cart</h1>") && cartHtml.includes('<header class="sw-header"') && cartHtml.includes('<footer class="sw-footer"'), "cart: /cart is drawn in the site's frame, its header and footer around it, and answers 200 whatever the request holds", `status ${cart.status}`);
+    check(cart.headers.get("cache-control") === "no-store" && cart.headers.get("x-robots-tag") === "noindex" && !/<script\b/i.test(cartHtml) && (cart.headers.get("content-security-policy") ?? "").includes("script-src 'none'") && cart.headers.get("set-cookie") === null,
+      "cart: /cart is never stored, is for no search engine, runs no script and sets no cookie", `${cart.headers.get("cache-control")} ${cart.headers.get("x-robots-tag")} ${cart.headers.get("set-cookie")}`);
   } finally {
     await api("PUT", "/api/shop", { enabled: false, currency: "GBP", productsCollectionId: null, priceField: null });
   }

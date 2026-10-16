@@ -1,12 +1,14 @@
 // The example site, put into the browser's storage on the demo's first
 // visit as the CMS's seed puts it into the CMS (cms/db/seeds/example_site.rb):
-// the same pictures, collections and pages, from ../../../example-site/,
-// read when the demo is built. Each picture goes into the media library
-// the way an upload does; then each collection is made, with its
-// template, its entries written and published, and once every collection
-// has its id, each template saved and published; then each page is made,
-// its document saved as the draft with its images named by the ids the
-// library gave them and its lists' collections by the ids the storage
+// the same pictures, collections, shop's settings and pages, from
+// ../../../example-site/, read when the demo is built. Each picture goes
+// into the media library the way an upload does; then each collection is
+// made, with its template, its entries written and published, and once
+// every collection has its id, each template saved and published; then
+// the shop's settings, naming the collection they sell from by the id the
+// storage gave it, set while they were never changed; then each page is
+// made, its document saved as the draft with its images named by the ids
+// the library gave them and its lists' collections by the ids the storage
 // gave them, and published; and the home page is set. Last, the site's
 // header and footer, which the storage makes from their starters (the
 // example site's own, cms/config/parts), are published as they are, as
@@ -42,18 +44,21 @@
 import siteFile from "../../../example-site/site.json";
 import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
 import type { PageDocument } from "../shared/document.ts";
+import { SHOP_MEMBERS, type ShopSettings } from "../shared/shop.ts";
 import type { Collection, Invalid, StorageAdapter } from "./adapter.ts";
 import type { BrowserAdapter } from "./browser.ts";
 import { digest } from "./digest.ts";
 import { SITE_THEME } from "virtual:site-theme";
 
 // site.json: the site's name, its pictures, its collections (each named by
-// an id, a whole number from 1 as a Collection list names one) and its
-// pages, in order.
+// an id, a whole number from 1 as a Collection list names one), the
+// shop's settings when it sells, as the storage takes them, their
+// collection named by its id in site.json, and its pages, in order.
 export interface ExampleSiteFile {
   name: string;
   images: Array<{ id: string; file: string; alt: string }>;
   collections: Array<{ id: number; file: string }>;
+  shop?: ShopSettings;
   pages: Array<{ slug: string; file: string; home: boolean }>;
 }
 
@@ -148,6 +153,16 @@ export function withCollectionIds(node: unknown, ids: ReadonlyMap<number, number
 
 const COLLECTION_FILE = ["collection", "entries", "template"];
 
+// The shop's settings of site.json, held to the shape the seed reads: the
+// members the storage takes, no other, their collection one site.json
+// lists. What they say is the shop's rules' to judge, as the storage
+// takes them: the twin of the seed's read_site.
+function shopReadable(shop: unknown, collections: ReadonlyMap<number, number>): boolean {
+  if (typeof shop !== "object" || shop === null || Array.isArray(shop)) return false;
+  const members = Object.keys(shop).sort();
+  return members.join() === [...SHOP_MEMBERS].sort().join() && collections.has((shop as Record<string, unknown>).productsCollectionId as number);
+}
+
 // A collection's file of the build, held to its shape, every picture and
 // collection its entries and its template name found in site.json: the
 // twin of the seed's read_collection.
@@ -201,6 +216,8 @@ async function putIn(adapter: StorageAdapter, source: ExampleSource, marks: Seed
     if (!(page.file in source.pages)) throw new Error(`The example site's ${page.file} is not in this build.`);
     withCollectionIds(withLibraryIds(source.pages[page.file], images, page.file), listed, page.file);
   }
+  const shop = source.site.shop;
+  if (shop !== undefined && !shopReadable(shop, listed)) throw new Error(`example-site/site.json has shop settings it cannot read: ${JSON.stringify(shop)}`);
   const pictures = await Promise.all(source.site.images.map(async (image) => ({ image, read: await source.image(image.file) })));
 
   marks.write("seeding");
@@ -255,6 +272,12 @@ async function putIn(adapter: StorageAdapter, source: ExampleSource, marks: Seed
     if (!saved.ok) throw new Error(`The example site's template of ${file} was not saved: ${saved.problem.message}`);
     const published = await adapter.publish(template.id, { revision: saved.value.revision });
     if (!published.ok) throw new Error(`The example site's template of ${file} was not published: ${published.problem.message}`);
+  }
+  // The shop's settings, while they were never changed: a seed cut short
+  // after setting them finds them set, as it left them.
+  if (shop !== undefined && (await adapter.getShop()).updatedAt === null) {
+    const set = await adapter.setShop({ ...shop, productsCollectionId: collectionIds.get(shop.productsCollectionId as number)! });
+    if (!set.ok) throw new Error(`The example site's shop settings were refused: ${set.problem.errors[0]?.message ?? set.problem.message}`);
   }
   for (const entry of source.site.pages) {
     const document = withCollectionIds(withLibraryIds(source.pages[entry.file], ids, entry.file), collectionIds, entry.file) as PageDocument;
@@ -440,7 +463,7 @@ export function builtFiles(): { pages: string[]; collections: string[]; images: 
   return { pages: Object.keys(byFile(builtPages)).sort(), collections: Object.keys(byFile(builtCollections)).sort(), images: Object.keys(byFile(builtImages)).sort() };
 }
 
-export function builtSource(site: ExampleSiteFile = siteFile): ExampleSource {
+export function builtSource(site: ExampleSiteFile = siteFile as ExampleSiteFile): ExampleSource {
   const pages = byFile(builtPages);
   const collections = byFile(builtCollections);
   const images = byFile(builtImages);

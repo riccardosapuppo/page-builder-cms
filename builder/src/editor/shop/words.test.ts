@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { KIT, NEWS, order } from "../../../test/fake-shop.ts";
 import { StorageError } from "../../storage/adapter.ts";
 import { settingIssues } from "./Settings.tsx";
-import { CHECKOUT_FULL_SYSTEM, CHECKOUT_HOW, CHECKOUT_READY, checkoutWords, emailOf, itemCount, itemsWords, ordersLine, pricePicked, refreshedWords, refreshFailure, settingRefusal, settingsLine } from "./words.ts";
+import { CHECKOUT_FULL_SYSTEM, CHECKOUT_HOW, CHECKOUT_READY, checkoutWords, currencyWords, emailOf, itemCount, itemsWords, OFF_WORDS, onWords, ordersLine, pricePicked, refreshedWords, refreshFailure, settingRefusal, settingsLine } from "./words.ts";
 
 test("each keyword of the shop's rules and of the schema is said in words at its control; anything else, as the storage says it", () => {
   expect(settingRefusal("productsCollectionId", "collectionExists", "The site has no collection 9.")).toBe("That collection is not there any more: choose another.");
@@ -63,6 +63,14 @@ test("checkout set up or not, why, and what to do: on the CMS, how it is set up;
   expect(checkoutWords({ ready: false, reason: "This storage is the browser's." }, true)).toEqual({ state: "Checkout is not set up.", reason: "This storage is the browser's.", how: CHECKOUT_FULL_SYSTEM });
   expect(CHECKOUT_HOW).toContain("STRIPE_SECRET_KEY");
   expect(CHECKOUT_HOW).toContain("test mode");
+});
+
+test("the switch and the currency, said as the storage does them: a visitor's cart and Stripe on the CMS; this browser's cart, and Stripe the full system's, in the browser", () => {
+  expect(onWords(false)).toBe("On, the products are sold: Add to cart puts them in a visitor's cart, and prices are drawn in the shop's currency.");
+  expect(onWords(true)).toBe("On, the products are sold: Add to cart puts them in the cart this browser keeps, and prices are drawn in the shop's currency.");
+  expect(currencyWords(false)).toBe("Prices are written in it, and Stripe is asked to charge it.");
+  expect(currencyWords(true)).toBe("Prices are written in it; in the full system, Stripe is asked to charge it.");
+  expect(OFF_WORDS).toMatch(/^Off, nothing is sold:/);
 });
 
 test("what asking Stripe again found, and why it was not asked: 409, 502, the order gone, anything else", () => {

@@ -1,16 +1,20 @@
-// The shop in Chromium against the run's CMS, whose checkout reaches no
-// Stripe (the run gives it no key). From the mark's menu: a collection made
-// from the Products preset in Collections; the Shop screen turning the
-// shop on for it, its price taken at once, its currency chosen, saved and
-// kept by the CMS; checkout said not set up, why, and how; no orders yet,
-// and how they come. The collection's template: Insert offering Add to
-// cart in This entry beside Field, drawn on the canvas as the site draws
-// it, a price drawn as money beside it; published, a product's page where
-// a visitor puts the product in the cart, the cart's page taking it. The
-// shop turned off: Add to cart offered no more, the one placed drawn
-// faintly, saying why, the price a number. axe on the Shop screen. The
-// shop's settings are put back as they were found.
+// The shop in Chromium against the run's CMS, whose checkout goes to the
+// tests' fake Stripe (the run gives it the fake's address and key). From
+// the mark's menu: a collection made from the Products preset in
+// Collections; the Shop screen turning the shop on for it, its price taken
+// at once, its currency chosen, saved and kept by the CMS; checkout said
+// set up, and never a key; the orders the CMS keeps, as its API lists
+// them. The
+// collection's template: Insert offering Add to cart in This entry beside
+// Field, drawn on the canvas as the site draws it, a price drawn as money
+// beside it; published, a product's page where a visitor puts the product
+// in the cart, the cart's page taking it. The shop turned off: Add to cart
+// offered no more, the one placed drawn faintly, saying why, the price a
+// number. axe on the Shop screen. Each test starts with the shop off, as
+// a new site has it, and puts the settings back as it found them. (A
+// whole checkout is checkout-story.spec.ts's.)
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import { CHECKOUT_READY } from "../src/editor/shop/words.ts";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
 import { makeEntry, saveDocument } from "./helpers/collections.ts";
@@ -59,12 +63,15 @@ let found: ShopSettings | null = null;
 test.beforeEach(async ({ request }) => {
   const shop = await shopOf(request);
   found = { enabled: shop.enabled, currency: shop.currency, productsCollectionId: shop.productsCollectionId, priceField: shop.priceField };
+  // Off, selling nothing, whatever an earlier test of the run (the example
+  // site's seed among them) left on.
+  await putShop(request, { enabled: false, currency: "GBP", productsCollectionId: null, priceField: null });
 });
 test.afterEach(async ({ request }) => {
   if (found) await putShop(request, found);
 });
 
-test("a collection from the Products preset sold by the shop: its settings saved, checkout not set up and how, no orders yet; Add to cart in its template, and a visitor's cart", { tag: "@a11y" }, async ({ page, request }) => {
+test("a collection from the Products preset sold by the shop: its settings saved, checkout set up and no key shown, the orders kept; Add to cart in its template, and a visitor's cart", { tag: "@a11y" }, async ({ page, request }) => {
   const home = await makePage(request, "Shop home", [section("s", "Story", [column("c", [heading("h", "The club's kit")])])]);
   await open(page, home.id);
 
@@ -94,19 +101,25 @@ test("a collection from the Products preset sold by the shop: its settings saved
   await shop.getByRole("radio", { name: "€ Euros" }).click();
   await shop.getByRole("button", { name: "Save changes" }).click();
   await expect(shop.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
-  expect(await shopOf(request)).toMatchObject({ enabled: true, currency: "EUR", productsCollectionId: made.id, priceField: "price", checkout: { ready: false } });
-  await expect(shop.getByText("Checkout is not set up.")).toBeVisible();
-  await expect(shop.getByText(/^STRIPE_SECRET_KEY is not set where the CMS runs/)).toBeVisible();
-  await expect(shop.getByText(/^To set it up, you need a Stripe account in test mode/)).toBeVisible();
+  expect(await shopOf(request)).toMatchObject({ enabled: true, currency: "EUR", productsCollectionId: made.id, priceField: "price", checkout: { ready: true, reason: null } });
+  await expect(shop.getByText(CHECKOUT_READY)).toBeVisible();
+  await expect(shop.getByText("Checkout is not set up.")).toHaveCount(0);
   expect(await shop.textContent()).not.toMatch(/\b(?:sk|rk)_(?:test|live)_[0-9A-Za-z]/);
   const audited = await axe(page, { include: ".dlg-shop" });
   expect(audited.serious, "the Shop screen's settings").toEqual([]);
 
+  // The orders the CMS keeps, as many as its API lists: the run's tests
+  // share one CMS, and those before this one may have checked out (the
+  // example site's and the checkout's own); with none yet, how one comes.
+  // (The empty state's words are the Shop screen's tests', ShopScreen.test.tsx.)
+  const kept = ((await (await request.get(`${cms()}/api/orders`)).json()) as { orders: unknown[] }).orders.length;
   await shop.getByRole("button", { name: /^Orders/ }).click();
-  // The empty state itself: its words are also the screen's count and the
-  // Orders entry's line.
-  await expect(shop.locator(".shop-empty-title")).toHaveText("No orders yet");
-  await expect(shop.getByText(/^An order is made when a visitor checks out from the cart/)).toBeVisible();
+  if (kept === 0) {
+    await expect(shop.locator(".shop-empty-title")).toHaveText("No orders yet");
+    await expect(shop.getByText(/^An order is made when a visitor checks out from the cart/)).toBeVisible();
+  } else {
+    await expect(shop.getByRole("table", { name: "Orders, the newest first" }).locator("tbody tr")).toHaveCount(kept);
+  }
   await shop.getByRole("button", { name: "Close", exact: true }).click();
 
   // A product, published.
@@ -142,7 +155,7 @@ test("a collection from the Products preset sold by the shop: its settings saved
   await visitor.getByRole("button", { name: "Add to cart" }).click();
   await expect(visitor).toHaveURL(`${cms()}/cart`);
   await expect(visitor.locator(".sw-cart-line .sw-cart-title")).toHaveText(["Swim cap"]);
-  await expect(visitor.locator(".sw-cart-total")).toHaveText("Total: €25.00");
+  await expect(visitor.locator(".sw-cart-total")).toHaveText("Total €25.00");
   await visitor.close();
 
   // The shop off: Add to cart offered no more, the one placed drawn

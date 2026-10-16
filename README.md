@@ -53,7 +53,15 @@ it on, chooses its currency, its products and their price, says whether
 checkout is set up, and lists the orders, each asked of Stripe again
 while it is open. In the products' template, Add to cart puts the product
 in a visitor's cart with a plain form, or says it is out of stock; a
-Field block and a Collection list's cards write the price as money.
+Field block and a Collection list's cards write the price as money. The
+cart, at `/cart`, is drawn in the site's frame, with no script: each line
+with its picture, its price and how many, a line that cannot be bought
+saying why, and the total beside Checkout, which sends the visitor to
+Stripe's page and back to one that says, in plain words, whether the
+order is paid. The example site sells its club kit at `/shop`, in pounds.
+In the demo the cart is kept in the browser, and its checkout makes an
+order marked as the demo's, which the Shop screen lists: no payment is
+reached from there.
 
 An Assistant writes with a model of the person's own, Anthropic's or
 OpenAI's. The person brings the key. It is kept in the tab's memory only,
@@ -232,8 +240,9 @@ both.
   listen anywhere else: the API has no authentication
   ([the decision](docs/decisions/no-authentication-one-address.md)).
 - The published pages are on the CMS's port: `/` is the example site's home
-  page, `/winter-series`, `/news` and `/notices` the other three, and the
-  news's five entries are each at `/news/<slug>`.
+  page, `/winter-series`, `/news`, `/shop` and `/notices` the other four,
+  the news's five entries are each at `/news/<slug>`, the shop's four
+  products at `/shop/<slug>`, and a visitor's cart at `/cart`.
 - The editor opens on the home page. Beside the page's title it says where
   the page is (home page, its address, or every page for the header and
   footer); the first time, a note under the title says that what is open
@@ -297,7 +306,8 @@ with no script and the stylesheets it holds.
 
 Collections, from the editor's menu: the example site's News, its five
 entries each with its status, when it last changed and its first two
-fields in words, newest first, the collection's own order.
+fields in words, newest first, the collection's own order; Club kit, the
+shop's products, beside it in the list.
 
 ![The template of News on the canvas](docs/images/template.png)
 
@@ -314,6 +324,33 @@ template's published version drawn with what the entry published.
 ![The same entry on a phone](docs/images/entry-phone.png)
 
 The same entry on a 390 by 844 phone, at twice the pixels.
+
+![The shop's page as Rails serves it](docs/images/shop-page.png)
+
+The example site's shop at `/shop`: a page of blocks whose Collection list
+shows Club kit's four products in a grid, each with its price in pounds.
+
+![A product as Rails serves it](docs/images/product-desktop.png)
+
+One of them at `/shop/swim-cap`, drawn by its collection's template: the
+picture, the title and the price are Field blocks, and Add to cart a form
+to the cart, with no script.
+
+![The same product on a phone](docs/images/product-phone.png)
+
+The same product on a 390 by 844 phone, at twice the pixels.
+
+![A visitor's cart](docs/images/cart.png)
+
+A visitor's cart at `/cart`, in the site's frame: each line with its
+picture, its price for one, what it costs, how many and Remove, and the
+total beside Checkout.
+
+![The Shop screen with orders](docs/images/shop-orders.png)
+
+The Shop screen, from the editor's menu: the orders three visitors checked
+out, two paid on the tests' stand-in for Stripe's page with the email each
+gave, one still open.
 
 ![The editor's History](docs/images/history.png)
 
@@ -397,9 +434,11 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   Shop screen keeps the settings and reads the orders; Add to cart, in the
   products' template, posts a plain form to the cart; a page that draws a
   price or Add to cart is cached by keys that name the shop's settings.
-  The site's cart pages follow. Cost: a cookie, though on no page,
-  another pair of twins, and no webhook: an order paid by a visitor who
-  never came back reads open until asked again.
+  The cart and the page back from Stripe are drawn in the site's frame,
+  never cached, and the demo draws the same cart from the browser, held to
+  the CMS's by goldens. Cost: a cookie, though on no page, another pair of
+  twins, the cart's pages drawn twice, and no webhook: an order paid by a
+  visitor who never came back reads open until asked again.
   [The note](docs/decisions/shop-on-collections.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
@@ -595,6 +634,20 @@ shop off here), found each of those medians inside the range of the run
 before: an entry's page cold 419 ms, warm 6.23, another entry 29.4, the
 list's page after a publish 16.0; the fragments written the same.
 
+Two runs of 16 October 2026 (from 11:14 and 11:23 UTC, `RESULT: 38
+checks passed` each), once the footer's starter links the shop too, which
+makes the header's and footer's blocks 13: a cold visit asks for and
+writes 514 fragments in 97 reads and 97 writes, and one heading changed
+still asks for 39 and finds 35. The second, the machine 2% then 1% busy
+before it, eight runs of one heading changed thrown away for the load
+after them, found every median inside the range of its row above but the
+site style changed, 31.9 ms (21.8 to 74.9): cold 438 ms, the first visit
+after a start 703, warm 5.03, a 304 3.24, an entry's page cold 481. The
+first, 8% then 2% busy before it and none thrown away, found the cold
+visits above their ranges (cold 531, the first visit after a start 775,
+an entry's page cold 672) and warm at 5.91; what the host was doing then
+cannot be seen from the guest.
+
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
   the preview does, and also makes the 501 keys, asks for them in 88 reads
   that find nothing, and writes them in 88 writes: 387 ms against 106. That
@@ -786,8 +839,9 @@ runs its jobs in Solid Queue. The editor is its client, through the API in
 
 **The browser demo** is the same editor with the browser's storage in
 place of Rails: [Try the editor in your browser](https://builder.riccardosapuppo.com/).
-On a first visit it puts in the example site, four pages, the collection
-News with its five entries and its template, and fifteen pictures,
+On a first visit it puts in the example site, five pages, the collections
+News, with its five entries, and Club kit, with its four products, each
+with its template, the shop on and selling Club kit, and fifteen pictures,
 as the CMS's seed does from the same files, and everything after is kept in
 that browser's IndexedDB, held to the same battery of cases as the CMS's
 adapter. A visitor back after the demo is built with a newer example site
@@ -801,7 +855,11 @@ list's card, and an entry's View in Collections, open the entry as
 published there, drawn with its collection's template. The header and
 footer are built and published there as on the CMS, and every page
 published in that browser shows them. A form there is
-not sent: one line says what Rails does with its answers. At the bottom, one
+not sent: one line says what Rails does with its answers. A product's Add
+to cart puts it in a cart that browser keeps, drawn as the CMS draws
+`/cart`, and its Checkout makes an order marked "Not paid: browser demo",
+listed in the Shop screen, with a line saying that Rails would send the
+visitor to Stripe's checkout instead. At the bottom, one
 line: "Browser demo: drafts stay in this browser. The full CMS runs on Rails
 8, with publishing, shared versions and caching. Source on GitHub.", and
 at its end "Developed by Riccardo Sapuppo" beside the author's face, a link
@@ -810,8 +868,9 @@ it again, and the browser remembers the choice.
 
 **The demo's limits**, which are those of having no server:
 - **Nothing is served.** No page at an address of its own, no cache, no
-  scheduled publishing, no job, no form answers and no Form responses. What
-  is not there has no control: the editor draws none.
+  scheduled publishing, no job, no form answers and no Form responses, and
+  no payment: its checkout reaches no Stripe. What is not there has no
+  control: the editor draws none.
 - **Drafts stay in one browser.** Another browser, or another person, sees
   none of them; clearing the site's data deletes them. A browser that
   refuses IndexedDB (some private windows), one with no room left, or a tab
@@ -980,11 +1039,11 @@ accessibility tests again and the serving checks, 21.7 minutes in all
 
 | Folder | What it holds |
 | --- | --- |
-| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library, the site style and the header and footer; collections, their entries and their templates; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages and entries, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
+| [`cms/`](cms/README.md) | The Rails 8.1 application: pages, one draft each and their versions; publishing, now or at a set time; the media library, the site style and the header and footer; collections, their entries and their templates; the shop, its cart and its orders, paid through Stripe's test mode; the JSON API of [`openapi.yaml`](cms/openapi.yaml); the published pages and entries, drawn on the server in the design's theme and cached, with a draft preview and a 404 page; the jobs; the forms visitors send and their answers. Its README has the commands to install, run and test it, and how the caches and the jobs work. |
 | [`builder/`](builder/README.md) | The editor: React 19, TypeScript and Vite, every dependency pinned. The document and its commands, the store with undo and redo, the two storage adapters, the renderer, the widgets, the interface, and the browser demo's shell. Its README has the commands, the stages' account and what each check holds. |
 | [`schema/`](schema/README.md) | The page document's one schema and a collection's, the design tokens the code reads, the corpora both validators are held to and the tools that compare them, and the icon box's icons. |
-| [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to. |
-| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: four page documents, the collection News with its five entries and its template, and fifteen pictures drawn from SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
+| [`contract/`](contract/README.md) | The render contract: documents and the HTML the server renders for each, which the editor's renderer is held to; the cart's pages, which the demo draws as the CMS does; and the cases the twins of the custom CSS's, the free colours' and type's and the shop's rules read. |
+| [`example-site/`](example-site/README.md) | Slack Water, an invented swimming club: five page documents, the collections News, with its five entries, and Club kit, with its four products, each with its template, the shop's settings, and fifteen pictures drawn from SVGs, the one copy that `ruby bin/rails db:seed` and the browser demo load. |
 | [`design/`](design/) | The approved design, in static HTML: the editor and a published page, the tokens, the mark, the fonts with their licences, and screenshots of every state. [`design/layout/`](design/layout/) is the editor's layout, approved on 3 October 2026, drawn the same way. |
 | [`docs/`](docs/decisions/) | [The decisions](docs/decisions/), each with its cost and the command that shows it holds, and [the pictures](docs/images/README.md) this README shows. |
 | [`tools/`](tools/README.md) | The repository's own Node tools: `npm start`, `npm run check`, the measurements, the pictures, and their tests. |

@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "title": "Shop",
+  "description": "Club kit from the hut by the slipway: bright caps, a tow float, the enamel mug, and a pass for the winter swims.",
+  "sections": [
+    {
+      "id": "intro",
+      "type": "section",
+      "props": {
+        "label": "Shop"
+      },
+      "children": [
+        {
+          "id": "intro-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "intro-heading",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Shop"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "display"
+                }
+              }
+            },
+            {
+              "id": "intro-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Kit from the hut by the slipway: bright caps, a tow float, the enamel mug, and a pass for the winter swims."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "large"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "m"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        },
+        "phone": {
+          "spaceAbove": "l"
+        }
+      }
+    },
+    {
+      "id": "kit",
+      "type": "section",
+      "props": {
+        "label": "The club kit"
+      },
+      "children": [
+        {
+          "id": "kit-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "kit-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Club kit"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-2",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "kit-list",
+              "type": "collectionList",
+              "props": {
+                "collection": 2,
+                "count": 24,
+                "order": {
+                  "by": "title",
+                  "direction": "asc"
+                },
+                "layout": "grid",
+                "columns": 4,
+                "image": "image",
+                "excerpt": "summary",
+                "price": "price",
+                "linkLabel": "Have a look",
+                "emptyText": "Nothing for sale just now."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "color": "text"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "xl"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    },
+    {
+      "id": "cart",
+      "type": "section",
+      "props": {
+        "label": "Your cart"
+      },
+      "children": [
+        {
+          "id": "cart-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "cart-heading",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Your cart"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "textSize": "heading-2",
+                  "color": "text"
+                }
+              }
+            },
+            {
+              "id": "cart-text",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "What you put in the cart waits there while you look around. We hand everything over at the hut, after a swim."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "cart-button",
+              "type": "button",
+              "props": {
+                "label": "See your cart",
+                "href": "/cart"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "primary"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "spaceBetween": "m"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "soft",
+          "spaceAbove": "section-s",
+          "spaceBelow": "section-s"
+        }
+      }
+    }
+  ]
+}

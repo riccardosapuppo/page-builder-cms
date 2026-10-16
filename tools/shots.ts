@@ -7,14 +7,19 @@
 // selected, in a desktop's window and on a phone, the published page on a desktop and on a phone, the version
 // history, Form responses, the browser demo with its bottom line and the
 // picture a shared link to it previews with, the GIF of a real
-// publication, the site's header open in the editor as a page is, and the
+// publication, the site's header open in the editor as a page is, the
 // example site's News: Collections with its entries, its template on the
-// canvas, and one of its entries as served on a desktop and on a phone. Their names, sizes and limits are listed in
+// canvas, and one of its entries as served on a desktop and on a phone;
+// and its shop: the shop's page, a product as served on a desktop and on a
+// phone, a visitor's cart, and the Shop screen with the orders visitors
+// checked out. Their names, sizes and limits are listed in
 // tools/lib/shot-images.ts, which also reads the result back.
 //
 // It starts a CMS of its own in the e2e environment on 127.0.0.1:3905
 // (SHOTS_CMS_PORT), with databases and an Active Storage root of its own,
-// runs the example site's seed (what `ruby bin/rails db:seed` does for a
+// its checkout going to the tests' stand-in for Stripe
+// (cms/test/support/fake_stripe.rb, on a port the system gives it), runs
+// the example site's seed (what `ruby bin/rails db:seed` does for a
 // person), and starts the editor's development server on 127.0.0.1:4905
 // (SHOTS_EDITOR_PORT). The demo is built into a folder of the run's and
 // served as GitHub Pages serves it on the editor's port, once the editor's
@@ -23,7 +28,9 @@
 //
 // - Visitors send four answers from the served home page before Form
 //   responses is photographed: the answers are in the CMS the way a
-//   visitor's are.
+//   visitor's are. Three visitors check out from the served shop before
+//   the Shop screen is photographed, two of them paying on the stand-in's
+//   page: their orders are in the CMS the way a visitor's are.
 // - The GIF is frames of the page: the served home page, the editor with
 //   the hero's heading selected, the new words typed, saved, Publish
 //   pressed and "Published" said, and the served page again with the
@@ -48,7 +55,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { startPagesServer, type PagesServer } from "../builder/e2e/harness/pages-server.ts";
-import { seedCms, startBuilder, startCms, type Server } from "../builder/e2e/harness/servers.ts";
+import { seedCms, startBuilder, startCms, startFakeStripe, type Server } from "../builder/e2e/harness/servers.ts";
 import { welcomeSeen } from "../builder/e2e/harness/welcome.ts";
 import { buildEditor } from "./lib/editor-build.ts";
 import { encodeGif, readGif } from "./lib/gif.ts";
@@ -222,6 +229,100 @@ async function publishedPages(browser: Browser, shots: Staging, cms: string): Pr
     await shots.shoot(page, "published-phone.png");
     await page.context().close();
   }
+}
+
+// The example site's shop: its page, and one of its products as the CMS
+// serves it at its own address, on a desktop and, at twice the pixels, on
+// a phone.
+const PRODUCT = { path: "/shop/swim-cap", title: "Swim cap" };
+
+async function shopPages(browser: Browser, shots: Staging, cms: string): Promise<void> {
+  for (const [file, path, heading, options] of [
+    ["shop-page.png", "/shop", "Shop", { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }],
+    ["product-desktop.png", PRODUCT.path, PRODUCT.title, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }],
+    ["product-phone.png", PRODUCT.path, PRODUCT.title, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }],
+  ] as const) {
+    if (!shots.wants(file)) continue;
+    const page = await (await context(browser, options)).newPage();
+    watch(page, `shop ${file}`, [cms]);
+    await page.goto(`${cms}${path}`);
+    await settled(page);
+    must((await page.getByRole("heading", { level: 1 }).innerText()).trim() === heading, `${path} does not open with its title`);
+    must(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${path} scrolls sideways in ${file}`);
+    await shots.shoot(page, file);
+    await page.context().close();
+  }
+}
+
+// A visitor's cart, filled from the products' pages as a visitor fills it.
+async function fillCart(page: Page, cms: string, lines: ReadonlyArray<readonly [string, number]>): Promise<void> {
+  for (const [slug, quantity] of lines) {
+    await page.goto(`${cms}/shop/${slug}`);
+    await page.getByRole("spinbutton", { name: "Quantity" }).fill(String(quantity));
+    await page.getByRole("button", { name: "Add to cart" }).click();
+    await page.waitForURL(`${cms}/cart`);
+  }
+}
+
+// What three visitors check out, each on the tests' stand-in for Stripe's
+// checkout page (cms/test/support/fake_stripe.rb), where the first two pay
+// with the email they give, and are sent back to the thanks page; the
+// third leaves the page unpaid. Their orders are in the CMS the way a
+// visitor's are.
+const BUYERS = [
+  { email: "tove@example.org", lines: [["swim-cap", 2], ["tow-float", 1]] },
+  { email: "maya@example.org", lines: [["winter-series-pass", 1]] },
+  { email: null, lines: [["swim-cap", 1]] },
+] as const;
+
+async function visitorsBuy(browser: Browser, cms: string, stripe: string): Promise<void> {
+  for (const buyer of BUYERS) {
+    const page = await (await context(browser, { viewport: { width: 1440, height: 900 } })).newPage();
+    page.setDefaultTimeout(60_000);
+    watch(page, `buyer ${buyer.email ?? "who left"}`, [cms, stripe]);
+    await fillCart(page, cms, buyer.lines);
+    await page.getByRole("button", { name: "Checkout" }).click();
+    await page.waitForURL(/\/c\/pay\/cs_test_[0-9A-Za-z]+$/);
+    if (buyer.email !== null) {
+      const session = new URL(page.url()).pathname.split("/").pop()!;
+      const paid = await page.request.post(`${stripe}/_fake/sessions/${session}/pay`, { form: { email: buyer.email } });
+      must(paid.ok(), `the stand-in for Stripe did not take ${buyer.email}'s payment`);
+      await page.goto(`${cms}/cart/thanks?session_id=${session}`);
+      must((await page.getByRole("heading", { level: 1 }).innerText()).trim() === "Thank you", `${buyer.email}'s thanks page does not say the order is paid`);
+    }
+    await page.context().close();
+  }
+  console.log(`${BUYERS.length} visitors checked out on the served shop`);
+}
+
+// A visitor's cart, two caps and a float, as the CMS serves /cart.
+async function cartShot(browser: Browser, shots: Staging, cms: string): Promise<void> {
+  const page = await (await context(browser, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })).newPage();
+  page.setDefaultTimeout(60_000);
+  watch(page, "cart", [cms]);
+  await fillCart(page, cms, [["swim-cap", 2], ["tow-float", 1]]);
+  await settled(page);
+  must((await page.locator(".sw-cart-line").count()) === 2, "the cart does not hold its two lines");
+  await parked(page);
+  await shots.shoot(page, "cart.png");
+  await page.context().close();
+}
+
+// The Shop screen, from the mark's menu: the orders the visitors made, the
+// newest first.
+async function shopOrdersShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
+  const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "shop orders");
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Shop" }).click();
+  const screen = page.getByRole("dialog", { name: "Shop" });
+  await screen.getByRole("button", { name: /^Orders/ }).click();
+  const rows = screen.getByRole("table", { name: "Orders, the newest first" }).locator("tbody tr");
+  await rows.nth(BUYERS.length - 1).waitFor();
+  must((await rows.count()) === BUYERS.length, `the Shop screen does not list the ${BUYERS.length} orders`);
+  must((await screen.locator("tbody tr[data-status=paid]").count()) === 2, "the Shop screen does not list two orders paid");
+  await parked(page);
+  await shots.shoot(page, "shop-orders.png");
+  await page.context().close();
 }
 
 // An entry of the example site's News, as the CMS serves it at its own
@@ -570,11 +671,15 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
   try {
     const needsSystem = [
       "published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "collections.png", "template.png", "entry-desktop.png", "entry-phone.png",
-      "history.png", "form-responses.png", "publish.gif", "assistant.png",
+      "shop-page.png", "product-desktop.png", "product-phone.png", "cart.png", "shop-orders.png", "history.png", "form-responses.png", "publish.gif", "assistant.png",
     ].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
-      const cms = await startCms(cmsPort);
+      // The shop's checkout goes to the tests' stand-in for Stripe, as in
+      // the editor's browser tests: nothing leaves the machine.
+      const stripe = await startFakeStripe();
+      servers.push(stripe);
+      const cms = await startCms(cmsPort, { stripe });
       servers.push(cms);
       // The editor's server is ready when it passes the CMS's empty page list
       // through its proxy: it starts before the seed fills the list.
@@ -583,6 +688,12 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
       console.log(seedCms(cms).trim());
       await publishedPages(browser, shots, cms.url);
       await entryPages(browser, shots, cms.url);
+      await shopPages(browser, shots, cms.url);
+      if (wanted.has("cart.png")) await cartShot(browser, shots, cms.url);
+      if (wanted.has("shop-orders.png")) {
+        await visitorsBuy(browser, cms.url, stripe.url);
+        await shopOrdersShot(browser, shots, editor.url, cms.url);
+      }
       if (wanted.has("form-responses.png")) await visitorsSend(browser, cms.url);
       if (wanted.has("editor.png")) await editorShot(browser, shots, editor.url, cms.url);
       if (wanted.has("editor-phone.png")) await phoneEditorShot(browser, shots, editor.url, cms.url);
@@ -596,7 +707,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
       }
       if (wanted.has("publish.gif")) await publicationGif(browser, shots, editor.url, cms.url);
       if (wanted.has("assistant.png")) await assistantShot(browser, shots, editor.url, cms.url);
-      for (const server of [editor, cms]) {
+      for (const server of [editor, cms, stripe]) {
         for (const line of await server.stop()) console.log(line);
         servers.splice(servers.indexOf(server), 1);
       }

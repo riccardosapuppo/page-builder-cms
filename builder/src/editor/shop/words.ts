@@ -25,6 +25,19 @@ export function settingsLine(settings: ShopSettings, collections: ReadonlyArray<
 // The number fields of a collection, which its price may be.
 export const numberFields = (collection: Pick<Collection, "fields">) => collection.fields.filter((field) => field.type === "number");
 
+// What the shop's switch does, under it: on, sold, put in a visitor's
+// cart (in the browser's storage, the cart this browser keeps); off,
+// nothing.
+export const onWords = (inBrowser: boolean): string =>
+  `On, the products are sold: Add to cart puts them in ${inBrowser ? "the cart this browser keeps" : "a visitor's cart"}, and prices are drawn in the shop's currency.`;
+export const OFF_WORDS = "Off, nothing is sold: Add to cart draws nothing, prices are drawn as numbers, and the cart's addresses are not found.";
+
+// What the currency is for: the CMS asks Stripe to charge it; the
+// browser's storage, which reaches no Stripe, says that is the full
+// system's.
+export const currencyWords = (inBrowser: boolean): string =>
+  inBrowser ? "Prices are written in it; in the full system, Stripe is asked to charge it." : "Prices are written in it, and Stripe is asked to charge it.";
+
 // The price a newly chosen collection takes: its number field "price",
 // else its first number field; none for a collection with none.
 export function pricePicked(collection: Pick<Collection, "fields">): string | null {

@@ -18,12 +18,15 @@
     { "id": "m-winter", "file": "images/m-winter.png", "alt": "The jetty in winter, the safe-water mark beyond it" }
   ],
   "collections": [
-    { "id": 1, "file": "collections/news.json" }
+    { "id": 1, "file": "collections/news.json" },
+    { "id": 2, "file": "collections/shop.json" }
   ],
+  "shop": { "enabled": true, "currency": "GBP", "productsCollectionId": 2, "priceField": "price" },
   "pages": [
     { "slug": "home", "file": "pages/home.json", "home": true },
     { "slug": "winter-series", "file": "pages/winter-series.json", "home": false },
     { "slug": "news", "file": "pages/news.json", "home": false },
+    { "slug": "shop", "file": "pages/shop.json", "home": false },
     { "slug": "notices", "file": "pages/notices.json", "home": false }
   ]
 }

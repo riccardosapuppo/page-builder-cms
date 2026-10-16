@@ -16,16 +16,25 @@ export const cms = (): string => {
   return url;
 };
 
+// The tests' fake Stripe the run's CMS sends a checkout to, whose page a
+// visitor pays on.
+export const stripe = (): string => {
+  const url = process.env.E2E_STRIPE_URL;
+  if (!url) throw new Error("E2E_STRIPE_URL is not set: the run's global setup starts the fake Stripe");
+  return url;
+};
+
 // What every page a test drives is held to: no error on the page, none in
 // its console (but the browser's own line for a request the CMS answered
 // 422, which some tests ask for, and the lines `allow` names: the failures
 // a test makes the network have), and no request anywhere but the run's
-// two servers, which is refused and noted; the pictures "from another
-// site" are answered inside the browser. What went wrong, as it comes:
-// the test checks the list is empty at its end. The fixture below holds
-// each test's own page to it; a page of a context or a browser a test
-// opens for itself (a second tab, a browser that draws its scrollbars) is
-// not that page, and is held to it by the test with this same function.
+// servers (the editor's, the CMS's, and the fake Stripe's page a checkout
+// leads to), which is refused and noted; the pictures "from another site"
+// are answered inside the browser. What went wrong, as it comes: the test
+// checks the list is empty at its end. The fixture below holds each test's
+// own page to it; a page of a context or a browser a test opens for itself
+// (a second tab, a browser that draws its scrollbars) is not that page,
+// and is held to it by the test with this same function.
 export async function watchQuietly(page: Page, editor: string, allow: RegExp | null = null): Promise<string[]> {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -36,7 +45,8 @@ export async function watchQuietly(page: Page, editor: string, allow: RegExp | n
   await page.route("**/*", async (route) => {
     const url = route.request().url();
     if (url.startsWith(ELSEWHERE)) return route.fulfill({ body: PIXEL, contentType: "image/png" });
-    if ((editor !== "" && url.startsWith(editor)) || url.startsWith(cms())) return route.fallback();
+    const fake = process.env.E2E_STRIPE_URL;
+    if ((editor !== "" && url.startsWith(editor)) || url.startsWith(cms()) || (fake !== undefined && url.startsWith(`${fake}/`))) return route.fallback();
     errors.push(`request outside the run's servers: ${url}`);
     return route.abort();
   });
