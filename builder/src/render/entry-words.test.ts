@@ -6,9 +6,9 @@
 import { expect, test } from "vitest";
 import { dayOf, dayWords, fieldOf, numberWords, valueOf } from "./entry-words.ts";
 
-test("a day is one that exists, written as the editor's lists write it", () => {
+test("a day is one that exists, written as the editor's lists write it: the day, the month's name, the year", () => {
   expect(["2026-10-15", "2024-02-29", "2026-02-29", "2026-13-01", "2026-1-5", "20261015", 20261015, null].map(dayOf)).toEqual(["2026-10-15", "2024-02-29", null, null, null, null, null, null]);
-  expect(["2026-10-15", "2026-01-01", "2024-02-29", "0099-12-31"].map(dayWords)).toEqual(["Oct 15, 2026", "Jan 1, 2026", "Feb 29, 2024", "Dec 31, 99"]);
+  expect(["2026-10-15", "2026-01-01", "2024-02-29", "2026-11-01", "0099-12-31"].map(dayWords)).toEqual(["15 October 2026", "1 January 2026", "29 February 2024", "1 November 2026", "31 December 99"]);
 });
 
 test("a number is written with its thousands grouped and no zero ending its decimals; one no number field keeps is not written", () => {

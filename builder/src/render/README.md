@@ -23,7 +23,7 @@ widgets import its helpers. Nothing here talks to a server.
 | `media.tsx` | Images of image blocks and gallery items, and the contract's media stub | `block_img`, `ContractMedia` |
 | `drawings.tsx` | The icon box's icons (`virtual:site-icons`, read from `schema/icons.svg` by `../../build/site-icons.ts`), the theme's drawings, text with line breaks | `site_icon`, `theme_svg`, `text_with_breaks` |
 | `context.ts` | What a renderer receives: the media resolver, the collections the Collection lists name and the entry a template is drawn with, a card's address, the decoration hook | `SiteContent` |
-| `entry-words.ts` | An entry's values as a page writes them, for the Collection list and the Field block: a field by its key, a day that exists in the editor's words for one ("Oct 15, 2026"), a number with its thousands grouped and nothing for one no number field keeps | `EntryWords` |
+| `entry-words.ts` | An entry's values as a page writes them, for the Collection list and the Field block: a field by its key, a day that exists in the editor's words for one, the day, the month's name and the year ("15 October 2026"), a number with its thousands grouped and nothing for one no number field keeps | `EntryWords` |
 | `contract.ts` | The render contract's content for a fixture: its top-level `collections` and `entry`, as the renderer's (`contractContext`) | `ContractContent` (`cms/test/support/contract_content.rb`) |
 
 ## Using it

@@ -130,7 +130,8 @@ The example site uses both (`../../../example-site/collections/news.json`
 and `pages/news.json`): the news page at `/news` lists every entry of
 News, newest first, one under another; News's template draws the entry's
 day, title, summary, picture and body with Field blocks, then a grid of
-three of the others.
+two of the others, side by side on a desktop and a tablet, one above the
+other on a phone.
 
 ## Checks
 

@@ -41,9 +41,9 @@ for (const { path, heading } of PAGES) {
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
     // The news at the collection's prefix lists its five entries; an
-    // entry's page, three of the others.
+    // entry's page, two of the others.
     if (path === "/news") await expect(page.locator("main .sw-entry-title a")).toHaveCount(5);
-    if (path.startsWith("/news/")) await expect(page.locator("main [data-block-id=more-list] .sw-entry-title a")).toHaveCount(3);
+    if (path.startsWith("/news/")) await expect(page.locator("main [data-block-id=more-list] .sw-entry-title a")).toHaveCount(2);
     if (path === "/") {
       // The video and the map are closed cards: the third party is asked
       // only once a visitor opens one, and the shared fixture fails any

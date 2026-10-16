@@ -176,7 +176,8 @@ valid, and a test says so.
   (`builder/src/render/contract.ts`), as the canvas gives them. A
   fixture with neither draws every list's empty words and no field.
 - A day is written from a table of month names, not a locale's
-  (`Oct 15, 2026`), and a number with its thousands grouped and no zero
+  (`15 October 2026`, the day, the month's name and the year), and a
+  number with its thousands grouped and no zero
   ending its decimals (`1,250.5`): `EntryWords` and
   `builder/src/render/entry-words.ts`. Entries are ordered by
   `EntryOrder` and `builder/src/shared/entry-order.ts`: ties by when each

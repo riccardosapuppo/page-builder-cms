@@ -436,13 +436,13 @@
                 "type": "collectionList",
                 "props": {
                   "collection": 1,
-                  "count": 3,
+                  "count": 2,
                   "order": {
                     "by": "date",
                     "direction": "desc"
                   },
                   "layout": "grid",
-                  "columns": 3,
+                  "columns": 2,
                   "image": "image",
                   "date": "date",
                   "excerpt": "summary",

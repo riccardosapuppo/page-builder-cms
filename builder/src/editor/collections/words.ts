@@ -1,6 +1,7 @@
 // The words of the Collections screen (./CollectionsScreen.tsx), in the
 // editor's one locale, en-US. Plain functions of their arguments, so the
 // tests give what they mean.
+import { dayOf, dayWords } from "../../render/entry-words.ts";
 import { SORT_BUILT_INS, type Field, type FieldType, type LinkValue } from "../../shared/collection.ts";
 import type { InlineNode, RichTextBlock, RichTextDoc } from "../../shared/document.ts";
 import type { Collection, Entry } from "../../storage/adapter.ts";
@@ -140,11 +141,13 @@ export function plainText(doc: RichTextDoc): string {
   return blocks(doc.content).join(" ").replace(/\s+/g, " ").trim();
 }
 
-// A day as the list writes it: "Oct 15, 2026". The day itself, whatever
-// the zone the browser is in.
+// A day as the list writes it: the day, the month's name and the year,
+// "15 October 2026", the day itself whatever the zone the browser is in;
+// one that does not exist, as it is kept. The site writes a day in these
+// words (../../render/entry-words.ts, dayWords, and its Ruby twin), and the
+// list takes them from there, so the two never part.
 export function dayText(day: string): string {
-  const at = Date.parse(`${day}T00:00:00Z`);
-  return Number.isNaN(at) ? day : new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(at);
+  return dayOf(day) === null ? day : dayWords(day);
 }
 
 // A number as the list writes it: "1,250.5".

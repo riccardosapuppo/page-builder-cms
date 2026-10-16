@@ -32,9 +32,9 @@ so that both show the same four pages and the same news.
     children, and the winter series's first swim. Its template draws the
     entry's day, its title as the page's heading and its summary in a
     deep-water band beside its picture, its body on paper, then "More from
-    the club", a Collection list of the same collection on the pale sea
-    (which leaves out the entry its page draws), and the way to all the
-    news.
+    the club", a Collection list of the same collection on the pale sea,
+    two of its other entries in a grid of two (a list leaves out the entry
+    its page draws), and the way to all the news.
 - [`pages/`](pages/): one page document each, valid against
   [the schema](../schema/block-document.schema.json). An image is named by
   its `id` in `site.json`, never by a library's id, and a Collection list

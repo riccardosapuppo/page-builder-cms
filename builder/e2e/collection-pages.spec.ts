@@ -69,7 +69,7 @@ test("a Collection list draws the published entries on the canvas, never a draft
   try {
     expect((await reader.visit(`${cms()}/${made.slug}`)).status).toBe(200);
     await expect(titles(listIn(reader.tab))).toHaveText(["Winter series opens", "Dawn swims start again"]);
-    await expect(listIn(reader.tab).locator(".sw-entry-date")).toHaveText(["Nov 1, 2026", "May 2, 2026"]);
+    await expect(listIn(reader.tab).locator(".sw-entry-date")).toHaveText(["1 November 2026", "2 May 2026"]);
     await expect(reader.tab.getByText("Night swim")).toHaveCount(0);
     const link = reader.tab.getByRole("link", { name: "Winter series opens", exact: true });
     await expect(link).toHaveAttribute("href", `/${collection.prefix}/winter-series`);

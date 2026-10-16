@@ -111,10 +111,10 @@ test("each entry of the example site's collections draws on the CMS as in React:
         collections: collectionResolver(kept),
         entry: shownEntry(collection, { ...live, id: entry.id }),
       });
-      expect(nodes, live.slug).toBeGreaterThan(70);
-      // Its list of the others: three of them, never itself.
+      expect(nodes, live.slug).toBeGreaterThan(60);
+      // Its list of the others: two of them, never itself.
       const html = await cmsPage.fetchText(path);
-      expect(cards(html), live.slug).toBe(3);
+      expect(cards(html), live.slug).toBe(2);
       expect(html, live.slug).not.toContain(`href="${path}"`);
       compared += 1;
     }

@@ -59,7 +59,7 @@ class EntryPagesTest < ActionDispatch::IntegrationTest
     assert_select "header.sw-header [data-block-type=logo]"
     assert_select "main [data-block-type=field][data-field=title] h1", text: "Dawn swims start again"
     assert_equal [ "Twice a week at first light.", "Bring a <bright> cap." ], css_select("main [data-field=summary] p").map(&:text)
-    assert_select "main [data-field=day] time[datetime='2026-05-02']", text: "May 2, 2026"
+    assert_select "main [data-field=day] time[datetime='2026-05-02']", text: "2 May 2026"
     assert_select "main [data-field=level] p", text: "Improver"
     assert_no_match "Not live yet", response.body
     assert_no_match "A draft.", response.body
@@ -185,7 +185,7 @@ class EntryPagesTest < ActionDispatch::IntegrationTest
     get "/club-news"
 
     assert_equal [ [ "Winter series", "/news/winter-series" ], [ "Dawn swims start again", "/news/dawn-swims" ] ], css_select(".sw-entry-title a").map { |a| [ a.text, a["href"] ] }
-    assert_equal [ "Nov 1, 2026", "May 2, 2026" ], css_select(".sw-entry-date time").map(&:text)
+    assert_equal [ "1 November 2026", "2 May 2026" ], css_select(".sw-entry-date time").map(&:text)
     assert_select ".sw-entry-more[aria-hidden=true]", count: 2
     assert_equal [ @news.id ], page.reload.listed_collections
   end

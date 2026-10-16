@@ -46,7 +46,7 @@ test("each type draws its value as its widget draws it", () => {
   expect(draws({ field: "summary", level: 2 })).toEqual({ shape: "text", paragraphs: ["Twice a week,\nat first light.", "Bring a cap."] });
   expect(draws({ field: "body" })).toEqual({ shape: "text", doc: { type: "doc", content: [{ type: "paragraph" }] } });
   expect(draws({ field: "places" })).toEqual({ shape: "text", paragraphs: ["1,250.5"] });
-  expect(draws({ field: "day" })).toEqual({ shape: "text", day: "2026-10-15", words: "Oct 15, 2026" });
+  expect(draws({ field: "day" })).toEqual({ shape: "text", day: "2026-10-15", words: "15 October 2026" });
   expect(draws({ field: "picture" })).toEqual({ shape: "image", item: { mediaId: "dawn", decorative: true } });
   expect(draws({ field: "booking" })).toEqual({ shape: "button", label: "Book a place", href: "/join" });
   expect(draws({ field: "members-only" })).toEqual({ shape: "text", paragraphs: ["Members only"] });

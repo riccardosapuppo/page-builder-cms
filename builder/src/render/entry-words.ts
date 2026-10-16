@@ -38,15 +38,16 @@ export function dayOf(value: unknown): string | null {
   return typeof value === "string" && dayExists(value) ? value : null;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
 
 // A day as the site writes it, in the editor's words for one (its list of
-// entries, ../editor/collections/words.ts): "Oct 15, 2026", the day itself
-// whatever the reader's zone. Written from the table above rather than
-// Intl, so the server writes the same words from its own.
+// entries, ../editor/collections/words.ts): the day, the month's name and
+// the year, "15 October 2026", with no comma, the day itself whatever the
+// reader's zone. Written from the table above rather than Intl, so the
+// server writes the same words from its own.
 export function dayWords(day: string): string {
   const [year, month, date] = day.split("-").map((part) => Number.parseInt(part, 10));
-  return `${MONTHS[(month ?? 1) - 1] ?? ""} ${date ?? ""}, ${year ?? ""}`;
+  return `${date ?? ""} ${MONTHS[(month ?? 1) - 1] ?? ""} ${year ?? ""}`;
 }
 
 // A number as the site writes it, as the editor's list of entries does:

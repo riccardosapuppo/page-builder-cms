@@ -14,7 +14,7 @@ module EntryWords
   # A field as the renderers need it: its key, its label and its type.
   Field = Data.define(:key, :label, :type)
 
-  MONTHS = %w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec].freeze
+  MONTHS = %w[January February March April May June July August September October November December].freeze
 
   module_function
 
@@ -40,11 +40,12 @@ module EntryWords
     value.is_a?(String) && CollectionDocument::Rules.day_exists?(value) ? value : nil
   end
 
-  # A day as the site writes it, in the editor's words for one: "Oct 15,
-  # 2026", the day itself whatever the reader's zone.
+  # A day as the site writes it, in the editor's words for one: the day,
+  # the month's name and the year, "15 October 2026", with no comma, the
+  # day itself whatever the reader's zone.
   def day_words(day)
     year, month, date = day.split("-").map { |part| Integer(part, 10) }
-    "#{MONTHS[month - 1]} #{date}, #{year}"
+    "#{date} #{MONTHS[month - 1]} #{year}"
   end
 
   # A number as the site writes it, as the editor's list of entries does:

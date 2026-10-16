@@ -23,7 +23,7 @@ export const A11Y: WidgetA11y = {
   cases: [
     { name: "the entry's title as a heading of level 1", props: { field: "title", level: 1 }, exposes: [{ role: "heading", name: "The dawn swim", level: 1 }] },
     { name: "a paragraph field's two paragraphs", props: { field: "summary" }, exposes: [{ role: "paragraph", count: 2 }, { role: "paragraph", text: "Bring a bright cap." }] },
-    { name: "a date field, in words", props: { field: "date" }, exposes: [{ role: "paragraph", text: "Oct 15, 2026" }] },
+    { name: "a date field, in words", props: { field: "date" }, exposes: [{ role: "paragraph", text: "15 October 2026" }] },
     { name: "a link field, as a button's link", props: { field: "more" }, exposes: [{ role: "link", name: "Book a place" }] },
     { name: "a toggle that is on, as its label", props: { field: "members-only" }, exposes: [{ role: "paragraph", text: "Members only" }] },
   ],

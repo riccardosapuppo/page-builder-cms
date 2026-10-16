@@ -31,7 +31,11 @@ test("a value in words, by its field's type; none for none, or for a value of an
   expect(valueWords(field("richText"), { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Bring" }, { type: "hardBreak" }, { type: "text", text: "a towel", marks: [{ type: "bold" }] }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Hat" }] }] }] }] })).toBe("Bring a towel Hat");
   expect(valueWords(number, 1250.5)).toBe("1,250.5");
   expect(valueWords(number, "12")).toBeNull();
-  expect(valueWords(date, "2026-10-15")).toBe("Oct 15, 2026");
+  // A day as the site writes it (../../render/entry-words.ts); one that
+  // does not exist as it is kept.
+  expect(valueWords(date, "2026-10-15")).toBe("15 October 2026");
+  expect(valueWords(date, "2026-11-01")).toBe("1 November 2026");
+  expect(valueWords(date, "2026-02-30")).toBe("2026-02-30");
   expect(valueWords(field("image"), { mediaId: "m1", alt: "The bay" })).toBe("Image: The bay");
   expect(valueWords(field("image"), { mediaId: "m1", decorative: true })).toBe("Decorative image");
   expect(valueWords(field("link"), { label: "Join us", href: "/join" })).toBe("Join us");

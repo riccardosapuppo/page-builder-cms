@@ -106,8 +106,9 @@ class SeedTest < ActionDispatch::IntegrationTest
     # page at the prefix lists them, newest first, each card leading there.
     get "/news/winter-series-starts"
     assert_select "main [data-field=title] h1", text: "The winter series starts on 1 November"
-    assert_select "main [data-field=date] time[datetime='2026-10-14']"
-    assert_equal [ "A rockpool morning for children", "Tea in the hut on Sundays", "Bright caps for the dark mornings" ], css_select("[data-block-id=more-list] .sw-entry-title a").map(&:text)
+    assert_select "main [data-field=date] time[datetime='2026-10-14']", text: "14 October 2026"
+    assert_equal [ "A rockpool morning for children", "Tea in the hut on Sundays" ], css_select("[data-block-id=more-list] .sw-entry-title a").map(&:text)
+    assert_equal [ "2" ], css_select("[data-block-id=more-list]").map { |list| list["data-columns"] }
     get "/news"
     assert_equal %w[/news/winter-series-starts /news/rockpool-morning /news/tea-in-the-hut /news/bright-caps /news/autumn-tide-times], css_select("main .sw-entry-title a").map { |a| a["href"] }
     assert_select "footer.sw-footer .w-menu-links a[href='/news']", text: "News"

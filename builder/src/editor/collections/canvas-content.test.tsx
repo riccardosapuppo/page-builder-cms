@@ -57,7 +57,7 @@ test("a template's Field blocks draw the first published entry's draft, another 
   kit.render(<><Canvas /><TemplatePanel /></>);
 
   expect(root("t").querySelector("h1")?.textContent).toBe("Winter series");
-  expect(root("d").querySelector("time")?.textContent).toBe("Nov 1, 2026");
+  expect(root("d").querySelector("time")?.textContent).toBe("1 November 2026");
   expect(root("m").textContent).toBe("Members only");
   expect(root("g").hasAttribute("hidden")).toBe(true);
   expect(root("g").querySelector(".field-none")?.textContent).toBe("No field “gone” in this collection");
@@ -89,7 +89,7 @@ test("the Field panel lists the title and the collection's fields, says what eac
   fireEvent.change(select, { target: { value: "day" } });
   expect(kit.block("t")?.props).toEqual({ field: "day", level: 2 });
   expect(kit.lastCommand()?.label).toBe("Changed Field shown in Section 1");
-  expect(screen.getByText("The day, written as Oct 15, 2026.")).toBeTruthy();
+  expect(screen.getByText("The day, written as 15 October 2026.")).toBeTruthy();
   expect(screen.queryByRole("radio", { name: "H2" })).toBeNull();
   // A day draws as a text: the text's own groups, not a heading's.
   expect([...window.document.querySelectorAll(".grp .grp-name")].map((name) => name.textContent)).toEqual(["Field", "Size and color", "Type", "Alignment", "Shown on", "Advanced"]);

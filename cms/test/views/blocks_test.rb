@@ -494,7 +494,7 @@ class BlocksTest < ActionView::TestCase
 
     assert_equal [ "7", "grid", "3" ], attributes(html.at_css("[data-block-id=l]"), "data-collection", "data-layout", "data-columns")
     assert_equal [ [ "Winter series", "/news/winter-series" ], [ "Dawn swims", "/news/dawn-swims" ] ], cards.map { |li| [ li.at_css("h3.sw-entry-title a").text, li.at_css("h3 a")["href"] ] }
-    assert_equal [ [ "2026-11-01", "Nov 1, 2026" ], [ "2026-05-02", "May 2, 2026" ] ], cards.map { |li| [ li.at_css("time")["datetime"], li.at_css("time").text ] }
+    assert_equal [ [ "2026-11-01", "1 November 2026" ], [ "2026-05-02", "2 May 2026" ] ], cards.map { |li| [ li.at_css("time")["datetime"], li.at_css("time").text ] }
     assert_equal [ nil, "/media/dawn.png" ], cards.map { |li| li.at_css("figure.sw-entry-image img")&.[]("src") }
     assert_equal "The bay at dawn", cards[1].at_css("img")["alt"]
     assert_equal 1, cards[1].css(".sw-entry-excerpt br").size
@@ -526,7 +526,7 @@ class BlocksTest < ActionView::TestCase
     assert_equal [ "w-heading", "Dawn <swims>" ], [ html.at_css("[data-block-id=t]")["class"].split.third, html.at_css("[data-block-id=t] h1").text ]
     assert_equal "title", html.at_css("[data-block-id=t]")["data-field"]
     assert_equal [ "Twice a week.At first light." ], html.css("[data-block-id=s].w-text p").map(&:text)
-    assert_equal "May 2, 2026", html.at_css("[data-block-id=d] p time[datetime='2026-05-02']").text
+    assert_equal "2 May 2026", html.at_css("[data-block-id=d] p time[datetime='2026-05-02']").text
     assert_equal [ "dawn", "/media/dawn.png", "The bay at dawn" ], [ html.at_css("[data-block-id=p]")["data-media-id"], html.at_css("[data-block-id=p] img")["src"], html.at_css("[data-block-id=p] img")["alt"] ]
     assert_includes html.at_css("[data-block-id=p]")["class"].split, "aspect-16-9"
     assert_equal [ "Book", "/join" ], [ html.at_css("[data-block-id=b].w-button a.sw-btn").text, html.at_css("[data-block-id=b] a")["href"] ]

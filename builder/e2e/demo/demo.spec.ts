@@ -479,7 +479,7 @@ test("the example site's News: an entry's View opens it as the demo draws it; it
   await expect(visit.locator('[data-block-type="field"] h1')).toHaveText(NEWS_TITLES[0]!);
   await expect(visit).toHaveTitle(NEWS_TITLES[0]!);
   await expect(visit.getByRole("heading", { level: 2, name: "More from the slipway" })).toBeVisible();
-  await expect(visit.locator('[data-block-id="more-list"] .sw-entry-title a')).toHaveText(NEWS_TITLES.slice(1, 4));
+  await expect(visit.locator('[data-block-id="more-list"] .sw-entry-title a')).toHaveText(NEWS_TITLES.slice(1, 3));
   await shoot(visit, "demo-entry");
   await noSeriousFinding(visit, "an entry's page");
   await visit.getByRole("link", { name: "All the news" }).click();
