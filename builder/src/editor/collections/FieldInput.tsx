@@ -1,7 +1,8 @@
 // One field of an entry's form, drawn with the sidebar's own controls
 // (../controls.tsx) by its type: a text field for a text, a paragraph's
 // box, the text widget's editor for a rich text (./RichText.tsx, loaded
-// with TipTap when a form first needs it), a number typed as the panels
+// with TipTap when a form first needs it, in the canvas's text editor's
+// chunk, ../rich/TextEditor.tsx), a number typed as the panels
 // type theirs, the browser's date field, an image from the media library
 // with its alt text or the decorative mark (as the image widget's panel
 // has them), a link's words and address (as a button's), a switch, and a
@@ -23,7 +24,7 @@ import { usePageLinks } from "../session.tsx";
 import { amountText, ENTRY_DEEPEST_LIST, imageValue, richTextRefusal, typedAmount } from "./values.ts";
 import { boundsWords } from "./words.ts";
 
-const RichText = lazy(() => import("./RichText.tsx"));
+const RichText = lazy(() => import("../rich/TextEditor.tsx").then((chunk) => ({ default: chunk.EntryRichText })));
 
 // A change of a value of parts (a link's words and address, an image's alt
 // text and its mark), made to the value as the form holds it then: one

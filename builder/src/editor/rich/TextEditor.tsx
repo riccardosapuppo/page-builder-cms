@@ -5,9 +5,17 @@
 // below the block. Everything it does is ./text-session.ts's; this is the
 // part React mounts and unmounts. A chunk of its own, with TipTap and
 // ProseMirror: the default export, for React's lazy().
+//
+// An entry's rich text field (../collections/RichText.tsx) comes in the
+// same chunk, as EntryRichText: it writes with the same editor, and two
+// chunks that both import TipTap would have the build move TipTap into a
+// third one, shared, and split what the entry imports into more files
+// loaded at once (`npm run measure:bundle` holds both to one chunk).
 import { useLayoutEffect, useRef } from "react";
 import { useEnv } from "../context.tsx";
 import { TextSession } from "./text-session.ts";
+
+export { default as EntryRichText } from "../collections/RichText.tsx";
 
 export default function TextEditor({ blockId, label }: { blockId: string; label: string }) {
   const env = useEnv();

@@ -6,8 +6,9 @@
 // the block's toolbar. TipTap's own history is the text's: Ctrl+Z inside
 // it undoes the typing, and the entry's Save keeps the text as it is then.
 //
-// A chunk of its own, with TipTap and ProseMirror, as the canvas's editor
-// is: the default export, for React's lazy() (./FieldInput.tsx).
+// Loaded in the canvas's text editor's chunk, with TipTap and ProseMirror,
+// which re-exports it as EntryRichText for React's lazy() (./FieldInput.tsx,
+// ../rich/TextEditor.tsx says why one chunk).
 import type { Editor } from "@tiptap/core";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { sameJson } from "../../document/json.ts";
