@@ -516,10 +516,24 @@ no warnings, the same morning).
   value the entry does not have, or of another type, leaves its root empty
   and hidden. What both draw from is the page's content
   ([SiteContent](app/models/site_content.rb)): the collections the page
-  and its parts list, read once each, and the entry. A page, a header or a
-  footer holds no Field block, refused at the block, keyword `field`
-  ([PageRules](app/models/page_rules.rb), `SiteParts.check`); a template
-  holds no form (`CollectionTemplate.check`).
+  and its parts list, read once each, the entry, and the shop's settings.
+  A page, a header or a footer holds no Field block, refused at the
+  block, keyword `field` ([PageRules](app/models/page_rules.rb),
+  `SiteParts.check`), and no Add to cart block, keyword `addToCart`; a
+  template holds no form (`CollectionTemplate.check`).
+- **The shop on the page.** A number that is the price of the collection
+  the shop sells from, the shop on, is drawn as money in its currency, by
+  a Field block and on a Collection list's cards (a card's `price`
+  names a number field), a number otherwise
+  ([ShopWords](app/models/shop_words.rb), the twin of the editor's
+  `render/shop-words.ts`, its amounts `ShopRules.money_words`). Add to
+  cart ([_addToCart.html.erb](app/views/blocks/_addToCart.html.erb),
+  [AddToCart](app/models/add_to_cart.rb)) draws, for a product, a form
+  posting `entry` and `quantity` to `/cart/items` as a browser posts
+  a form, with no token and no script, its button a button block's; for
+  one out of stock or with no price, those words where the button goes;
+  for anything else, an empty root, hidden. The settings are read once,
+  only for a page that lists a collection or is drawn with an entry.
 - **An entry's page**
   ([EntryPagesController](app/controllers/entry_pages_controller.rb)) is
   drawn as a page is, inside the published header and footer, under the
@@ -674,9 +688,11 @@ Chromium.
 The shop sells the entries of one collection, its products, through
 Stripe's Checkout in its test mode alone, and can be off, as a new site's
 is ([the decision](../docs/decisions/shop-on-collections.md)). Its first
-phase is here: the settings and the orders, the API, the cart's
-addresses and Stripe's client; the editor's Shop screen, the cart's pages
-as the site's design draws them and the example site's shop come next.
+phases are here: the settings and the orders, the API, the cart's
+addresses and Stripe's client; then the editor's Shop screen, Add to
+cart and the prices on the page (above, "The shop on the page"). The
+cart's pages as the site's design draws them and the example site's
+shop come next.
 
 **The settings** (`ShopSetting`, one row for the site, as the site
 style's): on or off; the currency, GBP, EUR or USD; the collection whose
@@ -729,8 +745,9 @@ on the thanks page, or when the Orders screen asks again.
 
 `ruby bin/rails test test/models/shop_rules_test.rb
 test/models/stripe_client_test.rb test/integration/api/shop_test.rb
-test/integration/api/orders_test.rb test/integration/cart_test.rb` holds
-all of it, against the fake: nothing reaches the network.
+test/integration/api/orders_test.rb test/integration/cart_test.rb
+test/integration/shop_pages_test.rb test/models/shop_words_test.rb`
+holds all of it, against the fake: nothing reaches the network.
 
 ## How the pages are cached
 
@@ -751,7 +768,10 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   versions (a part that has published nothing is named as its starter),
   the collections the page's Collection lists and its parts' name (each
   by its id, the count of the changes a visitor could see of it and the
-  moment of the last, `Collection#advance!`) and the release; `fresh_when`
+  moment of the last, `Collection#advance!`), the shop's settings for a
+  page that draws them (one that lists the collection the shop sells from,
+  or is drawn with an entry of it, while the shop is on:
+  `SiteContent#shop_key`) and the release; `fresh_when`
   is not used, because its digest of the action's
   template sees neither the layout nor the partials a helper renders.
   The version is named by its id and by the moment the page was put
@@ -777,8 +797,12 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   page that holds the same ones, and the header's and footer's are cached
   as a page's are, once for every page. A Collection list's digest holds
   its collection's key too, so a publish of an entry redraws the list and
-  what holds it, and on an entry's page the entry it leaves out; a Field
-  block's holds what it draws of the entry.
+  what holds it, and on an entry's page the entry it leaves out, and the
+  shop's settings while the shop sells from its collection; a Field
+  block's holds what it draws of the entry, a price in the shop's
+  currency included, and an Add to cart block's what it draws: a change
+  of the currency redraws the prices and what holds them, and reads the
+  rest back.
 
 An **entry's page** is cached the same way: its ETag and its whole page
 keyed on the entry as it went live (a digest of its published title,
@@ -1394,9 +1418,12 @@ sweep above does the same for a schedule that is more than a minute late.
   `EntryWords` and `EntryOrder` (the twins of the editor's
   `widgets/collectionList/cards.ts`, `widgets/field/drawing.ts`,
   `render/entry-words.ts` and `shared/entry-order.ts`), and `PageRules`
-  (a page's checks: no Field block); for the shop, `ShopSetting` (its
-  settings), `ShopRules` (the twin of the editor's `shared/shop.ts`: the
-  settings' rules, money, the cart's rules), `Order` (a checkout, and what
+  (a page's checks: no Field block, no Add to cart block); for the shop,
+  `ShopSetting` (its settings), `ShopRules` (the twin of the editor's
+  `shared/shop.ts`: the settings' rules, money, the cart's rules),
+  `ShopWords` and `AddToCart` (the twins of the editor's
+  `render/shop-words.ts` and `widgets/addToCart/drawing.ts`: a price on
+  the page, and Add to cart), `Order` (a checkout, and what
   Stripe says of it), `StripeSettings` (the key and the address, from the
   environment) and `StripeClient` (Stripe's two calls, over Net::HTTP).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,

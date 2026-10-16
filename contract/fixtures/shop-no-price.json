@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "title": "No price",
+  "description": "The template of the collection the shop sells from, in dollars, a collection with no toggle of stock, drawn with a product whose price is below nothing: the price drawing nothing, and Add to cart saying it is not for sale where its button goes.",
+  "shop": { "enabled": true, "currency": "USD", "productsCollectionId": 9, "priceField": "cost" },
+  "entry": {
+    "id": 61,
+    "collectionId": 9,
+    "fields": [
+      { "key": "cost", "label": "Cost", "type": "number", "required": false }
+    ],
+    "title": "Old towel",
+    "slug": "old-towel",
+    "values": { "cost": -3 }
+  },
+  "sections": [
+    {
+      "id": "sn-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "sn-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "sn-price", "type": "field", "props": { "field": "cost" }, "style": { "base": {} }, "children": [] },
+            { "id": "sn-cart", "type": "addToCart", "props": { "label": "Add to cart", "quantity": false }, "style": { "base": { "background": "text", "color": "background" } }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

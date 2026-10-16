@@ -11,7 +11,9 @@
 # without a level, a paragraph's lines, a rich text, a day, a toggle that
 # is on, a choice's option, a number), an image's, a button's (a link).
 # Nothing at all for a value the entry has not, or not of its field's
-# type, and on a page with no entry: what is not a template's.
+# type, and on a page with no entry: what is not a template's. A number
+# that is the price of the collection the shop sells from, the shop on, is
+# written as money in the shop's currency (ShopWords).
 #
 # An entry is a Hash as SiteContent gives it (and the contract's
 # fixtures): its collection's "fields", its "title", "slug" and "values".
@@ -36,8 +38,9 @@ module EntryField
     props["level"].is_a?(Integer) && props["level"].between?(1, 4) ? props["level"] : nil
   end
 
-  # What the block draws with the entry, or nil for nothing.
-  def drawing(props, entry)
+  # What the block draws with the entry, and the shop for a price, or nil
+  # for nothing.
+  def drawing(props, entry, shop = nil)
     return nil unless entry.is_a?(Hash) && props["field"].is_a?(String)
     return text_drawing(entry["title"], level(props)) if props["field"] == TITLE
 
@@ -52,7 +55,7 @@ module EntryField
       day = EntryWords.day_of(value)
       day && Drawing.new(shape: "text", day: day, words: EntryWords.day_words(day))
     when "number"
-      words = EntryWords.number_words(value)
+      words = ShopWords.number_or_price(value, field.key, entry["collectionId"], shop)
       words && Drawing.new(shape: "text", paragraphs: [ words ])
     when "toggle" then value == true && !field.label.empty? ? Drawing.new(shape: "text", paragraphs: [ field.label ]) : nil
     when "image"

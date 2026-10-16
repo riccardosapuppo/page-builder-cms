@@ -30,13 +30,16 @@ module CollectionTemplate
   # sampleEntry): its label for a text, a line about it for a paragraph
   # and a rich text, its lowest number (or its highest, or 12), today, its
   # label and the top of the page for a link, a toggle on, its first
-  # option; no image, which no field could make up.
+  # option; no image, which no field could make up. Its collection's id
+  # comes with it, by which a price is drawn in the shop's currency
+  # (ShopWords); it has no id of its own, being no entry, so no list
+  # leaves it out and no Add to cart puts it in a cart.
   def sample(collection, today: Time.zone.today)
     values = collection.fields.each_with_object({}) do |field, made|
       value = sample_value(field, today)
       made[field["key"]] = value unless value.nil?
     end
-    { "fields" => collection.fields, "title" => SAMPLE_TITLE, "slug" => "sample", "values" => values }
+    { "collectionId" => collection.id, "fields" => collection.fields, "title" => SAMPLE_TITLE, "slug" => "sample", "values" => values }
   end
 
   SAMPLE_TITLE = "The title of an entry"

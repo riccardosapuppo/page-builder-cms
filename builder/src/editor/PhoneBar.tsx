@@ -3,12 +3,13 @@
 // safe area): Insert and the Outline, each a sheet over the canvas; undo
 // and redo; the settings of the page or of the block selected, a sheet
 // too; and More, what the wide editor's top bar and bottom line hold
-// besides: Preview, History, the Assistant, Collections, the device the
-// page is looked at on, and Block edges. One sheet at a time: opening one
-// closes the one open.
+// besides: Preview, History, the Assistant, Collections, the Shop, the
+// device the page is looked at on, and Block edges. One sheet at a time:
+// opening one closes the one open.
 import { useEffect, useRef, useState } from "react";
 import { runRedo, runUndo } from "./act.ts";
 import { useCollectionsStorage } from "./collections/context.ts";
+import { useShopStorage } from "./shop/context.ts";
 import { useEditor, useEnv, useUi } from "./context.tsx";
 import { closeDrawer, toggleDrawer } from "./Drawer.tsx";
 import { Icon, type IconName } from "./icons.tsx";
@@ -89,12 +90,13 @@ export function PhoneBar() {
   );
 }
 
-// More's sheet: Preview, History, the Assistant, Collections when the
-// storage keeps them, the device and Block edges. Esc, or a press outside
-// it, closes it.
+// More's sheet: Preview, History, the Assistant, Collections and the
+// Shop when the storage keeps them, the device and Block edges. Esc, or a
+// press outside it, closes it.
 function MoreSheet({ onClose }: { onClose: () => void }) {
   const env = useEnv();
   const collections = useCollectionsStorage();
+  const shop = useShopStorage();
   const box = useRef<HTMLElement>(null);
   useEffect(() => {
     box.current?.querySelector<HTMLElement>("a, button")?.focus({ preventScroll: true });
@@ -132,6 +134,11 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
           // back when it closes.
           <button className="btn btn-secondary" type="button" aria-haspopup="dialog" onClick={() => { onClose(); env.ui.getState().setCollections({ collectionId: null }); }}>
             <Icon name="collection" />Collections
+          </button>
+        )}
+        {shop && (
+          <button className="btn btn-secondary" type="button" aria-haspopup="dialog" onClick={() => { onClose(); env.ui.getState().setShopOpen(true); }}>
+            <Icon name="shop" />Shop
           </button>
         )}
       </div>

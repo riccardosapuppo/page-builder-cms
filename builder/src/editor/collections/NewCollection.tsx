@@ -1,6 +1,6 @@
 // A new collection (the design's New collection): its name, its prefix,
 // suggested from the name until one is typed, and the fields it starts
-// with, from one of three presets (./presets.ts). Checked as the storage
+// with, from one of four presets (./presets.ts). Checked as the storage
 // checks it before it is sent (validateCollection), each refusal at its
 // field, the storage's own (a prefix another collection has, or one the
 // site answers itself) the same way. Made, it opens on its entries, empty.

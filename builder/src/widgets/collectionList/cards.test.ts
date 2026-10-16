@@ -82,6 +82,18 @@ test("a card shows the fields the list names, each of its type only: no image, n
   expect(compact.map((card) => card.day)).toEqual(["2026-11-01", null, "2026-11-01", "2026-05-02"]);
 });
 
+test("a card's price is a number field's value, as money while the shop sells from the collection, a number otherwise, compact lists too", () => {
+  const shop = { enabled: true, currency: "GBP", productsCollectionId: 3, priceField: "places" };
+  const prices = (props: Record<string, unknown>, sold: unknown = shop) => listCards(list({ order: { by: "publishedAt", direction: "asc" }, ...props }), news, undefined, null, sold as never).map((card) => card.price);
+  expect(prices({ price: "places" })).toEqual(["£12.00", "£9.50", "£40.00", null]);
+  expect(prices({ price: "places", layout: "compact" })).toEqual(["£12.00", "£9.50", "£40.00", null]);
+  expect(prices({ price: "places" }, { ...shop, enabled: false })).toEqual(["12", "9.5", "40", null]);
+  expect(prices({ price: "places" }, { ...shop, productsCollectionId: 4 })).toEqual(["12", "9.5", "40", null]);
+  expect(prices({ price: "places" }, null)).toEqual(["12", "9.5", "40", null]);
+  // Of the right type only, as the card's other fields.
+  expect([prices({ price: "day" }), prices({ price: "gone" }), prices({})]).toEqual([[null, null, null, null], [null, null, null, null], [null, null, null, null]]);
+});
+
 test("on an entry's page a list of its collection leaves the entry out and shows as many others; made-up values and an entry of another collection leave nothing out", () => {
   const shown = (id: unknown, collectionId: unknown) => ({ id, collectionId, fields: [], title: "", slug: "", values: {} }) as unknown as ShownEntry;
   const titles = (entry: ShownEntry | null) => listCards(list({ count: 2 }), news, undefined, entry).map((card) => card.id);

@@ -25,7 +25,7 @@ function dataAttributes(data: Readonly<Record<string, string>>): Record<string, 
 export function FieldRender({ block, ctx, decoration }: BlockRenderProps) {
   const props = blockProps(block);
   const style = blockStyle(block);
-  const drawing = fieldDrawing(props, ctx.entry);
+  const drawing = fieldDrawing(props, ctx.entry, ctx.shop);
   const field = { field: typeof props.field === "string" ? props.field : null };
   if (drawing === null) return <BlockRoot block={block} classes={["w", "w-field"]} data={field} attributes={{ hidden: true }} decoration={decoration} />;
   const text = (content: ReactNode) => (

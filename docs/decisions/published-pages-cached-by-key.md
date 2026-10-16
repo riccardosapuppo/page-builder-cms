@@ -64,6 +64,20 @@ a publish of an entry redraws the list and what holds it, and nothing
 else; an entry's page is keyed as a page is, on its template's published
 version, and on a digest of what the entry went live with.
 
+Since 16 October 2026 a page can draw the shop
+([shop-on-collections.md](shop-on-collections.md)): a price in the shop's
+currency, by a Field block or on a Collection list's cards, and Add to
+cart. The same rule names it, as the site style is named: a page that
+lists the collection the shop sells from, or is drawn with an entry of
+it, while the shop is on, is keyed on a digest of the shop's settings
+(on, the currency, the collection and its price field), its ETag
+included, and so is a list's fragment of that collection; a Field
+block's and an Add to cart block's fragments hold what they draw. Any
+other page draws as it would with no shop at all, so a change of the
+settings leaves its keys, and its 304, alone. Whether a page draws the
+shop is read from its row and the settings' one row before any document
+is: a page that lists no collection and has no entry reads neither.
+
 The other ways, and why not:
 - **Deleting on change**: every path that changes a page (publish,
   scheduled publish, site style, a publish of the header or the footer, a

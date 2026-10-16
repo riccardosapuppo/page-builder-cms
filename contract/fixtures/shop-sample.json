@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "title": "Sample product",
+  "description": "The template of the collection the shop sells from, drawn with values made up for a collection with no entry yet, which carry the collection's id but no id of their own: the price drawn as money, and Add to cart, with no product to put in a cart, drawing nothing.",
+  "shop": { "enabled": true, "currency": "GBP", "productsCollectionId": 7, "priceField": "price" },
+  "entry": {
+    "collectionId": 7,
+    "fields": [
+      { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+      { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+    ],
+    "title": "The title of an entry",
+    "slug": "sample",
+    "values": { "price": 0, "in-stock": true }
+  },
+  "sections": [
+    {
+      "id": "ss-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "ss-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "ss-price", "type": "field", "props": { "field": "price", "level": 2 }, "style": { "base": {} }, "children": [] },
+            { "id": "ss-cart", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": {} }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -27,13 +27,20 @@
 #   a visitor could see of it and when the last was made, which a publish,
 #   an unpublish or the delete of a live entry, and any change of the
 #   collection's definition, move (Collection#advance!);
+# - the shop's settings (on, the currency, the products collection and
+#   its price field), for a page that lists the collection the shop sells
+#   from or is drawn with an entry of it, while the shop is on
+#   (SiteContent#shop_key): its prices are drawn in the shop's currency,
+#   its Add to cart by them; any other page is drawn as with no shop;
 # - for one block, nothing but its own subtree, rendered through the
 #   partials of that release; and for a Collection list its collection's
-#   key, and for a Field block what it draws of its entry.
+#   key, and the shop's while it sells from that collection, and for a
+#   Field block and an Add to cart block what it draws of its entry.
 #
 # So the browser's validator (the ETag) and the page's outer fragment are
 # keyed on the version, the site style, the header and footer, the
-# collections listed and the release; each block's fragment on a digest
+# collections listed, the shop where it draws, and the release; each
+# block's fragment on a digest
 # of its subtree and the revision of the token CSS, under the release
 # (PublicPage's fragment_cache_key), the header's and the footer's blocks
 # too: a new header redraws only its blocks that changed, once, and every
@@ -84,7 +91,7 @@ module PageCache
   # release is not repeated here: every fragment key of the public pages
   # starts with it (PublicPage).
   def page_fragment(page, site_style, parts, content = SiteContent::NONE)
-    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts), content.keys ]
+    [ "page", *published_key(page), site_style_key(site_style), parts_key(parts), content.keys, *content.shop_key ]
   end
 
   # The same for an entry's page: its entry and its collection's fields
@@ -94,7 +101,7 @@ module PageCache
   end
 
   def entry_fragment(collection, entry, template, site_style, parts, content)
-    [ "entry", *entry_key(collection, entry), *published_key(template), site_style_key(site_style), parts_key(parts), content.keys ]
+    [ "entry", *entry_key(collection, entry), *published_key(template), site_style_key(site_style), parts_key(parts), content.keys, *content.shop_key ]
   end
 
   # An entry as its page draws it: its id, and a digest of what it went
@@ -126,6 +133,13 @@ module PageCache
   def site_style_key(site_style)
     palette = site_style.palette.is_a?(Hash) ? site_style.palette.sort : site_style.palette
     ActiveSupport::Digest.hexdigest(JSON.generate([ palette, site_style.type_scale, site_style.letter_width, site_style.custom_css ]))
+  end
+
+  # The shop's settings as a short key: on or off, the currency, the
+  # products collection and its price field (ShopSetting#settings). The
+  # rules allow one way to write each, so equal keys mean equal prices.
+  def shop_key(settings)
+    ActiveSupport::Digest.hexdigest(JSON.generate(settings.values_at("enabled", "currency", "productsCollectionId", "priceField")))
   end
 
   # The header and footer the pages draw (SiteParts.live), each as its kind
@@ -255,12 +269,15 @@ module PageCache
   # block without its children and the digests of its children, so a
   # page's digests cost one pass over its document. Equal digests mean
   # equal subtrees, and the partials draw a block from its subtree alone,
-  # but for the two that draw from the render's content (SiteContent),
-  # whose digest holds what they draw from too: a Collection list its
+  # but for those that draw from the render's content (SiteContent), whose
+  # digest holds what they draw from too: a Collection list its
   # collection's key, which every change a visitor could see of it moves
-  # (Collection#advance!), and the entry it leaves out on that entry's
-  # page; a Field block what it draws of the entry (EntryField.drawing), so
-  # two entries with the same value share it.
+  # (Collection#advance!), the entry it leaves out on that entry's page,
+  # and the shop's settings while the shop sells from its collection, by
+  # which its prices are drawn; a Field block what it draws of the entry
+  # (EntryField.drawing, a price in the shop's currency), so two entries
+  # with the same value share it; an Add to cart block what it draws
+  # (AddToCart.drawing): the product, and whether it is for sale.
   class BlockKeys
     def initialize(token_css: PageCache.token_css_revision, content: SiteContent::NONE)
       @token_css = token_css
@@ -286,8 +303,9 @@ module PageCache
       case block["type"]
       when "collectionList"
         id = CollectionList.listed_id(props)
-        [ id && @content.collection_key(id), CollectionList.left_out(id, @content.entry) ]
-      when "field" then [ EntryField.drawing(props, @content.entry)&.to_h ]
+        [ id && @content.collection_key(id), CollectionList.left_out(id, @content.entry), *(id && @content.list_shop_key(id)) ]
+      when "field" then [ EntryField.drawing(props, @content.entry, @content.shop)&.to_h ]
+      when "addToCart" then [ AddToCart.drawing(props, @content.entry, @content.shop)&.to_h ]
       else []
       end
     end

@@ -884,6 +884,24 @@
                   "align": "center"
                 }
               }
+            },
+            {
+              "id": "news-cart",
+              "type": "addToCart",
+              "props": {
+                "label": "Add to cart",
+                "quantity": true
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "primary",
+                  "color": "background"
+                },
+                "phone": {
+                  "align": "center"
+                }
+              }
             }
           ],
           "style": {

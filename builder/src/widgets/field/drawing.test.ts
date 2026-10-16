@@ -1,7 +1,8 @@
 // What a Field block draws (./drawing.ts), the twin of EntryField
 // (cms/app/models/entry_field.rb), which the render contract holds to it
 // on the fixtures; here, its rules one by one: what each type draws as,
-// the value it draws, and when it draws nothing.
+// the value it draws, and when it draws nothing; and the shop's price,
+// drawn as money.
 import { expect, test } from "vitest";
 import type { ShownEntry } from "../../render/context.ts";
 import { fieldDrawing, fieldShape } from "./drawing.ts";
@@ -57,4 +58,18 @@ test("nothing for a value the entry has not, one of another type, a key no field
   const odd: ShownEntry = { ...entry, title: "", values: { place: 42, summary: "\n\n", day: "2026-02-30", places: 0.125, picture: "dawn", booking: "Book", "members-only": false, level: "" } };
   for (const field of ["title", "place", "summary", "day", "places", "picture", "booking", "members-only", "level", "body"]) expect(draws({ field }, odd), field).toBeNull();
   expect([draws({ field: "gone" }), draws({ field: 3 }), draws({ field: "title" }, null)]).toEqual([null, null, null]);
+});
+
+test("the price of the collection the shop sells from is drawn as money in its currency; with the shop off, or another collection's number, as a number", () => {
+  const product: ShownEntry = { ...entry, id: 41, collectionId: 7 };
+  const shop = { enabled: true, currency: "EUR", productsCollectionId: 7, priceField: "places" };
+  expect(fieldDrawing({ field: "places" }, product, shop)).toEqual({ shape: "text", paragraphs: ["€1,250.50"] });
+  // Made-up values carry their collection's id, and draw the price so too.
+  expect(fieldDrawing({ field: "places" }, { ...entry, collectionId: 7 }, shop)).toEqual({ shape: "text", paragraphs: ["€1,250.50"] });
+  expect(fieldDrawing({ field: "places" }, product, { ...shop, enabled: false })).toEqual({ shape: "text", paragraphs: ["1,250.5"] });
+  expect(fieldDrawing({ field: "places" }, { ...product, collectionId: 8 }, shop)).toEqual({ shape: "text", paragraphs: ["1,250.5"] });
+  expect(fieldDrawing({ field: "places" }, product, null)).toEqual({ shape: "text", paragraphs: ["1,250.5"] });
+  // A value no price can be draws nothing; another field, its own way.
+  expect(fieldDrawing({ field: "places" }, { ...product, values: { places: -3 } }, shop)).toBeNull();
+  expect(fieldDrawing({ field: "place" }, product, { ...shop, priceField: "place" })).toEqual({ shape: "text", paragraphs: ["The slipway"] });
 });

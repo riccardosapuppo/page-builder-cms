@@ -78,6 +78,7 @@ const collectionList = (id: string, props: J = {}, style: Style = plain()): J =>
   collection: 1, count: 3, order: { by: "publishedAt", direction: "desc" }, layout: "grid", columns: 3, linkLabel: "Read more", emptyText: "Nothing here yet.", ...props,
 }, [], style);
 const entryField = (id: string, props: J, style: Style = plain()): J => block(id, "field", props, [], style);
+const addToCart = (id: string, label: string, quantity: boolean, style: Style = plain()): J => block(id, "addToCart", { label, quantity }, [], style);
 
 // --- rich text ------------------------------------------------------------------
 const t = (s: string, marks?: J[]): J => (marks ? { type: "text", text: s, marks } : { type: "text", text: s });
@@ -184,6 +185,7 @@ function landing(): J {
           order: { by: "date", direction: "desc" }, filter: { field: "level", value: "Beginner" }, image: "image", date: "date", excerpt: "summary",
         }, { base: { color: "primary" }, phone: { visibility: "hidden" } }),
         entryField("news-title", { field: "title", level: 3 }, { base: { textSize: "heading-3", color: "accent" }, phone: { align: "center" } }),
+        addToCart("news-cart", "Add to cart", true, { base: { background: "primary", color: "background" }, phone: { align: "center" } }),
       ]),
     ], { anchor: "news" }),
     section("join", [
@@ -257,6 +259,7 @@ const STEPS = P("questions-steps");
 const PRICING = P("prices-plans");
 const ENTRIES = P("news-list");
 const FIELD_BLOCK = P("news-title");
+const CART = P("news-cart");
 const JOIN = P("join");
 const DIV = P("join-divider");
 const SPC = P("join-spacer");
@@ -611,6 +614,19 @@ valid("collection-lists", "collection lists of every layout, one entry and twent
       delete unchosen.props.collection;
       return unchosen;
     })(),
+  ])]),
+]));
+valid("collection-list-price", "a card's price, a number field's key, beside its image, its day and its excerpt, in a grid and in a compact list", doc("Prices", [
+  section("cp", [column("cp-1", [
+    collectionList("cp-grid", { image: "image", excerpt: "summary", price: "price", linkLabel: "See it" }),
+    collectionList("cp-compact", { layout: "compact", order: { by: "price", direction: "asc" }, date: "day", price: `p${"r".repeat(63)}` }),
+  ])]),
+]));
+valid("add-to-cart", "Add to cart with its quantity and without, a button's words of one character and of 80, in code points too; every setting a button takes, on every device, a colour of the site's own among them", doc("Add to cart", [
+  section("ac", [column("ac-1", [
+    addToCart("ac-quantity", "Add to cart", true),
+    addToCart("ac-one", "A", false, { base: { background: "accent", color: "text", align: "center" }, tablet: { background: "#1d4e6f", color: "background" }, phone: { align: "left", visibility: "hidden" } }),
+    addToCart("ac-long", cp(0x1f30a).repeat(80), false),
   ])]),
 ]));
 valid("fields", "the entry's title and a field by its key, a text drawn as a heading of every level and as a paragraph; every setting a field drawn as a heading, a text, an image or a button takes, free type included, on every device; a key of 64 characters", doc("Fields", [
@@ -1145,6 +1161,8 @@ invalid("list-empty-text-newline", "an empty list's words are one line", `${ENTR
 invalid("list-entries-stored", "the entries a list shows are the CMS's, read as the page is drawn: never kept in the page", `${ENTRIES}/props/entries`, "additionalProperties", (d) => { listProps(d).entries = [{ title: "First swim", slug: "first-swim" }]; });
 invalid("list-style-background", "a list takes the band's background: its cards draw their own", `${ENTRIES}/style/base/background`, "additionalProperties", (d) => { at(d, ENTRIES).style.base.background = "soft"; });
 invalid("list-style-text-size", "a list's cards keep the theme's sizes", `${ENTRIES}/style/phone/textSize`, "additionalProperties", (d) => { at(d, ENTRIES).style.phone.textSize = "small"; });
+invalid("list-price-key-label", "a card's price is a field's key, never its label", `${ENTRIES}/props/price`, "pattern", (d) => { listProps(d).price = "Price"; });
+invalid("list-price-key-number", "a card's price names its field, never holds an amount", `${ENTRIES}/props/price`, "type", (d) => { listProps(d).price = 12; });
 invalid("list-with-children", "a collection list holds no blocks", `${ENTRIES}/children`, "maxItems", (d) => { at(d, ENTRIES).children.push(heading("in-list", 2, "In the list")); });
 
 // =============================== INVALID: field =================================
@@ -1157,6 +1175,21 @@ invalid("field-value-stored", "the value is the entry's, read as the entry's pag
 invalid("field-style-space", "a field takes the settings of the widgets it draws as, and no column's", `${FIELD_BLOCK}/style/base/spaceInside`, "additionalProperties", (d) => { at(d, FIELD_BLOCK).style.base.spaceInside = "l"; });
 invalid("field-style-unknown-aspect", "an image it draws is cropped to one of the image widget's shapes", `${FIELD_BLOCK}/style/phone/aspect`, "enum", (d) => { at(d, FIELD_BLOCK).style.phone.aspect = "2:1"; });
 invalid("field-with-children", "a field block holds no blocks", `${FIELD_BLOCK}/children`, "maxItems", (d) => { at(d, FIELD_BLOCK).children.push(heading("in-field", 2, "In the field")); });
+
+// =============================== INVALID: add to cart ===========================
+const cartProps = (d: J): J => at(d, CART).props;
+invalid("cart-label-missing", "Add to cart has its button's words", `${CART}/props`, "required", (d) => { delete cartProps(d).label; });
+invalid("cart-label-blank", "its words have a visible character", `${CART}/props/label`, "pattern", (d) => { cartProps(d).label = `${NBSP}${ZERO_WIDTH_SPACE}`; });
+invalid("cart-label-newline", "its words are one line", `${CART}/props/label`, "not", (d) => { cartProps(d).label = `Add to${NEWLINE}cart`; });
+invalid("cart-label-too-long", "its words have at most 80 characters, as a button block's", `${CART}/props/label`, "maxLength", (d) => { cartProps(d).label = "A".repeat(81); });
+invalid("cart-quantity-missing", "whether it asks how many is always said", `${CART}/props`, "required", (d) => { delete cartProps(d).quantity; });
+invalid("cart-quantity-number", "whether it asks how many is true or false, never a number put in", `${CART}/props/quantity`, "type", (d) => { cartProps(d).quantity = 2; });
+invalid("cart-entry-stored", "the product is the entry the template is drawn with, read as its page is drawn: never kept in the template", `${CART}/props/entry`, "additionalProperties", (d) => { cartProps(d).entry = 12; });
+invalid("cart-price-stored", "a price is what the product published, never the block's", `${CART}/props/price`, "additionalProperties", (d) => { cartProps(d).price = 12; });
+invalid("cart-href", "it posts to the cart's own address, which no block names", `${CART}/props/href`, "additionalProperties", (d) => { cartProps(d).href = "/cart/items"; });
+invalid("cart-style-text-size", "it takes a button's settings, and no text's", `${CART}/style/base/textSize`, "additionalProperties", (d) => { at(d, CART).style.base.textSize = "large"; });
+invalid("cart-style-aspect", "it takes no image's crop", `${CART}/style/tablet/aspect`, "additionalProperties", (d) => { at(d, CART).style.tablet = { aspect: "1:1" }; });
+invalid("cart-with-children", "Add to cart holds no blocks", `${CART}/children`, "maxItems", (d) => { at(d, CART).children.push(heading("in-cart", 2, "In the cart")); });
 
 // =============================== INVALID: form ==================================
 const FIELD = (k: number): string => `${FORM}/props/items/${k}`;

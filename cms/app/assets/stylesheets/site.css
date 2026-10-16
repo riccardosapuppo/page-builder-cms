@@ -4,7 +4,7 @@
    write (app/views/blocks/). Same class names where the mock and the
    renderer mean the same thing (.site, .sw, .sec, .cols, .col, .w, .sw-btn,
    .sw-iconbox, .sw-gallery, .sw-embed, .sw-quote, .sw-accordion, .sw-form,
-   .sw-field, .sw-check, the header
+   .sw-field, .sw-check, .sw-cart-add, the header
    and footer), and the same container queries on the page root: layout
    changes with the width of .site, never with the viewport.
 
@@ -633,6 +633,14 @@ a.sw-btn:not([href]) { cursor: default; }
 .w-collectionList[data-layout="compact"] .sw-entry-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-xs) var(--space-m); }
 .w-collectionList[data-layout="compact"] .sw-entry-title { font-size: var(--fs-body); line-height: 1.4; font-weight: 600; }
 .w-collectionList[data-layout="compact"] .sw-entry-date { white-space: nowrap; }
+/* A card's price: in the shop's currency when it is the shop's, in the
+   button's face, figures of one width; in a compact row, at the right,
+   under the day when there is one. */
+.sw-entry-price {
+  font-family: "Archivo", "Helvetica Neue", sans-serif; font-size: 17px; line-height: 1.3; font-weight: 650; font-stretch: var(--stretch-strong, 100%);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.w-collectionList[data-layout="compact"] .sw-entry-price { grid-column: 2; white-space: nowrap; }
 
 /* ---------- Form ---------- */
 /* The mock's form. A field's own colours (paper, ink, a muted border) go
@@ -664,6 +672,16 @@ a.sw-btn:not([href]) { cursor: default; }
 .sw-trap { display: none; }
 .sw-form .sw-btn { justify-self: start; margin-top: var(--space-s); }
 .sw-btn-primary { background-color: var(--sw-primary); color: var(--sw-background); }
+
+/* ---------- Add to cart ---------- */
+/* A product's form: how many, as wide as a few figures, then the button,
+   a button block's, side by side where they fit and placed by the block's
+   alignment. A product out of stock, or with no price, says so where the
+   button goes, in its shape and the band's words, and is no button. */
+.sw-cart-add { display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-s) var(--space-m); max-width: 100%; vertical-align: top; text-align: left; }
+.sw-cart-add .sw-field input { width: 6.5rem; }
+.w-addToCart .sw-btn { vertical-align: top; }
+.sw-btn-off { background-color: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; cursor: default; }
 /* Above a page drawn again for a refused form (pages/_form_errors): the
    same words as under the fields, each a link to its field, in the same
    ink border and bold, since the form may sit far down the page. */
@@ -717,6 +735,9 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-header .w-button .sw-btn { display: inline-flex; width: auto; padding: 0 16px; }
   .w-button .sw-btn { display: flex; width: 100%; }
   .sw-form .sw-btn { justify-self: stretch; }
+  .sw-cart-add { display: flex; }
+  .sw-cart-add .sw-btn { flex: 1 1 10rem; }
+  .w-addToCart .sw-btn-off { display: flex; width: 100%; }
   .sw-figure img { border-radius: 8px; }
   .sw-iconbox { grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-m); }
   .sw-icon { width: 40px; height: 40px; }

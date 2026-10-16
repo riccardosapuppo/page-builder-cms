@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "title": "Shop",
+  "description": "The template of the collection the shop sells from, in pounds, drawn with a product for sale: its price drawn as money by a Field block and its other number as a number; Add to cart with a quantity and without, with every setting a button takes on every device, words holding markup, and props the schema does not take; and Collection lists of the products, their cards' prices as money, a price of nothing, the most a number field keeps, and values no price can be (below zero, three decimals, a text, none), the entry the page is drawn with left out.",
+  "shop": { "enabled": true, "currency": "GBP", "productsCollectionId": 7, "priceField": "price" },
+  "entry": {
+    "id": 41,
+    "collectionId": 7,
+    "fields": [
+      { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+      { "key": "image", "label": "Image", "type": "image", "required": false },
+      { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+      { "key": "weight", "label": "Weight in grams", "type": "number", "required": false },
+      { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+    ],
+    "title": "Swim cap",
+    "slug": "swim-cap",
+    "values": { "summary": "Bright orange, seen from the shore.", "price": 1250.5, "weight": 85.5, "in-stock": true }
+  },
+  "sections": [
+    {
+      "id": "sh-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "sh-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "sh-title", "type": "field", "props": { "field": "title", "level": 1 }, "style": { "base": {} }, "children": [] },
+            { "id": "sh-price", "type": "field", "props": { "field": "price" }, "style": { "base": { "textSize": "large", "color": "primary" } }, "children": [] },
+            { "id": "sh-weight", "type": "field", "props": { "field": "weight" }, "style": { "base": {} }, "children": [] },
+            { "id": "sh-cart-quantity", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": {} }, "children": [] },
+            { "id": "sh-cart-one", "type": "addToCart", "props": { "label": "Buy one", "quantity": false }, "style": { "base": { "align": "right" } }, "children": [] },
+            {
+              "id": "sh-cart-styled", "type": "addToCart", "props": { "label": "Add it", "quantity": true, "className": "buy-now", "anchor": "buy" },
+              "style": {
+                "base": { "background": "primary", "color": "background", "align": "center" },
+                "tablet": { "background": "#1d4e6f", "color": "#fafafa" },
+                "phone": { "align": "left", "visibility": "hidden" }
+              },
+              "children": []
+            },
+            { "id": "sh-cart-markup", "type": "addToCart", "props": { "label": "<b>Buy</b> & \"go\" 🌊 now", "quantity": false }, "style": { "base": {} }, "children": [] },
+            { "id": "sh-cart-bad-props", "type": "addToCart", "props": { "label": 12, "quantity": "yes", "entry": 99, "href": "javascript:alert(1)" }, "style": { "base": { "background": "gold", "textSize": "large" } }, "children": [] },
+            {
+              "id": "sh-list-grid", "type": "collectionList",
+              "props": { "collection": 7, "count": 8, "order": { "by": "price", "direction": "asc" }, "layout": "grid", "columns": 3, "image": "image", "excerpt": "summary", "price": "price", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            },
+            {
+              "id": "sh-list-compact", "type": "collectionList",
+              "props": { "collection": 7, "count": 3, "order": { "by": "title", "direction": "asc" }, "layout": "compact", "columns": 3, "price": "price", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 7,
+      "prefix": "shop",
+      "fields": [
+        { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+        { "key": "image", "label": "Image", "type": "image", "required": false },
+        { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+        { "key": "weight", "label": "Weight in grams", "type": "number", "required": false },
+        { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+      ],
+      "entries": [
+        { "id": 41, "title": "Swim cap", "slug": "swim-cap", "publishedAt": "2026-10-01T08:00:00.000Z", "values": { "summary": "Bright orange, seen from the shore.", "price": 1250.5, "weight": 85.5, "in-stock": true } },
+        { "id": 42, "title": "Tow float", "slug": "tow-float", "publishedAt": "2026-10-02T08:00:00.000Z", "values": { "summary": "Something to hold on to.", "image": { "mediaId": "float", "alt": "A yellow tow float on a rock" }, "price": 24, "in-stock": true } },
+        { "id": 43, "title": "Enamel mug", "slug": "enamel-mug", "publishedAt": "2026-10-03T08:00:00.000Z", "values": { "price": 0, "in-stock": false } },
+        { "id": 44, "title": "A <b>gift</b> card & more", "slug": "gift-card", "publishedAt": "2026-10-04T08:00:00.000Z", "values": { "price": 1000000000, "in-stock": true } },
+        { "id": 45, "title": "Below nothing", "slug": "below-nothing", "publishedAt": "2026-10-05T08:00:00.000Z", "values": { "price": -3 } },
+        { "id": 46, "title": "Three decimals", "slug": "three-decimals", "publishedAt": "2026-10-06T08:00:00.000Z", "values": { "price": 1.155 } },
+        { "id": 47, "title": "A price as text", "slug": "price-as-text", "publishedAt": "2026-10-07T08:00:00.000Z", "values": { "price": "12" } },
+        { "id": 48, "title": "No price", "slug": "no-price", "publishedAt": "2026-10-08T08:00:00.000Z", "values": {} }
+      ]
+    }
+  ]
+}

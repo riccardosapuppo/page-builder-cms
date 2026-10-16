@@ -53,9 +53,9 @@ const AFTER_DESIGN: readonly WidgetType[] = ["logo", "menu"];
 const AFTER_DESIGN_GROUP = "site";
 const AFTER_DESIGN_IN_GROUP: Readonly<Partial<Record<WidgetGroup, readonly WidgetType[]>>> = { content: ["stats", "steps", "pricing", "collectionList"] };
 // And before the design's groups, the one only a collection's template is
-// offered: the block that draws its entry's values.
+// offered: the blocks that draw its entry's values and put it in a cart.
 const TEMPLATE_GROUP = "entry";
-const TEMPLATE_WIDGETS: readonly WidgetType[] = ["field"];
+const TEMPLATE_WIDGETS: readonly WidgetType[] = ["field", "addToCart"];
 
 test("one definition for every widget type of the schema, each once", () => {
   expect(WIDGETS.map((w) => w.type).sort()).toEqual([...WIDGET_TYPES].sort());
@@ -111,7 +111,7 @@ const external: ImageRef = { url: "https://images.example.org/swim.jpg", decorat
 const inputs: { [T in WidgetType]: Array<InputOf[T]> } = {
   heading: [undefined], text: [undefined], button: [undefined], divider: [undefined], spacer: [undefined],
   map: [undefined], iconbox: [undefined], quote: [undefined], accordion: [undefined], stats: [undefined], steps: [undefined], pricing: [undefined], form: [undefined],
-  logo: [undefined], menu: [undefined], field: [undefined],
+  logo: [undefined], menu: [undefined], field: [undefined], addToCart: [undefined],
   // None chosen, and the collection Insert found first, in its order.
   collectionList: [undefined, null, { collection: 3, order: { by: "date", direction: "desc" } }],
   image: [library, external],

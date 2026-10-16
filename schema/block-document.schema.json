@@ -47,7 +47,7 @@
         "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
         "form",
         "logo", "menu",
-        "field"
+        "field", "addToCart"
       ]
     },
     "widgetType": {
@@ -57,7 +57,7 @@
         "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
         "form",
         "logo", "menu",
-        "field"
+        "field", "addToCart"
       ]
     },
     "block": {
@@ -94,7 +94,8 @@
         { "if": { "required": ["type"], "properties": { "type": { "const": "form" } } }, "then": { "$ref": "#/$defs/formBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "logo" } } }, "then": { "$ref": "#/$defs/logoBlock" } },
         { "if": { "required": ["type"], "properties": { "type": { "const": "menu" } } }, "then": { "$ref": "#/$defs/menuBlock" } },
-        { "if": { "required": ["type"], "properties": { "type": { "const": "field" } } }, "then": { "$ref": "#/$defs/fieldBlock" } }
+        { "if": { "required": ["type"], "properties": { "type": { "const": "field" } } }, "then": { "$ref": "#/$defs/fieldBlock" } },
+        { "if": { "required": ["type"], "properties": { "type": { "const": "addToCart" } } }, "then": { "$ref": "#/$defs/addToCartBlock" } }
       ]
     },
 
@@ -605,6 +606,7 @@
             "image": { "description": "The image field a card shows, by its key.", "$ref": "#/$defs/fieldKey" },
             "date": { "description": "The date field a card shows, by its key.", "$ref": "#/$defs/fieldKey" },
             "excerpt": { "description": "The text or paragraph field a card shows under its title, by its key.", "$ref": "#/$defs/fieldKey" },
+            "price": { "description": "The number field a card shows as a price, by its key: in the shop's currency when it is the price of the collection the shop sells from while the shop is on, as a number otherwise.", "$ref": "#/$defs/fieldKey" },
             "linkLabel": { "description": "The words at a card's foot (Read more), or none.", "$ref": "#/$defs/lineOrEmpty", "type": "string", "maxLength": 40 },
             "emptyText": { "description": "What the list says when it has no entry to show.", "$ref": "#/$defs/line", "type": "string", "maxLength": 200 },
             "className": { "$ref": "#/$defs/className" },
@@ -632,6 +634,25 @@
         },
         "children": { "$ref": "#/$defs/noChildren" },
         "style": { "$ref": "#/$defs/fieldStyle" }
+      }
+    },
+    "addToCartBlock": {
+      "description": "A form that puts the entry a collection's template is drawn with in a visitor's cart: it posts the entry and a quantity to the cart's own address, with no script, and its button is a button block's, its words and its colours. Only a template holds one, an application rule of the editor and the CMS outside this file. It draws for an entry of the collection the shop sells from, while the shop is on; for a product out of stock or with no price it says so where its button goes, and is no button; anywhere else it draws nothing. Which entry it is, and whether it is for sale, are the CMS's data: the renderers are given them.",
+      "type": "object",
+      "properties": {
+        "props": {
+          "type": "object",
+          "required": ["label", "quantity"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "description": "The button's words, as a button block's.", "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
+            "quantity": { "description": "Whether the form asks how many, from 1 to 20, beside its button; without, it puts one in.", "type": "boolean" },
+            "className": { "$ref": "#/$defs/className" },
+            "anchor": { "$ref": "#/$defs/anchor" }
+          }
+        },
+        "children": { "$ref": "#/$defs/noChildren" },
+        "style": { "$ref": "#/$defs/buttonStyle" }
       }
     },
     "listOrder": {

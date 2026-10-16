@@ -15,7 +15,7 @@ import type { CommandError } from "../document/check.ts";
 import { makePaste } from "../document/commands.ts";
 import { blockName } from "../document/labels.ts";
 import type { Block } from "../shared/document.ts";
-import { FIELD_OUTSIDE } from "../shared/validate.ts";
+import { CART_OUTSIDE, FIELD_OUTSIDE } from "../shared/validate.ts";
 import { isPartKind, type PageKind } from "../storage/adapter.ts";
 import { runCommand, type Region } from "./act.ts";
 import type { EditorEnv } from "./context.tsx";
@@ -46,11 +46,13 @@ export function pasteText(env: Env, text: string, region: Region, kind: PageKind
     env.ui.getState().say(read.error.message);
     return read.error;
   }
-  // A Field block draws a value of a template's entry: pasted anywhere
-  // else, it is refused here, as the storage would refuse the page.
-  if (kind !== "template" && holdsField(read.block)) {
-    env.ui.getState().say(FIELD_OUTSIDE);
-    return { reason: "nesting", message: FIELD_OUTSIDE };
+  // A Field block draws a value of a template's entry, and an Add to cart
+  // block puts that entry in the cart: pasted anywhere else, each is
+  // refused here, as the storage would refuse the page.
+  const outside = kind === "template" ? null : holds(read.block, "field") ? FIELD_OUTSIDE : holds(read.block, "addToCart") ? CART_OUTSIDE : null;
+  if (outside !== null) {
+    env.ui.getState().say(outside);
+    return { reason: "nesting", message: outside };
   }
   const selection = env.store.getState().selection;
   // A part's blocks take no anchor; a page's and a template's do.
@@ -58,9 +60,9 @@ export function pasteText(env: Env, text: string, region: Region, kind: PageKind
   return runCommand(env, (doc) => makePaste(doc, block, selection, env.newId), region);
 }
 
-// Whether a block is a Field block, or holds one.
-function holdsField(block: Block): boolean {
-  return block.type === "field" || (block.children as readonly Block[]).some(holdsField);
+// Whether a block is of the type, or holds one.
+function holds(block: Block, type: Block["type"]): boolean {
+  return block.type === type || (block.children as readonly Block[]).some((child) => holds(child, type));
 }
 
 // A header's or footer's block takes no anchor (PART_ANCHOR,

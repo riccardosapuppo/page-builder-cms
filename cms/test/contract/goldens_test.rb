@@ -23,6 +23,7 @@ class ContractGoldensTest < ActiveSupport::TestCase
     cms/app/views/blocks/*.html.erb
     cms/app/helpers/blocks_helper.rb
     cms/app/helpers/rich_text_helper.rb
+    cms/app/models/add_to_cart.rb
     cms/app/models/block_style.rb
     cms/app/models/collection_list.rb
     cms/app/models/entry_field.rb
@@ -32,6 +33,8 @@ class ContractGoldensTest < ActiveSupport::TestCase
     cms/app/models/free_colors.rb
     cms/app/models/free_type.rb
     cms/app/models/render_policy.rb
+    cms/app/models/shop_rules.rb
+    cms/app/models/shop_words.rb
     cms/app/models/site_icons.rb
     cms/lib/block_document/rules.rb
     cms/lib/collection_document/rules.rb
@@ -42,7 +45,7 @@ class ContractGoldensTest < ActiveSupport::TestCase
     schema/block-document.schema.json
   ].freeze
 
-  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field].freeze
+  BLOCK_TYPES = %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field addToCart].freeze
 
   def self.fixture_names
     Dir.children(FIXTURES).select { |name| name.end_with?(".json") }.sort

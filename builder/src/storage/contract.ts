@@ -1517,6 +1517,27 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "an Add to cart block goes only in a template too: a page's draft and a part's holding one are refused at the block, keyword addToCart, and the template takes the same document",
+    needs: ["collections"],
+    async run(env) {
+      const cart: WidgetBlock = { id: id("t"), type: "addToCart", props: { label: "Add to cart", quantity: true }, children: [], style: { base: {} } };
+      const withCart = documentOf("Products", section(heading("A product"), cart));
+      const page = await newPage(env, "cart-page");
+      const footer = (await env.adapter.listParts()).find((part) => part.kind === "footer")!;
+      const before = await env.adapter.getDraft(footer.id);
+      for (const [what, pageId, revision] of [["a page", page.id, page.revision], ["the footer", footer.id, before.revision]] as const) {
+        const problem = refusal(await env.adapter.saveDraft(pageId, { revision, document: withCart, saveId: "cart-outside" }), `an Add to cart block in ${what}`);
+        if (problem.kind !== "invalid") throw new Error(`refused as ${problem.kind}, not as invalid`);
+        env.expect([problem.code, ...pointers(problem)], what).toEqual(["invalid_document", "/document/sections/0/children/0/children/1 addToCart"]);
+        env.expect(errorsByBlock(withCart, problem.errors).map((e) => [e.blockId, e.field, e.keyword]), what).toEqual([[cart.id, "", "addToCart"]]);
+      }
+      env.expect(await env.adapter.getDraft(footer.id), "the footer, untouched").toEqual(before);
+
+      const collection = await newCollection(env, "kit");
+      await saved(env.adapter, collection.templateId, { revision: 0, document: withCart, saveId: "cart-template" }, "the same document in the template");
+    },
+  },
+  {
     name: "an image an entry shows is not deleted, the refusal naming the entry, and neither once only what is live shows it; an entry naming an image the library does not have is refused at that image",
     needs: ["collections"],
     async run(env) {

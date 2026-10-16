@@ -70,6 +70,7 @@ export interface InputOf {
   logo: void;
   menu: void;
   field: void;
+  addToCart: void;
 }
 export type Needs = null | "image" | "images" | "video";
 

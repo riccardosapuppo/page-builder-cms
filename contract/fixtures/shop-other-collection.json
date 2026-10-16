@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "title": "Other collection",
+  "description": "The template of a collection the shop does not sell from, drawn with an entry of it whose number field shares the price's key: its number drawn as a number, and Add to cart drawing nothing.",
+  "shop": { "enabled": true, "currency": "GBP", "productsCollectionId": 7, "priceField": "price" },
+  "entry": {
+    "id": 51,
+    "collectionId": 8,
+    "fields": [
+      { "key": "price", "label": "Ticket", "type": "number", "required": false },
+      { "key": "in-stock", "label": "Places left", "type": "toggle", "required": false }
+    ],
+    "title": "Open day",
+    "slug": "open-day",
+    "values": { "price": 1250.5, "in-stock": true }
+  },
+  "sections": [
+    {
+      "id": "sc-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "sc-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "sc-price", "type": "field", "props": { "field": "price" }, "style": { "base": {} }, "children": [] },
+            { "id": "sc-cart", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": {} }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

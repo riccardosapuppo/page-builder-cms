@@ -236,12 +236,16 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
       image: fc.option(fieldKey, { nil: undefined }),
       date: fc.option(fieldKey, { nil: undefined }),
       excerpt: fc.option(fieldKey, { nil: undefined }),
+      price: fc.option(fieldKey, { nil: undefined }),
       linkLabel: lineOrEmpty(40),
       emptyText: line(200),
     }).map(compact);
     // Never on a page (PageRules): the contract's template fixture holds
     // its traps.
     case "field": return fc.record({ field: fieldKey, level: fc.option(fc.integer({ min: 1, max: 4 }), { nil: undefined }) }).map(compact);
+    // Never on a page either (PageRules): the contract's shop fixtures
+    // hold its traps.
+    case "addToCart": return fc.record({ label: line(80), quantity: fc.boolean() });
   }
 }
 
@@ -261,10 +265,10 @@ function style(type: BlockType): fc.Arbitrary<AnyObject> {
 
 // ---------------------------------------------------------------- pages
 
-// Every widget a page holds: all but a Field block, which only a
-// collection's template takes (PageRules), and the agreement check saves
-// pages.
-const PAGE_WIDGETS = WIDGET_TYPES.filter((type) => type !== "field");
+// Every widget a page holds: all but a Field block and an Add to cart
+// block, which only a collection's template takes (PageRules), and the
+// agreement check saves pages.
+const PAGE_WIDGETS = WIDGET_TYPES.filter((type) => type !== "field" && type !== "addToCart");
 
 function widget(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
   return fc.constantFrom(...PAGE_WIDGETS).chain((type) =>

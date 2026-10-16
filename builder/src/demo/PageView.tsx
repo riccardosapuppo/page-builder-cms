@@ -11,13 +11,16 @@
 // draft drawn with an entry's draft (the one its address names, else the
 // first published, else values made up from its fields' types). The site
 // style is this browser's, the images from the browser's library, the
-// collections and entries from its storage, all read when the page is
+// collections and entries from its storage, and the shop's settings, by
+// which a price is money and Add to cart draws, all read when the page is
 // opened.
 //
 // The demo serves nothing, so the page says so in one line above it, and
 // what would leave for the server stays here:
 // - a form is not sent: under it, one line says what the full system does
-//   with its answers, and sending says it again;
+//   with its answers, and sending says it again; Add to cart sends nothing
+//   either, and says what the full system does with it, where it draws a
+//   form (out of stock, or not a product's, it has nothing to send);
 // - a link to another page of the site ("/winter-series", "/") opens that
 //   page as the demo draws it, published if it is, its draft if not; a
 //   link to an entry ("/news/first-swim") opens it as published here; one
@@ -27,12 +30,15 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { mediaResolver } from "../editor/media.ts";
 import { PUBLISHED_IN_BROWSER } from "../editor/App.tsx";
 import { collectionResolver, previewedEntry, readSiteEntries, sampleEntry, shownEntry, type SiteEntries } from "../editor/collections/content.ts";
+import { blockProps } from "../render/block-root.tsx";
 import { PageRoot } from "../render/page.tsx";
 import type { Decoration, ListedCollection, ListedEntry, RawBlock, RenderContext, ShownEntry } from "../render/context.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import type { SiteParts } from "../render/theme.tsx";
 import type { Collection, Entry, MediaItem, PageSummary, SiteStyle, StorageAdapter } from "../storage/adapter.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import { isStorageError } from "../storage/adapter.ts";
+import { cartDrawing } from "../widgets/addToCart/drawing.ts";
 import { DemoLine } from "./DemoLine.tsx";
 import { entryAddress, previewAddress, publishedAddress, type View } from "./views.ts";
 
@@ -41,6 +47,8 @@ export const NOT_PUBLISHED_LINE = "This page is not published in this browser ye
 export const NO_HOME_LINE = "This browser has no page to show the header and footer on yet: make one in the editor.";
 export const FORM_LINE = "In the full system, Rails keeps these answers for the CMS's Form responses.";
 export const FORM_NOT_SENT = "Not sent: in the full system, Rails keeps these answers for the CMS's Form responses.";
+export const CART_LINE = "In the full system, this puts the product in the visitor's cart, at /cart.";
+export const CART_NOT_SENT = "Not added: in the full system, Rails puts the product in the visitor's cart, at /cart.";
 export const NO_ENTRY_LINE = "This browser has no such entry: it may have been deleted.";
 export const ENTRY_NOT_PUBLISHED_LINE = "This entry is not published in this browser yet: Publish in Collections shows it here.";
 
@@ -65,6 +73,7 @@ type Shown =
     media: ReadonlyMap<string, MediaItem>;
     site: SiteEntries | null;
     entry: ShownEntry | null;
+    shop: ShopSettings | null;
   };
 
 const describe = (error: unknown): string => (isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error));
@@ -85,9 +94,11 @@ function findEntry(site: SiteEntries | null, entryId: number): { collection: Col
 // otherwise read an empty store and say there is nothing there.
 export async function readShown(adapter: StorageAdapter, view: View): Promise<Shown> {
   const pages = await adapter.listPages();
-  const [partList, style, media, site] = await Promise.all([
+  const [partList, style, media, site, shop] = await Promise.all([
     adapter.listParts(), adapter.getSiteStyle(), adapter.listMedia(), adapter.capabilities.collections ? readSiteEntries(adapter) : Promise.resolve(null),
+    adapter.capabilities.shop ? adapter.getShop() : Promise.resolve(null),
   ]);
+  const settings: ShopSettings | null = shop ? { enabled: shop.enabled, currency: shop.currency, productsCollectionId: shop.productsCollectionId, priceField: shop.priceField } : null;
   const library = new Map(media.map((item) => [item.id, item]));
   const preview = view.kind === "preview";
   // The parts around the page: their drafts in a preview; published, what
@@ -103,7 +114,7 @@ export async function readShown(adapter: StorageAdapter, view: View): Promise<Sh
   }));
   const parts: SiteParts = { header, footer };
   const ready = (document: unknown, title: string, line: string, entry: ShownEntry | null = null): Shown =>
-    ({ kind: "ready", document, title, line, pages, parts, style, media: library, site, entry });
+    ({ kind: "ready", document, title, line, pages, parts, style, media: library, site, entry, shop: settings });
 
   // An entry as published here: its collection's published template, with
   // what the entry published.
@@ -145,7 +156,7 @@ async function homeOf(adapter: StorageAdapter, pages: readonly PageSummary[]) {
 }
 
 // The line under a form, which sending says again, as news.
-function FormLine() {
+function FormLine({ line: before, sent: after }: { line: string; sent: string }) {
   const line = useRef<HTMLParagraphElement>(null);
   const [sent, setSent] = useState(false);
   useEffect(() => {
@@ -160,11 +171,22 @@ function FormLine() {
     form.addEventListener("submit", hold);
     return () => form.removeEventListener("submit", hold);
   }, []);
-  return <p ref={line} className="demo-form-line chrome" role="status">{sent ? FORM_NOT_SENT : FORM_LINE}</p>;
+  return <p ref={line} className="demo-form-line chrome" role="status">{sent ? after : before}</p>;
 }
 
-const FORM_DECORATION: Decoration = { after: <FormLine /> };
-const useDecoration = (block: RawBlock): Decoration | undefined => (block.type === "form" ? FORM_DECORATION : undefined);
+const FORM_DECORATION: Decoration = { after: <FormLine line={FORM_LINE} sent={FORM_NOT_SENT} /> };
+const CART_DECORATION: Decoration = { after: <FormLine line={CART_LINE} sent={CART_NOT_SENT} /> };
+
+// The line goes under a form, and under Add to cart where it draws one, for
+// a product for sale: out of stock or with no price it has nothing to send,
+// and for anything else it draws nothing.
+function decorationsFor(entry: ShownEntry | null, shop: ShopSettings | null) {
+  return (block: RawBlock): Decoration | undefined => {
+    if (block.type === "form") return FORM_DECORATION;
+    if (block.type === "addToCart" && cartDrawing(blockProps(block), entry, shop)?.state === "forSale") return CART_DECORATION;
+    return undefined;
+  };
+}
 
 // A Collection list's card leads to the entry as the demo draws it.
 const entryHref = (_collection: ListedCollection, entry: ListedEntry): string => entryAddress(entry.id);
@@ -211,7 +233,7 @@ export function PageView({ adapter, view }: { adapter: StorageAdapter; view: Vie
   }, [shown]);
 
   const ctx = useMemo<RenderContext | null>(() => (shown.kind === "ready"
-    ? { media: mediaResolver(shown.media), collections: collectionResolver(shown.site), entry: shown.entry, entryHref, useDecoration }
+    ? { media: mediaResolver(shown.media), collections: collectionResolver(shown.site), entry: shown.entry, shop: shown.shop, entryHref, useDecoration: decorationsFor(shown.entry, shown.shop) }
     : null), [shown]);
 
   // A link to a page of the site, or to an entry, opens it as the demo

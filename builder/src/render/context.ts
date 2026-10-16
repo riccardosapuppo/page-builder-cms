@@ -1,7 +1,7 @@
 // What every block renderer receives besides its block: how to find a
-// library image, a collection's published entries and the entry a
-// template is drawn with, and, on the canvas only, what the editor adds to
-// a block's root element.
+// library image, a collection's published entries, the entry a template
+// is drawn with and the shop's settings, and, on the canvas only, what the
+// editor adds to a block's root element.
 import { createContext, type ReactNode, type Ref } from "react";
 
 // A block as the renderer meets it: an object with a type the tree allows
@@ -73,6 +73,21 @@ export interface ShownEntry {
   values: unknown;
 }
 
+// The shop's settings, as a page is drawn with them: whether it is on, its
+// currency, the collection whose entries are its products and the number
+// field of it that is their price (../shared/shop.ts, ShopSettings). The
+// storage's on the canvas, the database's on the server (SiteContent), a
+// fixture's in the contract, so each member is read defensively, as a
+// block's are (./shop-words.ts). A Field block and a Collection list's
+// cards draw that price as money, Add to cart draws its form, only while
+// the shop is on and sells from their entries' collection.
+export interface ShownShop {
+  enabled: unknown;
+  currency: unknown;
+  productsCollectionId: unknown;
+  priceField: unknown;
+}
+
 // What the canvas adds to one block's root element, and only there: the
 // preview and the contract render without it, and the page never has it.
 export interface Decoration {
@@ -105,6 +120,9 @@ export interface RenderContext {
   // The entry a template is drawn with; absent or null on any other page,
   // where a Field block draws nothing.
   entry?: ShownEntry | null;
+  // The shop's settings; absent or null, no shop: a price is a number,
+  // and Add to cart draws nothing.
+  shop?: ShownShop | null;
   // Where a list's card links, for a storage that serves no entry's page
   // at its address: the browser demo's own view of it. Absent, the
   // entry's address on the site, /<prefix>/<slug>.

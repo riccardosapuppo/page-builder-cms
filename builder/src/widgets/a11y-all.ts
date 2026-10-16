@@ -3,6 +3,7 @@
 // widget type, none missing.
 import type { WidgetA11y } from "./a11y.ts";
 import { A11Y as field } from "./field/a11y.ts";
+import { A11Y as addToCart } from "./addToCart/a11y.ts";
 import { A11Y as heading } from "./heading/a11y.ts";
 import { A11Y as text } from "./text/a11y.ts";
 import { A11Y as button } from "./button/a11y.ts";
@@ -23,4 +24,4 @@ import { A11Y as form } from "./form/a11y.ts";
 import { A11Y as logo } from "./logo/a11y.ts";
 import { A11Y as menu } from "./menu/a11y.ts";
 
-export const WIDGET_A11Y: readonly WidgetA11y[] = [field, heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, stats, steps, pricing, collectionList, form, logo, menu];
+export const WIDGET_A11Y: readonly WidgetA11y[] = [field, addToCart, heading, text, image, button, divider, spacer, gallery, video, map, iconbox, quote, accordion, stats, steps, pricing, collectionList, form, logo, menu];

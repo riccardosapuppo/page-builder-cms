@@ -28,7 +28,7 @@ import { Icon } from "../icons.tsx";
 import { typedAmount, amountText } from "./values.ts";
 import type { CollectionsStorage } from "./context.ts";
 import { anyIssue, definitionIssues, NO_DEFINITION_ISSUES, type DefinitionIssues, type FieldIssues } from "./refusals.ts";
-import { addressLine, directionWords, FIELD_TYPE_HINTS, FIELD_TYPE_NAMES, keyFrom, orderChoices } from "./words.ts";
+import { addressLine, deleteRefusal, directionWords, FIELD_TYPE_HINTS, FIELD_TYPE_NAMES, keyFrom, orderChoices } from "./words.ts";
 
 export interface SettingsProps {
   storage: CollectionsStorage;
@@ -307,7 +307,7 @@ export function Settings({ storage, collection, livePages, onSaved, onDeleted, o
       if (!(isStorageError(error) && error.failure.kind === "not-found")) {
         if (mounted.current) {
           setBusy(null);
-          setSaid(`Not deleted: ${describe(error)}`);
+          setSaid(deleteRefusal(error, collection.name));
         }
         return;
       }

@@ -36,6 +36,9 @@ it holds.
   form is; Stripe's key from the environment, test mode only, never
   answered or logged; orders kept as Stripe says they are, asked again
   on demand, no webhook; the browser's demo orders marked as its own.
+  Since 16 October, the editor's Shop screen, a Products preset, Add to
+  cart in the products' template, and prices drawn as money, a page that
+  draws them keyed on the shop's settings.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)
@@ -59,7 +62,8 @@ it holds.
   (4 October 2026): an ETag and Solid Cache keys made of the version, the
   site style, the header's and footer's published versions, the release
   and each block's subtree; every visit revalidates, so a publish shows at
-  the next request.
+  the next request. A page that draws a collection is keyed on it, and
+  one that draws the shop on its settings.
 - [A menu folds into Menu where the widths of its letters say](header-folds-by-measured-letters.md)
   (9 October 2026, revised on 12 October): a menu block folds on its own
   width, at a step the server adds up from letter widths measured once; a

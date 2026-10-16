@@ -25,6 +25,7 @@ import { FakeClock } from "../../test/fake-clock.ts";
 import { counter } from "../../test/document-page.ts";
 import tokens from "../../../schema/tokens.json";
 import type { PageDocument } from "../shared/document.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import { StorageError, type DraftSave, type FieldError, type Page, type PageKind, type PageSummary, type Published, type Schedule, type ScheduleRequest, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
@@ -104,6 +105,10 @@ class FakeSite {
   // asked for so far.
   entriesGate: Promise<void> | null = null;
   entriesReads = 0;
+  // The shop's settings, when it keeps a shop (with the collections); the
+  // reads of them so far.
+  shop: ShopSettings | null = null;
+  shopReads = 0;
 
   constructor() {
     this.drafts.set(1, { kind: "page", title: "Winter series", slug: "winter-series", home: false, revision: 3, document: page(), published: null });
@@ -153,7 +158,12 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: this.collections, shop: false },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: this.collections, shop: this.shop !== null },
+      getShop: async () => {
+        this.shopReads += 1;
+        return { ...this.shop!, updatedAt: null, checkout: { ready: false, reason: "Not here." } };
+      },
+      listOrders: async () => [],
       listCollections: async () => {
         if (this.refuseCollections) throw this.refuseCollections;
         return [newsCollection({ template: this.summary(TEMPLATE) })];
@@ -265,7 +275,7 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; collections?: boolean; refuseCollections?: StorageError; refusePageOnce?: StorageError } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; collections?: boolean; refuseCollections?: StorageError; refusePageOnce?: StorageError; shop?: ShopSettings } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
@@ -275,6 +285,7 @@ function start(wanted: number | null, options: { schedule?: boolean; demo?: bool
   site.collections = options.collections ?? false;
   site.refuseCollections = options.refuseCollections ?? null;
   site.refusePageOnce = options.refusePageOnce ?? null;
+  site.shop = options.shop ?? null;
   const written: number[] = [];
   const address: PageAddress = { read: () => wanted, write: (id) => written.push(id) };
   // The tabs the editor opens: where each went, once it was told.
@@ -892,6 +903,26 @@ test("of two reads of the collections, the later one asked for stands: a slow on
   });
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Dawn swims, renamed");
   expect(env.ui.getState().siteEntries?.entries.get(3)?.[0]?.title).toBe("Dawn swims, renamed");
+});
+
+test("the shop's settings, which the canvas draws prices and Add to cart with, are read as the editor starts and again when the Shop screen closes", async () => {
+  const { env, site } = start(TEMPLATE, { collections: true, shop: { enabled: false, currency: "GBP", productsCollectionId: null, priceField: null } });
+  await screen.findByRole("button", { name: "Switch page. Open: News" });
+  expect(env.ui.getState().siteShop).toEqual({ enabled: false, currency: "GBP", productsCollectionId: null, priceField: null });
+  expect(site.shopReads).toBe(1);
+  site.shop = { enabled: true, currency: "EUR", productsCollectionId: 3, priceField: "price" };
+  act(() => env.ui.getState().setShopOpen(true));
+  act(() => env.ui.getState().setShopOpen(false));
+  await waitFor(() => expect(env.ui.getState().siteShop).toEqual({ enabled: true, currency: "EUR", productsCollectionId: 3, priceField: "price" }));
+  // The start, the screen's own as it opens, and once it closes.
+  expect(site.shopReads).toBe(3);
+});
+
+test("a storage that keeps no shop is never asked for one", async () => {
+  const { env, site } = start(1, { collections: true });
+  await opened();
+  expect(env.ui.getState().siteShop).toBeNull();
+  expect(site.shopReads).toBe(0);
 });
 
 test("in the browser demo, publishing a part opens the home page as published, the part on it", async () => {

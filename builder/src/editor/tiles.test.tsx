@@ -26,7 +26,8 @@ const root = (id: string) => document.querySelector<HTMLElement>(`.canvas [data-
 const described = (key: HTMLElement) => document.getElementById(key.getAttribute("aria-describedby") ?? "")?.textContent;
 const asking = WIDGETS.filter((w) => w.needs !== null);
 // What Insert offers on a page of a storage that keeps no collection:
-// every widget but a template's Field and the Collection list.
+// every widget but a template's Field and Add to cart, and the Collection
+// list.
 const offered = insertableWidgets("page", false);
 
 test("every key of Insert, the ones that ask first included, is a drag source, described for the keyboard", () => {
@@ -34,7 +35,7 @@ test("every key of Insert, the ones that ask first included, is a drag source, d
   kit.render(<Palette />);
   expect(asking.map((w) => w.label)).toEqual(["Image", "Gallery", "Video"]);
   const blocks = [...document.querySelectorAll<HTMLElement>(".drawer-body button")];
-  expect(offered.map((w) => w.type)).toEqual(WIDGETS.map((w) => w.type).filter((type) => type !== "field" && type !== "collectionList"));
+  expect(offered.map((w) => w.type)).toEqual(WIDGETS.map((w) => w.type).filter((type) => type !== "field" && type !== "addToCart" && type !== "collectionList"));
   expect(blocks).toHaveLength(4 + offered.length);
   fireEvent.click(screen.getByRole("tab", { name: "Sections" }));
   const sections = [...document.querySelectorAll<HTMLElement>(".drawer-body button")];

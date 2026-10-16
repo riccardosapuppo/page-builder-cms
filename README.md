@@ -10,10 +10,10 @@ A page builder and CMS: Rails 8 stores, versions, caches and publishes the pages
 [The Rails application](cms/README.md) ·
 [The editor](builder/README.md)
 
-The editor builds a page from sections, columns and twenty kinds of
+The editor builds a page from sections, columns and twenty-one kinds of
 widget (heading, text, image, gallery, video, map, button, icon box, quote,
 accordion, stats, steps, pricing, divider, spacer, form, logo, menu,
-collection list and field),
+collection list, field and add to cart),
 dragged into place on the page or in the Outline, where the page moves
 with the block as it goes; with rich text written where it stands on the
 canvas, undo and redo, a tablet's and a phone's own values, a media
@@ -46,6 +46,14 @@ page at `/news` listing five entries, each at `/news/<slug>`. Rails
 checks every value against its field with the editor's own rules,
 written twice and held to one verdict, and caches each entry's page and
 each list by what was published.
+
+A shop sells one collection's entries, its products, through Stripe's
+Checkout in its test mode, and can be off. The editor's Shop screen turns
+it on, chooses its currency, its products and their price, says whether
+checkout is set up, and lists the orders, each asked of Stripe again
+while it is open. In the products' template, Add to cart puts the product
+in a visitor's cart with a plain form, or says it is out of stock; a
+Field block and a Collection list's cards write the price as money.
 
 An Assistant writes with a model of the person's own, Anthropic's or
 OpenAI's. The person brings the key. It is kept in the tab's memory only,
@@ -385,11 +393,13 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   price read from what the product published; the key of Stripe's test
   mode comes from the CMS's environment alone and is never answered or
   logged; orders are kept on the CMS and asked of Stripe again on demand,
-  and the browser's demo makes orders marked as its own. Its first phase
-  is the model, the API and the cart's addresses; the editor's screen and
-  the site's pages follow. Cost: a cookie, though on no page, another
-  pair of twins, and no webhook: an order paid by a visitor who never came
-  back reads open until asked again.
+  and the browser's demo makes orders marked as its own. The editor's
+  Shop screen keeps the settings and reads the orders; Add to cart, in the
+  products' template, posts a plain form to the cart; a page that draws a
+  price or Add to cart is cached by keys that name the shop's settings.
+  The site's cart pages follow. Cost: a cookie, though on no page,
+  another pair of twins, and no webhook: an order paid by a visitor who
+  never came back reads open until asked again.
   [The note](docs/decisions/shop-on-collections.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
@@ -489,7 +499,7 @@ Rails 8.1.4 on Puma 8.0.2 with its 3 threads, and headless Chromium
 
 The server's and the editor's measurements work on one page,
 `contract/fixtures/large-500.json`: 500 blocks, 25 sections, 61 columns and
-414 widgets of twelve of the twenty kinds (no stats, steps, pricing, form, logo, menu, collection list or field), which the
+414 widgets of twelve of the twenty-one kinds (no stats, steps, pricing, form, logo, menu, collection list, field or add to cart), which the
 server renders to 211 KB of HTML. Its nine library images are the example
 site's pictures, uploaded to the run's own library as the editor uploads an
 image, with the library's ids in place of the fixture's own; the rest is the
@@ -576,6 +586,14 @@ their section and its page, 5 fragments, and reads the rest back. A page
 holding a Collection list of twelve entries, after one of them is renamed
 and published: 15.8 ms (11.3 to 36.4), the list, its column, its section
 and the page drawn again, 4 fragments.
+
+A run of 16 October 2026 (from 07:50 UTC, the machine 10% then 3% busy,
+one run of an entry's cold page thrown away for the load after it,
+`RESULT: 38 checks passed`), once every page that lists a collection or
+is drawn with an entry reads the shop's settings too, one query more (the
+shop off here), found each of those medians inside the range of the run
+before: an entry's page cold 419 ms, warm 6.23, another entry 29.4, the
+list's page after a publish 16.0; the fragments written the same.
 
 - **A cold visit is slower than no cache.** It draws the same 500 blocks as
   the preview does, and also makes the 501 keys, asks for them in 88 reads

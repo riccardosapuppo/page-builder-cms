@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "title": "Prices",
+  "sections": [
+    {
+      "id": "cp",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "cp-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "cp-grid",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "publishedAt",
+                  "direction": "desc"
+                },
+                "layout": "grid",
+                "columns": 3,
+                "linkLabel": "See it",
+                "emptyText": "Nothing here yet.",
+                "image": "image",
+                "excerpt": "summary",
+                "price": "price"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "cp-compact",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "price",
+                  "direction": "asc"
+                },
+                "layout": "compact",
+                "columns": 3,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet.",
+                "date": "day",
+                "price": "prrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

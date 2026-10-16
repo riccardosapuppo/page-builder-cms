@@ -29,8 +29,10 @@ module CollectionList
   # One card: where it links (nil for an address RenderPolicy refuses), its
   # title, and what its fields give it, each nil when the list names no
   # such field or the entry has no such value: an image (as an image
-  # block's own props, its alt text or decorative), a day, an excerpt.
-  Card = Data.define(:id, :href, :title, :image, :day, :excerpt)
+  # block's own props, its alt text or decorative), a day, an excerpt, and
+  # a number in words, a price in the shop's currency when it is the price
+  # of the collection the shop sells from (ShopWords).
+  Card = Data.define(:id, :href, :title, :image, :day, :excerpt, :price)
 
   module_function
 
@@ -92,14 +94,16 @@ module CollectionList
   end
 
   # The cards of the list, linking each to its entry's address; on an
-  # entry's page (shown, the entry it is drawn with), all but that entry.
-  def cards(props, collection, shown = nil)
+  # entry's page (shown, the entry it is drawn with), all but that entry; a
+  # price in the shop's currency while the shop sells from the collection.
+  def cards(props, collection, shown = nil, shop = nil)
     return [] unless collection.is_a?(Hash)
 
     compact = layout(props) == "compact"
     image = compact ? nil : of_type(collection, props["image"], %w[image])
     date = of_type(collection, props["date"], %w[date])
     excerpt = compact ? nil : of_type(collection, props["excerpt"], %w[text paragraph])
+    price = of_type(collection, props["price"], %w[number])
     entries(props, collection, left_out(collection["id"], shown)).map do |entry|
       words = excerpt && EntryWords.value_of(entry["values"], excerpt.key)
       Card.new(
@@ -108,7 +112,8 @@ module CollectionList
         title: entry["title"],
         image: image && image_item(EntryWords.value_of(entry["values"], image.key)),
         day: date && EntryWords.day_of(EntryWords.value_of(entry["values"], date.key)),
-        excerpt: words.is_a?(String) && !words.empty? ? words : nil
+        excerpt: words.is_a?(String) && !words.empty? ? words : nil,
+        price: price && ShopWords.number_or_price(EntryWords.value_of(entry["values"], price.key), price.key, collection["id"], shop)
       )
     end
   end

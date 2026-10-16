@@ -496,7 +496,7 @@ test("a new database's shop is off, in pounds, with no collection, never changed
     const tab = remoteAdapter(await storagePage(await own.newPage()), capabilities);
     expect(await tab.getShop()).toEqual({
       enabled: false, currency: "GBP", productsCollectionId: null, priceField: null, updatedAt: null,
-      checkout: { ready: false, reason: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment. On the CMS, with a key of Stripe's test mode, a checkout goes to Stripe's page." },
+      checkout: { ready: false, reason: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment." },
     });
     expect(await tab.listOrders()).toEqual([]);
   } finally {

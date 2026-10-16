@@ -3,8 +3,8 @@
 // field holds an option or whose toggle is on or off), with how many of
 // its entries no list shows, since they are not published, and the way to
 // them in Collections. Cards: the layout, a grid's columns, the fields a
-// card shows (an image, a day, an excerpt), the words at its foot and
-// what the list says when it has nothing to show.
+// card shows (an image, a day, an excerpt, a price), the words at its foot
+// and what the list says when it has nothing to show.
 //
 // The choices are the collection's fields as the storage last gave them
 // (../../editor/collections/content.ts); a field the list names that the
@@ -14,13 +14,15 @@ import { REMOVE, type Updates } from "../../document/commands.ts";
 import { draftCount } from "../../editor/collections/content.ts";
 import { useSiteCollection, useSiteCollections } from "../../editor/collections/use-content.ts";
 import { directionWords } from "../../editor/collections/words.ts";
-import { useEnv } from "../../editor/context.tsx";
+import { useEnv, useUi } from "../../editor/context.tsx";
+import { CURRENCY_NAMES } from "../../editor/shop/words.ts";
 import { NumberField, RadioField, SelectField, TextField } from "../../editor/controls.tsx";
 import { Icon } from "../../editor/icons.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 import { useOptionalSession } from "../../editor/session.tsx";
 import type { Field } from "../../shared/collection.ts";
+import { moneyWords, type ShopSettings } from "../../shared/shop.ts";
 import { LIST_COLUMNS, LIST_LAYOUTS, type CollectionListBlock, type ListFilter, type ListLayout, type ListOrder } from "../../shared/document.ts";
 import { MOST_ENTRIES } from "./cards.ts";
 
@@ -169,9 +171,10 @@ function EntriesContent({ block }: ContentProps<"collectionList">) {
 function CardsContent({ block }: ContentProps<"collectionList">) {
   const commands = useBlockCommands(block.id);
   const shown = useSiteCollection(block.props.collection);
+  const shop = useUi((u) => u.siteShop);
   const fields = shown?.collection.fields ?? [];
   const layout = block.props.layout;
-  const card = (key: "image" | "date" | "excerpt", label: string, types: readonly string[], hint: string) => (
+  const card = (key: "image" | "date" | "excerpt" | "price", label: string, types: readonly string[], hint: string) => (
     <SelectField
       label={label}
       choices={cardChoices(fields, types, block.props[key])}
@@ -206,6 +209,7 @@ function CardsContent({ block }: ContentProps<"collectionList">) {
       {layout !== "compact" && card("image", "Image", ["image"], "An image field of the entry, above the card’s words, or beside them in a list.")}
       {card("date", "Date", ["date"], "A date field of the entry, under its title.")}
       {layout !== "compact" && card("excerpt", "Excerpt", ["text", "paragraph"], "A text or paragraph field, under the title.")}
+      {(fields.some((field) => field.type === "number") || block.props.price !== undefined) && card("price", "Price", ["number"], priceHint(shop, shown?.collection.id ?? null))}
       {layout !== "compact" && (
         <TextField
           label="Link words"
@@ -229,15 +233,24 @@ function CardsContent({ block }: ContentProps<"collectionList">) {
   );
 }
 
+// What a card's price is, by the shop: money in its currency for the
+// collection it sells from, a number for any other.
+export function priceHint(shop: ShopSettings | null, collectionId: number | null): string {
+  if (shop !== null && shop.enabled && collectionId !== null && shop.productsCollectionId === collectionId) {
+    return `A number field, under the title and the day. The shop's price is written in ${CURRENCY_NAMES[shop.currency].toLowerCase()}, as ${moneyWords(125_050, shop.currency)}.`;
+  }
+  return "A number field, under the title and the day, written as 1,250.5; the shop's price in its currency, while the shop sells from this collection.";
+}
+
 // The Cards group, closed: "Grid of 3, with an image, a day, an excerpt".
 export function cardsWords(block: CollectionListBlock): string {
-  const { layout, columns, image, date, excerpt } = block.props;
-  const parts = [layout === "compact" ? null : image && "an image", date && "a day", layout === "compact" ? null : excerpt && "an excerpt"].filter((part): part is string => typeof part === "string");
+  const { layout, columns, image, date, excerpt, price } = block.props;
+  const parts = [layout === "compact" ? null : image && "an image", date && "a day", price && "a price", layout === "compact" ? null : excerpt && "an excerpt"].filter((part): part is string => typeof part === "string");
   const shape = layout === "grid" ? `Grid of ${columns}` : LAYOUT_NAMES[layout];
   return parts.length === 0 ? shape : `${shape}, with ${parts.join(", ")}`;
 }
 
 export const panel: WidgetPanel<"collectionList"> = {
   content: { name: "Entries", Content: EntriesContent },
-  more: [{ id: "cards", name: "Cards", props: ["layout", "columns", "image", "date", "excerpt", "linkLabel", "emptyText"], summary: cardsWords, Content: CardsContent }],
+  more: [{ id: "cards", name: "Cards", props: ["layout", "columns", "image", "date", "excerpt", "price", "linkLabel", "emptyText"], summary: cardsWords, Content: CardsContent }],
 };

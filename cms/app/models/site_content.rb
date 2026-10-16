@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 # What the blocks of a page read besides its document: the collections its
-# Collection lists name, each with its published entries, and the entry a
-# collection's template is drawn with, whose values its Field blocks draw.
-# The partials are handed it as `content` (BlocksHelper#render_blocks),
-# the twin of the editor's ctx.collections and ctx.entry
-# (builder/src/render/context.ts); the contract's goldens are drawn with a
-# fixture's instead (ContractContent, in the tests).
+# Collection lists name, each with its published entries, the entry a
+# collection's template is drawn with, whose values its Field blocks draw,
+# and the shop's settings, by which a price is drawn as money and Add to
+# cart draws its form (ShopWords). The partials are handed it as
+# `content` (BlocksHelper#render_blocks), the twin of the editor's
+# ctx.collections, ctx.entry and ctx.shop (builder/src/render/context.ts);
+# the contract's goldens are drawn with a fixture's instead
+# (ContractContent, in the tests).
 #
 # A collection is read the first time a list asks for it, in two queries,
 # never on a page whose lists are all read from the cache. Its key, what a
@@ -15,18 +17,57 @@
 # count of changes a visitor could see of it (Collection#published_revision)
 # and the moment of the last (revised_at), so a database made anew or a
 # backup restored never names a list the way another one did.
+#
+# The shop's settings are read the first time a block or a key asks for
+# them, in one query, and only a page that lists a collection or is drawn
+# with an entry asks: no other page can draw a price or Add to cart. A
+# page that lists the collection the shop sells from, or is drawn with an
+# entry of it, while the shop is on, is keyed on the settings too
+# (shop_key), as it is on the site style; any other page is drawn as with
+# no shop at all, and a change of the settings leaves its keys alone.
 class SiteContent
+  # The shop's settings, not read yet.
+  UNREAD = Object.new.freeze
+
   attr_reader :entry
 
   # ids: the collections the page's lists name (Page#listed_collections,
   # or CollectionList.ids of a draft); entry: the entry drawn, as
   # SiteContent.entry makes it, or nil. reads: false for content that
   # holds nothing, and asks the database nothing (NONE).
-  def initialize(ids: [], entry: nil, reads: true, read: {})
+  def initialize(ids: [], entry: nil, reads: true, read: {}, shop: UNREAD)
     @ids = ids.select { |id| id.is_a?(Integer) }.uniq.sort
     @entry = entry
     @reads = reads
     @collections = read
+    @shop = shop
+  end
+
+  # The shop's settings as the blocks read them (ShopSetting#settings);
+  # nil for content that reads nothing, and for a page that can draw no
+  # price, which never reads them.
+  def shop
+    return nil unless @reads && (@ids.any? || @entry.is_a?(Hash))
+
+    @shop = ShopSetting.current.settings if @shop.equal?(UNREAD)
+    @shop
+  end
+
+  # The key of the shop's settings, for a page drawn with them: one that
+  # lists the collection the shop sells from, or is drawn with an entry of
+  # it, while the shop is on; nil for any other page.
+  def shop_key
+    selling = selling_collection
+    return nil unless selling && (@ids.include?(selling) || (@entry.is_a?(Hash) && @entry["collectionId"] == selling))
+
+    PageCache.shop_key(shop)
+  end
+
+  # The same for one Collection list: the key while the shop sells from
+  # its collection, nil otherwise.
+  def list_shop_key(collection_id)
+    selling = selling_collection
+    selling && selling == collection_id ? PageCache.shop_key(shop) : nil
   end
 
   # A collection as CollectionList reads it, or nil for one the database
@@ -53,11 +94,11 @@ class SiteContent
 
   # The same lists, drawn without an entry: the site's header and footer
   # around an entry's page, which hold no Field block. The collections read
-  # by one are read for the other.
+  # by one are read for the other, and the shop's settings.
   def without_entry
     return self if entry.nil?
 
-    @without_entry ||= self.class.new(ids: @ids, reads: @reads, read: @collections).tap { |copy| copy.instance_variable_set(:@keys, keys) }
+    @without_entry ||= self.class.new(ids: @ids, reads: @reads, read: @collections, shop: shop).tap { |copy| copy.instance_variable_set(:@keys, keys) }
   end
 
   # A collection and its published entries, as they went live: the twin of
@@ -89,4 +130,16 @@ class SiteContent
   # What a page with no list and no entry is drawn with: the 404 page, a
   # form's answer. It reads nothing.
   NONE = new(reads: false)
+
+  private
+
+  # The id of the collection the shop sells from, while it is on (as
+  # ShopWords reads the settings); nil for none.
+  def selling_collection
+    settings = shop
+    return nil unless settings.is_a?(Hash) && settings["enabled"] == true
+
+    id = settings["productsCollectionId"]
+    id if id.is_a?(Integer) && ShopWords.selling_from(settings, id)
+  end
 end

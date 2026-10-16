@@ -78,14 +78,14 @@ module SiteParts
   # the part's own rules: no form, and no anchor on any block, since the
   # header and footer are drawn in every page beside its own blocks, whose
   # anchors their own are not checked against; and, as a page, no Field
-  # block, which only a template holds (PageRules).
+  # block and no Add to cart block, which only a template holds (PageRules).
   def check(document)
     result = BlockDocument.check(document)
     return result unless result.ok?
 
     errors = forms(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", FORM) } +
       anchors(result.document).map { |pointer| BlockDocument::Error.at(pointer, "part", ANCHOR) } +
-      PageRules.fields(result.document).map { |pointer| BlockDocument::Error.at(pointer, "field", PageRules::FIELD) }
+      PageRules.faults(result.document)
     errors.empty? ? result : BlockDocument::Result.new(document: nil, errors: errors)
   end
 

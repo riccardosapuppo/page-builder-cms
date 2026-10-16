@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "title": "Add to cart",
+  "sections": [
+    {
+      "id": "ac",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "ac-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "ac-quantity",
+              "type": "addToCart",
+              "props": {
+                "label": "Add to cart",
+                "quantity": true
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ac-one",
+              "type": "addToCart",
+              "props": {
+                "label": "A",
+                "quantity": false
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "background": "accent",
+                  "color": "text",
+                  "align": "center"
+                },
+                "tablet": {
+                  "background": "#1d4e6f",
+                  "color": "background"
+                },
+                "phone": {
+                  "align": "left",
+                  "visibility": "hidden"
+                }
+              }
+            },
+            {
+              "id": "ac-long",
+              "type": "addToCart",
+              "props": {
+                "label": "🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊",
+                "quantity": false
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    }
+  ]
+}

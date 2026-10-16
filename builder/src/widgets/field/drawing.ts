@@ -8,10 +8,13 @@
 // without a level, a paragraph's lines, a rich text, a day, a toggle that
 // is on, a choice's option, a number), an image's, a button's (a link).
 // Nothing at all for a value the entry has not, or not of its field's
-// type, and on a page with no entry: what is not a template's.
+// type, and on a page with no entry: what is not a template's. A number
+// that is the price of the collection the shop sells from, the shop on,
+// is written as money in the shop's currency (../../render/shop-words.ts).
 import { isObject } from "../../document/json.ts";
-import type { ShownEntry } from "../../render/context.ts";
-import { dayOf, dayWords, fieldOf, numberWords, valueOf } from "../../render/entry-words.ts";
+import type { ShownEntry, ShownShop } from "../../render/context.ts";
+import { dayOf, dayWords, fieldOf, valueOf } from "../../render/entry-words.ts";
+import { numberOrPrice } from "../../render/shop-words.ts";
 import type { FieldType } from "../../shared/collection.ts";
 import type { HeadingLevel } from "../../shared/document.ts";
 
@@ -51,8 +54,9 @@ export type FieldDrawing =
   | { shape: "image"; item: Record<string, unknown> }
   | { shape: "button"; label: string; href: unknown };
 
-// What the block draws with the entry, or null for nothing.
-export function fieldDrawing(props: Readonly<Record<string, unknown>>, entry: ShownEntry | null | undefined): FieldDrawing | null {
+// What the block draws with the entry, and the shop for a price, or null
+// for nothing.
+export function fieldDrawing(props: Readonly<Record<string, unknown>>, entry: ShownEntry | null | undefined, shop: ShownShop | null | undefined = null): FieldDrawing | null {
   if (!isObject(entry) || typeof props.field !== "string") return null;
   const level = fieldLevel(props);
   if (props.field === TITLE) return textDrawing(entry.title, level);
@@ -73,7 +77,7 @@ export function fieldDrawing(props: Readonly<Record<string, unknown>>, entry: Sh
       return day === null ? null : { shape: "text", day, words: dayWords(day) };
     }
     case "number": {
-      const words = numberWords(value);
+      const words = numberOrPrice(value, field.key, entry.collectionId, shop);
       return words === null ? null : { shape: "text", paragraphs: [words] };
     }
     case "toggle":

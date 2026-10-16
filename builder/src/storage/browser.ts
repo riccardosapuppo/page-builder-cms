@@ -688,9 +688,10 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   }
 
   // A part's own rules (SiteParts.check): no form, refused at each form
-  // block, no section anchor, refused at each anchor, and no Field block;
-  // a template's (CollectionTemplate.check): no form; and a page's
-  // (PageRules.check): no Field block, which only a template holds.
+  // block, no section anchor, refused at each anchor, and no Field block
+  // nor Add to cart block; a template's (CollectionTemplate.check): no
+  // form; and a page's (PageRules.check): no Field block and no Add to
+  // cart block, which only a template holds.
   function partRefusal(record: PageRecord, document: PageDocument): { ok: false; problem: Invalid } | null {
     const kind = kindOf(record);
     const faults = kind === "page" ? pageFaults(document) : kind === "template" ? templateFaults(document) : partFaults(document);

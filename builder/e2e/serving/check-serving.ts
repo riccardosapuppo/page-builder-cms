@@ -40,7 +40,12 @@
 // 304; a draft's address is a 404, an address the entry had answers 301
 // to the one it has now; a page holding a Collection list gets a new ETag
 // when an entry is published; a template's preview, drawn with an entry,
-// is never stored either.
+// is never stored either. A product's page, the shop on, is served as a
+// page is, its price as money and its Add to cart a plain form to the
+// cart's address, no script and no cookie, and a page listing the
+// products draws each card's price as money; a change of the shop's
+// currency gets the old ETag of each the new page, not a 304, and leaves
+// a page that draws no shop its 304.
 //
 // Starts a CMS and the editor's servers of its own (e2e/harness), on
 // E2E_CMS_PORT (3901) and E2E_BUILDER_PORT (4901), and the Pages-like
@@ -259,6 +264,7 @@ async function publishedChecks(base: string): Promise<void> {
   check(preview.status === 200 && preview.headers.get("cache-control") === "no-store" && preview.headers.get("x-robots-tag") === "noindex", "published: the draft's preview is never stored, never indexed", `${preview.status} ${preview.headers.get("cache-control")} ${preview.headers.get("x-robots-tag")}`);
 
   await entryChecks(base, api);
+  await shopChecks(base, api);
 
   // As a visitor's browser has it once the page has loaded.
   const browser = await chromium.launch({ headless: true });
@@ -334,6 +340,56 @@ async function entryChecks(base: string, api: Api): Promise<void> {
   const moved = await get(base, "/served-news/served-entry");
   await moved.arrayBuffer();
   check(moved.status === 301 && new URL(moved.headers.get("location") ?? "", base).pathname === "/served-news/served-entry-moved", "entry: the address it had answers 301 to the one it has now", `${moved.status} ${moved.headers.get("location")}`);
+}
+
+// A product's page, a page listing the products, and a page that draws no
+// shop, on the CMS: products, a collection whose template draws the price
+// and Add to cart, a product published, a page listing them with their
+// prices, the shop on and selling them; then its currency changed. The
+// shop is turned off again at the end.
+async function shopChecks(base: string, api: Api): Promise<void> {
+  const node = (id: string, type: string, props: Record<string, unknown>, children: unknown[] = []) => ({ id, type, props, style: { base: {} }, children });
+  const sectionOf = (...widgets: unknown[]) => [node("s", "section", {}, [node("c", "column", {}, widgets)])];
+  const fields = [{ key: "price", label: "Price", type: "number", required: false, min: 0, max: 100000 }, { key: "in-stock", label: "In stock", type: "toggle", required: false }];
+  const products = await api<{ id: number; template: { id: number } }>("POST", "/api/collections", { name: "Served kit", prefix: "served-kit", fields, sort: { by: "title", direction: "asc" } });
+  const template = products.template.id;
+  await api("PUT", `/api/pages/${template}/draft`, { revision: 0, document: { schemaVersion: 1, title: "Served kit", sections: sectionOf(node("t", "field", { field: "title", level: 1 }), node("p", "field", { field: "price" }), node("cart", "addToCart", { label: "Add to cart", quantity: true })) }, saveId: "serving-kit" });
+  await api("POST", `/api/pages/${template}/publish`, {});
+  const entries = `/api/collections/${products.id}/entries`;
+  const cap = await api<{ id: number }>("POST", entries, { title: "A served cap", slug: "served-cap", values: { price: 12, "in-stock": true } });
+  await api("POST", `${entries}/${cap.id}/publish`, {});
+  const shopPage = await api<{ page: { id: number } }>("POST", "/api/pages", { title: "Served shop", slug: "served-shop" });
+  const kit = node("kit", "collectionList", { collection: products.id, count: 3, order: { by: "title", direction: "asc" }, layout: "list", columns: 3, price: "price", linkLabel: "See it", emptyText: "Nothing for sale yet." });
+  await api("PUT", `/api/pages/${shopPage.page.id}/draft`, { revision: 0, document: { schemaVersion: 1, title: "Served shop", sections: sectionOf(kit) }, saveId: "serving-shop" });
+  await api("POST", `/api/pages/${shopPage.page.id}/publish`, {});
+  await api("PUT", "/api/shop", { enabled: true, currency: "GBP", productsCollectionId: products.id, priceField: "price" });
+  try {
+    const page = await get(base, "/served-kit/served-cap");
+    const html = await page.text();
+    check(page.status === 200 && html.includes("<p>£12.00</p>") && html.includes('<form class="sw-cart-add" method="post" action="/cart/items">') && html.includes(`name="entry" value="${cap.id}"`), "shop: a product's page draws its price as money and Add to cart as a form to the cart's address", `status ${page.status}`);
+    check(!/<script\b/i.test(html) && (page.headers.get("content-security-policy") ?? "").includes("script-src 'none'") && page.headers.get("set-cookie") === null, "shop: a product's page has no script element, runs none and sets no cookie", page.headers.get("content-security-policy") ?? "none");
+    const etag = page.headers.get("etag") ?? "";
+    const listing = await get(base, "/served-shop");
+    const listingHtml = await listing.text();
+    check(listing.status === 200 && listingHtml.includes('<p class="sw-entry-price">£12.00</p>'), "shop: a page listing the products draws each card's price as money", `status ${listing.status}`);
+    const listingEtag = listing.headers.get("etag") ?? "";
+    const plain = await get(base, "/served-list");
+    await plain.arrayBuffer();
+    const plainEtag = plain.headers.get("etag") ?? "";
+
+    await api("PUT", "/api/shop", { enabled: true, currency: "EUR", productsCollectionId: products.id, priceField: "price" });
+    const after = await get(base, "/served-kit/served-cap", { "if-none-match": etag });
+    const afterHtml = await after.text();
+    check(after.status === 200 && after.headers.get("etag") !== etag && afterHtml.includes("<p>€12.00</p>"), "shop: once the shop's currency changes, the old ETag gets the product's page in the new currency, not a 304", `status ${after.status}`);
+    const relisted = await get(base, "/served-shop", { "if-none-match": listingEtag });
+    const relistedHtml = await relisted.text();
+    check(relisted.status === 200 && relisted.headers.get("etag") !== listingEtag && relistedHtml.includes('<p class="sw-entry-price">€12.00</p>'), "shop: once the shop's currency changes, the old ETag gets the page listing the products in the new currency, not a 304", `status ${relisted.status}`);
+    const still = await get(base, "/served-list", { "if-none-match": plainEtag });
+    await still.arrayBuffer();
+    check(still.status === 304, "shop: a page that draws no shop keeps its 304 when the shop's settings change", `status ${still.status}`);
+  } finally {
+    await api("PUT", "/api/shop", { enabled: false, currency: "GBP", productsCollectionId: null, priceField: null });
+  }
 }
 
 let cms: Server | null = null;

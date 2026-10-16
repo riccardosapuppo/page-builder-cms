@@ -20,7 +20,7 @@ import type { WidgetType } from "../shared/document.ts";
 // badge), the words the tree reads in it: only those of the role that hold
 // them are counted.
 export interface Exposed {
-  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "checkbox" | "button" | "navigation" | "term" | "definition";
+  role: "heading" | "link" | "img" | "separator" | "list" | "listitem" | "figure" | "blockquote" | "group" | "paragraph" | "textbox" | "spinbutton" | "checkbox" | "button" | "navigation" | "term" | "definition";
   name?: string;
   level?: number;
   count?: number;
@@ -48,6 +48,10 @@ export interface WidgetA11y {
   // than on a page of their own (a Field block's, which only a template
   // holds), and on the canvas with that entry.
   inTemplate?: true;
+  // The shop on and selling from that collection while the cases are
+  // read, this number field of it the price (Add to cart's): its settings
+  // put back as they were found once they are read.
+  sells?: { priceField: string };
 }
 
 export interface A11yCollection {

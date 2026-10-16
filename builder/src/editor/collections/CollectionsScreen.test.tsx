@@ -60,6 +60,7 @@ test("with no collection, the screen says what one is; the first is made from a 
   expect(within(presets).getAllByRole("radio").map((r) => [r.textContent, r.getAttribute("aria-checked")])).toEqual([
     ["Articles: Summary, Image, Body and Date", "true"],
     ["Events: Date, Place, Summary and Image", "false"],
+    ["Products: Summary, Image, Body, Price and In stock", "false"],
     ["Blank: No fields yet: add your own.", "false"],
   ]);
   fireEvent.click(within(presets).getByRole("radio", { name: /^Events/ }));
@@ -392,6 +393,30 @@ test("delete a collection, asked twice, saying its entries and template go with 
   expect(within(dialog).getByRole("button", { name: "Events, /events, no entries" }).getAttribute("aria-current")).toBe("true");
   expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Events, /events, no entries" }));
   expect(dialog.querySelector(".co-note")?.textContent).toBe("News was deleted, with its entries and its template.");
+});
+
+test("a collection the shop sells from is not deleted: the refusal says so, and how to go on", async () => {
+  const fake = new FakeCollections();
+  fake.add(NEWS);
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Delete collection" }));
+  fake.fail("deleteCollection", { kind: "refused", status: 409, code: "collection_in_shop", message: "The shop sells from this collection: choose another one in the shop's settings, or none, before deleting it." });
+  await press(within(within(dialog).getByRole("group", { name: /^Delete News for good\?/ })).getByRole("button", { name: "Delete collection" }));
+  expect(fake.collections.map((c) => c.name)).toEqual(["News"]);
+  expect(dialog.querySelector(".co-settings-head .co-said")?.textContent).toBe("Not deleted: the shop sells from News. Choose another collection in the Shop's settings, or none, before deleting it.");
+});
+
+test("the shop's price taken away, or given another type, is refused in words: under the list, under the field", async () => {
+  const fake = new FakeCollections();
+  fake.add({ ...NEWS, fields: [...NEWS.fields, { key: "price", label: "Price", type: "number", required: false }] });
+  const { dialog } = await openScreen(fake);
+  await press(within(dialog).getByRole("tab", { name: "Settings" }));
+  fake.refuseNextUpdate([{ pointer: "/fields", keyword: "shopPrice", message: "The shop's price is the number field \"price\": keep it, or choose another price in the shop's settings first." }, { pointer: "/fields/4/type", keyword: "shopPrice", message: "The shop's price is the number field \"price\": keep it, or choose another price in the shop's settings first." }]);
+  await type(field(dialog, /^Name/), "News and kit");
+  await press(within(dialog).getByRole("button", { name: "Save changes" }));
+  expect(within(dialog).getByText("The shop's price is one of these fields: keep it, or choose another collection or price in the Shop's settings first.")).toBeTruthy();
+  expect(within(dialog).getByText("This field is the shop's price: it stays a number while the Shop's settings name it. Choose another price there first.")).toBeTruthy();
 });
 
 test("Edit the template opens it as a page is opened, and the screen closes", async () => {

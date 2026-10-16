@@ -17,7 +17,8 @@ import { WIDGETS } from "../widgets/registry.ts";
 import type { AnyWidgetDefinition } from "../widgets/types.ts";
 import { focusBlock } from "./act.ts";
 import { listStart, type SiteEntries } from "./collections/content.ts";
-import { runMade, useEnv } from "./context.tsx";
+import { runMade, useEnv, useUi } from "./context.tsx";
+import { useOptionalSession } from "./session.tsx";
 
 export function insertTarget(doc: PageDocument, type: BlockType, selection: string | null): Position | null {
   const at = pasteTarget(doc, type, selection);
@@ -30,15 +31,27 @@ export function insertTarget(doc: PageDocument, type: BlockType, selection: stri
 // (../shared/validate.ts, PART_FORM), nor does a template (TEMPLATE_FORM),
 // so neither the drawer nor a "+" offers one there; a Field block draws
 // the entry a template is drawn with, and only a template holds one
-// (FIELD_OUTSIDE); a Collection list is offered where the storage keeps
-// collections.
-export function insertableWidgets(kind: PageKind, collections = true): readonly AnyWidgetDefinition[] {
+// (FIELD_OUTSIDE); Add to cart puts that entry in a visitor's cart, and
+// is offered only in the template of the collection the shop sells from,
+// while the shop is on (`sells`, useSellsHere; CART_OUTSIDE refuses it
+// outside a template); a Collection list is offered where the storage
+// keeps collections.
+export function insertableWidgets(kind: PageKind, collections = true, sells = false): readonly AnyWidgetDefinition[] {
   return WIDGETS.filter((widget) => {
     if (widget.type === "form") return kind === "page";
     if (widget.type === "field") return kind === "template";
+    if (widget.type === "addToCart") return kind === "template" && sells;
     if (widget.type === "collectionList") return collections;
     return true;
   });
+}
+
+// Whether what is open is the template of the collection the shop sells
+// from, the shop on: where Add to cart is offered.
+export function useSellsHere(): boolean {
+  const current = useOptionalSession()?.current;
+  const shop = useUi((u) => u.siteShop);
+  return current?.kind === "template" && shop !== null && shop.enabled && current.collection?.id === shop.productsCollectionId;
 }
 
 // What Insert hands a new widget that needs nothing first: a Collection

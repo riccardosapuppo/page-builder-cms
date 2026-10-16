@@ -28,5 +28,6 @@ export const collectionList: WidgetDefinition<"collectionList"> = {
   traps: [
     "c-list-grid", "c-list-list", "c-list-compact", "c-list-markup", "c-list-missing", "c-list-unchosen", "c-list-no-field", "c-list-filter-gone",
     "c-list-bad-filter", "c-list-bad-props", "c-list-bad-values", "c-list-styled", "tf-list-in-template",
+    "sh-list-grid", "sh-list-compact", "sp-list-grid", "sp-list-compact", "sp-list-weight", "sp-list-other", "sp-list-not-number", "so-list", "sx-list",
   ],
 };

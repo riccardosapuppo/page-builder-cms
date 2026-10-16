@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "title": "Out of stock",
+  "description": "The template of the collection the shop sells from, in euros, drawn with a product out of stock: its price as money, by a Field block and on a list's cards, and Add to cart saying so where its button goes, with no button and no form.",
+  "shop": { "enabled": true, "currency": "EUR", "productsCollectionId": 7, "priceField": "price" },
+  "entry": {
+    "id": 42,
+    "collectionId": 7,
+    "fields": [
+      { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+      { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+    ],
+    "title": "Tow float",
+    "slug": "tow-float",
+    "values": { "price": 24, "in-stock": false }
+  },
+  "sections": [
+    {
+      "id": "sx-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "sx-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "sx-price", "type": "field", "props": { "field": "price" }, "style": { "base": {} }, "children": [] },
+            { "id": "sx-cart", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": { "background": "accent", "align": "center" }, "phone": { "align": "left" } }, "children": [] },
+            {
+              "id": "sx-list", "type": "collectionList",
+              "props": { "collection": 7, "count": 3, "order": { "by": "title", "direction": "asc" }, "layout": "grid", "columns": 2, "price": "price", "linkLabel": "See it", "emptyText": "Nothing else for sale." },
+              "style": { "base": {} }, "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 7,
+      "prefix": "shop",
+      "fields": [
+        { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+        { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+      ],
+      "entries": [
+        { "id": 41, "title": "Swim cap", "slug": "swim-cap", "publishedAt": "2026-10-01T08:00:00.000Z", "values": { "price": 1250.5, "in-stock": true } },
+        { "id": 42, "title": "Tow float", "slug": "tow-float", "publishedAt": "2026-10-02T08:00:00.000Z", "values": { "price": 24, "in-stock": false } },
+        { "id": 43, "title": "Enamel mug", "slug": "enamel-mug", "publishedAt": "2026-10-03T08:00:00.000Z", "values": { "price": 9.9, "in-stock": true } }
+      ]
+    }
+  ]
+}

@@ -1,16 +1,17 @@
-<%# The published entries of a collection, each a card linking to its entry's page (CollectionList says which, in what order, and what each card shows). The collection comes from the page's content (SiteContent), read the first time a list asks for it. One list, each card an item: its image, then its words: its title (a heading of level 3, the link to the entry's page, which site.css stretches over the whole card), its day, its excerpt with its line breaks, and the words at its foot, which say again what the title's link does and so are hidden from a screen reader. A compact list draws the title and the day alone. A list with nothing to show says its empty words. On an entry's page, a list of its collection leaves that entry out (CollectionList.left_out). -%>
+<%# The published entries of a collection, each a card linking to its entry's page (CollectionList says which, in what order, and what each card shows). The collection comes from the page's content (SiteContent), read the first time a list asks for it. One list, each card an item: its image, then its words: its title (a heading of level 3, the link to the entry's page, which site.css stretches over the whole card), its day, its price (a number, or money in the shop's currency), its excerpt with its line breaks, and the words at its foot, which say again what the title's link does and so are hidden from a screen reader. A compact list draws the title, the day and the price alone. A list with nothing to show says its empty words. On an entry's page, a list of its collection leaves that entry out (CollectionList.left_out). -%>
 <%- props = block_props(block) -%>
 <%- style = block_style(block) -%>
 <%- id = CollectionList.listed_id(props) -%>
 <%- layout = CollectionList.layout(props) -%>
 <%- content = local_assigns.fetch(:content, SiteContent::NONE) -%>
-<%- cards = CollectionList.cards(props, id && content.collection(id), content.entry) -%>
+<%- cards = CollectionList.cards(props, id && content.collection(id), content.entry, content.shop) -%>
 <%- more = layout == "compact" ? "" : prop_text(props, "linkLabel") -%>
 <%- items = cards.map do |card|
       image = card.image && block_img(card.image, media)
       text = tag.div(safe_join([
         tag.h3(card.href ? content_tag(:a, card.title, href: card.href) : card.title, class: "sw-entry-title"),
         (tag.p(tag.time(EntryWords.day_words(card.day), datetime: card.day), class: "sw-entry-date") if card.day),
+        (tag.p(card.price, class: "sw-entry-price") if card.price),
         (tag.p(text_with_breaks(card.excerpt), class: "sw-entry-excerpt") if card.excerpt),
         (tag.p(more, class: "sw-entry-more", aria: { hidden: true }) unless more.empty?)
       ].compact), class: "sw-entry-text")

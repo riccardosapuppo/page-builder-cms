@@ -144,7 +144,7 @@ export const WORDS = {
   shopPrice: (key: string) => `The shop's price is the number field "${key}": keep it, or choose another price in the shop's settings first.`,
   nothingToCheckOut: "Nothing in your cart can be bought now, so there is nothing to check out.",
   // Why the browser's checkout reaches no payment: its own words.
-  demoCheckout: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment. On the CMS, with a key of Stripe's test mode, a checkout goes to Stripe's page.",
+  demoCheckout: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment.",
 } as const;
 
 // BlockDocument::BLOCK_POINTER: a block sits at /sections/n, a column at

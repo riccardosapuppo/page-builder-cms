@@ -6,8 +6,9 @@
 // a save at a revision, a retry recognised by its saveId, a conflict
 // naming where the entry is, publish and unpublish, the counts. Each call
 // is noted; a test can make the next call of a kind fail, lose the answer
-// of the next save after it went through, and save an entry "in another
-// tab".
+// of the next save after it went through, save an entry "in another tab",
+// and have the next change of a definition refused as the CMS refuses one
+// its own rules find (the shop's price, keyword shopPrice).
 import type { CollectionDefinition, EntryContent } from "../src/shared/collection.ts";
 import { validateCollection, validateEntry } from "../src/shared/validate.ts";
 import type { CollectionsStorage } from "../src/editor/collections/context.ts";
@@ -53,6 +54,12 @@ export class FakeCollections implements CollectionsStorage {
   // The next call of this kind fails so.
   fail(operation: Operation, failure: Failure): void {
     this.failing.set(operation, failure);
+  }
+
+  // The next change of a definition is refused with these errors.
+  private refusing: Array<{ pointer: string; keyword: string; message: string }> | null = null;
+  refuseNextUpdate(errors: Array<{ pointer: string; keyword: string; message: string }>): void {
+    this.refusing = errors;
   }
 
   private check(operation: Operation): void {
@@ -154,6 +161,11 @@ export class FakeCollections implements CollectionsStorage {
   updateCollection = async (collectionId: number, changes: CollectionChanges): Promise<Outcome<Collection, Invalid>> => {
     this.calls.push(`updateCollection ${collectionId} ${Object.keys(changes).join(",")}`);
     this.check("updateCollection");
+    if (this.refusing) {
+      const errors = this.refusing;
+      this.refusing = null;
+      return { ok: false, problem: invalid(errors) };
+    }
     const own = this.own(collectionId);
     const next = { name: own.name, prefix: own.prefix, fields: own.fields, sort: own.sort, ...structuredClone(changes) };
     const checked = validateCollection(next);

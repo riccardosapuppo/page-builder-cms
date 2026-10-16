@@ -9,8 +9,10 @@ that sells nothing. The plan he approved: products as a collection, a
 cart, Stripe's Checkout in test mode only, orders in the CMS, a module
 that can be off. Its first phase, on 16 October, the model on both
 sides, the CMS's tables, its JSON API and the cart's addresses, Stripe's
-client and a fake of it, the editor's storage on both adapters; no
-screen of the editor yet (below, "Still to come").
+client and a fake of it, the editor's storage on both adapters. Its
+second, the same day, the editor (below, "The editor"): the Shop screen,
+a Products preset, Add to cart, prices drawn as money, and the keys of
+the pages that draw them (below, "Still to come", for the rest).
 
 ## The question
 
@@ -164,17 +166,82 @@ one but the editor and the visitors, and listens on 127.0.0.1 alone
   battery checks out on the CMS through the cart's addresses, as a
   visitor's browser does.
 
+## The editor
+
+- **The Shop screen**, from the mark's menu after Collections, and the
+  phone's More, where the storage keeps a shop and collections
+  (`builder/src/editor/shop/`): built as the Collections screen is, the
+  shop's two parts on its left, each with a line of what it holds, the
+  one chosen on its right, one level at a time on a phone's window. Its
+  settings: on or off, the currency, the products offered among the
+  collections with a number field and their price among that
+  collection's number fields (a newly chosen collection takes its field
+  `price`, else its first number field); checked by the shop's rules
+  before they are sent, each refusal said at its control in words of its
+  keyword (`collectionExists`, `numberField`, `priceField`, `required`,
+  `enum`, `type`), the storage's the same way; saved with their own
+  button, apart from the page's history, the controls at hand while the
+  save travels and a change made meanwhile kept as one not saved yet, a
+  change not saved asked about before anything takes its place, and
+  handed to the canvas once saved.
+  Whether checkout reaches Stripe: the storage's reason, which names a
+  variable and never what it holds, and one sentence of how to set it up
+  on the CMS (a Stripe account in test mode, its test secret key in
+  `STRIPE_SECRET_KEY` where the CMS runs), or in the browser what the
+  full system does instead. Its orders: a table (when, status, total in
+  the shop's words for an amount, items in words, the email once paid),
+  an order whole in its place, its lines as they were sold, and Ask
+  Stripe again for one still open, its 409 (`checkout_not_set_up`) and
+  its 502 each said; with none yet, how an order comes.
+- **The Collections screen** says the refusals the shop added: deleting
+  the collection the shop sells from (409, `collection_in_shop`), and the
+  price field taken away or given another type (`shopPrice`), at the
+  list and under the field. A fourth preset, **Products**: a summary, an
+  image, a body, `price` (a number from 0 to 100,000) and `in-stock`
+  (the toggle the shop reads), listed by name.
+- **Add to cart** (`addToCart`), a widget written twice, in React and as
+  a Rails partial, with the button widget's markup and style keys, held
+  by the render contract on seven fixtures with a shop (`shop*.json`): for
+  a product, an entry of the collection the shop sells from while it is
+  on, a form posting `entry` and `quantity` (optional, 1 to 20) to
+  `/cart/items`, form-encoded with no token, the way the cart takes it;
+  for one out of stock or with no price, those words where the button
+  goes, and no button. For anything else (the shop off, another
+  collection's entry, values made up with no entry, a page) its root is
+  there, empty and hidden, and the canvas says why, faintly. Insert
+  offers it only in the template of the collection the shop sells from
+  while the shop is on, in This entry beside Field; the storage refuses
+  it on a page and in the site's parts (keyword `addToCart`), as it
+  refuses a Field block, and so does Paste. On the canvas the form is
+  drawn as on the site and sends nothing; the demo draws it and holds
+  its sending, a line under its form saying what the full system does.
+- **Prices as money**, in the shop's currency, by the twins of the words
+  for an amount (`moneyWords`, `money_words`), read by a renderer's twin
+  of its own (`builder/src/render/shop-words.ts`, `ShopWords`): a Field
+  block that draws the price field of the collection the shop sells
+  from, and a Collection list's cards, by a `price` member naming a
+  number field, as `image`, `date` and `excerpt` name theirs. With the
+  shop off, or for another collection, a number is drawn as a number; a
+  value no price can be (below zero, a third decimal) draws nothing
+  where it would be a price. Values made up for a collection with no
+  entry carry the collection's id, so a template's preview draws its
+  price so too.
+- **The keys of the pages that draw the shop**
+  ([published-pages-cached-by-key.md](published-pages-cached-by-key.md)):
+  a page that lists the collection the shop sells from, or is drawn with
+  an entry of it, while the shop is on, is keyed on a digest of the
+  settings, its ETag and its outer fragment, and so is a list's block of
+  that collection; a Field block's and an Add to cart block's keys hold
+  what they draw. Any other page draws as with no shop, and keeps its
+  keys when the settings change. The settings are read in one query, and
+  only by a page that lists a collection or is drawn with an entry.
+
 ## Still to come
 
-The editor (the Shop screen, from the mark's menu beside Collections and
-Form responses: the settings, whether checkout is set up, the orders, an
-order's detail, Ask Stripe again; a Products preset; Add to cart, in the
-products collection's template, written in React and as a Rails partial
-and held by the render contract; prices drawn as money by Field and
-Collection list), then the site (the cart and thanks pages designed in
-the site's frame, the caching keys of pages that draw prices, the demo's
-cart and checkout, the browser runs), then the example site's shop and
-the READMEs, each a phase of its own.
+The site (the cart and thanks pages designed in the site's frame, the
+demo's cart and checkout, its Add to cart taking a product, the browser
+runs of a checkout), then the example site's shop and the READMEs' own
+pictures, each a phase of its own.
 
 ## What it costs
 
@@ -209,6 +276,21 @@ the READMEs, each a phase of its own.
   outside the cache, being the visitor's own.
 - **The fake is only as faithful as Stripe's documentation**: no test
   reaches Stripe, and a key of the test mode must be tried by hand.
+- **Add to cart needs a product to draw**: in a template whose collection
+  has no entry yet, drawn with made-up values, it draws nothing, and the
+  canvas says so until an entry is written.
+- **A value no price can be draws nothing where a price would be**: a
+  number below zero in the price field shows no number, where the same
+  field of another collection would show it.
+- **One query more** for every page that lists a collection or is drawn
+  with an entry, a 304 included: the shop's settings, to know whether the
+  page draws them.
+- **A page that lists the products is drawn again at every change of the
+  settings**, even when its list shows no price.
+- **Add to cart's words where its button goes are the site's own**, Out of
+  stock and Not for sale, in English as the cart's pages are.
+- **The demo's Add to cart sends nothing yet**: it says what the full
+  system does, until the demo has a cart of its own.
 
 ## The proof
 
@@ -271,3 +353,57 @@ stands while empty, an upgrade that loses the entries, a new shop on; and
 in the CMS, the battery's cases failed with the settings unchecked, the
 shop's collection deleted, the orders oldest first and an order asked
 again but not kept.
+
+For the editor's screen, Add to cart and the prices, from `builder/`,
+`npm test` (1429 tests in 177 files, none failing, on 16 October 2026)
+holds the renderer's twin of the shop's words
+(`src/render/shop-words.test.ts`), the prices a Field block and a list's
+cards draw (`src/widgets/field/drawing.test.ts`,
+`src/widgets/collectionList/cards.test.ts`), what Add to cart draws, its
+panel, Insert and Paste (`src/widgets/addToCart/`), the Shop screen and
+its words (`src/editor/shop/`), the Products preset and the Collections
+screen's refusals, the shell's reads of the settings, the demo's Add to
+cart (`src/demo/PageView.cart.test.tsx`), the icons to their Lucide
+files, and the render contract on its seven fixtures with a shop, React
+against the server's goldens and the safety check. Planted one at a time,
+each of these faults turned its test red: the shop off still selling, a
+Field block's price and a card's drawn as numbers, no price said as out of
+stock, Add to cart offered in any template, the canvas's words for a shop
+that is off lost, a currency refused in the schema's words, Ask Stripe
+again offered for a paid order, the preset's price stopping at 10,000, the
+refusals of the collection the shop sells from and of its price lost, a
+storage with no shop asked for one, the demo's line under an Add to cart
+that has no form, a change made while a save travelled undone by its
+answer, the shop's icon and the cart's off their files by one number, the
+React cart's form sent by GET, and to another site; Add to cart let into
+a part, its rule's words other than the server's, offered on a page, and
+out of This entry.
+
+From `cms/`, `ruby bin/rails test` (611 runs, none failing) holds the
+Ruby twin (`test/models/shop_words_test.rb`), the partials
+(`test/views/blocks_test.rb`), the goldens, and what a visitor is served
+(`test/integration/shop_pages_test.rb`): a product's page, its price as
+money and Add to cart a form the cart takes as the page sends it; the
+shop off; Add to cart refused on a page and in the header; a template's
+preview on made-up values; the ETags and the fragments at a change of the
+settings. Planted, each failed: the Rails cart's form sent by GET, the
+shop off still selling, a page listing the products not keyed on the
+settings, a price's block not keyed on them, every page that lists a
+collection keyed on them, Add to cart let onto a page; and Add to cart's
+words let past 80 characters in the schema (`npm run compare`).
+
+In Chromium, `npm run e2e` (`e2e/shop.spec.ts`: the Products preset, the
+Shop screen on the CMS, Add to cart in the template, a visitor's cart,
+the shop turned off) failed with the visitor's quantity left out of the
+form, and the widgets' own test of Add to cart (`e2e/widgets.spec.ts`)
+with its quantity left without a label; `npm run e2e:browser` (106
+passed, 7 skipped) with the browser's checkout said in other words, and
+with Add to cart let onto a page of the browser's storage; `npm run
+e2e:demo` (14 passed) holds the demo's Shop screen to promising nothing
+the browser cannot do, and failed with its orders' words naming a
+visitor but not the full system; `npm run check:serving` (`RESULT: 105
+checks passed`) failed with a page listing the products, then a
+product's page, not keyed on the settings: each old ETag got a 304, in
+the old currency. `npm run test:rails` (108 tests) draws every widget a
+page holds on the CMS as in React, Add to cart left out with the Field
+block: the CMS refuses both on a page.

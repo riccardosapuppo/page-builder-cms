@@ -25,8 +25,9 @@
 //   the pages published in this browser show them with nothing published
 //   again, and so does the preview; after a reload they are still there;
 // - the screens promise nothing only the full system does (a visitor, a
-//   live page, a server), and the notice that says how Publish went can be
-//   closed from the keyboard without losing the place;
+//   live page, a server), the Shop's included, and the notice that says
+//   how Publish went can be closed from the keyboard without losing the
+//   place;
 // - axe on each screen, with no serious finding;
 // - a visitor back after a newer edition of the example site is given it
 //   at once if nothing was changed here, and offered it otherwise, the
@@ -709,6 +710,17 @@ test("the screens promise nothing the browser cannot do: no visitor, live page o
   await promisesNothing(page, "the Media library", found);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
+  // The Shop: its settings, with what the full system's checkout does, and
+  // its orders, none yet.
+  await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+  await page.getByRole("menuitem", { name: "Shop" }).click();
+  const shop = page.getByRole("dialog", { name: "Shop" });
+  await expect(shop.getByText(/^In the full system, the CMS sends each checkout to Stripe's page/)).toBeVisible();
+  await promisesNothing(page, "the Shop's settings", found);
+  await shop.getByRole("button", { name: /^Orders/ }).click();
+  await expect(shop.locator(".shop-empty-title")).toHaveText("No orders yet");
+  await promisesNothing(page, "the Shop's orders", found);
+  await shop.getByRole("button", { name: "Close", exact: true }).click();
   // Collections: the example site's News, which says where its entries
   // are; then a new one's form, which says where its entries would be.
   await page.getByRole("button", { name: "Page Builder CMS menu" }).click();

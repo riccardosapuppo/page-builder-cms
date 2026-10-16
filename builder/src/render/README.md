@@ -22,9 +22,10 @@ widgets import its helpers. Nothing here talks to a server.
 | `rich-text.tsx` | Rich text, through TipTap's static renderer | `RichTextHelper` |
 | `media.tsx` | Images of image blocks and gallery items, and the contract's media stub | `block_img`, `ContractMedia` |
 | `drawings.tsx` | The icon box's icons (`virtual:site-icons`, read from `schema/icons.svg` by `../../build/site-icons.ts`), the theme's drawings, text with line breaks | `site_icon`, `theme_svg`, `text_with_breaks` |
-| `context.ts` | What a renderer receives: the media resolver, the collections the Collection lists name and the entry a template is drawn with, a card's address, the decoration hook | `SiteContent` |
+| `context.ts` | What a renderer receives: the media resolver, the collections the Collection lists name and the entry a template is drawn with, the shop's settings, a card's address, the decoration hook | `SiteContent` |
 | `entry-words.ts` | An entry's values as a page writes them, for the Collection list and the Field block: a field by its key, a day that exists in the editor's words for one, the day, the month's name and the year ("15 October 2026"), a number with its thousands grouped and nothing for one no number field keeps | `EntryWords` |
-| `contract.ts` | The render contract's content for a fixture: its top-level `collections` and `entry`, as the renderer's (`contractContext`) | `ContractContent` (`cms/test/support/contract_content.rb`) |
+| `shop-words.ts` | The shop as a page is drawn with it, for a Field block, a Collection list's cards and Add to cart: whether it sells from a collection, in which currency and by which number field (`sellingFrom`), and a number written as money when it is that price, as a number otherwise (`numberOrPrice`) | `ShopWords` |
+| `contract.ts` | The render contract's content for a fixture: its top-level `collections`, `entry` and `shop`, as the renderer's (`contractContext`) | `ContractContent` (`cms/test/support/contract_content.rb`) |
 
 ## Using it
 
@@ -64,6 +65,15 @@ widgets import its helpers. Nothing here talks to a server.
   block draws nothing without it. The header and footer are drawn
   without it (`partContext` of `page.tsx`), with the page's images and
   collections: a part holds no Field block.
+- **`ctx.shop`**, the shop's settings (`ShownShop`: on or off, the
+  currency, the products collection and its price field), read
+  defensively: a price is money while the shop is on and sells from the
+  collection the value is of, a number otherwise; Add to cart draws only
+  for an entry of that collection. The canvas answers from the storage's
+  settings, read as the editor starts and as the Shop screen closes, the
+  demo from the browser's, the server from its database (`SiteContent`,
+  read once, and only for a page that lists a collection or is drawn with
+  an entry); absent, no shop.
 - **`ctx.entryHref(collection, entry)`**, a card's address:
   `/<prefix>/<slug>` when not given, by the URL policy; the demo gives its
   own view of the entry (`?entry=<id>`).

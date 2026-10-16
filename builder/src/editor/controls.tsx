@@ -701,9 +701,10 @@ export function RadioField<T extends string | number>({ label, choices, value, i
 }
 
 // One choice among more than a row of keys holds, in the browser's own
-// list (a Field block's field, a Collection list's collection or order):
-// the command's refusal, and the server's, on the field as a radio
-// field's are.
+// list (a Field block's field, a Collection list's collection or order,
+// the shop's products and price): the command's refusal, and the
+// server's, on the field as a radio field's are; for a value that is not
+// the page's, the refusals its form gives in `issues`.
 interface SelectFieldProps<T extends string> {
   label: string;
   choices: ReadonlyArray<{ value: T; label: string }>;
@@ -713,11 +714,12 @@ interface SelectFieldProps<T extends string> {
   field: string;
   hint?: ReactNode;
   rules?: FieldRules;
+  issues?: readonly string[];
 }
 
-export function SelectField<T extends string>({ label, choices, value, onChange, blockId, field, hint, rules }: SelectFieldProps<T>) {
+export function SelectField<T extends string>({ label, choices, value, onChange, blockId, field, hint, rules, issues }: SelectFieldProps<T>) {
   const id = useId();
-  const { errors, choose } = useChoice(onChange, blockId, field, rules);
+  const { errors, choose } = useChoice(onChange, blockId, field, rules, issues);
   return (
     <FieldFrame id={id} label={label} hint={hint} errors={errors}>
       <select id={id} className="input" value={value} aria-invalid={errors.length > 0 ? true : undefined} aria-describedby={describedBy(id, hint, errors)} onChange={(event) => choose(event.target.value as T)}>

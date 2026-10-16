@@ -245,6 +245,78 @@
     "keyword": "required",
     "layer": "schema"
   },
+  "invalid/cart-entry-stored.json": {
+    "rule": "the product is the entry the template is drawn with, read as its page is drawn: never kept in the template",
+    "pointer": "/sections/7/children/0/children/3/props/entry",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/cart-href.json": {
+    "rule": "it posts to the cart's own address, which no block names",
+    "pointer": "/sections/7/children/0/children/3/props/href",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/cart-label-blank.json": {
+    "rule": "its words have a visible character",
+    "pointer": "/sections/7/children/0/children/3/props/label",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/cart-label-missing.json": {
+    "rule": "Add to cart has its button's words",
+    "pointer": "/sections/7/children/0/children/3/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/cart-label-newline.json": {
+    "rule": "its words are one line",
+    "pointer": "/sections/7/children/0/children/3/props/label",
+    "keyword": "not",
+    "layer": "schema"
+  },
+  "invalid/cart-label-too-long.json": {
+    "rule": "its words have at most 80 characters, as a button block's",
+    "pointer": "/sections/7/children/0/children/3/props/label",
+    "keyword": "maxLength",
+    "layer": "schema"
+  },
+  "invalid/cart-price-stored.json": {
+    "rule": "a price is what the product published, never the block's",
+    "pointer": "/sections/7/children/0/children/3/props/price",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/cart-quantity-missing.json": {
+    "rule": "whether it asks how many is always said",
+    "pointer": "/sections/7/children/0/children/3/props",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/cart-quantity-number.json": {
+    "rule": "whether it asks how many is true or false, never a number put in",
+    "pointer": "/sections/7/children/0/children/3/props/quantity",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/cart-style-aspect.json": {
+    "rule": "it takes no image's crop",
+    "pointer": "/sections/7/children/0/children/3/style/tablet/aspect",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/cart-style-text-size.json": {
+    "rule": "it takes a button's settings, and no text's",
+    "pointer": "/sections/7/children/0/children/3/style/base/textSize",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/cart-with-children.json": {
+    "rule": "Add to cart holds no blocks",
+    "pointer": "/sections/7/children/0/children/3/children",
+    "keyword": "maxItems",
+    "layer": "schema"
+  },
   "invalid/class-name-digit-first.json": {
     "rule": "a class name starts with a letter",
     "pointer": "/sections/0/children/0/children/0/props/className",
@@ -1427,6 +1499,18 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/list-price-key-label.json": {
+    "rule": "a card's price is a field's key, never its label",
+    "pointer": "/sections/7/children/0/children/1/props/price",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/list-price-key-number.json": {
+    "rule": "a card's price names its field, never holds an amount",
+    "pointer": "/sections/7/children/0/children/1/props/price",
+    "keyword": "type",
+    "layer": "schema"
+  },
   "invalid/list-style-background.json": {
     "rule": "a list takes the band's background: its cards draw their own",
     "pointer": "/sections/7/children/0/children/1/style/base/background",
@@ -2501,8 +2585,14 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "valid/add-to-cart.json": {
+    "rule": "Add to cart with its quantity and without, a button's words of one character and of 80, in code points too; every setting a button takes, on every device, a colour of the site's own among them"
+  },
   "valid/classes-and-anchors.json": {
     "rule": "every block may have classes of the site's own and an anchor: a section, a column and every kind of widget; eight names at most, each up to 40 characters, upper case and underscores too; an image's beside its image, a gallery's items with neither"
+  },
+  "valid/collection-list-price.json": {
+    "rule": "a card's price, a number field's key, beside its image, its day and its excerpt, in a grid and in a compact list"
   },
   "valid/collection-lists.json": {
     "rule": "collection lists of every layout, one entry and twenty-four, the most; no collection chosen yet; every order, by when an entry went live, by title and by a field's key, both ways; a filter by a toggle, on and off, and by a choice's option of 60 characters, in code points too; a card with no field of its own, and one with an image, a day and an excerpt; no words at a card's foot, and 40; an empty list's words of 200; two columns and four; a colour of the site's own, a slot's on tablets, hidden on phones"

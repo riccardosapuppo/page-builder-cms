@@ -31,6 +31,7 @@ export const TYPE_NAMES: Readonly<Record<BlockType, string>> = {
   logo: "Logo",
   menu: "Menu",
   field: "Field",
+  addToCart: "Add to cart",
 };
 
 const PLURALS: Readonly<Record<ContainerType, string>> = {
@@ -57,6 +58,7 @@ const PLURALS: Readonly<Record<ContainerType, string>> = {
   logo: "logos",
   menu: "menus",
   field: "fields",
+  addToCart: "Add to cart blocks",
 };
 
 export function plural(type: ContainerType, count: number): string {
@@ -185,9 +187,10 @@ export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<str
   menu: { label: "Menu name" },
   collectionList: {
     collection: "Listed collection", count: "Entries listed", order: "List order", filter: "List filter", layout: "List layout", columns: "Grid columns",
-    image: "Card image", date: "Card date", excerpt: "Card excerpt", linkLabel: "Card link words", emptyText: "Empty list words",
+    image: "Card image", date: "Card date", excerpt: "Card excerpt", price: "Card price", linkLabel: "Card link words", emptyText: "Empty list words",
   },
   field: { field: "Field shown", level: "Field level" },
+  addToCart: { label: "Cart button text", quantity: "Quantity field" },
 };
 
 // What one item of a list is called: an image of a gallery, a question of

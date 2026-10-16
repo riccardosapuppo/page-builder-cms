@@ -5,9 +5,10 @@
 // them, in what order, from ./cards.ts. One list, each card an item: its
 // image, then its words: its title (a heading of level 3, the link to the
 // entry's page, which site.css stretches over the whole card), its day,
-// its excerpt with its line breaks, and the words at its foot, which say
-// again what the title's link does and so are hidden from a screen
-// reader. A compact list draws the title and the day alone. A list with
+// its price (a number, or money in the shop's currency), its excerpt with
+// its line breaks, and the words at its foot, which say again what the
+// title's link does and so are hidden from a screen reader. A compact
+// list draws the title, the day and the price alone. A list with
 // nothing to show says its empty words. On an entry's page, a list of its
 // collection leaves that entry out (./cards.ts, leftOut).
 import { BlockRoot, blockProps, blockStyle, propText } from "../../render/block-root.tsx";
@@ -26,6 +27,7 @@ function EntryCard({ card, media, more }: { card: Card; media: MediaResolver; mo
       <div className="sw-entry-text">
         <h3 className="sw-entry-title">{card.href === null ? card.title : <a href={card.href}>{card.title}</a>}</h3>
         {card.day !== null && <p className="sw-entry-date"><time dateTime={card.day}>{dayWords(card.day)}</time></p>}
+        {card.price !== null && <p className="sw-entry-price">{card.price}</p>}
         {card.excerpt !== null && <p className="sw-entry-excerpt"><TextWithBreaks text={card.excerpt} /></p>}
         {more !== "" && <p className="sw-entry-more" aria-hidden="true">{more}</p>}
       </div>
@@ -38,7 +40,7 @@ export function CollectionListRender({ block, ctx, decoration }: BlockRenderProp
   const style = blockStyle(block);
   const id = listedId(props);
   const layout = listLayout(props);
-  const cards = listCards(props, id === null ? null : ctx.collections?.(id), ctx.entryHref, ctx.entry);
+  const cards = listCards(props, id === null ? null : ctx.collections?.(id), ctx.entryHref, ctx.entry, ctx.shop);
   const more = layout === "compact" ? "" : propText(props, "linkLabel");
   return (
     <BlockRoot

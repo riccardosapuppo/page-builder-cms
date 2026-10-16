@@ -3,7 +3,8 @@
 One folder per widget, named as its `type` in the schema: `heading/`,
 `text/`, `image/`, `button/`, `divider/`, `spacer/`, `gallery/`, `video/`,
 `map/`, `iconbox/`, `quote/`, `accordion/`, `stats/`, `steps/`,
-`pricing/`, `collectionList/`, `form/`, `logo/`, `menu/`, `field/`.
+`pricing/`, `collectionList/`, `form/`, `logo/`, `menu/`, `field/`,
+`addToCart/`.
 Logo and menu are the blocks a header and a footer are made of, in
 Insert's Site group, after the approved design's groups, their tiles
 drawn in the design's language; a page may hold them too. Stats, steps,
@@ -11,8 +12,10 @@ pricing and the Collection list came after the design too, widgets of a
 kind it has a group for: they stand last in Content, after the design's
 own tiles, in the order they were made, the Collection list only where
 the storage keeps collections. The Field block goes only in a
-collection's template, in a group of its own, This entry, first there
-(below, "Widgets that draw a collection"). Each holds:
+collection's template, in a group of its own, This entry, first there,
+and Add to cart beside it in the template of the collection the shop
+sells from, while the shop is on (below, "Widgets that draw a
+collection"). Each holds:
 
 - `definition.ts`: the type, its group and label in the Insert drawer and
   the "+"'s picker (the
@@ -89,11 +92,12 @@ empty words.
 
 ## Widgets that draw a collection
 
-Two widgets draw from what the page is drawn with rather than from their
-props alone: the render's content (`../render/context.ts`,
-`ctx.collections` and `ctx.entry`), which the canvas fills from the
-storage (`../editor/collections/content.ts`), the demo from the browser's
-storage, and the server from its database (`SiteContent`).
+Three widgets draw from what the page is drawn with rather than from
+their props alone: the render's content (`../render/context.ts`,
+`ctx.collections`, `ctx.entry` and `ctx.shop`), which the canvas fills
+from the storage (`../editor/collections/content.ts`, and the shop's
+settings the shell reads), the demo from the browser's storage, and the
+server from its database (`SiteContent`).
 
 - **Collection list** (`collectionList/`): `cards.ts` says which entries
   and what each card shows, the twin of `CollectionList`
@@ -105,27 +109,50 @@ storage, and the server from its database (`SiteContent`).
   `?entry=<id>`, through `ctx.entryHref`). On an entry's page, a list of
   that entry's collection leaves the entry out (`leftOut`: by the id and
   collection id `ctx.entry` carries), so a "More news" list never lists
-  the story above it. The canvas never draws a draft in it; its panel
-  says how many drafts it leaves out, and leads to them in Collections.
+  the story above it. A card's `price` names a number field, drawn as
+  money in the shop's currency while the shop sells from the collection
+  and that field is its price, as a number otherwise
+  (`../render/shop-words.ts`, `numberOrPrice`, the twin of `ShopWords`).
+  The canvas never draws a draft in it; its panel says how many drafts it
+  leaves out, and leads to them in Collections.
 - **Field** (`field/`): `drawing.ts` says what it draws, the twin of
   `EntryField` (`cms/app/models/entry_field.rb`): the title, or the field
   its key names, drawn as the widget its type draws as (a heading of the
   level given, or a text, for the title and a text field; a text for the
-  others, the rich text as the text widget draws it; an image as an
-  image; a link as a button, by the button's URL policy), with that
-  widget's markup and classes, and its style keys, which the panel draws
-  as that widget's groups (`fieldStyleBlock`). A value the entry does not
-  have, or of another type, draws nothing: the root is there, hidden, and
-  the canvas alone notes it faintly (`fieldNote` of
-  `../editor/Canvas.tsx`). Insert offers it only on a template, the
-  storage refuses it anywhere else (`pageFaults` and `partFaults` of
-  `../shared/validate.ts`, `PageRules` and `SiteParts` on the server),
-  and so does Paste.
+  others, the rich text as the text widget draws it, a number in the
+  site's words, the shop's price as money; an image as an image; a link
+  as a button, by the button's URL policy), with that widget's markup
+  and classes, and its style keys, which the panel draws as that
+  widget's groups (`fieldStyleBlock`). A value the entry does not have,
+  or of another type, draws nothing: the root is there, hidden, and the
+  canvas alone notes it faintly (`fieldNote` of `../editor/Canvas.tsx`).
+  Insert offers it only on a template, the storage refuses it anywhere
+  else (`pageFaults` and `partFaults` of `../shared/validate.ts`,
+  `PageRules` and `SiteParts` on the server), and so does Paste.
+- **Add to cart** (`addToCart/`): `drawing.ts` says what it draws, the
+  twin of `AddToCart` (`cms/app/models/add_to_cart.rb`): for an entry of
+  the collection the shop sells from, the shop on (`sellingFrom` of
+  `../render/shop-words.ts`), a form posting the entry and, when the
+  block asks, a quantity to the cart's own address, `/cart/items`, its
+  button a button block's, its words, colours and alignment; for a
+  product out of stock or with no price (`productState` of
+  `../shared/shop.ts`), those words where the button goes, and no
+  button. Anything else draws nothing, its root hidden, the canvas noting
+  why (`cartCanvasNote`). Insert offers it only in the template of the
+  collection the shop sells from while the shop is on (`useSellsHere` of
+  `../editor/insert.ts`); the storage refuses it on a page and in a part,
+  keyword `addToCart` (`CART_OUTSIDE`, `PageRules::CART`), and so does
+  Paste. On the canvas its form takes no click and no key, as the page's
+  forms do not; the safety check of the render contract lets its form
+  through, sent to the cart's address and nowhere else
+  (`test/render-safety.ts`).
 
 Their accessibility tests say what they draw from: a collection made on
 the CMS before the cases are published (`collection` in `a11y.ts`, its
-id where the cases name `A11Y_COLLECTION`), and, for the Field block, the
-collection's template, read on its first entry's page (`inTemplate`).
+id where the cases name `A11Y_COLLECTION`), and, for the Field block and
+Add to cart, the collection's template, read on its first entry's page
+(`inTemplate`), the shop selling from that collection for Add to cart
+(`sells`), put back as it was after.
 The example site uses both (`../../../example-site/collections/news.json`
 and `pages/news.json`): the news page at `/news` lists every entry of
 News, newest first, one under another; News's template draws the entry's
@@ -139,7 +166,8 @@ other on a phone.
 the panel's groups, order and labels equal to the approved design's
 (read from `design/index.html`), with the widgets made after it last in
 their group (stats, steps, pricing, the Collection list) or in a group of
-their own (Site, and This entry, first in a template);
+their own (Site, and This entry, first in a template, Field and Add to
+cart);
 every tile's icon drawn as its shapes are held, with no warning from React
 (`../editor/icons.test.ts` holds the shapes to their Lucide files); every
 new widget a valid block, and a page holding one of each a valid page.

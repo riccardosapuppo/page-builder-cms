@@ -35,7 +35,7 @@ import {
   WORDS,
 } from "./browser-rules.ts";
 import { COLLECTION_WORDS } from "../../../schema/tools/collection-rules.ts";
-import { PART_ANCHOR, PART_FORM, TEMPLATE_FORM } from "../shared/validate.ts";
+import { CART_OUTSIDE, FIELD_OUTSIDE, PART_ANCHOR, PART_FORM, TEMPLATE_FORM } from "../shared/validate.ts";
 import { PNG_BYTES } from "./contract.ts";
 
 const cms = fileURLToPath(new URL("../../../cms/", import.meta.url));
@@ -108,7 +108,7 @@ describe("held to the CMS's Ruby", () => {
       "app/models/media_item.rb", "app/controllers/api/direct_uploads_controller.rb", "app/models/site_style.rb", "app/controllers/api/base_controller.rb",
       "app/controllers/api/media_controller.rb", "app/models/media_usage.rb", "app/controllers/api/pages_controller.rb", "app/models/site_parts.rb",
       "app/models/collection.rb", "app/models/entry.rb", "app/models/collection_template.rb", "app/controllers/api/entries_controller.rb",
-      "app/controllers/cart_controller.rb",
+      "app/controllers/cart_controller.rb", "app/models/page_rules.rb",
     ].map(ruby).join("\n")
       .replaceAll("#{NAME_MAX_LENGTH}", String(VERSION_NAME_MAX_LENGTH))
       .replaceAll("#{ALT_MAX_LENGTH}", String(ALT_MAX_LENGTH))
@@ -127,7 +127,7 @@ describe("held to the CMS's Ruby", () => {
       WORDS.mediaMissing("Shore01"), PART_FORM, PART_ANCHOR,
       WORDS.prefixTaken, WORDS.entryNextAddressTaken, WORDS.entryAddressTaken, WORDS.entryConflict,
       WORDS.templateNoAddress, WORDS.queryParameters, WORDS.queryForm("order"), WORDS.noSortField("summary"), TEMPLATE_FORM,
-      WORDS.collectionInShop, WORDS.shopPrice("price"), WORDS.nothingToCheckOut,
+      WORDS.collectionInShop, WORDS.shopPrice("price"), WORDS.nothingToCheckOut, FIELD_OUTSIDE, CART_OUTSIDE,
     ];
     expect(written.filter((words) => !sources.includes(words))).toEqual([]);
   });

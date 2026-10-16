@@ -13,9 +13,11 @@
 // At its foot, a sentence says the page's own "+" add where they sit
 // (./InsertPicker.tsx): the drawer is the catalogue, the "+" the way. A
 // header or a footer holds no form, so neither offers one there; only a
-// collection's template is offered This entry, its Field block; and a
-// Collection list only where the storage keeps collections, naming the
-// first of them as it comes (./insert.ts, insertableWidgets, widgetInput).
+// collection's template is offered This entry, its Field block, and, in
+// the template of the collection the shop sells from while the shop is on,
+// Add to cart; and a Collection list only where the storage keeps
+// collections, naming the first of them as it comes (./insert.ts,
+// insertableWidgets, widgetInput).
 //
 // Three widgets need something first (an image, images, a video), and so
 // does the ready-made section with a picture: their key asks for it, then
@@ -34,7 +36,7 @@ import { newWidget, WIDGET_GROUPS, type AnyWidgetDefinition, type InputOf } from
 import { useEditor, useEnv } from "./context.tsx";
 import { TILE_SENSORS, useDraggable } from "./drag/dnd.ts";
 import { Icon } from "./icons.tsx";
-import { insertableWidgets, insertTarget, useInsert, widgetInput } from "./insert.ts";
+import { insertableWidgets, insertTarget, useInsert, useSellsHere, widgetInput } from "./insert.ts";
 import { useCoarsePointer } from "./layout-mode.ts";
 import { ImagePicker, VideoPicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
@@ -98,6 +100,7 @@ export function Palette() {
   const selection = useEditor((s) => s.selection);
   const kind = useOpenKind();
   const collections = useOptionalSession()?.capabilities.collections ?? false;
+  const sells = useSellsHere();
   const touch = useCoarsePointer();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("blocks");
@@ -134,7 +137,7 @@ export function Palette() {
   const layoutShown = query.trim() === "" || matches(NEW_SECTION, query) || /^\s*[1-4]\s*$/.test(query);
   const groups = WIDGET_GROUPS.map((group) => ({
     ...group,
-    widgets: insertableWidgets(kind, collections).filter((w) => w.group === group.id && (query.trim() === "" || matches(w.label, query) || matches(group.label, query))),
+    widgets: insertableWidgets(kind, collections, sells).filter((w) => w.group === group.id && (query.trim() === "" || matches(w.label, query) || matches(group.label, query))),
   })).filter((group) => group.widgets.length > 0);
   const presets = PRESETS.filter((preset) => query.trim() === "" || matches(PRESET_LABELS[preset], query) || matches("Ready-made section", query));
   const blocksFound = layoutShown || groups.length > 0;

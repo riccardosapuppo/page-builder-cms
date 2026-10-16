@@ -4,7 +4,7 @@
 import { dayOf, dayWords } from "../../render/entry-words.ts";
 import { SORT_BUILT_INS, type Field, type FieldType, type LinkValue } from "../../shared/collection.ts";
 import type { InlineNode, RichTextBlock, RichTextDoc } from "../../shared/document.ts";
-import type { Collection, Entry } from "../../storage/adapter.ts";
+import { isStorageError, type Collection, type Entry } from "../../storage/adapter.ts";
 import { explain } from "../errors.ts";
 
 const counted = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`;
@@ -188,6 +188,15 @@ export function valueWords(field: Field, value: unknown): string | null {
 
 // ------------------------------------------------------------- refusals
 
+// Why a collection was not deleted: the shop sells from it (409,
+// collection_in_shop), or the storage's own words.
+export function deleteRefusal(error: unknown, name: string): string {
+  if (isStorageError(error) && error.failure.kind === "refused" && error.failure.code === "collection_in_shop") {
+    return `Not deleted: the shop sells from ${name}. Choose another collection in the Shop's settings, or none, before deleting it.`;
+  }
+  return `Not deleted: ${isStorageError(error) ? error.failure.message : error instanceof Error ? error.message : String(error)}`;
+}
+
 // What a field of each type needs when it is required and has nothing.
 const NEEDED: Readonly<Record<FieldType, string>> = {
   text: "Required. Write something here.",
@@ -272,9 +281,15 @@ export function entryRefusal(member: "title" | "slug", keyword: string, message:
   return explain(keyword, message, { kind: "slug", maxLength: 64 });
 }
 
+// The shop's price, which stays a number field of the collection the
+// shop's settings name, said where a change would take it away or retype
+// it (keyword shopPrice).
+export const SHOP_PRICE_GONE = "The shop's price is one of these fields: keep it, or choose another collection or price in the Shop's settings first.";
+export const SHOP_PRICE_TYPE = "This field is the shop's price: it stays a number while the Shop's settings name it. Choose another price there first.";
+
 // The sentence for a refusal of a collection's definition, by where it
 // is: its name, its prefix, a field's member, an option, the order.
-export function definitionRefusal(where: "name" | "prefix" | "key" | "label" | "options" | "option" | "bound" | "fields" | "sort", keyword: string, message: string): string {
+export function definitionRefusal(where: "name" | "prefix" | "key" | "label" | "options" | "option" | "bound" | "type" | "fields" | "sort", keyword: string, message: string): string {
   switch (where) {
     case "name":
       return explain(keyword, message, { kind: "line", maxLength: 60 });
@@ -300,7 +315,10 @@ export function definitionRefusal(where: "name" | "prefix" | "key" | "label" | "
       if (keyword === "range") return "The highest is below the lowest.";
       if (keyword === "minimum" || keyword === "maximum") return "From -1,000,000,000 to 1,000,000,000.";
       return explain(keyword, message, { kind: "number" });
+    case "type":
+      return keyword === "shopPrice" ? SHOP_PRICE_TYPE : explain(keyword, message);
     case "fields":
+      if (keyword === "shopPrice") return SHOP_PRICE_GONE;
       return keyword === "maxItems" ? "A collection holds at most 30 fields." : explain(keyword, message);
     case "sort":
       return keyword === "sortField" ? "The order followed a field that is not there any more: choose another." : explain(keyword, message);

@@ -1,0 +1,121 @@
+/* The Shop screen (./ShopScreen.tsx), which the approved design does not
+   draw: the Collections screen's window (../collections/collections.css,
+   .dlg-collections), its size, head and footer, holding two columns: the
+   shop's two parts, and the one chosen, its settings or its orders. The
+   editor's own tokens and controls only (../editor.css): graphite for what
+   is chosen, the live dot for checkout that is set up, the amber tint for
+   a question before leaving (.co-leave, the Collections screen's). */
+
+.dlg-shop { width: min(1060px, calc(100vw - 32px)); height: min(720px, calc(100vh - 48px)); }
+.dlg-shop .dlg-head { padding-bottom: 12px; }
+.dlg-shop .dlg-foot { justify-content: space-between; padding: 14px 16px 16px 20px; }
+.dlg-shop .dlg-foot .hint { margin: 0; max-width: 440px; }
+
+.dlg-body.shop-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.shop-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.shop-state { padding: 8px 0; color: var(--graphite); }
+.shop-state .btn { margin-top: 10px; }
+.shop-state-wide { grid-column: 1 / -1; align-self: start; padding: 8px 20px; }
+.shop-none { color: var(--steel); }
+
+/* The two parts, each with its line. */
+.shop-nav { min-height: 0; overflow: auto; padding: 0 12px 16px 20px; }
+.shop-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.shop-part { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 8px; width: 100%; padding: 8px 10px; border-radius: var(--r-control); text-align: left; color: var(--graphite); }
+.shop-part-icon { grid-row: 1 / span 2; align-self: start; margin-top: 1px; }
+.shop-part-name, .shop-part-meta { grid-column: 2; }
+.shop-part:hover { background: var(--key); }
+.shop-part[aria-current="true"] { background: var(--key); box-shadow: inset 3px 0 0 var(--graphite); }
+.shop-part-name { font-weight: 600; }
+.shop-part-meta { color: var(--steel); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.shop-part-meta:empty { display: none; }
+
+/* The part chosen. */
+.shop-pane { min-height: 0; overflow: auto; padding: 0 20px 16px 12px; }
+.shop-pane > .co-leave { margin: 0 0 12px; }
+.shop-head { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 10px; }
+.shop-head-name { font-size: 16px; line-height: 22px; font-weight: 600; }
+.shop-back-list { display: none; }
+
+/* The settings: their actions stay at the top of the column while it
+   scrolls, as a collection's do. */
+.shop-settings-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 0 0 10px; background: var(--plate); box-shadow: 0 1px 0 var(--alloy); }
+.shop-said { flex: 1; margin: 0; color: var(--graphite); font-size: 12px; line-height: 16px; }
+.shop-actions { display: flex; align-items: center; gap: 8px; }
+.shop-other { margin-top: 10px; }
+.shop-section { max-width: 580px; margin-top: 24px; }
+.shop-section-title { font-size: 14px; line-height: 20px; font-weight: 600; }
+.shop-section > .field:first-of-type { margin-top: 8px; }
+.shop-section .toggle { min-height: 34px; }
+.shop-checkout { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-weight: 600; }
+.shop-checkout > span:first-child { flex: none; }
+.shop-checkout-reason { margin-top: 6px; overflow-wrap: anywhere; }
+.shop-section .hint { margin-top: 6px; }
+
+/* The orders: a table, its first cell the way to the order, which covers
+   the row as a response's row does (../responses/responses.css). */
+.shop-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.shop-table thead th { padding: 0 8px 6px; border-bottom: 1px solid var(--alloy); text-align: left; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--steel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-table .shop-col-when { width: 21%; }
+.shop-table .shop-col-status { width: 17%; }
+.shop-table .shop-col-total { width: 13%; }
+.shop-table .shop-col-email { width: 22%; }
+.shop-table tbody tr { position: relative; border-bottom: 1px solid var(--alloy); }
+.shop-table tbody tr:hover { background: var(--key); }
+.shop-table tbody th, .shop-table td { padding: 8px; text-align: left; font-weight: 400; vertical-align: top; }
+.shop-open { width: 100%; text-align: left; color: var(--graphite); font-weight: 600; }
+.shop-open::after { content: ""; position: absolute; inset: 0; }
+.shop-open:hover { text-decoration: underline; text-underline-offset: 2px; }
+.shop-open:focus-visible { outline: none; }
+.shop-open:focus-visible::after { outline: 2px solid var(--graphite); outline-offset: -2px; border-radius: 2px; }
+.shop-amount, .shop-num { font-variant-numeric: tabular-nums; }
+.shop-items-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.shop-email { overflow-wrap: anywhere; }
+.shop-status { display: inline-block; padding: 1px 8px; border-radius: 9px; background: var(--key); color: var(--graphite); font-size: 12px; line-height: 16px; font-weight: 600; }
+.shop-status-paid { background: var(--graphite); color: var(--white); }
+.shop-status-open { box-shadow: inset 0 0 0 1px var(--graphite); background: none; }
+.shop-status-expired { color: var(--steel); }
+.shop-empty { max-width: 460px; padding: 28px 0 8px; }
+.shop-empty-title { font-size: 14px; line-height: 20px; font-weight: 600; }
+.shop-empty .hint { margin-top: 6px; }
+
+/* An order, whole. */
+.shop-order { max-width: 640px; padding-bottom: 24px; }
+.shop-order-head { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.shop-back { margin-left: -10px; }
+.shop-order-title { margin-top: 4px; font-size: 16px; line-height: 22px; font-weight: 600; }
+.shop-order-state { display: flex; align-items: center; gap: 8px; color: var(--graphite); }
+.shop-sep { color: var(--rule); }
+.shop-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 16px 0 0; }
+.shop-facts > div { display: contents; }
+.shop-facts dt { color: var(--steel); font-size: 12px; line-height: 20px; font-weight: 600; }
+.shop-facts dd { margin: 0; overflow-wrap: anywhere; }
+.shop-session { color: var(--steel); font-size: 12px; }
+.shop-lines { width: 100%; margin-top: 18px; border-collapse: collapse; }
+.shop-lines caption { padding-bottom: 6px; text-align: left; font-weight: 600; }
+.shop-lines th, .shop-lines td { padding: 6px 8px; border-bottom: 1px solid var(--alloy); text-align: left; font-weight: 400; }
+.shop-lines thead th { color: var(--steel); font-size: 12px; font-weight: 600; }
+.shop-lines .shop-num { text-align: right; white-space: nowrap; }
+.shop-lines tfoot th, .shop-lines tfoot td { border-bottom: 0; font-weight: 600; }
+.shop-ask { margin-top: 18px; }
+.shop-ask .hint { margin-top: 6px; }
+.shop-order > .shop-said { margin-top: 10px; }
+
+/* On a phone's window: the whole window, one level at a time, the two
+   parts or the one chosen, with the way back; the table keeps when, the
+   status and the total. */
+@media (max-width: 699px) {
+  .dlg-shop { width: calc(100vw - 16px); height: calc(100dvh - 16px); }
+  .dlg-shop .dlg-foot .hint { display: none; }
+  .shop-body { grid-template-columns: minmax(0, 1fr); }
+  .shop-body[data-level="pane"] .shop-nav, .shop-body[data-level="list"] .shop-pane { display: none; }
+  .shop-nav { padding: 0 12px 12px; }
+  .shop-pane { padding: 0 12px 12px; }
+  .shop-back-list { display: inline-flex; margin: 0 0 4px -10px; }
+  .shop-table .shop-col-email, .shop-table td.shop-email { display: none; }
+  .shop-table thead th:nth-child(4), .shop-table td.shop-items { display: none; }
+  .shop-table .shop-col-when { width: auto; }
+  .shop-table .shop-col-status { width: 112px; }
+  .shop-table .shop-col-total { width: 88px; }
+  .shop-settings-head { flex-wrap: wrap; }
+}

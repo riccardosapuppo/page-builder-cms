@@ -108,8 +108,11 @@ const dayOf = (now: Date): string =>
 // them (CollectionTemplate.sample): its label for a text, a line about it
 // for a paragraph and a rich text, its lowest number (or its highest, or
 // 12), today, its label and the top of the page for a link, a toggle on,
-// its first option; no image, which no field could make up.
-export function sampleEntry(collection: Pick<CollectionDefinition, "fields">, today: Date): ShownEntry {
+// its first option; no image, which no field could make up. Its
+// collection's id comes with it, when known, by which a price is drawn in
+// the shop's currency; it has no id of its own, being no entry, so no list
+// leaves it out and no Add to cart puts it in a cart.
+export function sampleEntry(collection: Pick<CollectionDefinition, "fields"> & { id?: number }, today: Date): ShownEntry {
   const values: EntryValues = {};
   for (const field of collection.fields) {
     switch (field.type) {
@@ -141,7 +144,7 @@ export function sampleEntry(collection: Pick<CollectionDefinition, "fields">, to
         break;
     }
   }
-  return { fields: collection.fields, title: SAMPLE_TITLE, slug: "sample", values };
+  return { ...(collection.id === undefined ? {} : { collectionId: collection.id }), fields: collection.fields, title: SAMPLE_TITLE, slug: "sample", values };
 }
 
 // What a template's Page tab says it is drawn with, and the entry itself:

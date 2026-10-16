@@ -14,9 +14,10 @@
 // of that collection leaves the entry out: "More from the club" never
 // lists the story above it.
 import { isObject } from "../../document/json.ts";
-import type { ListedCollection, ListedEntry, ShownEntry } from "../../render/context.ts";
+import type { ListedCollection, ListedEntry, ShownEntry, ShownShop } from "../../render/context.ts";
 import { dayOf, fieldOf, valueOf } from "../../render/entry-words.ts";
 import { linkHref } from "../../render/policy.ts";
+import { numberOrPrice } from "../../render/shop-words.ts";
 import { LIST_COLUMNS, LIST_LAYOUTS, type ListLayout } from "../../shared/document.ts";
 import { orderedBy, type SortValue } from "../../shared/entry-order.ts";
 
@@ -106,7 +107,9 @@ export function listedEntries(props: Readonly<Record<string, unknown>>, collecti
 // One card: where it links (none for an address the URL policy refuses),
 // its title, and what its fields give it, each null when the list names
 // no such field or the entry has no such value: an image (as an image
-// block's own props, its alt text or decorative), a day, an excerpt.
+// block's own props, its alt text or decorative), a day, an excerpt, and
+// a number in words, a price in the shop's currency when it is the price
+// of the collection the shop sells from (../../render/shop-words.ts).
 export interface Card {
   id: number;
   href: string | null;
@@ -114,6 +117,7 @@ export interface Card {
   image: Record<string, unknown> | null;
   day: string | null;
   excerpt: string | null;
+  price: string | null;
 }
 
 // A library image of an entry, as an image block's props hold one: an
@@ -132,6 +136,7 @@ export function listCards(
   collection: ListedCollection | null | undefined,
   href: (collection: ListedCollection, entry: ListedEntry) => string = entryPath,
   shown: ShownEntry | null = null,
+  shop: ShownShop | null = null,
 ): Card[] {
   if (!collection) return [];
   const compact = listLayout(props) === "compact";
@@ -142,6 +147,7 @@ export function listCards(
   const image = compact ? null : ofType(props.image, ["image"]);
   const date = ofType(props.date, ["date"]);
   const excerpt = compact ? null : ofType(props.excerpt, ["text", "paragraph"]);
+  const price = ofType(props.price, ["number"]);
   return listedEntries(props, collection, leftOut(collection, shown)).map((entry) => {
     const words = excerpt === null ? undefined : valueOf(entry.values, excerpt.key);
     return {
@@ -151,6 +157,7 @@ export function listCards(
       image: image === null ? null : imageItem(valueOf(entry.values, image.key)),
       day: date === null ? null : dayOf(valueOf(entry.values, date.key)),
       excerpt: typeof words === "string" && words !== "" ? words : null,
+      price: price === null ? null : numberOrPrice(valueOf(entry.values, price.key), price.key, collection.id, shop),
     };
   });
 }

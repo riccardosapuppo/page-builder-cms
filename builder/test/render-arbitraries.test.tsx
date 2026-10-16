@@ -29,7 +29,8 @@ test("80 generated pages are valid, hold every block type a page holds, and draw
     }),
     { seed: 20261002, numRuns: 80 },
   );
-  // Every type a page holds: a Field block only a template does.
-  expect([...seen].sort()).toEqual(BLOCK_TYPES.filter((type) => type !== "field").sort());
+  // Every type a page holds: a Field block and an Add to cart block only a
+  // template does.
+  expect([...seen].sort()).toEqual(BLOCK_TYPES.filter((type) => type !== "field" && type !== "addToCart").sort());
   expect(maps).toBeGreaterThan(10);
 }, 240_000);

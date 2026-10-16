@@ -402,8 +402,9 @@ function Tabs({ id, tab, onTab }: { id: string; tab: Tab; onTab: (tab: Tab) => v
 }
 
 // Changes not saved, before something takes their place: asked, the focus
-// on the safe answer, Esc staying.
-function LeaveQuestion({ what, onStay, onLeave }: { what: string; onStay: () => void; onLeave: () => void }) {
+// on the safe answer, Esc staying. The Shop screen asks it too
+// (../shop/ShopScreen.tsx).
+export function LeaveQuestion({ what, onStay, onLeave }: { what: string; onStay: () => void; onLeave: () => void }) {
   const id = useId();
   const stay = useRef<HTMLButtonElement>(null);
   const back = useRef<Element | null>(null);

@@ -83,6 +83,9 @@ export function excerpt(block: Block): string {
     case "field":
       // The value it draws, by its field's key: "Title", "summary".
       return block.props.field === "title" ? "Title" : block.props.field;
+    case "addToCart":
+      // What its button says: "Add to cart".
+      return block.props.label;
     case "spacer":
       return tokenName(block.props.size);
     case "divider":

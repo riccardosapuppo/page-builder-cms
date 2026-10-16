@@ -78,6 +78,20 @@ the server writes for them. The editor's half is
     whose values are of other types than their fields, and entries no
     list can draw; props the schema does not list; and a Field block on a
     page that is no template, which draws nothing.
+  - `shop.json`, `shop-page.json`, `shop-off.json`,
+    `shop-out-of-stock.json`, `shop-no-price.json`,
+    `shop-other-collection.json`, `shop-sample.json`: the shop's settings
+    beside a fixture's content (`shop`), and what it draws: a product's
+    template, in pounds, euros or dollars, its price as money by a Field
+    block and its other number as a number; Add to cart with a quantity
+    and without, every setting a button takes, words holding markup and
+    props the schema does not take; out of stock and with no price, the
+    words where the button goes; nothing for the shop off, another
+    collection's entry, values made up with no entry and a page; lists of
+    the products, their cards' prices as money (nothing, the most a
+    number field keeps, and values no price can be), a card's number that
+    is not the price, another collection's, and a price card member
+    naming a field of another type.
   - `template.json`: a collection's template drawn with an entry: its
     title as a heading of every level and as a paragraph, a field of
     every type drawn as its type draws it, values holding markup and
@@ -174,14 +188,24 @@ valid, and a test says so.
   anywhere else, or of an unknown type, is not rendered.
 - A fixture may carry, beside its document, what a page is drawn with:
   `collections`, the collections its Collection lists name, each its id,
-  prefix, fields and published entries; and `entry`, the entry its Field
+  prefix, fields and published entries; `entry`, the entry its Field
   blocks draw (its collection's fields, its title, slug and values, and
-  its id and its collection's, by which a list leaves it out). The
-  server reads them through `ContractContent`
+  its id and its collection's, by which a list leaves it out); and
+  `shop`, the shop's settings (`enabled`, `currency`,
+  `productsCollectionId`, `priceField`), by which a price is money and
+  Add to cart draws. The server reads them through `ContractContent`
   (`cms/test/support/contract_content.rb`), as `SiteContent` gives them
   on a real page, and the editor through `contractContext`
   (`builder/src/render/contract.ts`), as the canvas gives them. A
-  fixture with neither draws every list's empty words and no field.
+  fixture with none draws every list's empty words, no field, every
+  price as a number and no Add to cart.
+- An amount is written with its currency's sign, a comma between
+  thousands and its two decimals (`£1,250.50`): `ShopRules.money_words`
+  and `moneyWords` of `builder/src/shared/shop.ts`, read for a price by
+  `ShopWords` and `builder/src/render/shop-words.ts`; Add to cart's
+  form by `AddToCart` and `builder/src/widgets/addToCart/drawing.ts`.
+  The safety check lets Add to cart's form through, sent to the cart's
+  own address, `/cart/items`, and nowhere else.
 - A day is written from a table of month names, not a locale's
   (`15 October 2026`, the day, the month's name and the year), and a
   number with its thousands grouped and no zero
@@ -205,7 +229,7 @@ UPDATE_GOLDEN=1 ruby bin/rails test test/contract/goldens_test.rb
 
 The first renders every fixture and fails on any byte that differs from
 its golden, naming the line and column; it also fails when a golden has no
-fixture, when there are fewer than 6 fixtures or one of the 22 block types
+fixture, when there are fewer than 6 fixtures or one of the 23 block types
 is missing from them, and when `manifest.json` does not match the files
 (a renderer source changed without the goldens being written again). The
 second writes the goldens and the manifest. Read the diff before

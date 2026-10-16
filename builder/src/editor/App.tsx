@@ -33,9 +33,11 @@
 // (./keys.ts) and its "?" window, the selected block's menu, the save
 // state's banner and toast (./SaveStatus.tsx), About, the media library's
 // work on this adapter (./library/context.tsx), the adapter's form
-// responses when it keeps them (./responses/context.ts), and its
-// collections and their screen when it keeps those (./collections/): a
-// collection's template is opened here as a part is, by its id.
+// responses when it keeps them (./responses/context.ts), its collections
+// and their screen when it keeps those (./collections/): a collection's
+// template is opened here as a part is, by its id; and its shop and the
+// Shop screen when it keeps one (./shop/), whose settings the canvas draws
+// prices and Add to cart with.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { makeReplacePage } from "../document/commands.ts";
@@ -61,6 +63,8 @@ import { ResponsesProvider, responsesOf } from "./responses/context.ts";
 import { previewAddressOf, readSiteEntries } from "./collections/content.ts";
 import { CollectionsProvider, collectionsOf } from "./collections/context.ts";
 import { CollectionsScreen } from "./collections/CollectionsScreen.tsx";
+import { ShopProvider, shopOf } from "./shop/context.ts";
+import { ShopScreen } from "./shop/ShopScreen.tsx";
 import { Navigator } from "./Navigator.tsx";
 import { EditorKeys, MODIFIERS } from "./keys.ts";
 import { NewPageDialog } from "./NewPageDialog.tsx";
@@ -274,6 +278,25 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     }
   }), [ui, refreshEntries]);
 
+  // The shop's settings, which the canvas draws a price and Add to cart
+  // with, and Insert offers Add to cart by (../shared/shop.ts), read
+  // again: as the editor starts, and each time the Shop screen closes,
+  // where they change (it hands them over once saved, too). A storage
+  // that keeps no shop has none; a read that fails leaves what was read
+  // before, which the canvas keeps drawing with.
+  const refreshShop = useCallback(async (): Promise<void> => {
+    if (!shopOf(adapter)) return;
+    try {
+      const shop = await adapter.getShop();
+      ui.getState().setSiteShop({ enabled: shop.enabled, currency: shop.currency, productsCollectionId: shop.productsCollectionId, priceField: shop.priceField });
+    } catch {
+      // What was read before stays.
+    }
+  }, [adapter, ui]);
+  useEffect(() => ui.subscribe((state, before) => {
+    if (before.shopOpen && !state.shopOpen) void refreshShop();
+  }), [ui, refreshShop]);
+
   // A part's draft as the canvas draws it around a page, read again.
   const readPart = useCallback(async (part: PageSummary) => {
     const taken = openDocument((await adapter.getDraft(part.id)).document);
@@ -421,7 +444,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       setStatus({ kind: "loading" });
       try {
         const [list, partList, media, style, site] = await Promise.all([adapter.listPages(), adapter.listParts(), adapter.listMedia(), adapter.getSiteStyle(), adapter.getSite()]);
-        const [entriesWhy] = await Promise.all([refreshEntries(), ...partList.map(readPart)]);
+        const [entriesWhy] = await Promise.all([refreshEntries(), refreshShop(), ...partList.map(readPart)]);
         if (cancelled) return;
         setPages(list);
         setParts(partList);
@@ -454,7 +477,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     return () => {
       cancelled = true;
     };
-  }, [adapter, address, attempt, openPage, readPart, refreshEntries, ui]);
+  }, [adapter, address, attempt, openPage, readPart, refreshEntries, refreshShop, ui]);
 
   useEffect(() => () => {
     live.current.unsubscribe();
@@ -1024,10 +1047,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     versions, loadVersions, saveVersion, restoreVersion, restoring,
   }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
-  // them (./responses/context.ts), and the collections' screen the same
-  // way (./collections/context.ts).
+  // them (./responses/context.ts), and the collections' screen and the
+  // shop's the same way (./collections/context.ts, ./shop/context.ts).
   const responses = useMemo(() => responsesOf(adapter), [adapter]);
   const collections = useMemo(() => collectionsOf(adapter), [adapter]);
+  const shop = useMemo(() => shopOf(adapter), [adapter]);
   // A drawer shows only with a page open: each is about the page.
   const drawer = useStore(env.ui, (state) => (status.kind === "ready" ? state.drawer : null));
   const sidebarOpen = useStore(env.ui, (state) => state.sidebarOpen);
@@ -1049,6 +1073,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         <MediaProvider adapter={adapter} inBrowser={cmsOrigin === null}>
           <ResponsesProvider value={responses}>
           <CollectionsProvider value={collections}>
+          <ShopProvider value={shop}>
             <DragLayer>
               {/* In the order the Tab key goes: the top bar, the drawer, the
                   canvas, the sidebar (Tab from the selection reaches its
@@ -1072,8 +1097,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
             <ShortcutsDialog />
             <AboutDialog />
             <CollectionsScreen />
+            <ShopScreen />
             <SaveToast />
             <Notice />
+          </ShopProvider>
           </CollectionsProvider>
           </ResponsesProvider>
         </MediaProvider>

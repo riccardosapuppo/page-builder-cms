@@ -208,7 +208,7 @@
 .co-new { max-width: 580px; padding-bottom: 24px; }
 .co-new-title { font-size: 16px; line-height: 22px; font-weight: 600; }
 .co-new-lead { margin-top: 4px; }
-.co-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.co-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .co-preset { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--white); text-align: left; color: var(--graphite); }
 .co-preset:hover { background: var(--plate); }
 .co-preset[aria-checked="true"] { border-color: var(--graphite); box-shadow: inset 0 0 0 1px var(--graphite); }

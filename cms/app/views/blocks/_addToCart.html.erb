@@ -1,0 +1,14 @@
+<%# A product put in the visitor's cart (AddToCart says what it draws). For a product for sale, a form posting to the cart's own address, /cart/items, as a browser posts a form, with no script and no token: the product's entry in "entry", and in "quantity" how many, from 1 to the most a cart's line holds, when the block asks (without, the cart puts one in); then its button, a button block's, its words, its colours and where it stands. For one out of stock or with no price, those words where the button goes, and no button. Anything else is not a product's: the root is there, empty and hidden, so it takes no room in its column. -%>
+<%- props = block_props(block) -%>
+<%- style = block_style(block) -%>
+<%- content = local_assigns.fetch(:content, SiteContent::NONE) -%>
+<%- drawing = AddToCart.drawing(props, content.entry, content.shop) -%>
+<%- classes = [ "w", "w-addToCart", BlockStyle.classes(style, "align"), BlockStyle.visibility_classes(style) ] -%>
+<%- if drawing.nil? -%>
+<%= tag.div(**block_root(block, [ "w", "w-addToCart" ], hidden: true)) %>
+<%- elsif drawing.state != "forSale" -%>
+<%= tag.div(**block_root(block, classes, data: { state: drawing.state })) do %><%= tag.p(drawing.words, class: "sw-btn sw-btn-off") %><% end %>
+<%- else -%>
+<%- quantity = "#{block['id']}:quantity" -%>
+<%= tag.div(**block_root(block, classes, data: { state: drawing.state })) do %><%= tag.form(class: "sw-cart-add", method: "post", action: AddToCart::ITEMS) do %><%= tag.input(type: "hidden", name: "entry", value: drawing.entry_id) %><%= tag.div(safe_join([ tag.label("Quantity", for: quantity), tag.input(id: quantity, name: "quantity", type: "number", inputmode: "numeric", min: 1, max: ShopRules::MOST_QUANTITY, value: 1, required: true) ]), class: "sw-field") if drawing.quantity %><%= content_tag(:button, drawing.label, class: [ "sw-btn", BlockStyle.classes(style, "background"), BlockStyle.classes(style, "color") ].flatten, type: "submit", data: { **BlockStyle.free_color_data(style, "background"), **BlockStyle.free_color_data(style, "color") }) %><% end %><% end %>
+<%- end -%>

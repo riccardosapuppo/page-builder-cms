@@ -8,8 +8,11 @@
 // - no form but the form widget's own, the one element right inside a
 //   root of data-block-type "form", with no attribute but class="sw-form"
 //   and method="post": it has no action, so it is sent to the page's own
-//   address and nowhere else; and no formaction or formtarget anywhere,
-//   which would send it elsewhere;
+//   address and nowhere else; and Add to cart's, the one element right
+//   inside a root of data-block-type "addToCart", with no attribute but
+//   class="sw-cart-add", method="post" and action="/cart/items", the
+//   cart's own address on the site; and no formaction or formtarget
+//   anywhere, which would send either elsewhere;
 // - no event handler attribute (on*), and no srcdoc;
 // - no address that runs script or carries its own content: href, src and
 //   the other attributes that hold a URL, read as a browser reads them
@@ -27,12 +30,12 @@ type Element = DefaultTreeAdapterMap["element"];
 const FORBIDDEN_ELEMENTS = new Set(["script", "style", "base", "object", "embed", "link", "meta"]);
 
 // The form widget's own form: right inside its block's root, sent to the
-// page's own address.
+// page's own address; and Add to cart's, sent to the cart's.
+const WIDGET_FORMS: Readonly<Record<string, string>> = { form: "class=sw-form method=post", addToCart: "action=/cart/items class=sw-cart-add method=post" };
 function widgetForm(element: Element, parent: Element | null): boolean {
   const attributes = element.attrs.map((a) => `${a.name}=${a.value}`).sort();
-  return parent !== null
-    && parent.attrs.some((a) => a.name === "data-block-type" && a.value === "form")
-    && attributes.join(" ") === "class=sw-form method=post";
+  const type = parent?.attrs.find((a) => a.name === "data-block-type")?.value;
+  return type !== undefined && Object.hasOwn(WIDGET_FORMS, type) && attributes.join(" ") === WIDGET_FORMS[type];
 }
 const URL_ATTRIBUTES = new Set(["href", "src", "xlink:href", "action", "formaction", "poster", "data", "background", "cite", "longdesc", "ping", "srcset", "usemap", "manifest", "codebase", "archive"]);
 const BAD_SCHEMES = ["javascript:", "vbscript:", "data:"];

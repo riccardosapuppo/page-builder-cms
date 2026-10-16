@@ -121,6 +121,8 @@ export function definitionIssues(findings: readonly Finding[]): DefinitionIssues
     else if (member === "label") push(field.label, definitionRefusal("label", keyword, message));
     else if (member === "options" && found[3] !== undefined) push((field.option[Number(found[3])] ??= []), definitionRefusal("option", keyword, message));
     else if (member === "options") push(field.options, definitionRefusal("options", keyword, message));
+    // The shop's price retyped: said under the field, in words.
+    else if (member === "type") push(field.other, definitionRefusal("type", keyword, message));
     else if (member === "min" || member === "max") {
       // The two bounds out of order is said of both; anything else of the
       // one it is about.

@@ -35,10 +35,11 @@ import { servedWithStyle } from "./style-served.ts";
 import { parse } from "parse5";
 
 const cms = inject("cmsUrl");
-// Every widget a page holds: all but the Field block, which only a
-// collection's template holds, and the CMS refuses on a page (the render
-// contract draws it, in contract/fixtures/template.json).
-const PAGE_WIDGETS = WIDGETS.filter((widget) => widget.type !== "field");
+// Every widget a page holds: all but the Field block and Add to cart,
+// which only a collection's template holds, and the CMS refuses on a page
+// (the render contract draws them, in contract/fixtures/template.json and
+// the shop's fixtures).
+const PAGE_WIDGETS = WIDGETS.filter((widget) => widget.type !== "field" && widget.type !== "addToCart");
 const RUNS = wholeNumberFromEnv("AGREEMENT_RUNS", 60, 1);
 const SEED = wholeNumberFromEnv("AGREEMENT_SEED", 20261002);
 let cmsPage: Agreement;

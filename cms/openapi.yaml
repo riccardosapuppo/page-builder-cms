@@ -280,7 +280,9 @@ paths:
         The draft of a header or footer holds no form and no section
         anchor: 422 at the form block or the anchor, keyword `part`. A
         template's holds no form: 422 at the form block, keyword
-        `template`.
+        `template`. Only a template's holds a Field block or an Add to
+        cart block, which draw the entry it is drawn with: a page's or a
+        part's is refused at the block, keyword `field` or `addToCart`.
       tags: [pages]
       requestBody:
         required: true

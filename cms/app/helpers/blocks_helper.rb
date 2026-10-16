@@ -9,10 +9,11 @@
 # widgets, and a block of any other type, or in any other place, is left
 # out. A library image is looked up through media, which answers
 # call(media_id) with a MediaResolver::Image or nil; a collection's
-# published entries, and the entry a template is drawn with, through
-# content (SiteContent), which answers collection(id) and entry.
+# published entries, the entry a template is drawn with and the shop's
+# settings, through content (SiteContent), which answers collection(id),
+# entry and shop.
 module BlocksHelper
-  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field].freeze
+  WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field addToCart].freeze
 
   def render_document(document, media:, content: SiteContent::NONE, cached: false, answers: nil)
     sections = document.is_a?(Hash) ? document["sections"] : nil

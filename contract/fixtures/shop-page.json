@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "title": "Shop page",
+  "description": "A page of the shop, in pounds, drawn with no entry: lists of the collection it sells from, their cards' prices as money in a grid and in a compact row; a card's number that is not the price, a number of a collection the shop does not sell from, and a price card member naming a field of another type; and Add to cart, which on a page is no product's and draws nothing.",
+  "shop": { "enabled": true, "currency": "GBP", "productsCollectionId": 7, "priceField": "price" },
+  "sections": [
+    {
+      "id": "sp-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "sp-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            {
+              "id": "sp-list-grid", "type": "collectionList",
+              "props": { "collection": 7, "count": 4, "order": { "by": "title", "direction": "asc" }, "layout": "grid", "columns": 2, "image": "image", "excerpt": "summary", "price": "price", "linkLabel": "", "emptyText": "Nothing for sale yet." },
+              "style": { "base": { "color": "primary" } }, "children": []
+            },
+            {
+              "id": "sp-list-compact", "type": "collectionList",
+              "props": { "collection": 7, "count": 4, "order": { "by": "price", "direction": "desc" }, "layout": "compact", "columns": 3, "date": "made", "price": "price", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            },
+            {
+              "id": "sp-list-weight", "type": "collectionList",
+              "props": { "collection": 7, "count": 2, "order": { "by": "title", "direction": "asc" }, "layout": "list", "columns": 3, "price": "weight", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            },
+            {
+              "id": "sp-list-other", "type": "collectionList",
+              "props": { "collection": 8, "count": 2, "order": { "by": "title", "direction": "asc" }, "layout": "list", "columns": 3, "price": "price", "linkLabel": "Read more", "emptyText": "Nothing yet." },
+              "style": { "base": {} }, "children": []
+            },
+            {
+              "id": "sp-list-not-number", "type": "collectionList",
+              "props": { "collection": 7, "count": 1, "order": { "by": "title", "direction": "asc" }, "layout": "list", "columns": 3, "price": "summary", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            },
+            { "id": "sp-cart-on-page", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": { "background": "accent" } }, "children": [] }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 7,
+      "prefix": "shop",
+      "fields": [
+        { "key": "summary", "label": "Summary", "type": "paragraph", "required": false },
+        { "key": "image", "label": "Image", "type": "image", "required": false },
+        { "key": "made", "label": "Made on", "type": "date", "required": false },
+        { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+        { "key": "weight", "label": "Weight in grams", "type": "number", "required": false },
+        { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+      ],
+      "entries": [
+        { "id": 41, "title": "Swim cap", "slug": "swim-cap", "publishedAt": "2026-10-01T08:00:00.000Z", "values": { "summary": "Bright orange, seen from the shore.", "price": 12, "weight": 85.5, "made": "2026-09-30", "in-stock": true } },
+        { "id": 42, "title": "Tow float", "slug": "tow-float", "publishedAt": "2026-10-02T08:00:00.000Z", "values": { "summary": "Something to hold on to.", "image": { "mediaId": "float", "alt": "A yellow tow float on a rock" }, "price": 24.5, "weight": 1250, "in-stock": true } },
+        { "id": 43, "title": "Enamel mug", "slug": "enamel-mug", "publishedAt": "2026-10-03T08:00:00.000Z", "values": { "price": 9.99, "in-stock": false } },
+        { "id": 44, "title": "Winter series pass", "slug": "winter-series-pass", "publishedAt": "2026-10-04T08:00:00.000Z", "values": { "price": 25000.05, "in-stock": true } }
+      ]
+    },
+    {
+      "id": 8,
+      "prefix": "events",
+      "fields": [
+        { "key": "price", "label": "Ticket", "type": "number", "required": false }
+      ],
+      "entries": [
+        { "id": 51, "title": "Open day", "slug": "open-day", "publishedAt": "2026-10-05T08:00:00.000Z", "values": { "price": 12 } },
+        { "id": 52, "title": "Night swim", "slug": "night-swim", "publishedAt": "2026-10-06T08:00:00.000Z", "values": { "price": 1250.5 } }
+      ]
+    }
+  ]
+}

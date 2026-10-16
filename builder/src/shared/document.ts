@@ -21,7 +21,7 @@ export const BLOCK_TYPES = [
   "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
   "form",
   "logo", "menu",
-  "field",
+  "field", "addToCart",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -31,7 +31,7 @@ export const WIDGET_TYPES = [
   "gallery", "video", "map", "iconbox", "quote", "accordion", "stats", "steps", "pricing", "collectionList",
   "form",
   "logo", "menu",
-  "field",
+  "field", "addToCart",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -188,6 +188,8 @@ export const STYLE_KEYS_BY_TYPE = {
   // an image's crop, a button's colours. The panel offers those of the one
   // it draws as (../widgets/field/), and the renderers read only those.
   field: ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "aspect", "background", "visibility"],
+  // A button's: its button is one (../widgets/addToCart/).
+  addToCart: ["background", "color", "align", "visibility"],
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
 
 export type StyleKeyOf<T extends BlockType> = (typeof STYLE_KEYS_BY_TYPE)[T][number];
@@ -420,6 +422,9 @@ export interface CollectionListProps extends BlockAttributes {
   image?: string;
   date?: string;
   excerpt?: string;
+  // A number field, drawn as a price in the shop's currency when it is the
+  // price of the collection the shop sells from, the shop on.
+  price?: string;
   linkLabel: string;
   emptyText: string;
 }
@@ -429,6 +434,13 @@ export interface CollectionListProps extends BlockAttributes {
 export interface FieldProps extends BlockAttributes {
   field: string;
   level?: HeadingLevel;
+}
+// A form that puts the entry a template is drawn with in a visitor's cart
+// (../widgets/addToCart/): its button's words, and whether it asks how
+// many. Which entry, and whether it is for sale, are the storage's.
+export interface AddToCartProps extends BlockAttributes {
+  label: string;
+  quantity: boolean;
 }
 // One field of a form. name is the key its answers are kept under, made by
 // the editor and never shown; unique in its form (an application rule).
@@ -501,11 +513,12 @@ export type FormBlock = BlockOf<"form", FormProps, NoChildren>;
 export type LogoBlock = BlockOf<"logo", LogoProps, NoChildren>;
 export type MenuBlock = BlockOf<"menu", MenuProps, NoChildren>;
 export type FieldBlock = BlockOf<"field", FieldProps, NoChildren>;
+export type AddToCartBlock = BlockOf<"addToCart", AddToCartProps, NoChildren>;
 
 export type WidgetBlock =
   | HeadingBlock | TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock
   | GalleryBlock | VideoBlock | MapBlock | IconboxBlock | QuoteBlock | AccordionBlock
-  | StatsBlock | StepsBlock | PricingBlock | CollectionListBlock | FormBlock | LogoBlock | MenuBlock | FieldBlock;
+  | StatsBlock | StepsBlock | PricingBlock | CollectionListBlock | FormBlock | LogoBlock | MenuBlock | FieldBlock | AddToCartBlock;
 export type Block = SectionBlock | ColumnBlock | WidgetBlock;
 
 export type BlockOfType<T extends BlockType> = Extract<Block, { type: T }>;
@@ -554,12 +567,13 @@ export const PROP_KEYS = {
   pricing: { plans: "required", ...OWN },
   collectionList: {
     collection: "optional", count: "required", order: "required", filter: "optional", layout: "required", columns: "required",
-    image: "optional", date: "optional", excerpt: "optional", linkLabel: "required", emptyText: "required", ...OWN,
+    image: "optional", date: "optional", excerpt: "optional", price: "optional", linkLabel: "required", emptyText: "required", ...OWN,
   },
   form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
   logo: { name: "optional", ...OWN },
   menu: { label: "required", items: "required", ...OWN },
   field: { field: "required", level: "optional", ...OWN },
+  addToCart: { label: "required", quantity: "required", ...OWN },
 } as const satisfies { [T in Exclude<BlockType, "image">]: KeyTable<PropsOf<T>> };
 
 export const LIST_ORDER_KEYS = { by: "required", direction: "required" } as const satisfies KeyTable<ListOrder>;

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "title": "Shop off",
+  "description": "The template of the collection the shop names, with the shop off, drawn with a product: its price drawn as a number, by a Field block and on a list's cards, and Add to cart drawing nothing.",
+  "shop": { "enabled": false, "currency": "EUR", "productsCollectionId": 7, "priceField": "price" },
+  "entry": {
+    "id": 41,
+    "collectionId": 7,
+    "fields": [
+      { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+      { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+    ],
+    "title": "Swim cap",
+    "slug": "swim-cap",
+    "values": { "price": 1250.5, "in-stock": true }
+  },
+  "sections": [
+    {
+      "id": "so-section", "type": "section", "props": {}, "style": { "base": {} },
+      "children": [
+        {
+          "id": "so-column", "type": "column", "props": {}, "style": { "base": {} },
+          "children": [
+            { "id": "so-price", "type": "field", "props": { "field": "price" }, "style": { "base": {} }, "children": [] },
+            { "id": "so-cart", "type": "addToCart", "props": { "label": "Add to cart", "quantity": true }, "style": { "base": { "align": "center" } }, "children": [] },
+            {
+              "id": "so-list", "type": "collectionList",
+              "props": { "collection": 7, "count": 3, "order": { "by": "price", "direction": "asc" }, "layout": "list", "columns": 3, "price": "price", "linkLabel": "See it", "emptyText": "Nothing for sale yet." },
+              "style": { "base": {} }, "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": 7,
+      "prefix": "shop",
+      "fields": [
+        { "key": "price", "label": "Price", "type": "number", "required": false, "min": 0, "max": 100000 },
+        { "key": "in-stock", "label": "In stock", "type": "toggle", "required": false }
+      ],
+      "entries": [
+        { "id": 41, "title": "Swim cap", "slug": "swim-cap", "publishedAt": "2026-10-01T08:00:00.000Z", "values": { "price": 1250.5, "in-stock": true } },
+        { "id": 42, "title": "Tow float", "slug": "tow-float", "publishedAt": "2026-10-02T08:00:00.000Z", "values": { "price": 24, "in-stock": true } }
+      ]
+    }
+  ]
+}

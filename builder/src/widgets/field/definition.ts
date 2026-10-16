@@ -20,5 +20,6 @@ export const field: WidgetDefinition<"field"> = {
     "tf-title-h1", "tf-title-plain", "tf-text-heading", "tf-paragraph", "tf-rich", "tf-date", "tf-date-bad", "tf-number", "tf-number-bad",
     "tf-toggle-on", "tf-toggle-off", "tf-choice", "tf-image", "tf-image-decorative", "tf-image-missing", "tf-link", "tf-link-javascript",
     "tf-missing", "tf-wrong-type", "tf-markup", "tf-styled", "tf-level-out-of-range", "tf-not-a-key", "c-field-on-page",
+    "sh-price", "sh-weight", "so-price", "sx-price", "sn-price", "sc-price", "ss-price",
   ],
 };

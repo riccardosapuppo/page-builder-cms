@@ -102,6 +102,8 @@ export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
   // A field takes the groups of the widget it draws as (fieldStyleBlock);
   // these are a field's whose field the template's collection has not.
   field: ["content", "shown", "advanced"],
+  // A button's: its button is one.
+  addToCart: ["content", "colors", "alignment", "shown", "advanced"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -243,6 +245,7 @@ function contentWords(block: WidgetBlock): string {
     const required = block.props.items.filter((field) => field.required).length;
     return `${count} ${count === 1 ? "field" : "fields"}, ${required === 0 ? "none" : required} required`;
   }
+  if (block.type === "addToCart") return block.props.quantity ? `${block.props.label}, with a quantity` : block.props.label;
   return excerpt(block) || "Empty";
 }
 

@@ -54,6 +54,8 @@ import { locate } from "../document/tree.ts";
 import { OwnClassPrefix, type Decoration, type RawBlock, type RenderContext, type ShownEntry } from "../render/context.ts";
 import { fieldOf } from "../render/entry-words.ts";
 import { fieldDrawing, TITLE } from "../widgets/field/drawing.ts";
+import { cartDrawing } from "../widgets/addToCart/drawing.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import { CANVAS_CLASS_PREFIX } from "../shared/custom-css.ts";
 import { PageSections } from "../render/blocks.tsx";
 import { CustomCssStyle, FreeColorsStyle, FreeTypeStyle, PageRoot, partContext, siteStyleAttributes, type SiteStyleChoice } from "../render/page.tsx";
@@ -183,18 +185,21 @@ function priorityOf(state: EditorState, id: string | null): ReturnType<typeof co
 }
 
 // The entry the open template is drawn with, for the note a Field block
-// with nothing to draw shows on the canvas; null on any other page.
-const EntryShown = createContext<{ entry: ShownEntry | null; template: boolean }>({ entry: null, template: false });
+// or an Add to cart block with nothing to draw shows on the canvas; null
+// on any other page; and the shop's settings.
+const EntryShown = createContext<{ entry: ShownEntry | null; template: boolean; shop: ShopSettings | null }>({ entry: null, template: false, shop: null });
 
 // What a Field block with nothing to draw says on the canvas, where its
 // root, hidden on the page, is drawn faintly so it can be selected and
 // moved: the field it names, so that two such blocks one under the other
 // are told apart; a toggle that is off draws nothing by design, and says
-// so. Null for one that draws its value.
-export function fieldNote(block: RawBlock, entry: ShownEntry | null, template: boolean): string | null {
+// so. Null for one that draws its value. An Add to cart block says why it
+// draws nothing (cartNote).
+export function fieldNote(block: RawBlock, entry: ShownEntry | null, template: boolean, shop: ShopSettings | null = null): string | null {
+  if (block.type === "addToCart") return cartCanvasNote(block, entry, template, shop);
   if (block.type !== "field") return null;
   const props = block.props && typeof block.props === "object" ? (block.props as Record<string, unknown>) : {};
-  if (fieldDrawing(props, entry) !== null) return null;
+  if (fieldDrawing(props, entry, shop) !== null) return null;
   if (!template) return "A field draws an entry’s value: only a template has one";
   if (entry === null) return "No value yet";
   const key = props.field;
@@ -203,6 +208,18 @@ export function fieldNote(block: RawBlock, entry: ShownEntry | null, template: b
   if (!field) return `No field “${typeof key === "string" ? key : ""}” in this collection`;
   if (field.type === "toggle") return `“${field.label}” is off in this entry`;
   return `No “${field.label}” in this entry`;
+}
+
+// What an Add to cart block with nothing to draw says on the canvas: why
+// it is no product's. Null for one that draws its form, or says where its
+// button goes that the product is out of stock or has no price.
+export function cartCanvasNote(block: RawBlock, entry: ShownEntry | null, template: boolean, shop: ShopSettings | null): string | null {
+  const props = block.props && typeof block.props === "object" ? (block.props as Record<string, unknown>) : {};
+  if (cartDrawing(props, entry, shop) !== null) return null;
+  if (!template) return "Add to cart puts an entry in the cart: only a template has one";
+  if (shop === null || !shop.enabled) return "Add to cart: the shop is off, so it draws nothing";
+  if (entry === null || entry.collectionId !== shop.productsCollectionId) return "Add to cart: the shop sells from another collection";
+  return "Add to cart: drawn for an entry of this collection, and it has none yet";
 }
 
 // The copy of a widget left where it stood while it is dragged (./drag/
@@ -250,7 +267,7 @@ function useDecoration(block: RawBlock): Decoration | undefined {
   }, [isText, relation]);
   const pluses = usePluses(block, id, relation);
   const shown = useContext(EntryShown);
-  const note = fieldNote(block, shown.entry, shown.template);
+  const note = fieldNote(block, shown.entry, shown.template, shown.shop);
 
   if (ghost) return GHOST;
   if (id === null) return undefined;
@@ -907,8 +924,10 @@ function CanvasView() {
   // What the page's lists and a template's fields draw from: the
   // storage's collections, and for a template the entry its Page tab
   // picks, its draft, or values made up when its collection has none
-  // (./collections/content.ts).
+  // (./collections/content.ts); and the shop's settings, by which a price
+  // is money and Add to cart draws.
   const siteEntries = useUi((u) => u.siteEntries);
+  const siteShop = useUi((u) => u.siteShop);
   const previewEntry = useUi((u) => u.previewEntry);
   const templateId = kind === "template" ? (opened?.current?.collection?.id ?? null) : null;
   const entry = useMemo(
@@ -916,10 +935,10 @@ function CanvasView() {
     [siteEntries, templateId, previewEntry, env.clock],
   );
   // The context's hook must stay the same function: the library's lookup,
-  // the collections and the entry are the parts that change, and only
-  // when they do.
-  const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), collections: collectionResolver(siteEntries), entry, useDecoration }), [media, siteEntries, entry]);
-  const entryShown = useMemo(() => ({ entry, template: kind === "template" }), [entry, kind]);
+  // the collections, the entry and the shop are the parts that change, and
+  // only when they do.
+  const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), collections: collectionResolver(siteEntries), entry, shop: siteShop, useDecoration }), [media, siteEntries, entry, siteShop]);
+  const entryShown = useMemo(() => ({ entry, template: kind === "template", shop: siteShop }), [entry, kind, siteShop]);
   const layout = useLayoutMode();
   const { width, scale } = fitPreview(preview, room, layout === "narrow");
 

@@ -756,11 +756,12 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
 /* Where the page around a part has no section yet. */
 .canvas .around-none { margin: 0; padding: 72px 24px; text-align: center; color: var(--steel); font: 500 14px/20px var(--font-ui); }
 /* A Field block with nothing to draw (no value in the entry the template
-   is drawn with, a field its collection has not): hidden on the page, so
-   it takes no room in its column there; drawn here as a faint line that
-   says so, to be selected, moved or given another field. Over the
-   editor's own rule for [hidden], which is !important too. */
-.canvas .site [data-block-type="field"][hidden] { display: block !important; }
+   is drawn with, a field its collection has not), or an Add to cart block
+   that is no product's: hidden on the page, so it takes no room in its
+   column there; drawn here as a faint line that says so, to be selected,
+   moved or given another field. Over the editor's own rule for [hidden],
+   which is !important too. */
+.canvas .site :is([data-block-type="field"], [data-block-type="addToCart"])[hidden] { display: block !important; }
 .field-none { display: block; padding: 6px 10px; border: 1px dashed var(--rule); border-radius: 4px; background: color-mix(in srgb, var(--white) 70%, transparent); color: var(--steel); font: 500 12px/16px var(--font-ui); letter-spacing: normal; text-align: left; }
 
 /* Block edges (the bottom line): every block's edges dashed, sections and

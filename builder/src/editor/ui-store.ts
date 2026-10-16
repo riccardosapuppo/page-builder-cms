@@ -4,8 +4,9 @@
 // library, the site style and settings, the header and footer the canvas
 // draws around a page and the page it draws around a header or footer, the
 // errors of the last save the server refused, whether the shortcuts window,
-// the About window or the Collections screen is open, and the text typed
-// in a field and not handed over yet. A vanilla zustand store, like the
+// the About window, the Collections screen or the Shop screen is open, the
+// shop's settings the canvas draws prices with, and the text typed in a
+// field and not handed over yet. A vanilla zustand store, like the
 // editor's own (../store), so each part of the interface subscribes to the
 // one value it draws and nothing else redraws.
 //
@@ -13,6 +14,7 @@
 // the editor store's, changed only by its commands.
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { PageDocument } from "../shared/document.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import type { BlockFieldError, MediaItem, Site, SiteStyle } from "../storage/adapter.ts";
 import type { PreviewChoice, SiteEntries } from "./collections/content.ts";
 import type { ColorPreview } from "./color-preview.ts";
@@ -161,6 +163,13 @@ export interface UiState {
   // The entry a template is drawn with on the canvas, picked in its Page
   // tab, by its collection; null for the first published one.
   previewEntry: { collectionId: number; choice: PreviewChoice } | null;
+  // The Shop screen (./shop/) is open, from the mark's menu or the
+  // phone's More.
+  shopOpen: boolean;
+  // The shop's settings, which the canvas draws a price and Add to cart
+  // with and Insert offers Add to cart by (../shared/shop.ts); null until
+  // they are read, and with a storage that keeps no shop.
+  siteShop: ShopSettings | null;
   // The drawer open is the history (./HistoryPanel.tsx), kept beside
   // `drawer` for the parts that ask only that; its "Save version" asks for
   // a name.
@@ -222,6 +231,8 @@ export interface UiState {
   setCollections(at: CollectionsAt | null): void;
   setSiteEntries(entries: SiteEntries | null): void;
   setPreviewEntry(choice: { collectionId: number; choice: PreviewChoice } | null): void;
+  setShopOpen(open: boolean): void;
+  setSiteShop(shop: ShopSettings | null): void;
   // The history's drawer opened, or closed if it is the one open.
   setHistoryOpen(open: boolean): void;
   setNamingVersion(naming: boolean): void;
@@ -230,7 +241,7 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart" | "onePanel" | "siteEntries">> = {}): UiStore {
+export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" | "sideTab" | "openGroups" | "sidebarOpen" | "drawer" | "siteStyle" | "site" | "parts" | "aroundPart" | "onePanel" | "siteEntries" | "siteShop">> = {}): UiStore {
   const drawer = initial.drawer ?? null;
   const store = createStore<UiState>()((set, get) => ({
     hover: null,
@@ -260,6 +271,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     collections: null,
     siteEntries: initial.siteEntries ?? null,
     previewEntry: null,
+    shopOpen: false,
+    siteShop: initial.siteShop ?? null,
     historyOpen: drawer === "history",
     namingVersion: false,
     copied: null,
@@ -299,6 +312,8 @@ export function createUiStore(initial: Partial<Pick<UiState, "preview" | "tray" 
     setCollections: (collections) => set({ collections }),
     setSiteEntries: (siteEntries) => set({ siteEntries }),
     setPreviewEntry: (previewEntry) => set({ previewEntry }),
+    setShopOpen: (shopOpen) => set({ shopOpen }),
+    setSiteShop: (siteShop) => set({ siteShop }),
     setHistoryOpen: (open) => {
       if (open) get().setDrawer("history");
       else if (get().drawer === "history") get().setDrawer(null);

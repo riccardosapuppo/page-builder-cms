@@ -45,7 +45,8 @@ class BlocksTest < ActionView::TestCase
       block("w-menu", "menu", { "label" => "Main", "items" => [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" } ] }),
       block("w-list", "collectionList", { "collection" => 7, "count" => 3, "order" => { "by" => "publishedAt", "direction" => "desc" }, "layout" => "grid", "columns" => 3,
                                          "linkLabel" => "Read more", "emptyText" => "Nothing yet." }),
-      block("w-field", "field", { "field" => "title", "level" => 2 })
+      block("w-field", "field", { "field" => "title", "level" => 2 }),
+      block("w-cart", "addToCart", { "label" => "Add to cart", "quantity" => true })
     ]
   end
 
@@ -80,7 +81,7 @@ class BlocksTest < ActionView::TestCase
     html = html_of(page(*every_widget))
 
     roots = html.css("[data-block-type]")
-    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu collectionList field], roots.map { |r| r["data-block-type"] }
+    assert_equal %w[section column heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing form logo menu collectionList field addToCart], roots.map { |r| r["data-block-type"] }
     assert_equal %w[s1 c1] + every_widget.map { |w| w["id"] }, roots.map { |r| r["data-block-id"] }
   end
 
@@ -544,5 +545,83 @@ class BlocksTest < ActionView::TestCase
       assert_equal %w[s d m b x], roots.map { |root| root["data-block-id"] }
       assert(roots.all? { |root| root.key?("hidden") && root.children.empty? && root["class"] == "w w-field" })
     end
+  end
+
+  # ------------------------------------------------------------- the shop
+
+  # The products: a collection whose number field is the price and whose
+  # toggle says what is in stock, sold in pounds; a product of it.
+  KIT = {
+    "id" => 9, "prefix" => "kit",
+    "fields" => [
+      { "key" => "price", "label" => "Price", "type" => "number", "required" => false, "min" => 0, "max" => 100_000 },
+      { "key" => "weight", "label" => "Weight", "type" => "number", "required" => false },
+      { "key" => "in-stock", "label" => "In stock", "type" => "toggle", "required" => false }
+    ],
+    "entries" => [
+      { "id" => 41, "title" => "Swim cap", "slug" => "swim-cap", "publishedAt" => "2026-10-01T08:00:00.000Z", "values" => { "price" => 1250.5, "weight" => 85.5, "in-stock" => true } },
+      { "id" => 42, "title" => "Tow float", "slug" => "tow-float", "publishedAt" => "2026-10-02T08:00:00.000Z", "values" => { "price" => -3 } }
+    ]
+  }.freeze
+  SHOP = { "enabled" => true, "currency" => "GBP", "productsCollectionId" => 9, "priceField" => "price" }.freeze
+
+  def product(values = { "price" => 12, "in-stock" => true }, id: 41)
+    { "id" => id, "collectionId" => 9, "fields" => KIT["fields"], "title" => "Swim cap", "slug" => "swim-cap", "values" => values }
+  end
+
+  def shop_content(entry: product, shop: SHOP)
+    ContractContent.new({ "collections" => [ KIT ], "entry" => entry, "shop" => shop })
+  end
+
+  def cart(id, **props)
+    block(id, "addToCart", { "label" => "Add to cart", "quantity" => true }.merge(props.transform_keys(&:to_s)))
+  end
+
+  test "Add to cart, for a product for sale, is a form posting the entry and how many to the cart's own address, with no token, its button a button block's" do
+    html = html_with(page(cart("q"), cart("one", quantity: false, label: "Buy one")), shop_content)
+
+    form = html.at_css("[data-block-id=q] > form")
+    assert_equal [ "sw-cart-add", "post", "/cart/items" ], attributes(form, "class", "method", "action")
+    assert_equal [ [ "entry", "hidden", "41" ], [ "quantity", "number", "1" ] ], form.css("input").map { |input| [ input["name"], input["type"], input["value"] ] }
+    quantity = labelled(html, "Quantity")
+    assert_equal [ "1", "20", "numeric" ], attributes(quantity, "min", "max", "inputmode")
+    assert quantity.key?("required")
+    assert_equal [ "Add to cart", "submit" ], [ form.at_css("button.sw-btn").text, form.at_css("button")["type"] ]
+    assert_empty html.css("input[name=authenticity_token], input[name=_method]"), "no token: the Origin a browser sends lets it through"
+    assert_equal "forSale", html.at_css("[data-block-id=q]")["data-state"]
+    assert_equal [ [ "entry", "41" ] ], html.css("[data-block-id=one] input").map { |input| [ input["name"], input["value"] ] }
+    assert_equal "Buy one", html.at_css("[data-block-id=one] button").text
+  end
+
+  test "out of stock, or with no price, Add to cart says so where its button goes, and is no button and no form" do
+    html = html_with(page(cart("c")), shop_content(entry: product({ "price" => 12, "in-stock" => false })))
+    assert_equal [ "outOfStock", "Out of stock" ], [ html.at_css("[data-block-id=c]")["data-state"], html.at_css("[data-block-id=c] p.sw-btn.sw-btn-off").text ]
+    assert_empty html.css("[data-block-id=c] form, [data-block-id=c] button")
+
+    html = html_with(page(cart("c")), shop_content(entry: product({ "price" => -3, "in-stock" => true })))
+    assert_equal [ "noPrice", "Not for sale" ], [ html.at_css("[data-block-id=c]")["data-state"], html.at_css("[data-block-id=c] p").text ]
+  end
+
+  test "Add to cart draws nothing, its root hidden, with the shop off, for another collection's entry, for made-up values and on a page with no entry" do
+    [
+      shop_content(shop: SHOP.merge("enabled" => false)), shop_content(shop: SHOP.merge("productsCollectionId" => 8)), shop_content(shop: nil),
+      shop_content(entry: product.except("id")), shop_content(entry: nil)
+    ].each_with_index do |content, at|
+      root = html_with(page(cart("c")), content).at_css("[data-block-id=c]")
+      assert_equal [ true, true, "w w-addToCart" ], [ root.key?("hidden"), root.children.empty?, root["class"] ], at.to_s
+    end
+  end
+
+  test "the price of the collection the shop sells from is money in its currency, by a Field block and on a list's cards; with the shop off, a number" do
+    price = block("p", "field", { "field" => "price" })
+    weight = block("w", "field", { "field" => "weight" })
+    sold = list("l", collection: 9, price: "price", order: { "by" => "title", "direction" => "asc" }, image: nil, date: nil, excerpt: nil)
+    html = html_with(page(price, weight, sold), shop_content(entry: product({ "price" => 1250.5, "weight" => 85.5 }), shop: SHOP.merge("currency" => "EUR")))
+    assert_equal [ "€1,250.50", "85.5" ], [ html.at_css("[data-block-id=p] p").text, html.at_css("[data-block-id=w] p").text ]
+    # The entry its page is drawn with is left out; a value no price can be draws nothing.
+    assert_equal [ [ "Tow float", nil ] ], html.css("[data-block-id=l] li").map { |li| [ li.at_css(".sw-entry-title").text, li.at_css(".sw-entry-price")&.text ] }
+
+    off = html_with(page(price, list("l", collection: 9, price: "price", image: nil, date: nil, excerpt: nil)), shop_content(entry: nil, shop: SHOP.merge("enabled" => false)))
+    assert_equal [ "-3", "1,250.5" ], off.css("[data-block-id=l] .sw-entry-price").map(&:text)
   end
 end

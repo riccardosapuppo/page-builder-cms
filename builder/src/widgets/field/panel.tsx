@@ -14,11 +14,14 @@ import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 import { dayWords } from "../../render/entry-words.ts";
 import type { Field } from "../../shared/collection.ts";
+import { moneyWords, type Currency } from "../../shared/shop.ts";
 import { HEADING_LEVELS, type Block, type FieldBlock, type HeadingLevel } from "../../shared/document.ts";
 import { fieldLevel, fieldShape, TITLE, type FieldShape } from "./drawing.ts";
 
-// What a field of each type draws, in a sentence.
-export function drawsWords(field: Pick<Field, "type" | "label"> | null): string {
+// What a field of each type draws, in a sentence; the shop's price, in
+// the currency it is sold in.
+export function drawsWords(field: Pick<Field, "type" | "label"> | null, sold: Currency | null = null): string {
+  if (field?.type === "number" && sold !== null) return `The shop's price, written as ${moneyWords(125_050, sold)}.`;
   switch (field?.type) {
     case "text":
       return "Its words, as a heading of the level below, or as text.";
@@ -57,6 +60,7 @@ function FieldContent({ block }: ContentProps<"field">) {
   const commands = useBlockCommands(block.id);
   const shown = useTemplateCollection();
   const picked = useUi((u) => u.previewEntry);
+  const shop = useUi((u) => u.siteShop);
   const fields = shown?.collection.fields ?? [];
   const key = block.props.field;
   const field = key === TITLE ? TITLE_FIELD : (fields.find((f) => f.key === key) ?? null);
@@ -78,7 +82,7 @@ function FieldContent({ block }: ContentProps<"field">) {
         value={key}
         blockId={block.id}
         field="/props/field"
-        hint={field === null ? `${name} has no field “${key}”: this block draws nothing. Choose another.` : drawsWords(field)}
+        hint={field === null ? `${name} has no field “${key}”: this block draws nothing. Choose another.` : drawsWords(field, shop !== null && shop.enabled && shown?.collection.id === shop.productsCollectionId && key === shop.priceField ? shop.currency : null)}
         onChange={(next) => commands.setProps({ field: next })}
       />
       {field?.type === "text" && (

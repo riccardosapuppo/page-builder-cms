@@ -2,7 +2,8 @@
 // Media, Content, Forms; then Site, the header's and footer's blocks; the
 // widgets made after the design last in their group, as stats, steps,
 // pricing and the collection list are in Content; and before them all This
-// entry, a template's own group, which no other page offers), and the
+// entry, a template's own group, which no other page offers: Field, and
+// Add to cart in the template of the collection the shop sells from), and the
 // renderer of each type. registry.test.ts
 // holds the list to the schema's widget types, one definition each.
 //
@@ -14,6 +15,7 @@ import type { ComponentType } from "react";
 import type { BlockRenderProps } from "../render/context.ts";
 import type { WidgetType } from "../shared/document.ts";
 import { accordion } from "./accordion/definition.ts";
+import { addToCart } from "./addToCart/definition.ts";
 import { button } from "./button/definition.ts";
 import { collectionList } from "./collectionList/definition.ts";
 import { divider } from "./divider/definition.ts";
@@ -36,7 +38,7 @@ import type { AnyWidgetDefinition, IconData } from "./types.ts";
 import { video } from "./video/definition.ts";
 
 export const WIDGETS: readonly AnyWidgetDefinition[] = [
-  field,
+  field, addToCart,
   heading, text, image, button, divider, spacer,
   gallery, video, map,
   iconbox, quote, accordion, stats, steps, pricing, collectionList,
