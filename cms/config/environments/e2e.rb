@@ -47,6 +47,11 @@ Rails.application.configure do
 
   config.action_controller.raise_on_missing_callback_actions = true
 
+  # No test reaches Stripe: the harness gives this server the tests' fake
+  # (STRIPE_API_BASE on 127.0.0.1, cms/test/support/fake_stripe.rb), or
+  # no key at all.
+  config.x.stripe_network = false
+
   # Only for the tests that start this server: every one of them reaches it
   # from 127.0.0.1, so a test says whose forms it sends in X-Forwarded-For
   # and they are counted under that address, each test with a count of its

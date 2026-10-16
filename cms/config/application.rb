@@ -93,6 +93,13 @@ module Cms
     # environments/e2e.rb gives the harness's tests an address each.
     config.x.submission_limit_by = ->(request) { request.remote_addr }
 
+    # Whether the shop's checkout may reach Stripe's own API
+    # (StripeSettings): here, yes, when STRIPE_SECRET_KEY holds a test key.
+    # The tests and the e2e environment say no (config/environments), so
+    # they reach only the tests' fake Stripe on 127.0.0.1, whatever the
+    # shell that runs them holds.
+    config.x.stripe_network = true
+
     # Rails' check that Client-Ip and X-Forwarded-For agree raises wherever
     # request.remote_ip is read, and Rails' own log line reads it on every
     # request, outside the site's error pages: one header added by any

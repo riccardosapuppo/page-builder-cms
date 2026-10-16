@@ -21,12 +21,19 @@
 // documentation, through the forwarding header the CMS reads from
 // 127.0.0.1 as from a proxy: the battery sends more forms than one
 // address may in ten minutes.
+//
+// A visitor's checkout is made the same way, at the cart's addresses, the
+// cart's cookie carried from answer to answer as a browser keeps it; the
+// CMS sends the visitor on to the tests' fake Stripe (vitest-rails.ts),
+// whose page the visitor pays at when the case says so, as at Stripe's.
 import { describe, expect, inject, test } from "vitest";
 import { readSiteTheme } from "../../build/site-file.ts";
+import type { CartLine } from "../shared/shop.ts";
 import { STORAGE_CONTRACT, type ContractEnv } from "./contract.ts";
 import { createRailsAdapter } from "./rails.ts";
 
 const cms = inject("cmsUrl");
+const stripe = inject("stripeUrl");
 // The header's and footer's starters the CMS makes them from:
 // config/parts', read from the files as the CMS reads them.
 const starters = readSiteTheme().parts as ContractEnv["starters"];
@@ -34,6 +41,7 @@ const starters = readSiteTheme().parts as ContractEnv["starters"];
 const adapter = () => createRailsAdapter({ apiBase: `${cms}/api` });
 let names = 0;
 let visitors = 0;
+let shoppers = 0;
 const run = Date.now().toString(36);
 
 async function sendForm(live: string, formId: string, answers: Readonly<Record<string, string>>): Promise<void> {
@@ -54,6 +62,48 @@ async function sendForm(live: string, formId: string, answers: Readonly<Record<s
   if (response.status !== 303) throw new Error(`the form sent to ${live} was answered ${response.status}, not 303`);
 }
 
+// Each product put in the cart, then the checkout: 303 to the fake
+// Stripe's page, where a visitor who pays leaves it. With the shop off
+// the cart's addresses are the site's 404 page, and no order is made.
+async function checkout(lines: readonly CartLine[], { paid = false }: { paid?: boolean } = {}): Promise<boolean> {
+  shoppers += 1;
+  let cookie: string | null = null;
+  const send = async (path: string, body: string) => {
+    const response = await fetch(new URL(path, cms), {
+      method: "POST",
+      body,
+      redirect: "manual",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Origin: new URL(cms).origin,
+        "X-Forwarded-For": `203.0.113.${(shoppers % 254) + 1}`,
+        ...(cookie === null ? {} : { Cookie: cookie }),
+      },
+    });
+    const set = response.headers.getSetCookie().find((line) => line.startsWith("cart="));
+    if (set) cookie = set.split(";")[0]!;
+    return response;
+  };
+  for (const line of lines) {
+    const put = await send("/cart/items", `entry=${line.entryId}&quantity=${line.quantity}`);
+    if (put.status === 404) return false;
+    if (put.status !== 303) throw new Error(`product ${line.entryId} put in the cart was answered ${put.status}, not 303`);
+  }
+  const done = await send("/cart/checkout", "");
+  if (done.status === 404) return false;
+  const page = done.headers.get("location") ?? "";
+  if (done.status !== 303 || !page.startsWith(`${stripe}/c/pay/`)) throw new Error(`the checkout was answered ${done.status}, to ${page || "nowhere"}, not 303 to the fake Stripe's page`);
+  if (paid) {
+    const paying = await fetch(`${stripe}/_fake/sessions/${page.slice(`${stripe}/c/pay/`.length)}/pay`, {
+      method: "POST",
+      body: "email=ann%40example.org",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    if (!paying.ok) throw new Error(`the fake Stripe answered ${paying.status} to the payment`);
+  }
+  return true;
+}
+
 function env(): ContractEnv {
   return {
     adapter: adapter(),
@@ -67,6 +117,7 @@ function env(): ContractEnv {
     },
     sendForm,
     starters,
+    checkout,
   };
 }
 

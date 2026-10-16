@@ -19,7 +19,7 @@ const open = (changes: Partial<OpenPage> = {}): OpenPage => ({ id: 7, kind: "pag
 
 function draw(session: Partial<Session> = {}) {
   const closed: number[] = [];
-  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true, collections: false }, ...session } });
+  const kit = editorKit({ document: page(), session: { current: open(), capabilities: { publish: true, schedule: true, responses: false, imageVariants: false, livePages: true, collections: false, shop: false }, ...session } });
   kit.ui.getState().setSite({ timeZone: LONDON });
   kit.render(<ScheduleDialog onClose={() => closed.push(1)} />);
   return { kit, closed };

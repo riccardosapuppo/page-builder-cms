@@ -28,6 +28,14 @@ it holds.
   visitors could see; both storages, one battery. Since 16 October a page
   may live at a collection's prefix, the section's page at `/news` above
   its entries at `/news/<slug>`.
+- [The shop sells a collection's entries through Stripe's Checkout in its test mode alone: settings and orders on both storages, a cart in a cookie of its own addresses, a module that can be off](shop-on-collections.md)
+  (15 October 2026): the shop's settings held to rules written twice and
+  cases both read; a product a published entry, its price counted in the
+  smallest unit by its hundredths; a cart of ids and quantities in an
+  encrypted cookie on `/cart` alone, its writes guarded as a visitor's
+  form is; Stripe's key from the environment, test mode only, never
+  answered or logged; orders kept as Stripe says they are, asked again
+  on demand, no webhook; the browser's demo orders marked as its own.
 
 **Saving and editing**
 - [A page has one draft, saved at a revision, and a version is made on purpose](one-draft-saved-at-a-revision.md)

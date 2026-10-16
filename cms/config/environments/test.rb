@@ -42,6 +42,10 @@ Rails.application.configure do
   # (config/application.rb says why it is not the cache store).
   config.x.submission_limit_store = :memory_store
 
+  # No test reaches Stripe: the shop's checkout goes to the tests' fake
+  # (test/support/fake_stripe.rb) on 127.0.0.1, or nowhere.
+  config.x.stripe_network = false
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

@@ -14,14 +14,16 @@
 //
 // Every case makes the pages it uses, under names no other case takes, so
 // the cases share one store and run in any order, but one. The media
-// library, the site style and the site's parts (the header and the footer)
-// are one per store: a case reads the library for the items it made, puts
-// the site style back as it found it, and saves a part's draft back as it
-// found it; a part is published only as a new store makes it, its starter,
-// which every page draws either way. The one is the case that reads the
-// parts as a new store makes them, before any case saves one: each runner
-// starts the battery on a store of its own and runs the cases in their
-// order here, where that case comes before the others of the parts.
+// library, the site style, the shop's settings and the site's parts (the
+// header and the footer) are one per store: a case reads the library for
+// the items it made, puts the site style and the shop's settings back as
+// it found them, finds the orders it made among those it did not, and
+// saves a part's draft back as it found it; a part is published only as a
+// new store makes it, its starter, which every page draws either way. The
+// one is the case that reads the parts as a new store makes them, before
+// any case saves one: each runner starts the battery on a store of its
+// own and runs the cases in their order here, where that case comes
+// before the others of the parts.
 import {
   errorsByBlock,
   isStorageError,
@@ -37,11 +39,13 @@ import {
   type PageSummary,
   PART_KINDS,
   type PartKind,
+  type Shop,
   type StorageAdapter,
 } from "./adapter.ts";
 import { createAutosave, type Autosave, type SavePhase, type SaveSnapshot } from "./autosave.ts";
 import type { CollectionDefinition, EntryContent, EntryValues, Field } from "../shared/collection.ts";
 import type { FormBlock, FormField, PageDocument, SectionBlock, WidgetBlock } from "../shared/document.ts";
+import type { CartLine, ShopSettings } from "../shared/shop.ts";
 
 // The part of a test runner's expect the battery uses (Vitest's fits).
 export interface Expectation {
@@ -78,6 +82,15 @@ export interface ContractEnv {
   // cms/config/parts, read by the runner from the files the storage reads
   // them from.
   starters: Readonly<Record<PartKind, PageDocument>>;
+  // A visitor puts products in a cart, line by line, and checks out, from
+  // the site: what a visitor does, outside the editor's storage, so the
+  // runner does it. On the CMS through its cart's addresses, to the tests'
+  // fake Stripe, whose page the visitor pays at when paid says so, then
+  // leaving without coming back to the thanks page; in the browser
+  // through the demo's checkout, which reaches no payment. Says whether an
+  // order was made: none with the shop off. Only the shop's cases ask for
+  // it, with products for sale.
+  checkout(lines: readonly CartLine[], options?: { paid?: boolean }): Promise<boolean>;
 }
 
 export interface ContractCase {
@@ -192,6 +205,38 @@ function newsEntry(slug: string, title = "Dawn swims start again", values: Entry
 async function newCollection(env: ContractEnv, prefix = "news"): Promise<{ id: number; prefix: string; templateId: number }> {
   const made = value(await env.adapter.createCollection(news(env.unique(prefix))), "making a collection");
   return { id: made.id, prefix: made.prefix, templateId: made.template.id };
+}
+
+// Products, a collection whose number field is the price and whose
+// toggle says what is in stock, under a prefix of the case's own; a
+// product of it, published at a price.
+const SHOP_FIELDS: Field[] = [
+  { key: "summary", label: "Summary", type: "paragraph", required: false },
+  { key: "price", label: "Price", type: "number", required: false, min: 0, max: 100_000 },
+  { key: "in-stock", label: "In stock", type: "toggle", required: false },
+];
+
+async function newProducts(env: ContractEnv, prefix = "products"): Promise<{ id: number }> {
+  const made = value(await env.adapter.createCollection({ name: "Products", prefix: env.unique(prefix), fields: structuredClone(SHOP_FIELDS), sort: { by: "title", direction: "asc" } }), "making the products");
+  return { id: made.id };
+}
+
+async function forSale(env: ContractEnv, collectionId: number, title: string, slug: string, price: number): Promise<{ id: number }> {
+  const made = value(await env.adapter.createEntry(collectionId, { title, slug, values: { price, "in-stock": true } }), `making ${title}`);
+  value(await env.adapter.publishEntry(collectionId, made.id), `publishing ${title}`);
+  return { id: made.id };
+}
+
+const settingsOf = (shop: Shop): ShopSettings => ({ enabled: shop.enabled, currency: shop.currency, productsCollectionId: shop.productsCollectionId, priceField: shop.priceField });
+
+// The shop's settings put back as a case found them, whatever it did.
+async function withShopAsFound(env: ContractEnv, body: () => Promise<void>): Promise<void> {
+  const found = settingsOf(await env.adapter.getShop());
+  try {
+    await body();
+  } finally {
+    value(await env.adapter.setShop(found), "putting the shop back as it was");
+  }
 }
 
 const pointers = (problem: { kind: string; errors?: Array<{ pointer: string; keyword: string }> }): string[] =>
@@ -1492,6 +1537,122 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  // -------------------------------------------------------------- shop
+  {
+    name: "the shop's settings change whole and read back as changed, a change that changes nothing keeping its time; each member at fault is refused at its pointer, all at once, and nothing changes; whether checkout reaches Stripe says why not when it does not, and never a key",
+    needs: ["shop", "collections"],
+    async run(env) {
+      await withShopAsFound(env, async () => {
+        const products = await newProducts(env);
+        const on: ShopSettings = { enabled: true, currency: "EUR", productsCollectionId: products.id, priceField: "price" };
+        const changed = value(await env.adapter.setShop(on), "the shop on");
+        env.expect(settingsOf(changed)).toEqual(on);
+        env.expect(changed.updatedAt).not.toBe(null);
+        env.expect(await env.adapter.getShop()).toEqual(changed);
+        env.expect(value(await env.adapter.setShop(structuredClone(on)), "the same settings again").updatedAt, "nothing changed").toBe(changed.updatedAt);
+
+        const wrong = { enabled: "yes", currency: "JPY", productsCollectionId: 987_654_321, priceField: 3 } as unknown as ShopSettings;
+        env.expect(pointers(refusal(await env.adapter.setShop(wrong), "every member at fault"))).toEqual([
+          "/currency enum", "/enabled type", "/priceField type", "/productsCollectionId collectionExists",
+        ]);
+        const notANumber = refusal(await env.adapter.setShop({ ...on, priceField: "summary" }), "a price that is no number field");
+        env.expect(notANumber.errors.map((e) => [e.pointer, e.keyword, e.message])).toEqual([["/priceField", "priceField", "The collection Products has no number field \"summary\"."]]);
+        env.expect(pointers(refusal(await env.adapter.setShop({ ...on, productsCollectionId: null, priceField: null }), "on with neither"))).toEqual(["/priceField required", "/productsCollectionId required"]);
+        env.expect(await env.adapter.getShop(), "nothing changed").toEqual(changed);
+
+        env.expect(typeof changed.checkout.ready).toBe("boolean");
+        env.expect(changed.checkout.reason === null, "a reason exactly when it is not ready").toBe(changed.checkout.ready);
+        env.expect(JSON.stringify(changed)).not.toMatch(/\b(?:sk|rk)_(?:test|live)_/);
+      });
+    },
+  },
+  {
+    name: "the collection the shop's settings name is not deleted, on or off, the refusal saying so, nor its price field taken away or given another type; both may once the settings name another collection",
+    needs: ["shop", "collections"],
+    async run(env) {
+      await withShopAsFound(env, async () => {
+        const products = await newProducts(env);
+        const other = await newProducts(env, "goods");
+        value(await env.adapter.setShop({ enabled: true, currency: "GBP", productsCollectionId: products.id, priceField: "price" }), "the shop on");
+        env.expect(await failure(env.adapter.deleteCollection(products.id), "deleting the shop's collection")).toMatchObject({ kind: "refused", status: 409, code: "collection_in_shop" });
+        value(await env.adapter.setShop({ enabled: false, currency: "GBP", productsCollectionId: products.id, priceField: "price" }), "the shop off");
+        env.expect(await failure(env.adapter.deleteCollection(products.id), "deleting it with the shop off")).toMatchObject({ code: "collection_in_shop" });
+
+        const withoutPrice = SHOP_FIELDS.filter((field) => field.key !== "price");
+        env.expect(pointers(refusal(await env.adapter.updateCollection(products.id, { fields: withoutPrice }), "the price field taken away"))).toEqual(["/fields shopPrice"]);
+        const asText = SHOP_FIELDS.map((field): Field => (field.key === "price" ? { key: "price", label: "Price", type: "text", required: false } : field));
+        env.expect(pointers(refusal(await env.adapter.updateCollection(products.id, { fields: asText }), "the price field made a text"))).toEqual(["/fields/1/type shopPrice"]);
+        env.expect((await env.adapter.getCollection(products.id)).fields, "nothing changed").toEqual(SHOP_FIELDS);
+
+        value(await env.adapter.setShop({ enabled: true, currency: "GBP", productsCollectionId: other.id, priceField: "price" }), "the shop selling the other");
+        value(await env.adapter.updateCollection(products.id, { fields: withoutPrice }), "the price field taken away now");
+        await env.adapter.deleteCollection(products.id);
+        env.expect(await failure(env.adapter.getCollection(products.id), "the collection deleted")).toMatchObject({ kind: "not-found" });
+      });
+    },
+  },
+  {
+    name: "a checkout makes an order of the products at the prices they published, in the shop's currency, open at Stripe or the demo's own; the orders are listed newest first and read whole; with the shop off, a checkout makes none",
+    needs: ["shop", "collections"],
+    async run(env) {
+      await withShopAsFound(env, async () => {
+        const products = await newProducts(env);
+        const cap = await forSale(env, products.id, "Swim cap", "swim-cap", 12);
+        const float = await forSale(env, products.id, "Tow float", "tow-float", 24.5);
+        const shop = value(await env.adapter.setShop({ enabled: true, currency: "EUR", productsCollectionId: products.id, priceField: "price" }), "the shop on");
+        const before = (await env.adapter.listOrders()).map((order) => order.id);
+
+        env.expect(await env.checkout([{ entryId: float.id, quantity: 4 }]), "a first order made").toBe(true);
+        env.expect(await env.checkout([{ entryId: cap.id, quantity: 2 }, { entryId: float.id, quantity: 1 }]), "a second order made").toBe(true);
+        const orders = await env.adapter.listOrders();
+        const made = orders.filter((order) => !before.includes(order.id));
+        env.expect(made.map((one) => one.total), "the newest first").toEqual([4850, 9800]);
+        const order = made[0]!;
+        env.expect(orders[0]!.id, "the newest of all first").toBe(order.id);
+        env.expect(orders.map((one) => one.id), "the newest first, all of them").toEqual(orders.map((one) => one.id).sort((a, b) => b - a));
+        env.expect(order).toMatchObject({
+          status: shop.checkout.ready ? "open" : "demo", currency: "EUR", total: 4850, email: null, paidAt: null,
+          lines: [{ entryId: cap.id, title: "Swim cap", unitAmount: 1200, quantity: 2 }, { entryId: float.id, title: "Tow float", unitAmount: 2450, quantity: 1 }],
+        });
+        env.expect(order.stripeSessionId === null, "a session at Stripe exactly when checkout reaches it").toBe(!shop.checkout.ready);
+        env.expect(await env.adapter.getOrder(order.id)).toEqual(order);
+
+        value(await env.adapter.setShop({ ...settingsOf(shop), enabled: false }), "the shop off");
+        env.expect(await env.checkout([{ entryId: cap.id, quantity: 1 }]), "no order with the shop off").toBe(false);
+        env.expect((await env.adapter.listOrders()).length).toBe(orders.length);
+      });
+    },
+  },
+  {
+    name: "an open order asked again is kept as Stripe says it is, paid with the buyer's email and when; any other is answered as it is; an order that is not there is not found",
+    needs: ["shop", "collections"],
+    async run(env) {
+      await withShopAsFound(env, async () => {
+        const products = await newProducts(env);
+        const cap = await forSale(env, products.id, "Swim cap", "swim-cap", 12);
+        const shop = value(await env.adapter.setShop({ enabled: true, currency: "GBP", productsCollectionId: products.id, priceField: "price" }), "the shop on");
+        const before = (await env.adapter.listOrders()).map((one) => one.id);
+        env.expect(await env.checkout([{ entryId: cap.id, quantity: 3 }], { paid: true })).toBe(true);
+        const order = (await env.adapter.listOrders()).find((one) => !before.includes(one.id))!;
+        if (shop.checkout.ready) {
+          // Paid at Stripe, the visitor never back at the thanks page.
+          env.expect(order.status).toBe("open");
+          const asked = await env.adapter.refreshOrder(order.id);
+          env.expect(asked).toMatchObject({ id: order.id, status: "paid", lines: order.lines, total: 3600, currency: "GBP" });
+          env.expect(typeof asked.email).toBe("string");
+          env.expect(asked.paidAt).not.toBe(null);
+          env.expect(await env.adapter.getOrder(order.id)).toEqual(asked);
+          env.expect(await env.adapter.refreshOrder(order.id), "a paid order is answered as it is").toEqual(asked);
+        } else {
+          env.expect(order.status).toBe("demo");
+          env.expect(await env.adapter.refreshOrder(order.id), "a demo's order is answered as it is").toEqual(order);
+        }
+        env.expect(await failure(env.adapter.getOrder(987_654_321), "an order that is not there")).toMatchObject({ kind: "not-found" });
+        env.expect(await failure(env.adapter.refreshOrder(987_654_321), "asking about it")).toMatchObject({ kind: "not-found" });
+      });
+    },
+  },
+
   // ---------------------------------------------------- form responses
   {
     name: "a form sent from the live page is kept with the version and the fields it was sent with, listed newest first and counted by form",
@@ -1604,6 +1765,7 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
         schedule: () => env.adapter.schedulePublish(nowhere, { revision: 0, at: inMs(HOUR) }),
         responses: () => env.adapter.listResponses(nowhere),
         collections: () => env.adapter.getCollection(nowhere),
+        shop: () => env.adapter.getOrder(nowhere),
       };
       for (const operation of OPTIONAL_OPERATIONS) {
         if (!env.adapter.capabilities[operation]) {

@@ -377,6 +377,20 @@ it holds; [docs/decisions/](docs/decisions/) has them all.
   entries read whole, a page listing a collection drawn again at every
   publish of its entries, and the section's page kept at its prefix by
   hand. [The note](docs/decisions/collections-are-typed-entries.md).
+- **The shop sells a collection's entries through Stripe's Checkout in its
+  test mode alone.** Its settings (on or off, a currency, the products
+  collection and its price field) are held to rules written in TypeScript
+  and in Ruby; a visitor's cart, ids and quantities, is kept in an
+  encrypted cookie that only the cart's own addresses read and set, every
+  price read from what the product published; the key of Stripe's test
+  mode comes from the CMS's environment alone and is never answered or
+  logged; orders are kept on the CMS and asked of Stripe again on demand,
+  and the browser's demo makes orders marked as its own. Its first phase
+  is the model, the API and the cart's addresses; the editor's screen and
+  the site's pages follow. Cost: a cookie, though on no page, another
+  pair of twins, and no webhook: an order paid by a visitor who never came
+  back reads open until asked again.
+  [The note](docs/decisions/shop-on-collections.md).
 - **A menu folds into Menu where the widths of its letters say.** A menu
   block folds on its own width, and a page runs no script, so the server
   adds up letter widths measured once in the site's typeface and names the

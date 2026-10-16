@@ -14,7 +14,8 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, ORDER_STATUSES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  type Order, type Shop, type ShopCheckout,
   type Collection, type CollectionChanges, type Entry, type EntryPublished, type EntryQuery, type EntrySave,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type FormResponse, type FormResponseCount, type InUse, type Invalid,
   type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
@@ -24,6 +25,7 @@ import {
   type LetterWidthChoice, type ToneChoice, type TypeScaleChoice, type Version, type VersionWithDocument,
 } from "./adapter.ts";
 import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
+import { CURRENCIES, MOST_LINES, MOST_QUANTITY, type OrderLine, type ShopSettings } from "../shared/shop.ts";
 import { FORM_FIELD_KINDS } from "../shared/document.ts";
 import { RAILS_ROUTES, type MediaAltChange, type MediaCreate, type OperationId, type PageList } from "./rails.ts";
 
@@ -86,6 +88,15 @@ const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shap
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
 const LETTER_WIDTH_CHOICE = { name: str, label: str } as const satisfies Shape<LetterWidthChoice>;
 const SITE = { timeZone: str } as const satisfies Shape<Site>;
+const SHOP = {
+  enabled: bool, currency: str, productsCollectionId: orNull(num), priceField: orNull(str), updatedAt: orNull(str), checkout: obj,
+} as const satisfies Shape<Shop>;
+const SHOP_CHECKOUT = { ready: bool, reason: orNull(str) } as const satisfies Shape<ShopCheckout>;
+const ORDER_LINE = { entryId: num, title: str, unitAmount: num, quantity: num } as const satisfies Shape<OrderLine>;
+const ORDER = {
+  id: num, status: str, currency: str, lines: arr, total: num, stripeSessionId: orNull(str), email: orNull(str), paidAt: orNull(str), createdAt: str, updatedAt: str,
+} as const satisfies Shape<Order>;
+const ORDER_LIST = { orders: arr } as const satisfies Shape<{ orders: Order[] }>;
 const FIELD_ERROR = { pointer: str, keyword: str, blockPointer: orNull(str), message: str } as const satisfies Shape<FieldError>;
 // The refusals, less the member each side names its kind with: the API's
 // `error` code, the interface's `kind`.
@@ -117,6 +128,7 @@ const PUBLISH_REQUEST = { revision: optional(num) } as const satisfies Shape<Pub
 const SCHEDULE_REQUEST = { revision: num, at: str } as const satisfies Shape<ScheduleRequest>;
 const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>;
 const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str), customCss: optional(str) } as const satisfies Shape<SiteStyleChange>;
+const SHOP_SETTINGS = { enabled: bool, currency: str, productsCollectionId: orNull(num), priceField: orNull(str) } as const satisfies Shape<ShopSettings>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
 // A collection's definition and an entry, as the collection schema
@@ -254,6 +266,12 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["TypeScaleChoice", TYPE_SCALE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/typeScales/items"],
     ["LetterWidthChoice", LETTER_WIDTH_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/letterWidths/items"],
     ["Site", SITE, "#/components/schemas/Site"],
+    ["Shop", SHOP, "#/components/schemas/Shop"],
+    ["Shop's checkout", SHOP_CHECKOUT, "#/components/schemas/Shop/properties/checkout"],
+    ["ShopSettings, as the change sends them", SHOP_SETTINGS, requestBody("/api/shop", "put")],
+    ["Order", ORDER, "#/components/schemas/Order"],
+    ["OrderLine", ORDER_LINE, "#/components/schemas/OrderLine"],
+    ["the list of orders", ORDER_LIST, response("/api/orders", "get", 200)],
     ["FieldError", FIELD_ERROR, "#/components/schemas/ErrorDetail"],
     ["Conflict", CONFLICT, "#/components/schemas/ConflictError", ["error"]],
     ["Invalid, as a request's", INVALID, "#/components/schemas/InvalidRequestError", ["error"]],
@@ -286,6 +304,13 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     expect([...VERSION_REASONS]).toEqual(at("#/components/schemas/VersionWithDocument/properties/reason").enum);
     expect([...IMAGE_TYPES]).toEqual(at("#/components/schemas/ImageType").enum);
     expect([...SCHEDULE_STATES]).toEqual(at("#/components/schemas/Schedule/properties/state").enum);
+  });
+
+  test("the shop's currencies, an order's statuses on the CMS, and a line's most", () => {
+    expect([...CURRENCIES]).toEqual(at("#/components/schemas/Currency").enum);
+    expect([...ORDER_STATUSES]).toEqual(at("#/components/schemas/Order/properties/status").enum);
+    expect(MOST_QUANTITY).toBe(at("#/components/schemas/OrderLine/properties/quantity").maximum);
+    expect(MOST_LINES).toBe(at("#/components/schemas/Order/properties/lines").maxItems);
   });
 
   test("the largest upload and the largest side an image may have", () => {
@@ -324,7 +349,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(57);
+    expect(pairs).toHaveLength(63);
   });
 });
 

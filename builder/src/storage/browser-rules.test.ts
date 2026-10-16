@@ -108,6 +108,7 @@ describe("held to the CMS's Ruby", () => {
       "app/models/media_item.rb", "app/controllers/api/direct_uploads_controller.rb", "app/models/site_style.rb", "app/controllers/api/base_controller.rb",
       "app/controllers/api/media_controller.rb", "app/models/media_usage.rb", "app/controllers/api/pages_controller.rb", "app/models/site_parts.rb",
       "app/models/collection.rb", "app/models/entry.rb", "app/models/collection_template.rb", "app/controllers/api/entries_controller.rb",
+      "app/controllers/cart_controller.rb",
     ].map(ruby).join("\n")
       .replaceAll("#{NAME_MAX_LENGTH}", String(VERSION_NAME_MAX_LENGTH))
       .replaceAll("#{ALT_MAX_LENGTH}", String(ALT_MAX_LENGTH))
@@ -116,7 +117,8 @@ describe("held to the CMS's Ruby", () => {
       .replaceAll("#{public_id}", "Shore01")
       .replaceAll("#{slot.tones.join(', ')}", "ink, sea")
       .replaceAll("#{name}", "order")
-      .replaceAll("#{key}", "summary");
+      .replaceAll("#{key}", "summary")
+      .replaceAll("\\\"#{shop.price_field}\\\"", "\"price\"");
     const written = [
       WORDS.required, WORDS.integer, WORDS.string, WORDS.boolean, WORDS.object, WORDS.nul, WORDS.form,
       WORDS.slugFormat, WORDS.reserved, WORDS.nextAddressTaken, WORDS.liveAddressTaken, WORDS.versionName, WORDS.alt,
@@ -125,6 +127,7 @@ describe("held to the CMS's Ruby", () => {
       WORDS.mediaMissing("Shore01"), PART_FORM, PART_ANCHOR,
       WORDS.prefixTaken, WORDS.entryNextAddressTaken, WORDS.entryAddressTaken, WORDS.entryConflict,
       WORDS.templateNoAddress, WORDS.queryParameters, WORDS.queryForm("order"), WORDS.noSortField("summary"), TEMPLATE_FORM,
+      WORDS.collectionInShop, WORDS.shopPrice("price"), WORDS.nothingToCheckOut,
     ];
     expect(written.filter((words) => !sources.includes(words))).toEqual([]);
   });

@@ -11,12 +11,14 @@
 // asked for from the starters the build serves. Collections and their
 // entries each have a store of their own, an entry with its draft and what
 // it was last published with; a collection's template is a page of its own
-// kind, made with its collection. What it cannot do it says it cannot
-// (capabilities): there is no server to serve a page, to publish it at a
-// time, or to take a visitor's form, so links.live stays null, and
-// scheduling and responses are refused as unsupported. It makes no
-// smaller copies of an image either, so the editor resizes each image
-// before it goes up, as it does for the CMS.
+// kind, made with its collection. The shop's settings are a record of the
+// site's store, beside the style, and its orders a store of their own:
+// the demo's checkout makes them, marked demo, for it reaches no payment.
+// What it cannot do it says it cannot (capabilities): there is no server
+// to serve a page, to publish it at a time, or to take a visitor's form,
+// so links.live stays null, and scheduling and responses are refused as
+// unsupported. It makes no smaller copies of an image either, so the
+// editor resizes each image before it goes up, as it does for the CMS.
 //
 // It refuses what the CMS refuses, in the same shapes: the document, and
 // a part's rule, by the editor's twin of the schema and the application
@@ -58,6 +60,7 @@ import {
   type MediaItem,
   type NewPage,
   type NewVersion,
+  type Order,
   type Outcome,
   type Page,
   type PageChanges,
@@ -69,6 +72,7 @@ import {
   type Published,
   type PublishRequest,
   type RestoreResult,
+  type Shop,
   type Site,
   type SiteStyle,
   type SiteStyleChange,
@@ -110,6 +114,7 @@ import { SITE_THEME } from "virtual:site-theme";
 import { isObject, sameJson } from "../document/json.ts";
 import { CURRENT, openDocument, upgrade, UnsupportedDocument } from "../document/upgrade.ts";
 import { SORTABLE_TYPES, type CollectionDefinition, type EntryContent, type EntryValues } from "../shared/collection.ts";
+import { checkShop, DEFAULT_SHOP, keptCart, priceCart, readCart, type CartLine, type OrderLine, type ShopCollection, type ShopSettings } from "../shared/shop.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
 import { isLine, pageFaults, partFaults, templateFaults, validateCollection, validateDocument, validateEntry, type DocumentError } from "../shared/validate.ts";
@@ -127,6 +132,9 @@ export const BROWSER_CAPABILITIES: Capabilities = {
   // Collections, their entries and their templates, kept as the CMS keeps
   // them; an entry published is kept with its collection, served nowhere.
   collections: true,
+  // The shop's settings and its orders, which the demo's checkout makes:
+  // no Stripe is reached from a page with no server behind it.
+  shop: true,
 };
 
 export const DATABASE_NAME = "page-builder-cms";
@@ -165,15 +173,22 @@ export const LAYOUT: readonly LayoutStep[] = [
     database.createObjectStore("collections", { keyPath: "id", autoIncrement: true });
     database.createObjectStore("entries", { keyPath: "id", autoIncrement: true }).createIndex("collectionId", "collectionId");
   },
+  // Version 4: the shop's orders, in a store of their own. Its settings are
+  // a record of the site's store, which needs no step; every record of the
+  // stores before stays as it is, and a tab of a build before it lets go
+  // of the database (onversionchange) once this build opens it.
+  (database) => {
+    database.createObjectStore("orders", { keyPath: "id", autoIncrement: true });
+  },
 ];
 
-const STORES = ["pages", "versions", "media", "blobs", "site", "collections", "entries"] as const;
+const STORES = ["pages", "versions", "media", "blobs", "site", "collections", "entries", "orders"] as const;
 type StoreName = (typeof STORES)[number];
 // The stores a later step added: how the site stands (standing) leaves
-// each out while it holds nothing, so a site with no collection stands as
-// it stood under a build before them, and the demo's seed still knows it
-// as the one it put in (./example-site.ts).
-const LATER_STORES: readonly StoreName[] = ["collections", "entries"];
+// each out while it holds nothing, so a site with no collection and no
+// order stands as it stood under a build before them, and the demo's seed
+// still knows it as the one it put in (./example-site.ts).
+const LATER_STORES: readonly StoreName[] = ["collections", "entries", "orders"];
 
 interface PageRecord {
   id: number;
@@ -242,6 +257,16 @@ interface EntryRecord extends EntryContent {
   updatedAt: Time;
   published: EntryPublished | null;
 }
+
+// The shop's settings, a record of the site's store; none until they
+// first change.
+interface ShopRecord extends ShopSettings {
+  key: "shop";
+  updatedAt: Time;
+}
+
+// An order the demo's checkout made.
+type OrderRecord = Order;
 
 interface StyleRecord {
   key: "style";
@@ -447,6 +472,12 @@ export interface BrowserAdapter extends StorageAdapter {
   // the transaction that lets go of it: a write that comes in between,
   // from another tab too, keeps the site. Says whether it let go.
   clearSiteIf(fingerprint: string): Promise<boolean>;
+  // The demo's checkout, its cart's own (the demo keeps the cart): the
+  // order made of the cart's lines for sale, at the prices their products
+  // published, in the shop's currency, marked demo, since no payment is
+  // reached from here. As the CMS's cart answers: not found with the shop
+  // off; refused (409, nothing_to_check_out) with nothing for sale.
+  checkoutDemo(lines: readonly CartLine[]): Promise<Order>;
 }
 
 export function createBrowserAdapter(config: BrowserAdapterConfig = {}): BrowserAdapter {
@@ -898,6 +929,30 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
   // One more change a visitor could see of the collection.
   async function advance(tx: IDBTransaction, record: CollectionRecord): Promise<void> {
     await request(tx.objectStore("collections").put({ ...record, publishedRevision: record.publishedRevision + 1 } satisfies CollectionRecord));
+  }
+
+  // The shop's settings as kept, in `tx`, which spans the site's store;
+  // undefined until they first change.
+  async function shopIn(tx: IDBTransaction): Promise<ShopRecord | undefined> {
+    return (await request(tx.objectStore("site").get("shop"))) as ShopRecord | undefined;
+  }
+
+  // Collection#shop_price!: while the shop's settings name the collection,
+  // the price field they name stays a number field of it, refused at the
+  // field's type, or at /fields when it is gone, keyword shopPrice.
+  async function shopPriceFault(tx: IDBTransaction, collectionId: number, fields: CollectionDefinition["fields"]): Promise<FieldError | null> {
+    const shop = await shopIn(tx);
+    if (!shop || shop.productsCollectionId !== collectionId || shop.priceField === null) return null;
+    const index = fields.findIndex((field) => field.key === shop.priceField);
+    if (index >= 0 && fields[index]!.type === "number") return null;
+    return fieldError(index >= 0 ? `/fields/${index}/type` : "/fields", "shopPrice", WORDS.shopPrice(shop.priceField));
+  }
+
+  async function orderIn(tx: IDBTransaction, orderId: number): Promise<OrderRecord> {
+    if (!Number.isSafeInteger(orderId) || orderId < 1) throw notFound();
+    const record = (await request(tx.objectStore("orders").get(orderId))) as OrderRecord | undefined;
+    if (!record) throw notFound();
+    return record;
   }
 
   // --------------------------------------------------------- the adapter
@@ -1410,10 +1465,12 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       const check = new BodyCheck(body);
       check.anyOf("name", "prefix", "fields", "sort");
       if (check.errors.length > 0) return invalid("invalid_request", check.errors);
-      return write(["collections", "pages", "entries"], async (tx): Promise<Outcome<Collection, Invalid>> => {
+      return write(["collections", "pages", "entries", "site"], async (tx): Promise<Outcome<Collection, Invalid>> => {
         const record = await collectionIn(tx, collectionId);
         const checked = validateCollection({ ...definitionOf(record), ...body });
         if (!checked.valid) return refusedBy(checked.errors);
+        const price = await shopPriceFault(tx, record.id, checked.value.fields);
+        if (price) return invalid("invalid_request", [price]);
         // Nothing changed, nothing saved: the CMS checks the prefix as it
         // saves a change.
         if (sameJson(checked.value, definitionOf(record))) return { ok: true, value: await collectionOf(tx, record) };
@@ -1425,11 +1482,13 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       });
     },
 
-    // With its entries, and its template with the template's versions.
+    // With its entries, and its template with the template's versions; not
+    // while the shop's settings name it (Collection#delete_unless_sold!).
     async deleteCollection(collectionId, options) {
       checkSignal(options, "Deleting the collection");
-      await write(["collections", "pages", "versions", "entries"], async (tx) => {
+      await write(["collections", "pages", "versions", "entries", "site"], async (tx) => {
         const record = await collectionIn(tx, collectionId);
+        if ((await shopIn(tx))?.productsCollectionId === record.id) throw new StorageError({ kind: "refused", status: 409, code: "collection_in_shop", message: WORDS.collectionInShop });
         for (const version of await versionsIn(tx, record.templateId)) await request(tx.objectStore("versions").delete([version.pageId, version.number]));
         await request(tx.objectStore("pages").delete(record.templateId));
         for (const entry of await entriesIn(tx, record.id)) await request(tx.objectStore("entries").delete(entry.id));
@@ -1574,6 +1633,71 @@ export function createBrowserAdapter(config: BrowserAdapterConfig = {}): Browser
       });
     },
 
+    // ------------------------------------------------------------ shop
+
+    async getShop(options) {
+      checkSignal(options, "Reading the shop");
+      return shopOf((await read(["site"], shopIn)) ?? null);
+    },
+
+    // As the CMS changes them (ShopSetting.change!): every member checked
+    // whole against the collections as they are, by the shop's rules, in
+    // the transaction that keeps them; a change that changes nothing keeps
+    // its time.
+    async setShop(settings: ShopSettings, options) {
+      checkSignal(options, "Changing the shop");
+      const body = wire({ enabled: settings.enabled, currency: settings.currency, productsCollectionId: settings.productsCollectionId, priceField: settings.priceField });
+      return write(["site", "collections"], async (tx): Promise<Outcome<Shop, Invalid>> => {
+        const collections = (await request(tx.objectStore("collections").getAll())) as CollectionRecord[];
+        const checked = checkShop(body, (id) => shopCollectionOf(collections.find((collection) => collection.id === id)));
+        if (!checked.ok) return invalid("invalid_request", checked.faults.map((fault) => fieldError(fault.pointer, fault.keyword, fault.message)));
+        const stored = await shopIn(tx);
+        if (stored && sameJson(settingsOf(stored), checked.settings)) return { ok: true, value: shopOf(stored) };
+        const record: ShopRecord = { key: "shop", ...checked.settings, updatedAt: now() };
+        await request(tx.objectStore("site").put(record));
+        return { ok: true, value: shopOf(record) };
+      });
+    },
+
+    async listOrders(options) {
+      checkSignal(options, "Reading the orders");
+      return read(["orders"], async (tx) => ((await request(tx.objectStore("orders").getAll())) as OrderRecord[]).sort((a, b) => b.id - a.id));
+    },
+
+    async getOrder(orderId, options) {
+      checkSignal(options, "Reading the order");
+      return read(["orders"], (tx) => orderIn(tx, orderId));
+    },
+
+    // No order of the browser's is ever open, as no Stripe is reached from
+    // here: each is answered as it is, as the CMS answers an order that is
+    // not open, without asking Stripe.
+    async refreshOrder(orderId, options) {
+      checkSignal(options, "Asking about the order");
+      return read(["orders"], (tx) => orderIn(tx, orderId));
+    },
+
+    // As the CMS's checkout makes an order (CartController#checkout,
+    // Order.check_out!), but for Stripe: the cart's lines held to the
+    // shop's rules, priced from what the products published, the lines for
+    // sale ordered, marked demo.
+    async checkoutDemo(lines: readonly CartLine[]) {
+      const cart = readCart(keptCart(wire([...lines])));
+      return write(["site", "collections", "entries", "orders"], async (tx): Promise<Order> => {
+        const shop = await shopIn(tx);
+        if (!shop || !shop.enabled || shop.productsCollectionId === null || shop.priceField === null) throw notFound();
+        const collection = (await request(tx.objectStore("collections").get(shop.productsCollectionId))) as CollectionRecord | undefined;
+        if (!collection) throw notFound();
+        const products = new Map((await entriesIn(tx, collection.id)).flatMap((entry) => (entry.published ? [[entry.id, { id: entry.id, title: entry.published.title, values: entry.published.values }] as const] : [])));
+        const priced = priceCart(cart, (id) => products.get(id) ?? null, collection.fields, shop.priceField);
+        if (priced.orderLines.length === 0) throw new StorageError({ kind: "refused", status: 409, code: "nothing_to_check_out", message: WORDS.nothingToCheckOut });
+        const at = now();
+        const made: Omit<OrderRecord, "id"> = { status: "demo", currency: shop.currency, lines: priced.orderLines satisfies OrderLine[], total: priced.total, stripeSessionId: null, email: null, paidAt: null, createdAt: at, updatedAt: at };
+        const id = (await request(tx.objectStore("orders").add(made))) as number;
+        return { ...made, id };
+      });
+    },
+
     async siteFingerprint() {
       return read(STORES, standing);
     },
@@ -1605,6 +1729,21 @@ function unique<T extends { pointer: string; keyword: string }>(errors: readonly
     seen.add(key);
     return true;
   });
+}
+
+// The shop's settings as kept, or a new site's; when they last changed;
+// and checkout, which never reaches Stripe here.
+function shopOf(stored: ShopRecord | null): Shop {
+  return { ...(stored ? settingsOf(stored) : DEFAULT_SHOP), updatedAt: stored?.updatedAt ?? null, checkout: { ready: false, reason: WORDS.demoCheckout } };
+}
+
+function settingsOf(stored: ShopRecord): ShopSettings {
+  return { enabled: stored.enabled, currency: stored.currency, productsCollectionId: stored.productsCollectionId, priceField: stored.priceField };
+}
+
+// A collection as the shop's rules read it.
+function shopCollectionOf(record: CollectionRecord | undefined): ShopCollection | null {
+  return record ? { id: record.id, name: record.name, fields: record.fields } : null;
 }
 
 function styleOf(stored: StyleRecord | null): SiteStyle {

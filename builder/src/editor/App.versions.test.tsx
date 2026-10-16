@@ -70,7 +70,7 @@ class VersionSite {
     const draft = () => ({ revision: this.revision, lastSaveId: this.lastSaveId, updatedAt: T, document: structuredClone(this.document) });
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: false },
+      capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: false, shop: false },
       listPages: async () => [{ id: 1, kind: "page", title: "Winter series", slug: "winter-series", home: false, revision: this.revision, updatedAt: T, published: null, scheduled: null, links: LINKS }],
       // A site with no header or footer of its own made yet.
       listParts: async () => [],

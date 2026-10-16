@@ -18,6 +18,10 @@
 # draft and versions, and its entries, with their redirects (ON DELETE
 # CASCADE).
 #
+# The collection the shop's settings name (ShopSetting) is the shop's
+# products: it is not deleted, and the number field they name as the price
+# stays one, while they name it.
+#
 # published_revision counts the changes a visitor could see of the
 # collection: every publish, unpublish and delete of a live entry (a live
 # entry's new address is a publish), and every change of the definition,
@@ -32,6 +36,13 @@ class Collection < ApplicationRecord
   # A page may be at /sent, one part; a collection's entries could not be
   # at /sent/<entry>. Slug.reserved? names the rest.
   RESERVED_PREFIXES = %w[sent].freeze
+
+  # The shop sells from this collection: it is not deleted.
+  class InShop < StandardError
+    def initialize(message = "The shop sells from this collection: choose another one in the shop's settings, or none, before deleting it.")
+      super
+    end
+  end
 
   has_many :entries, dependent: nil
   has_one :template, -> { where(kind: "template") }, class_name: "Page", inverse_of: :collection, dependent: nil
@@ -64,11 +75,13 @@ class Collection < ApplicationRecord
   # definition as it stands in the transaction that writes it, which
   # SQLite runs one at a time (Rails opens it IMMEDIATE): a request that
   # loaded the collection before another changed it does not write back
-  # the members it did not change.
+  # the members it did not change. The shop's price field, when the shop's
+  # settings name this collection, stays a number field (shop_price).
   def update_definition!(changes, at: Time.current)
     transaction do
       reload
       checked = CollectionDocument.check_collection!(definition.merge(changes))
+      shop_price!(checked["fields"])
       assign_attributes(name: checked["name"], prefix: checked["prefix"], fields: checked["fields"], default_sort: checked["sort"])
       if changed?
         self.published_revision += 1
@@ -78,6 +91,18 @@ class Collection < ApplicationRecord
       end
     end
     self
+  end
+
+  # Deletes the collection, its entries and its template, unless the
+  # shop's settings name it, on or off: then nothing goes, and InShop says
+  # why. Checked in the transaction that deletes it; the settings' foreign
+  # key, which has no cascade, refuses it too.
+  def delete_unless_sold!
+    transaction do
+      raise InShop if ShopSetting.where(id: ShopSetting::ID, products_collection_id: id).exists?
+
+      destroy!
+    end
   end
 
   # One more change a visitor could see, made at, in the transaction that
@@ -92,6 +117,21 @@ class Collection < ApplicationRecord
   end
 
   private
+
+  # The shop's price, when the shop's settings name this collection: the
+  # field they name stays a number field of it. Refused at the field's
+  # type when it is there with another one, at /fields when it is gone,
+  # keyword shopPrice, before anything is written.
+  def shop_price!(fields)
+    shop = ShopSetting.find_by(id: ShopSetting::ID, products_collection_id: id)
+    return if shop.nil? || shop.price_field.nil?
+
+    index = fields.index { |field| field["key"] == shop.price_field }
+    return if index && fields[index]["type"] == "number"
+
+    message = "The shop's price is the number field \"#{shop.price_field}\": keep it, or choose another price in the shop's settings first."
+    raise CollectionDocument::Invalid, [ BlockDocument::Error.new(pointer: index ? "/fields/#{index}/type" : "/fields", keyword: "shopPrice", block_pointer: nil, message: message) ]
+  end
 
   def prefix_not_reserved
     return if errors.include?(:prefix) || prefix.nil?

@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 import { FakeClock, settle } from "../../test/fake-clock.ts";
 import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
 import type { PageDocument } from "../shared/document.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import { StorageError, type Failure, type StorageAdapter } from "./adapter.ts";
 import { createRailsAdapter, RAILS_ROUTES } from "./rails.ts";
 
@@ -49,6 +50,7 @@ function fakeFetch(reply: (sent: Sent) => Reply = () => ({ status: 200, body: {}
 const document: PageDocument = { schemaVersion: 1, title: "A page", sections: [] };
 const definition: CollectionDefinition = { name: "News", prefix: "news", fields: [{ key: "day", label: "Day", type: "date", required: true }], sort: { by: "day", direction: "desc" } };
 const entry: EntryContent = { title: "Dawn swims", slug: "dawn", values: { day: "2026-05-02" } };
+const shop: ShopSettings = { enabled: true, currency: "EUR", productsCollectionId: 3, priceField: "price" };
 
 async function failureOf(promise: Promise<unknown>): Promise<Failure> {
   try {
@@ -107,6 +109,11 @@ describe("the Rails adapter's requests", () => {
     ["publishEntry", (a) => a.publishEntry(3, 9), "POST", "/api/collections/3/entries/9/publish", null],
     ["publishEntry at a revision", (a) => a.publishEntry(3, 9, { revision: 2 }), "POST", "/api/collections/3/entries/9/publish", { revision: 2 }],
     ["unpublishEntry", (a) => a.unpublishEntry(3, 9), "POST", "/api/collections/3/entries/9/unpublish", null],
+    ["getShop", (a) => a.getShop(), "GET", "/api/shop", null],
+    ["setShop", (a) => a.setShop(shop), "PUT", "/api/shop", shop],
+    ["listOrders", (a) => a.listOrders(), "GET", "/api/orders", null],
+    ["getOrder", (a) => a.getOrder(12), "GET", "/api/orders/12", null],
+    ["refreshOrder", (a) => a.refreshOrder(12), "POST", "/api/orders/12/refresh", null],
   ];
 
   test.each(calls)("%s sends its own method, address and body", async (_name, run, method, path, body) => {
@@ -135,7 +142,7 @@ describe("the Rails adapter's requests", () => {
   });
 
   test("declares every optional operation, since the CMS has them all, and no smaller copies of images", () => {
-    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false, livePages: true, collections: true });
+    expect(createRailsAdapter({ fetch: fakeFetch().fetch }).capabilities).toEqual({ publish: true, schedule: true, responses: true, imageVariants: false, livePages: true, collections: true, shop: true });
   });
 });
 
@@ -211,6 +218,23 @@ describe("the Rails adapter's answers", () => {
     expect(await adapter.cancelScheduledPublish(7, 12)).toMatchObject({ ok: true, value: { id: 12, state: "cancelled" } });
     expect(await adapter.cancelScheduledPublish(7, 12)).toEqual({ ok: false, problem: { kind: "not-pending", message: "too late", schedule: published } });
     expect(await adapter.listSchedules(7)).toEqual([published]);
+  });
+
+  test("the shop's settings refused are an Outcome at their members; a collection the shop sells from is refused as such; an open order Stripe cannot be asked about is an unknown outcome", async () => {
+    const answers: Reply[] = [
+      { status: 422, body: { error: "invalid_request", message: "no", errors: [{ pointer: "/currency", keyword: "enum", blockPointer: null, message: "must be one of GBP, EUR, USD" }] } },
+      { status: 409, body: { error: "collection_in_shop", message: "The shop sells from this collection." } },
+      { status: 409, body: { error: "checkout_not_set_up", message: "Checkout is not set up on this CMS." } },
+      { status: 502, body: { error: "stripe_failed", message: "Stripe could not be asked." } },
+    ];
+    const { fetch } = fakeFetch(() => answers.shift()!);
+    const adapter = createRailsAdapter({ fetch });
+    expect(await adapter.setShop(shop)).toEqual({
+      ok: false, problem: { kind: "invalid", code: "invalid_request", message: "no", errors: [{ pointer: "/currency", keyword: "enum", blockPointer: null, message: "must be one of GBP, EUR, USD" }] },
+    });
+    expect(await failureOf(adapter.deleteCollection(3))).toEqual({ kind: "refused", status: 409, code: "collection_in_shop", message: "The shop sells from this collection." });
+    expect(await failureOf(adapter.refreshOrder(12))).toEqual({ kind: "refused", status: 409, code: "checkout_not_set_up", message: "Checkout is not set up on this CMS." });
+    expect(await failureOf(adapter.refreshOrder(12))).toMatchObject({ kind: "unknown", cause: "server", status: 502 });
   });
 
   test("an image in use is an Outcome naming who uses it; a deleted one is null", async () => {

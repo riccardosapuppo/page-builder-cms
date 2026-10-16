@@ -80,6 +80,17 @@ module Api
       render_error :not_found, "not_found", "There is nothing at this address."
     end
 
+    # The shop's settings refused, each fault at its member (ShopRules).
+    rescue_from ShopSetting::Invalid do |e|
+      errors = e.faults.map { |f| BlockDocument::Error.new(pointer: f.pointer, keyword: f.keyword, block_pointer: nil, message: f.message).as_json }
+      render_error :unprocessable_content, "invalid_request", "The request is not valid.", errors: errors
+    end
+
+    # A delete of the collection the shop sells from.
+    rescue_from Collection::InShop do |e|
+      render_error :conflict, "collection_in_shop", e.message
+    end
+
     # Listening on 127.0.0.1 keeps other machines out, not other sites: a
     # page from anywhere, open in a browser on this machine, can send the
     # API requests that need no CORS preflight (a form POST, a fetch with

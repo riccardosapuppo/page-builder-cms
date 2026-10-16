@@ -8,8 +8,11 @@ module Slug
   MAX_LENGTH = 64
 
   # Paths the application answers itself: the API, the health check, the
-  # stylesheets and fonts, Active Storage, and the draft preview.
-  RESERVED = %w[api up assets rails preview].freeze
+  # stylesheets and fonts, Active Storage, the draft preview, and the
+  # shop's cart, /cart and the addresses below it (CartController), whether
+  # the shop is on or off. Taken by a collection's prefix too, since a
+  # prefix is never one of these (Collection).
+  RESERVED = %w[api up assets rails preview cart].freeze
 
   module_function
 

@@ -1,0 +1,27 @@
+<%#
+  Where Stripe sends a visitor back after its checkout (CartController#
+  thanks), a plain page in the site's frame for now: paid, with what was
+  bought and the total; not paid yet; expired; or, when the payment could
+  not be asked about (asked: false), saying so. order: the order the
+  session is of.
+-%>
+<section class="sec space-above-section-l space-below-section-l sw-cart"><div class="sw-inner cols cols-1"><div class="col">
+<%- if order.status == "paid" -%>
+<div class="w w-heading size-heading-1"><h1>Thank you</h1></div>
+<div class="w w-text size-large"><p><%= order.total.zero? ? "Your order is confirmed: there was nothing to pay." : "Your order is paid: #{money(order.total, order.currency)}." %></p></div>
+<ul class="sw-cart-lines">
+<%- order.lines.each do |line| -%>
+<li class="sw-cart-line"><p class="sw-cart-title"><%= line["title"] %></p><p class="sw-cart-price"><%= "#{line['quantity']} at #{money(line['unitAmount'], order.currency)}" %></p></li>
+<%- end -%>
+</ul>
+<%- elsif order.status == "expired" -%>
+<div class="w w-heading size-heading-1"><h1>Not paid</h1></div>
+<div class="w w-text size-large"><p>This checkout expired before it was paid, and nothing was paid. <a href="/cart">Back to your cart</a></p></div>
+<%- elsif !asked -%>
+<div class="w w-heading size-heading-1"><h1>Not known yet</h1></div>
+<div class="w w-text size-large"><p>Whether this order is paid could not be checked just now. Reload this page in a moment.</p></div>
+<%- else -%>
+<div class="w w-heading size-heading-1"><h1>Not paid yet</h1></div>
+<div class="w w-text size-large"><p>This order is not paid yet. If you have just paid, reload this page in a moment. <a href="/cart">Back to your cart</a></p></div>
+<%- end -%>
+</div></div></section>

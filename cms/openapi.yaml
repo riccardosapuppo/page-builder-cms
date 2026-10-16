@@ -6,8 +6,8 @@ info:
   description: |
     Pages, their draft and versions, publishing now or at a set time, the
     responses visitors send with the forms of published pages, the media
-    library, the site style, the site's settings, and the collections and
-    their entries of Page Builder CMS.
+    library, the site style, the site's settings, the collections and
+    their entries, and the shop's settings and orders of Page Builder CMS.
     The editor talks to the CMS only through this
     API, so another server that answers the same way can stand in for it.
     (Visitors send their forms to the published page's own address, not to
@@ -40,6 +40,13 @@ info:
     scheduled and published by the page routes, by its id, as a part is,
     with no address, never the home page (422 at the member, keyword
     `template`), and no form (422 at the form block, keyword `template`).
+
+    **The shop** sells the entries of one collection, its products, at the
+    price of one of its number fields, in one currency, through Stripe's
+    Checkout in its test mode alone: its settings, which may be off; and
+    the orders its checkout made, each read again of Stripe on demand.
+    Visitors put products in a cart and check out at the site's own
+    `/cart` addresses, not through this API.
 
     **Errors** all have one shape, `{"error": <code>, "message": <sentence>}`.
     A 422 adds `errors`, one entry per problem, each with a JSON `pointer`
@@ -89,6 +96,10 @@ tags:
     description: Types of content, with their fields and the template their entries are drawn with.
   - name: entries
     description: The entries of a collection, each with a draft and what is live.
+  - name: shop
+    description: The shop's settings, and whether its checkout is set up.
+  - name: orders
+    description: The orders the shop's checkout made.
 
 paths:
   /api/pages:
@@ -1093,7 +1104,10 @@ paths:
       description: |
         The members given replace the definition's own, and the definition
         is checked whole, as a new one is: a field the sort follows cannot
-        go without a new sort (422 at `/sort/by`, keyword `sortField`). A
+        go without a new sort (422 at `/sort/by`, keyword `sortField`), nor
+        the field the shop's settings name as the price stop being a number
+        field of the collection they name (422 at `/fields`, or at that
+        field's type, keyword `shopPrice`). A
         change that changes something advances `publishedRevision`. The
         entries' values under a key no field has any more are kept until
         each entry's next save, which must leave them out.
@@ -1137,7 +1151,7 @@ paths:
     delete:
       operationId: deleteCollection
       summary: Delete a collection
-      description: With its entries, their old addresses, and its template with the template's draft and versions.
+      description: With its entries, their old addresses, and its template with the template's draft and versions; not while the shop's settings name it, on or off (409 `collection_in_shop`).
       tags: [collections]
       responses:
         '204':
@@ -1148,6 +1162,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The shop sells from this collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionInShopError'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1407,6 +1427,158 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/shop:
+    get:
+      operationId: getShop
+      summary: Read the shop's settings
+      description: |
+        The shop's settings (off, in pounds, with no collection, until they
+        first change), and whether checkout is set up on this CMS: a key of
+        Stripe's test mode where the CMS runs, in `STRIPE_SECRET_KEY`, and
+        Stripe's API at `https://api.stripe.com` or a server on 127.0.0.1;
+        if not, why not. The key itself is never answered.
+      tags: [shop]
+      responses:
+        '200':
+          description: The settings, and whether checkout is set up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: setShop
+      summary: Change the shop's settings
+      description: |
+        Every member, checked whole against the collections as they are,
+        each fault at its member: a currency not of the list (`enum`); a
+        collection the site does not have (`collectionExists`) or one with
+        no number field (`numberField`); a price that is no number field of
+        that collection, or one named with no collection (`priceField`); a
+        shop on without both (`required`). The collection and the price
+        field the settings name then stay as they are while named: the
+        collection is not deleted (409 `collection_in_shop`), and its price
+        field neither goes nor changes its type (422, `shopPrice`).
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopSettings'
+      responses:
+        '200':
+          description: The settings as they are now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/orders:
+    get:
+      operationId: listOrders
+      summary: List the orders
+      description: Every order the shop's checkout made, the newest first. An order holds the email its buyer gave Stripe, so no answer here is kept by a cache (`no-store`).
+      tags: [orders]
+      responses:
+        '200':
+          description: The orders.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [orders]
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    get:
+      operationId: getOrder
+      summary: Read an order
+      tags: [orders]
+      responses:
+        '200':
+          description: The order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/orders/{id}/refresh:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      operationId: refreshOrder
+      summary: Ask Stripe again about an order
+      description: |
+        An open order's Checkout Session, asked of Stripe again, and the
+        order kept as Stripe says it is: paid (with the email Stripe gives,
+        and when the CMS learned it), expired, or still open; for a visitor
+        who never came back to the thanks page. An order that is not open is
+        answered as it is, and Stripe is not asked. 409
+        `checkout_not_set_up` when an open order cannot be asked about, the
+        reason in the message; 502 `stripe_failed` when Stripe could not be
+        reached or refused, nothing changed.
+      tags: [orders]
+      responses:
+        '200':
+          description: The order as it is now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/MalformedJson'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Checkout is not set up on this CMS, so an open order cannot be asked about.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutNotSetUpError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          description: Stripe could not be reached, or refused; the order is as it was.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeFailedError'
+
 components:
   parameters:
     PageId:
@@ -1464,6 +1636,14 @@ components:
       schema:
         type: integer
         minimum: 1
+    OrderId:
+      name: id
+      in: path
+      required: true
+      description: The order's id.
+      schema:
+        type: integer
+        minimum: 1
 
   responses:
     MalformedJson:
@@ -1481,7 +1661,7 @@ components:
               - $ref: '#/components/schemas/MalformedJsonError'
               - $ref: '#/components/schemas/InvalidQueryError'
     NotFound:
-      description: No such page, version, media item, response, collection or entry.
+      description: No such page, version, media item, response, collection, entry or order.
       content:
         application/json:
           schema:
@@ -1536,7 +1716,7 @@ components:
 
   schemas:
     Slug:
-      description: An address, /<slug>. Lowercase letters and digits in words joined by single hyphens, at most 64 characters. Names the application answers itself (api, up, assets, rails, preview, and any file in public/ such as 404) are refused.
+      description: An address, /<slug>. Lowercase letters and digits in words joined by single hyphens, at most 64 characters. Names the application answers itself (api, up, assets, rails, preview, cart, and any file in public/ such as 404) are refused.
       type: string
       pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
       maxLength: 64
@@ -2009,6 +2189,115 @@ components:
           description: When it went live, the first publish since the last unpublish.
           $ref: '#/components/schemas/Time'
 
+    Currency:
+      description: The currency a shop sells in, a closed list.
+      type: string
+      enum: [GBP, EUR, USD]
+    ShopSettings:
+      description: The shop's settings, as a change of them sends them.
+      type: object
+      additionalProperties: false
+      required: [enabled, currency, productsCollectionId, priceField]
+      properties:
+        enabled:
+          description: Whether the shop sells. Off, the cart's addresses are the site's 404 page.
+          type: boolean
+        currency:
+          $ref: '#/components/schemas/Currency'
+        productsCollectionId:
+          description: The collection whose entries are the products, a collection with a number field; null for none, which a shop that is on cannot be.
+          type: [integer, 'null']
+          minimum: 1
+        priceField:
+          description: The key of the products collection's number field that is each product's price, in the currency's main unit; null for none, which a shop that is on cannot be.
+          type: [string, 'null']
+    Shop:
+      description: The shop's settings, when they last changed, and whether checkout is set up on this CMS.
+      type: object
+      additionalProperties: false
+      required: [enabled, currency, productsCollectionId, priceField, updatedAt, checkout]
+      properties:
+        enabled:
+          type: boolean
+        currency:
+          $ref: '#/components/schemas/Currency'
+        productsCollectionId:
+          type: [integer, 'null']
+        priceField:
+          type: [string, 'null']
+        updatedAt:
+          description: Null until the settings first change.
+          type: [string, 'null']
+        checkout:
+          description: Whether a checkout reaches Stripe, in its test mode, and if not, why not, in words the editor shows; the key is never given.
+          type: object
+          additionalProperties: false
+          required: [ready, reason]
+          properties:
+            ready:
+              type: boolean
+            reason:
+              description: Null when ready.
+              type: [string, 'null']
+    OrderLine:
+      description: A line of an order, as the product was sold.
+      type: object
+      additionalProperties: false
+      required: [entryId, title, unitAmount, quantity]
+      properties:
+        entryId:
+          description: The id the product's entry had; it may be gone since.
+          type: integer
+          minimum: 1
+        title:
+          description: The product's title then.
+          type: string
+        unitAmount:
+          description: Its price then, in the currency's smallest unit (pence, cents).
+          type: integer
+          minimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+    Order:
+      description: What a visitor's checkout asked Stripe to be paid.
+      type: object
+      additionalProperties: false
+      required: [id, status, currency, lines, total, stripeSessionId, email, paidAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        status:
+          description: open from the checkout until Stripe says the order is paid, or that its session expired unpaid.
+          type: string
+          enum: [open, paid, expired]
+        currency:
+          $ref: '#/components/schemas/Currency'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/OrderLine'
+        total:
+          description: What the lines cost together, in the currency's smallest unit.
+          type: integer
+          minimum: 0
+        stripeSessionId:
+          description: The id of the order's Checkout Session at Stripe (cs_test_...); null only while the checkout asks Stripe for it.
+          type: [string, 'null']
+        email:
+          description: The email the buyer gave Stripe, once paid; null until then.
+          type: [string, 'null']
+        paidAt:
+          description: When the CMS learned from Stripe that the order is paid; null until then.
+          type: [string, 'null']
+        createdAt:
+          $ref: '#/components/schemas/Time'
+        updatedAt:
+          $ref: '#/components/schemas/Time'
+
     FormId:
       description: A form block's id in the page's document (blockId in the document's schema).
       type: string
@@ -2295,3 +2584,31 @@ components:
                     type: integer
                   number:
                     type: integer
+    CollectionInShopError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: collection_in_shop
+        message:
+          type: string
+    CheckoutNotSetUpError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: checkout_not_set_up
+        message:
+          description: Why checkout is not set up on this CMS.
+          type: string
+    StripeFailedError:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          const: stripe_failed
+        message:
+          type: string

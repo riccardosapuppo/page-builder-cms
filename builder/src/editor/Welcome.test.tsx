@@ -51,7 +51,7 @@ test("the first time, a note says what is open and that changes go live with Pub
 test("in the browser demo the note says the changes stay in this browser and nothing goes online", () => {
   const kit = editorKit({
     document: page(),
-    session: { current: winter, cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: false } },
+    session: { current: winter, cmsOrigin: null, capabilities: { publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: false, shop: false } },
   });
   kit.render(<TopBar />);
   expect(note()!.textContent).toContain(`The draft of “${page().title}”, at /winter-series.`);

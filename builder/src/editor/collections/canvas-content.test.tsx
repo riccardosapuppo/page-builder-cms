@@ -20,7 +20,7 @@ import { Palette } from "../Palette.tsx";
 import { BlockPanel, TemplatePanel } from "../panels/EditPanel.tsx";
 import type { OpenPage } from "../session.tsx";
 
-const CAPABILITIES: Capabilities = { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: true };
+const CAPABILITIES: Capabilities = { publish: true, schedule: false, responses: false, imageVariants: false, livePages: true, collections: true, shop: false };
 const widget = (id: string, type: string, props: Record<string, unknown>): Block => ({ id, type, props, children: [], style: { base: {} } }) as unknown as Block;
 const document = (...widgets: Block[]): PageDocument => ({
   schemaVersion: 1,

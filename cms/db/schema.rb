@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_090300) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_090000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -124,6 +124,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_090300) do
     t.check_constraint "(draft_id IS NOT NULL) + (page_version_id IS NOT NULL) + (entry_id IS NOT NULL) = 1", name: "media_usages_one_owner"
   end
 
+  create_table "orders", force: :cascade do |t|
+    t.string "status", default: "open", null: false
+    t.string "currency", null: false
+    t.json "lines", null: false
+    t.integer "total", null: false
+    t.string "stripe_session_id"
+    t.string "email"
+    t.datetime "paid_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stripe_session_id"], name: "index_orders_on_stripe_session_id", unique: true, where: "stripe_session_id IS NOT NULL"
+    t.check_constraint "(status = 'paid') = (paid_at IS NOT NULL)", name: "orders_paid_whole"
+    t.check_constraint "currency IN ('GBP', 'EUR', 'USD')", name: "orders_currency"
+    t.check_constraint "status IN ('open', 'paid', 'expired')", name: "orders_status"
+    t.check_constraint "total >= 0", name: "orders_total"
+  end
+
   create_table "page_versions", force: :cascade do |t|
     t.integer "page_id", null: false
     t.integer "number", null: false
@@ -174,6 +191,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_090300) do
     t.check_constraint "state IN ('pending', 'published', 'cancelled', 'replaced', 'superseded', 'failed')", name: "scheduled_publications_state"
   end
 
+  create_table "shop_settings", force: :cascade do |t|
+    t.boolean "enabled", default: false, null: false
+    t.string "currency", default: "GBP", null: false
+    t.integer "products_collection_id"
+    t.string "price_field"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["products_collection_id"], name: "index_shop_settings_on_products_collection_id"
+    t.check_constraint "NOT enabled OR (products_collection_id IS NOT NULL AND price_field IS NOT NULL)", name: "shop_settings_on_whole"
+    t.check_constraint "currency IN ('GBP', 'EUR', 'USD')", name: "shop_settings_currency"
+    t.check_constraint "id = 1", name: "shop_settings_single_row"
+  end
+
   create_table "site_styles", force: :cascade do |t|
     t.json "palette", null: false
     t.string "type_scale", null: false
@@ -220,6 +250,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_090300) do
   add_foreign_key "scheduled_publications", "page_versions", column: "published_version_id", on_delete: :nullify
   add_foreign_key "scheduled_publications", "page_versions", on_delete: :cascade
   add_foreign_key "scheduled_publications", "pages", on_delete: :cascade
+  add_foreign_key "shop_settings", "collections", column: "products_collection_id"
   add_foreign_key "slug_redirects", "pages", on_delete: :cascade
   add_foreign_key "submissions", "page_versions"
   add_foreign_key "submissions", "pages"

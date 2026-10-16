@@ -223,6 +223,41 @@ module Api
       { "timeZone" => Time.zone.tzinfo.name }
     end
 
+    # The shop's settings, when they last changed (null until they first
+    # do), and whether checkout is set up on this CMS: a test key where it
+    # runs (StripeSettings), and if not, why not. Never the key.
+    def shop_json(shop, stripe = StripeSettings.current)
+      {
+        "enabled" => shop.enabled,
+        "currency" => shop.currency,
+        "productsCollectionId" => shop.products_collection_id,
+        "priceField" => shop.price_field,
+        "updatedAt" => iso(shop.changed_at),
+        "checkout" => { "ready" => stripe.ready?, "reason" => stripe.reason }
+      }
+    end
+
+    # An order: its lines as they were sold (each product's entry id, its
+    # title and unit price then, in the currency's smallest unit, and the
+    # quantity), the total in that unit, the currency, Stripe's Checkout
+    # Session's id (null for the moment the checkout asks for it), its
+    # status, and the email Stripe gave and when the CMS learned it was
+    # paid, null until it is.
+    def order_json(order)
+      {
+        "id" => order.id,
+        "status" => order.status,
+        "currency" => order.currency,
+        "lines" => order.lines,
+        "total" => order.total,
+        "stripeSessionId" => order.stripe_session_id,
+        "email" => order.email,
+        "paidAt" => iso(order.paid_at),
+        "createdAt" => iso(order.created_at),
+        "updatedAt" => iso(order.updated_at)
+      }
+    end
+
     def site_style_json(style)
       colors = SiteTokens.read.fetch("color")
       {

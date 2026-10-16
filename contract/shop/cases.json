@@ -1,0 +1,188 @@
+{
+  "about": "The shop's rules, written twice and read the same way by the editor and the browser's storage (builder/src/shared/shop.ts) and by the CMS (cms/app/models/shop_rules.rb): the shop's settings and the faults both must find in them, at their pointers, with their keywords and words; a price as the smallest unit of its currency, and an amount in the site's words; a cart as it is kept, a change of it, a cart once an order made from it is paid, and a cart priced from what its products published. See contract/README.md.",
+  "collections": [
+    { "id": 1, "name": "Products", "fields": [ { "key": "summary", "type": "paragraph" }, { "key": "price", "type": "number" }, { "key": "in-stock", "type": "toggle" } ] },
+    { "id": 2, "name": "News", "fields": [ { "key": "summary", "type": "paragraph" }, { "key": "day", "type": "date" } ] },
+    { "id": 3, "name": "Events", "fields": [ { "key": "places", "type": "number" }, { "key": "fee", "type": "number" } ] }
+  ],
+  "settings": [
+    { "name": "off, as a new site has it", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": null, "priceField": null }, "faults": [] },
+    { "name": "on, selling the products by their price", "settings": { "enabled": true, "currency": "EUR", "productsCollectionId": 1, "priceField": "price" }, "faults": [] },
+    { "name": "off, a collection and its price kept for later", "settings": { "enabled": false, "currency": "USD", "productsCollectionId": 3, "priceField": "fee" }, "faults": [] },
+    { "name": "off, a collection chosen and no price yet", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 3, "priceField": null }, "faults": [] },
+    { "name": "a collection's id written as an integral float", "settings": { "enabled": true, "currency": "GBP", "productsCollectionId": 1.0, "priceField": "price" }, "faults": [], "settled": { "enabled": true, "currency": "GBP", "productsCollectionId": 1, "priceField": "price" } },
+    { "name": "no object", "settings": [ true ], "faults": [ [ "", "type", "must be a JSON object" ] ] },
+    { "name": "every member missing", "settings": {}, "faults": [
+      [ "/enabled", "required", "is required" ], [ "/currency", "required", "is required" ],
+      [ "/productsCollectionId", "required", "is required" ], [ "/priceField", "required", "is required" ]
+    ] },
+    { "name": "a member the settings do not take, before the rest", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": null, "priceField": null, "taxes": true, "a/b~c": 1 }, "faults": [
+      [ "/taxes", "additionalProperties", "is not a member this request takes" ], [ "/a~1b~0c", "additionalProperties", "is not a member this request takes" ]
+    ] },
+    { "name": "on, as a word", "settings": { "enabled": "yes", "currency": "GBP", "productsCollectionId": 1, "priceField": "price" }, "faults": [ [ "/enabled", "type", "must be true or false" ] ] },
+    { "name": "a currency not of the list", "settings": { "enabled": false, "currency": "JPY", "productsCollectionId": null, "priceField": null }, "faults": [ [ "/currency", "enum", "must be one of GBP, EUR, USD" ] ] },
+    { "name": "a currency in lower case", "settings": { "enabled": false, "currency": "gbp", "productsCollectionId": null, "priceField": null }, "faults": [ [ "/currency", "enum", "must be one of GBP, EUR, USD" ] ] },
+    { "name": "a currency as its number", "settings": { "enabled": false, "currency": 826, "productsCollectionId": null, "priceField": null }, "faults": [ [ "/currency", "enum", "must be one of GBP, EUR, USD" ] ] },
+    { "name": "a collection's id as text", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": "1", "priceField": null }, "faults": [ [ "/productsCollectionId", "type", "must be a collection's id, or null" ] ] },
+    { "name": "a collection's id of zero", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 0, "priceField": null }, "faults": [ [ "/productsCollectionId", "type", "must be a collection's id, or null" ] ] },
+    { "name": "a collection's id with a fraction", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 1.5, "priceField": null }, "faults": [ [ "/productsCollectionId", "type", "must be a collection's id, or null" ] ] },
+    { "name": "a collection's id past the integers a number holds", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 9007199254740993, "priceField": null }, "faults": [ [ "/productsCollectionId", "type", "must be a collection's id, or null" ] ] },
+    { "name": "a collection the site does not have", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 99, "priceField": "price" }, "faults": [ [ "/productsCollectionId", "collectionExists", "The site has no collection 99." ] ] },
+    { "name": "a collection with no number field, whose price is then not looked for", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 2, "priceField": "summary" }, "faults": [ [ "/productsCollectionId", "numberField", "The collection News has no number field to be the price." ] ] },
+    { "name": "a price field that is no number field", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 1, "priceField": "summary" }, "faults": [ [ "/priceField", "priceField", "The collection Products has no number field \"summary\"." ] ] },
+    { "name": "a price field the collection does not have", "settings": { "enabled": true, "currency": "GBP", "productsCollectionId": 1, "priceField": "cost" }, "faults": [ [ "/priceField", "priceField", "The collection Products has no number field \"cost\"." ] ] },
+    { "name": "a price field holding U+0000", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 1, "priceField": "pri\u0000ce" }, "faults": [ [ "/priceField", "priceField", "The collection Products has no number field \"pri\u0000ce\"." ] ] },
+    { "name": "a price field with no collection to take it from", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": null, "priceField": "price" }, "faults": [ [ "/priceField", "priceField", "Choose the products collection first." ] ] },
+    { "name": "a price field that is no text", "settings": { "enabled": false, "currency": "GBP", "productsCollectionId": 1, "priceField": 3 }, "faults": [ [ "/priceField", "type", "must be a field's key, or null" ] ] },
+    { "name": "on with neither a collection nor a price", "settings": { "enabled": true, "currency": "GBP", "productsCollectionId": null, "priceField": null }, "faults": [
+      [ "/productsCollectionId", "required", "is required for a shop that is on" ], [ "/priceField", "required", "is required for a shop that is on" ]
+    ] },
+    { "name": "on with a collection and no price", "settings": { "enabled": true, "currency": "GBP", "productsCollectionId": 3, "priceField": null }, "faults": [ [ "/priceField", "required", "is required for a shop that is on" ] ] },
+    { "name": "every member at fault at once", "settings": { "enabled": 1, "currency": "XYZ", "productsCollectionId": 99, "priceField": 5 }, "faults": [
+      [ "/enabled", "type", "must be true or false" ], [ "/currency", "enum", "must be one of GBP, EUR, USD" ],
+      [ "/productsCollectionId", "collectionExists", "The site has no collection 99." ], [ "/priceField", "type", "must be a field's key, or null" ]
+    ] }
+  ],
+  "prices": [
+    { "name": "a whole number", "value": 12, "minor": 1200, "words": { "GBP": "£12.00", "EUR": "€12.00", "USD": "$12.00" } },
+    { "name": "one decimal", "value": 12.5, "minor": 1250, "words": { "GBP": "£12.50", "EUR": "€12.50", "USD": "$12.50" } },
+    { "name": "two decimals a float holds below them: 1.15 times 100 is 114.99999999999999", "value": 1.15, "minor": 115, "words": { "GBP": "£1.15" } },
+    { "name": "two decimals a float holds above them: 0.29 times 100 is 28.999999999999996", "value": 0.29, "minor": 29, "words": { "USD": "$0.29" } },
+    { "name": "pennies", "value": 0.07, "minor": 7, "words": { "GBP": "£0.07" } },
+    { "name": "nothing to pay", "value": 0, "minor": 0, "words": { "GBP": "£0.00" } },
+    { "name": "a thousand and more", "value": 1250.5, "minor": 125050, "words": { "GBP": "£1,250.50", "EUR": "€1,250.50" } },
+    { "name": "the most the Products preset takes", "value": 100000, "minor": 10000000, "words": { "GBP": "£100,000.00" } },
+    { "name": "the most a number field keeps", "value": 999999999.99, "minor": 99999999999, "words": { "USD": "$999,999,999.99" } },
+    { "name": "an integral float", "value": 19.0, "minor": 1900, "words": { "GBP": "£19.00" } },
+    { "name": "below zero", "value": -1, "minor": null },
+    { "name": "a third decimal", "value": 12.345, "minor": null },
+    { "name": "beyond a billion", "value": 10000000000, "minor": null },
+    { "name": "as text", "value": "12", "minor": null },
+    { "name": "a toggle's value", "value": true, "minor": null },
+    { "name": "nothing", "value": null, "minor": null }
+  ],
+  "amounts": [
+    { "minor": 0, "currency": "EUR", "words": "€0.00" },
+    { "minor": 5, "currency": "GBP", "words": "£0.05" },
+    { "minor": 99, "currency": "USD", "words": "$0.99" },
+    { "minor": 100000, "currency": "GBP", "words": "£1,000.00" },
+    { "minor": 123456789, "currency": "EUR", "words": "€1,234,567.89" },
+    { "minor": 40000000000, "currency": "GBP", "words": "£400,000,000.00" },
+    { "minor": -300, "currency": "GBP", "words": "-£3.00" }
+  ],
+  "kept": [
+    { "name": "none", "kept": [], "lines": [] },
+    { "name": "two lines, in the order they were put in", "kept": [ [ 5, 2 ], [ 3, 1 ] ], "lines": [ [ 5, 2 ], [ 3, 1 ] ] },
+    { "name": "no list", "kept": { "5": 2 }, "lines": [] },
+    { "name": "nothing at all", "kept": null, "lines": [] },
+    { "name": "text", "kept": "5:2", "lines": [] },
+    { "name": "lines that are no pair of a product and a quantity, left out", "kept": [ [ 5 ], [ 5, 2, 1 ], 5, [ "5", 2 ], [ 0, 2 ], [ 5.5, 2 ], [ 6, 0 ], [ 6, 21 ], [ 6, 1.5 ], [ 7, 3 ] ], "lines": [ [ 7, 3 ] ] },
+    { "name": "integral floats", "kept": [ [ 5.0, 2.0 ] ], "lines": [ [ 5, 2 ] ] },
+    { "name": "a product twice: its first line", "kept": [ [ 5, 2 ], [ 3, 1 ], [ 5, 7 ] ], "lines": [ [ 5, 2 ], [ 3, 1 ] ] },
+    { "name": "more lines than a cart holds: the first twenty", "kept": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 1 ], [ 21, 1 ] ], "lines": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 1 ] ] }
+  ],
+  "changes": [
+    { "name": "a product put in an empty cart", "lines": [], "add": { "entryId": 3, "quantity": 1 }, "result": [ [ 3, 1 ] ] },
+    { "name": "a product put in again: its quantity goes up", "lines": [ [ 3, 1 ], [ 5, 2 ] ], "add": { "entryId": 3, "quantity": 2 }, "result": [ [ 3, 3 ], [ 5, 2 ] ] },
+    { "name": "a product put in again past twenty: twenty", "lines": [ [ 3, 18 ] ], "add": { "entryId": 3, "quantity": 5 }, "result": [ [ 3, 20 ] ] },
+    { "name": "a new product put in after the others", "lines": [ [ 3, 1 ] ], "add": { "entryId": 9, "quantity": 20 }, "result": [ [ 3, 1 ], [ 9, 20 ] ] },
+    { "name": "a twenty-first product", "lines": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 1 ] ], "add": { "entryId": 21, "quantity": 1 }, "fault": [ "", "lines", "The cart holds 20 different products at most." ] },
+    { "name": "one of twenty put in again", "lines": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 1 ] ], "add": { "entryId": 20, "quantity": 1 }, "result": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 2 ] ] },
+    { "name": "none put in", "lines": [], "add": { "entryId": 3, "quantity": 0 }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 1 to 20." ] },
+    { "name": "more than a line takes put in", "lines": [], "add": { "entryId": 3, "quantity": 21 }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 1 to 20." ] },
+    { "name": "half a product put in", "lines": [], "add": { "entryId": 3, "quantity": 1.5 }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 1 to 20." ] },
+    { "name": "a quantity as text", "lines": [], "add": { "entryId": 3, "quantity": "2" }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 1 to 20." ] },
+    { "name": "a product that is no id", "lines": [], "add": { "entryId": 0, "quantity": 1 }, "fault": [ "/entry", "entry", "That product could not be read." ] },
+    { "name": "a product as text", "lines": [], "add": { "entryId": "3", "quantity": 1 }, "fault": [ "/entry", "entry", "That product could not be read." ] },
+    { "name": "a line's quantity set", "lines": [ [ 3, 1 ], [ 5, 2 ] ], "set": { "entryId": 3, "quantity": 5 }, "result": [ [ 3, 5 ], [ 5, 2 ] ] },
+    { "name": "a line's quantity set to none: the line goes", "lines": [ [ 3, 1 ], [ 5, 2 ] ], "set": { "entryId": 3, "quantity": 0 }, "result": [ [ 5, 2 ] ] },
+    { "name": "a product not in the cart set to none: nothing changes", "lines": [ [ 3, 1 ] ], "set": { "entryId": 7, "quantity": 0 }, "result": [ [ 3, 1 ] ] },
+    { "name": "a product not in the cart set to two: put in after the others", "lines": [ [ 3, 1 ] ], "set": { "entryId": 7, "quantity": 2 }, "result": [ [ 3, 1 ], [ 7, 2 ] ] },
+    { "name": "a twenty-first product set", "lines": [ [ 1, 1 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 1 ], [ 7, 1 ], [ 8, 1 ], [ 9, 1 ], [ 10, 1 ], [ 11, 1 ], [ 12, 1 ], [ 13, 1 ], [ 14, 1 ], [ 15, 1 ], [ 16, 1 ], [ 17, 1 ], [ 18, 1 ], [ 19, 1 ], [ 20, 1 ] ], "set": { "entryId": 21, "quantity": 1 }, "fault": [ "", "lines", "The cart holds 20 different products at most." ] },
+    { "name": "a quantity set past twenty", "lines": [ [ 3, 1 ] ], "set": { "entryId": 3, "quantity": 21 }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 0 to 20." ] },
+    { "name": "a quantity set below none", "lines": [ [ 3, 1 ] ], "set": { "entryId": 3, "quantity": -1 }, "fault": [ "/quantity", "quantity", "The quantity is a whole number from 0 to 20." ] },
+    { "name": "a product set that is no id", "lines": [ [ 3, 1 ] ], "set": { "entryId": -3, "quantity": 0 }, "fault": [ "/entry", "entry", "That product could not be read." ] }
+  ],
+  "ordered": [
+    { "name": "the lines the order took go", "lines": [ [ 1, 2 ], [ 2, 1 ] ], "ordered": [ [ 1, 2 ] ], "result": [ [ 2, 1 ] ] },
+    { "name": "more of a product put in since stays", "lines": [ [ 1, 3 ] ], "ordered": [ [ 1, 2 ] ], "result": [ [ 1, 1 ] ] },
+    { "name": "a line made smaller since goes", "lines": [ [ 1, 1 ] ], "ordered": [ [ 1, 2 ] ], "result": [] },
+    { "name": "a product put in since stays where it was put", "lines": [ [ 2, 1 ], [ 1, 2 ], [ 3, 4 ] ], "ordered": [ [ 1, 2 ], [ 3, 1 ] ], "result": [ [ 2, 1 ], [ 3, 3 ] ] },
+    { "name": "a product taken out since stays out", "lines": [ [ 2, 1 ] ], "ordered": [ [ 1, 2 ] ], "result": [ [ 2, 1 ] ] },
+    { "name": "an empty cart stays empty", "lines": [], "ordered": [ [ 1, 2 ] ], "result": [] },
+    { "name": "an order of nothing takes nothing", "lines": [ [ 1, 2 ] ], "ordered": [], "result": [ [ 1, 2 ] ] }
+  ],
+  "priced": [
+    {
+      "name": "lines of every state: for sale, out of stock, with no price, a price below zero, gone; only those for sale are ordered",
+      "fields": [ { "key": "summary", "type": "paragraph" }, { "key": "price", "type": "number" }, { "key": "in-stock", "type": "toggle" } ],
+      "priceField": "price",
+      "products": [
+        { "id": 1, "title": "Swim cap", "values": { "price": 12, "in-stock": true } },
+        { "id": 2, "title": "Tow float", "values": { "price": 24.5, "in-stock": true, "summary": "Bright orange." } },
+        { "id": 3, "title": "Enamel mug", "values": { "price": 9.99, "in-stock": false } },
+        { "id": 4, "title": "Winter series pass", "values": { "in-stock": true } },
+        { "id": 5, "title": "A refund", "values": { "price": -5, "in-stock": true } },
+        { "id": 6, "title": "Gloves", "values": { "price": 1.15 } }
+      ],
+      "lines": [ [ 1, 2 ], [ 2, 1 ], [ 3, 1 ], [ 4, 1 ], [ 5, 1 ], [ 6, 3 ], [ 7, 1 ] ],
+      "priced": {
+        "lines": [
+          { "entryId": 1, "quantity": 2, "state": "forSale", "title": "Swim cap", "unitAmount": 1200, "amount": 2400 },
+          { "entryId": 2, "quantity": 1, "state": "forSale", "title": "Tow float", "unitAmount": 2450, "amount": 2450 },
+          { "entryId": 3, "quantity": 1, "state": "outOfStock", "title": "Enamel mug", "unitAmount": 999, "amount": null },
+          { "entryId": 4, "quantity": 1, "state": "noPrice", "title": "Winter series pass", "unitAmount": null, "amount": null },
+          { "entryId": 5, "quantity": 1, "state": "noPrice", "title": "A refund", "unitAmount": null, "amount": null },
+          { "entryId": 6, "quantity": 3, "state": "outOfStock", "title": "Gloves", "unitAmount": 115, "amount": null },
+          { "entryId": 7, "quantity": 1, "state": "gone", "title": null, "unitAmount": null, "amount": null }
+        ],
+        "total": 4850,
+        "orderLines": [
+          { "entryId": 1, "title": "Swim cap", "unitAmount": 1200, "quantity": 2 },
+          { "entryId": 2, "title": "Tow float", "unitAmount": 2450, "quantity": 1 }
+        ]
+      }
+    },
+    {
+      "name": "a collection with no toggle in-stock: everything with a price is for sale",
+      "fields": [ { "key": "fee", "type": "number" }, { "key": "in-stock", "type": "text" } ],
+      "priceField": "fee",
+      "products": [
+        { "id": 1, "title": "Swim cap", "values": { "fee": 1.15, "in-stock": "no" } },
+        { "id": 2, "title": "Gloves", "values": { "fee": 0.29 } }
+      ],
+      "lines": [ [ 1, 20 ], [ 2, 3 ] ],
+      "priced": {
+        "lines": [
+          { "entryId": 1, "quantity": 20, "state": "forSale", "title": "Swim cap", "unitAmount": 115, "amount": 2300 },
+          { "entryId": 2, "quantity": 3, "state": "forSale", "title": "Gloves", "unitAmount": 29, "amount": 87 }
+        ],
+        "total": 2387,
+        "orderLines": [
+          { "entryId": 1, "title": "Swim cap", "unitAmount": 115, "quantity": 20 },
+          { "entryId": 2, "title": "Gloves", "unitAmount": 29, "quantity": 3 }
+        ]
+      }
+    },
+    {
+      "name": "a price field the collection no longer has as a number: nothing has a price",
+      "fields": [ { "key": "price", "type": "text" } ],
+      "priceField": "price",
+      "products": [ { "id": 1, "title": "Swim cap", "values": { "price": 12 } } ],
+      "lines": [ [ 1, 1 ] ],
+      "priced": {
+        "lines": [ { "entryId": 1, "quantity": 1, "state": "noPrice", "title": "Swim cap", "unitAmount": null, "amount": null } ],
+        "total": 0,
+        "orderLines": []
+      }
+    },
+    {
+      "name": "an empty cart",
+      "fields": [ { "key": "price", "type": "number" } ],
+      "priceField": "price",
+      "products": [],
+      "lines": [],
+      "priced": { "lines": [], "total": 0, "orderLines": [] }
+    }
+  ]
+}

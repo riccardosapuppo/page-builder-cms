@@ -35,6 +35,7 @@ import {
   type NewPage,
   type NewVersion,
   type NotPending,
+  type Order,
   type Outcome,
   type Page,
   type PageChanges,
@@ -47,6 +48,7 @@ import {
   type Schedule,
   type ScheduleRequest,
   type ScheduleResult,
+  type Shop,
   type Site,
   type SiteStyle,
   type SiteStyleChange,
@@ -58,6 +60,7 @@ import {
 } from "./adapter.ts";
 import { isObject } from "../document/json.ts";
 import type { CollectionDefinition, EntryContent } from "../shared/collection.ts";
+import type { ShopSettings } from "../shared/shop.ts";
 import { systemClock, type Clock } from "./clock.ts";
 import { apiBase } from "./config.ts";
 
@@ -112,6 +115,11 @@ export const RAILS_ROUTES = {
   deleteEntry: { method: "DELETE", path: "/collections/{id}/entries/{entryId}", body: "none" },
   publishEntry: { method: "POST", path: "/collections/{id}/entries/{entryId}/publish", body: "optional" },
   unpublishEntry: { method: "POST", path: "/collections/{id}/entries/{entryId}/unpublish", body: "none" },
+  getShop: { method: "GET", path: "/shop", body: "none" },
+  setShop: { method: "PUT", path: "/shop", body: "required" },
+  listOrders: { method: "GET", path: "/orders", body: "none" },
+  getOrder: { method: "GET", path: "/orders/{id}", body: "none" },
+  refreshOrder: { method: "POST", path: "/orders/{id}/refresh", body: "none" },
 } as const satisfies Record<string, Route>;
 
 export type OperationId = keyof typeof RAILS_ROUTES;
@@ -138,6 +146,9 @@ export const RAILS_CAPABILITIES: Capabilities = {
   livePages: true,
   // The CMS keeps collections, their entries and their templates.
   collections: true,
+  // The CMS keeps the shop's settings and the orders its cart's checkout
+  // makes, which it asks Stripe about.
+  shop: true,
 };
 
 export interface RailsAdapterConfig {
@@ -455,6 +466,23 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
     },
     async deleteEntry(collectionId, entryId, options) {
       value<null>(await call("deleteEntry", { id: collectionId, entryId }, undefined, options), 204, "deleteEntry");
+    },
+
+    async getShop(options) {
+      return value<Shop>(await call("getShop", {}, undefined, options), 200, "getShop");
+    },
+    async setShop(settings: ShopSettings, options) {
+      const body = { enabled: settings.enabled, currency: settings.currency, productsCollectionId: settings.productsCollectionId, priceField: settings.priceField };
+      return settle<Shop, Invalid>(await call("setShop", {}, body, options), 200, ["invalid"], "setShop");
+    },
+    async listOrders(options) {
+      return value<{ orders: Order[] }>(await call("listOrders", {}, undefined, options), 200, "listOrders").orders;
+    },
+    async getOrder(orderId, options) {
+      return value<Order>(await call("getOrder", { id: orderId }, undefined, options), 200, "getOrder");
+    },
+    async refreshOrder(orderId, options) {
+      return value<Order>(await call("refreshOrder", { id: orderId }, undefined, options), 200, "refreshOrder");
     },
   };
 

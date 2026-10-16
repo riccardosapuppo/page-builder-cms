@@ -97,6 +97,13 @@ the server writes for them. The editor's half is
   way by the editor (`custom-css.ts`) and the CMS (`CustomCss`):
   `cases.json`, each case's stylesheet and the problem both must find,
   or none, and the stylesheet as the page draws it.
+- [`shop/`](shop): the shop's rules, the same on both sides, the editor's
+  and the browser's storage's (`builder/src/shared/shop.ts`) and the
+  CMS's (`ShopRules`): `cases.json`, the shop's settings and the faults
+  both must find in them at their pointers, keywords and words, a price
+  in the smallest unit of its currency and an amount in the site's words,
+  a cart as it is kept, a change of it, and a cart priced from what its
+  products published.
 - [`free-colors/`](free-colors): the stylesheet of a page's free colours
   (`/colors/<digest>.css` on the CMS, a style element on the canvas), for each case
   of `cases.json`: `<case>.css`, written by

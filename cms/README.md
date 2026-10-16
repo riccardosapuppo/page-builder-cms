@@ -427,6 +427,7 @@ no warnings, the same morning).
 | `POST /`, `POST /<slug>` | a form of that page, sent by a visitor ([Forms a visitor sends](#forms-a-visitor-sends)) |
 | `/sent/<form id>`, `/<slug>/sent/<form id>` | what the form says once its answers are kept, after the 303; `no-store` and `noindex` |
 | `POST /preview/<page id>` | a form sent from the draft preview: 403, a page saying forms are sent from the published page, and nothing kept |
+| `/cart`, `POST /cart/items`, `POST /cart/items/<entry id>`, `POST /cart/checkout`, `/cart/thanks?session_id=<id>` | the shop's cart, its checkout and where Stripe sends a visitor back ([The shop](#the-shop)); `no-store` and `noindex`; the 404 page while the shop is off |
 
 - **One partial per block type** in [app/views/blocks/](app/views/blocks/),
   twenty-two in all, walked by `BlocksHelper#render_document`. Every block
@@ -668,6 +669,69 @@ that address (RFC 9111, section 4.4), so its next visit is a 200, read
 whole from Solid Cache. `builder/e2e/submissions.spec.ts` shows it in
 Chromium.
 
+## The shop
+
+The shop sells the entries of one collection, its products, through
+Stripe's Checkout in its test mode alone, and can be off, as a new site's
+is ([the decision](../docs/decisions/shop-on-collections.md)). Its first
+phase is here: the settings and the orders, the API, the cart's
+addresses and Stripe's client; the editor's Shop screen, the cart's pages
+as the site's design draws them and the example site's shop come next.
+
+**The settings** (`ShopSetting`, one row for the site, as the site
+style's): on or off; the currency, GBP, EUR or USD; the collection whose
+entries are the products; and its number field that is the price. They
+are held to the shop's rules ([ShopRules](app/models/shop_rules.rb), the
+twin of the editor's `shop.ts`, both reading
+[`../contract/shop/cases.json`](../contract/shop/cases.json)), each
+fault at its member. While they name a collection, on or off, it is not
+deleted (409 `collection_in_shop`), and its price field neither goes nor
+takes another type (422, `shopPrice`).
+
+**The cart's addresses** ([CartController](app/controllers/cart_controller.rb)),
+the site's 404 page while the shop is off:
+
+| Address | What it does |
+| --- | --- |
+| `GET /cart` | the cart in the site's frame: each line at the price its product published, the total, the checkout's button or why there is none |
+| `POST /cart/items` | `entry` (and `quantity`, 1 when not sent) put in: 303 to the cart |
+| `POST /cart/items/<entry id>` | `quantity` set, 0 taking the line out: 303 to the cart |
+| `POST /cart/checkout` | an order of the lines for sale, open, and 303 to Stripe's page for it |
+| `GET /cart/thanks?session_id=<id>` | the session asked of Stripe; paid, the order kept as paid and the cart rid of what it took |
+
+The cart is a cookie of those addresses alone: its lines (an entry's id
+and a quantity, never a price) and the mark of its last checkout,
+encrypted and signed with the application's secret, HttpOnly,
+SameSite=Lax, on the path `/cart`; no published page reads it, and none
+sets a cookie. Its writes have a visitor's form's guards: the `Origin`
+(403), the checkout's count (ten in ten minutes from one address, 429),
+only a form's encoding (415), a body of a kilobyte at most (413). Every
+answer is `no-store` and `noindex`.
+
+**Stripe.** Checkout is set up when the environment the CMS runs in has
+a key of Stripe's test mode, and only then:
+
+```
+STRIPE_SECRET_KEY=sk_test_...   (or rk_test_..., a restricted key)
+STRIPE_API_BASE=https://api.stripe.com   (the default)
+```
+
+A live key, a publishable key or anything else is refused, and `GET
+/api/shop` says why in `checkout.reason`; the key itself is never
+answered, logged or shown. `STRIPE_API_BASE` is taken only as Stripe's
+own address or `http://127.0.0.1:<port>`; the tests and the e2e
+environment take only the second (`config.x.stripe_network`), where the
+tests' fake Stripe listens
+([test/support/fake_stripe.rb](test/support/fake_stripe.rb), run in the
+tests' own process; `ruby test/support/fake_stripe.rb` runs it alone and
+prints its address and key). No webhook: the CMS learns an order is paid
+on the thanks page, or when the Orders screen asks again.
+
+`ruby bin/rails test test/models/shop_rules_test.rb
+test/models/stripe_client_test.rb test/integration/api/shop_test.rb
+test/integration/api/orders_test.rb test/integration/cart_test.rb` holds
+all of it, against the fake: nothing reaches the network.
+
 ## How the pages are cached
 
 A published page is cached at three levels, and nothing is ever deleted
@@ -842,6 +906,9 @@ the schema file) each failed it.
 | `GET /api/collections/:id/entries?q=&order=`, `POST ...` | its entries, searched by title and in an order (its own by default); create one from `{title, slug, values}` |
 | `GET /api/collections/:id/entries/:entry_id`, `PUT ...`, `DELETE ...` | one entry, its draft and what is live; save `{revision, saveId, title, slug, values}`; delete it |
 | `POST /api/collections/:id/entries/:entry_id/publish`, `POST .../unpublish` | put its draft live, optionally only at `{revision}`; take it off |
+| `GET /api/shop`, `PUT /api/shop` | the shop's settings and whether checkout is set up on this CMS, and why not, never the key; replace them `{enabled, currency, productsCollectionId, priceField}` |
+| `GET /api/orders`, `GET /api/orders/:id` | the orders the cart's checkout made, newest first, `no-store`; one |
+| `POST /api/orders/:id/refresh` | an open order asked of Stripe again and kept as Stripe says; any other answered as it is |
 
 **Errors** have one shape, `{"error": <code>, "message": <sentence>}`. A
 422 adds `errors`, each with a JSON `pointer` into the request body, the
@@ -918,8 +985,8 @@ where the steps will go when the schema changes; version 1 is the first).
 **Publishing** makes a `publish` version, points the page at it, moves
 `publishedAt` forward and never back, and applies the draft's address; the
 old one becomes a redirect to the page. `api`, `up`, `assets`, `rails`,
-`preview` and any name a file in `public/` answers (such as `404`) are
-refused as addresses. What is live names the draft revision it was taken
+`preview`, `cart` and any name a file in `public/` answers (such as
+`404`) are refused as addresses. What is live names the draft revision it was taken
 from, `published.draftRevision`: the draft's revision minus it is the
 number of saves visitors do not see yet, the editor's "N changes not
 live".
@@ -1327,7 +1394,11 @@ sweep above does the same for a schedule that is more than a minute late.
   `EntryWords` and `EntryOrder` (the twins of the editor's
   `widgets/collectionList/cards.ts`, `widgets/field/drawing.ts`,
   `render/entry-words.ts` and `shared/entry-order.ts`), and `PageRules`
-  (a page's checks: no Field block).
+  (a page's checks: no Field block); for the shop, `ShopSetting` (its
+  settings), `ShopRules` (the twin of the editor's `shared/shop.ts`: the
+  settings' rules, money, the cart's rules), `Order` (a checkout, and what
+  Stripe says of it), `StripeSettings` (the key and the address, from the
+  environment) and `StripeClient` (Stripe's two calls, over Net::HTTP).
 - `app/jobs/`: `PublishPageJob`, `EnqueueOverdueSchedulesJob`,
   `PruneVersionsJob`, `PurgeMediaJob`; `config/recurring.yml` sets the
   recurring ones, `lib/queue_orphans.rb` clears what a hard stop left.
@@ -1335,7 +1406,8 @@ sweep above does the same for a schedule that is more than a minute late.
   `previews_controller.rb` and `concerns/public_page.rb`: the pages a
   visitor sees, the entries' among them, their layout
   (`app/views/layouts/public.html.erb`) and their policy;
-  `submissions_controller.rb`: the forms visitors send from them.
+  `submissions_controller.rb`: the forms visitors send from them;
+  `cart_controller.rb`: the shop's cart (`app/views/cart/`).
 - `app/views/blocks/`: one partial per block type; `app/helpers/`:
   `BlocksHelper`, `RichTextHelper`, `SiteHelper`.
 - `app/assets/`: `stylesheets/site.css` (the theme), `stylesheets/tokens.css`

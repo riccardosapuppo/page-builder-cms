@@ -37,8 +37,10 @@ module Api
     #
     # The members given replace the definition's own, and the definition is
     # checked whole: a field the sort follows cannot go without a new sort
-    # (422 at /sort/by). The entries' values under a key no field has any
-    # more stay until each one's next save leaves them out.
+    # (422 at /sort/by), nor the shop's price stop being a number field
+    # (422 at /fields or at its type, shopPrice). The entries' values under
+    # a key no field has any more stay until each one's next save leaves
+    # them out.
     def update
       check = BodyCheck.new(body, allowed: MEMBERS)
       check.any_of(*MEMBERS)
@@ -50,9 +52,10 @@ module Api
     end
 
     # DELETE /api/collections/:id: with its entries, their redirects, and
-    # its template with the template's draft and versions.
+    # its template with the template's draft and versions; 409
+    # collection_in_shop while the shop's settings name it.
     def destroy
-      Collection.find(path_integer(:id)).destroy!
+      Collection.find(path_integer(:id)).delete_unless_sold!
       head :no_content
     end
 

@@ -8,7 +8,10 @@
 // header and footer (cms/app/models/site.rb); and a collection's prefix
 // and an entry's slug (cms/app/models/collection.rb, entry.rb), and the
 // query and the order of a list of entries
-// (cms/app/controllers/api/entries_controller.rb). The browser's adapter
+// (cms/app/controllers/api/entries_controller.rb); and what the shop keeps
+// of a collection (collection.rb) and a checkout's refusal
+// (cms/app/controllers/cart_controller.rb). The shop's own rules are
+// ../shared/shop.ts, held to the CMS's by cases both read. The browser's adapter
 // refuses what the CMS refuses, at the same pointers, with the same
 // keywords and the same words, so the editor shows the same message in
 // either mode. The page document itself, and the header and footer's
@@ -33,7 +36,7 @@ export const MEDIA_ID = /^[A-Za-z0-9_-]{1,64}$/;
 // cms/public/ that answer before the router (404 for public/404.html).
 export const SLUG_FORMAT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SLUG_MAX_LENGTH = 64;
-export const RESERVED_SLUGS: readonly string[] = ["api", "up", "assets", "rails", "preview", "400", "404", "422", "500"];
+export const RESERVED_SLUGS: readonly string[] = ["api", "up", "assets", "rails", "preview", "cart", "400", "404", "422", "500"];
 // Collection::RESERVED_PREFIXES: besides the reserved addresses, a first
 // part the application answers below itself (/sent/<form>).
 export const RESERVED_PREFIXES: readonly string[] = ["sent"];
@@ -134,6 +137,14 @@ export const WORDS = {
   queryParameters: "This list takes only the parameters q and order.",
   queryForm: (name: string) => `The parameter ${name} is not in the form it takes.`,
   noSortField: (key: string) => `The collection has no date or number field ${key} to order its entries by.`,
+  // The shop's collection and its price, which stay while the shop's
+  // settings name them (Collection); a checkout with nothing for sale
+  // (CartController).
+  collectionInShop: "The shop sells from this collection: choose another one in the shop's settings, or none, before deleting it.",
+  shopPrice: (key: string) => `The shop's price is the number field "${key}": keep it, or choose another price in the shop's settings first.`,
+  nothingToCheckOut: "Nothing in your cart can be bought now, so there is nothing to check out.",
+  // Why the browser's checkout reaches no payment: its own words.
+  demoCheckout: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment. On the CMS, with a key of Stripe's test mode, a checkout goes to Stripe's page.",
 } as const;
 
 // BlockDocument::BLOCK_POINTER: a block sits at /sections/n, a column at

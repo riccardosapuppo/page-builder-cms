@@ -105,6 +105,27 @@ against the fields as they are; at a revision, or a conflict),
 collection. An image an entry shows, in its draft or in what is live, is
 `in-use`, the refusal naming it in `usedBy.entries`.
 
+**The shop** (capability `shop`, which both adapters have;
+[docs/decisions/shop-on-collections.md](../../../docs/decisions/shop-on-collections.md)):
+`getShop` answers its settings (`../shared/shop.ts`: on or off, off for
+a new store; a currency of `CURRENCIES`; the products collection and its
+number field that is the price), `updatedAt`, null until they first
+change, and `checkout`, whether a checkout reaches Stripe, in its test
+mode, and if not, why not, never a key. `setShop` takes every member,
+checked whole against the collections as they are by the shop's rules
+(`checkShop`, the twin of the CMS's `ShopRules`, both held to
+`contract/shop/cases.json`): invalid at each fault's member. While the
+settings name a collection, on or off, `deleteCollection` refuses it
+(`refused`, 409, `collection_in_shop`) and `updateCollection` refuses to
+take its price field away or give it another type (invalid at `/fields`,
+or at the field's `/type`, `shopPrice`). `listOrders`, the newest first,
+and `getOrder` read what checkouts made: an order's lines as sold, in
+the currency's smallest unit, its total, its status (`open`, `paid`,
+`expired` on the CMS; `demo`, the browser's own, "Not paid: browser
+demo", `ORDER_STATUS_WORDS`), and once paid the buyer's email and when.
+`refreshOrder` asks Stripe again about an open order and answers it as
+Stripe says it is; any other as it is.
+
 How an operation answers:
 - what it was asked for; or, where the editor has a way forward, an
   `Outcome` naming the refusal: `conflict` (with `currentRevision` and
@@ -159,8 +180,9 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   check and its write touch one record), `versions` (by page and
   number), `media` (the library's items) and `blobs` (each image's bytes,
   apart, so the list is read without them), `site` (the site style, once
-  first changed), `collections` and `entries` (an entry found by its
-  collection). The header and footer are records of `pages`, of their
+  first changed, and the shop's settings, once first changed),
+  `collections` and `entries` (an entry found by its collection), and
+  `orders`. The header and footer are records of `pages`, of their
   own kind, and so is a collection's template, made with its collection
   in the same transaction. Its
   layout is `LAYOUT`, a step per version, as the document upgrades are:
@@ -175,7 +197,15 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   reload (`storage_upgraded`). How the site stands (`siteFingerprint`)
   leaves out a store added later while it holds nothing, so a site with no
   collection stands as it stood, and the demo's seed still knows the
-  edition it put in.
+  edition it put in. Version 4 adds the store of the orders, the same way.
+- **The shop**: its settings checked as the CMS checks them, by the
+  shop's rules; its orders made by the demo's checkout, `checkoutDemo`
+  (the demo keeps the cart): the cart's lines held to the shop's rules,
+  priced from what the products published, those for sale ordered, of
+  status `demo`, since no Stripe is reached from a page with no server;
+  not found with the shop off, `refused` (409, `nothing_to_check_out`)
+  with nothing for sale, as the CMS's cart answers. An order is answered
+  as it is when asked again.
 - **Collections** kept as the CMS keeps them, with its refusals in its
   words (`browser-rules.ts`, the prefix's and an entry's slug's rules,
   the list's query and order: by code point, as Ruby compares strings,
@@ -356,13 +386,15 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 optional operations it needs and a `run(env)`. The runner hands it the
 adapter, a way to open a second tab on the same storage, its `expect`,
 fresh names, a way to read an image's bytes back, a way to send a
-visitor's form from a live page (`sendForm`), and the starters a new
+visitor's form from a live page (`sendForm`), the starters a new
 store makes the header and footer from (`starters`, read from
-`cms/config/parts`); it
+`cms/config/parts`), and a visitor's checkout (`checkout`: on the CMS
+through its cart's addresses to the tests' fake Stripe, whose page the
+visitor may pay at; in the browser through the demo's checkout); it
 runs each case as a test of its own, in its order, on a store of its own,
 and skips (visibly) a case its adapter's capabilities lack. Every case
-makes its own pages; the site style is put back as it was found, and a
-part's draft as it was found, none published. The cases: pages and drafts, the conflict between two tabs, the
+makes its own pages; the site style and the shop's settings are put back
+as they were found, and a part's draft as it was found, none published. The cases: pages and drafts, the conflict between two tabs, the
 same save sent twice being a success counted once, the same `saveId` with
 another document being a conflict, the schema's and the application
 rules' refusals by block and field, a page's address and home mark, a title

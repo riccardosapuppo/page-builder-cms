@@ -5,7 +5,8 @@
 // tab of the editor; two pages of one browser context are two tabs on one
 // database. What crosses is ./wire.ts.
 import type { Page } from "@playwright/test";
-import { StorageError, type CallOptions, type Capabilities, type StorageAdapter, type Upload, type UploadOptions } from "../../src/storage/adapter.ts";
+import { StorageError, type CallOptions, type Capabilities, type Order, type StorageAdapter, type Upload, type UploadOptions } from "../../src/storage/adapter.ts";
+import type { CartLine } from "../../src/shared/shop.ts";
 import type { WireAnswer, WireFile, WireOptions } from "./wire.ts";
 
 // The page a test opens for the battery, ready once its adapters can be made.
@@ -29,13 +30,14 @@ function wireOptions(options: CallOptions | UploadOptions | undefined): WireOpti
 let made = 0;
 
 // An adapter of its own on the page, under a key no other remote has.
-// What only the browser's adapter does, for the demo's example site
-// (BrowserAdapter, in src/storage/browser.ts, which this program does not
-// compile: it is the editor's).
+// What only the browser's adapter does, for the demo's example site and
+// its checkout (BrowserAdapter, in src/storage/browser.ts, which this
+// program does not compile: it is the editor's).
 interface OwnCalls {
   siteFingerprint(): Promise<string>;
   clearSite(): Promise<void>;
   clearSiteIf(fingerprint: string): Promise<boolean>;
+  checkoutDemo(lines: readonly CartLine[]): Promise<Order>;
 }
 
 // steps: an adapter of a build before this one, whose database's layout
@@ -98,8 +100,14 @@ export function remoteAdapter(page: Page, capabilities: Capabilities, steps?: nu
     publishEntry: (collectionId, entryId, request, options) => call("publishEntry", [collectionId, entryId, request], options),
     unpublishEntry: (collectionId, entryId, options) => call("unpublishEntry", [collectionId, entryId], options),
     deleteEntry: (collectionId, entryId, options) => call("deleteEntry", [collectionId, entryId], options),
+    getShop: (options) => call("getShop", [], options),
+    setShop: (settings, options) => call("setShop", [settings], options),
+    listOrders: (options) => call("listOrders", [], options),
+    getOrder: (orderId, options) => call("getOrder", [orderId], options),
+    refreshOrder: (orderId, options) => call("refreshOrder", [orderId], options),
     siteFingerprint: () => call("siteFingerprint", []),
     clearSite: () => call("clearSite", []),
     clearSiteIf: (fingerprint) => call("clearSiteIf", [fingerprint]),
+    checkoutDemo: (lines) => call("checkoutDemo", [lines]),
   };
 }

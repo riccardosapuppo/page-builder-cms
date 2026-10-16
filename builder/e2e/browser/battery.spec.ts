@@ -14,7 +14,7 @@
 // run's new browser context has it, before any case saves them.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { readSiteTheme } from "../../build/site-file.ts";
-import type { Capabilities } from "../../src/storage/adapter.ts";
+import { isStorageError, type Capabilities } from "../../src/storage/adapter.ts";
 import { STORAGE_CONTRACT, type ContractEnv, type Expect } from "../../src/storage/contract.ts";
 import { remoteAdapter, storagePage } from "./remote.ts";
 
@@ -60,6 +60,17 @@ function env(): ContractEnv {
     readBytes: async (url) => Uint8Array.from(await first.evaluate((address) => window.storagePage!.bytes(address), url)),
     sendForm: () => Promise.reject(new Error("the browser's storage keeps no form answers: no case that needs them runs here")),
     starters,
+    // The demo's checkout, which reaches no payment: there is nothing to
+    // pay at. With the shop off, not found, and no order made.
+    async checkout(lines) {
+      try {
+        await remoteAdapter(first, capabilities).checkoutDemo(lines);
+        return true;
+      } catch (error) {
+        if (isStorageError(error) && error.failure.kind === "not-found") return false;
+        throw error;
+      }
+    },
   };
 }
 
@@ -68,7 +79,7 @@ test("the battery holds its cases, and the browser's adapter skips only those of
   expect(new Set(STORAGE_CONTRACT.map((c) => c.name)).size).toBe(STORAGE_CONTRACT.length);
   const skipped = STORAGE_CONTRACT.filter((c) => c.needs.some((operation) => !capabilities[operation])).map((c) => c.name);
   expect(skipped.sort()).toEqual(Object.keys(SKIPPED).sort());
-  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: true });
+  expect(capabilities).toEqual({ publish: true, schedule: false, responses: false, imageVariants: false, livePages: false, collections: true, shop: true });
 });
 
 for (const contract of STORAGE_CONTRACT) {

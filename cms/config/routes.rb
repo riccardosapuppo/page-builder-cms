@@ -55,6 +55,13 @@ Rails.application.routes.draw do
     post "collections/:id/entries/:entry_id/publish", to: "entries#publish"
     post "collections/:id/entries/:entry_id/unpublish", to: "entries#unpublish"
 
+    get "shop", to: "shops#show"
+    put "shop", to: "shops#update"
+
+    get "orders", to: "orders#index"
+    get "orders/:id", to: "orders#show"
+    post "orders/:id/refresh", to: "orders#refresh"
+
     # Any other address or method under /api/: the API's JSON 404, not the
     # site's HTML 404 page.
     match "*path", to: "missing#show", via: :all
@@ -72,6 +79,19 @@ Rails.application.routes.draw do
   get "type/:digest.css", to: "free_type#show", constraints: { digest: /[0-9a-f]{64}/ }, format: false
   # The site's own stylesheet, the version its address names.
   get "custom.css", to: "custom_css#show", format: false
+
+  # The shop's cart (CartController): the cart, a product put in, a line's
+  # quantity set (0 takes it out), the checkout that sends the visitor to
+  # Stripe, and the thanks page Stripe sends them back to. The site's 404
+  # page while the shop is off. cart is reserved as a page's address and
+  # as a prefix (Slug::RESERVED), so neither a page nor an entry is ever
+  # at one of these.
+  get "cart", to: "cart#show", format: false
+  post "cart/items", to: "cart#add", format: false
+  post "cart/items/:entry_id", to: "cart#set", constraints: { entry_id: /[0-9]{1,18}/ }, format: false
+  post "cart/checkout", to: "cart#checkout", format: false
+  get "cart/thanks", to: "cart#thanks", format: false
+
   root "pages#home"
   get ":slug", to: "pages#show", constraints: { slug: /[a-z0-9]+(?:-[a-z0-9]+)*/ }, format: false, as: :published_page
 

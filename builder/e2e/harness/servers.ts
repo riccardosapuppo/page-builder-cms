@@ -17,6 +17,11 @@
 //   group elsewhere: ../../../tools/lib/processes.ts), shows the port
 //   closed, and only then deletes the folder: Windows does not delete an
 //   SQLite file a live process holds open.
+// - The shop's checkout reaches Stripe only through the tests' fake
+//   (cms/test/support/fake_stripe.rb, run as a process of its own on
+//   127.0.0.1, startFakeStripe), when a run gives the CMS one; else the
+//   CMS has no Stripe key, whatever the shell holds, and its checkout is
+//   not set up. Nothing a test does reaches the network.
 import { spawnSync, type ChildProcess } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -97,9 +102,15 @@ async function stopServer(child: ChildProcess, port: number, folder: string, wha
   return done;
 }
 
+// The tests' fake Stripe, and the key the CMS reaches it with, the fake's
+// own (no key of Stripe's is ever written here).
+export interface FakeStripe extends Server {
+  key: string;
+}
+
 // The environment of a run's CMS, whose databases and storage are in the
-// folder cms/tmp/<run>.
-function cmsEnv(run: string): NodeJS.ProcessEnv {
+// folder cms/tmp/<run>, and whose Stripe, when one is given, is the fake.
+function cmsEnv(run: string, stripe: Pick<FakeStripe, "url" | "key"> | null = null): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     RAILS_ENV: "e2e",
@@ -114,6 +125,12 @@ function cmsEnv(run: string): NodeJS.ProcessEnv {
   // What bin/rails would otherwise take from this shell.
   delete env.BINDING;
   delete env.PORT;
+  delete env.STRIPE_SECRET_KEY;
+  delete env.STRIPE_API_BASE;
+  if (stripe) {
+    env.STRIPE_SECRET_KEY = stripe.key;
+    env.STRIPE_API_BASE = stripe.url;
+  }
   return env;
 }
 
@@ -130,14 +147,15 @@ export function seedCms(cms: Pick<Server, "folder">): string {
   return seed.stdout;
 }
 
-// A CMS of the run's own, on 127.0.0.1:<port>, on an empty database.
-export async function startCms(port: number): Promise<Server> {
+// A CMS of the run's own, on 127.0.0.1:<port>, on an empty database;
+// its shop's checkout going to the fake Stripe given, or set up nowhere.
+export async function startCms(port: number, options: { stripe?: Pick<FakeStripe, "url" | "key"> } = {}): Promise<Server> {
   assertFree(port, "the CMS");
   const run = `e2e-${port}-${process.pid}`;
   const folder = join(cmsRoot, "tmp", run);
   rmSync(folder, { recursive: true, force: true });
   mkdirSync(folder, { recursive: true });
-  const env = cmsEnv(run);
+  const env = cmsEnv(run, options.stripe ?? null);
 
   const setup = spawnSync("ruby", ["bin/rails", "db:create", "db:schema:load"], { cwd: cmsRoot, env, encoding: "utf8" });
   if (setup.status !== 0) {
@@ -166,6 +184,39 @@ export async function startCms(port: number): Promise<Server> {
     throw error;
   }
   return { url, port, folder, stop: () => stopServer(child, port, folder, "the CMS") };
+}
+
+// The tests' fake Stripe, in a process of its own on 127.0.0.1 and a port
+// the system gives it: ready when it has said its address and key, and
+// answers there; stopped as the other servers are.
+export async function startFakeStripe(): Promise<FakeStripe> {
+  const folder = mkdtempSync(join(tmpdir(), "pbc-fake-stripe-"));
+  const log = join(folder, "fake-stripe.log");
+  const fd = openSync(log, "w");
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env.STRIPE_SECRET_KEY;
+  delete env.STRIPE_API_BASE;
+  const child = startTree("ruby", ["test/support/fake_stripe.rb", "0"], { cwd: cmsRoot, env, stdio: ["ignore", fd, fd] });
+  closeSync(fd);
+  let said: { url: string; key: string } | null = null;
+  try {
+    await waitFor(child, "the fake Stripe", log, async () => {
+      const found = /fake Stripe on (http:\/\/127\.0\.0\.1:([0-9]+)) with the key (sk_test_[0-9A-Za-z]+)/.exec(readFileSync(log, "utf8"));
+      if (!found) return false;
+      said = { url: found[1]!, key: found[3]! };
+      const answer = await fetch(`${said.url}/_fake/sessions`, { signal: AbortSignal.timeout(10_000) });
+      await answer.arrayBuffer();
+      return answer.ok;
+    });
+  } catch (error) {
+    await stopTree(child).catch(() => "");
+    rmSync(folder, { recursive: true, force: true });
+    throw error;
+  }
+  const { url, key } = said!;
+  const port = Number(new URL(url).port);
+  assertOwnListener(port, child, "the fake Stripe");
+  return { url, key, port, folder, stop: () => stopServer(child, port, folder, "the fake Stripe") };
 }
 
 // The editor's development server on 127.0.0.1:<port>, its proxy pointed

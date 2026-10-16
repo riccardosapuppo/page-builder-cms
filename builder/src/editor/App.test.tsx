@@ -153,7 +153,7 @@ class FakeSite {
   adapter(): StorageAdapter {
     const partial: Partial<StorageAdapter> = {
       name: "fake",
-      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: this.collections },
+      capabilities: { publish: true, schedule: this.schedule, responses: false, imageVariants: false, livePages: this.livePages, collections: this.collections, shop: false },
       listCollections: async () => {
         if (this.refuseCollections) throw this.refuseCollections;
         return [newsCollection({ template: this.summary(TEMPLATE) })];

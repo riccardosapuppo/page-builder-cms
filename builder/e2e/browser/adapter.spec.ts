@@ -11,8 +11,10 @@
 // two tabs at the same moment, in a browser that has none yet; and a form a
 // broken build left in the footer, which no publish, version or restore
 // lets through; the demo's starting over, which lets go of every record
-// and every picture's address; and the database of the build before
-// collections, upgraded to this build's with every record kept.
+// and every picture's address; the databases of the build before
+// collections and of the build before the shop, each upgraded to this
+// build's with every record kept; and the shop as a new database has it,
+// and the demo's checkout, which only the browser's storage has.
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { Capabilities, StorageAdapter } from "../../src/storage/adapter.ts";
 import { PNG_BYTES } from "../../src/storage/contract.ts";
@@ -375,9 +377,10 @@ test("the site let go of, for the demo to start over: every page, version, pictu
 // ------------------------------------------------ the database's upgrade
 
 // A browser that kept its site with the build before collections (version
-// 2 of the database's layout) opens this build (version 3), which adds the
-// stores of the collections and their entries. In a browser of its own, as
-// the build before left it.
+// 2 of the database's layout) opens this build (version 4), whose third
+// step adds the stores of the collections and their entries, and its
+// fourth the orders'. In a browser of its own, as the build before left
+// it.
 test("the database of the build before collections upgrades to this one's: every page, part, version, image and setting kept, the site standing as it stood, and the build before's tab told to reload", async ({ browser }) => {
   const own = await browser.newContext();
   try {
@@ -417,7 +420,7 @@ test("the database of the build before collections upgrades to this one's: every
     const newer = await storagePage(await own.newPage());
     const after = remoteAdapter(newer, capabilities);
     expect(await after.listCollections()).toEqual([]);
-    expect(await newer.evaluate(() => window.storagePage!.version())).toBe(3);
+    expect(await newer.evaluate(() => window.storagePage!.version())).toBe(4);
     for (const [k, store] of stores.entries()) expect(await newer.evaluate((name) => window.storagePage!.records(name), store), store).toEqual(kept[k]);
     expect(await newer.evaluate(() => window.storagePage!.keys("blobs"))).toEqual(blobs);
     expect(await after.siteFingerprint(), "the site stands as it stood: the demo's seed still knows it").toBe(stood);
@@ -435,5 +438,122 @@ test("the database of the build before collections upgrades to this one's: every
     expect(await after.siteFingerprint()).not.toBe(stood);
   } finally {
     await own.close();
+  }
+});
+
+// A browser that kept its site with the build before the shop (version 3
+// of the database's layout) opens this build (version 4), which adds the
+// store of the orders. In a browser of its own, as the build before left
+// it: a page, a collection with an entry published, the site style.
+test("the database of the build before the shop upgrades to this one's: every page, part, version, image, setting, collection and entry kept, the site standing as it stood, and the build before's tab told to reload", async ({ browser }) => {
+  const own = await browser.newContext();
+  try {
+    const older = await storagePage(await own.newPage());
+    const before = remoteAdapter(older, capabilities, 3);
+    expect(await before.listPages()).toEqual([]);
+    expect(await older.evaluate(() => window.storagePage!.version())).toBe(3);
+    const item = await before.uploadMedia({ file: png(`${unique("upgrade")}.png`), width: 3, height: 2, alt: "A buoy" });
+    if (!item.ok) throw new Error(JSON.stringify(item.problem));
+    const made = await page(before);
+    expect((await before.publish(made.id)).ok).toBe(true);
+    expect(await before.listParts()).toHaveLength(2);
+    const style = await before.getSiteStyle();
+    expect((await before.setSiteStyle({ palette: { ...style.palette, primary: "site-harbour" }, typeScale: style.typeScale })).ok).toBe(true);
+    const collection = await before.createCollection({ name: "News", prefix: unique("news"), fields: [{ key: "price", label: "Price", type: "number", required: false }], sort: { by: "title", direction: "asc" } });
+    if (!collection.ok) throw new Error(JSON.stringify(collection.problem));
+    const entry = await before.createEntry(collection.value.id, { title: "Dawn swims", slug: "dawn", values: { price: 12 } });
+    if (!entry.ok) throw new Error(JSON.stringify(entry.problem));
+    expect((await before.publishEntry(collection.value.id, entry.value.id)).ok).toBe(true);
+    const stores = ["pages", "versions", "media", "site", "collections", "entries"];
+    const kept = await Promise.all(stores.map((store) => older.evaluate((name) => window.storagePage!.records(name), store)));
+    const blobs = await older.evaluate(() => window.storagePage!.keys("blobs"));
+    const stood = await older.evaluate(() => window.storagePage!.stands(["pages", "versions", "media", "blobs", "site", "collections", "entries"]));
+
+    const newer = await storagePage(await own.newPage());
+    const after = remoteAdapter(newer, capabilities);
+    expect(await after.listOrders()).toEqual([]);
+    expect(await newer.evaluate(() => window.storagePage!.version())).toBe(4);
+    for (const [k, store] of stores.entries()) expect(await newer.evaluate((name) => window.storagePage!.records(name), store), store).toEqual(kept[k]);
+    expect(await newer.evaluate(() => window.storagePage!.keys("blobs"))).toEqual(blobs);
+    expect(await after.siteFingerprint(), "the site stands as it stood: the demo's seed still knows it").toBe(stood);
+    await expect(before.listPages()).rejects.toMatchObject({ failure: { kind: "refused", code: "storage_upgraded" } });
+
+    // The shop is off, as a new site's, until its settings change, which
+    // then changes how the site stands.
+    expect(await after.getShop()).toMatchObject({ enabled: false, currency: "GBP", productsCollectionId: null, priceField: null, updatedAt: null });
+    expect((await after.setShop({ enabled: true, currency: "GBP", productsCollectionId: collection.value.id, priceField: "price" })).ok).toBe(true);
+    expect(await after.siteFingerprint()).not.toBe(stood);
+  } finally {
+    await own.close();
+  }
+});
+
+// ------------------------------------------------------------- the shop
+
+test("a new database's shop is off, in pounds, with no collection, never changed, and its checkout reaches no payment, saying why", async ({ browser }) => {
+  const own = await browser.newContext();
+  try {
+    const tab = remoteAdapter(await storagePage(await own.newPage()), capabilities);
+    expect(await tab.getShop()).toEqual({
+      enabled: false, currency: "GBP", productsCollectionId: null, priceField: null, updatedAt: null,
+      checkout: { ready: false, reason: "This storage is the browser's: its checkout makes an order marked Not paid: browser demo, and reaches no payment. On the CMS, with a key of Stripe's test mode, a checkout goes to Stripe's page." },
+    });
+    expect(await tab.listOrders()).toEqual([]);
+  } finally {
+    await own.close();
+  }
+});
+
+test("the demo's checkout orders the lines for sale at the prices their products published and leaves the others out, marked as the demo's; with the shop off it is not found, with nothing for sale refused, and nothing is ordered", async () => {
+  const tab = remoteAdapter(first, capabilities);
+  const there = remoteAdapter(second, capabilities);
+  const found = await tab.getShop();
+  const fields = [
+    { key: "price", label: "Price", type: "number" as const, required: false },
+    { key: "in-stock", label: "In stock", type: "toggle" as const, required: false },
+  ];
+  const collection = await tab.createCollection({ name: "Products", prefix: unique("products"), fields, sort: { by: "title", direction: "asc" } });
+  if (!collection.ok) throw new Error(JSON.stringify(collection.problem));
+  const id = collection.value.id;
+  const make = async (title: string, slug: string, values: Record<string, number | boolean>, publish = true) => {
+    const made = await tab.createEntry(id, { title, slug, values });
+    if (!made.ok) throw new Error(JSON.stringify(made.problem));
+    if (publish) expect((await tab.publishEntry(id, made.value.id)).ok).toBe(true);
+    return made.value.id;
+  };
+  const cap = await make("Swim cap", "swim-cap", { price: 12, "in-stock": true });
+  const gloves = await make("Gloves", "gloves", { price: 1.15, "in-stock": true });
+  const mug = await make("Enamel mug", "enamel-mug", { price: 9.99, "in-stock": false });
+  const pass = await make("Series pass", "pass", { "in-stock": true });
+  const draft = await make("Tow float", "tow-float", { price: 24.5, "in-stock": true }, false);
+  try {
+    await expect(tab.checkoutDemo([{ entryId: cap, quantity: 1 }]), "the shop off").rejects.toMatchObject({ failure: { kind: "not-found" } });
+    expect((await tab.setShop({ enabled: true, currency: "USD", productsCollectionId: id, priceField: "price" })).ok).toBe(true);
+    // A new price published after the cart was filled is the price paid;
+    // a draft's is not.
+    const saved = await tab.saveEntry(id, cap, { title: "Swim cap", slug: "swim-cap", values: { price: 13, "in-stock": true }, revision: 0, saveId: "cap-price" });
+    if (!saved.ok) throw new Error(JSON.stringify(saved.problem));
+    expect((await tab.publishEntry(id, cap)).ok).toBe(true);
+    const before = (await tab.listOrders()).map((order) => order.id);
+    const order = await tab.checkoutDemo([
+      { entryId: cap, quantity: 2 }, { entryId: gloves, quantity: 20 }, { entryId: mug, quantity: 1 }, { entryId: pass, quantity: 1 }, { entryId: draft, quantity: 1 }, { entryId: 987_654, quantity: 1 },
+    ]);
+    expect(order).toMatchObject({
+      status: "demo", currency: "USD", total: 4900, stripeSessionId: null, email: null, paidAt: null,
+      lines: [{ entryId: cap, title: "Swim cap", unitAmount: 1300, quantity: 2 }, { entryId: gloves, title: "Gloves", unitAmount: 115, quantity: 20 }],
+    });
+    expect(before).not.toContain(order.id);
+    expect(await there.getOrder(order.id), "the other tab reads it").toEqual(order);
+    expect((await there.listOrders())[0]).toEqual(order);
+    expect(await tab.refreshOrder(order.id), "no Stripe to ask: as it is").toEqual(order);
+
+    await expect(tab.checkoutDemo([{ entryId: mug, quantity: 1 }, { entryId: draft, quantity: 1 }]), "nothing for sale").rejects.toMatchObject({
+      failure: { kind: "refused", status: 409, code: "nothing_to_check_out", message: "Nothing in your cart can be bought now, so there is nothing to check out." },
+    });
+    await expect(tab.checkoutDemo([]), "an empty cart").rejects.toMatchObject({ failure: { code: "nothing_to_check_out" } });
+    expect((await tab.listOrders()).length, "no order for either").toBe(before.length + 1);
+  } finally {
+    const back = await tab.setShop({ enabled: found.enabled, currency: found.currency, productsCollectionId: found.productsCollectionId, priceField: found.priceField });
+    expect(back.ok).toBe(true);
   }
 });

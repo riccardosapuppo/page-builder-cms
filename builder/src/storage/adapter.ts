@@ -1,6 +1,6 @@
 // The storage adapter: the one way the editor reads and writes pages, their
-// draft and versions, the media library, the site style, form answers, and
-// collections with their entries.
+// draft and versions, the media library, the site style, form answers,
+// collections with their entries, and the shop's settings and orders.
 // The editor talks to an adapter, never to a server, so the same editor
 // runs on the Rails CMS (rails.ts) and, in stage 6, on the browser alone.
 // contract.ts is the behaviour every adapter must show, written against
@@ -22,6 +22,7 @@
 // it); openapi.test.ts holds these types to that file, key by key.
 import type { CollectionDefinition, EntryContent, EntryValues } from "../shared/collection.ts";
 import type { FormFieldKind, PageDocument } from "../shared/document.ts";
+import type { Currency, OrderLine, ShopSettings } from "../shared/shop.ts";
 
 // ISO 8601, in UTC, as the server writes it ("2026-10-02T09:15:00.000Z").
 export type Time = string;
@@ -409,6 +410,60 @@ export interface EntryQuery {
   order?: string;
 }
 
+// ------------------------------------------------------------ the shop
+
+// The shop's settings (../shared/shop.ts: on or off, the currency, the
+// products collection and its price field), when they last changed, and
+// whether a checkout reaches Stripe.
+export interface Shop extends ShopSettings {
+  // null until the settings first change.
+  updatedAt: Time | null;
+  checkout: ShopCheckout;
+}
+
+export interface ShopCheckout {
+  // Whether a checkout reaches Stripe, in its test mode: on the CMS, a key
+  // of that mode where it runs. The browser's storage never does: its
+  // demo's checkout makes an order of its own status, demo.
+  ready: boolean;
+  // Why not, in words the editor shows; null when ready. Never a key.
+  reason: string | null;
+}
+
+// An order's status on the CMS: open from its checkout until Stripe says
+// it is paid, or that its session expired unpaid.
+export const ORDER_STATUSES = ["open", "paid", "expired"] as const;
+// And the browser's own: demo, an order the demo's checkout made, which
+// reaches no payment.
+export type OrderStatus = (typeof ORDER_STATUSES)[number] | "demo";
+
+// Each status as the editor says it.
+export const ORDER_STATUS_WORDS: Readonly<Record<OrderStatus, string>> = {
+  open: "Open",
+  paid: "Paid",
+  expired: "Expired",
+  demo: "Not paid: browser demo",
+};
+
+// What a checkout asked to be paid: its lines as the products were sold
+// (../shared/shop.ts, OrderLine), the total, both in the currency's
+// smallest unit, and, once paid, the email the buyer gave Stripe and when
+// the storage learned it was paid.
+export interface Order {
+  id: number;
+  status: OrderStatus;
+  currency: Currency;
+  lines: OrderLine[];
+  total: number;
+  // The order's Checkout Session at Stripe (cs_test_...); null for the
+  // demo's, and only while a checkout asks Stripe for it on the CMS.
+  stripeSessionId: string | null;
+  email: string | null;
+  paidAt: Time | null;
+  createdAt: Time;
+  updatedAt: Time;
+}
+
 // --------------------------------------------------------- requests
 
 export interface NewPage {
@@ -546,11 +601,11 @@ export interface NotPending {
 
 export type Outcome<T, P> = { ok: true; value: T } | { ok: false; problem: P };
 
-export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses", "collections"] as const;
+export const OPTIONAL_OPERATIONS = ["publish", "schedule", "responses", "collections", "shop"] as const;
 // What an adapter may lack: publishing (keeping what goes live as a
 // version, with the page's published state; whether it is then served is
 // livePages, below), scheduled publishing, form answers, collections (and
-// their entries and templates).
+// their entries and templates), the shop (its settings and orders).
 export type OptionalOperation = (typeof OPTIONAL_OPERATIONS)[number];
 
 // Says which optional operations this adapter has. The editor shows no
@@ -608,6 +663,7 @@ const OPERATION_VERBS: Record<OptionalOperation, string> = {
   schedule: "schedule a publish",
   responses: "keep form answers",
   collections: "keep collections",
+  shop: "keep a shop",
 };
 
 // ---------------------------------------------------------- the adapter
@@ -693,9 +749,13 @@ export interface StorageAdapter {
   createCollection(definition: CollectionDefinition, options?: CallOptions): Promise<Outcome<Collection, Invalid>>;
   getCollection(collectionId: number, options?: CallOptions): Promise<Collection>;
   // Replaces the members given and checks the definition whole: a field
-  // the sort follows does not go without a new sort (/sort/by, sortField).
+  // the sort follows does not go without a new sort (/sort/by, sortField),
+  // nor, while the shop's settings name the collection, the price field
+  // they name stop being a number field of it (/fields, or the field's
+  // /type, shopPrice).
   updateCollection(collectionId: number, changes: CollectionChanges, options?: CallOptions): Promise<Outcome<Collection, Invalid>>;
-  // With its entries and its template.
+  // With its entries and its template; refused while the shop's settings
+  // name it, on or off (StorageError refused, code collection_in_shop).
   deleteCollection(collectionId: number, options?: CallOptions): Promise<void>;
   // The collection's entries, searched and in order (EntryQuery), or in
   // the collection's own order; an order by a key the collection cannot
@@ -718,6 +778,23 @@ export interface StorageAdapter {
   // Takes it off, the draft kept; one not live is answered as it is.
   unpublishEntry(collectionId: number, entryId: number, options?: CallOptions): Promise<Entry>;
   deleteEntry(collectionId: number, entryId: number, options?: CallOptions): Promise<void>;
+
+  // Capability shop: its settings, off by default, and the orders its
+  // checkout made. Visitors check out on the site, never through the
+  // storage: on the CMS at its cart's addresses, in the browser through
+  // its demo's checkout (BrowserAdapter.checkoutDemo).
+  getShop(options?: CallOptions): Promise<Shop>;
+  // Every member, checked whole against the collections as they are (the
+  // shop's rules, ../shared/shop.ts): invalid at each fault's member.
+  setShop(settings: ShopSettings, options?: CallOptions): Promise<Outcome<Shop, Invalid>>;
+  // The newest first.
+  listOrders(options?: CallOptions): Promise<Order[]>;
+  getOrder(orderId: number, options?: CallOptions): Promise<Order>;
+  // An open order asked of Stripe again and kept as Stripe says it is;
+  // any other answered as it is, Stripe not asked. Refused (code
+  // checkout_not_set_up) when an open order cannot be asked about; when
+  // Stripe could not be, an unknown outcome, nothing changed.
+  refreshOrder(orderId: number, options?: CallOptions): Promise<Order>;
 }
 
 // --------------------------------------------- errors, block by block
