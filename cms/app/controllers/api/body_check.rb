@@ -97,6 +97,13 @@ module Api
       fail_at("/#{name}", "type", "must be true or false") unless [ true, false ].include?(body[name])
     end
 
+    # One of a few strings, as JSON Schema's enum says.
+    def choice(name, values, required: false)
+      return unless present?(name, required)
+
+      fail_at("/#{name}", "enum", "must be one of #{values.join(', ')}") unless values.include?(body[name])
+    end
+
     # At least one of names must be present, as JSON Schema's minProperties
     # says for a body whose members are all optional.
     def any_of(*names)

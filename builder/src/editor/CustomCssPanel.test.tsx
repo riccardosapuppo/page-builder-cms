@@ -21,6 +21,7 @@ const style = (customCss: string): SiteStyle => ({
   letterWidth: "normal",
   customCss,
   updatedAt: null,
+  kept: null,
   choices: { palette: {}, typeScales: [], letterWidths: [] },
 });
 
@@ -32,7 +33,8 @@ function draw(start = "") {
     session: {
       saveSiteStyle: (change) => {
         changes.push(change);
-        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...change });
+        const { kept: _kept, ...rest } = change;
+        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...rest });
       },
     },
   });
@@ -99,7 +101,8 @@ function drawSaving(start: string) {
       styleSave,
       saveSiteStyle: (change) => {
         changes.push(change);
-        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...change });
+        const { kept: _kept, ...rest } = change;
+        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...rest });
         saves.setState({ styleSave: { phase: "saving" } });
       },
     });

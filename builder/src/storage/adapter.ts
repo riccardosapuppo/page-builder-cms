@@ -247,6 +247,15 @@ export interface LetterWidthChoice {
   label: string;
 }
 
+// A style kept to be put back: its palette, type scale and letter width,
+// and when it was kept.
+export interface KeptStyle {
+  palette: Record<string, string>;
+  typeScale: string;
+  letterWidth: string;
+  keptAt: Time;
+}
+
 export interface SiteStyle {
   // A tone for every palette slot, by colour name.
   palette: Record<string, string>;
@@ -258,6 +267,10 @@ export interface SiteStyle {
   customCss: string;
   // null until the style is first changed.
   updatedAt: Time | null;
+  // The style as it was before the Assistant's last new site, which Put
+  // the old style back puts back in one click; null while there is none,
+  // and once it is put back.
+  kept: KeptStyle | null;
   // The values each part may take: the curated tones of each slot, the
   // type scales and the letter widths.
   choices: {
@@ -515,12 +528,21 @@ export interface Upload {
   alt?: string;
 }
 
+// What a change does with the style kept to be put back (SiteStyle.kept):
+// "now" keeps the style as it is before the change, in place of one kept
+// before (the Assistant's new site does); "none" lets go of the one kept
+// (it was put back).
+export const KEPT_CHANGES = ["now", "none"] as const;
+export type KeptChange = (typeof KEPT_CHANGES)[number];
+
 export interface SiteStyleChange {
   palette: Record<string, string>;
   typeScale: string;
   // Without either, the style keeps its own.
   letterWidth?: string;
   customCss?: string;
+  // Without it, what is kept stays as it is.
+  kept?: KeptChange;
 }
 
 // At least one member of a collection's definition; each replaces its own,

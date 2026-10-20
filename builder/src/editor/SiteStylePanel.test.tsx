@@ -3,9 +3,10 @@
 // whole (every slot and the type scale, as the CMS takes it); the contrast
 // of a tone said in words where the site uses it; back to a new site's
 // tone; the type scale, chosen by click or arrows, its steps read from the
-// tokens; the letter width, its samples drawn at it.
+// tokens; the letter width, its samples drawn at it; and the style a new
+// site replaced, put back in one click.
 // @vitest-environment jsdom
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 import tokens from "../../../schema/tokens.json";
 import { editorKit } from "../../test/editor-kit.tsx";
@@ -26,6 +27,7 @@ function siteStyle(palette: Record<string, string> = {}, typeScale = "balanced")
     letterWidth: "normal",
     customCss: "",
     updatedAt: null,
+    kept: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),
       typeScales: tokens["site-type-scale"].choices.map((c) => ({ name: c.name, label: c.label })),
@@ -42,6 +44,17 @@ function draw(style: SiteStyle = siteStyle()) {
   kit.render(<SiteStylePanel onClose={() => { closed += 1; }} />);
   return { kit, changes, closed: () => closed };
 }
+
+test("the style a new site replaced is put back in one click, which lets it go; with none kept, there is no such key", () => {
+  const before = { palette: siteStyle().palette, typeScale: "balanced", letterWidth: "normal", keptAt: "2026-10-20T09:00:00.000Z" };
+  const { changes } = draw({ ...siteStyle({ primary: "#b3361b", background: "#f7f5f0" }, "strong"), letterWidth: "wide", kept: before });
+  expect(screen.getByText("The style this site had before the Assistant's new site is kept.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Put the old style back" }));
+  expect(changes).toEqual([{ palette: before.palette, typeScale: "balanced", letterWidth: "normal", kept: "none" }]);
+  cleanup();
+  draw();
+  expect(screen.queryByRole("button", { name: "Put the old style back" })).toBeNull();
+});
 
 test("every slot opens on its curated tones and the palette, Custom last, and a choice goes whole to the session", () => {
   const { changes } = draw();
@@ -85,7 +98,8 @@ test("a tone chosen in the pause after the picker's arrows wins, and a colour ke
     session: {
       saveSiteStyle: (change) => {
         changes.push(change);
-        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...change });
+        const { kept: _kept, ...rest } = change;
+        kit.ui.getState().setSiteStyle({ ...kit.ui.getState().siteStyle!, ...rest });
       },
     },
   });

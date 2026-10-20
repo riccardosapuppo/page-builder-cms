@@ -219,7 +219,7 @@ function props(type: WidgetType, mediaIds: readonly string[]): fc.Arbitrary<AnyO
       submitLabel: line(60),
       confirmation: paragraph(500),
     });
-    case "logo": return fc.option(line(40), { nil: undefined }).map((name) => compact({ name }));
+    case "logo": return fc.record({ name: fc.option(line(40), { nil: undefined }), mark: fc.option(fc.constant(false as const), { nil: undefined }) }).map((props) => compact(props));
     case "menu": return fc.record({
       label: line(40),
       items: fc.array(fc.record({ label: line(40), href }), { minLength: 1, maxLength: 12 }),

@@ -77,6 +77,34 @@ class Api::SiteStyleTest < ActionDispatch::IntegrationTest
     assert_equal "", json["customCss"]
   end
 
+  test "a change may keep the style as it was, to be put back; the changes after keep it as it is, and none lets go of it" do
+    api :put, "/api/site-style", { "palette" => palette(primary: "site-harbour"), "typeScale" => "strong" }
+    api :put, "/api/site-style", { "palette" => palette(primary: "#2f6f5e"), "typeScale" => "gentle", "letterWidth" => "wide", "kept" => "now" }
+
+    assert_response :ok
+    assert_equal({ "palette" => palette(primary: "site-harbour"), "typeScale" => "strong", "letterWidth" => "normal" }, json["kept"].except("keptAt"))
+    assert_match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\z/, json.dig("kept", "keptAt"))
+    kept = json["kept"]
+    api :put, "/api/site-style", { "palette" => palette(primary: "#2f6f5f"), "typeScale" => "gentle" }
+    api :get, "/api/site-style"
+    assert_equal kept, json["kept"]
+    api :put, "/api/site-style", { "palette" => kept["palette"], "typeScale" => kept["typeScale"], "letterWidth" => kept["letterWidth"], "kept" => "none" }
+    assert_response :ok
+    assert_nil json["kept"]
+    assert_equal [ "site-harbour", "strong", "normal" ], [ json.dig("palette", "primary"), json["typeScale"], json["letterWidth"] ]
+  end
+
+  test "until a new site keeps one, no style is kept; a word for kept that is neither now nor none is refused at /kept" do
+    api :get, "/api/site-style"
+    assert_nil json["kept"]
+    api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "kept" => "later" }
+
+    assert_response :unprocessable_content
+    assert_equal [ [ "/kept", "enum" ] ], error_pointers
+    api :get, "/api/site-style"
+    assert_nil json["kept"]
+  end
+
   test "custom CSS that does not keep to the site is refused at /customCss, with its line, and the style keeps its own" do
     api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => ".a { color: red; }" }
     api :put, "/api/site-style", { "palette" => palette, "typeScale" => "balanced", "customCss" => ".a { color: red; }\n}\nbody { display: none; }" }

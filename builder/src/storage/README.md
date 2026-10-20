@@ -182,7 +182,8 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
   check and its write touch one record), `versions` (by page and
   number), `media` (the library's items) and `blobs` (each image's bytes,
   apart, so the list is read without them), `site` (the site style, once
-  first changed, and the shop's settings, once first changed),
+  first changed, with the style kept to be put back, as the CMS keeps it,
+  and the shop's settings, once first changed),
   `collections` and `entries` (an entry found by its collection), and
   `orders`. The header and footer are records of `pages`, of their
   own kind, and so is a collection's template, made with its collection

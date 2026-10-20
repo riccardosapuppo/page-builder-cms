@@ -97,7 +97,9 @@ schema of a collection and its entries.
   collection list, form, logo, menu, field, add to cart. Logo and menu are what a
   header is made of: the logo
   is the theme's mark with the site's name beside it, at most 40
-  characters, or the mark alone; a menu is its name for a screen reader,
+  characters, or the mark alone, or, with `mark: false` beside a name, the
+  name alone, a word mark (only false is stored, and a logo with no name
+  draws the mark whatever it says); a menu is its name for a screen reader,
   at most 40 characters, and 1 to 12 links, each a label of at most 40
   characters and an `href`.
 - **A form's fields live in the form**, in the page's version, and
@@ -421,7 +423,7 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 20 October 2026, with section pictures and motion (Windows 10,
+The run of 20 October 2026, with the logo's word mark (Windows 10,
 Node 24.19.0, Ruby 3.4.11). The five sets that differ are the free
 colours' (14 October) and a Collection list filter's value's (15
 October): where a value is none of the choices an `anyOf` holds (a slot
@@ -429,14 +431,14 @@ or a free colour; a filter's true, false or option), ajv also reports
 the `anyOf` at the value, beside what both report.
 
 ```
-corpus:  ../corpus: 495 files (40 valid, 455 invalid, 0 upgrade); the manifest lists 495
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 495 results in 1.7 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 495 results in 33.5 s
+corpus:  ../corpus: 497 files (40 valid, 457 invalid, 0 upgrade); the manifest lists 497
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 497 results in 1.5 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 497 results in 31.4 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 495; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 455/455, json_schemer 455/455
-identical {pointer, keyword} sets: 450/455 invalid files (refused by the rules: 44/44; by the schema: 406/411)
-errors on the invalid files: ajv 1598, json_schemer 494; normalised: 1098 ajv "if" errors dropped, 62 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 20, json_schemer 19
+verdicts compared: 497; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 457/457, json_schemer 457/457
+identical {pointer, keyword} sets: 452/457 invalid files (refused by the rules: 44/44; by the schema: 408/413)
+errors on the invalid files: ajv 1606, json_schemer 496; normalised: 1104 ajv "if" errors dropped, 62 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 20, json_schemer 19
   DIFFERENT SET invalid/list-filter-value-blank.json
       only ajv:          /sections/7/children/0/children/1/props/filter/value anyOf
       only json_schemer: -
@@ -452,8 +454,8 @@ errors on the invalid files: ajv 1598, json_schemer 494; normalised: 1098 ajv "i
   DIFFERENT SET invalid/style-tone-not-slot.json
       only ajv:          /sections/0/children/0/children/0/style/base/color anyOf
       only json_schemer: -
-normalised documents with the same numbers and values: 451/451
-RESULT: PASS (495 files, 0 disagreements, 0 exceptions)
+normalised documents with the same numbers and values: 453/453
+RESULT: PASS (497 files, 0 disagreements, 0 exceptions)
 ```
 
 **The example site's pages and its collections' templates**, which live

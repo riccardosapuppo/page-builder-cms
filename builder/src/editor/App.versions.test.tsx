@@ -37,6 +37,7 @@ const STYLE: SiteStyle = {
   letterWidth: "normal",
   customCss: "",
   updatedAt: null,
+  kept: null,
   choices: { palette: {}, typeScales: [], letterWidths: [] },
 };
 

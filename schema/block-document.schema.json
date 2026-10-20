@@ -547,7 +547,7 @@
       }
     },
     "logoBlock": {
-      "description": "The site's mark, the theme's own drawing. With a name, the mark and the name beside it are a link to the home page, as a header has them; without one, the mark alone, which a screen reader skips, as the design's footer has it. On a dark band (a background of the text or primary slot) the mark draws itself the other way round.",
+      "description": "The site's mark, the theme's own drawing. With a name, the mark and the name beside it are a link to the home page, as a header has them; without one, the mark alone, which a screen reader skips, as the design's footer has it. On a dark band (a background of the text or primary slot) the mark draws itself the other way round. mark false draws the name alone, a word mark, as a site of its own has it; a logo with no name draws the mark whatever mark says.",
       "type": "object",
       "properties": {
         "props": {
@@ -555,6 +555,7 @@
           "additionalProperties": false,
           "properties": {
             "name": { "$ref": "#/$defs/line", "type": "string", "maxLength": 40 },
+            "mark": { "description": "false: the name alone, without the theme's mark. Only false is stored.", "const": false },
             "className": { "$ref": "#/$defs/className" },
             "anchor": { "$ref": "#/$defs/anchor" }
           }

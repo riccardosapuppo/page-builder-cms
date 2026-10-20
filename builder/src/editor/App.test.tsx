@@ -56,6 +56,7 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
     letterWidth: "normal",
     customCss: "",
     updatedAt: null,
+    kept: null,
     choices: {
       palette: Object.fromEntries(slots.map((slot) => [slot, tones[slot].tones.map((t) => ({ color: t.color, label: t.label, hex: colors[t.color]! }))])),
       typeScales: tokens["site-type-scale"].choices.map((c) => ({ name: c.name, label: c.label })),
@@ -204,7 +205,8 @@ class FakeSite {
         this.styles.push(change);
         if (this.styleGate) await this.styleGate;
         if (this.refuseStyle) return { ok: false, problem: { kind: "invalid", code: "invalid_request", message: "invalid", errors: [{ pointer: "/palette/primary", keyword: "inclusion", blockPointer: null, message: "must be one of the slot's tones" }] } };
-        this.style = { ...this.style, ...change, updatedAt: T };
+        const { kept: _kept, ...rest } = change;
+        this.style = { ...this.style, ...rest, updatedAt: T };
         return { ok: true, value: this.style };
       },
       publish: async (id, request = {}) => {

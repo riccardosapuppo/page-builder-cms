@@ -1,11 +1,13 @@
 // The Assistant as the interface knows it (./README.md): what it may see
 // of the key (./key.ts: the provider and four characters, never the key),
 // the models the key may use and the one chosen, the image model its
-// photos are made with (OpenAI's), the page being written, and what the
-// requests since the key was kept used, priced at list price (./tally.ts):
-// kept in memory like the key, and forgotten with it. A page's run is bound
-// to the key it began with (Bound): its requests go with that key alone,
-// and stop once it is forgotten or replaced. One per editor, made by the
+// photos are made with (OpenAI's), the page or the new site being written
+// (./site.ts; the style a new site replaced kept with it, in memory), and
+// what the requests since the key was kept used, priced at list price
+// (./tally.ts): kept in memory like the key, and forgotten with it. A
+// page's run, or a site's, is bound to the key it began with (Bound): its
+// requests go with that key alone, and stop once it is forgotten or
+// replaced. One per editor, made by the
 // shell (../editor/App.tsx) or a test, which gives the clock and, for a
 // test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
@@ -14,12 +16,25 @@ import type { Clock } from "../storage/clock.ts";
 import { createKeyKeeper, type ForgetReason, type Held, type KeyKeeper, type ProviderId } from "./key.ts";
 import type { ImageQuality, ImageSize } from "./prices.ts";
 import { AssistantError, providerClient, type Answer, type ModelChoice, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
+import type { SiteWriting } from "./site.ts";
 import { addTallies, photoTallyOf, tallyOf, type Tally, type TallyKind } from "./tally.ts";
 import type { Writing } from "./write.ts";
 
 // The page being written as the drawer shows it: a sample written by hand
 // says so, a model's work names the model.
 export type ShownWriting = Writing & { sample?: boolean; model?: string };
+
+// A new site being written as the drawer shows it (./site.ts), naming the
+// model; and what became of the person's choices once it is over: the home
+// page made, the pages published, the old style put back, and the last of
+// them said.
+export interface SiteOutcome {
+  home: boolean;
+  published: boolean;
+  styleBack: boolean;
+  said: string | null;
+}
+export type ShownSite = SiteWriting & { model?: string; outcome?: SiteOutcome };
 
 // A run's key, bound when the run begins (bind): its provider, the
 // keeper's ticket for it, the model chosen and the image model. A request
@@ -51,7 +66,10 @@ export interface AssistantState {
   // Why the last key given was not kept.
   problem: string | null;
   writing: ShownWriting | null;
-  // The page being written can be stopped.
+  // The new site being written, or the last one written, until cleared:
+  // with it, in memory, the style it replaced (SiteWriting.before).
+  site: ShownSite | null;
+  // The page or the site being written can be stopped.
   running: AbortController | null;
   // Every request since the key was kept: its tokens and what they come to
   // at list price. Emptied when a key is kept and when it is forgotten.
@@ -75,6 +93,7 @@ export interface AssistantState {
   // added to `spent` while its key is the one kept.
   photo(ask: { prompt: string; size: ImageSize; quality: ImageQuality }, signal?: AbortSignal, bound?: Bound): Promise<PhotoAnswer & { tally: Tally }>;
   setWriting(writing: ShownWriting | null): void;
+  setSite(site: ShownSite | null): void;
   // A run starts, to be stopped with stop(); its end lets it go.
   begin(): AbortSignal;
   stop(): void;
@@ -97,6 +116,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     connecting: false,
     problem: null,
     writing: null,
+    site: null,
     running: null,
     spent: [],
     async connect(provider, key) {
@@ -178,6 +198,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       return { ...answer, tally };
     },
     setWriting: (writing) => set({ writing }),
+    setSite: (site) => set({ site }),
     begin() {
       get().running?.abort();
       const running = new AbortController();

@@ -242,6 +242,9 @@ a.sw-btn:not([href]) { cursor: default; }
   text-decoration: none;
 }
 .w-logo-link > span { min-width: 0; overflow-wrap: anywhere; }
+/* A word mark: the name alone, for a site whose header is its own, set a
+   little larger and tighter than a name beside the mark. */
+.w-logo-word { font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
 .w-logo .sw-brand-mark { vertical-align: top; }
 .sw-brand-mark { width: 30px; height: 30px; flex: none; }
 .sw-brand-mark circle { fill: var(--mark-disc, var(--sw-primary)); }
@@ -917,6 +920,7 @@ a.sw-btn:not([href]) { cursor: default; }
   }
   .cols.stack-phone { grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
   .w-logo-link { gap: 8px; font-size: 17px; }
+  .w-logo-word { font-size: 18px; }
   .w-logo .sw-brand-mark { width: 26px; height: 26px; }
   .w-menu .sw-menu-button { padding: 0 14px 0 10px; }
   .sw-header { --sec-y: 12px; --cols-gap: var(--space-s); }

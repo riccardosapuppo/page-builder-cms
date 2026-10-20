@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_090000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -211,6 +211,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_090000) do
     t.datetime "updated_at", null: false
     t.string "letter_width", default: "normal", null: false
     t.text "custom_css", default: "", null: false
+    t.json "kept"
     t.check_constraint "id = 1", name: "site_styles_single_row"
   end
 

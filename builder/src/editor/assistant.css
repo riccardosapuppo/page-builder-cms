@@ -63,7 +63,9 @@
 .as-sections li.as-picture .i { color: var(--steel); }
 .as-sections li.as-picture-placed .i { color: var(--live); }
 .as-sections li.as-picture-failed .i, .as-sections li.as-picture-stopped .i { color: var(--warn); }
-.as-picture-state { margin-left: auto; padding-left: 8px; font-size: 12px; line-height: 16px; color: var(--steel); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Where it stands, at the row's end: its words break where the drawer is
+   narrow, rather than leave it. */
+.as-picture-state { flex: 0 1 auto; min-width: 0; margin-left: auto; padding-left: 8px; font-size: 12px; line-height: 16px; color: var(--steel); text-align: end; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: no-preference) {
   .as-sections li { animation: as-land 220ms cubic-bezier(.16, 1, .3, 1) both; }
 }
@@ -78,6 +80,43 @@
 .as-used { margin-top: 10px; }
 .as-cost, .as-pictures-cost { margin-top: 4px; }
 .as-all { margin-top: 4px; color: var(--graphite); font-weight: 600; }
+
+/* A new site, said before anything is asked: what it does, in a list, then
+   what it means for the pages already there. */
+.as-site-says { margin-top: 8px; padding: 8px 10px; background: var(--key); border-radius: var(--r-control); font-size: 13px; line-height: 19px; color: var(--graphite); }
+.as-site-says > p { margin: 0; }
+.as-site-says ul { margin: 2px 0 0; padding-left: 18px; list-style: disc; }
+.as-site-says .hint { margin-top: 6px; }
+.as-estimate { margin-top: 10px; }
+.as-estimate .hint + .hint { margin-top: 4px; }
+
+/* A question asked before something that changes much: the safe answer
+   first. */
+.as-ask { margin-top: 16px; padding: 10px 12px; background: var(--white); border: 1px solid var(--alloy); border-radius: var(--r-control); font-size: 13px; line-height: 19px; color: var(--graphite); }
+.as-ask > p { margin: 0; }
+.as-ask-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.as-offer .as-ask { margin-top: 0; flex-basis: 100%; }
+
+/* A new site being written: its steps grouped, the site's own first, then
+   each page with its sections and pictures. */
+.as-groups { display: grid; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.as-group-title { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--graphite); }
+.as-group-path { font-weight: 400; color: var(--steel); overflow-wrap: anywhere; }
+.as-group-title .as-picture-state { margin-left: auto; }
+.as-group .as-sections { margin-top: 2px; }
+.as-sections li.as-step-waiting .i, .as-sections li.as-step-doing .i { color: var(--steel); }
+.as-sections li.as-step-failed .i, .as-sections li.as-step-stopped .i { color: var(--warn); }
+.as-page-failed > .as-group-title, .as-page-stopped > .as-group-title { color: var(--steel); }
+.as-swatches { display: inline-flex; gap: 2px; }
+.as-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+.as-so-far { margin-top: 10px; font-variant-numeric: tabular-nums; }
+
+/* What becomes of a new site once it is written: each choice a key, asked. */
+.as-offer { margin-top: 12px; padding-top: 10px; box-shadow: inset 0 1px 0 var(--alloy); }
+.as-offer-lead { margin: 0; font-size: 12px; line-height: 16px; color: var(--steel); }
+.as-offer-keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.as-offer-said { margin-top: 6px; }
+.as-offer-said:empty { margin: 0; }
 
 /* The drawer's foot: the total since the key was connected, and what an
    estimate leaves out. */

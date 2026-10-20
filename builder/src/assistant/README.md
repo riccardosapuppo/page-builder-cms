@@ -1,10 +1,11 @@
 # The Assistant
 
 A model of the person's own choosing writes for the editor: a whole page
-from a brief, with the pictures it needs made for it, a text written again,
-the alternative text of an image. The person brings the key, Anthropic's or
-OpenAI's, and the editor talks to that provider straight from the browser.
-No server of this site sees the key or the words.
+from a brief, with the pictures it needs made for it, or a new site of its
+own, with its own style, header and footer and its pages; a text written
+again; the alternative text of an image. The person brings the key,
+Anthropic's or OpenAI's, and the editor talks to that provider straight
+from the browser. No server of this site sees the key or the words.
 
 ## The key
 
@@ -25,7 +26,8 @@ No server of this site sees the key or the words.
   starts; if another key is kept while the call is being made (an image made
   smaller first), the new key is not lent to the old provider. A page's run
   takes the ticket when it begins, for its plan and its pictures alike (see
-  [Pictures made for a page](#pictures-made-for-a-page)). The page's
+  [Pictures made for a page](#pictures-made-for-a-page)), and a new site's
+  once, for its direction, each of its pages and all its pictures. The page's
   Content-Security-Policy lets the editor connect only to its own site and
   the two providers' APIs.
 
@@ -205,6 +207,103 @@ written, a switch, on by default, makes pictures for it.
   the rest are never asked, with that key or the new one, and nothing of
   the run counts toward the new key's total.
 
+## A new site from a brief
+
+The drawer offers two choices: a page for this site, as above, or a new
+site. The new site is said plainly before anything is asked: it gives the
+site a new style, a new header and a new footer; it adds three or four
+pages; the pages already there stay. Its style takes the place of the old
+one on every page at once, the published ones too, as a change in Site
+style does; the header, the footer and the pages are drafts until they are
+published. Beside its Write, before anything is made, what its pictures may
+cost at most for the whole site (its budget, `SITE_PICTURES_MOST`, eight,
+at the dearest price per photo of the quality chosen; for illustrations,
+that each is a request of its own), and that its words cost a few cents
+with most models, said exactly after. Its Write asks twice, as Delete does.
+
+[`site.ts`](site.ts) runs it, bound to the key kept when it begins (one
+`bind()` for the whole site), in steps the drawer groups by page:
+
+1. **The direction** ([`direction.ts`](direction.ts),
+   [`prompts.ts`](prompts.ts), `directionQuestion`): one request whose
+   answer, in a schema of its own made for the site style, is the site's
+   direction: its name (the brief's own, or two or three words made from
+   it), a tagline and its voice; a colour for every slot of the site style,
+   as `#rrggbb`, each with its role; a type scale and a letter width among
+   the style's own choices; a sentence on its imagery, photos or
+   illustrations as the person's provider makes them; how much motion
+   (none, little or some); the call to action a visitor takes first; and
+   three or four pages, each a title, a short address and a purpose, the
+   first the home page. The question says the brief is the only source of
+   facts: the direction names no price, date, address or review.
+   - **Read without trust.** Words cleaned and cut at a word, a colour that
+     is not `#rrggbb` keeping the site's own, a type scale or a letter width
+     not among the style's keeping the style's own, an address made an
+     address and made free, the pages kept to four; each said in a note.
+     One with no page, or not written as a direction, is no direction, and
+     nothing is changed.
+   - **Held to AA.** Every text pair the palette makes is held to 4.5 to 1,
+     as Site style's checks measure it: the text on the background, the
+     background's colour on primary and on muted (a button's, a band's
+     words, which are the links' and captions' colours on the background
+     too), the text's on accent and on soft. A colour that fails is made
+     lighter or darker in OKLab by as little as passes, its hue and its
+     chroma kept as far as sRGB holds them, and the note says from what to
+     what, and at what ratio (`fixPalette`). The colours others are
+     measured against are settled first: the background is never changed.
+2. **The style**: the direction's palette, type scale and letter width,
+   through the storage's own call, as Site style saves it, asking it to
+   keep the style it replaces (`kept: "now"`); that style is kept in memory
+   too (`SiteWriting.before`). Put the old style back puts it back in one
+   click, from the drawer or from Site style, until the next new site keeps
+   another (`kept: "none"`). A style the storage refuses stops the site
+   there.
+3. **The header and the footer** ([`frame.ts`](frame.ts)), built here from
+   the direction, never written freely by the model, in the site's own
+   blocks: the header one row on the background's band, the name as a word
+   mark (a logo with `mark: false`) linking home, a menu of the new pages,
+   and the call to action as a button in the primary colour; the footer on
+   the text's band, the name, the tagline and the pages again. Each is
+   saved as its part's draft, the draft it replaces kept first as a version
+   named "Before the new site", so History brings the old one back. A
+   header that stayed at the top of the window keeps doing so.
+4. **The pages**, one after the other, each written as a page is (above),
+   with the direction in its question (`pageQuestion` with a
+   `PageDirection`): the site's name and voice, its colours with their
+   roles, its imagery, its motion, its call to action, the page's own title
+   and purpose, and the new site's pages, with theirs, which its buttons may
+   lead to. Its words are measured on the new palette's colours over a
+   veil (`SiteFacts.ink`), and its illustrations drawn in them: the
+   pictures' maker is made once the direction is read.
+   - **One queue, one budget.** The pictures of every page go through one
+     queue, two at a time in all, and share the site's budget: each page is
+     told how many it may have made, as many as are left keeping one for
+     each page still to come, five at most, and is held to it
+     (`SiteFacts.most`). The imagery sentence goes with every photo's
+     prompt and every illustration's question. A page waits for its
+     pictures before the next one opens.
+5. **The frame settled**: once the pages are through, or the run has ended
+   early, the header and the footer are built again from the pages made,
+   at the addresses they were made at, and the header's call to action
+   leads to the home page's form, by the anchor of its section, or else to
+   its first section; each is saved again where it changed.
+
+- **The home page** becomes the site's home only when the person says so,
+  once the site is written: nothing takes it from the site behind their
+  back. Nothing is published by the Assistant either.
+- **Another page opened** by the person stops the site: before each page
+  is asked for and again before it is made, the page the Assistant opened
+  last must still be the one open.
+- **Stop** stops all of it: the request on its way, the pictures in flight,
+  the pages still to come. A page the model refuses is said and the next
+  one written; a key refused, a model gone, no credit or no network stops
+  the run. What was made stays and is said.
+- **At the end**, one offer, each asked: make the new home page the site's
+  home page, and publish all it made (its pages, the header and the
+  footer); and Put the old style back. In the browser demo, Start over with
+  the example site brings the example site back whole, as the demo's line
+  does for a newer edition.
+
 ## The providers
 
 [`providers.ts`](providers.ts) puts both behind one interface:
@@ -261,7 +360,9 @@ cached and out) and what they come to at the model's list price. After a
 page it is said in the drawer, with the price used and the day the prices
 were read: the page's words, then a line for each kind of picture made for
 it ("4 photos, ≈ $0.16: ...", its tokens and price), then the whole; and
-each picture's own cost in the drawer's steps, as it comes in. After a text
+each picture's own cost in the drawer's steps, as it comes in. A new site
+says the same once it is written, its direction's and its pages' words
+together, and while it is written, what it has cost so far. After a text
 written again or an image described, it is said in the block's panel. The
 drawer's foot keeps the total of every request since the key was
 connected, the pictures counted by their kind. That total lives in memory

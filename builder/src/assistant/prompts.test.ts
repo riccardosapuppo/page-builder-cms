@@ -10,9 +10,11 @@
 // illustration in the site's palette, in the viewBox of its shape.
 import { expect, test } from "vitest";
 import { ICON_NAMES } from "../shared/document.ts";
+import { siteStyleChoices } from "../shared/site-tokens.ts";
 import { ICON_WORDS } from "../widgets/iconbox/words.ts";
+import { directionSchema } from "./direction.ts";
 import { PLAN_MADE_MOST, PLAN_SCHEMA, PLAN_SCHEMA_MADE } from "./plan.ts";
-import { illustrationQuestion, pageQuestion, photoPrompt, rewriteQuestion, SVG_SCHEMA, type SiteWords } from "./prompts.ts";
+import { directionQuestion, illustrationQuestion, pageQuestion, photoPrompt, rewriteQuestion, SVG_SCHEMA, type PageDirection, type SiteWords } from "./prompts.ts";
 
 const SITE: SiteWords = {
   palette: { text: "#0E2A35", background: "#FFFFFF", primary: "#C2352B", accent: "#F2A541", soft: "#E6EFEA", muted: "#4E625B" },
@@ -102,6 +104,64 @@ test("an illustration is one SVG in a small schema, in the site's palette as hex
   ]) expect(question.system, rule).toContain(rule);
   expect(illustrationQuestion("m", { prompt: "x", shape: "landscape" }, SITE.palette).system).toContain("viewBox=\"0 0 600 400\"");
   expect(illustrationQuestion("m", { prompt: "x", shape: "square" }, SITE.palette).system).toContain("viewBox=\"0 0 400 400\"");
+});
+
+// ------------------------------------------------------------ a new site
+
+test("a new site's direction is asked from the brief alone, in a schema made for the site style, each slot said with what the site does with it, the rules on facts kept, the kind of pictures said", () => {
+  const style = { choices: siteStyleChoices() };
+  const question = directionQuestion("claude-opus-5-5", "  A modern fitness gym.  ", style, "photo");
+  expect(question).toMatchObject({ model: "claude-opus-5-5", text: "The site the person wants:\n\nA modern fitness gym.", name: "site_direction", effort: "medium" });
+  expect(question.schema).toEqual(directionSchema(style));
+  for (const rule of [
+    "  - primary: headings, links and the form's send key, and a strong band",
+    "  - accent: buttons, their words in the text colour",
+    "each at 4.5 to 1 at least (WCAG's AA)",
+    "- The pages: 3 or 4, the first the home page",
+    `- ${FACTS} The direction itself names no price, date, address or review`,
+    "which are photographs",
+  ]) expect(question.system, rule).toContain(rule);
+  expect(directionQuestion("m", "b", style, "illustration").system).toContain("which are flat vector illustrations");
+});
+
+const DIRECTED: PageDirection = {
+  name: "Iron Forge",
+  voice: "Direct and encouraging.",
+  palette: { primary: { hex: "#c2352b", role: "Headings and links" } },
+  imagery: "Warm photos of people training.",
+  motion: "little",
+  action: "Book a free session",
+  page: { title: "Classes", purpose: "The kinds of class.", path: "/classes", home: false },
+  pages: [{ path: "/iron-forge", title: "Home", purpose: "What the gym offers." }, { path: "/classes", title: "Classes", purpose: "The kinds of class." }],
+  most: 2,
+};
+
+test("a page of a new site is asked with its direction: its name and voice, its colours with their roles, this page's purpose, the site's pages for its links, its call to action, its imagery, its motion and its share of the pictures", () => {
+  const { system } = pageQuestion("m", "A gym.", SITE, "photo", DIRECTED);
+  for (const rule of [
+    "You plan one page of a new web site for a page builder",
+    "- Its name: Iron Forge. Its voice: Direct and encouraging. Write every word in it.",
+    "- This page: “Classes”, at /classes: The kinds of class. Write this page only: the site's other pages hold the rest, and a button may lead to them.",
+    "- Its call to action: “Book a free session”.",
+    "- Its imagery: Warm photos of people training.",
+    "  - primary: #C2352B (Headings and links)",
+    "  - /iron-forge: Home: What the gym offers.",
+    "  - /classes: Classes (this page): The kinds of class.",
+    ", in the site's imagery. At most 2 on the page",
+    "- A little motion: rise or fade on one or two sections after the opening",
+    `- ${FACTS}`,
+  ]) expect(system, rule).toContain(rule);
+  expect(system).not.toContain("- Motion with restraint");
+  expect(pageQuestion("m", "b", SITE, null, { ...DIRECTED, motion: "none" }).system).toContain("- No motion: every section's motion is none.");
+  expect(pageQuestion("m", "b", SITE, null, { ...DIRECTED, page: { ...DIRECTED.page, home: true } }).system).toContain("It is the site's home page: its opening says what the site is and offers.");
+});
+
+test("a new site's imagery goes with each photo's prompt and each illustration's question", () => {
+  expect(photoPrompt({ prompt: "A coach beside a lifter." }, "  Warm photos, low angles.  ")).toBe(
+    "A coach beside a lifter.\n\nThe site's imagery: Warm photos, low angles.\n\nA photograph for a web page. Never text in a picture: no words, letters, numbers, signs or logos. The page's words carry those. People in a picture, if any, are generic and unnamed: never a real person, a brand or a trademark.",
+  );
+  expect(illustrationQuestion("m", { prompt: "x", shape: "square" }, SITE.palette, "Bold flat shapes.").system).toContain("- The site's imagery, which it keeps to as far as flat shapes can: Bold flat shapes.");
+  expect(illustrationQuestion("m", { prompt: "x", shape: "square" }, SITE.palette).system).not.toContain("imagery");
 });
 
 test("its rules on facts are as they were, and as a text written again keeps them", () => {

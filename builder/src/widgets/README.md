@@ -7,7 +7,9 @@ One folder per widget, named as its `type` in the schema: `heading/`,
 `addToCart/`.
 Logo and menu are the blocks a header and a footer are made of, in
 Insert's Site group, after the approved design's groups, their tiles
-drawn in the design's language; a page may hold them too. Stats, steps,
+drawn in the design's language; a page may hold them too. A logo with a
+name may leave the theme's mark out (`mark: false`, its panel's switch):
+the name alone, a word mark, as the Assistant's new site has it. Stats, steps,
 pricing and the Collection list came after the design too, widgets of a
 kind it has a group for: they stand last in Content, after the design's
 own tiles, in the order they were made, the Collection list only where

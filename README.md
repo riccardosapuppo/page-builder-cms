@@ -70,7 +70,7 @@ reached from there.
 An Assistant writes with a model of the person's own, Anthropic's or
 OpenAI's. The person brings the key. It is kept in the tab's memory only,
 and the browser sends it to that provider and nowhere else. The Assistant
-can do three things:
+can do four things:
 
 - **Write a page from a brief.** The page grows on the canvas section by
   section, and each section is a step in History. It is planned with
@@ -81,6 +81,12 @@ can do three things:
   shown before; illustrations in the site's colours with an Anthropic key,
   whose models make no photos. Each goes into the library with its alt
   text, then onto the page as a step of its own.
+- **Make a new site from a brief**, asked twice: a direction first (a name,
+  a voice, a palette held to WCAG's AA contrast, type, imagery, motion and
+  three or four pages), then the site style it gives, the old one kept to
+  be put back in one click; a header and a footer built from it, the old
+  ones kept as versions; then its pages, their pictures within one budget
+  said before. The home page and publishing stay the person's to choose.
 - **Write a heading or a text again**: shorter, warmer, in another
   language.
 - **Describe an image** of the library, from the picture itself.

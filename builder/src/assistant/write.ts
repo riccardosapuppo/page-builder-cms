@@ -122,10 +122,12 @@ export const PICTURES_AT_ONCE = 2;
 // whether it is still the one open: a page left stops them at once.
 export const PAGE_WATCH_MS = 250;
 
-const LEFT = "Another page was opened: the Assistant stopped writing to this one.";
+export const LEFT = "Another page was opened: the Assistant stopped writing to this one.";
 
-// Jobs run in the order they come, `most` at once.
-function inTurn(most: number): (job: () => Promise<void>) => Promise<void> {
+// Jobs run in the order they come, `most` at once. A page's pictures go
+// through one; a new site's pages share one (./site.ts).
+export type PictureQueue = (job: () => Promise<void>) => Promise<void>;
+export function inTurn(most: number): PictureQueue {
   let running = 0;
   const waiting: Array<() => void> = [];
   return async (job) => {
@@ -142,7 +144,7 @@ function inTurn(most: number): (job: () => Promise<void>) => Promise<void> {
 
 // Why a picture was not made that asks for no more: the key refused, the
 // model gone, no credit, no network. The same would come again.
-const HALTS: ReadonlySet<string> = new Set(["key", "model", "limit", "network"]);
+export const HALTS: ReadonlySet<string> = new Set(["key", "model", "limit", "network"]);
 
 // "Added section Hero" said as the Assistant's: "Assistant added section Hero".
 export const ASSISTANTS = (label: string): string => `Assistant ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
@@ -165,6 +167,9 @@ export async function writePage(options: {
   // Makes the pictures the plan asks for, where the person wants them; the
   // plan asks for none unless facts.made says it may.
   pictures?: PictureMaker;
+  // The queue the pictures wait their turn in: a new site's, shared by its
+  // pages; else the page's own, PICTURES_AT_ONCE at a time.
+  queue?: PictureQueue;
 }): Promise<Writing> {
   const { ask, facts, newId, hooks, tell, signal } = options;
   const maker = options.pictures !== undefined && hooks.upload !== undefined ? options.pictures : null;
@@ -191,7 +196,7 @@ export async function writePage(options: {
   };
   maker?.gone?.addEventListener("abort", goneKey, { once: true });
   if (maker?.gone?.aborted) goneKey();
-  const queue = inTurn(PICTURES_AT_ONCE);
+  const queue = options.queue ?? inTurn(PICTURES_AT_ONCE);
   const jobs: Array<Promise<void>> = [];
   // The images made and put in, by their keys, for those that follow them in a column.
   const placed = new Map<string, string>();

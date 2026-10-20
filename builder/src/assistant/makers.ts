@@ -26,12 +26,14 @@ import { PictureError, type PictureMaker } from "./write.ts";
 
 const reason = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-export function photoMaker(assistant: AssistantStore, bound: Bound, quality: ImageQuality, read: (bytes: Uint8Array) => Promise<Finished> = readPhoto): PictureMaker {
+// A new site's pictures keep to its imagery, the sentence its direction
+// gives (`imagery`), which goes with each one's question.
+export function photoMaker(assistant: AssistantStore, bound: Bound, quality: ImageQuality, read: (bytes: Uint8Array) => Promise<Finished> = readPhoto, imagery = ""): PictureMaker {
   return {
     kind: "photo",
     gone: bound.gone,
     async make(ask, signal) {
-      const answer = await assistant.getState().photo({ prompt: photoPrompt(ask), size: sizeName(ask.shape), quality }, signal, bound);
+      const answer = await assistant.getState().photo({ prompt: photoPrompt(ask, imagery), size: sizeName(ask.shape), quality }, signal, bound);
       try {
         return { ...(await read(fromBase64(answer.base64))), tally: answer.tally };
       } catch (error) {
@@ -56,12 +58,12 @@ export function svgOf(text: string): string | null {
   return fenced ? fenced[1]! : svg;
 }
 
-export function illustrationMaker(assistant: AssistantStore, bound: Bound, palette: Readonly<Record<PaletteSlot, string>>, draw: (svg: string, size: { width: number; height: number }) => Promise<Finished> = drawSvg): PictureMaker {
+export function illustrationMaker(assistant: AssistantStore, bound: Bound, palette: Readonly<Record<PaletteSlot, string>>, draw: (svg: string, size: { width: number; height: number }) => Promise<Finished> = drawSvg, imagery = ""): PictureMaker {
   return {
     kind: "illustration",
     gone: bound.gone,
     async make(ask, signal) {
-      const answer = await assistant.getState().ask((model) => illustrationQuestion(model, ask, palette), () => undefined, signal, "illustration", bound);
+      const answer = await assistant.getState().ask((model) => illustrationQuestion(model, ask, palette, imagery), () => undefined, signal, "illustration", bound);
       const size = PICTURE_SIZES[ask.shape];
       const svg = svgOf(answer.text);
       if (svg === null) throw new PictureError("its answer held no SVG.", answer.tally);

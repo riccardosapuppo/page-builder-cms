@@ -1553,6 +1553,18 @@
     "keyword": "additionalProperties",
     "layer": "schema"
   },
+  "invalid/logo-mark-string.json": {
+    "rule": "a logo's mark is false, never the word for it",
+    "pointer": "/sections/9/children/0/children/0/props/mark",
+    "keyword": "const",
+    "layer": "schema"
+  },
+  "invalid/logo-mark-true.json": {
+    "rule": "only false is stored for a logo's mark: drawing it is what a logo does",
+    "pointer": "/sections/9/children/0/children/0/props/mark",
+    "keyword": "const",
+    "layer": "schema"
+  },
   "invalid/logo-name-blank.json": {
     "rule": "a name has a visible character: a logo without one leaves the name out",
     "pointer": "/sections/9/children/0/children/0/props/name",
@@ -2793,7 +2805,7 @@
     "rule": "exactly 500 blocks: 20 sections of 4 columns of 5 widgets"
   },
   "valid/logo-and-menu.json": {
-    "rule": "a logo with and without a name, and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too"
+    "rule": "a logo with and without a name, a word mark (mark false), and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too"
   },
   "valid/minimal.json": {
     "rule": "the smallest document: no description, no sections"

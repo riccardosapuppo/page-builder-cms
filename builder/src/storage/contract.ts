@@ -1059,6 +1059,41 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
 
+  {
+    name: "the site style keeps the style it had when a change asks it to (now), keeps that through the changes after, lets go of it when asked (none), and refuses any other word at /kept",
+    needs: [],
+    async run(env) {
+      const before = await env.adapter.getSiteStyle();
+      const slot = Object.keys(before.choices.palette).find((s) => (before.choices.palette[s] ?? []).length > 1);
+      if (slot === undefined) throw new Error("no palette slot has two tones to choose between");
+      const tone = before.choices.palette[slot]!.find((t) => t.color !== before.palette[slot])!.color;
+      const scale = before.choices.typeScales.find((t) => t.name !== before.typeScale)!.name;
+      const width = before.choices.letterWidths.find((w) => w.name !== before.letterWidth)!.name;
+      try {
+        // A new site's style: the style as it was is kept, and when.
+        const changed = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: "#2f6f5e" }, typeScale: scale, letterWidth: width, kept: "now" }), "a new site's style");
+        env.expect(changed).toMatchObject({ palette: { [slot]: "#2f6f5e" }, typeScale: scale, letterWidth: width });
+        env.expect(changed.kept).toMatchObject({ palette: before.palette, typeScale: before.typeScale, letterWidth: before.letterWidth });
+        env.expect(changed.kept?.keptAt ?? "").toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
+        // A change that does not name it keeps it as it is, and so does a read.
+        const other = value(await env.adapter.setSiteStyle({ palette: { ...before.palette, [slot]: tone }, typeScale: scale }), "a change after the new site's");
+        env.expect(other.kept).toEqual(changed.kept);
+        env.expect((await env.adapter.getSiteStyle()).kept).toEqual(changed.kept);
+        // Put back: the style kept, and nothing kept after it.
+        const kept = changed.kept!;
+        const back = value(await env.adapter.setSiteStyle({ palette: kept.palette, typeScale: kept.typeScale, letterWidth: kept.letterWidth, kept: "none" }), "the old style put back");
+        env.expect(back).toMatchObject({ palette: before.palette, typeScale: before.typeScale, letterWidth: before.letterWidth, kept: null });
+        env.expect((await env.adapter.getSiteStyle()).kept).toBe(null);
+        const wrong = refusal(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, kept: "later" as never }), "a word for kept that is neither");
+        env.expect(wrong.errors.map((e) => [e.pointer, e.keyword])).toEqual([["/kept", "enum"]]);
+      } finally {
+        // What was kept before the case, if anything, cannot be written
+        // back through a change: a store the battery starts on has none.
+        value(await env.adapter.setSiteStyle({ palette: before.palette, typeScale: before.typeScale, letterWidth: before.letterWidth, ...(before.kept === null ? { kept: "none" as const } : {}) }), "putting the style back");
+      }
+    },
+  },
+
   // -------------------------------------------------- the site's settings
   {
     name: "the site's settings are its time zone, the same twice",

@@ -14,11 +14,11 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
 import {
-  IMAGE_TYPES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, ORDER_STATUSES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
+  IMAGE_TYPES, KEPT_CHANGES, MAX_IMAGE_SIDE, MAX_UPLOAD_BYTES, ORDER_STATUSES, PAGE_KINDS, RESPONSES_PER_PART, SCHEDULE_STATES, VERSION_REASONS,
   type Order, type Shop, type ShopCheckout,
   type Collection, type CollectionChanges, type Entry, type EntryPublished, type EntryQuery, type EntrySave,
   type Conflict, type Draft, type DraftSave, type DraftSaved, type FieldError, type FormResponse, type FormResponseCount, type InUse, type Invalid,
-  type KeptField, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
+  type KeptField, type KeptStyle, type MediaItem, type MediaUse, type NewPage, type NewVersion, type Page, type PageChanges, type PageInfo, type PageLinks, type PageSummary,
   type NotPending, type Published, type PublishRequest, type PublishResult, type ResponseExcerpt, type ResponseList, type ResponseQuery, type ResponseSummary,
   type RestoreResult, type Schedule, type ScheduleRequest, type ScheduleResult,
   type Site, type SiteStyle, type SiteStyleChange,
@@ -82,7 +82,8 @@ const ENTRY = {
   id: num, collectionId: num, title: str, slug: str, values: obj, revision: num, lastSaveId: orNull(str), createdAt: str, updatedAt: str, published: orNull(obj),
 } as const satisfies Shape<Entry>;
 const ENTRY_LIST = { entries: arr } as const satisfies Shape<{ entries: Entry[] }>;
-const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, customCss: str, updatedAt: orNull(str), choices: obj } as const satisfies Shape<SiteStyle>;
+const SITE_STYLE = { palette: obj, typeScale: str, letterWidth: str, customCss: str, updatedAt: orNull(str), kept: orNull(obj), choices: obj } as const satisfies Shape<SiteStyle>;
+const KEPT_STYLE = { palette: obj, typeScale: str, letterWidth: str, keptAt: str } as const satisfies Shape<KeptStyle>;
 const SITE_STYLE_CHOICES = { palette: obj, typeScales: arr, letterWidths: arr } as const satisfies Shape<SiteStyle["choices"]>;
 const TONE_CHOICE = { color: str, label: str, hex: str } as const satisfies Shape<ToneChoice>;
 const TYPE_SCALE_CHOICE = { name: str, label: str } as const satisfies Shape<TypeScaleChoice>;
@@ -127,7 +128,7 @@ const DRAFT_SAVE = { revision: num, document: obj, saveId: str } as const satisf
 const PUBLISH_REQUEST = { revision: optional(num) } as const satisfies Shape<PublishRequest>;
 const SCHEDULE_REQUEST = { revision: num, at: str } as const satisfies Shape<ScheduleRequest>;
 const NEW_VERSION = { name: optional(str) } as const satisfies Shape<NewVersion>;
-const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str), customCss: optional(str) } as const satisfies Shape<SiteStyleChange>;
+const SITE_STYLE_CHANGE = { palette: obj, typeScale: str, letterWidth: optional(str), customCss: optional(str), kept: optional(str) } as const satisfies Shape<SiteStyleChange>;
 const SHOP_SETTINGS = { enabled: bool, currency: str, productsCollectionId: orNull(num), priceField: orNull(str) } as const satisfies Shape<ShopSettings>;
 const MEDIA_CREATE = { signedBlobId: str, width: num, height: num, alt: optional(str) } as const satisfies Shape<MediaCreate>;
 const MEDIA_ALT_CHANGE = { alt: str } as const satisfies Shape<MediaAltChange>;
@@ -262,6 +263,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
     ["EntrySave", ENTRY_SAVE, requestBody("/api/collections/{id}/entries/{entryId}", "put")],
     ["SiteStyle", SITE_STYLE, "#/components/schemas/SiteStyle"],
     ["SiteStyle's choices", SITE_STYLE_CHOICES, "#/components/schemas/SiteStyle/properties/choices"],
+    ["KeptStyle", KEPT_STYLE, "#/components/schemas/KeptStyle"],
     ["ToneChoice", TONE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/palette/additionalProperties/items"],
     ["TypeScaleChoice", TYPE_SCALE_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/typeScales/items"],
     ["LetterWidthChoice", LETTER_WIDTH_CHOICE, "#/components/schemas/SiteStyle/properties/choices/properties/letterWidths/items"],
@@ -297,6 +299,10 @@ describe("the adapter's types match cms/openapi.yaml", () => {
 
   test("the kinds of page", () => {
     expect([...PAGE_KINDS]).toEqual(at("#/components/schemas/Kind").enum);
+  });
+
+  test("what a change of the site style does with the style kept to be put back", () => {
+    expect([...KEPT_CHANGES]).toEqual(follow(at(`${requestBody("/api/site-style", "put")}/properties/kept`)).enum);
   });
 
   test("the version reasons and the image types", () => {
@@ -349,7 +355,7 @@ describe("the adapter's types match cms/openapi.yaml", () => {
       expect(Object.keys(shape).length, name).toBeGreaterThan(0);
       expect(Object.keys(shapeOf(pointer, without)).length, name).toBeGreaterThan(0);
     }
-    expect(pairs).toHaveLength(63);
+    expect(pairs).toHaveLength(64);
   });
 });
 

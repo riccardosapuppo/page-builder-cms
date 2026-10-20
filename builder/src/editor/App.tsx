@@ -22,7 +22,11 @@
 // way, saved first, and the page is read again when its time comes, since
 // the CMS's job puts it live. It settles a conflict the person's way
 // (reload, keep mine), and sends the site style's changes, one request at
-// a time, the latest change last.
+// a time, the latest change last. For the Assistant's new site it waits
+// for such a change (applySiteStyle), replaces a part's draft, the one it
+// replaces kept as a version first (replacePart), makes a page the home
+// page (setHome) and publishes pages and parts one after the other
+// (publishAll).
 //
 // The page's versions: the list the history panel shows (./HistoryPanel.tsx),
 // "Save version" and restore, each after the edits waiting are saved. A
@@ -187,9 +191,11 @@ interface AppProps {
   // A line under the bottom line, across the window: the demo's.
   foot?: ReactNode;
   tabs?: TabOpener;
+  // The browser demo's Start over with its example site (Session.startOver).
+  startOver?: (() => Promise<void>) | null;
 }
 
-export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, entryView = null, foot, tabs = windowTabs }: AppProps) {
+export function App({ env, adapter, address = locationAddress, cmsOrigin, publishedView = null, entryView = null, foot, tabs = windowTabs, startOver = null }: AppProps) {
   const { store, ui, clock } = env;
   // The Assistant (../assistant/README.md): one for the editor's life; the
   // key it may hold is forgotten when the window is left, or the editor goes.
@@ -981,27 +987,34 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
 
   // The site style: the canvas takes a change at once; the CMS gets one
   // request at a time, and the latest change goes when the one on its way
-  // is answered. A refusal puts back what the CMS last kept.
-  const styleQueue = useRef<{ busy: boolean; next: SiteStyleChange | null; kept: SiteStyle | null }>({ busy: false, next: null, kept: null });
-  const saveSiteStyle = useCallback((change: SiteStyleChange) => {
+  // is answered. A refusal puts back what the CMS last kept. Whoever waits
+  // for a change (applySiteStyle) is told once it, or a later change that
+  // stood in for it, is answered.
+  const styleQueue = useRef<{ busy: boolean; next: SiteStyleChange | null; kept: SiteStyle | null; waiting: Array<(why: string | null) => void> }>({ busy: false, next: null, kept: null, waiting: [] });
+  const applySiteStyle = useCallback((change: SiteStyleChange): Promise<string | null> => {
     const shown = ui.getState().siteStyle;
-    if (!shown) return;
+    if (!shown) return Promise.resolve("The site style is not loaded yet.");
     const queue = styleQueue.current;
     queue.kept ??= shown;
     // The whole style as it is to be, every part named: a change that
     // names fewer parts keeps the others as shown, a change still waiting
-    // for its turn included, which this one then stands in for.
-    const whole = { palette: change.palette, typeScale: change.typeScale, letterWidth: change.letterWidth ?? shown.letterWidth, customCss: change.customCss ?? shown.customCss };
-    ui.getState().setSiteStyle({ ...shown, ...whole });
+    // for its turn included, which this one then stands in for, with what
+    // it asked of the style kept to be put back, unless this one asks
+    // otherwise.
+    const kept = change.kept ?? queue.next?.kept;
+    const whole: SiteStyleChange = { palette: change.palette, typeScale: change.typeScale, letterWidth: change.letterWidth ?? shown.letterWidth, customCss: change.customCss ?? shown.customCss, ...(kept === undefined ? {} : { kept }) };
+    ui.getState().setSiteStyle({ ...shown, palette: whole.palette, typeScale: whole.typeScale, letterWidth: whole.letterWidth!, customCss: whole.customCss!, kept: kept === "none" ? null : shown.kept });
     setStyleSave({ phase: "saving" });
     queue.next = whole;
-    if (queue.busy) return;
+    const answered = new Promise<string | null>((resolve) => queue.waiting.push(resolve));
+    if (queue.busy) return answered;
     queue.busy = true;
     void (async () => {
       try {
         while (queue.next) {
           const sending = queue.next;
           queue.next = null;
+          const told = queue.waiting.splice(0);
           let outcome;
           try {
             outcome = await adapter.setSiteStyle(sending);
@@ -1013,9 +1026,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
             queue.next = null;
             if (queue.kept) ui.getState().setSiteStyle(queue.kept);
             setStyleSave({ phase: "failed", message: `Not saved, the site keeps its style as it was: ${why}` });
+            for (const tell of [...told, ...queue.waiting.splice(0)]) tell(why);
             return;
           }
           queue.kept = outcome.value;
+          for (const tell of told) tell(null);
           if (!queue.next) {
             ui.getState().setSiteStyle(outcome.value);
             setStyleSave({ phase: "saved" });
@@ -1025,7 +1040,115 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         queue.busy = false;
       }
     })();
+    return answered;
   }, [adapter, ui]);
+  const saveSiteStyle = useCallback((change: SiteStyleChange) => {
+    void applySiteStyle(change);
+  }, [applySiteStyle]);
+
+  // A part's draft replaced (the Assistant's new site): the draft as it was
+  // kept as a version first, where `keep` names one, then the new document
+  // saved, read again just before so that a save from elsewhere is not
+  // overwritten unseen (a conflict is met once more, then given up). A part
+  // open in the editor takes the new document as a step of the
+  // Assistant's, which its autosave saves, its own edits saved first.
+  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string | null): Promise<string | null> => {
+    const said = (problem: { message: string; errors?: readonly FieldError[] }) => problem.errors?.[0]?.message ?? problem.message;
+    try {
+      const part = (await adapter.listParts()).find((one) => one.kind === kind);
+      if (!part) return `the site has no ${kind}.`;
+      const saving = opened.current?.id === part.id ? live.current.autosave : null;
+      if (saving) {
+        const refused = held();
+        if (refused) return refused;
+        const settled = await saving.flush();
+        if (settled.phase !== "saved") return unsavedWhy(settled.phase, words.server);
+      }
+      if (keep !== null) {
+        const version = await adapter.saveVersion(part.id, { name: keep });
+        if (!version.ok) return `the ${kind} as it was could not be kept first: ${said(version.problem)}`;
+      }
+      if (saving && live.current.autosave === saving) {
+        const made = makeReplacePage(store.getState().document, document, `Assistant replaced the ${kind}`);
+        if (!made.ok) return null;
+        const outcome = store.getState().dispatch(made.command);
+        if (!outcome.ok) return outcome.error.message;
+        const settled = await saving.flush();
+        return settled.phase === "saved" ? null : unsavedWhy(settled.phase, words.server);
+      }
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const draft = await adapter.getDraft(part.id);
+        const saved = await adapter.saveDraft(part.id, { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document });
+        if (saved.ok) {
+          ui.getState().setParts({ [kind]: document });
+          await refreshPages().catch(() => undefined);
+          return null;
+        }
+        if (saved.problem.kind !== "conflict") return said(saved.problem);
+      }
+      return `the ${kind} was saved somewhere else meanwhile.`;
+    } catch (error) {
+      return describe(error);
+    }
+  }, [adapter, clock, held, refreshPages, store, ui, words.server]);
+
+  // The page of `id` made the home page, at once.
+  const setHome = useCallback(async (id: number): Promise<string | null> => {
+    let outcome;
+    try {
+      outcome = await adapter.updatePage(id, { home: true });
+    } catch (error) {
+      return describe(error);
+    }
+    if (!outcome.ok) return outcome.problem.errors[0]?.message ?? outcome.problem.message;
+    setCurrent((open) => (open && open.kind === "page" ? { ...open, home: open.id === id } : open));
+    await refreshPages().catch(() => undefined);
+    return null;
+  }, [adapter, refreshPages]);
+
+  // Each page or part of `ids` published as its draft is: the open one's
+  // edits are saved first, so what goes live is what the editor shows. A
+  // page with no section has nothing to publish, as Publish says.
+  const publishAll = useCallback(async (ids: readonly number[]): Promise<Array<{ id: number; why: string | null }>> => {
+    const results: Array<{ id: number; why: string | null }> = [];
+    const page = opened.current;
+    const saving = live.current.autosave;
+    let open: string | null = null;
+    if (page && saving && ids.includes(page.id)) {
+      open = held();
+      if (open === null) {
+        const settled = await saving.flush();
+        if (settled.phase !== "saved") open = unsavedWhy(settled.phase, words.server);
+      }
+    }
+    for (const id of ids) {
+      if (page?.id === id && open !== null) {
+        results.push({ id, why: open });
+        continue;
+      }
+      try {
+        const draft = await adapter.getDraft(id);
+        const listed = (await adapter.getPage(id)).page;
+        if (listed.kind === "page" && draft.document.sections.length === 0) {
+          results.push({ id, why: "an empty page has nothing to publish." });
+          continue;
+        }
+        const outcome = await adapter.publish(id, { revision: draft.revision });
+        if (!outcome.ok) {
+          results.push({ id, why: outcome.problem.kind === "conflict" ? "it was saved somewhere else meanwhile." : outcome.problem.errors[0]?.message ?? outcome.problem.message });
+          continue;
+        }
+        const result = outcome.value;
+        setCurrent((current) => (current?.id === id ? { ...current, published: result.published, links: { preview: result.links.preview, live: result.links.live } } : current));
+        results.push({ id, why: null });
+      } catch (error) {
+        results.push({ id, why: describe(error) });
+      }
+    }
+    await refreshPages().catch(() => undefined);
+    if (opened.current && ids.includes(opened.current.id) && ui.getState().historyOpen) loadVersions();
+    return results;
+  }, [adapter, held, loadVersions, refreshPages, ui, words.server]);
 
   // Closing the tab while edits are only here asks first: the page's or
   // the part's edits, text typed in a field and not handed over yet
@@ -1049,8 +1172,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const session = useMemo<Session>(() => ({
     pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, entryView, publishing, styleSave,
     openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
+    applySiteStyle, replacePart, setHome, publishAll, startOver,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, applySiteStyle, replacePart, setHome, publishAll, startOver, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts), and the collections' screen and the
   // shop's the same way (./collections/context.ts, ./shop/context.ts).

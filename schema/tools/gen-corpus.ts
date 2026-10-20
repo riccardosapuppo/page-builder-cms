@@ -346,9 +346,9 @@ valid("columns-stack-every-value", "where columns stack, on two, three and four 
   section("stack-3-phone", [column("stack-3-phone-1", []), column("stack-3-phone-2", []), column("stack-3-phone-3", [])], { columnWidths: "1:2:1", stack: "phone" }),
   section("stack-4", [column("stack-4-1", []), column("stack-4-2", []), column("stack-4-3", []), column("stack-4-4", [])], { stack: "never" }),
 ]));
-valid("logo-and-menu", "a logo with and without a name, and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too", doc("Logo and menu", [
+valid("logo-and-menu", "a logo with and without a name, a word mark (mark false), and menus: one link, twelve (the most), every link form, labels and names at their 40 characters, in code points too", doc("Logo and menu", [
   section("lm", [
-    column("lm-1", [logo("lm-logo-named", "N".repeat(40)), logo("lm-logo-mark"), logo("lm-logo-emoji", cp(0x1f30a).repeat(40))]),
+    column("lm-1", [logo("lm-logo-named", "N".repeat(40)), logo("lm-logo-mark"), logo("lm-logo-emoji", cp(0x1f30a).repeat(40)), block("lm-logo-word", "logo", { name: "Iron Forge", mark: false })]),
     column("lm-2", [
       menu("lm-menu-one", "Main", [menuLink("Home", "/")]),
       menu("lm-menu-twelve", "L".repeat(40), Array.from({ length: 12 }, (_, k) => menuLink(`${"L".repeat(38)}${String(k).padStart(2, "0")}`, `/#part-${k + 1}`))),
@@ -1317,6 +1317,8 @@ invalid("logo-name-blank", "a name has a visible character: a logo without one l
 invalid("logo-name-newline", "a name is one line", `${LOGO}/props/name`, "not", (d) => { at(d, LOGO).props.name = `Slack${NEWLINE}Water`; });
 invalid("logo-name-number", "a name is text", `${LOGO}/props/name`, "type", (d) => { at(d, LOGO).props.name = 7; });
 invalid("logo-href", "a logo with a name goes to the home page: no address is stored", `${LOGO}/props/href`, "additionalProperties", (d) => { at(d, LOGO).props.href = "https://elsewhere.example/"; });
+invalid("logo-mark-true", "only false is stored for a logo's mark: drawing it is what a logo does", `${LOGO}/props/mark`, "const", (d) => { at(d, LOGO).props.mark = true; });
+invalid("logo-mark-string", "a logo's mark is false, never the word for it", `${LOGO}/props/mark`, "const", (d) => { at(d, LOGO).props.mark = "false"; });
 invalid("logo-image", "the mark is the theme's drawing, never an image of the library", `${LOGO}/props/mediaId`, "additionalProperties", (d) => { at(d, LOGO).props.mediaId = "hero-dawn"; });
 invalid("logo-style-text-size", "a logo's size is the theme's", `${LOGO}/style/base/textSize`, "additionalProperties", (d) => { at(d, LOGO).style.base.textSize = "display"; });
 invalid("logo-with-children", "a logo holds no blocks", `${LOGO}/children`, "maxItems", (d) => { at(d, LOGO).children.push(heading("in-logo", 2, "In the logo")); });

@@ -42,6 +42,10 @@
 //   its own site and the Assistant's two providers, and lets an
 //   illustration the Assistant has drawn be drawn from a blob: address to
 //   a canvas and kept in this browser's library;
+// - a new site from a gym's brief, made here: its palette applied, its own
+//   header, three illustrated pages, its cost; its home page made the
+//   site's and everything published, each asked; the old style put back;
+//   and Start over with the example site brings the example site back;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
@@ -935,6 +939,129 @@ test("under the page's policy, an illustration is drawn from a blob: address and
     const library = page.getByRole("dialog", { name: "Media library" });
     await expect(library.getByRole("radio", { name: /^dawn-swim-a-swimmer-at-dawn\.webp/ })).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { refused: string[] }).refused)).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// A new site from a gym's brief in this browser (src/assistant/site.ts),
+// Anthropic's model answering here: the direction, its palette applied as
+// the example site's style is replaced, a header and footer of the new
+// site's own, three pages each with an illustration drawn from a blob:
+// address under the page's policy, the cost said. Then, each asked, the
+// home page made the site's and everything published, the published home
+// page drawn with its own header; the old style put back in one click; and
+// Start over with the example site brings the example site back whole.
+test("a whole new site from a gym's brief in this browser: its palette, its header, three illustrated pages, the cost; made the home page and published when asked; the old style put back; and Start over brings the example site back", async ({ browser, baseURL }) => {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({ baseURL: baseURL ?? "", viewport: { width: 1440, height: 900 }, storageState: welcomeSeen(baseURL ?? ""), locale: "en-US", timezoneId: "UTC" });
+  try {
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    const direction = JSON.stringify({
+      name: "Iron Forge", tagline: "Strength, cardio and coaching under one roof", voice: "Direct and encouraging.",
+      palette: {
+        text: { hex: "#17181c", role: "Words" }, background: { hex: "#f6f4ef", role: "The page" }, primary: { hex: "#a8321c", role: "Headings" },
+        accent: { hex: "#f4b13e", role: "Buttons" }, soft: { hex: "#ebe5d9", role: "Light bands" }, muted: { hex: "#4f535b", role: "Captions" },
+      },
+      typeScale: "strong", letterWidth: "wide", imagery: "Bold flat shapes in the palette.", motion: "little", action: "Book a free session",
+      pages: [{ title: "Home", address: "iron-forge", purpose: "The gym." }, { title: "Classes", address: "classes", purpose: "The classes." }, { title: "Membership", address: "membership", purpose: "Joining." }],
+    });
+    const plan = (title: string) => JSON.stringify({
+      title, description: "",
+      sections: [
+        { label: "Opening", anchor: "", background: "text", motion: "none", widths: "equal",
+          picture: { source: "made", prompt: `${title} at the gym.`, alt: `${title} at the gym`, shape: "landscape", veil: "dark", strength: "strong", focus: "center" },
+          columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: `${title} at Iron Forge`, display: true }, { kind: "text", paragraphs: ["Strength, cardio and coaching."] }] }] },
+        { label: "More", anchor: "", background: "soft", motion: "rise", picture: { source: "none" }, widths: "equal",
+          columns: [{ align: "left", blocks: [{ kind: "heading", level: 2, text: "Train with a coach", display: false }, { kind: "button", label: "Classes", target: "/classes" }] }] },
+      ],
+    });
+    const drawing = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 400\"><rect width=\"600\" height=\"400\" fill=\"#ebe5d9\"/><circle cx=\"420\" cy=\"200\" r=\"90\" fill=\"#f4b13e\"/><rect x=\"80\" y=\"240\" width=\"300\" height=\"40\" rx=\"20\" fill=\"#17181c\"/></svg>";
+    const sse = (events: Array<[string, unknown]>) => events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join("");
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, POST, OPTIONS" };
+    const asked: string[] = [];
+    await page.route("https://api.anthropic.com/**", async (route) => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (request.url().includes("/v1/models")) {
+        return route.fulfill({ headers: cors, contentType: "application/json", body: JSON.stringify({ data: [{ type: "model", id: "claude-opus-5-5", display_name: "Claude Opus 5.5", created_at: "2026-08-01T00:00:00Z" }], has_more: false, first_id: "claude-opus-5-5", last_id: "claude-opus-5-5" }) });
+      }
+      const body = request.postDataJSON() as { output_config: { format: { schema: { required: string[] } } } };
+      const required = body.output_config.format.schema.required;
+      const title = /This page: “([^”]+)”/.exec(JSON.stringify(body))?.[1] ?? "Home";
+      const text = required.includes("svg") ? JSON.stringify({ svg: drawing }) : required.includes("pages") ? direction : plan(title);
+      asked.push(required.includes("svg") ? "illustration" : required.includes("pages") ? "direction" : `page ${title}`);
+      return route.fulfill({ headers: { ...cors, "content-type": "text/event-stream" }, body: sse([
+        ["message_start", { type: "message_start", message: { id: "msg_demo", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 100, output_tokens: 1 } } }],
+        ["content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }],
+        ["content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } }],
+        ["content_block_stop", { type: "content_block_stop", index: 0 }],
+        ["message_delta", { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 200 } }],
+        ["message_stop", { type: "message_stop" }],
+      ]) });
+    });
+    await openDemo(page);
+    await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", "site-signal");
+    await page.locator(".topbar").getByRole("button", { name: "Assistant", exact: true }).click();
+    const box = page.getByRole("complementary", { name: "Assistant", exact: true });
+    await box.getByLabel("Your Anthropic key").fill("sk-ant-demo-not-a-real-key-e5f6");
+    await box.getByRole("button", { name: "Connect Anthropic" }).click();
+    await expect(box.getByText("key …e5f6")).toBeVisible();
+    await box.getByRole("radiogroup", { name: "What to write" }).getByRole("radio", { name: "A new site" }).click();
+    await expect(box.locator(".as-estimate p").first()).toHaveText("Pictures: up to 8 illustrations for the whole site, each a request of its own to Claude Opus 5.5, priced by its tokens like the words.");
+    await box.getByLabel("What is the site for?").fill("A modern fitness gym offering strength training, cardio, functional workouts, and personal coaching.");
+    await box.getByRole("button", { name: "Write the new site" }).click();
+    await box.getByRole("group", { name: "Write the new site" }).getByRole("button", { name: "Write the new site" }).click();
+    await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 90_000 });
+    expect(asked.filter((one) => !one.startsWith("illustration"))).toEqual(["direction", "page Home", "page Classes", "page Membership"]);
+    expect(asked.filter((one) => one === "illustration")).toHaveLength(3);
+    await expect(box.locator(".as-picture-placed")).toHaveCount(3);
+    await expect(box.locator(".as-group-title")).toHaveText(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Membership/membership, written"]);
+    await expect(box.locator(".as-pictures-cost")).toHaveText(/^3 illustrations, ≈ \$[0-9.]+: 300 tokens in and 600 out, at Claude Opus 5\.5's list price/);
+    // The palette applied in this browser, and the header of the new site's own on the canvas.
+    await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", "#a8321c");
+    await expect(page.locator(".canvas .sw-header .w-logo-word")).toHaveText("Iron Forge");
+    await expect(page.locator(".canvas .sw-header .w-menu-links a")).toHaveText(["Home", "Classes", "Membership"]);
+
+    // The home page, asked, then everything published, asked.
+    const offer = box.getByRole("group", { name: "The new site, now" });
+    await offer.getByRole("button", { name: "Make “Home” the home page" }).click();
+    await expect(offer.getByRole("group", { name: "Make “Home” the home page" })).toContainText("Make “Home” the home page? The site's address leads to it; “Slack Water” keeps its own address, /home.");
+    await offer.getByRole("button", { name: "Make it the home page" }).click();
+    await expect(offer.locator(".as-offer-said")).toHaveText("“Home” is the home page: the site's address leads to it.");
+    await offer.getByRole("button", { name: "Publish all" }).click();
+    await expect(offer.getByRole("group", { name: "Publish all" })).toContainText("Publish the 3 new pages, the header and the footer? This browser shows them as published.");
+    await offer.getByRole("group", { name: "Publish all" }).getByRole("button", { name: "Publish all" }).click();
+    await expect(offer.locator(".as-offer-said")).toHaveText("Published in this browser: the 3 new pages, the header and the footer.", { timeout: 30_000 });
+    // The pages: the new home page at the site's address, the example's
+    // kept at its own, everything published.
+    await page.getByRole("button", { name: /^Switch page\. Open:/ }).click();
+    const rows = page.getByRole("dialog", { name: "Pages" }).locator(".page-row");
+    await expect(rows.filter({ hasText: /^(Home|Classes|Membership|Slack Water)\// })).toHaveText(["Slack Water/homePublished", "Home/Published", "Classes/classesPublished", "Membership/membershipPublished"]);
+    await page.keyboard.press("Escape");
+    expect(errors).toEqual([]);
+
+    // The old style back in one click; the example's tones again.
+    await offer.getByRole("button", { name: "Put the old style back" }).click();
+    await expect(offer.locator(".as-offer-said")).toHaveText("The old style is back, on every page.");
+    await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", "site-signal");
+
+    // Start over with the example site, asked: the example site comes back whole.
+    await offer.getByRole("button", { name: "Start over with the example site" }).click();
+    await expect(offer.getByRole("group", { name: "Start over with the example site" })).toContainText("Everything this browser keeps for the editor goes");
+    await offer.getByRole("group", { name: "Start over with the example site" }).getByRole("button", { name: "Start over" }).click();
+    await expect(heroWords(page)).toHaveText("Swim at slack water", { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
+    await expect(page.locator(".canvas .sw-header .w-logo-link")).toHaveText("Slack Water");
+    await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", "site-signal");
+    await page.getByRole("button", { name: "Switch page. Open: Slack Water" }).click();
+    await expect(page.getByRole("dialog", { name: "Pages" }).locator(".page-row")).toHaveText(["Slack Water/Published", "Winter series/winter-seriesPublished", "News/newsPublished", "Shop/shopPublished", "Notices/noticesPublished", "HeaderEvery pagePublished", "FooterEvery pagePublished", "NewsEvery entryPublished", "Club kitEvery entryPublished"]);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

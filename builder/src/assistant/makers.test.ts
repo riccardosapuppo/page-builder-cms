@@ -95,6 +95,31 @@ test("an illustration: the model chosen draws it in the palette, counted as an i
   expect(store.getState().spent).toMatchObject([{ kind: "illustration", calls: 1 }]);
 });
 
+test("a new site's imagery goes with each picture: in a photo's prompt, and in an illustration's question", async () => {
+  const asked: PhotoAsk[] = [];
+  const photos: ProviderClient = {
+    models: async () => [{ id: "gpt-6.1-sol", name: "gpt-6.1-sol" }],
+    ask: async () => ({ text: "{}", usage: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 } }),
+    photos: {
+      model: async () => "gpt-image-2",
+      async make(_key, photo) {
+        asked.push(photo);
+        return { base64: "UklGRgAAAABXRUJQ", usage: null };
+      },
+    },
+  };
+  const store = await connected(photos, "openai");
+  const finish = async (bytes: Uint8Array): Promise<Finished> => ({ blob: new Blob([bytes as Uint8Array<ArrayBuffer>]), type: "image/webp", width: 1024, height: 1024 });
+  await photoMaker(store, store.getState().bind()!, "low", finish, "Warm, contrasty photos of people training.").make(ask("square"), new AbortController().signal);
+  expect(asked[0]!.prompt).toMatch(/^Rowers at dawn\.\n\nThe site's imagery: Warm, contrasty photos of people training\.\n\nA photograph for a web page\./);
+
+  const { client, questions } = drawer([CLEAN]);
+  const drawing = await connected(client, "anthropic");
+  const draw = async (_svg: string, size: { width: number; height: number }): Promise<Finished> => ({ blob: new Blob(["webp"]), type: "image/webp", ...size });
+  await illustrationMaker(drawing, drawing.getState().bind()!, PALETTE, draw, "Bold flat shapes, two colours each.").make(ask("landscape"), new AbortController().signal);
+  expect(questions[0]!.system).toContain("- The site's imagery, which it keeps to as far as flat shapes can: Bold flat shapes, two colours each.");
+});
+
 test("a hostile illustration is never drawn: refused, said why, with what it cost; an answer with no SVG is said too", async () => {
   const { client } = drawer([HOSTILE, "not json either"]);
   const store = await connected(client, "anthropic");

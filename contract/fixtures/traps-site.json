@@ -170,6 +170,53 @@
               "style": {
                 "base": {}
               }
+            },
+            {
+              "id": "l-word",
+              "type": "logo",
+              "props": {
+                "name": "Iron <Forge> & \"Co\"",
+                "mark": false
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-word-no-name",
+              "type": "logo",
+              "props": {
+                "mark": false
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-mark-not-false",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water",
+                "mark": "false"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "l-mark-true",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water",
+                "mark": true
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
             }
           ],
           "style": {

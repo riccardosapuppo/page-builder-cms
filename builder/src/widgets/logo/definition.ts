@@ -13,5 +13,5 @@ export const logo: WidgetDefinition<"logo"> = {
   // emptied, the mark alone.
   props: () => ({ name: "Site name" }),
   render: LogoRender,
-  traps: ["l-markup", "l-mark-only", "l-name-number", "l-name-empty"],
+  traps: ["l-markup", "l-mark-only", "l-name-number", "l-name-empty", "l-word", "l-word-no-name", "l-mark-not-false", "l-mark-true"],
 };

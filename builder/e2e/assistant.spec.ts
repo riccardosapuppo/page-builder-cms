@@ -19,7 +19,13 @@
 // hostile one refused; each into the CMS's library with its alt text, then
 // onto the page as a step of its own; Stop stops those being made, and so
 // do another page opened and the key forgotten, none asked after, nor
-// with the key connected next.
+// with the key connected next. A new site from a gym's brief: the two
+// choices, the new site said plainly and its Write asked twice, the cost
+// of its pictures said before; its direction, its palette held to AA and
+// applied through Site style's own call, the old style kept; a header and
+// a footer of its own, the old ones kept as versions; three pages with
+// photos within the site's budget, the cost said after; published when
+// asked and met by a visitor, then the old style put back in one click.
 import type { Page, Route } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
@@ -187,10 +193,11 @@ async function anthropic(page: Page, key = ANTHROPIC_KEY, plan: string | ((syste
 const PHOTO_TOKENS: Readonly<Record<string, number>> = { low: 160, medium: 1360, high: 5480 };
 
 // OpenAI's API answered here, the same way, as Chat Completions streams; a
-// page's plan `plan`. With `photo` (a WebP, in base64), the key may use GPT
-// Image 2, and each photo asked of the Images API is answered with it and
-// its usage, once `hold` lets it go.
-async function openai(page: Page, options: { plan?: string; photo?: string; hold?: Promise<void> } = {}): Promise<Asked[]> {
+// page's plan `plan`, or the answer `plan` writes from the request's body.
+// With `photo` (a WebP, in base64), the key may use GPT Image 2, and each
+// photo asked of the Images API is answered with it and its usage, once
+// `hold` lets it go.
+async function openai(page: Page, options: { plan?: string | ((body: unknown) => string); photo?: string; hold?: Promise<void> } = {}): Promise<Asked[]> {
   const asked: Asked[] = [];
   await page.route("https://api.openai.com/**", async (route: Route) => {
     const request = route.request();
@@ -214,8 +221,9 @@ async function openai(page: Page, options: { plan?: string; photo?: string; hold
       }) }).catch(() => undefined);
     }
     const chunk = (delta: Record<string, unknown>, finish: string | null = null) => ({ id: "c1", object: "chat.completion.chunk", created: 1, model: "gpt-5", choices: [{ index: 0, delta, finish_reason: finish }] });
+    const plan = typeof options.plan === "function" ? options.plan(request.postDataJSON()) : options.plan ?? PLAN;
     return route.fulfill({ headers: { ...CORS, "content-type": "text/event-stream" }, body: sse([
-      ...pieces(options.plan ?? PLAN).map((content): [null, unknown] => [null, chunk({ content })]),
+      ...pieces(plan).map((content): [null, unknown] => [null, chunk({ content })]),
       [null, chunk({}, "stop")],
       [null, { id: "c1", object: "chat.completion.chunk", created: 1, model: "gpt-5", choices: [], usage: { prompt_tokens: 900, completion_tokens: 400, total_tokens: 1300, prompt_tokens_details: { cached_tokens: 300, cache_write_tokens: 200 } } }],
       [null, "[DONE]"],
@@ -780,6 +788,10 @@ test("the Assistant's drawer passes axe, asking for a key, with one kept, and af
   await box.getByLabel("What is the page for?").fill("An open day at the club.");
   await box.getByRole("button", { name: "Write the page" }).click();
   await expect(box.locator(".as-total")).toBeVisible();
+  // The total comes as the request ends, a moment before the run does:
+  // once Write the page takes a click again, its colours have begun their
+  // change back, which axe waits for, rather than read them half changed.
+  await expect(box.getByRole("button", { name: "Write the page" })).not.toHaveAttribute("aria-disabled", "true");
   expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
 });
 
@@ -839,4 +851,274 @@ test("an image of the library is described from the picture itself, shown first,
   expect(parts[0]).toMatchObject({ type: "image", source: { media_type: "image/jpeg" } });
   expect(parts[0]!.source!.data.length).toBeGreaterThan(100);
   expect(parts[1]!.text).toContain("Next to the image: Start");
+});
+
+// ------------------------------------------------------------ a new site
+
+// A gym's new site, as a model would direct it: a palette whose primary
+// is too light to read on its background, made darker by the drawer; then
+// each page's plan, by the title its question names, each asking for
+// pictures made for it: three for the home page, three for Classes, three
+// for Membership, of which the site's budget of eight leaves it two.
+const GYM_BRIEF = "A modern fitness gym offering strength training, cardio, functional workouts, and personal coaching. The first session is free.";
+const GYM_DIRECTION = JSON.stringify({
+  name: "Iron Forge",
+  tagline: "Strength, cardio and coaching under one roof",
+  voice: "Direct and encouraging: short sentences, no jargon.",
+  palette: {
+    text: { hex: "#17181c", role: "The words, and the darkest band" },
+    background: { hex: "#f6f4ef", role: "The page, a warm white" },
+    primary: { hex: "#e8644a", role: "Headings and links, iron red" },
+    accent: { hex: "#f4b13e", role: "Buttons, amber" },
+    soft: { hex: "#ebe5d9", role: "Light bands" },
+    muted: { hex: "#4f535b", role: "Captions and quiet bands" },
+  },
+  typeScale: "strong",
+  letterWidth: "wide",
+  imagery: "Warm, contrasty photos of people training, shot low, light from high windows.",
+  motion: "little",
+  action: "Book a free session",
+  pages: [
+    { title: "Home", address: "iron-forge", purpose: "What the gym offers, and the free first session." },
+    { title: "Classes", address: "classes", purpose: "The kinds of training, and who each is for." },
+    { title: "Membership", address: "membership", purpose: "How joining works, step by step." },
+  ],
+});
+const shot = (prompt: string, alt: string, shape = "square") => ({ kind: "image", source: "made", prompt, alt, shape });
+const behind = (prompt: string, alt: string) => ({ source: "made", prompt, alt, shape: "landscape", veil: "dark", strength: "strong", focus: "center" });
+const NO_PICTURE = { source: "none" };
+const gymBand = (label: string, anchor: string, background: string, columns: unknown[], more: Record<string, unknown> = {}) => ({ label, anchor, background, picture: NO_PICTURE, motion: "none", widths: "equal", columns, ...more });
+const card = (picture: unknown, title: string, text: string) => ({ align: "left", blocks: [picture, { kind: "heading", level: 3, text: title, display: false }, words(text)] });
+const point = (icon: string, title: string, text: string) => ({ align: "left", blocks: [{ kind: "iconbox", icon, title, text }] });
+
+function gymPage(title: string, asked: string): string {
+  // A page of the site, at the address the question lists it at.
+  const pathOf = (name: string): string => new RegExp(`- (/[a-z0-9-]+): ${name}`).exec(asked)?.[1] ?? "/";
+  if (title === "Home") {
+    return JSON.stringify({ title: "Iron Forge", description: "Strength, cardio, functional training and coaching. Your first session is free.", sections: [
+      gymBand("Opening", "", "text", [{ align: "left", blocks: [{ kind: "heading", level: 1, text: "Train stronger, every week", display: true }, words("Strength, cardio and functional workouts, with a coach who plans with you."), { kind: "button", label: "Book a free session", target: "#join" }] }], { picture: behind("A bright gym floor at dawn, racks and free weights.", "The gym floor at dawn") }),
+      gymBand("What we offer", "", "none", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "Four ways to train", display: false }, words("One membership, every kind of session.")] }], { motion: "fade" }),
+      gymBand("Ways to train", "", "none", [
+        point("dumbbell", "Strength", "Racks, platforms and free weights."), point("heart-pulse", "Cardio", "Rowers, bikes and treadmills."),
+        point("activity", "Functional", "Circuits for everyday strength."), point("user-round", "Coaching", "A coach who plans with you."),
+      ], { motion: "rise" }),
+      gymBand("Inside", "", "soft", [card(shot("A coach beside a lifter at a squat rack.", "A coach beside a lifter"), "Coached", "Every plan is made with you."), card(shot("Rowing machines in a row by a tall window.", "Rowers by the window"), "Open early", "From six in the morning.")]),
+      gymBand("Join", "join", "muted", [{ align: "left", blocks: [{ kind: "heading", level: 2, text: "Your first session is free", display: false }, { kind: "form", fields: [{ type: "text", label: "Your name", required: true }, { type: "email", label: "Email", required: true }], submitLabel: "Book a free session", confirmation: "Thanks: we will write to set a time." }] }]),
+    ] });
+  }
+  if (title === "Classes") {
+    return JSON.stringify({ title: "Classes", description: "The kinds of training at Iron Forge.", sections: [
+      gymBand("Opening", "", "text", [{ align: "left", blocks: [{ kind: "heading", level: 1, text: "Classes for every week", display: true }, words("Strength, cardio and circuits, each with a coach."), { kind: "button", label: "Book a free session", target: pathOf("Home") }] }], { picture: behind("A group class mid-circuit, kettlebells on the floor.", "A circuit class") }),
+      gymBand("Two ways in", "", "none", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "Two ways to start", display: false }, words("Pick the one that suits your week.")] }]),
+      gymBand("Sessions", "", "none", [card(shot("Two people on assault bikes, side by side.", "Two people on bikes"), "Cardio", "Short, hard intervals."), card(shot("A lifter chalking her hands before a deadlift.", "A lifter before a deadlift"), "Strength", "Lifting, coached.")], { motion: "rise" }),
+      gymBand("Next", "", "primary", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "See how joining works", display: false }, { kind: "button", label: "Membership", target: pathOf("Membership") }] }]),
+    ] });
+  }
+  return JSON.stringify({ title: "Membership", description: "How joining Iron Forge works.", sections: [
+    gymBand("Opening", "", "soft", [{ align: "left", blocks: [{ kind: "heading", level: 1, text: "Join in three steps", display: true }, words("Start with a free session, then choose how often you train.")] }]),
+    gymBand("Steps", "", "none", [{ align: "left", blocks: [{ kind: "heading", level: 2, text: "How it works", display: false }, { kind: "steps", steps: [{ title: "Book a session", text: "Choose a time." }, { title: "Meet your coach", text: "Talk through what you want." }, { title: "Start training", text: "With a plan of your own." }] }] }], { motion: "rise" }),
+    gymBand("Around you", "", "none", [card(shot("Lockers and a bench, morning light.", "The changing room"), "Changing rooms", "Showers and lockers."), card(shot("A water fountain by the stretching mats.", "The stretching area"), "Stretching", "Mats and rollers."), card(shot("A coach's clipboard on a bench.", "A coach's plan"), "Plans", "Yours to keep.")]),
+    gymBand("Start", "", "text", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "Your first session is free", display: false }, { kind: "button", label: "Book a free session", target: pathOf("Home") }] }]),
+  ] });
+}
+
+// The direction, or a page's plan by the title its question names.
+const gymAnswer = (body: unknown): string => {
+  const schema = (body as { response_format?: { json_schema?: { name?: string } } }).response_format?.json_schema?.name;
+  if (schema === "site_direction") return GYM_DIRECTION;
+  const asked = JSON.stringify(body);
+  return gymPage(/This page: “([^”]+)”/.exec(asked)?.[1] ?? "Home", asked);
+};
+
+// A photo of the run for the owner, when NEWSITE_SHOTS names a folder.
+async function shoot(page: Page, name: string, fullPage = false): Promise<void> {
+  const folder = process.env.NEWSITE_SHOTS;
+  if (folder) await page.screenshot({ path: `${folder}/${name}.png`, fullPage });
+}
+
+interface PartNow {
+  id: number;
+  kind: "header" | "footer";
+  published: { versionNumber: number } | null;
+}
+type Doc = { schemaVersion: number; title: string; sections: Array<{ children: Array<{ children: Array<{ type: string; props: Record<string, unknown> }> }> }> };
+
+async function partsOf(request: Parameters<typeof makePage>[0]): Promise<PartNow[]> {
+  return ((await (await request.get(`${cms()}/api/pages`)).json()) as { parts: PartNow[] }).parts;
+}
+
+// What every page draws for a part: what it published, or its draft.
+async function liveOf(request: Parameters<typeof makePage>[0], part: PartNow): Promise<unknown> {
+  if (!part.published) return (await draftOf(request, part.id)).document;
+  return ((await (await request.get(`${cms()}/api/pages/${part.id}/versions/${part.published.versionNumber}`)).json()) as { document: unknown }).document;
+}
+
+async function saveDraftOf(request: Parameters<typeof makePage>[0], id: number, document: unknown, saveId: string): Promise<void> {
+  const { revision } = await draftOf(request, id);
+  const put = await request.put(`${cms()}/api/pages/${id}/draft`, { data: { revision, saveId, document } });
+  expect(put.status(), await put.text()).toBe(200);
+}
+
+const blocksOf = (document: Doc) => document.sections.flatMap((one) => one.children.flatMap((col) => col.children));
+
+test.describe("a new site", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("a whole new site from a gym's brief: a direction, its palette applied, a header with the new pages, three pages with photos, the cost shown; published when asked, then the old style put back", async ({ page, request }) => {
+    test.setTimeout(240_000);
+    // The tests of a run share one CMS: the style and the parts, drafts and
+    // what every page draws, are put back as they were found.
+    const styleBefore = (await (await request.get(`${cms()}/api/site-style`)).json()) as { palette: Record<string, string>; typeScale: string; letterWidth: string; kept: unknown };
+    const partsBefore = await Promise.all((await partsOf(request)).map(async (part) => ({ part, draft: (await draftOf(request, part.id)).document, live: await liveOf(request, part) })));
+    try {
+      await startOn(page, request, "Before the new site");
+      const asked = await openai(page, { plan: gymAnswer, photo: await webp(page) });
+      const box = await assistant(page);
+      await box.getByRole("radio", { name: "OpenAI" }).click();
+      await box.getByLabel("Your OpenAI key").fill(OPENAI_KEY);
+      await box.getByRole("button", { name: "Connect OpenAI" }).click();
+      await expect(box.getByText("key …c3d4")).toBeVisible();
+
+      // Two choices; the new site said plainly before anything is asked.
+      const what = box.getByRole("radiogroup", { name: "What to write" });
+      await expect(what.getByRole("radio")).toHaveText(["A page for this site", "A new site"]);
+      await what.getByRole("radio", { name: "A new site" }).click();
+      await expect(box.locator(".as-site-says li")).toHaveText(["gives the site a new style, a new header and a new footer;", "adds 3 to 4 pages;", "keeps the pages already there."]);
+      await box.getByRole("radiogroup", { name: "Photo quality" }).getByRole("radio", { name: "Low" }).click();
+      await expect(box.locator(".as-estimate p")).toHaveText([
+        "Pictures: up to 8 photos for the whole site, $0.048 at most at low quality (gpt-image-2's price per image of 20 Oct 2026, $0.006 at most a photo).",
+        "The words, the direction and each page, cost a few cents with most models: their exact cost is said once the site is written, from the tokens the provider counts.",
+      ]);
+      await box.getByLabel("What is the site for?").fill(GYM_BRIEF);
+      expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
+      await what.evaluate((choice) => choice.parentElement?.scrollIntoView({ block: "start" }));
+      await shoot(page, "01-two-choices");
+      // Asked twice.
+      await box.getByRole("button", { name: "Write the new site" }).click();
+      const ask = box.getByRole("group", { name: "Write the new site" });
+      await expect(ask).toContainText("Give the site a new style, header and footer, and add the new pages? The pages already there stay.");
+      await expect(ask.getByRole("button", { name: "Cancel" })).toBeFocused();
+      await shoot(page, "02-asked-twice");
+      await ask.getByRole("button", { name: "Write the new site" }).click();
+
+      await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
+      await shoot(page, "03-steps");
+
+      // The direction first, then each page, held to their schemas; eight
+      // photos, the site's budget, at low quality.
+      const chats = asked.filter((call) => call.url.endsWith("/v1/chat/completions")).map((call) => (call.body as { response_format: { json_schema: { name: string } } }).response_format.json_schema.name);
+      expect(chats).toEqual(["site_direction", "page_plan", "page_plan", "page_plan"]);
+      const photos = asked.filter((call) => call.url.endsWith("/v1/images/generations")).map((call) => call.body as { quality: string; prompt: string });
+      expect(photos).toHaveLength(8);
+      expect(photos.every((one) => one.quality === "low" && one.prompt.includes("The site's imagery: Warm, contrasty photos of people training"))).toBe(true);
+
+      // Each page at its address: the direction's, or the next one free
+      // where a page of an earlier test has it (the tests of a run share one
+      // CMS).
+      const paths = await box.locator(".as-page .as-group-path").allTextContents();
+      expect(paths.map((path, at) => new RegExp(`^/${["iron-forge", "classes", "membership"][at]}(-\\d+)?$`).test(path))).toEqual([true, true, true]);
+      const [home, classes, membership] = paths as [string, string, string];
+      // The steps, grouped by page; each page's sections and photos under it.
+      await expect(box.locator(".as-group-title")).toHaveText(["The siteIron Forge", `Home${home}, written`, `Classes${classes}, written`, `Membership${membership}, written`]);
+      await expect(box.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
+      await expect(box.locator(".as-picture-placed")).toHaveCount(8);
+      // The primary was too light to read on the background: made darker, said.
+      await box.getByText(/things to know$/).click();
+      const fixed = /Made the primary colour darker, #e8644a to (#[0-9a-f]{6}), so that button text reads on it, and links on the background/.exec(await box.locator(".as-notes").innerText());
+      expect(fixed).not.toBeNull();
+      const primary = fixed![1]!;
+      await expect(box.locator(".as-notes")).toContainText("“Membership”: Left out an image to be made for the page: the site's pictures leave this page at most 2.");
+
+      // The cost: the four requests' words, the photos, the whole, and the total.
+      await expect(box.locator(".as-used")).toHaveText("Used 3,600 tokens in, 1,200 of them cached and 800 written to the cache, and 1,600 out, on your key.");
+      await expect(box.locator(".as-cost")).toHaveText("≈ $0.019 at gpt-5's list price ($1.25 in, $0.125 cached, $1.25 written to the cache, $10 out per million tokens; prices of 20 Oct 2026).");
+      await expect(box.locator(".as-pictures-cost")).toHaveText("8 photos, ≈ $0.04: 400 tokens in and 1,280 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
+      await expect(box.locator(".as-all")).toHaveText("In all, ≈ $0.06 for the site and its pictures.");
+      await expect(box.locator(".as-total")).toHaveText("Since you connected this key: 4 requests and 8 photos, 4,000 tokens in, 1,200 of them cached and 800 written to the cache, and 2,880 out, ≈ $0.06.");
+
+      // The palette applied, through Site style's own call, the old style kept.
+      const styled = (await (await request.get(`${cms()}/api/site-style`)).json()) as { palette: Record<string, string>; typeScale: string; letterWidth: string; kept: { palette: Record<string, string>; typeScale: string } | null };
+      expect(styled).toMatchObject({ palette: { text: "#17181c", background: "#f6f4ef", primary, accent: "#f4b13e", soft: "#ebe5d9", muted: "#4f535b" }, typeScale: "strong", letterWidth: "wide" });
+      expect(styled.kept).toMatchObject({ palette: styleBefore.palette, typeScale: styleBefore.typeScale });
+      await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", primary);
+
+      // The header: the name as a word mark, the new pages, the call to
+      // action leading to the home page's form; on the canvas and as its
+      // draft, the one it replaced kept as a version.
+      const header = (await partsOf(request)).find((part) => part.kind === "header")!;
+      const headerDraft = (await draftOf(request, header.id)).document as unknown as Doc;
+      expect(blocksOf(headerDraft).map((block) => [block.type, block.props])).toEqual([
+        ["logo", { name: "Iron Forge", mark: false }],
+        ["menu", { label: "Main", items: [{ label: "Home", href: home }, { label: "Classes", href: classes }, { label: "Membership", href: membership }] }],
+        ["button", { label: "Book a free session", href: `${home}#join` }],
+      ]);
+      const versions = ((await (await request.get(`${cms()}/api/pages/${header.id}/versions`)).json()) as { versions: Array<{ name: string | null }> }).versions;
+      expect(versions.map((version) => version.name)).toContain("Before the new site");
+      await expect(page.locator(".canvas .sw-header .w-logo-word")).toHaveText("Iron Forge");
+      await expect(page.locator(".canvas .sw-header .w-menu-links a")).toHaveText(["Home", "Classes", "Membership"]);
+
+      // Three pages, each with its photos placed, from the CMS's library.
+      const listed = ((await (await request.get(`${cms()}/api/pages`)).json()) as { pages: Array<{ id: number; slug: string; title: string; home: boolean }> }).pages;
+      const made = paths.map((path) => listed.find((one) => `/${one.slug}` === path)!);
+      // The page still open is saved after its pause, as any edit is.
+      const placed = () => Promise.all(made.map(async (one) => (JSON.stringify((await draftOf(request, one.id)).document).match(/"mediaId"/g) ?? []).length));
+      await expect.poll(placed, { timeout: 15_000 }).toEqual([3, 3, 2]);
+      expect(made.some((one) => one.home)).toBe(false);
+
+      // What becomes of it, each asked. Making it the home page is only
+      // asked here: the tests of a run share one CMS.
+      const offer = box.getByRole("group", { name: "The new site, now" });
+      await expect(offer.getByRole("button")).toHaveText(["Make “Home” the home page", "Publish all", "Put the old style back"]);
+      await offer.evaluate((group) => group.scrollIntoView({ block: "end" }));
+      await shoot(page, "04-end-offer");
+      await offer.getByRole("button", { name: "Make “Home” the home page" }).click();
+      await expect(offer.getByRole("group", { name: "Make “Home” the home page" })).toContainText("Make “Home” the home page? The site's address leads to it once it is published");
+      await offer.getByRole("button", { name: "Cancel" }).click();
+      await expect(offer.getByRole("button", { name: "Make “Home” the home page" })).toBeFocused();
+      await offer.getByRole("button", { name: "Publish all" }).click();
+      const publish = offer.getByRole("group", { name: "Publish all" });
+      await expect(publish).toContainText("Publish the 3 new pages, the header and the footer? Visitors see them at once.");
+      await publish.getByRole("button", { name: "Publish all" }).click();
+      await expect(offer.locator(".as-offer-said")).toHaveText("Published: the 3 new pages, the header and the footer. Visitors see them now.", { timeout: 30_000 });
+
+      // As a visitor meets it: its own header and colours, desktop and phone,
+      // every section in view at once (no motion, as a photo of the whole
+      // page needs).
+      const visitor = await page.context().newPage();
+      await visitor.emulateMedia({ reducedMotion: "reduce" });
+      await visitor.goto(`${cms()}${home}`);
+      await expect(visitor.locator(".sw-header .w-logo-word")).toHaveText("Iron Forge");
+      await expect(visitor.locator(".sw-header .w-menu-links a")).toHaveText(["Home", "Classes", "Membership"]);
+      await expect(visitor.locator(".sw-footer .w-logo-word")).toHaveText("Iron Forge");
+      await expect(visitor.locator(".site")).toHaveAttribute("data-primary", primary);
+      await expect(visitor.locator(".sw-header .w-button a.sw-btn")).toHaveAttribute("href", `${home}#join`);
+      await shoot(visitor, "05-home-desktop", true);
+      await visitor.setViewportSize({ width: 390, height: 844 });
+      await shoot(visitor, "06-home-phone", true);
+      await visitor.setViewportSize({ width: 1440, height: 900 });
+      await visitor.goto(`${cms()}${classes}`);
+      await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Classes for every week");
+      await shoot(visitor, "07-classes-desktop", true);
+      await visitor.close();
+
+      // The old style back, in one click; nothing is kept after it.
+      await offer.getByRole("button", { name: "Put the old style back" }).click();
+      await expect(offer.locator(".as-offer-said")).toHaveText("The old style is back, on every page.");
+      const back = (await (await request.get(`${cms()}/api/site-style`)).json()) as { palette: Record<string, string>; typeScale: string; letterWidth: string; kept: unknown };
+      expect([back.palette, back.typeScale, back.letterWidth, back.kept]).toEqual([styleBefore.palette, styleBefore.typeScale, styleBefore.letterWidth, null]);
+      await expect(offer.getByRole("button", { name: "Put the old style back" })).toHaveCount(0);
+      expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
+    } finally {
+      const put = await request.put(`${cms()}/api/site-style`, { data: { palette: styleBefore.palette, typeScale: styleBefore.typeScale, letterWidth: styleBefore.letterWidth, kept: "none" } });
+      expect(put.status()).toBe(200);
+      for (const { part, draft, live } of partsBefore) {
+        const now = (await partsOf(request)).find((one) => one.id === part.id)!;
+        if (JSON.stringify(await liveOf(request, now)) !== JSON.stringify(live)) {
+          await saveDraftOf(request, part.id, live, `put-back-live-${part.kind}`);
+          expect((await request.post(`${cms()}/api/pages/${part.id}/publish`, { data: {} })).status()).toBe(200);
+        }
+        await saveDraftOf(request, part.id, draft, `put-back-${part.kind}`);
+      }
+    }
+  });
 });

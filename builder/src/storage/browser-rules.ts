@@ -227,6 +227,12 @@ export class BodyCheck {
     if (!isObject(this.body[name])) this.fail(`/${name}`, "type", WORDS.object);
   }
 
+  // One of a few strings, as JSON Schema's enum says.
+  choice(name: string, values: readonly string[], { required = false }: { required?: boolean } = {}): void {
+    if (!this.present(name, required)) return;
+    if (!values.includes(this.body[name] as string)) this.fail(`/${name}`, "enum", `must be one of ${values.join(", ")}`);
+  }
+
   anyOf(...names: string[]): void {
     if (names.some((name) => this.has(name))) return;
     this.fail("", "minProperties", `must name at least one of ${names.join(", ")}`);

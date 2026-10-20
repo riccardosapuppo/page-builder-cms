@@ -1231,6 +1231,9 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 .tray-head-title > div > p { color: var(--steel); font-size: 12px; line-height: 16px; }
 .tray-head-title > div > p.style-save:empty { display: none; }
 .tray-head-title > div > p.error { color: var(--err); }
+/* The style before the Assistant's new site, kept to be put back in one click. */
+.style-kept { display: grid; justify-items: start; gap: 8px; margin-bottom: 14px; padding: 10px 12px; background: var(--key); border-radius: var(--r-control); }
+.style-kept .hint { margin: 0; }
 .slots { list-style: none; padding: 0; display: grid; gap: 2px; margin-bottom: 14px; }
 .slot, .slot-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px; border-radius: var(--r-control); }
 .slot-pick { display: block; padding: 0; }

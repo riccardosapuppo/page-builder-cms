@@ -17,6 +17,9 @@
 //   order it made.
 // - Under the editor's bottom line, and under every page it draws, the
 //   demo's line (./DemoLine.tsx).
+// - Start over with the example site, which the demo's line offers for a
+//   newer edition, is the editor's too (Session.startOver): the Assistant
+//   offers it once it has made a new site here.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../shared/editor-font.css";
@@ -67,7 +70,7 @@ if (view) {
   keepOpenGroups(env.ui);
   createRoot(root).render(
     <StrictMode>
-      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} entryView={entryAddress} foot={<DemoLine news={news} startOver={startingOver} />} />
+      <App env={env} adapter={adapter} cmsOrigin={null} publishedView={publishedAddress} entryView={entryAddress} startOver={startingOver} foot={<DemoLine news={news} startOver={startingOver} />} />
     </StrictMode>,
   );
 }

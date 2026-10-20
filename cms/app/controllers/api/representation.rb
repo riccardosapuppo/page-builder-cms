@@ -266,6 +266,7 @@ module Api
         "letterWidth" => style.letter_width,
         "customCss" => style.custom_css,
         "updatedAt" => iso(style.updated_at),
+        "kept" => style.kept,
         "choices" => {
           "palette" => SiteTokens.slots.transform_values do |slot|
             slot.tones.map { |tone| { "color" => tone, "label" => slot.tone_labels.fetch(tone), "hex" => colors.fetch(tone) } }

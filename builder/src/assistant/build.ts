@@ -78,6 +78,9 @@ export interface SiteFacts {
   // Whether pictures may be made for the page: the person's provider makes
   // them and the person wants them. Absent, none is.
   made?: boolean;
+  // How many may be: PLAN_MADE_MOST, or fewer for a page of a new site,
+  // whose pictures share the site's budget (./site.ts).
+  most?: number;
 }
 
 // A picture to be made for a section the builder made: behind it, or an
@@ -278,8 +281,11 @@ export class PlanBuilder {
       this.notes.push(`Left out ${what}: no picture is made for this page.`);
       return null;
     }
-    if (this.made >= PLAN_MADE_MOST) {
-      this.notes.push(`Left out ${what}: a page has at most ${PLAN_MADE_MOST} pictures made for it.`);
+    const most = Math.min(this.facts.most ?? PLAN_MADE_MOST, PLAN_MADE_MOST);
+    if (this.made >= most) {
+      this.notes.push(most === PLAN_MADE_MOST
+        ? `Left out ${what}: a page has at most ${PLAN_MADE_MOST} pictures made for it.`
+        : `Left out ${what}: the site's pictures leave this page ${most === 0 ? "none" : `at most ${most}`}.`);
       return null;
     }
     const prompt = line(asked.prompt, MAX.prompt);

@@ -157,6 +157,18 @@ class BlocksTest < ActionView::TestCase
     assert_equal "true", mark["aria-hidden"]
   end
 
+  test "a word mark: with a name and mark false, the name alone is the link home, no mark drawn; with no name, the mark all the same" do
+    html = html_of(page(block("word", "logo", { "name" => "Iron Forge", "mark" => false }), block("bare-word", "logo", { "mark" => false })))
+
+    word = html.at_css("[data-block-id=word]")
+    assert_nil word["aria-hidden"]
+    link = word.at_css("> a.w-logo-link.w-logo-word")
+    assert_equal "/", link["href"]
+    assert_equal "Iron Forge", link.text
+    assert_nil word.at_css("svg"), "no mark beside a word mark"
+    assert html.at_css("[data-block-id=bare-word] > svg.sw-brand-mark"), "no name: the mark alone"
+  end
+
   test "a menu is a named navigation of its links, and Menu, the sheet they fold into, named on the block by the step its words need" do
     links = [ { "label" => "Swims", "href" => "/#swims" }, { "label" => "Gallery", "href" => "/#gallery" }, { "label" => "Meet us", "href" => "/#meet" }, { "label" => "Questions", "href" => "/#questions" } ]
     html = html_of(page(block("m", "menu", { "label" => "Main", "items" => links }), block("unnamed", "menu", { "label" => "", "items" => links.first(1) })))

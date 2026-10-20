@@ -1,6 +1,9 @@
 // Site style (design/shots/site-style.png): the one screen that changes the
 // site's tokens, the tone of each palette slot and the type scale, for
-// every page. Each slot offers its curated tones (the CMS's choices, from
+// every page. Where the Assistant's new site replaced a style, the style it
+// replaced is kept (SiteStyle.kept), and Put the old style back puts it
+// back in one click, until the next new site keeps another. Each slot
+// offers its curated tones (the CMS's choices, from
 // schema/tokens.json) and a colour of the site's own, picked or typed
 // (ColorPicker.tsx), says in words how the colour reads where the site
 // uses it, warning where it reads poorly but keeping it, and can go back
@@ -96,10 +99,29 @@ export function SiteStylePanel({ onClose, onHide }: { onClose: () => void; onHid
   const scaleLabel = style.choices.typeScales.find((t) => t.name === style.typeScale)?.label ?? style.typeScale;
   const widths = letterWidth(style.letterWidth);
 
+  const kept = style.kept;
   return (
     <section className="view site-style" aria-labelledby={headId}>
       <Head id={headId} onClose={onClose} onHide={onHide} />
       <div className="tray-body">
+        {kept && (
+          // The style before the Assistant's last new site, put back in one
+          // click, which lets it go.
+          <div className="style-kept">
+            <p className="hint">The style this site had before the Assistant's new site is kept.</p>
+            <button
+              className="btn btn-small btn-secondary"
+              type="button"
+              onClick={() => {
+                picker.current?.discard();
+                setCustom(null);
+                session.saveSiteStyle({ palette: kept.palette, typeScale: kept.typeScale, letterWidth: kept.letterWidth, kept: "none" });
+              }}
+            >
+              Put the old style back
+            </button>
+          </div>
+        )}
         <h3 className="group-title">Palette</h3>
         <ul className="slots">
           {PALETTE_SLOTS.map((slot) => {

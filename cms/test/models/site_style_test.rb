@@ -62,6 +62,20 @@ class SiteStyleTest < ActiveSupport::TestCase
     assert style.errors[:letter_width].any?
   end
 
+  test "what is kept to be put back is a style as keepable writes it, or nothing" do
+    style = SiteStyle.current
+    assert_nil style.kept
+    style.kept = style.keepable(Time.utc(2026, 10, 20, 9))
+
+    assert style.valid?
+    assert_equal({ "palette" => SiteTokens.default_palette, "typeScale" => "balanced", "letterWidth" => "normal", "keptAt" => "2026-10-20T09:00:00.000Z" }, style.kept)
+    style.kept = { "palette" => SiteTokens.default_palette }
+    assert_not style.valid?
+    assert style.errors[:kept].any?
+    style.kept = "the old one"
+    assert_not style.valid?
+  end
+
   test "custom CSS is kept when it keeps to the site, and refused with its line when it does not" do
     style = SiteStyle.current
     assert_equal "", style.custom_css

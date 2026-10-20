@@ -962,7 +962,7 @@ paths:
     put:
       operationId: setSiteStyle
       summary: Change the site style
-      description: The whole style, every palette slot named, each with one of its curated tones or a colour of the site's own. The letter width and the custom CSS when given; without one, the style keeps its own. CSS that does not keep to the site (an unclosed rule, a brace that closes nothing, @import) is refused at /customCss, with its line.
+      description: The whole style, every palette slot named, each with one of its curated tones or a colour of the site's own. The letter width and the custom CSS when given; without one, the style keeps its own. CSS that does not keep to the site (an unclosed rule, a brace that closes nothing, @import) is refused at /customCss, with its line. With kept, what becomes of the style kept to be put back (SiteStyle.kept); without it, that stays as it is.
       tags: [site-style]
       requestBody:
         required: true
@@ -981,6 +981,10 @@ paths:
                   type: string
                 customCss:
                   $ref: '#/components/schemas/CustomCss'
+                kept:
+                  description: now keeps the style as it is before this change, to be put back, in place of one kept before (the Assistant's new site does); none lets go of the one kept (it was put back).
+                  type: string
+                  enum: [now, none]
       responses:
         '200':
           description: Changed.
@@ -2020,7 +2024,7 @@ components:
     SiteStyle:
       type: object
       additionalProperties: false
-      required: [palette, typeScale, letterWidth, customCss, updatedAt, choices]
+      required: [palette, typeScale, letterWidth, customCss, updatedAt, kept, choices]
       properties:
         palette:
           $ref: '#/components/schemas/Palette'
@@ -2034,6 +2038,11 @@ components:
         updatedAt:
           description: Null until the style is first changed.
           type: [string, 'null']
+        kept:
+          description: The style as it was before the Assistant's last new site, which the editor puts back in one click; null while there is none, and once it is put back.
+          anyOf:
+            - $ref: '#/components/schemas/KeptStyle'
+            - type: 'null'
         choices:
           description: The values each part of the style may take, from schema/tokens.json.
           type: object
@@ -2078,6 +2087,21 @@ components:
                     type: string
                   label:
                     type: string
+
+    KeptStyle:
+      description: A style kept to be put back, and when it was kept.
+      type: object
+      additionalProperties: false
+      required: [palette, typeScale, letterWidth, keptAt]
+      properties:
+        palette:
+          $ref: '#/components/schemas/Palette'
+        typeScale:
+          type: string
+        letterWidth:
+          type: string
+        keptAt:
+          type: string
 
     Site:
       type: object

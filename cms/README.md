@@ -1018,7 +1018,7 @@ the schema file) each failed it.
 | `POST /api/media/direct_uploads` | start an image upload (Active Storage's request and answer) |
 | `GET /api/media`, `POST /api/media` | list; create from `{signedBlobId, width, height, alt?}` |
 | `PATCH /api/media/:id`, `DELETE /api/media/:id` | change the proposed alt text; delete, or 409 with who uses it |
-| `GET /api/site-style`, `PUT /api/site-style` | the palette, type scale and letter width, with their curated values; replace them (the letter width when given) |
+| `GET /api/site-style`, `PUT /api/site-style` | the palette, type scale and letter width, with their curated values, and the style kept to be put back (`kept`, or null); replace them (the letter width when given), with `kept: "now"` keeping the style as it was, or `kept: "none"` letting the kept one go |
 | `GET /api/site` | the site's settings: its time zone |
 | `GET /api/collections`, `POST /api/collections` | the collections, oldest first, each with its entries counted and its template; create one from its definition `{name, prefix, fields, sort}`, with its template |
 | `GET /api/collections/:id`, `PATCH ...`, `DELETE ...` | one collection; replace the members of its definition given, checked whole; delete it with its entries and its template |
@@ -1269,6 +1269,14 @@ for a form's labels and a quote's caption. A menu keeps its own width,
 style's own when it is not; a style kept before the choice existed took
 Normal. A change of it alone is a new page for every browser, as a
 tone's is.
+
+The style an editor's Assistant replaces with a new site's is kept on the
+style's row (`kept`, JSON: its palette, type scale and letter width, and
+when it was kept): the change that brings the new site's style asks for it
+(`kept: "now"`, the style as it was before that change, in place of one
+kept before), and Put the old style back sends the kept values with
+`kept: "none"`, which lets it go. Every other change leaves it as it is.
+Any other word for `kept` is refused at `/kept` (`enum`).
 
 **Header and footer.** The site's parts are pages of their own kind
 (`kind`: `header` or `footer`, at most one of each), read, saved,

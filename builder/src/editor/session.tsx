@@ -8,6 +8,7 @@
 // a test can be drawn with a session of its own making.
 import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
+import type { PageDocument } from "../shared/document.ts";
 import type { Capabilities, FieldError, NewPage, PageKind, PageLinks, PageSummary, PartKind, Published, Schedule, SiteStyleChange, Version } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
 
@@ -117,6 +118,27 @@ export interface Session {
   keepMine(): Promise<void> | void;
   // The site style: the canvas follows at once, the server after.
   saveSiteStyle(change: SiteStyleChange): void;
+  // The same, in the same line of requests, for one who waits for it (the
+  // Assistant's new site): resolves once the storage has kept it, with
+  // null, or with why not.
+  applySiteStyle(change: SiteStyleChange): Promise<string | null>;
+  // A part's draft replaced by `document`, the draft as it was kept first
+  // as a version named `keep` where one is named, so History brings it
+  // back; the canvas draws the new one at once. A part open in the editor
+  // takes it as a step of the Assistant's, its edits saved first. Resolves
+  // with null once saved, or with why not.
+  replacePart(kind: PartKind, document: PageDocument, keep: string | null): Promise<string | null>;
+  // Makes the page of `id` the one the site's root address serves: null,
+  // or why not.
+  setHome(id: number): Promise<string | null>;
+  // Publishes each page or part of `ids` as its draft is, the open one's
+  // edits saved first, one after the other: for each, null once published,
+  // or why not.
+  publishAll(ids: readonly number[]): Promise<Array<{ id: number; why: string | null }>>;
+  // The browser demo's way back to its example site, asked for by the
+  // person (../demo/main.tsx): its pages, style and parts as the demo
+  // first gives them, this browser's own let go of. Null with a CMS.
+  startOver: (() => Promise<void>) | null;
   // The open page's versions (./HistoryPanel.tsx), read again by
   // loadVersions().
   versions: VersionList;
@@ -198,6 +220,11 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     reload: async () => {},
     keepMine: () => {},
     saveSiteStyle: () => {},
+    applySiteStyle: async () => null,
+    replacePart: async () => null,
+    setHome: async () => null,
+    publishAll: async (ids) => ids.map((id) => ({ id, why: null })),
+    startOver: null,
     versions: NO_VERSIONS,
     loadVersions: () => {},
     saveVersion: async () => null,

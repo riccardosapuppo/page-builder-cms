@@ -506,9 +506,11 @@ export interface FormProps extends BlockAttributes {
   confirmation: string;
 }
 // The site's mark, with the site's name beside it as a link to the home
-// page, or alone (decorative) when there is no name.
+// page, or alone (decorative) when there is no name. mark false draws the
+// name alone, a word mark; with no name, the mark is drawn all the same.
 export interface LogoProps extends BlockAttributes {
   name?: string;
+  mark?: false;
 }
 // One link of a menu.
 export interface MenuLink {
@@ -614,7 +616,7 @@ export const PROP_KEYS = {
     image: "optional", date: "optional", excerpt: "optional", price: "optional", linkLabel: "required", emptyText: "required", ...OWN,
   },
   form: { items: "required", submitLabel: "required", confirmation: "required", ...OWN },
-  logo: { name: "optional", ...OWN },
+  logo: { name: "optional", mark: "optional", ...OWN },
   menu: { label: "required", items: "required", ...OWN },
   field: { field: "required", level: "optional", ...OWN },
   addToCart: { label: "required", quantity: "required", ...OWN },

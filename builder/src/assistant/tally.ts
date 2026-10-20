@@ -196,12 +196,13 @@ export function pictureWords(tally: Tally, kind: PictureKind): string | null {
 }
 
 // A page and its pictures together, once pictures were made: "In all,
-// ≈ $0.14 for the page and its pictures."
-export function allWords(tally: Tally): string | null {
+// ≈ $0.14 for the page and its pictures"; a new site's, "for the site and
+// its pictures".
+export function allWords(tally: Tally, holder = "the page"): string | null {
   if (!tally.some((line) => line.kind !== "words")) return null;
   const priced = tally.filter(isPriced);
   if (priced.length === 0) return null;
-  return `In all, ${about(nanoOf(priced))} for ${priced.length === tally.length ? "the page and its pictures" : "what has a list price on file"}.`;
+  return `In all, ${about(nanoOf(priced))} for ${priced.length === tally.length ? `${holder} and its pictures` : "what has a list price on file"}.`;
 }
 
 // Every request since the key was connected, and the pictures made:

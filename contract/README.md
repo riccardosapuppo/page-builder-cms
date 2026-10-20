@@ -36,7 +36,10 @@ the server writes for them. The editor's half is
     and blocks out of place (a section in a column, a widget where a section
     goes, an unknown type, a string where a block goes).
   - `traps-site.json`: the blocks a header is made of: logos with a
-    name, with none, with a name that is a number or empty; menus whose
+    name, with none, with a name that is a number or empty, a word mark
+    (a name holding markup, `mark` false), `mark` false with no name (the
+    mark alone all the same), and a `mark` that is not false (the string
+    "false", true), each drawing the mark beside the name; menus whose
     labels hold markup or letters of other scripts, of long links, with a
     link the renderers refuse, with no link, with items that are no link,
     with no name; and sections whose columns fit what they hold and stack

@@ -408,6 +408,7 @@ export function createRailsAdapter(config: RailsAdapterConfig = {}): StorageAdap
         typeScale: style.typeScale,
         ...(style.letterWidth === undefined ? {} : { letterWidth: style.letterWidth }),
         ...(style.customCss === undefined ? {} : { customCss: style.customCss }),
+        ...(style.kept === undefined ? {} : { kept: style.kept }),
       };
       return settle<SiteStyle, Invalid>(await call("setSiteStyle", {}, body, options), 200, ["invalid"], "setSiteStyle");
     },

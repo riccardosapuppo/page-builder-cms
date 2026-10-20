@@ -8,12 +8,17 @@
 // does; with a key, the switch for pictures, and for photos the quality
 // and its price per photo before anything is made; after a page with
 // photos, each one's step with its cost, a line for the photos and the
-// whole, and the total counting them.
+// whole, and the total counting them. Two choices, a page or a new site,
+// the new site said plainly first; what its pictures may cost at most said
+// before it is written; its Write asked twice, Cancel asking nothing; its
+// steps grouped by page, its cost after, then what becomes of it, each
+// asked: the home page, Publish all, and the old style put back.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import type { ModelChoice, ProviderClient, Usage } from "../assistant/providers.ts";
+import type { SiteStyle } from "../storage/adapter.ts";
 import { AssistantPanel } from "./AssistantPanel.tsx";
 import { createMediaService, type MediaAdapter, type MediaService } from "./library/service.ts";
 import type { UiStore } from "./ui-store.ts";
@@ -242,6 +247,194 @@ test("after a page with photos: each one's step in the list with its cost, then 
   expect(kit.doc().sections[0]!.children.map((column) => column.children[0]!.props)).toEqual([{ mediaId: "made-1", alt: "Weights at the gym" }, { mediaId: "made-2", alt: "Rowers at the gym" }]);
   // Put in quietly: the selection is where the page's own steps left it, on its section.
   expect(kit.store.getState().selection).toBe(kit.doc().sections[0]!.id);
+});
+
+// ------------------------------------------------------------ a new site
+
+const DIRECTION = JSON.stringify({
+  name: "Iron Forge",
+  tagline: "Strength under one roof",
+  voice: "Direct.",
+  palette: {
+    text: { hex: "#16181d", role: "Words" }, background: { hex: "#f7f5f0", role: "Page" }, primary: { hex: "#b3361b", role: "Headings" },
+    accent: { hex: "#f2b33d", role: "Buttons" }, soft: { hex: "#ece6da", role: "Bands" }, muted: { hex: "#5c5f66", role: "Captions" },
+  },
+  typeScale: "strong",
+  letterWidth: "wide",
+  imagery: "Warm photos.",
+  motion: "little",
+  action: "Book a session",
+  pages: [{ title: "Home", address: "iron-forge", purpose: "The gym." }, { title: "Classes", address: "classes", purpose: "Classes." }, { title: "Join", address: "join", purpose: "Joining." }],
+});
+
+// A provider that answers a direction, then each page's plan, its title
+// read from the question.
+function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Claude Opus 5.5" }], asked: string[] = []): ProviderClient {
+  return {
+    models: async () => models,
+    ask: async (_key, question, written) => {
+      asked.push(question.name);
+      const title = /This page: “([^”]+)”/.exec(question.system)?.[1] ?? "Page";
+      const text = question.name === "site_direction" ? DIRECTION : JSON.stringify({
+        title, description: "", sections: [{ label: "Opening", anchor: "", background: "none", picture: { source: "none" }, motion: "none", widths: "equal", columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: title, display: true }] }] }],
+      });
+      written(text);
+      return { text, usage: USED };
+    },
+  };
+}
+
+// The editor's session for a new site: pages made one after the other,
+// the style and the parts kept, what the person chooses after recorded.
+function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[]) {
+  let next = 10;
+  let open = 1;
+  return {
+    pages: [{ id: 1, kind: "page" as const, title: "Slack Water", slug: "home", home: true, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } }],
+    parts: [
+      { id: 2, kind: "header" as const, title: "Header", slug: null, home: false, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } },
+      { id: 3, kind: "footer" as const, title: "Footer", slug: null, home: false, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } },
+    ],
+    makePage: async (page: { title: string; slug: string }) => {
+      calls.push(`make /${page.slug}`);
+      open = next++;
+      kit().store.getState().load({ schemaVersion: 1, title: page.title, sections: [] });
+      return { ok: true as const, id: open };
+    },
+    isOpen: (id: number) => id === open,
+    applySiteStyle: async (change: { kept?: string; palette: Record<string, string> }) => {
+      calls.push(`style ${change.kept ?? ""} ${change.palette.primary}`);
+      return null;
+    },
+    replacePart: async (kind: string, _document: unknown, keep: string | null) => {
+      calls.push(`${kind}${keep ? ` (${keep})` : ""}`);
+      return null;
+    },
+    setHome: async (id: number) => {
+      calls.push(`home ${id}`);
+      return null;
+    },
+    publishAll: async (ids: readonly number[]) => {
+      calls.push(`publish ${ids.join(" ")}`);
+      return ids.map((id) => ({ id, why: null }));
+    },
+  };
+}
+
+const STYLE_NOW: SiteStyle = { palette: { text: "site-deep-water", background: "site-paper", primary: "site-signal", accent: "site-buoy", soft: "site-shallows", muted: "site-slate" }, typeScale: "balanced", letterWidth: "normal", customCss: "", updatedAt: null, kept: null, choices: { palette: Object.fromEntries(["text", "background", "primary", "accent", "soft", "muted"].map((slot) => [slot, []])), typeScales: [{ name: "gentle", label: "Gentle" }, { name: "balanced", label: "Balanced" }, { name: "strong", label: "Strong" }], letterWidths: [{ name: "normal", label: "Normal" }, { name: "wide", label: "Wide" }] } };
+
+test("two choices: a page for this site, as before, and a new site, said plainly before anything is asked", async () => {
+  const kit = editorKit({ document: KIT_DOC, providers: async () => siteWriter() });
+  kit.render(<AssistantPanel />);
+  await act(async () => {
+    await kit.assistant.getState().connect("anthropic", "sk-ant-not-a-real-key");
+  });
+  const what = screen.getByRole("radiogroup", { name: "What to write" });
+  expect(within(what).getAllByRole("radio").map((radio) => [radio.textContent, radio.getAttribute("aria-checked")])).toEqual([["A page for this site", "true"], ["A new site", "false"]]);
+  expect(screen.getByLabelText("What is the page for?")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Write the page" })).toBeTruthy();
+  fireEvent.click(within(what).getByRole("radio", { name: "A new site" }));
+  expect(describedText(what)).toBe("A new site:gives the site a new style, a new header and a new footer;adds 3 to 4 pages;keeps the pages already there.Its style takes the place of this one on every page at once, the published ones too, as a change in Site style does; Put the old style back returns it. The header, the footer and the new pages are drafts until you publish them, and your home page stays as it is until you choose.");
+  expect(screen.getByLabelText("What is the site for?")).toBeTruthy();
+  expect(screen.getByRole("switch", { name: "Draw illustrations for the site" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Write the page" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Write the new site" })).toBeTruthy();
+});
+
+test("before a new site is written: what its pictures may cost at most, the site's budget at the quality chosen, and that its words cost a few cents, said exactly after", async () => {
+  const kit = editorKit({ document: KIT_DOC, media: library, providers: async () => picturing(PLAN, "gpt-image-2") });
+  kit.render(<AssistantPanel />);
+  await connect(kit);
+  fireEvent.click(screen.getByRole("radio", { name: "A new site" }));
+  const quality = screen.getByRole("radiogroup", { name: "Photo quality" });
+  const estimate = () => [...document.getElementById(quality.getAttribute("aria-describedby")!)!.querySelectorAll("p")].map((line) => line.textContent);
+  // Medium: the square photo, $0.053, is the dearest; eight of them.
+  expect(estimate()).toEqual([
+    "Pictures: up to 8 photos for the whole site, $0.424 at most at medium quality (gpt-image-2's price per image of 20 Oct 2026, $0.053 at most a photo).",
+    "The words, the direction and each page, cost a few cents with most models: their exact cost is said once the site is written, from the tokens the provider counts.",
+  ]);
+  fireEvent.click(within(quality).getByRole("radio", { name: "Low" }));
+  expect(estimate()[0]).toBe("Pictures: up to 8 photos for the whole site, $0.048 at most at low quality (gpt-image-2's price per image of 20 Oct 2026, $0.006 at most a photo).");
+  fireEvent.click(screen.getByRole("switch", { name: "Make photos for the site" }));
+  expect(screen.getByText("Pictures: none is made; the library's are used where they fit.")).toBeTruthy();
+});
+
+test("Write the new site asks twice: Cancel asks nothing and gives the focus back; yes writes the site, its steps grouped by page, its cost, then what becomes of it, each asked", async () => {
+  const calls: string[] = [];
+  const asked: string[] = [];
+  let kitRef: ReturnType<typeof editorKit> | null = null;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls), providers: async () => siteWriter(undefined, asked) });
+  kitRef = kit;
+  kit.ui.getState().setSiteStyle(STYLE_NOW);
+  kit.render(<AssistantPanel />);
+  await act(async () => {
+    await kit.assistant.getState().connect("anthropic", "sk-ant-not-a-real-key");
+  });
+  fireEvent.click(screen.getByRole("radio", { name: "A new site" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Draw illustrations for the site" }));
+  // With no brief, it says so, and asks nothing.
+  fireEvent.click(screen.getByRole("button", { name: "Write the new site" }));
+  expect(screen.getByText("Say what the site is for first.")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("What is the site for?"), { target: { value: "A modern fitness gym." } });
+  fireEvent.click(screen.getByRole("button", { name: "Write the new site" }));
+  const ask = screen.getByRole("group", { name: "Write the new site" });
+  expect(ask.querySelector("p")?.textContent).toBe("Give the site a new style, header and footer, and add the new pages? The pages already there stay.");
+  expect(document.activeElement?.textContent).toBe("Cancel");
+  fireEvent.click(within(ask).getByRole("button", { name: "Cancel" }));
+  expect(asked).toEqual([]);
+  expect(document.activeElement?.textContent).toBe("Write the new site");
+
+  fireEvent.click(screen.getByRole("button", { name: "Write the new site" }));
+  fireEvent.click(within(screen.getByRole("group", { name: "Write the new site" })).getByRole("button", { name: "Write the new site" }));
+  // Answered yes, the focus goes to the site's steps.
+  expect(document.activeElement?.id).toBe("as_site_title");
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 50));
+  });
+  expect(asked).toEqual(["site_direction", "page_plan", "page_plan", "page_plan"]);
+  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "make /iron-forge", "make /classes", "make /join"]);
+  expect(screen.getByRole("heading", { level: 3, name: "Written · new site" })).toBeTruthy();
+  expect(screen.getAllByRole("status")[0]!.textContent).toBe("“Iron Forge”: a new style, a new header and footer, and 3 pages. The header and footer it replaced are kept in their versions, as “Before the new site”.");
+  // The steps, grouped: the site's own, then each page.
+  expect([...document.querySelectorAll(".as-group-title")].map((title) => title.textContent)).toEqual(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Join/join, written"]);
+  expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, draft", "Footer, draft"]);
+  expect(screen.getByRole("img", { name: /^The new palette: Text #16181d, Background #f7f5f0, Primary #b3361b/ })).toBeTruthy();
+  // What it cost: four requests to one model, said once.
+  expect(document.querySelector(".as-used")?.textContent).toBe("Used 12,576 tokens in, 4,096 of them cached, and 5,660 out, on your key.");
+  expect(document.querySelector(".as-cost")?.textContent).toMatch(/^≈ \$0\.\d+ at Claude Opus 5\.5's list price/);
+
+  // What becomes of it: the home page, asked.
+  fireEvent.click(screen.getByRole("button", { name: "Make “Home” the home page" }));
+  const home = screen.getByRole("group", { name: "Make “Home” the home page" });
+  expect(home.querySelector("p")?.textContent).toBe("Make “Home” the home page? The site's address leads to it once it is published; “Slack Water” keeps its own address, /home.");
+  fireEvent.click(within(home).getByRole("button", { name: "Make it the home page" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 40));
+  });
+  expect(calls.at(-1)).toBe("home 10");
+  expect(document.querySelector(".as-offer-said")?.textContent).toBe("“Home” is the home page: the site's address leads to it once it is published.");
+  // The key is gone, and the focus is where what was done is said.
+  expect(screen.queryByRole("button", { name: "Make “Home” the home page" })).toBeNull();
+  expect(document.activeElement).toBe(document.querySelector(".as-offer-said"));
+  // Publish all, asked: the three pages, the header and the footer.
+  fireEvent.click(screen.getByRole("button", { name: "Publish all" }));
+  const publish = screen.getByRole("group", { name: "Publish all" });
+  expect(publish.querySelector("p")?.textContent).toBe("Publish the 3 new pages, the header and the footer? Visitors see them at once.");
+  fireEvent.click(within(publish).getByRole("button", { name: "Publish all" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 40));
+  });
+  expect(calls.at(-1)).toBe("publish 10 11 12 2 3");
+  expect(document.querySelector(".as-offer-said")?.textContent).toBe("Published: the 3 new pages, the header and the footer. Visitors see them now.");
+  // The old style back, in one click, from memory.
+  fireEvent.click(screen.getByRole("button", { name: "Put the old style back" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 40));
+  });
+  expect(calls.at(-1)).toBe("style none site-signal");
+  expect(screen.queryByRole("button", { name: "Put the old style back" })).toBeNull();
+  // Not the demo: no Start over.
+  expect(screen.queryByRole("button", { name: "Start over with the example site" })).toBeNull();
 });
 
 test("the sample written by hand says no model was asked, and adds nothing to any total", async () => {

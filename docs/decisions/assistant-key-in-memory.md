@@ -58,6 +58,9 @@ where may it go? There were three ways to hold it:
   command that the store holds to the page's schema like any other.
   - **Links** go only to the plan's own sections, the site's pages, or
     addresses written in the person's brief.
+  - **A new site's header and footer** are built by the editor from the
+    model's direction, in the site's own blocks, never written by the
+    model; its colours are held to WCAG's AA before they are used.
   - **Images** come from the site's library, or are made for the page with
     the person's key (since 20 October 2026): a photo of OpenAI's image
     model, or an illustration the model draws as SVG, cleaned by a strict
@@ -83,7 +86,11 @@ where may it go? There were three ways to hold it:
 - **Each call costs the person money.** The drawer says what each page
   used, tokens in, cached and out, and estimates their cost at the
   provider's list price, its pictures' too. Its foot keeps the total since
-  the key was connected, in memory with the key, and forgotten with it.
+  the key was connected, in memory with the key, and forgotten with it. A
+  new site (since 20 October 2026) is many calls on one key: it is asked
+  twice before it begins, its pictures' most is said before (a budget of
+  eight for the whole site), and the whole run is bound to the key it
+  began with, so that forgetting or replacing that key stops it.
 
 ## The proof
 
