@@ -9,7 +9,7 @@ again.
 | --- | --- |
 | `editor.png` | The editor, 1440 by 900, with the home page open, its heading selected, the Outline on the left and the heading's settings on the right. |
 | `editor-phone.png` | The editor on a 390 by 844 phone, at twice the pixels: the hero's heading tapped, its settings risen from the bar at the foot as a sheet. |
-| `assistant.png` | The Assistant, 1440 by 900, after writing a page from the sample written by hand (no key, no model): its four sections on the canvas and listed in its drawer, each a step in History; the new page's heading selected, Write it again among its settings. |
+| `assistant.png` | The Assistant, 1440 by 900, after writing a page from the sample written by hand (no key, no model): its four sections on the canvas, the opening over a picture under a dark veil, and listed in its drawer, each a step in History, above the choice of provider and what each one makes; the new page's heading selected, Write it again and Motion among its settings. |
 | `header.png` | The site's header open in the editor, 1440 by 900, as a page is opened: its menu selected, the menu's links on the right, the home page dimmed under it. |
 | `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
 | `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |
@@ -89,6 +89,16 @@ address, and the entries' times are that run's. `template.png`, made with
 it into another folder, came out byte for byte the same and was kept. No
 picture shows the page switch open, where the templates are now listed
 too.
+
+On 20 October 2026, with the Assistant's pictures, motion and new site,
+the publishing run made all of them again, and five showed what the code
+now draws: `assistant.png` (the sample's opening over a picture under a
+veil, and the drawer saying what each provider makes), `editor.png`,
+`demo.png` and `template.png` (a Motion group among the settings), and
+`editor-phone.png` (Settings drawn as the open sheet's key in the bar at the
+foot). Those five were kept. The others differed only as above, in their
+times, port and the 38 pixels of `demo-preview.png`, and were left as
+they were, so the link preview's picture and its address stay the same.
 
 ## What holds them to what the script makes
 
